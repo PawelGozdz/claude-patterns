@@ -14,7 +14,7 @@ description: |
 
 repository:
   type: "git"
-  location: "~/.claude-patterns/"
+  location: "~/projects/claude-patterns/"
   remote: null  # Will be set after GitHub repo creation
 
 patterns:

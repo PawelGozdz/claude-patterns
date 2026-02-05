@@ -28,7 +28,7 @@ lrwxrwxrwx 1 user user 45 Feb  5 16:11 patterns -> /home/user/.claude-patterns/p
 **Solution 1**: Verify global patterns exist
 ```bash
 # Check if global repo exists
-ls ~/.claude-patterns/patterns/
+ls ~/projects/claude-patterns/patterns/
 
 # If not found, extract patterns first
 cd ~/.claude-patterns
@@ -39,14 +39,14 @@ cd ~/.claude-patterns
 ```bash
 cd ~/my-project/.claude/knowledge
 rm patterns
-ln -sf ~/.claude-patterns/patterns patterns
+ln -sf ~/projects/claude-patterns/patterns patterns
 ```
 
 ### Problem: Permission denied when creating symlink
 
 **Symptoms**:
 ```bash
-$ ln -sf ~/.claude-patterns/patterns patterns
+$ ln -sf ~/projects/claude-patterns/patterns patterns
 ln: failed to create symbolic link 'patterns': Permission denied
 ```
 
@@ -59,7 +59,7 @@ ls -la .claude/knowledge/
 sudo chown -R $USER:$USER .claude/
 
 # Try again
-ln -sf ~/.claude-patterns/patterns patterns
+ln -sf ~/projects/claude-patterns/patterns patterns
 ```
 
 ---
@@ -78,7 +78,7 @@ ln -sf ~/.claude-patterns/patterns patterns
 ls -la .claude/knowledge/patterns
 
 # Verify target exists
-ls ~/.claude-patterns/patterns/domain/
+ls ~/projects/claude-patterns/patterns/domain/
 
 # Count accessible patterns
 find .claude/knowledge/patterns -name "*.md" -not -name "README.md" | wc -l
@@ -120,7 +120,7 @@ cd ~
 git clone <your-project-url>
 
 # Setup patterns (works like Linux)
-~/.claude-patterns/scripts/setup-project.sh ~/my-project
+~/projects/claude-patterns/scripts/setup-project.sh ~/my-project
 ```
 
 **Solution 2**: Use junction points (Windows native)
@@ -177,7 +177,7 @@ git clone <project-url>
 cd <project>
 
 # Setup symlinks (they're not stored in git)
-~/.claude-patterns/scripts/setup-project.sh .
+~/projects/claude-patterns/scripts/setup-project.sh .
 
 # Verify
 ls -la .claude/knowledge/patterns
@@ -273,7 +273,7 @@ Error: Pattern not found
 ls .claude/knowledge/patterns/domain/
 
 # If broken, re-create symlinks
-~/.claude-patterns/scripts/setup-project.sh .
+~/projects/claude-patterns/scripts/setup-project.sh .
 ```
 
 **Solution 2**: Run baseline test comparison
@@ -289,7 +289,7 @@ npm run test
 
 # 3. Restore symlinks
 rm -rf patterns
-ln -sf ~/.claude-patterns/patterns patterns
+ln -sf ~/projects/claude-patterns/patterns patterns
 
 # 4. Run tests again
 npm run test
@@ -325,8 +325,8 @@ ls .claude/knowledge/patterns/architecture/
 # Instead of symlinking all patterns, symlink only needed ones
 cd .claude/knowledge/patterns/domain
 rm *.md
-ln -sf ~/.claude-patterns/patterns/domain/aggregate-pattern.md .
-ln -sf ~/.claude-patterns/patterns/domain/value-object-pattern.md .
+ln -sf ~/projects/claude-patterns/patterns/domain/aggregate-pattern.md .
+ln -sf ~/projects/claude-patterns/patterns/domain/value-object-pattern.md .
 # (only link patterns you use)
 ```
 
@@ -334,7 +334,7 @@ ln -sf ~/.claude-patterns/patterns/domain/value-object-pattern.md .
 ```bash
 # Copy frequently-used patterns to patterns-local/
 # (faster than symlink traversal in some cases)
-cp ~/.claude-patterns/patterns/domain/aggregate-pattern.md .claude/knowledge/patterns-local/domain/
+cp ~/projects/claude-patterns/patterns/domain/aggregate-pattern.md .claude/knowledge/patterns-local/domain/
 ```
 
 ---
@@ -374,7 +374,7 @@ If you encounter issues not covered here:
 
 2. **Validate setup**: Re-run setup script
    ```bash
-   ~/.claude-patterns/scripts/setup-project.sh ~/my-project
+   ~/projects/claude-patterns/scripts/setup-project.sh ~/my-project
    ```
 
 3. **Test global patterns**: Verify extraction worked

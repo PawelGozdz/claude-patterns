@@ -22,7 +22,7 @@ A **single source of truth** for production-tested software patterns that can be
 ## 🏗️ Repository Structure
 
 ```
-~/.claude-patterns/
+~/projects/claude-patterns/
 ├── README.md                    # This file
 ├── METADATA.yml                 # Repository metadata
 ├── .gitignore                   # Git exclusions
@@ -64,7 +64,7 @@ A **single source of truth** for production-tested software patterns that can be
 ```bash
 # 1. Setup symlinks in your project
 cd ~/my-new-project
-~/.claude-patterns/scripts/setup-project.sh .
+~/projects/claude-patterns/scripts/setup-project.sh .
 
 # 2. Done! Your project now uses global patterns
 ls -la .claude/knowledge/patterns  # Should show symlink
@@ -78,7 +78,7 @@ cd ~/my-project/.claude/knowledge
 cp -r patterns patterns.backup
 
 # 2. Setup symlinks
-~/.claude-patterns/scripts/setup-project.sh ~/my-project
+~/projects/claude-patterns/scripts/setup-project.sh ~/my-project
 
 # 3. Verify
 ls -la .claude/knowledge/patterns  # Should show symlink
@@ -90,13 +90,13 @@ ls -la .claude/knowledge/patterns  # Should show symlink
 
 ### Symlink Architecture
 
-Each project has a symlink from `.claude/knowledge/patterns/` pointing to `~/.claude-patterns/patterns/`:
+Each project has a symlink from `.claude/knowledge/patterns/` pointing to `~/projects/claude-patterns/patterns/`:
 
 ```
 my-project/
 ├── .claude/
 │   └── knowledge/
-│       ├── patterns/            # Symlink → ~/.claude-patterns/patterns/
+│       ├── patterns/            # Symlink → ~/projects/claude-patterns/patterns/
 │       ├── patterns-local/      # Project-specific overrides
 │       └── learned/             # Project-specific learnings (NOT symlinked)
 ```
@@ -110,7 +110,7 @@ When Claude Code loads patterns, it uses this precedence:
 3. **Claude Code defaults** - Fallback
 
 **Example**:
-- Global pattern: `~/.claude-patterns/patterns/domain/aggregate-pattern.md`
+- Global pattern: `~/projects/claude-patterns/patterns/domain/aggregate-pattern.md`
 - Local override: `.claude/knowledge/patterns-local/domain/aggregate-pattern.md`
 - Result: Claude uses the **local override** (project-specific needs)
 
@@ -121,7 +121,7 @@ When Claude Code loads patterns, it uses this precedence:
 Patterns are tagged with supported tech stacks in `METADATA.yml`:
 
 ```yaml
-# ~/.claude-patterns/patterns/domain/METADATA.yml
+# ~/projects/claude-patterns/patterns/domain/METADATA.yml
 version: "1.0"
 stack_support:
   - typescript
@@ -195,7 +195,7 @@ git commit -m "Improved aggregate factory method pattern"
 
 ```bash
 # 1. Add new pattern
-cd ~/.claude-patterns/patterns/domain
+cd ~/projects/claude-patterns/patterns/domain
 vim new-pattern.md
 
 # 2. Update METADATA.yml
@@ -232,12 +232,12 @@ Setup symlinks in a new or existing project.
 
 **Usage**:
 ```bash
-~/.claude-patterns/scripts/setup-project.sh /path/to/project
+~/projects/claude-patterns/scripts/setup-project.sh /path/to/project
 ```
 
 **What it does**:
 1. Creates `.claude/knowledge/patterns-local/` directory
-2. Creates symlink: `patterns/ → ~/.claude-patterns/patterns/`
+2. Creates symlink: `patterns/ → ~/projects/claude-patterns/patterns/`
 3. Creates `patterns-local/README.md` with override documentation
 
 ### `extract-patterns.sh`
@@ -288,8 +288,8 @@ Each pattern has a maturity level in METADATA.yml:
 ## 🎯 Success Metrics
 
 After setup, you should see:
-- ✅ 13+ generic patterns in `~/.claude-patterns/patterns/`
-- ✅ Symlink working: `ls -la .claude/knowledge/patterns` shows `→ ~/.claude-patterns/patterns/`
+- ✅ 13+ generic patterns in `~/projects/claude-patterns/patterns/`
+- ✅ Symlink working: `ls -la .claude/knowledge/patterns` shows `→ ~/projects/claude-patterns/patterns/`
 - ✅ Claude agents reference patterns correctly
 - ✅ All tests pass (if migrating existing project)
 - ✅ ~85% disk savings (no pattern duplication across projects)
@@ -305,10 +305,10 @@ After setup, you should see:
 **Solution**:
 ```bash
 # Check if global patterns exist
-ls ~/.claude-patterns/patterns/
+ls ~/projects/claude-patterns/patterns/
 
 # Re-run setup script
-~/.claude-patterns/scripts/setup-project.sh .
+~/projects/claude-patterns/scripts/setup-project.sh .
 ```
 
 ### Windows Compatibility

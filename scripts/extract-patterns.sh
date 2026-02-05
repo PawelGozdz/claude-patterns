@@ -20,7 +20,7 @@ echo ""
 
 # Configuration
 SOURCE_DIR="$HOME/projects/local-hero-3/.claude/knowledge/patterns"
-TARGET_DIR="$HOME/.claude-patterns/patterns"
+TARGET_DIR="$HOME/projects/claude-patterns/patterns"
 
 # Verify source directory exists
 if [ ! -d "$SOURCE_DIR" ]; then

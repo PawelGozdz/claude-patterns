@@ -20,7 +20,7 @@ echo ""
 
 # Parse arguments
 PROJECT_DIR="${1:-.}"  # Default to current directory if not provided
-GLOBAL_PATTERNS="$HOME/.claude-patterns/patterns"
+GLOBAL_PATTERNS="$HOME/projects/claude-patterns/patterns"
 
 # Resolve absolute path
 PROJECT_DIR=$(cd "$PROJECT_DIR" && pwd)
