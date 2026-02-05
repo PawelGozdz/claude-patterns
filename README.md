@@ -55,8 +55,23 @@ A **single source of truth** for production-tested software patterns that can be
 │   ├── requirements.txt         # Python dependencies
 │   ├── settings.json.example    # Example Claude settings
 │   └── README.md                # MCP setup & usage guide
+├── agents/                      # Global agents (symlinked from ~/.claude/agents)
+│   ├── specialists/             # Expert agents (3 total)
+│   │   ├── ddd-application-expert.md
+│   │   ├── backend-technology-expert.md
+│   │   └── security-privacy-architect.md
+│   ├── utilities/               # Utility agents (3 total)
+│   │   ├── codebase-explorer.md
+│   │   ├── schema-testing-agent.md
+│   │   └── test-scaffolder.md
+│   └── README.md                # Agent setup & usage guide
+├── commands/                    # Global commands (symlinked from ~/.claude/commands)
+│   ├── orchestrate.md           # Smart task orchestrator
+│   ├── scaffold.md              # Haiku template generator
+│   └── README.md                # Command setup & usage guide
 ├── scripts/                     # Setup & maintenance scripts
 │   ├── setup-project.sh         # Setup symlinks in new project
+│   ├── setup-global.sh          # Setup global agents/commands (NEW)
 │   ├── extract-patterns.sh      # Extract patterns from LocalHero
 │   ├── validate-metadata.sh     # Validate METADATA.yml files
 │   └── migration-guide.md       # User migration documentation
@@ -141,6 +156,59 @@ ls -la .claude/knowledge/patterns  # Should show symlink
 ```
 
 **Note**: Symlinks require global repo to exist on each machine. When cloning project on new machine, run `setup-project.sh` again.
+
+---
+
+## 🤖 Global Agents & Commands Setup
+
+**What are these?** User-level agents and commands that work across ALL projects on your system.
+
+### Quick Setup (5 minutes)
+
+```bash
+# 1. Run setup script
+cd ~/projects/claude-patterns
+./scripts/setup-global.sh
+
+# 2. Restart Claude Code
+
+# 3. Done! Global agents and commands now available in all projects
+```
+
+**What this does**:
+- Creates `~/.claude/agents` → symlink to `~/projects/claude-patterns/agents/`
+- Creates `~/.claude/commands` → symlink to `~/projects/claude-patterns/commands/`
+- Backs up existing directories if present
+
+### Manual Setup (Alternative)
+
+```bash
+# Agents
+ln -sf ~/projects/claude-patterns/agents ~/.claude/agents
+
+# Commands
+ln -sf ~/projects/claude-patterns/commands ~/.claude/commands
+
+# Verify
+ls -la ~/.claude/
+# Should show:
+# agents -> /home/node/projects/claude-patterns/agents
+# commands -> /home/node/projects/claude-patterns/commands
+```
+
+### Available Resources
+
+**Global Agents** (6 total):
+- **Specialists** (3): ddd-application-expert, backend-technology-expert, security-privacy-architect
+- **Utilities** (3): codebase-explorer, schema-testing-agent, test-scaffolder
+
+**Global Commands** (2 total):
+- `/orchestrate` - Smart task orchestrator with intelligent routing
+- `/scaffold` - Haiku-based boilerplate generator (60x cost savings)
+
+**Full documentation**:
+- Agents: `agents/README.md`
+- Commands: `commands/README.md`
 
 ---
 
