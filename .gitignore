@@ -1,0 +1,37 @@
+# Global Claude Patterns Repository - .gitignore
+
+# OS Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Editor Files
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Temporary Files
+*.tmp
+*.bak
+*.log
+
+# Local Testing
+test-project/
+sandbox/
+scratch/
+
+# Build Artifacts (if any scripts generate them)
+*.pyc
+__pycache__/
+node_modules/
+
+# Local Configuration (if users want to override)
+local-config.yml

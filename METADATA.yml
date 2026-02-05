@@ -1,0 +1,57 @@
+# Global Claude Patterns Repository - Metadata
+
+version: "1.0.0"
+created: "2026-02-05"
+last_updated: "2026-02-05"
+author: "LocalHero Team"
+source_project: "LocalHero v3"
+license: "MIT"
+
+description: |
+  Production-tested DDD/CQRS patterns for Claude Code projects.
+  Extracted from LocalHero (1355+ tests, 6 production contexts).
+  Uses native filesystem symlinks for zero-duplication sharing.
+
+repository:
+  type: "git"
+  location: "~/.claude-patterns/"
+  remote: null  # Will be set after GitHub repo creation
+
+patterns:
+  total_count: 13
+  categories:
+    domain: 6
+    application: 4
+    architecture: 3
+
+  maturity:
+    production: 13  # All patterns battle-tested
+    stable: 0
+    experimental: 0
+    deprecated: 0
+
+stack_support:
+  current:
+    - typescript
+    - generic
+  planned:
+    - python  # Future enhancement
+
+projects_using:
+  - name: "LocalHero v3"
+    path: "~/projects/local-hero-3"
+    since: "2026-02-05"
+    status: "active"
+
+maintenance:
+  validation_required: true
+  validation_script: "./scripts/validate-metadata.sh"
+  update_frequency: "as_needed"
+  versioning: "semantic"
+
+notes: |
+  - v1.0.0: Initial extraction from LocalHero
+  - 13 generic patterns (domain-driven design, CQRS, architecture)
+  - 17 LocalHero-specific patterns remain in source project
+  - Handler patterns (v2.0) use decorator-based auto-discovery
+  - All patterns verified production-ready (2026-02-05)
