@@ -1,0 +1,86 @@
+verifiers:
+  code-quality-verifier:
+    name: code-quality-verifier
+    model: sonnet
+    cost_estimate: $8-12/mo
+    model_justification: |
+      Sonnet justified for:
+      - Pattern verification (established checklists)
+      - Code review following documented standards
+      - VETO enforcement doesn't require Opus reasoning
+    description: |
+      Code Quality Verifier for TestProject with VETO POWER.
+
+      Verifies DDD patterns, CQRS implementation, hybrid error handling,
+      and ADR-0035 test pyramid compliance.
+
+      BLOCKS task completion if critical issues found.
+    layer: verification
+    veto_power: true
+    tools:
+      - Read
+      - Bash
+      - Glob
+      - Grep
+      - LS
+      - Task
+      - mcp__zen__analyze
+      - mcp__zen__codereview
+    verification_gates:
+      ddd_patterns:
+        - Aggregates extend AggregateRoot
+        - Value Objects immutable
+        - Domain Events correlation IDs
+        - Result<T> pattern usage
+      cqrs:
+        - Handler decorators present
+        - Handler registration verified
+        - "@Transactional on write operations"
+      testing:
+        - Test pyramid ratios (L1 ~50%, L2 ~30%, L3 ~20%)
+        - L1 tests for Specs/Aggregates/Schemas
+        - L2 tests for Handlers
+        - L3 tests for critical flows
+  security-e2e-verifier:
+    name: security-e2e-verifier
+    model: opus
+    cost_estimate: $10-15/mo
+    model_justification: |
+      Opus justified for:
+      - Final security validation requiring deep reasoning
+      - OWASP Top 10 comprehensive analysis
+      - E2E test strategy verification
+      - GO/NO-GO decision authority (VETO power)
+    description: |
+      Security & E2E Verifier for TestProject with VETO POWER.
+
+      Final quality gate: validates security compliance, E2E tests, performance,
+      and ADR-0035 testing pyramid.
+
+      Makes final GO/NO-GO decision. BLOCKS task if critical issues found.
+    layer: verification
+    veto_power: true
+    tools:
+      - Read
+      - Bash
+      - Glob
+      - Grep
+      - LS
+      - Task
+      - mcp__zen__analyze
+      - mcp__zen__codereview
+      - mcp__zen__secaudit
+      - mcp__zen__testgen
+    verification_gates:
+      security:
+        - OWASP Top 10 compliance
+        - Input validation (Zod schemas)
+        - Authentication/authorization checks
+        - PII handling (GDPR compliance)
+      e2e:
+        - Critical user flows tested
+        - Error scenarios covered
+        - Rate limiting tested separately
+      performance:
+        - No obvious performance bottlenecks
+        - Database queries optimized

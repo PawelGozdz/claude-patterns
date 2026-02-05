@@ -1,0 +1,22 @@
+# Test Project Configuration
+# Used to verify compilation system works correctly
+
+name: "TestProject"
+slug: "test-project"
+version: "1.0.0"
+
+contexts:
+  - user-management
+  - order-processing
+  - payment-handling
+
+tech_stack:
+  framework: NestJS
+  language: TypeScript
+  database: PostgreSQL
+  testing: Vitest
+  ddd_library: "@vytches/ddd"
+
+patterns_repo:
+  path: "~/projects/claude-patterns"
+  version: "2.0.0"

@@ -1,0 +1,113 @@
+utilities:
+  codebase-explorer:
+    name: codebase-explorer
+    model: haiku
+    cost_estimate: $0.50-1/mo
+    model_justification: |
+      Haiku justified for:
+      - Read-only file searches (60x cheaper than Sonnet!)
+      - Pattern matching doesn't need deep reasoning
+      - Simple navigation and exploration
+
+      Cost impact: $0.25/M input vs Sonnet $3/M = massive savings
+    description: |
+      Fast codebase navigation agent for TestProject using Haiku model.
+
+      Specialized in finding files, searching code, exploring structure.
+      60x cheaper than Sonnet for search operations.
+    layer: utility
+    veto_power: false
+    tools:
+      - Glob
+      - Grep
+      - Read
+      - Bash(ls)
+      - Bash(tree)
+      - Bash(wc)
+    auto_invoke_keywords:
+      - find files
+      - search code
+      - where is
+      - explore codebase
+      - locate
+  schema-testing-agent:
+    name: schema-testing-agent
+    model: haiku
+    cost_estimate: $0.30-0.50/mo
+    model_justification: |
+      Haiku justified for:
+      - Schema test generation (6-category methodology)
+      - Pattern-following task (well-documented)
+      - 60x cost savings vs Sonnet
+    description: |
+      Schema Testing Specialist for TestProject - Generates comprehensive
+      Zod schema tests using 6-category methodology.
+
+      Works in isolated context, returns minimal summary.
+      96% token savings per schema testing task.
+    layer: utility
+    veto_power: false
+    tools:
+      - Read
+      - Write
+      - Edit
+      - Bash
+    patterns_reference:
+      - patterns/testing/schema-testing-pattern.md
+  test-scaffolder:
+    name: test-scaffolder
+    model: haiku
+    cost_estimate: $0.30-0.50/mo
+    model_justification: |
+      Haiku justified for:
+      - Test boilerplate generation
+      - Pattern-following (test patterns documented)
+      - 60x cost savings
+    description: |
+      Test Scaffolding Agent for TestProject - Generates test file boilerplate
+      following TestProject testing patterns and pyramid structure.
+    layer: utility
+    veto_power: false
+    tools:
+      - Read
+      - Write
+      - Bash
+    patterns_reference:
+      - patterns/testing/testing-pyramid-pattern.md
+      - patterns/testing/context-isolation-pattern.md
+  documentation-writer:
+    name: documentation-writer
+    model: haiku
+    cost_estimate: $0.50-1/mo
+    model_justification: |
+      Haiku justified for:
+      - Documentation generation (pattern-based)
+      - README updates
+      - Cost savings for routine doc tasks
+    description: |
+      Documentation Writer for TestProject - Generates README files,
+      API documentation, and maintains project documentation.
+    layer: utility
+    veto_power: false
+    tools:
+      - Read
+      - Write
+      - Edit
+  migration-generator:
+    name: migration-generator
+    model: haiku
+    cost_estimate: $0.30-0.50/mo
+    model_justification: |
+      Haiku justified for:
+      - Database migration generation
+      - SQL generation from schema changes
+      - Pattern-following task
+    description: |
+      Migration Generator for TestProject - Generates database migrations
+      for PostgreSQL based on schema changes.
+    layer: utility
+    veto_power: false
+    tools:
+      - Read
+      - Write
+      - Bash

@@ -247,8 +247,7 @@ async function compileAgents(templatePath, configPath, outputPath, verbose = fal
     // Register Handlebars helpers
     registerHelpers();
 
-    // Load template and config
-    const template = await loadYAML(templatePath);
+    // Load config
     const config = await loadYAML(configPath);
 
     spinner.succeed('Configuration loaded');
@@ -266,6 +265,13 @@ async function compileAgents(templatePath, configPath, outputPath, verbose = fal
       TECH_STACK: config.tech_stack || {},
       ...config,
     };
+
+    // Load template as STRING (not YAML), compile with Handlebars, then parse
+    spinner.start('Compiling template...');
+    const templateString = await fs.readFile(templatePath, 'utf8');
+    const compiledString = compileTemplate(templateString, context);
+    const template = YAML.parse(compiledString);
+    spinner.succeed('Template compiled');
 
     if (verbose) {
       console.log(chalk.blue('\n📋 Compilation Context:'));

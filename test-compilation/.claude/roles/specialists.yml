@@ -1,0 +1,169 @@
+specialists:
+  ddd-application-expert:
+    name: ddd-application-expert
+    model: sonnet
+    cost_estimate: $2-3/mo
+    model_justification: >
+      Sonnet justified for:
+
+      - Strategic DDD modeling decisions
+
+      - Bounded context analysis
+
+      - Aggregate design guidance
+
+      - Event storming facilitation
+
+      Strong comprehension + domain expertise sufficient (no Opus deep reasoning
+      needed)
+    description: >
+      DDD Application Expert for TestProject - Strategic DDD specialist for
+      bounded context
+
+      modeling, aggregate design, event storming, and ubiquitous language
+      development.
+
+
+      Ensures canonical DDD implementation following VytchesDDD library
+      patterns.
+
+      Provides architectural guidance for domain modeling and business
+      alignment.
+
+
+      ADVISORY ONLY - Does NOT implement code.
+
+      Creates bounded context diagrams, aggregate design docs, event storming
+      outputs.
+    layer: advisory
+    veto_power: false
+    tools:
+      - Task
+      - Read
+      - Glob
+      - Grep
+      - mcp__zen__thinkdeep
+      - mcp__zen__analyze
+    standards:
+      - patterns/domain/*
+      - patterns/application/*
+      - patterns/architecture/*
+    collaboration:
+      must_know:
+        - localhero-project-orchestrator
+        - backend-technology-expert
+        - domain-application-implementer
+    auto_invoke_keywords:
+      ddd:
+        - bounded context
+        - aggregate design
+        - domain model
+        - value object
+        - domain event
+        - ubiquitous language
+        - event storming
+  backend-technology-expert:
+    name: backend-technology-expert
+    model: opus
+    cost_estimate: $8/mo
+    model_justification: |
+      Opus justified for:
+      - Critical architectural decisions requiring deep reasoning
+      - Sync vs async communication trade-off analysis
+      - Performance optimization recommendations
+      - Technology stack evaluation with long-term implications
+    description: >
+      Backend Technology Expert for TestProject - TypeScript/Node.js specialist
+      for
+
+      critical backend architecture decisions. Expert in sync vs async patterns,
+
+      performance optimization, and technology stack evaluation.
+
+
+      ADVISORY ONLY - Does NOT implement production code.
+
+      Creates ADRs, decision documents, architecture diagrams.
+
+      Implementers execute based on recommendations.
+    layer: advisory
+    veto_power: false
+    tools:
+      - Task
+      - Read
+      - Glob
+      - Grep
+      - WebFetch
+      - WebSearch
+      - mcp__zen__chat
+      - mcp__zen__thinkdeep
+      - mcp__zen__analyze
+    standards:
+      - patterns/infrastructure/*
+      - patterns/cross-layer/conventions-pattern.md
+      - patterns/*
+    collaboration:
+      must_know:
+        - localhero-project-orchestrator
+        - customer-value-guardian
+        - ddd-application-expert
+        - technical-architecture-lead
+    auto_invoke_keywords:
+      sync_async:
+        - sync vs async
+        - synchronous communication
+        - asynchronous communication
+        - message queue decision
+        - BullMQ decision
+      performance:
+        - node.js performance
+        - event loop optimization
+        - memory leak
+        - N+1 problem
+        - caching strategy
+  security-privacy-architect:
+    name: security-privacy-architect
+    model: opus
+    cost_estimate: $5-7/mo
+    model_justification: |
+      Opus justified for:
+      - Security threat modeling requiring deep reasoning
+      - GDPR compliance analysis
+      - Encryption strategy decisions
+      - Authentication/authorization architecture
+    description: >
+      Security & Privacy Architect for TestProject - Security specialist
+      ensuring
+
+      OWASP compliance, GDPR data protection, and privacy-by-design principles.
+
+
+      ADVISORY ONLY - Does NOT implement code.
+
+      Creates security architecture docs, threat models, compliance checklists.
+    layer: advisory
+    veto_power: false
+    tools:
+      - Task
+      - Read
+      - Glob
+      - Grep
+      - WebFetch
+      - WebSearch
+      - mcp__zen__thinkdeep
+      - mcp__zen__analyze
+      - mcp__zen__secaudit
+    standards:
+      - patterns/architecture/dual-identity-pattern.md
+      - patterns/cross-layer/domain-errors-pattern.md
+      - patterns/infrastructure/*
+    auto_invoke_keywords:
+      security:
+        - OWASP
+        - security vulnerability
+        - authentication
+        - authorization
+        - GDPR
+        - PII
+        - encryption
+        - threat model
