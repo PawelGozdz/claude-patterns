@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "claude-patterns": {
+      "command": "python3",
+      "args": ["/home/node/projects/claude-patterns/mcp-server/server.py"],
+      "disabled": false
+    }
+  }
+}

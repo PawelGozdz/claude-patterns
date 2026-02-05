@@ -8,13 +8,17 @@
 
 ## 📚 What Is This?
 
-A **single source of truth** for production-tested software patterns that can be shared across multiple Claude Code projects using native filesystem symlinks.
+A **single source of truth** for production-tested software patterns that can be shared across multiple Claude Code projects.
+
+**Two Distribution Options**:
+1. **MCP Server** (Recommended for multi-project use) - Works across ANY projects, out-of-box via git
+2. **Filesystem Symlinks** (Simpler for single project) - Direct filesystem links
 
 **Key Benefits**:
 - ✅ **Write once, use everywhere** - No pattern duplication
-- ✅ **Instant updates** - Change once, all projects see it immediately (via symlinks)
+- ✅ **Instant updates** - Change once, all projects see it immediately
 - ✅ **Consistency** - Same patterns = consistent AI agent behavior
-- ✅ **Simplicity** - Native symlinks (no network layer, no MCP server)
+- ✅ **Multi-project support** - Works across different projects, not just multiple folders
 - ✅ **Proven quality** - Extracted from LocalHero production codebase (1355+ tests)
 
 ---
@@ -46,6 +50,11 @@ A **single source of truth** for production-tested software patterns that can be
 │       ├── transactional-pattern.md
 │       ├── fresh-context-pattern.md
 │       └── METADATA.yml
+├── mcp-server/                  # MCP Server for multi-project use
+│   ├── server.py                # MCP server implementation
+│   ├── requirements.txt         # Python dependencies
+│   ├── settings.json.example    # Example Claude settings
+│   └── README.md                # MCP setup & usage guide
 ├── scripts/                     # Setup & maintenance scripts
 │   ├── setup-project.sh         # Setup symlinks in new project
 │   ├── extract-patterns.sh      # Extract patterns from LocalHero
@@ -59,7 +68,54 @@ A **single source of truth** for production-tested software patterns that can be
 
 ## 🚀 Quick Start
 
-### For New Projects
+### Option A: MCP Server (Recommended for Multi-Project Use)
+
+**Use when**: Multiple DIFFERENT projects need patterns (e.g., LocalHero + MarketPlace + FutureProject)
+
+**Setup** (5 minutes):
+
+```bash
+# 1. Install MCP dependencies
+cd ~/projects/claude-patterns/mcp-server
+python3 -m pip install -r requirements.txt
+
+# 2. Add to your project's Claude settings
+cd ~/your-project
+vim .claude/settings.json
+```
+
+Add this to `.claude/settings.json`:
+
+```json
+{
+  "mcpServers": {
+    "claude-patterns": {
+      "command": "python3",
+      "args": ["/home/node/projects/claude-patterns/mcp-server/server.py"],
+      "disabled": false
+    }
+  }
+}
+```
+
+```bash
+# 3. Commit config to git
+git add .claude/settings.json
+git commit -m "Add claude-patterns MCP server"
+
+# 4. Restart Claude Code
+# Patterns now work! When teammates git pull, patterns work for them too.
+```
+
+**Full MCP documentation**: See `mcp-server/README.md`
+
+---
+
+### Option B: Filesystem Symlinks (Simpler for Single Project)
+
+**Use when**: Only one project needs patterns (or multiple folders of same project)
+
+**For New Projects**:
 
 ```bash
 # 1. Setup symlinks in your project
@@ -70,7 +126,7 @@ cd ~/my-new-project
 ls -la .claude/knowledge/patterns  # Should show symlink
 ```
 
-### For Existing Projects
+**For Existing Projects**:
 
 ```bash
 # 1. Backup current patterns (optional)
@@ -83,6 +139,8 @@ cp -r patterns patterns.backup
 # 3. Verify
 ls -la .claude/knowledge/patterns  # Should show symlink
 ```
+
+**Note**: Symlinks require global repo to exist on each machine. When cloning project on new machine, run `setup-project.sh` again.
 
 ---
 
@@ -113,6 +171,54 @@ When Claude Code loads patterns, it uses this precedence:
 - Global pattern: `~/projects/claude-patterns/patterns/domain/aggregate-pattern.md`
 - Local override: `.claude/knowledge/patterns-local/domain/aggregate-pattern.md`
 - Result: Claude uses the **local override** (project-specific needs)
+
+---
+
+## 🔀 MCP vs Symlinks: Which to Use?
+
+### Quick Decision Matrix
+
+| Your Situation | Recommendation | Why |
+|----------------|----------------|-----|
+| Multiple DIFFERENT projects (LocalHero + MarketPlace + etc.) | **MCP Server** | Works out-of-box, no setup on new machines |
+| Multiple folders of SAME project (local-hero-3, local-hero-4) | **MCP Server** | Git pull/push works immediately |
+| Single project, simple setup | **Symlinks** | Simpler, no Python dependency |
+| Team collaboration (git pull must work) | **MCP Server** | Config in repo, zero setup for teammates |
+| Frequent machine changes | **MCP Server** | Config in repo, patterns work everywhere |
+
+### Detailed Comparison
+
+**MCP Server**:
+- ✅ Works across ANY projects (not limited to one codebase)
+- ✅ Out-of-box: git pull → patterns work (config in repo)
+- ✅ Team-friendly: teammates pull config, patterns work immediately
+- ✅ Future-proof: can add tools, versioning, analytics later
+- ⚠️ Requires Python + MCP library (~5 min setup)
+- ⚠️ Slightly more complex than symlinks
+
+**Symlinks**:
+- ✅ Simpler setup (one script, done)
+- ✅ No dependencies (just filesystem)
+- ✅ Instant access (no MCP protocol overhead)
+- ⚠️ Requires setup on each machine (run `setup-project.sh`)
+- ⚠️ Git doesn't store symlink content (just path)
+- ⚠️ Breaks when global repo missing
+
+### Real-World Example
+
+**Your case** (from conversation):
+- 4 parallel LocalHero folders (local-hero, local-hero-2, local-hero-3, local-hero-4)
+- Starting NEW project (MarketPlace)
+- Need patterns reusable everywhere
+- Want git pull/push to work out-of-box
+
+**Recommendation**: **MCP Server**
+
+**Why**:
+1. Works for LocalHero AND MarketPlace (different projects)
+2. When you `git pull` in local-hero-4, MCP config is there → patterns work
+3. When teammate clones project → patterns work immediately (no setup)
+4. Update patterns once → all projects + teammates see changes
 
 ---
 
@@ -181,14 +287,17 @@ Cross-cutting architectural patterns:
 
 ```bash
 # 1. Edit pattern in global repo
-cd ~/.claude-patterns
+cd ~/projects/claude-patterns
 vim patterns/domain/aggregate-pattern.md
 
 # 2. Commit change
 git add patterns/domain/aggregate-pattern.md
 git commit -m "Improved aggregate factory method pattern"
+git push
 
-# 3. All projects using symlinks see the update immediately (no action needed)
+# 3. All projects see the update immediately (no action needed)
+# - MCP Server: serves latest version automatically
+# - Symlinks: point to latest version automatically
 ```
 
 ### Adding New Patterns
