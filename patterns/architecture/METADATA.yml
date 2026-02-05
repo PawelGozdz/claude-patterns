@@ -1,0 +1,35 @@
+# Architecture Layer Patterns - Metadata
+version: "1.0"
+layer: "architecture"
+description: "Cross-cutting architectural patterns"
+
+stack_support:
+  - typescript
+  - generic     # Concepts applicable to all languages
+
+patterns:
+  - name: dual-identity-pattern.md
+    stacks: [typescript, generic]
+    maturity: production
+    last_verified: 2026-02-05
+    description: "Security pattern for userId extraction from RequestContext"
+
+  - name: transactional-pattern.md
+    stacks: [typescript, generic]
+    maturity: production
+    last_verified: 2026-02-05
+    description: "Transaction management patterns (Result pattern integration)"
+
+  - name: fresh-context-pattern.md
+    stacks: [generic]
+    maturity: production
+    last_verified: 2026-02-05
+    description: "Claude Code context management (lean orchestrator, fresh subagents)"
+
+notes: |
+  Architecture patterns are broadly applicable across tech stacks.
+  dual-identity-pattern is security-focused (prevent audit spoofing).
+  transactional-pattern works with any ORM/database abstraction.
+  fresh-context-pattern is Claude Code specific but generic pattern.
+
+source: "LocalHero v3 production codebase + Claude Code best practices"

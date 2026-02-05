@@ -1,0 +1,53 @@
+# Domain Layer Patterns - Metadata
+version: "1.0"
+layer: "domain"
+description: "Core domain modeling patterns for DDD/CQRS"
+
+stack_support:
+  - typescript
+  - python      # Partial support (value objects)
+  - generic     # Concepts applicable to all languages
+
+patterns:
+  - name: aggregate-pattern.md
+    stacks: [typescript]
+    maturity: production
+    last_verified: 2026-02-05
+    description: "Aggregate root with factory methods, event emission, invariants"
+
+  - name: value-object-pattern.md
+    stacks: [typescript, python]
+    maturity: production
+    last_verified: 2026-02-05
+    description: "Immutable value objects with validation and reconstruction"
+
+  - name: domain-event-pattern.md
+    stacks: [typescript, generic]
+    maturity: production
+    last_verified: 2026-02-05
+    description: "Domain events with correlation IDs and GDPR segregation"
+
+  - name: entity-pattern.md
+    stacks: [typescript]
+    maturity: production
+    last_verified: 2026-02-05
+    description: "Entities with identity-based equality and lifecycle"
+
+  - name: specification-policy-pattern.md
+    stacks: [typescript, generic]
+    maturity: production
+    last_verified: 2026-02-05
+    description: "PolicyBuilder pattern for business rules"
+
+  - name: domain-service-pattern.md
+    stacks: [typescript, generic]
+    maturity: production
+    last_verified: 2026-02-05
+    description: "Domain services for cross-aggregate operations"
+
+notes: |
+  Domain patterns are highly transferable across languages.
+  TypeScript examples use NestJS + @vytches/ddd library.
+  Python examples planned for v1.1 (value objects, specifications).
+
+source: "LocalHero v3 production codebase (1355+ tests)"

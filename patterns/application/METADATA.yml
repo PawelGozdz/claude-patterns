@@ -1,0 +1,43 @@
+# Application Layer Patterns - Metadata
+version: "1.0"
+layer: "application"
+description: "CQRS and application orchestration patterns"
+
+stack_support:
+  - typescript
+
+patterns:
+  - name: command-handler-pattern.md
+    stacks: [typescript]
+    maturity: production
+    last_verified: 2026-02-05
+    description: "Command handlers with @CommandHandler auto-discovery (v2.0)"
+    version: "2.0"
+
+  - name: query-handler-pattern.md
+    stacks: [typescript]
+    maturity: production
+    last_verified: 2026-02-05
+    description: "Query handlers with @QueryHandler auto-discovery (v2.0)"
+    version: "2.0"
+
+  - name: application-service-pattern.md
+    stacks: [typescript]
+    maturity: production
+    last_verified: 2026-02-05
+    description: "Application services for multi-step workflows and sagas"
+
+  - name: audit-handler-pattern.md
+    stacks: [typescript]
+    maturity: production
+    last_verified: 2026-02-05
+    description: "Audit handlers with method-level @EventHandler (v2.0)"
+    version: "2.0"
+
+notes: |
+  Handler patterns (v2.0) use decorator-based auto-discovery.
+  No manual registration in module providers required.
+  CQRS patterns follow @vytches/ddd conventions.
+  Audit handlers enforce ADR-0027 (GDPR audit logging).
+
+source: "LocalHero v3 production codebase (1355+ tests)"
