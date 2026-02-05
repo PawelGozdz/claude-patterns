@@ -433,59 +433,32 @@ public async executeBusinessLogic(command: PostCommentCommand) {
 
 ---
 
-## 🔧 Module Registration
+## 🔧 Module Registration (Auto-Discovery)
 
-**CRITICAL**: Command handlers MUST be registered in module's `onModuleInit()` lifecycle hook.
+Command handlers use the `@CommandHandler(CommandClass)` decorator for **automatic registration**.
+VytchesExplorerService discovers all decorated handler classes and registers them with the command bus.
 
 ### Registration Pattern
 
 **File**: `src/contexts/neighborhood-economy/neighborhood-economy.module.ts`
 
 ```typescript
-import type { OnModuleInit } from '@nestjs/common';
-import { Inject, Module } from '@nestjs/common';
-import { ICommandBus, EnhancedCommandBus } from '@vytches/ddd';
+import { Module } from '@nestjs/common';
 
 @Module({
   providers: [
-    // 1. Add handler to providers array
+    // ✅ Just add handlers to providers - auto-discovery handles the rest
     CreateJobRequestHandler,
     UpdateJobRequestHandler,
     CompleteJobRequestHandler,
     // ... all command handlers
   ],
-  exports: [
-    // 2. Export handlers for CQRS bus registration
-    CreateJobRequestHandler,
-    UpdateJobRequestHandler,
-    CompleteJobRequestHandler,
-  ],
 })
-export class NeighborhoodEconomyModule implements OnModuleInit {
-  constructor(
-    // 3. Inject CommandBus
-    @Inject(ICommandBus) private readonly commandBus: EnhancedCommandBus,
-
-    // 4. Inject ALL command handlers
-    @Inject(CreateJobRequestHandler)
-    private readonly createJobRequestHandler: CreateJobRequestHandler,
-    @Inject(UpdateJobRequestHandler)
-    private readonly updateJobRequestHandler: UpdateJobRequestHandler,
-    @Inject(CompleteJobRequestHandler)
-    private readonly completeJobRequestHandler: CompleteJobRequestHandler,
-  ) {}
-
-  // 5. Implement onModuleInit
-  onModuleInit() {
-    this.registerCommandHandlers();
-  }
-
-  // 6. Register each command with CommandBus
-  private registerCommandHandlers(): void {
-    this.commandBus.register(CreateJobRequestCommand, this.createJobRequestHandler);
-    this.commandBus.register(UpdateJobRequestCommand, this.updateJobRequestHandler);
-    this.commandBus.register(CompleteJobRequestCommand, this.completeJobRequestHandler);
-  }
+export class NeighborhoodEconomyModule {
+  // ✅ NO commandBus injection needed
+  // ✅ NO manual commandBus.register() calls needed
+  // ✅ NO registerCommandHandlers() method needed
+  // @CommandHandler(CommandClass) decorator on handler class enables auto-discovery
 }
 ```
 
@@ -493,13 +466,10 @@ export class NeighborhoodEconomyModule implements OnModuleInit {
 
 **For EVERY new command handler**:
 
-1. ✅ **Add to `providers`** array in `@Module()` decorator
-2. ✅ **Export handler** in `exports` array (for CQRS bus registration)
-3. ✅ **Inject handler** in module constructor with `@Inject(HandlerClass)`
-4. ✅ **Register in `registerCommandHandlers()`** method:
-   ```typescript
-   this.commandBus.register(CommandClass, this.handlerInstance);
-   ```
+1. ✅ **Add `@CommandHandler(CommandClass)` decorator** on the handler class
+2. ✅ **Add `@Injectable()` decorator** on the handler class
+3. ✅ **Add to `providers`** array in `@Module()` decorator
+4. ✅ That's it — VytchesExplorerService handles the rest
 
 ### Complete Module Structure
 
@@ -515,29 +485,12 @@ export class NeighborhoodEconomyModule implements OnModuleInit {
     UpdateAccountHandler,
     // ... repositories, services, etc.
   ],
-  exports: [
-    // Export handlers for CQRS registration
-    ActivateAccountHandler,
-    CreateAccountHandler,
-    UpdateAccountHandler,
-  ],
 })
 export class AccountModule implements OnModuleInit {
-  constructor(
-    @Inject(ICommandBus) private readonly commandBus: EnhancedCommandBus,
-    @Inject(ActivateAccountHandler) private readonly activateAccountHandler: ActivateAccountHandler,
-    @Inject(CreateAccountHandler) private readonly createAccountHandler: CreateAccountHandler,
-    @Inject(UpdateAccountHandler) private readonly updateAccountHandler: UpdateAccountHandler,
-  ) {}
-
-  onModuleInit() {
-    this.registerCommandHandlers();
-  }
-
-  private registerCommandHandlers(): void {
-    this.commandBus.register(ActivateAccountCommand, this.activateAccountHandler);
-    this.commandBus.register(CreateAccountCommand, this.createAccountHandler);
-    this.commandBus.register(UpdateAccountCommand, this.updateAccountHandler);
+  async onModuleInit(): Promise<void> {
+    // Command handlers auto-registered via @CommandHandler decorator
+    // Only error mappers and ACL adapters need manual registration here
+    this.registerErrorMappers();
   }
 }
 ```
@@ -545,39 +498,38 @@ export class AccountModule implements OnModuleInit {
 ### Registration Rules
 
 **MUST**:
-- ✅ Register EVERY command handler in `onModuleInit()`
-- ✅ Inject handler in constructor with `@Inject()` decorator
-- ✅ Add handler to `providers` and `exports` arrays
-- ✅ Use `commandBus.register(CommandClass, handlerInstance)` syntax
-- ✅ Implement `OnModuleInit` interface
-- ✅ Group registrations in dedicated `registerCommandHandlers()` method
+- ✅ Add `@CommandHandler(CommandClass)` decorator on handler class
+- ✅ Add `@Injectable()` decorator on handler class
+- ✅ Add handler to `providers` array
+- ✅ Handler must extend `BaseCommandHandler<Command, Result<DTO, Error>>`
 
 **MUST NOT**:
-- ❌ Forget to register handler in CommandBus (runtime error: "No handler found for command")
-- ❌ Register command class without handler instance
-- ❌ Skip `OnModuleInit` implementation
-- ❌ Register handlers in constructor (DI not ready yet)
-- ❌ Forget to inject handler in constructor
+- ❌ Manually call `commandBus.register()` (auto-discovery handles it)
+- ❌ Inject CommandBus in module constructor (not needed)
+- ❌ Export handlers in `exports` array (not needed for auto-discovery)
+- ❌ Inject handlers in module constructor (not needed)
 
-### Anti-Pattern: Missing Registration
+### Anti-Pattern: Missing Decorator
 
 ```typescript
-// ❌ WRONG: Handler in providers but NOT registered in CommandBus
+// ❌ WRONG: Handler in providers but NO @CommandHandler decorator
+@Injectable()  // ✅ Has @Injectable
+// ❌ MISSING @CommandHandler(CreateJobRequestCommand)
+export class CreateJobRequestHandler extends BaseCommandHandler<...> {
+  // ...
+}
+
 @Module({
   providers: [CreateJobRequestHandler], // ✅ In providers
-  exports: [CreateJobRequestHandler],   // ✅ Exported
 })
-export class NeighborhoodEconomyModule {
-  // ❌ NO OnModuleInit implementation!
-  // ❌ NO commandBus.register() call!
-}
+export class NeighborhoodEconomyModule {}
 
 // Result: Runtime error when executing command
 await commandBus.execute(new CreateJobRequestCommand(...));
 // Error: No handler found for command "CreateJobRequestCommand"
 ```
 
-**Fix**: Implement complete registration pattern (see above).
+**Fix**: Add `@CommandHandler(CreateJobRequestCommand)` decorator to handler class.
 
 ### Testing Registration
 
@@ -628,7 +580,7 @@ describe('NeighborhoodEconomyModule - Handler Registration', () => {
 - **dual-identity-pattern.md** - userId from RequestContext, NEVER command
 - **transactional-pattern.md** - @Transactional for transaction management
 - **acl-registry-pattern.md** - Cross-context calls via ACL Registry
-- **domain-errors-pattern.md** - LocalHeroErrorCode for errors
+- **domain-errors-pattern.md** - ProjectErrorCode for errors
 - **query-handler-pattern.md** - Read-side CQRS handlers
 
 ---
@@ -657,8 +609,15 @@ describe('NeighborhoodEconomyModule - Handler Registration', () => {
 
 ---
 
-**Version**: 1.0
+**Version**: 2.0
 **Created**: 2026-01-04
-**Last Updated**: 2026-01-04
-**Maintained By**: @localhero-project-orchestrator
+**Last Updated**: 2026-02-05
+**Maintained By**: @project-orchestrator
 **Primary Users**: domain-application-implementer, code-quality-verifier
+
+**v2.0 Changes** (2026-02-05):
+- **MAJOR**: Module Registration section rewritten for `@CommandHandler` auto-discovery
+  - Removed manual `commandBus.register()` pattern (kept as anti-pattern reference)
+  - Simplified registration: just add `@CommandHandler` decorator + providers array
+  - VytchesExplorerService handles automatic discovery and registration
+  - No more `onModuleInit` boilerplate for handler registration

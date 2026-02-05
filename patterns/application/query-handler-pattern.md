@@ -332,59 +332,32 @@ export class GetCommentsHandler extends BaseQueryHandler<...> {
 
 ---
 
-## 🔧 Module Registration
+## 🔧 Module Registration (Auto-Discovery)
 
-**CRITICAL**: Query handlers MUST be registered in module's `onModuleInit()` lifecycle hook.
+Query handlers use the `@QueryHandler(QueryClass)` decorator for **automatic registration**.
+VytchesExplorerService discovers all decorated handler classes and registers them with the query bus.
 
 ### Registration Pattern
 
 **File**: `src/contexts/neighborhood-economy/neighborhood-economy.module.ts`
 
 ```typescript
-import type { OnModuleInit } from '@nestjs/common';
-import { Inject, Module } from '@nestjs/common';
-import { IQueryBus, EnhancedQueryBus } from '@vytches/ddd';
+import { Module } from '@nestjs/common';
 
 @Module({
   providers: [
-    // 1. Add handler to providers array
+    // ✅ Just add handlers to providers - auto-discovery handles the rest
     GetJobRequestHandler,
     ListJobRequestsHandler,
     GetMyJobRequestsHandler,
     // ... all query handlers
   ],
-  exports: [
-    // 2. Export handlers for CQRS bus registration
-    GetJobRequestHandler,
-    ListJobRequestsHandler,
-    GetMyJobRequestsHandler,
-  ],
 })
-export class NeighborhoodEconomyModule implements OnModuleInit {
-  constructor(
-    // 3. Inject QueryBus
-    @Inject(IQueryBus) private readonly queryBus: EnhancedQueryBus,
-
-    // 4. Inject ALL query handlers
-    @Inject(GetJobRequestHandler)
-    private readonly getJobRequestHandler: GetJobRequestHandler,
-    @Inject(ListJobRequestsHandler)
-    private readonly listJobRequestsHandler: ListJobRequestsHandler,
-    @Inject(GetMyJobRequestsHandler)
-    private readonly getMyJobRequestsHandler: GetMyJobRequestsHandler,
-  ) {}
-
-  // 5. Implement onModuleInit
-  onModuleInit() {
-    this.registerQueryHandlers();
-  }
-
-  // 6. Register each query with QueryBus
-  private registerQueryHandlers(): void {
-    this.queryBus.register(GetJobRequestQuery, this.getJobRequestHandler);
-    this.queryBus.register(ListJobRequestsQuery, this.listJobRequestsHandler);
-    this.queryBus.register(GetMyJobRequestsQuery, this.getMyJobRequestsHandler);
-  }
+export class NeighborhoodEconomyModule {
+  // ✅ NO queryBus injection needed
+  // ✅ NO manual queryBus.register() calls needed
+  // ✅ NO registerQueryHandlers() method needed
+  // @QueryHandler(QueryClass) decorator on handler class enables auto-discovery
 }
 ```
 
@@ -392,13 +365,10 @@ export class NeighborhoodEconomyModule implements OnModuleInit {
 
 **For EVERY new query handler**:
 
-1. ✅ **Add to `providers`** array in `@Module()` decorator
-2. ✅ **Export handler** in `exports` array (for CQRS bus registration)
-3. ✅ **Inject handler** in module constructor with `@Inject(HandlerClass)`
-4. ✅ **Register in `registerQueryHandlers()`** method:
-   ```typescript
-   this.queryBus.register(QueryClass, this.handlerInstance);
-   ```
+1. ✅ **Add `@QueryHandler(QueryClass)` decorator** on the handler class
+2. ✅ **Add `@Injectable()` decorator** on the handler class
+3. ✅ **Add to `providers`** array in `@Module()` decorator
+4. ✅ That's it — VytchesExplorerService handles the rest
 
 ### Complete Module Structure
 
@@ -415,32 +385,12 @@ export class NeighborhoodEconomyModule implements OnModuleInit {
     SearchAccountsHandler,
     // ... repositories, etc.
   ],
-  exports: [
-    // Export handlers for CQRS registration
-    GetAccountHandler,
-    GetAccountBalanceHandler,
-    ListAccountsHandler,
-    SearchAccountsHandler,
-  ],
 })
 export class AccountModule implements OnModuleInit {
-  constructor(
-    @Inject(IQueryBus) private readonly queryBus: EnhancedQueryBus,
-    @Inject(GetAccountHandler) private readonly getAccountHandler: GetAccountHandler,
-    @Inject(GetAccountBalanceHandler) private readonly getAccountBalanceHandler: GetAccountBalanceHandler,
-    @Inject(ListAccountsHandler) private readonly listAccountsHandler: ListAccountsHandler,
-    @Inject(SearchAccountsHandler) private readonly searchAccountsHandler: SearchAccountsHandler,
-  ) {}
-
-  onModuleInit() {
-    this.registerQueryHandlers();
-  }
-
-  private registerQueryHandlers(): void {
-    this.queryBus.register(GetAccountQuery, this.getAccountHandler);
-    this.queryBus.register(GetAccountBalanceQuery, this.getAccountBalanceHandler);
-    this.queryBus.register(ListAccountsQuery, this.listAccountsHandler);
-    this.queryBus.register(SearchAccountsQuery, this.searchAccountsHandler);
+  async onModuleInit(): Promise<void> {
+    // Query handlers auto-registered via @QueryHandler decorator
+    // Only error mappers and ACL adapters need manual registration here
+    this.registerErrorMappers();
   }
 }
 ```
@@ -448,39 +398,38 @@ export class AccountModule implements OnModuleInit {
 ### Registration Rules
 
 **MUST**:
-- ✅ Register EVERY query handler in `onModuleInit()`
-- ✅ Inject handler in constructor with `@Inject()` decorator
-- ✅ Add handler to `providers` and `exports` arrays
-- ✅ Use `queryBus.register(QueryClass, handlerInstance)` syntax
-- ✅ Implement `OnModuleInit` interface
-- ✅ Group registrations in dedicated `registerQueryHandlers()` method
+- ✅ Add `@QueryHandler(QueryClass)` decorator on handler class
+- ✅ Add `@Injectable()` decorator on handler class
+- ✅ Add handler to `providers` array
+- ✅ Handler must extend `BaseQueryHandler<Query, Result<DTO, Error>>`
 
 **MUST NOT**:
-- ❌ Forget to register handler in QueryBus (runtime error: "No handler found for query")
-- ❌ Register query class without handler instance
-- ❌ Skip `OnModuleInit` implementation
-- ❌ Register handlers in constructor (DI not ready yet)
-- ❌ Forget to inject handler in constructor
+- ❌ Manually call `queryBus.register()` (auto-discovery handles it)
+- ❌ Inject QueryBus in module constructor (not needed)
+- ❌ Export handlers in `exports` array (not needed for auto-discovery)
+- ❌ Inject handlers in module constructor (not needed)
 
-### Anti-Pattern: Missing Registration
+### Anti-Pattern: Missing Decorator
 
 ```typescript
-// ❌ WRONG: Handler in providers but NOT registered in QueryBus
+// ❌ WRONG: Handler in providers but NO @QueryHandler decorator
+@Injectable()  // ✅ Has @Injectable
+// ❌ MISSING @QueryHandler(GetJobRequestQuery)
+export class GetJobRequestHandler extends BaseQueryHandler<...> {
+  // ...
+}
+
 @Module({
   providers: [GetJobRequestHandler], // ✅ In providers
-  exports: [GetJobRequestHandler],   // ✅ Exported
 })
-export class NeighborhoodEconomyModule {
-  // ❌ NO OnModuleInit implementation!
-  // ❌ NO queryBus.register() call!
-}
+export class NeighborhoodEconomyModule {}
 
 // Result: Runtime error when executing query
 await queryBus.execute(new GetJobRequestQuery(...));
 // Error: No handler found for query "GetJobRequestQuery"
 ```
 
-**Fix**: Implement complete registration pattern (see above).
+**Fix**: Add `@QueryHandler(GetJobRequestQuery)` decorator to handler class.
 
 ### Event Handlers Registration
 
@@ -544,8 +493,15 @@ private registerEventHandlers(): void {
 
 ---
 
-**Version**: 1.0
+**Version**: 2.0
 **Created**: 2026-01-04
-**Last Updated**: 2026-01-04
-**Maintained By**: @localhero-project-orchestrator
+**Last Updated**: 2026-02-05
+**Maintained By**: @project-orchestrator
 **Primary Users**: domain-application-implementer, code-quality-verifier
+
+**v2.0 Changes** (2026-02-05):
+- **MAJOR**: Module Registration section rewritten for `@QueryHandler` auto-discovery
+  - Removed manual `queryBus.register()` pattern (kept as anti-pattern reference)
+  - Simplified registration: just add `@QueryHandler` decorator + providers array
+  - VytchesExplorerService handles automatic discovery and registration
+  - No more `onModuleInit` boilerplate for handler registration

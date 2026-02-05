@@ -65,8 +65,8 @@ import {
  * - Tier 1 MANDATORY: UserRegistered, EmailVerified, PasswordChanged, UserDeactivated
  * - Tier 2 SELECTIVE: SocialAccountLinked, SocialAccountUnlinked
  *
- * Registration: Manual in auth.module.ts via VytchesDDD event bus
- * Priority: 1 (lowest) - ensures audit runs AFTER business logic
+ * Registration: Automatic via @EventHandler decorator (VytchesExplorerService auto-discovery)
+ * Module: Handler listed in providers array - no manual eventBus registration needed
  */
 @Injectable()
 export class AuthAuditHandler extends BaseAuditHandler {
@@ -88,6 +88,7 @@ export class AuthAuditHandler extends BaseAuditHandler {
    * Handle UserRegistered events for audit
    * TIER 1 MANDATORY - GDPR Article 6(1)(b) contract basis
    */
+  @EventHandler(UserRegisteredEvent)
   async handleUserRegistered(event: UserRegisteredEvent): Promise<void> {
     const anonymizedData = event.getAnonymizedData();
 
@@ -106,6 +107,7 @@ export class AuthAuditHandler extends BaseAuditHandler {
    * Handle PasswordChanged events for audit
    * TIER 1 MANDATORY - Security-critical operation
    */
+  @EventHandler(PasswordChangedEvent)
   async handlePasswordChanged(event: PasswordChangedEvent): Promise<void> {
     await this.createAuditEntry('PASSWORD_CHANGED', {
       userId: event.aggregateId,
@@ -122,6 +124,7 @@ export class AuthAuditHandler extends BaseAuditHandler {
    * Handle UserDeactivated events for audit
    * TIER 1 MANDATORY - Account lifecycle change
    */
+  @EventHandler(UserDeactivatedEvent)
   async handleUserDeactivated(event: UserDeactivatedEvent): Promise<void> {
     await this.createAuditEntry('USER_DEACTIVATED', {
       userId: event.aggregateId,
@@ -141,79 +144,41 @@ export class AuthAuditHandler extends BaseAuditHandler {
 
 ---
 
-### Example 2: Module Registration (CRITICAL)
+### Example 2: Module Registration (Auto-Discovery)
 
 **File**: `src/contexts/auth/auth.module.ts`
 
 **Key characteristics**:
-- Handler injected via constructor `@Inject()`
-- Registration in `onModuleInit()` with **priority 1 (lowest)**
-- ALL Tier 1 events registered
+- Handler added to `providers` array — that's it!
+- `@EventHandler(EventClass)` decorators on handler methods enable auto-discovery
+- VytchesExplorerService scans and registers all decorated methods automatically
+- NO manual `eventBus.subscribe()` or `eventBus.registerHandler()` calls needed
 
 ```typescript
-import { Injectable, Module, type OnModuleInit, Inject } from '@nestjs/common';
-import { EventBus } from '@vytches/ddd';
+import { Module, type OnModuleInit } from '@nestjs/common';
 
 import { AuthAuditHandler } from './application/event-handlers/audit.handler';
-import {
-  UserRegisteredEvent,
-  EmailVerifiedEvent,
-  PasswordChangedEvent,
-  UserDeactivatedEvent,
-  SocialAccountLinkedEvent,
-  SocialAccountUnlinkedEvent,
-} from './domain/events';
 
 @Module({
   providers: [
-    AuthAuditHandler,
+    AuthAuditHandler, // ✅ Just add to providers - auto-discovery handles the rest
     // ... other providers
   ],
-  exports: [AuthAuditHandler],
 })
-@Injectable()
 export class AuthModule implements OnModuleInit {
-  constructor(
-    private readonly eventBus: EventBus,
-    @Inject(AuthAuditHandler) private readonly auditHandler: AuthAuditHandler,
-  ) {}
+  // ✅ NO eventBus injection needed
+  // ✅ NO audit handler injection needed
+  // ✅ NO manual subscribe calls needed
 
   async onModuleInit(): Promise<void> {
-    // ✅ PRIORITY 1 = LOWEST (runs AFTER business handlers)
-    // Tier 1 MANDATORY events
-    this.eventBus.subscribe(
-      UserRegisteredEvent,
-      this.auditHandler.handleUserRegistered.bind(this.auditHandler),
-      1, // Priority 1 = lowest
-    );
-    this.eventBus.subscribe(
-      EmailVerifiedEvent,
-      this.auditHandler.handleEmailVerified.bind(this.auditHandler),
-      1,
-    );
-    this.eventBus.subscribe(
-      PasswordChangedEvent,
-      this.auditHandler.handlePasswordChanged.bind(this.auditHandler),
-      1,
-    );
-    this.eventBus.subscribe(
-      UserDeactivatedEvent,
-      this.auditHandler.handleUserDeactivated.bind(this.auditHandler),
-      1,
-    );
+    // Event handler registration is AUTOMATIC via @EventHandler decorators
+    // VytchesExplorerService discovers all @EventHandler-decorated methods
+    // and registers them with the event bus during module initialization
 
-    // Tier 2 SELECTIVE events (enabled by default for social auth tracking)
-    this.eventBus.subscribe(
-      SocialAccountLinkedEvent,
-      this.auditHandler.handleSocialAccountLinked.bind(this.auditHandler),
-      1,
-    );
-    this.eventBus.subscribe(
-      SocialAccountUnlinkedEvent,
-      this.auditHandler.handleSocialAccountUnlinked.bind(this.auditHandler),
-      1,
-    );
+    this.registerErrorMappers();
   }
+
+  // ... error mapper registration
 }
 ```
 
@@ -493,6 +458,6 @@ When implementing a new feature with domain events, **ALWAYS**:
 **Version**: 1.0
 **Created**: 2026-01-13
 **Last Updated**: 2026-01-13
-**Maintained By**: @localhero-project-orchestrator
+**Maintained By**: @project-orchestrator
 **Primary Users**: domain-application-implementer, infrastructure-testing-implementer
 **Task Reference**: TS-AUDIT-001

@@ -22,7 +22,7 @@
 
 **Domain Event pattern with**:
 - GDPR data segregation: `piiData`, `anonymizedData`, `businessData`, `cryptoShredding`
-- `LocalHeroDomainEvent<PII, Anonymized, Business>` extension
+- `ProjectDomainEvent<PII, Anonymized, Business>` extension
 - **Per-context enum**: Static `EVENT_NAME` and instance `eventName` use context-specific enum (TS-EVENTS-002)
 - Event versioning: `eventVersion` field
 - Correlation ID in all business data
@@ -46,7 +46,7 @@
 - 7-year retention (Polish legal requirements)
 
 ```typescript
-import { LocalHeroDomainEvent, type ModerationStatusEnum } from '@shared/domain';
+import { ProjectDomainEvent, type ModerationStatusEnum } from '@shared/domain';
 import type { TargetTypeEnum } from '../value-objects/target-reference.vo';
 import { EngagementEventNames } from './event-names.enum'; // ✅ Import context enum
 
@@ -107,7 +107,7 @@ export interface CommentCreatedEventProps {
  * - EngagementAnalyticsHandler: Track comment metrics
  * - EngagementAuditHandler: GDPR compliance audit trail
  */
-export class CommentCreatedEvent extends LocalHeroDomainEvent<
+export class CommentCreatedEvent extends ProjectDomainEvent<
   CommentCreatedPiiData,
   CommentCreatedAnonymizedData,
   CommentCreatedBusinessData
@@ -115,7 +115,7 @@ export class CommentCreatedEvent extends LocalHeroDomainEvent<
   // 5. ✅ Static EVENT_NAME using context enum (TS-EVENTS-002)
   public static readonly EVENT_NAME = EngagementEventNames.COMMENT_CREATED;
   // 6. ✅ Instance eventName using same enum value
-  public readonly eventName = EngagementEventNames.COMMENT_CREATED;
+  public override readonly eventName = EngagementEventNames.COMMENT_CREATED;
   public readonly eventVersion = 1;
 
   constructor(props: CommentCreatedEventProps) {
@@ -199,7 +199,7 @@ export class CommentCreatedEvent extends LocalHeroDomainEvent<
 
 ```typescript
 import {
-  LocalHeroDomainEvent,
+  ProjectDomainEvent,
   type ModerationLevelEnum,
   type ModerationStatusEnum,
 } from '@shared/domain';
@@ -248,7 +248,7 @@ export interface ServiceOfferingModeratedEventProps {
   };
 }
 
-export class ServiceOfferingModeratedEvent extends LocalHeroDomainEvent<
+export class ServiceOfferingModeratedEvent extends ProjectDomainEvent<
   ServiceOfferingModeratedPiiData,
   ServiceOfferingModeratedAnonymizedData,
   ServiceOfferingModeratedBusinessData
@@ -256,7 +256,7 @@ export class ServiceOfferingModeratedEvent extends LocalHeroDomainEvent<
   // ✅ Static EVENT_NAME using context enum (TS-EVENTS-002)
   public static readonly EVENT_NAME = NeighborhoodEconomyEventNames.SERVICE_OFFERING_MODERATED;
   // ✅ Instance eventName using same enum value
-  public readonly eventName = NeighborhoodEconomyEventNames.SERVICE_OFFERING_MODERATED;
+  public override readonly eventName = NeighborhoodEconomyEventNames.SERVICE_OFFERING_MODERATED;
   public readonly eventVersion = 1;
 
   constructor(props: ServiceOfferingModeratedEventProps) {
@@ -368,12 +368,12 @@ export class ServiceOfferingModeratedEvent extends LocalHeroDomainEvent<
 
 ### MUST
 
-1. **Extend `LocalHeroDomainEvent<PII, Anonymized, Business>`**
+1. **Extend `ProjectDomainEvent<PII, Anonymized, Business>`**
 2. **GDPR segregation**: ALL events have `piiData`, `anonymizedData`, `businessData`, `cryptoShredding`
 3. **Per-context enum (TS-EVENTS-002)**:
    - Import context enum: `import { AuthEventNames } from './event-names.enum'`
    - Static EVENT_NAME: `public static readonly EVENT_NAME = AuthEventNames.USER_REGISTERED`
-   - Instance eventName: `public readonly eventName = AuthEventNames.USER_REGISTERED`
+   - Instance eventName: `public override readonly eventName = AuthEventNames.USER_REGISTERED`
 4. **Event version**: `public readonly eventVersion = 1`
 5. **Correlation ID**: ALL business data includes `correlationId: string`
 6. **Set aggregateId**: Constructor sets `(this as any).aggregateId = props.businessData.{id}`
@@ -478,7 +478,7 @@ this.apply(
 
 ```typescript
 // ❌ WRONG: Direct property access
-export class CommentCreatedEvent extends LocalHeroDomainEvent<...> {
+export class CommentCreatedEvent extends ProjectDomainEvent<...> {
   getUserId(): string {
     return this.businessData.userId; // ❌ Can be undefined!
   }
@@ -488,7 +488,7 @@ export class CommentCreatedEvent extends LocalHeroDomainEvent<...> {
 const userId = event.getUserId(); // ❌ Runtime error!
 
 // ✅ CORRECT: Getter with undefined check
-export class CommentCreatedEvent extends LocalHeroDomainEvent<...> {
+export class CommentCreatedEvent extends ProjectDomainEvent<...> {
   getUserId(): string {
     return this.getBusinessData()?.userId || ''; // ✅ Safe fallback
   }
@@ -617,7 +617,7 @@ const eventMap: Record<string, any> = {
 - `src/contexts/engagement/domain/events/comment-created.event.ts`
 - `src/contexts/neighborhood-economy/domain/service-offerings/events/service-offering-moderated.event.ts`
 - `src/contexts/auth/domain/events/user-registered.event.ts`
-- `src/shared/domain/events/localhero-domain-event.ts` (base class)
+- `src/shared/domain/events/project-domain-event.ts` (base class)
 
 ### Related Patterns
 - **aggregate-pattern.md** - Aggregates emit domain events
@@ -653,7 +653,7 @@ const eventMap: Record<string, any> = {
 **Version**: 1.2
 **Created**: 2026-01-04
 **Last Updated**: 2026-01-30
-**Maintained By**: @localhero-project-orchestrator
+**Maintained By**: @project-orchestrator
 **Primary Users**: domain-application-implementer, infrastructure-testing-implementer, code-quality-verifier
 
 **v1.2 Changes** (2026-01-30):
