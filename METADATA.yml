@@ -42,6 +42,8 @@ projects_using:
     path: "~/projects/local-hero-3"
     since: "2026-02-05"
     status: "active"
+    integration: "hybrid"  # 13 symlinked + 21 local
+    tests: "16239 passed, 171 failed (baseline - unrelated to symlinks)"
 
 maintenance:
   validation_required: true
