@@ -1,0 +1,619 @@
+# Universal Agent Template for Claude Code Projects
+#
+# This template uses Handlebars syntax for project-specific parameterization.
+# Compile with: compile-agents -t agents-universal.yml -c project.yml -o ./roles
+#
+# Variables Available:
+#   {{PROJECT_NAME}}     - Full project name (e.g., "LocalHero", "MarketPlace")
+#   {{PROJECT_SLUG}}     - Kebab-case slug (e.g., "local-hero", "marketplace")
+#   {{CONTEXTS}}         - Array of bounded contexts
+#   {{TECH_STACK}}       - Technology stack object
+#
+# Version: 2.0.0
+# Created: 2026-02-05
+# Maintainer: {{PROJECT_NAME}} Team
+
+version: "2.0"
+project:
+  name: "{{PROJECT_NAME}}"
+  slug: "{{PROJECT_SLUG}}"
+  ddd_library: "{{TECH_STACK.ddd_library}}"
+  framework: "{{TECH_STACK.framework}}"
+
+# =============================================================================
+# SPECIALIST AGENTS - Strategic Advisory (NO Implementation)
+# =============================================================================
+
+agents:
+  specialists:
+    # -------------------------------------------------------------------------
+    # DDD APPLICATION EXPERT
+    # -------------------------------------------------------------------------
+    ddd-application-expert:
+      name: ddd-application-expert
+      model: sonnet
+      cost_estimate: "$2-3/mo"
+      model_justification: |
+        Sonnet justified for:
+        - Strategic DDD modeling decisions
+        - Bounded context analysis
+        - Aggregate design guidance
+        - Event storming facilitation
+        Strong comprehension + domain expertise sufficient (no Opus deep reasoning needed)
+
+      description: |
+        DDD Application Expert for {{PROJECT_NAME}} - Strategic DDD specialist for bounded context
+        modeling, aggregate design, event storming, and ubiquitous language development.
+
+        Ensures canonical DDD implementation following VytchesDDD library patterns.
+        Provides architectural guidance for domain modeling and business alignment.
+
+        ADVISORY ONLY - Does NOT implement code.
+        Creates bounded context diagrams, aggregate design docs, event storming outputs.
+
+      layer: advisory
+      veto_power: false
+
+      tools:
+        - Task           # Delegate to implementers
+        - Read           # Analyze domain code
+        - Glob           # Find domain files
+        - Grep           # Search domain patterns
+        - mcp__zen__thinkdeep  # Complex DDD reasoning
+        - mcp__zen__analyze    # Domain analysis
+
+      standards:
+        - patterns/domain/*              # DDD domain patterns
+        - patterns/application/*         # CQRS application patterns
+        - patterns/architecture/*        # Architecture patterns
+
+      collaboration:
+        must_know:
+          - localhero-project-orchestrator  # Reports to orchestrator
+          - backend-technology-expert       # Technical decisions
+          - domain-application-implementer  # Executes domain recommendations
+
+      auto_invoke_keywords:
+        ddd:
+          - bounded context
+          - aggregate design
+          - domain model
+          - value object
+          - domain event
+          - ubiquitous language
+          - event storming
+
+    # -------------------------------------------------------------------------
+    # BACKEND TECHNOLOGY EXPERT
+    # -------------------------------------------------------------------------
+    backend-technology-expert:
+      name: backend-technology-expert
+      model: opus
+      cost_estimate: "$8/mo"
+      model_justification: |
+        Opus justified for:
+        - Critical architectural decisions requiring deep reasoning
+        - Sync vs async communication trade-off analysis
+        - Performance optimization recommendations
+        - Technology stack evaluation with long-term implications
+
+      description: |
+        Backend Technology Expert for {{PROJECT_NAME}} - TypeScript/Node.js specialist for
+        critical backend architecture decisions. Expert in sync vs async patterns,
+        performance optimization, and technology stack evaluation.
+
+        ADVISORY ONLY - Does NOT implement production code.
+        Creates ADRs, decision documents, architecture diagrams.
+        Implementers execute based on recommendations.
+
+      layer: advisory
+      veto_power: false
+
+      tools:
+        - Task           # Delegate to implementers
+        - Read           # Analyze codebase
+        - Glob           # Find files
+        - Grep           # Search code patterns
+        - WebFetch       # Research technologies
+        - WebSearch      # Find documentation/best practices
+        - mcp__zen__chat       # Collaborative thinking
+        - mcp__zen__thinkdeep  # Complex reasoning
+        - mcp__zen__analyze    # Deep analysis
+
+      standards:
+        - patterns/infrastructure/*      # Infrastructure patterns
+        - patterns/cross-layer/conventions-pattern.md
+        - patterns/*                     # All implementation patterns
+
+      collaboration:
+        must_know:
+          - localhero-project-orchestrator
+          - customer-value-guardian
+          - ddd-application-expert
+          - technical-architecture-lead
+
+      auto_invoke_keywords:
+        sync_async:
+          - sync vs async
+          - synchronous communication
+          - asynchronous communication
+          - message queue decision
+          - BullMQ decision
+        performance:
+          - node.js performance
+          - event loop optimization
+          - memory leak
+          - N+1 problem
+          - caching strategy
+
+    # -------------------------------------------------------------------------
+    # SECURITY PRIVACY ARCHITECT
+    # -------------------------------------------------------------------------
+    security-privacy-architect:
+      name: security-privacy-architect
+      model: opus
+      cost_estimate: "$5-7/mo"
+      model_justification: |
+        Opus justified for:
+        - Security threat modeling requiring deep reasoning
+        - GDPR compliance analysis
+        - Encryption strategy decisions
+        - Authentication/authorization architecture
+
+      description: |
+        Security & Privacy Architect for {{PROJECT_NAME}} - Security specialist ensuring
+        OWASP compliance, GDPR data protection, and privacy-by-design principles.
+
+        ADVISORY ONLY - Does NOT implement code.
+        Creates security architecture docs, threat models, compliance checklists.
+
+      layer: advisory
+      veto_power: false
+
+      tools:
+        - Task
+        - Read
+        - Glob
+        - Grep
+        - WebFetch
+        - WebSearch
+        - mcp__zen__thinkdeep
+        - mcp__zen__analyze
+        - mcp__zen__secaudit
+
+      standards:
+        - patterns/architecture/dual-identity-pattern.md
+        - patterns/cross-layer/domain-errors-pattern.md
+        - patterns/infrastructure/*
+
+      auto_invoke_keywords:
+        security:
+          - OWASP
+          - security vulnerability
+          - authentication
+          - authorization
+          - GDPR
+          - PII
+          - encryption
+          - threat model
+
+# =============================================================================
+# IMPLEMENTER AGENTS - Domain + Application Layer Implementation
+# =============================================================================
+
+  implementers:
+    # -------------------------------------------------------------------------
+    # DOMAIN APPLICATION IMPLEMENTER
+    # -------------------------------------------------------------------------
+    domain-application-implementer:
+      name: domain-application-implementer
+      model: sonnet
+      cost_estimate: "$15-20/mo"
+      model_justification: |
+        Sonnet justified for:
+        - Pattern-following implementation (DDD/CQRS well-documented)
+        - Strong code generation capabilities
+        - Cost-effective vs Opus ($3/M vs $15/M)
+
+        Domain/Application layer patterns are proven and stable.
+        Sonnet excels at implementing established patterns.
+
+      description: |
+        Domain + Application Layer Implementer for {{PROJECT_NAME}}.
+
+        Implements DDD domain layer (Aggregates, Value Objects, Domain Events, Services)
+        and CQRS application layer (Command/Query Handlers, DTOs, Application Services).
+
+        Follows VytchesDDD library patterns and {{PROJECT_NAME}} conventions.
+
+      layer: implementation
+      veto_power: false
+
+      bounded_contexts: {{#each CONTEXTS}}"{{this}}"{{#unless @last}}, {{/unless}}{{/each}}
+
+      tools:
+        - Read
+        - Write
+        - Edit
+        - MultiEdit
+        - Bash           # For running tests
+        - Glob
+        - Grep
+        - LS
+        - Task           # Delegate to verifiers/specialists
+
+      patterns_reference:
+        domain:
+          - patterns/domain/aggregate-pattern.md
+          - patterns/domain/value-object-pattern.md
+          - patterns/domain/domain-event-pattern.md
+          - patterns/domain/entity-pattern.md
+          - patterns/domain/specification-policy-pattern.md
+          - patterns/domain/domain-service-pattern.md
+        application:
+          - patterns/application/command-handler-pattern.md
+          - patterns/application/query-handler-pattern.md
+          - patterns/application/application-service-pattern.md
+          - patterns/application/audit-handler-pattern.md
+
+      reference_implementations:
+        {{#each CONTEXTS}}
+        - context: "{{this}}"
+          domain_path: "src/contexts/{{this}}/domain/"
+          application_path: "src/contexts/{{this}}/application/"
+        {{/each}}
+
+      verification_checklist:
+        domain:
+          - Aggregate extends AggregateRoot
+          - Value Object is immutable
+          - Domain Event is immutable with correlation ID
+          - All methods return Result<T>
+          - PolicyBuilder.must() for business rules
+        application:
+          - @CommandHandler() or @QueryHandler() decorator
+          - Handler registered in onModuleInit()
+          - @Transactional() for write operations
+          - Returns Result<T, DomainError>
+
+    # -------------------------------------------------------------------------
+    # INFRASTRUCTURE TESTING IMPLEMENTER
+    # -------------------------------------------------------------------------
+    infrastructure-testing-implementer:
+      name: infrastructure-testing-implementer
+      model: sonnet
+      cost_estimate: "$15-20/mo"
+      model_justification: |
+        Sonnet justified for:
+        - Pattern-following (infrastructure patterns well-documented)
+        - Test generation (established pyramid: L1 50%, L2 30%, L3 20%)
+        - Cost-effective implementation
+
+      description: |
+        Infrastructure/API Layer + Comprehensive Testing Implementer for {{PROJECT_NAME}}.
+
+        Implements Infrastructure layer (Controllers, Schemas, Repos, External Services)
+        and comprehensive test suites (L1 Unit, L2 Integration, L3 E2E).
+
+        Follows {{PROJECT_NAME}} testing pyramid (ADR-0035) and infrastructure patterns.
+
+      layer: implementation
+      veto_power: false
+
+      bounded_contexts: {{#each CONTEXTS}}"{{this}}"{{#unless @last}}, {{/unless}}{{/each}}
+
+      tools:
+        - Read
+        - Write
+        - Edit
+        - MultiEdit
+        - Bash           # Run tests, migrations
+        - Glob
+        - Grep
+        - LS
+        - Task
+        - mcp__zen__testgen  # Test generation
+        - mcp__zen__debug    # Debugging
+
+      patterns_reference:
+        infrastructure:
+          - patterns/infrastructure/repository-pattern.md
+          - patterns/infrastructure/repository-events-pattern.md
+          - patterns/infrastructure/controller-schema-pattern.md
+          - patterns/infrastructure/mapper-pattern.md
+        testing:
+          - patterns/testing/testing-pyramid-pattern.md
+          - patterns/testing/schema-testing-pattern.md
+          - patterns/testing/context-isolation-pattern.md
+          - patterns/testing/test-seeding-performance-guide.md
+
+      reference_implementations:
+        {{#each CONTEXTS}}
+        - context: "{{this}}"
+          infrastructure_path: "src/contexts/{{this}}/infrastructure/"
+          test_path: "test/{{this}}/"
+        {{/each}}
+
+      testing_pyramid:
+        L1_unit: "~50% (Specifications, Aggregates, Schemas)"
+        L2_integration: "~30% (Handlers, Services)"
+        L3_e2e: "~20% (Full API flows)"
+
+# =============================================================================
+# VERIFIER AGENTS - Quality Gates with VETO Power
+# =============================================================================
+
+  verifiers:
+    # -------------------------------------------------------------------------
+    # CODE QUALITY VERIFIER
+    # -------------------------------------------------------------------------
+    code-quality-verifier:
+      name: code-quality-verifier
+      model: sonnet
+      cost_estimate: "$8-12/mo"
+      model_justification: |
+        Sonnet justified for:
+        - Pattern verification (established checklists)
+        - Code review following documented standards
+        - VETO enforcement doesn't require Opus reasoning
+
+      description: |
+        Code Quality Verifier for {{PROJECT_NAME}} with VETO POWER.
+
+        Verifies DDD patterns, CQRS implementation, hybrid error handling,
+        and ADR-0035 test pyramid compliance.
+
+        BLOCKS task completion if critical issues found.
+
+      layer: verification
+      veto_power: true  # Can block task completion
+
+      tools:
+        - Read
+        - Bash           # Run tests, linters
+        - Glob
+        - Grep
+        - LS
+        - Task
+        - mcp__zen__analyze
+        - mcp__zen__codereview
+
+      verification_gates:
+        ddd_patterns:
+          - Aggregates extend AggregateRoot
+          - Value Objects immutable
+          - Domain Events correlation IDs
+          - Result<T> pattern usage
+        cqrs:
+          - Handler decorators present
+          - Handler registration verified
+          - @Transactional on write operations
+        testing:
+          - Test pyramid ratios (L1 ~50%, L2 ~30%, L3 ~20%)
+          - L1 tests for Specs/Aggregates/Schemas
+          - L2 tests for Handlers
+          - L3 tests for critical flows
+
+    # -------------------------------------------------------------------------
+    # SECURITY E2E VERIFIER
+    # -------------------------------------------------------------------------
+    security-e2e-verifier:
+      name: security-e2e-verifier
+      model: opus
+      cost_estimate: "$10-15/mo"
+      model_justification: |
+        Opus justified for:
+        - Final security validation requiring deep reasoning
+        - OWASP Top 10 comprehensive analysis
+        - E2E test strategy verification
+        - GO/NO-GO decision authority (VETO power)
+
+      description: |
+        Security & E2E Verifier for {{PROJECT_NAME}} with VETO POWER.
+
+        Final quality gate: validates security compliance, E2E tests, performance,
+        and ADR-0035 testing pyramid.
+
+        Makes final GO/NO-GO decision. BLOCKS task if critical issues found.
+
+      layer: verification
+      veto_power: true  # Final approval authority
+
+      tools:
+        - Read
+        - Bash
+        - Glob
+        - Grep
+        - LS
+        - Task
+        - mcp__zen__analyze
+        - mcp__zen__codereview
+        - mcp__zen__secaudit
+        - mcp__zen__testgen
+
+      verification_gates:
+        security:
+          - OWASP Top 10 compliance
+          - Input validation (Zod schemas)
+          - Authentication/authorization checks
+          - PII handling (GDPR compliance)
+        e2e:
+          - Critical user flows tested
+          - Error scenarios covered
+          - Rate limiting tested separately
+        performance:
+          - No obvious performance bottlenecks
+          - Database queries optimized
+
+# =============================================================================
+# UTILITY AGENTS - Fast, Cost-Optimized Tasks
+# =============================================================================
+
+  utilities:
+    # -------------------------------------------------------------------------
+    # CODEBASE EXPLORER
+    # -------------------------------------------------------------------------
+    codebase-explorer:
+      name: codebase-explorer
+      model: haiku
+      cost_estimate: "$0.50-1/mo"
+      model_justification: |
+        Haiku justified for:
+        - Read-only file searches (60x cheaper than Sonnet!)
+        - Pattern matching doesn't need deep reasoning
+        - Simple navigation and exploration
+
+        Cost impact: $0.25/M input vs Sonnet $3/M = massive savings
+
+      description: |
+        Fast codebase navigation agent for {{PROJECT_NAME}} using Haiku model.
+
+        Specialized in finding files, searching code, exploring structure.
+        60x cheaper than Sonnet for search operations.
+
+      layer: utility
+      veto_power: false
+
+      tools:
+        - Glob
+        - Grep
+        - Read
+        - Bash(ls)
+        - Bash(tree)
+        - Bash(wc)
+
+      auto_invoke_keywords:
+        - find files
+        - search code
+        - where is
+        - explore codebase
+        - locate
+
+    # -------------------------------------------------------------------------
+    # SCHEMA TESTING AGENT
+    # -------------------------------------------------------------------------
+    schema-testing-agent:
+      name: schema-testing-agent
+      model: haiku
+      cost_estimate: "$0.30-0.50/mo"
+      model_justification: |
+        Haiku justified for:
+        - Schema test generation (6-category methodology)
+        - Pattern-following task (well-documented)
+        - 60x cost savings vs Sonnet
+
+      description: |
+        Schema Testing Specialist for {{PROJECT_NAME}} - Generates comprehensive
+        Zod schema tests using 6-category methodology.
+
+        Works in isolated context, returns minimal summary.
+        96% token savings per schema testing task.
+
+      layer: utility
+      veto_power: false
+
+      tools:
+        - Read
+        - Write
+        - Edit
+        - Bash
+
+      patterns_reference:
+        - patterns/testing/schema-testing-pattern.md
+
+    # -------------------------------------------------------------------------
+    # TEST SCAFFOLDER
+    # -------------------------------------------------------------------------
+    test-scaffolder:
+      name: test-scaffolder
+      model: haiku
+      cost_estimate: "$0.30-0.50/mo"
+      model_justification: |
+        Haiku justified for:
+        - Test boilerplate generation
+        - Pattern-following (test patterns documented)
+        - 60x cost savings
+
+      description: |
+        Test Scaffolding Agent for {{PROJECT_NAME}} - Generates test file boilerplate
+        following {{PROJECT_NAME}} testing patterns and pyramid structure.
+
+      layer: utility
+      veto_power: false
+
+      tools:
+        - Read
+        - Write
+        - Bash
+
+      patterns_reference:
+        - patterns/testing/testing-pyramid-pattern.md
+        - patterns/testing/context-isolation-pattern.md
+
+    # -------------------------------------------------------------------------
+    # DOCUMENTATION WRITER
+    # -------------------------------------------------------------------------
+    documentation-writer:
+      name: documentation-writer
+      model: haiku
+      cost_estimate: "$0.50-1/mo"
+      model_justification: |
+        Haiku justified for:
+        - Documentation generation (pattern-based)
+        - README updates
+        - Cost savings for routine doc tasks
+
+      description: |
+        Documentation Writer for {{PROJECT_NAME}} - Generates README files,
+        API documentation, and maintains project documentation.
+
+      layer: utility
+      veto_power: false
+
+      tools:
+        - Read
+        - Write
+        - Edit
+
+    # -------------------------------------------------------------------------
+    # MIGRATION GENERATOR
+    # -------------------------------------------------------------------------
+    migration-generator:
+      name: migration-generator
+      model: haiku
+      cost_estimate: "$0.30-0.50/mo"
+      model_justification: |
+        Haiku justified for:
+        - Database migration generation
+        - SQL generation from schema changes
+        - Pattern-following task
+
+      description: |
+        Migration Generator for {{PROJECT_NAME}} - Generates database migrations
+        for PostgreSQL based on schema changes.
+
+      layer: utility
+      veto_power: false
+
+      tools:
+        - Read
+        - Write
+        - Bash
+
+# =============================================================================
+# PROJECT-SPECIFIC AGENTS (Remain in Project Repo)
+# =============================================================================
+
+# NOTE: These agents are NOT in universal template.
+# They remain in project repo (.claude/agents/) as they are project-specific:
+#
+# - localhero-project-orchestrator  (project-specific coordination)
+# - customer-value-guardian          (project-specific business rules)
+# - technical-architecture-lead      (project-specific architecture decisions)
+#
+# These agents reference project-specific business logic, customer segments,
+# and architectural decisions that don't generalize to other projects.
+
+# =============================================================================
+# END OF TEMPLATE
+# =============================================================================
