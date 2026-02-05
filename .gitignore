@@ -35,3 +35,6 @@ node_modules/
 
 # Local Configuration (if users want to override)
 local-config.yml
+# Tooling dependencies
+tooling/node_modules/
+tooling/package-lock.json
