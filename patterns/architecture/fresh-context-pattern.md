@@ -534,7 +534,7 @@ Decision: /clear between tasks (unrelated features)
 
 **Inspired By**:
 - GSD (get-shit-done) - Context engineering approach
-- LocalHero orchestration experience - Real-world context rot scenarios
+- Project orchestration experience - Real-world context rot scenarios
 
 **Documentation**:
 - `.claude/STATE.md` - Cross-session memory
@@ -549,5 +549,5 @@ Decision: /clear between tasks (unrelated features)
 
 **Version**: 1.0.0
 **Status**: Production
-**Maintainers**: @localhero-project-orchestrator + all agents
+**Maintainers**: @project-orchestrator + all agents
 **Review Cycle**: Monthly (adjust based on metrics)

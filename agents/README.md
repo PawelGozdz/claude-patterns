@@ -20,7 +20,7 @@ Global agents are **user-level** AI specialists available to ALL projects on you
 
 ## 🗂️ Agent Categories
 
-### Specialists (3 agents)
+### Specialists (4 agents)
 
 Expert agents for strategic decisions and architecture guidance.
 
@@ -29,6 +29,7 @@ Expert agents for strategic decisions and architecture guidance.
 | **ddd-application-expert** | Domain-Driven Design specialist | Sonnet | Bounded context modeling, aggregate design, event storming, ubiquitous language |
 | **backend-technology-expert** | Backend technology decisions | Opus | Sync vs async patterns, performance optimization, tech stack evaluation |
 | **security-privacy-architect** | Security & privacy guidance | Opus | OWASP compliance, GDPR, encryption, authentication strategies |
+| **technical-architecture-lead** | Technical architecture decisions | Opus | Technology stack evaluation, infrastructure design, scalability planning |
 
 ### Utilities (3 agents)
 
@@ -39,6 +40,15 @@ Fast, cost-optimized agents for common tasks.
 | **codebase-explorer** | Fast codebase navigation | Haiku | Finding files, searching code, exploring structure (60x cheaper than Sonnet) |
 | **schema-testing-agent** | Generate schema tests | Haiku | Creating comprehensive Zod schema tests using 6-category methodology |
 | **test-scaffolder** | Generate test boilerplate | Haiku | Scaffolding unit/integration/E2E tests with proper patterns |
+
+### Verifiers (2 agents)
+
+Quality gate agents with VETO power for DDD/CQRS projects.
+
+| Agent | Purpose | Model | VETO Power | When to Use |
+|-------|---------|-------|------------|-------------|
+| **code-quality-verifier** | DDD/CQRS quality verification | Sonnet | ✅ YES | Verify DDD patterns, CQRS implementation, test pyramid compliance |
+| **security-e2e-verifier** | Security & E2E validation | Opus | ✅ YES | Final GO/NO-GO decision, OWASP compliance, E2E test coverage |
 
 ---
 
@@ -103,7 +113,7 @@ Utility agents (Haiku model) are **60x cheaper** than Sonnet/Opus:
 Grep("UserRepository", ...)
 
 # ✅ Cheap (Haiku via codebase-explorer)
-Task(subagent_type='codebase-explorer', prompt='Find UserRepository')
+Task(subagent_type='Explore', prompt='Find UserRepository')
 ```
 
 ---

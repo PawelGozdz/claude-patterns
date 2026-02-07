@@ -1,6 +1,6 @@
 # Global Claude Code Patterns Repository
 
-**Version**: 2.0.0
+**Version**: 2.1.0
 **Created**: 2026-02-05
 **Updated**: 2026-02-05
 **Purpose**: Reusable DDD/CQRS patterns + universal agent templates for multi-project use
@@ -32,7 +32,8 @@ A **single source of truth** for production-tested software patterns and agent t
 ├── README.md                    # This file
 ├── METADATA.yml                 # Repository metadata
 ├── .gitignore                   # Git exclusions
-├── patterns/                    # Generic patterns (13 total)
+├── patterns/                    # Generic patterns (33 total + README)
+│   ├── README.md                # Pattern index & usage guide
 │   ├── domain/                  # Domain layer (6 patterns)
 │   │   ├── aggregate-pattern.md
 │   │   ├── value-object-pattern.md
@@ -40,17 +41,43 @@ A **single source of truth** for production-tested software patterns and agent t
 │   │   ├── entity-pattern.md
 │   │   ├── specification-policy-pattern.md
 │   │   ├── domain-service-pattern.md
-│   │   └── METADATA.yml         # Stack support tags
+│   │   └── METADATA.yml
 │   ├── application/             # Application layer (4 patterns)
 │   │   ├── command-handler-pattern.md
 │   │   ├── query-handler-pattern.md
 │   │   ├── application-service-pattern.md
 │   │   ├── audit-handler-pattern.md
 │   │   └── METADATA.yml
-│   └── architecture/            # Architecture patterns (3 patterns)
-│       ├── dual-identity-pattern.md
-│       ├── transactional-pattern.md
-│       ├── fresh-context-pattern.md
+│   ├── infrastructure/          # Infrastructure layer (4 patterns)
+│   │   ├── repository-pattern.md
+│   │   ├── repository-events-pattern.md
+│   │   ├── mapper-pattern.md
+│   │   ├── controller-schema-pattern.md
+│   │   └── METADATA.yml
+│   ├── architecture/            # Architecture patterns (8 patterns)
+│   │   ├── dual-identity-pattern.md
+│   │   ├── transactional-pattern.md
+│   │   ├── fresh-context-pattern.md
+│   │   ├── acl-registry-pattern.md
+│   │   ├── user-projection-pattern.md
+│   │   ├── bullmq-queue-pattern.md
+│   │   ├── integration-event-pattern.md
+│   │   ├── entity-event-emission-pattern.md
+│   │   └── METADATA.yml
+│   ├── testing/                 # Testing patterns (7 patterns)
+│   │   ├── testing-pyramid-pattern.md
+│   │   ├── schema-testing-pattern.md
+│   │   ├── context-isolation-pattern.md
+│   │   ├── e2e-hybrid-fixture-pattern.md
+│   │   ├── test-seeding-performance-guide.md
+│   │   ├── rate-limit-testing-pattern.md
+│   │   ├── redis-test-isolation-pattern.md
+│   │   └── METADATA.yml
+│   └── cross-layer/             # Cross-layer patterns (4 patterns)
+│       ├── domain-errors-pattern.md
+│       ├── logger-pattern.md
+│       ├── error-handler-chain-pattern.md
+│       ├── conventions-pattern.md
 │       └── METADATA.yml
 ├── mcp-server/                  # MCP Server for multi-project use
 │   ├── server.py                # MCP server implementation
@@ -59,15 +86,19 @@ A **single source of truth** for production-tested software patterns and agent t
 │   └── README.md                # MCP setup & usage guide
 ├── agents/                      # Universal agent templates + Global agents
 │   ├── agents-universal.yml     # Universal template (Handlebars)
-│   ├── specialists/             # Global expert agents (3 total)
+│   ├── README.md                # Agent setup & usage guide
+│   ├── specialists/             # Global expert agents (4 total)
 │   │   ├── ddd-application-expert.md
 │   │   ├── backend-technology-expert.md
-│   │   └── security-privacy-architect.md
+│   │   ├── security-privacy-architect.md
+│   │   └── technical-architecture-lead.md
 │   ├── utilities/               # Global utility agents (3 total)
 │   │   ├── codebase-explorer.md
 │   │   ├── schema-testing-agent.md
 │   │   └── test-scaffolder.md
-│   └── README.md                # Agent setup & usage guide
+│   └── verifiers/               # Global verifier agents (2 total)
+│       ├── code-quality-verifier.md
+│       └── security-e2e-verifier.md
 ├── tooling/                     # Compilation tooling (NEW)
 │   ├── compile-agents.js        # Main compilation script
 │   ├── package.json             # Dependencies (Handlebars, YAML, etc.)

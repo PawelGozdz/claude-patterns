@@ -42,7 +42,7 @@ POST /api/actions
 **✅ CORRECT**: JWT userId via decorator
 
 ```typescript
-// Real LocalHero Code: community-communication/api/controllers/actions.controller.ts
+// Real Project Code: community-communication/api/controllers/actions.controller.ts
 import { Controller, Post, Body } from '@nestjs/common';
 import { Auth } from '@shared/infrastructure/auth/decorators/auth.decorator';
 import { CurrentUserId } from '@shared/infrastructure/auth/decorators/current-user.decorator';
@@ -112,7 +112,7 @@ async createAction(@Body() dto: CreateActionRequestDto) {
 **✅ CORRECT**: Schema WITHOUT userId
 
 ```typescript
-// Real LocalHero Code: community-communication/api/schemas/create-action.schema.ts
+// Real Project Code: community-communication/api/schemas/create-action.schema.ts
 import { z } from 'zod';
 
 /**
@@ -145,7 +145,7 @@ export const createActionRequestSchema = z.object({
 **✅ CORRECT**: Command receives userId from controller
 
 ```typescript
-// Real LocalHero Code: engagement/application/commands/create-action/command.ts
+// Real Project Code: engagement/application/commands/create-action/command.ts
 import { Command } from '@vytches/ddd';
 
 /**
@@ -174,7 +174,7 @@ export class CreateActionCommand extends Command {
 **✅ CORRECT**: Handler uses userId from command (already validated)
 
 ```typescript
-// Real LocalHero Code: engagement/application/commands/create-action/handler.ts
+// Real Project Code: engagement/application/commands/create-action/handler.ts
 import { Inject, Injectable } from '@nestjs/common';
 import { BaseCommandHandler, Result } from '@vytches/ddd';
 

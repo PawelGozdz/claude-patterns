@@ -122,7 +122,7 @@ If technology adds complexity without clear business justification -> **Consult 
 
 ```
 DO NOT: Grep("pattern") or Glob("**/*.ts") directly
-DO: Task(subagent_type='codebase-explorer', prompt='Find existing BullMQ implementations')
+DO: Task(subagent_type='Explore', prompt='Find existing BullMQ implementations')
 ```
 
 **Why**: You run on Opus (~$8/mo), searches on Haiku = **10x cost savings**

@@ -589,5 +589,5 @@ Does object have identity (ID)?
 **Version**: 1.0
 **Created**: 2026-01-04
 **Last Updated**: 2026-01-04
-**Maintained By**: @localhero-project-orchestrator
+**Maintained By**: @project-orchestrator
 **Primary Users**: domain-application-implementer, code-quality-verifier

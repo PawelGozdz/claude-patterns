@@ -686,7 +686,7 @@ content1.equals(content2); // True if same hash ✅
 
 ### Related Patterns
 - **aggregate-pattern.md** - Aggregates use value objects as properties
-- **domain-errors-pattern.md** - LocalHeroErrorCode for validation errors
+- **domain-errors-pattern.md** - ProjectErrorCode for validation errors
 - **specification-policy-pattern.md** - Business rules using value objects
 - **geographic-filtering-pattern.md** - Geographic filter VOs (GminaFilter, PowiatFilter, VoivodeshipFilter, RadiusFilter)
 
@@ -721,5 +721,5 @@ content1.equals(content2); // True if same hash ✅
 **Version**: 1.0
 **Created**: 2026-01-04
 **Last Updated**: 2026-01-04
-**Maintained By**: @localhero-project-orchestrator
+**Maintained By**: @project-orchestrator
 **Primary Users**: domain-application-implementer, code-quality-verifier

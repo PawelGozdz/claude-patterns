@@ -81,7 +81,7 @@ Strategic Domain-Driven Design for LocalHero: bounded context modeling, aggregat
 
 ```
 ❌ DON'T: Grep("aggregate") or Glob("**/domain/**/*.ts")
-✅ DO: Task(subagent_type='codebase-explorer', prompt='Find all aggregates in geographic-auth domain')
+✅ DO: Task(subagent_type='Explore', prompt='Find all aggregates in geographic-auth domain')
 ```
 
 **Why**: You run on Sonnet, searches on Haiku = **10x cost savings**

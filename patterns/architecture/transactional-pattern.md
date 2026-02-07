@@ -27,7 +27,7 @@ In CQRS command handlers:
 
 ### Step 1: BaseCommandHandler with @Transactional
 
-**Real LocalHero Code** from `src/shared/application/base/base-command-handler.ts`:
+**Real Project Code** from `src/shared/application/base/base-command-handler.ts`:
 
 ```typescript
 import { Transactional } from '@nestjs-cls/transactional';
@@ -96,7 +96,7 @@ export abstract class BaseCommandHandler<TCommand extends ICommand, TResult>
 
 **✅ CORRECT**: Handler inherits transaction from base class
 
-**Real LocalHero Code** from `auth/application/commands/login-user/handler.ts`:
+**Real Project Code** from `auth/application/commands/login-user/handler.ts`:
 
 ```typescript
 import { Injectable } from '@nestjs/common';

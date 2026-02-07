@@ -663,7 +663,7 @@ const comment = result.value; // ✅ Event emitted
 ### Related Patterns
 - **value-object-pattern.md** - Value object construction and validation
 - **domain-event-pattern.md** - GDPR event segregation details
-- **domain-errors-pattern.md** - LocalHeroErrorCode enum usage
+- **domain-errors-pattern.md** - ProjectErrorCode enum usage
 - **command-handler-pattern.md** - Handler orchestration with aggregates
 - **repository-pattern.md** - Aggregate persistence and optimistic locking
 
@@ -696,5 +696,5 @@ const comment = result.value; // ✅ Event emitted
 **Version**: 1.0
 **Created**: 2026-01-04
 **Last Updated**: 2026-01-04
-**Maintained By**: @localhero-project-orchestrator
+**Maintained By**: @project-orchestrator
 **Primary Users**: domain-application-implementer, code-quality-verifier

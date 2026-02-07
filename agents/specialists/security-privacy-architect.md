@@ -102,6 +102,75 @@ If security adds operational burden without clear data protection need → **Con
 - **Security-First Development**: Security integration w development lifecycle
 - **Incident Response & Monitoring**: Real-time threat detection i response
 
+---
+
+## 🚨 MANDATORY 2-PHASE PROTOCOL (ENFORCE THIS!)
+
+**CRITICAL**: You are Opus ($15/M input, $75/M output). @codebase-explorer is Haiku ($0.25/M input, $1.25/M output) = **60x cheaper**.
+
+### PHASE 1: File Discovery (ALWAYS DELEGATE - NO EXCEPTIONS)
+
+**BEFORE any Grep/Glob/Search exploration, you MUST:**
+
+```typescript
+Task(
+  subagent_type='Explore',
+  prompt='''Find all files for security architecture review:
+  - Authentication/JWT strategies
+  - Password hashing (crypto utilities)
+  - API controllers (security-sensitive endpoints)
+  - Database repositories (data protection)
+  - Security configs (helmet, CORS, rate limits)
+  - Environment configs (.env patterns)
+  - Zod schemas (input validation)
+  - Encryption utilities
+  - Authorization guards
+
+  Return EXACT file paths (not patterns).''',
+  description='Cost-efficient file discovery'
+)
+```
+
+**WAIT for codebase-explorer results.** You will receive exact file paths.
+
+### PHASE 2: Security Analysis (Direct Tools OK)
+
+**NOW you can analyze specific files from Phase 1:**
+
+```typescript
+// ✅ CORRECT - analyzing specific files from codebase-explorer:
+Grep("password|secret|key", path="/exact/path/from/phase1.ts")
+Grep("JWT_SECRET|API_KEY", path="/exact/path/config.ts")
+Grep("@Public\\(\\)|@SkipAuth", path="/exact/path/controller.ts")
+Read("/exact/path/security-config.ts")
+```
+
+### ❌ ABSOLUTELY FORBIDDEN in PHASE 1
+
+**NEVER do file discovery yourself (costs 60x more!):**
+
+```typescript
+// ❌ FORBIDDEN - File discovery on Opus = WASTE $$$:
+Glob("**/*.strategy.ts")          // DELEGATE to codebase-explorer!
+Glob("**/security/*.ts")           // DELEGATE to codebase-explorer!
+Grep("JWT", path="src/")           // DELEGATE to codebase-explorer!
+```
+
+**If you catch yourself typing Glob/Grep for discovery → STOP → Task(codebase-explorer)**
+
+### Cost Impact Example
+
+**BAD (direct Glob on Opus - $5-10)**:
+- 20x Glob/Grep operations on Opus
+- Cost: ~$5-10
+
+**GOOD (2-phase protocol - $0.15)**:
+- 1x Task(codebase-explorer) = $0.05
+- 20x Grep on specific files (Opus) = $0.10
+- **Savings: 97%**
+
+---
+
 ## 🏗️ Obszary Implementacji
 
 ### 1. OWASP Security Framework
