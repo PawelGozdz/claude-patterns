@@ -124,6 +124,125 @@ A **single source of truth** for production-tested software patterns and agent t
 
 ---
 
+## ⚡ Quick Setup (Recommended)
+
+**For new projects or clean integration**: Use the unified setup script that handles BOTH global and project-level configuration in one command.
+
+### One-Command Setup
+
+```bash
+# From claude-patterns directory
+cd ~/projects/claude-patterns
+
+# Setup for specific project
+./setup-all.sh ~/projects/your-project
+
+# Or setup for current directory
+cd ~/projects/your-project
+~/projects/claude-patterns/setup-all.sh .
+```
+
+### What This Does
+
+**Phase 1: Global Setup** (idempotent, shared by all projects)
+- Creates `~/.claude/agents` → symlink to `~/projects/claude-patterns/agents/`
+- Creates `~/.claude/skills` → symlink to `~/projects/claude-patterns/skills/`
+- Creates `~/.claude/commands` → symlink to `~/projects/claude-patterns/commands/`
+- Creates `~/.claude/hooks` → symlink to `~/projects/claude-patterns/hooks/`
+
+**Phase 2: Project Setup** (per-project configuration)
+- Creates `.claude/knowledge/patterns/` → symlink to `~/projects/claude-patterns/patterns/`
+- Creates `.claude/knowledge/patterns-local/` for project-specific overrides
+- Generates `patterns-local/README.md` with override documentation
+
+**Phase 3: Verification**
+- Verifies all symlinks are correct
+- Counts available resources (agents, skills, commands, hooks, patterns)
+- Displays setup summary
+
+### Features
+
+- **Idempotent**: Safe to run multiple times, won't break existing setup
+- **Auto-update detection**: Fixes broken/wrong symlinks automatically
+- **Backup protection**: Backs up existing directories before symlinking
+- **Comprehensive verification**: Shows exactly what's available after setup
+- **Single source of truth**: All projects use symlinks → instant updates across projects
+
+### Example Output
+
+```
+═══════════════════════════════════════════════════════════
+🚀 Claude Patterns - Unified Setup
+═══════════════════════════════════════════════════════════
+
+Project: /home/node/projects/local-hero-3
+Claude Patterns: ~/projects/claude-patterns
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PHASE 1: Global Setup (shared by all projects)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ agents symlink correct
+✅ skills symlink correct
+✅ commands symlink correct
+✅ hooks symlink correct
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PHASE 2: Project Setup (/home/node/projects/local-hero-3)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ Verified .claude/knowledge/ exists
+✅ Verified patterns-local/ exists
+✅ patterns/ symlink correct
+✅ patterns-local/README.md exists
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PHASE 3: Verification
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Global Symlinks:
+  ✅ agents → /home/node/projects/claude-patterns/agents
+  ✅ skills → /home/node/projects/claude-patterns/skills
+  ✅ commands → /home/node/projects/claude-patterns/commands
+  ✅ hooks → /home/node/projects/claude-patterns/hooks
+
+Project Symlinks:
+  ✅ patterns/ → /home/node/projects/claude-patterns/patterns
+  ✅ 33 patterns accessible
+
+Available Resources:
+  ✅ Agents: 9
+  ✅ Skills: 0
+  ✅ Commands: 2
+  ✅ Hooks: 11
+
+═══════════════════════════════════════════════════════════
+🎉 Setup Complete!
+═══════════════════════════════════════════════════════════
+
+Next Steps:
+  1. Restart Claude Code
+  2. Test with: znajdź wszystkie aggregates
+  3. Test with: /scaffold dto TestDTO auth
+```
+
+### When to Use
+
+- ✅ **New project**: First-time claude-patterns integration
+- ✅ **Existing project**: Migrating from old setup scripts
+- ✅ **Broken symlinks**: Fixing incorrect/missing symlinks
+- ✅ **Multi-machine**: Setting up claude-patterns on new development machine
+- ✅ **Team onboarding**: New developer needs full claude-patterns setup
+
+### Alternative: Detailed Setup Options
+
+For more control or specific use cases, see detailed options below:
+- **Option A**: MCP Server (multi-project, team collaboration)
+- **Option B**: Filesystem Symlinks (manual control)
+- **Option C**: Compilation System (project-specific agents)
+
+---
+
 ## 🚀 Quick Start
 
 ### Option A: MCP Server (Recommended for Multi-Project Use)
