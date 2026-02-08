@@ -104,7 +104,8 @@ A **single source of truth** for production-tested software patterns and agent t
 │   ├── package.json             # Dependencies (Handlebars, YAML, etc.)
 │   └── node_modules/            # 55 npm packages
 ├── commands/                    # Global commands (symlinked from ~/.claude/commands)
-│   ├── orchestrate.md           # Smart task orchestrator
+│   ├── orchestrate.md           # Unified orchestration (search/implement/validate/analyze/review)
+│   ├── progress.md              # Visual progress tracking (Haiku)
 │   ├── scaffold.md              # Haiku template generator
 │   └── README.md                # Command setup & usage guide
 ├── COMPILATION_ARCHITECTURE.md  # Compilation system architecture (642 lines)
@@ -422,9 +423,28 @@ ls -la ~/.claude/
 - **Specialists** (3): ddd-application-expert, backend-technology-expert, security-privacy-architect
 - **Utilities** (3): codebase-explorer, schema-testing-agent, test-scaffolder
 
-**Global Commands** (2 total):
-- `/orchestrate` - Smart task orchestrator with intelligent routing
+**Global Commands** (3 total):
+- `/orchestrate` - Unified orchestration with mode detection (search, implement, validate, analyze, review)
+- `/progress` - Visual progress tracking (shows task status, git changes, recent completions)
 - `/scaffold` - Haiku-based boilerplate generator (60x cost savings)
+
+### Cost Optimization Strategy
+
+The orchestrator automatically delegates to the most cost-effective agents:
+
+| Task Type | Before | After | Savings |
+|-----------|--------|-------|---------|
+| Search queries | Sonnet ($3/M) | Haiku via Explore ($0.25/M) | **92%** |
+| Scaffolding | Manual (Sonnet) | Haiku auto-gen ($0.25/M) | **92%** |
+| Progress check | Manual (Sonnet) | Haiku read-only ($0.25/M) | **92%** |
+| Implementation | Sonnet ($3/M) | Sonnet ($3/M) | 0% (needs intelligence) |
+| Security VETO | N/A | Opus ($15/M) | New feature |
+
+**Target Distribution**: Opus <30%, Sonnet ~55%, Haiku >15%
+
+**Example**: "Find all aggregates" query:
+- Before: ~89k tokens × $3/M = **$0.27**
+- After: ~89k tokens × $0.25/M = **$0.022** (12x cheaper)
 
 **Full documentation**:
 - Agents: `agents/README.md`

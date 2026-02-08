@@ -1,0 +1,50 @@
+# Flutter Project Example
+# Copy to: <flutter-project>/.claude/config/project.yml
+
+project:
+  name: MyFlutterApp
+  description: "Cross-platform mobile app for iOS and Android"
+  stack_profile: flutter
+  stack: "Flutter 3.x, Dart, Firebase"
+  testing: "flutter_test + patrol"
+  state_management: "Riverpod"
+  platforms: "iOS, Android, Web"
+
+contexts:
+  - name: authentication
+    status: production
+    tests: 45
+    notes: "Firebase Auth, biometrics"
+  - name: user-profile
+    status: production
+    tests: 32
+    notes: "Profile management, settings"
+  - name: feed
+    status: in-progress
+    tests: 18
+    notes: "Infinite scroll, pull-to-refresh"
+  - name: notifications
+    status: planned
+    tests: 0
+    notes: "Push notifications, FCM"
+
+rules:
+  - "Feature-first structure: lib/features/{feature}/"
+  - "BLoC pattern: Business logic in BLoCs, UI in widgets"
+  - "Golden tests for visual regression"
+  - "Freezed for immutable models"
+  - "GetIt for dependency injection"
+
+cost:
+  opus: "<25%"
+  sonnet: "~60%"
+  haiku: ">15%"
+
+docs:
+  - PRODUCT.md
+  - ARCHITECTURE.md
+
+entry_points:
+  orchestrate: "/o"
+  scaffold: "/scaffold"
+  progress: "/progress"

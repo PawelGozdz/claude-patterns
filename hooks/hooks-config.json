@@ -1,461 +1,53 @@
 {
-  "version": "2.0.0",
-  "description": "Multi-agent hooks configuration for LocalHero",
-  "last_updated": "2025-10-11",
-  "migration_notes": "Refactored from v1.0 to support YAML role registry based agents",
+  "version": "3.0.0",
+  "description": "Consolidated hooks configuration (Phase A simplification: 11 → 4)",
+  "last_updated": "2026-02-08",
 
-  "global_hooks": {
-    "description": "Hooks that apply to all agents and operations",
+  "hooks": {
     "user-prompt-submit": {
       "enabled": true,
-      "script": ".claude/hooks/user-prompt-submit.sh",
+      "script": "hooks/user-prompt-submit.sh",
       "description": "Auto-delegate implementation requests to orchestrator",
       "triggers": ["UserPromptSubmit"],
+      "blocking": false
+    },
+    "cost-optimizer": {
+      "enabled": true,
+      "script": "hooks/cost-optimizer.sh",
+      "description": "Advisory cost optimization suggestions (PreToolUse)",
+      "triggers": ["PreToolUse"],
+      "blocking": false
+    },
+    "state-manager": {
+      "enabled": true,
+      "script": "hooks/state-manager.sh",
+      "description": "Unified STATE.md management (show/check/init/update/complete)",
+      "triggers": ["SessionStart", "ClearContext", "Bash"],
       "blocking": false,
-      "auto_delegation": {
-        "enabled": true,
-        "target_agent": "localhero-project-orchestrator",
-        "keywords": [
-          "add", "create", "implement", "build", "develop", "write", "generate",
-          "fix", "repair", "debug", "solve", "resolve", "correct",
-          "update", "modify", "change", "refactor", "improve", "enhance", "optimize",
-          "delete", "remove", "deprecate", "clean", "cleanup",
-          "test", "verify", "check", "validate", "run",
-          "configure", "setup", "install", "initialize", "enable", "disable",
-          "analyze", "review", "audit", "scan", "inspect",
-          "feature", "endpoint", "api", "migration",
-          "dodaj", "stwórz", "stworz", "zaimplementuj", "zbuduj", "napisz", "wygeneruj", "utwórz", "utworz",
-          "napraw", "debuguj", "rozwiąż", "rozwiaż", "popraw", "skoryguj",
-          "zaktualizuj", "zmodyfikuj", "zmień", "zmien", "zrefaktoruj", "ulepsz", "zoptymalizuj", "rozszerz",
-          "usuń", "usun", "deprecjonuj", "wyczyść", "wyczysc",
-          "przetestuj", "zweryfikuj", "sprawdź", "sprawdz", "zwaliduj", "uruchom",
-          "skonfiguruj", "zainstaluj", "zainicjalizuj", "włącz", "wlacz", "wyłącz", "wylacz",
-          "przeanalizuj", "przejrzyj", "zaudytuj", "przeskanuj", "zbadaj", "oceń", "ocen", "przetestuj", "testy", "test",
-          "funkcja", "funkcjonalność", "funkcjonalnosc", "migracja"
-        ],
-        "exclude_patterns": [
-          "^(what|why|how|explain|tell me|show me)",
-          "^(co|dlaczego|jak|wyjaśnij|wyjasnij|powiedz mi|pokaż|pokaz mi|czym jest)",
-          "\\?$",
-          "@[a-z-]+",
-          "^/"
-        ]
-      }
+      "notes": "Merged from: auto-state-manager + ensure-state-saved + state-banner"
     },
-    "pre-submit": {
+    "session-monitor": {
       "enabled": true,
-      "script": ".claude/hooks/pre-submit.sh",
-      "description": "Quality gates before any code changes",
-      "triggers": ["Edit", "Write", "MultiEdit"],
-      "skipOn": ["*.md", "*.json", "*.yml"],
-      "blocking": true
-    },
-    "post-edit": {
-      "enabled": true,
-      "script": ".claude/hooks/post-edit-consistency.sh",
-      "description": "Verify consistency after edits",
-      "triggers": ["Edit", "Write", "MultiEdit"],
-      "failOnError": true,
-      "blocking": true
-    },
-    "session-start": {
-      "enabled": true,
-      "script": ".claude/hooks/state-banner.sh",
-      "description": "Display STATE.md banner at session start (auto-shows continuation info)",
-      "triggers": ["SessionStart"],
+      "script": "hooks/session-monitor.sh",
+      "description": "Model usage tracking and periodic tips (PostToolUse/SessionEnd)",
+      "triggers": ["PostToolUse", "SessionEnd"],
       "blocking": false,
-      "automation": {
-        "display_banner": true,
-        "format": "Polish (KONTYNUUJĘ STATE Z DNIA...)"
-      }
-    },
-    "post-commit": {
-      "enabled": true,
-      "script": ".claude/hooks/auto-state-manager.sh",
-      "description": "Auto-update STATE.md after commits",
-      "triggers": ["Bash"],
-      "blocking": false,
-      "args": ["update"],
-      "pattern_match": "^git commit",
-      "automation": {
-        "update_last_action": true,
-        "increment_progress": false,
-        "log_to_recent_decisions": true
-      }
-    },
-    "pre-clear": {
-      "enabled": true,
-      "script": ".claude/hooks/ensure-state-saved.sh",
-      "description": "Verify STATE.md is saved before /clear command",
-      "triggers": ["ClearContext"],
-      "blocking": true,
-      "automation": {
-        "verify_state_current": true,
-        "warn_if_unsaved": true
-      }
+      "notes": "Merged from: session-summary + periodic-visual-feedback + post-tool-use-feedback"
     }
   },
 
-  "agent_specific_hooks": {
-    "description": "Hooks customized for each agent type based on .claude/roles/ registries",
-
-    "domain-layer-implementer": {
-      "pre-edit": {
-        "enabled": true,
-        "script": ".claude/hooks/context-aware.sh",
-        "args": ["--scope=domain"],
-        "blocking": false,
-        "triggers": ["*.aggregate.ts", "*.value-object.ts", "*.domain-service.ts", "*Event.ts"],
-        "provides": [
-          "Result<T, E> pattern reminders",
-          "NO exceptions in domain",
-          "Immutability patterns",
-          "GDPR event segregation",
-          "Reference: src/contexts/auth/domain/"
-        ]
-      },
-      "post-edit": {
-        "enabled": true,
-        "script": ".claude/hooks/post-edit-consistency.sh",
-        "args": ["--check=ddd-patterns"],
-        "blocking": true,
-        "checks": [
-          "Double unwrapping (getValue().value)",
-          "Exception throwing in domain",
-          "Missing Result pattern",
-          "PII logging violations",
-          "VytchesDDD import correctness"
-        ]
-      }
-    },
-
-    "application-layer-implementer": {
-      "pre-edit": {
-        "enabled": true,
-        "script": ".claude/hooks/context-aware.sh",
-        "args": ["--scope=application"],
-        "blocking": false,
-        "triggers": ["*Handler.ts", "command.ts", "query.ts", "*Service.ts"],
-        "provides": [
-          "CQRS structure patterns",
-          "Hybrid error handling (ADR-0013)",
-          "BaseCommandHandler/BaseQueryHandler",
-          "DTO mapping patterns",
-          "Reference: src/contexts/auth/application/"
-        ]
-      },
-      "post-edit": {
-        "enabled": true,
-        "script": ".claude/hooks/post-edit-consistency.sh",
-        "args": ["--check=cqrs-patterns"],
-        "blocking": true,
-        "checks": [
-          "Handlers extend Base classes",
-          "Return Promise<Result<T, E>>",
-          "CQRS folder structure",
-          "try/catch for infrastructure only"
-        ]
-      }
-    },
-
-    "infrastructure-api-implementer": {
-      "pre-edit": {
-        "enabled": true,
-        "script": ".claude/hooks/context-aware.sh",
-        "args": ["--scope=infrastructure"],
-        "blocking": false,
-        "triggers": ["*.controller.ts", "*.repository.ts", "*schemas.ts"],
-        "provides": [
-          "Zod schema-driven controllers (ADR-0020)",
-          "Rate limiting decorators (ADR-0022)",
-          "Path params validation",
-          "Reference: src/app/api/authorization/"
-        ]
-      },
-      "post-edit": {
-        "enabled": true,
-        "script": ".claude/hooks/post-edit-consistency.sh",
-        "args": ["--check=api-security"],
-        "blocking": true,
-        "checks": [
-          "Rate limiting on controllers",
-          "Zod schemas centralized",
-          "No sensitive data logging"
-        ]
-      }
-    },
-
-    "testing-implementer": {
-      "pre-edit": {
-        "enabled": true,
-        "script": ".claude/hooks/context-aware.sh",
-        "args": ["--scope=testing"],
-        "blocking": false,
-        "triggers": ["*.spec.ts", "*.test.ts"],
-        "provides": [
-          "@vytches/ddd-testing patterns",
-          "safeRun for Result unwrapping",
-          "Coverage >80% target"
-        ]
-      }
-    },
-
-    "domain-verifier": {
-      "pre-verification": {
-        "enabled": true,
-        "script": ".claude/hooks/pre-submit.sh",
-        "args": ["--scope=domain"],
-        "blocking": true,
-        "description": "Domain quality gates before verification",
-        "runs": [
-          "pnpm lint:check",
-          "pnpm typecheck",
-          "pnpm test"
-        ]
-      },
-      "post-verification": {
-        "enabled": true,
-        "script": ".claude/hooks/verification-audit.sh",
-        "args": ["domain-verifier"],
-        "blocking": false,
-        "description": "Log domain verification to audit trail"
-      }
-    },
-
-    "application-verifier": {
-      "pre-verification": {
-        "enabled": true,
-        "script": ".claude/hooks/pre-submit.sh",
-        "args": ["--scope=application"],
-        "blocking": true,
-        "description": "Application quality gates before verification"
-      },
-      "post-verification": {
-        "enabled": true,
-        "script": ".claude/hooks/verification-audit.sh",
-        "args": ["application-verifier"],
-        "blocking": false
-      }
-    },
-
-    "e2e-verifier": {
-      "pre-verification": {
-        "enabled": true,
-        "script": ".claude/hooks/quality-gates.sh",
-        "blocking": true,
-        "description": "Comprehensive quality gates (VETO power)",
-        "runs": [
-          "pnpm lint:check",
-          "pnpm typecheck",
-          "pnpm test:e2e",
-          "pnpm quality:gates"
-        ]
-      },
-      "post-verification": {
-        "enabled": true,
-        "script": ".claude/hooks/final-verification-audit.sh",
-        "args": ["e2e-verifier"],
-        "blocking": false,
-        "veto_power": true
-      }
-    },
-
-    "security-verifier": {
-      "pre-verification": {
-        "enabled": true,
-        "script": ".claude/hooks/security-scan.sh",
-        "blocking": true,
-        "runs": [
-          "npm audit --production",
-          "pnpm security:audit"
-        ]
-      },
-      "post-verification": {
-        "enabled": true,
-        "script": ".claude/hooks/verification-audit.sh",
-        "args": ["security-verifier"],
-        "blocking": false
-      }
-    },
-
-    "localhero-project-orchestrator": {
-      "task-delegation": {
-        "enabled": true,
-        "script": ".claude/hooks/agent-knowledge-sync.sh",
-        "blocking": false,
-        "when": "Before invoking sub-agent",
-        "provides": ["ADRs", "Security standards", "DDD patterns"]
-      },
-      "task-completion": {
-        "enabled": true,
-        "script": ".claude/hooks/capture-lessons.sh",
-        "blocking": false,
-        "when": "After task completion",
-        "creates": "project-orchestration/lessons-learned/"
-      },
-      "post-task": {
-        "enabled": true,
-        "script": ".claude/hooks/update-memory.sh",
-        "blocking": false,
-        "updates": [".claude/memory/agent-knowledge/", ".claude/memory/task-history/"]
-      }
-    }
-  },
-
-  "legacy_agents": {
-    "description": "Original agent hooks (pre-YAML registry migration)",
-    "technical-architecture-lead": {
-      "enabled": true,
-      "triggers": ["Task"],
-      "context": "ADRs, tech stack, performance targets"
-    },
-    "security-e2e-verifier": {
-      "enabled": true,
-      "triggers": ["Task"],
-      "context": "OWASP, GDPR, crypto standards, E2E security testing"
-    },
-    "ddd-application-expert": {
-      "enabled": true,
-      "triggers": ["Task"],
-      "context": "Bounded contexts, DDD patterns"
-    },
-    "vytches-ddd-library-expert": {
-      "enabled": true,
-      "triggers": ["Task"],
-      "context": "VytchesDDD API, current patterns"
-    },
-    "vytches-ddd-testing": {
-      "enabled": true,
-      "triggers": ["Task"],
-      "context": "Vitest, coverage targets, @vytches/ddd-testing"
-    },
-    "localhero-qa-validation": {
-      "enabled": true,
-      "triggers": ["Task"],
-      "context": "Acceptance criteria, E2E testing, VETO power"
-    }
-  },
-
-  "hook_settings": {
-    "enable_blocking": true,
-    "enable_audit_log": true,
-    "verbose_mode": false,
-    "context_injection": true,
-    "parallel_execution": false,
-    "timeout_ms": 60000
-  },
-
-  "audit_settings": {
-    "enabled": true,
-    "log_file": ".claude/audit.log",
-    "log_format": "[{timestamp}] {agent_id}: {status} - {file_path}",
-    "retention_days": 90,
-    "sensitive_operations": ["security", "auth", "migration", "crypto"]
-  },
-
-  "pattern_enforcement": {
-    "domain": {
-      "enforceResult": true,
-      "preventExceptions": true,
-      "requireValueObjects": true,
-      "anti_patterns": [
-        {
-          "pattern": "throw new",
-          "message": "Domain layer should not throw exceptions - use Result.fail()",
-          "severity": "error",
-          "blocking": true
-        },
-        {
-          "pattern": "getValue\\(\\)\\.value",
-          "message": "Double unwrapping detected - use getValue() only",
-          "severity": "error",
-          "blocking": true
-        }
-      ]
-    },
-    "application": {
-      "enforceCQRS": true,
-      "requireResultReturn": true,
-      "required_patterns": [
-        {
-          "pattern": "extends BaseCommandHandler<|extends BaseQueryHandler<",
-          "message": "Handlers must extend Base classes",
-          "scope": "*Handler.ts"
-        }
-      ]
-    },
-    "infrastructure": {
-      "allowExceptions": true,
-      "enforceKysely": true,
-      "required_patterns": [
-        {
-          "pattern": "@RateLimit|@UseGuards",
-          "message": "Controllers should have rate limiting",
-          "scope": "*.controller.ts",
-          "severity": "warning"
-        }
-      ]
-    }
-  },
-
-  "context_optimization": {
-    "enabled": true,
-    "track_token_usage": true,
-    "log_file": ".claude/memory/context-optimization/token-usage-log.json",
-    "efficiency_threshold": 0.70,
-    "alert_on_low_efficiency": true
-  },
-
-  "memory_management": {
-    "enabled": true,
-    "version": "2.0.0",
-    "auto_update_patterns": true,
-    "capture_task_history": true,
-    "agent_knowledge_files": {
-      "domain-layer": ".claude/memory/agent-knowledge/domain-layer-patterns.md",
-      "application-layer": ".claude/memory/agent-knowledge/application-layer-patterns.md",
-      "infrastructure-api": ".claude/memory/agent-knowledge/infrastructure-api-patterns.md",
-      "testing": ".claude/memory/agent-knowledge/testing-patterns.md",
-      "verification": ".claude/memory/agent-knowledge/verification-patterns.md"
-    },
-    "automation_scripts": {
-      "update_knowledge": ".claude/scripts/update-agent-knowledge.sh",
-      "archive_task": ".claude/scripts/archive-task.sh",
-      "view_knowledge": ".claude/scripts/view-agent-knowledge.sh",
-      "cleanup_tasks": ".claude/scripts/cleanup-old-tasks.sh",
-      "manage_memory": ".claude/scripts/manage-memory.sh"
-    },
-    "pattern_extraction": {
-      "enabled": true,
-      "min_confidence": 0.8,
-      "categories": [
-        "domain-patterns",
-        "application-patterns",
-        "infrastructure-patterns",
-        "testing-patterns",
-        "verification-patterns"
-      ]
-    },
-    "task_history": {
-      "base_dir": ".claude/memory/task-history",
-      "monthly_archives": true,
-      "retention_months": 6,
-      "archive_dir": ".claude/memory/task-history/_archive"
-    }
-  },
-
-  "knowledge_base": {
-    "adrs": "docs/adr/",
-    "patterns": ".claude/knowledge/patterns/",
-    "standards": ".claude/standards/",
-    "roles": ".claude/roles/",
-    "claudeMd": "CLAUDE.md",
-    "envConfig": ".claude/env/env-config.json",
-    "memory": {
-      "patterns": ".claude/memory/patterns-learned.md",
-      "context": ".claude/memory/project-context.md",
-      "agentKnowledge": ".claude/memory/agent-knowledge/",
-      "taskHistory": ".claude/memory/task-history/"
-    }
+  "deprecated": {
+    "location": "hooks/deprecated/",
+    "files": [
+      "auto-state-manager.sh",
+      "ensure-state-saved.sh",
+      "state-banner.sh",
+      "session-summary.sh",
+      "periodic-visual-feedback.sh",
+      "post-tool-use-feedback.sh",
+      "enforce-tool-restrictions.sh",
+      "post-agent-update.sh",
+      "post-tool-use-feedback-debug.sh"
+    ]
   }
 }

@@ -1,0 +1,71 @@
+# project.yml - Project configuration for CLAUDE.md generation
+# Copy to: <project>/.claude/config/project.yml
+# Then run: ~/projects/claude-patterns/scripts/generate-claude-md.sh
+
+project:
+  name: my-project
+  description: "Short project description"
+
+  # Stack profile determines which template sections are included
+  # Available: nestjs-ddd, flutter, python (or omit for generic)
+  stack_profile: nestjs-ddd
+
+  stack: "NestJS, TypeScript, PostgreSQL"
+  testing: "Vitest"
+
+  # Additional fields are stack-specific (shown in project table)
+  # Choose fields based on your stack_profile:
+  #
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  # NESTJS-DDD STACK:
+  #   ddd_library: "@vytches/ddd"
+  #   database: "PostgreSQL 15, PostGIS 3.3"
+  #
+  # FLUTTER STACK:
+  #   state_management: "Riverpod"  # or "Bloc", "Provider", etc.
+  #   platforms: "iOS, Android, Web"
+  #
+  # PYTHON STACK:
+  #   framework: "FastAPI"  # or "Django", "Flask", etc.
+  #   database: "PostgreSQL 15"  # or "MongoDB", "SQLite", etc.
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ddd_library: "@vytches/ddd"
+  database: "PostgreSQL 15, PostGIS 3.3"
+
+contexts:
+  - name: auth
+    status: production
+    tests: 279
+    notes: "Full CQRS, OAuth, sessions"
+  - name: authorization
+    status: production
+    tests: 226
+    notes: "RBAC, custom permissions"
+  - name: billing
+    status: in-progress
+    tests: 0
+    notes: "Subscription management"
+
+rules:
+  - "NEVER import between contexts. Use ACL Registry."
+  - "Test Pyramid: L1 ~50%, L2 ~30%, L3 ~20%."
+  - "BUSINESS_RULES.md: Update IMMEDIATELY on code changes."
+  - "Audit fields NEVER from request body - always from RequestContext."
+  - "Cross-context calls via aclRegistry.getGlobalRequired() only."
+
+cost:
+  opus: "<30%"
+  sonnet: "~55%"
+  haiku: ">15%"
+
+docs:
+  - LOCALHERO_PRODUCT.md
+  - LOCALHERO_BUSINESS.md
+  - LOCALHERO_MARKETING.md
+
+# Entry points (slash commands)
+entry_points:
+  orchestrate: "/o"
+  scaffold: "/scaffold"
+  progress: "/progress"

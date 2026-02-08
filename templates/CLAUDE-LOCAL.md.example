@@ -1,0 +1,18 @@
+# CLAUDE-LOCAL.md - Project-Specific Additions
+#
+# This file is appended to the generated CLAUDE.md.
+# Use it for project-specific rules that don't fit in project.yml.
+#
+# Location: <project>/.claude/config/CLAUDE-LOCAL.md
+
+## Project-Specific Notes
+
+<!-- Add project-specific instructions here. Examples: -->
+
+<!-- ## Lessons Learned -->
+<!-- - Task sizing: Keep under 12 story points -->
+<!-- - Anti-rate limiting: timestamp + randomId for unique users in tests -->
+
+<!-- ## Active Work -->
+<!-- - Current task: TS-XXX -->
+<!-- - Blocked on: nothing -->

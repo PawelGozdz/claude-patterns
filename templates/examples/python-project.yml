@@ -1,0 +1,51 @@
+# Python Project Example
+# Copy to: <python-project>/.claude/config/project.yml
+
+project:
+  name: MyPythonAPI
+  description: "FastAPI backend with async PostgreSQL"
+  stack_profile: python
+  stack: "Python 3.12, FastAPI, PostgreSQL"
+  testing: "pytest + pytest-cov"
+  framework: "FastAPI"
+  database: "PostgreSQL 15"
+
+contexts:
+  - name: auth
+    status: production
+    tests: 58
+    notes: "JWT, OAuth2, password hashing"
+  - name: users
+    status: production
+    tests: 42
+    notes: "User management, profiles"
+  - name: api
+    status: in-progress
+    tests: 24
+    notes: "REST endpoints, OpenAPI"
+  - name: background-jobs
+    status: planned
+    tests: 0
+    notes: "Celery workers, task queue"
+
+rules:
+  - "Type hints everywhere + mypy strict mode"
+  - "Pydantic models for validation"
+  - "Repository pattern for data access"
+  - "Service layer for business logic"
+  - "async/await for I/O operations"
+  - "80%+ test coverage"
+
+cost:
+  opus: "<20%"
+  sonnet: "~65%"
+  haiku: ">15%"
+
+docs:
+  - API_SPEC.md
+  - DEPLOYMENT.md
+
+entry_points:
+  orchestrate: "/o"
+  scaffold: "/scaffold"
+  progress: "/progress"
