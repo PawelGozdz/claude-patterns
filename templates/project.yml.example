@@ -7,11 +7,11 @@ project:
   description: "Short project description"
 
   # Stack profile determines which template sections are included
-  # Available: nestjs-ddd, flutter, python (or omit for generic)
+  # Available: nestjs-ddd, flutter-clean-arch, python (or omit for generic)
   stack_profile: nestjs-ddd
 
   # Language determines which rules/{language}/ to apply
-  # Available: typescript, python, golang (or omit for common only)
+  # Available: typescript, python, dart (or omit for common only)
   language: typescript
 
   stack: "NestJS, TypeScript, PostgreSQL"

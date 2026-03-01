@@ -200,27 +200,37 @@ echo -e "${BLUE}[5/5] Stack profile configs${NC}"
 STACK_PROFILE=$(yml_get "project.stack_profile")
 
 if [[ -n "$STACK_PROFILE" ]]; then
-  # Map stack profiles to their config templates
-  case "$STACK_PROFILE" in
-    nestjs-ddd)
-      DDD_HOOKS_SOURCE="$PATTERNS_REPO/templates/ddd-hooks.json"
-      DDD_HOOKS_TARGET="$PROJECT_DIR/ddd-hooks.json"
+  # Generic hook config discovery: look for exact {profile}-hooks.json first, then base stack name
+  # e.g. flutter-clean-arch → try flutter-clean-arch-hooks.json, then flutter-hooks.json
+  PROFILE_HOOKS="$PATTERNS_REPO/templates/${STACK_PROFILE}-hooks.json"
+  BASE_STACK="${STACK_PROFILE%%-*}"  # "nestjs-ddd" → "nestjs", "flutter-clean-arch" → "flutter"
+  BASE_HOOKS="$PATTERNS_REPO/templates/${BASE_STACK}-hooks.json"
 
-      if [[ -f "$DDD_HOOKS_SOURCE" ]]; then
-        if [[ -f "$DDD_HOOKS_TARGET" ]]; then
-          echo -e "  ${YELLOW}Already exists:${NC} ddd-hooks.json"
-        else
-          cp "$DDD_HOOKS_SOURCE" "$DDD_HOOKS_TARGET"
-          echo -e "  ${GREEN}Created:${NC} ddd-hooks.json (DDD enforcement hooks config)"
-        fi
-      else
-        echo -e "  ${YELLOW}Warning:${NC} Template ddd-hooks.json not found in repo"
-      fi
-      ;;
-    *)
-      echo -e "  ${YELLOW}Skipped:${NC} No stack-specific configs for profile '$STACK_PROFILE'"
-      ;;
-  esac
+  # Special case: nestjs-ddd → ddd-hooks.json (legacy naming)
+  LEGACY_HOOKS="$PATTERNS_REPO/templates/ddd-hooks.json"
+
+  HOOKS_SOURCE=""
+  if [[ -f "$PROFILE_HOOKS" ]]; then
+    HOOKS_SOURCE="$PROFILE_HOOKS"
+  elif [[ -f "$BASE_HOOKS" ]]; then
+    HOOKS_SOURCE="$BASE_HOOKS"
+  elif [[ "$STACK_PROFILE" == "nestjs-ddd" && -f "$LEGACY_HOOKS" ]]; then
+    HOOKS_SOURCE="$LEGACY_HOOKS"
+  fi
+
+  if [[ -n "$HOOKS_SOURCE" ]]; then
+    HOOKS_FILENAME=$(basename "$HOOKS_SOURCE")
+    HOOKS_TARGET="$PROJECT_DIR/$HOOKS_FILENAME"
+
+    if [[ -f "$HOOKS_TARGET" ]]; then
+      echo -e "  ${YELLOW}Already exists:${NC} $HOOKS_FILENAME"
+    else
+      cp "$HOOKS_SOURCE" "$HOOKS_TARGET"
+      echo -e "  ${GREEN}Created:${NC} $HOOKS_FILENAME (${STACK_PROFILE} enforcement hooks config)"
+    fi
+  else
+    echo -e "  ${YELLOW}Skipped:${NC} No hooks template found for profile '$STACK_PROFILE'"
+  fi
 else
   echo -e "  ${YELLOW}Skipped:${NC} No stack_profile configured in project.yml"
 fi
@@ -256,10 +266,12 @@ for dir in "$SKILLS_DIR"/*/; do
 done
 echo -e "${GREEN}Skills:${NC} $SKILL_COUNT (categories: ${#CONFIGURED_SKILLS[@]})"
 
-# Check stack profile configs
-if [[ -f "$PROJECT_DIR/ddd-hooks.json" ]]; then
-  echo -e "${GREEN}DDD hooks:${NC} configured (ddd-hooks.json)"
-fi
+# Check stack profile configs (generic: find any *-hooks.json)
+for hooks_file in "$PROJECT_DIR"/*-hooks.json; do
+  [[ -f "$hooks_file" ]] || continue
+  hooks_name=$(basename "$hooks_file")
+  echo -e "${GREEN}Hooks:${NC} configured ($hooks_name)"
+done
 
 echo ""
 

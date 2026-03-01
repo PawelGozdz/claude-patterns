@@ -5,18 +5,36 @@ paths:
 ---
 # Python Coding Style
 
-> This file extends [common/coding-style.md](../common/coding-style.md) with Python specific content.
+> This file extends [common/coding-style.md](../common/coding-style.md) with Python-specific conventions.
 
 ## Standards
 
 - Follow **PEP 8** conventions
-- Use **type annotations** on all function signatures
+- Use **type annotations** on all public function signatures (enforced by hooks)
+- Use **PEP 585** generic types (`list[str]` not `List[str]`) for Python 3.9+
+
+## Type Hints
+
+```python
+# ALWAYS annotate public functions
+def get_user(user_id: str) -> User | None:
+    ...
+
+async def create_order(request: CreateOrderRequest) -> Order:
+    ...
+
+# Use Protocol for structural typing (duck typing)
+from typing import Protocol
+
+class Repository(Protocol):
+    def find_by_id(self, id: str) -> dict | None: ...
+    def save(self, entity: dict) -> dict: ...
+```
 
 ## Immutability
 
-Prefer immutable data structures:
-
 ```python
+# PREFER: frozen dataclasses for domain objects
 from dataclasses import dataclass
 
 @dataclass(frozen=True)
@@ -24,19 +42,46 @@ class User:
     name: str
     email: str
 
-from typing import NamedTuple
+# PREFER: Pydantic models for API schemas
+from pydantic import BaseModel
 
-class Point(NamedTuple):
-    x: float
-    y: float
+class UserResponse(BaseModel):
+    model_config = ConfigDict(frozen=True)
+    name: str
+    email: str
 ```
 
-## Formatting
+## Formatting & Linting
 
-- **black** for code formatting
-- **isort** for import sorting
-- **ruff** for linting
+- **ruff** for linting + formatting (replaces black, isort, flake8)
+- **mypy** strict mode for type checking
+- Configuration in `pyproject.toml`:
 
-## Reference
+```toml
+[tool.ruff]
+line-length = 88
+target-version = "py312"
 
-See skill: `python-patterns` for comprehensive Python idioms and patterns.
+[tool.mypy]
+strict = true
+```
+
+## Imports
+
+```python
+# Order: stdlib → third-party → local (ruff handles this)
+import os
+from pathlib import Path
+
+from fastapi import Depends, HTTPException
+from pydantic import BaseModel
+
+from app.domain.entities import User
+from app.services.auth import AuthService
+```
+
+## Print Statements
+
+- No `print()` in production code
+- Use `logging` module with structured logging
+- See hooks for automatic detection

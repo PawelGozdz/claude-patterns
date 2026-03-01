@@ -1,0 +1,24 @@
+{
+  "layerPath": "src",
+  "purity": {
+    "noInfraImportLayers": ["domain", "services"],
+    "forbiddenImports": [
+      "fastapi",
+      "sqlalchemy",
+      "alembic",
+      "redis",
+      "celery",
+      "httpx",
+      "requests",
+      "boto3",
+      "aiohttp"
+    ]
+  },
+  "typing": {
+    "checkUntyped": {
+      "enabled": true,
+      "filePatterns": ["**/domain/**/*.py", "**/services/**/*.py", "**/api/**/*.py"]
+    }
+  },
+  "skipPatterns": ["test_", "_test.py", "conftest.py", "__pycache__", ".venv"]
+}

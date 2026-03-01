@@ -56,6 +56,12 @@ function tryLoadConfig(configPath, projectRoot) {
 //
 // Patterns with "/" match against the full normalized path:
 //   "*/domain/**/*.event.ts" matches "src/contexts/auth/domain/events/..."
+//   "**/services/**/*.py"    matches "src/services/user_service.py"
+//
+// Glob semantics:
+//   **/  = zero or more path segments (including none) → regex: (.*/)?
+//   **   = match everything (at end of pattern)        → regex: .*
+//   *    = single path segment (no slashes)            → regex: [^/]*
 function matchesPattern(filePath, pattern) {
   const normalized = filePath.replace(/\\/g, '/');
 
@@ -66,11 +72,12 @@ function matchesPattern(filePath, pattern) {
   }
 
   // Path pattern: convert glob to regex
+  // Order matters: **/ before standalone ** before single *
   const regexStr = pattern
     .replace(/[.+^${}()|[\]\\]/g, '\\$&')
-    .replace(/\*\*/g, '\0')
-    .replace(/\*/g, '[^/]*')
-    .replace(/\0/g, '.*');
+    .replace(/\*\*\//g, '(.*/)?')
+    .replace(/\*\*/g, '.*')
+    .replace(/\*/g, '[^/]*');
   return new RegExp(regexStr).test(normalized);
 }
 

@@ -1,0 +1,22 @@
+{
+  "featurePath": "lib/features",
+  "purity": {
+    "noInfraImportLayers": ["domain", "application"],
+    "forbiddenImports": [
+      "package:flutter/",
+      "package:dio/",
+      "package:hive/",
+      "package:shared_preferences/",
+      "package:http/",
+      "dart:io",
+      "dart:html"
+    ]
+  },
+  "riverpod": {
+    "checkRefRead": {
+      "enabled": true,
+      "filePatterns": ["**/presentation/**/*.dart"]
+    }
+  },
+  "skipPatterns": ["_test.dart", ".g.dart", ".freezed.dart", ".mock.dart"]
+}

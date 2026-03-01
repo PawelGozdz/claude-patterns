@@ -149,6 +149,46 @@
           }
         ],
         "description": "Check domain/application layer purity (no throw, no infra imports)"
+      },
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$HOME/.claude/hooks/check-clean-arch.js\""
+          }
+        ],
+        "description": "Flutter: domain/application layer purity (no infra imports)"
+      },
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$HOME/.claude/hooks/check-riverpod-patterns.js\""
+          }
+        ],
+        "description": "Flutter: Riverpod ref.read() inside build() detection"
+      },
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$HOME/.claude/hooks/check-python-layers.js\""
+          }
+        ],
+        "description": "Python: domain/services layer purity (no infra imports)"
+      },
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$HOME/.claude/hooks/check-python-typing.js\""
+          }
+        ],
+        "description": "Python: missing type annotations on public functions"
       }
     ],
     "Stop": [
@@ -171,6 +211,16 @@
           }
         ],
         "description": "Detect cross-context imports in modified files"
+      },
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$HOME/.claude/hooks/check-flutter-imports.js\""
+          }
+        ],
+        "description": "Flutter: Detect cross-feature imports in modified Dart files"
       }
     ],
     "SessionEnd": [
