@@ -223,7 +223,12 @@ if [[ -n "$STACK_PROFILE" ]]; then
     HOOKS_TARGET="$PROJECT_DIR/$HOOKS_FILENAME"
 
     if [[ -f "$HOOKS_TARGET" ]]; then
-      echo -e "  ${YELLOW}Already exists:${NC} $HOOKS_FILENAME"
+      if diff -q "$HOOKS_SOURCE" "$HOOKS_TARGET" > /dev/null 2>&1; then
+        echo -e "  ${YELLOW}Up to date:${NC} $HOOKS_FILENAME"
+      else
+        cp "$HOOKS_SOURCE" "$HOOKS_TARGET"
+        echo -e "  ${GREEN}Updated:${NC} $HOOKS_FILENAME (synced from template)"
+      fi
     else
       cp "$HOOKS_SOURCE" "$HOOKS_TARGET"
       echo -e "  ${GREEN}Created:${NC} $HOOKS_FILENAME (${STACK_PROFILE} enforcement hooks config)"
