@@ -1,0 +1,50 @@
+{
+  "$comment": "DDD enforcement hooks config — place in project root or .claude/ directory",
+
+  "baseClasses": [
+    { "file": "*.aggregate.ts", "extends": ["AggregateRoot<"], "label": "Aggregate" },
+    { "file": "*.vo.ts", "extends": ["BaseValueObject<"], "label": "Value Object" },
+    { "file": "*.entity.ts", "extends": ["BaseEntity<"], "label": "Entity" },
+    {
+      "file": "*.specification.ts",
+      "extends": ["CompositeSpecification<", "AsyncCompositeSpecification<"],
+      "label": "Specification"
+    },
+    {
+      "file": "*/domain/**/*.event.ts",
+      "extends": ["LocalHeroDomainEvent<", "ProjectDomainEvent<"],
+      "label": "Domain Event"
+    },
+    {
+      "file": "*.integration-event.ts",
+      "extends": ["LocalHeroIntegrationEvent", "IntegrationEvent"],
+      "label": "Integration Event"
+    }
+  ],
+
+  "purity": {
+    "noThrowLayers": ["domain", "application"],
+    "noInfraImportLayers": ["domain"],
+    "forbiddenImports": ["infrastructure/", "@nestjs/", "typeorm", "kysely"]
+  },
+
+  "contextPath": "src/contexts",
+
+  "nestjs": {
+    "requireInjectDecorator": {
+      "enabled": true,
+      "filePatterns": [
+        "*.handler.ts",
+        "*.service.ts",
+        "*.controller.ts",
+        "*.guard.ts",
+        "*.interceptor.ts",
+        "*.pipe.ts",
+        "*.filter.ts",
+        "*.gateway.ts",
+        "*.resolver.ts",
+        "*.saga.ts"
+      ]
+    }
+  }
+}

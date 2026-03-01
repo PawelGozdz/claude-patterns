@@ -4,9 +4,11 @@
  *
  * Cross-platform (Windows, macOS, Linux)
  *
+ * Config-driven: requires ddd-hooks.json in project root or .claude/.
+ * No config = no warnings (silent skip for non-DDD projects).
+ *
  * Checks all git-modified .ts files for imports that cross bounded context
- * boundaries. Files in src/contexts/{contextA}/ must not import from
- * src/contexts/{contextB}/ — they should use the ACL Registry instead.
+ * boundaries. Uses contextPath from config (default: "src/contexts").
  *
  * Excludes: shared/ directory, test files
  *
@@ -14,7 +16,9 @@
  */
 
 const fs = require('fs');
+const path = require('path');
 const { isGitRepo, getGitModifiedFiles, readFile, log } = require('./lib/utils');
+const { findConfig } = require('./lib/ddd-config');
 
 // Files to skip
 const SKIP_PATTERNS = [
@@ -24,12 +28,8 @@ const SKIP_PATTERNS = [
   /__mocks__\//,
 ];
 
-// Extract context name from file path: src/contexts/{contextName}/...
-const CONTEXT_PATH = /(?:^|\/|\\)(?:src\/)?contexts\/([^/\\]+)\//;
-
-// Match import lines referencing contexts
+// Match import lines
 const IMPORT_LINE = /^\s*import\s+.*from\s+['"]/;
-const CONTEXT_IMPORT = /from\s+['"](?:@contexts|.*\/contexts)\/([^/'"]+)/;
 
 const MAX_STDIN = 1024 * 1024;
 let data = '';
@@ -49,6 +49,22 @@ process.stdin.on('end', () => {
       process.exit(0);
     }
 
+    // Load config from cwd — no config means no checks
+    const loaded = findConfig(process.cwd());
+    if (!loaded || !loaded.config.contextPath) {
+      process.stdout.write(data);
+      process.exit(0);
+    }
+
+    const contextPath = loaded.config.contextPath;
+    // Build dynamic regexes from config contextPath
+    // e.g. "src/contexts" → /(?:^|\/|\\)src\/contexts\/([^/\\]+)\//
+    const escapedPath = contextPath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const CONTEXT_PATH_RE = new RegExp(`(?:^|/|\\\\)(?:${escapedPath})\/([^/\\\\]+)\/`);
+    const CONTEXT_IMPORT_RE = new RegExp(
+      `from\\s+['"](?:@contexts|.*/${escapedPath.replace(/\\\//g, '/')})\/([^/'"]+)`,
+    );
+
     const files = getGitModifiedFiles(['\\.ts$'])
       .filter((f) => fs.existsSync(f))
       .filter((f) => !SKIP_PATTERNS.some((p) => p.test(f)));
@@ -56,16 +72,13 @@ process.stdin.on('end', () => {
     let hasViolation = false;
 
     for (const file of files) {
-      // Normalize path separators
       const normalized = file.replace(/\\/g, '/');
 
       // Determine which context this file belongs to
-      const contextMatch = CONTEXT_PATH.exec(normalized);
+      const contextMatch = CONTEXT_PATH_RE.exec(normalized);
       if (!contextMatch) continue;
 
       const fileContext = contextMatch[1];
-
-      // Skip shared context — it's allowed to be imported by anyone
       if (fileContext === 'shared') continue;
 
       const content = readFile(file);
@@ -75,19 +88,14 @@ process.stdin.on('end', () => {
 
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
-
-        // Only check import lines
         if (!IMPORT_LINE.test(line)) continue;
 
-        const importMatch = CONTEXT_IMPORT.exec(line);
+        const importMatch = CONTEXT_IMPORT_RE.exec(line);
         if (!importMatch) continue;
 
         const importedContext = importMatch[1];
-
-        // Skip shared — always allowed
         if (importedContext === 'shared') continue;
 
-        // Cross-context violation
         if (importedContext !== fileContext) {
           log(
             `[Hook] DDD: Cross-context import in ${file}:${i + 1} — imports from '${importedContext}'. Use ACL Registry.`,

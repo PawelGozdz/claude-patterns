@@ -4,20 +4,22 @@
  *
  * Cross-platform (Windows, macOS, Linux)
  *
- * Validates two rules:
- * 1. No `throw new` in domain/ or application/ — must use Result<T, E> pattern
- * 2. No infrastructure imports in domain/ — must not import infra packages
+ * Config-driven: requires ddd-hooks.json in project root or .claude/.
+ * No config = no warnings (silent skip for non-DDD projects).
+ *
+ * Validates (per config purity section):
+ * 1. No `throw new` in configured layers — must use Result<T, E> pattern
+ * 2. No forbidden imports in configured layers — must not import infra packages
  *
  * Always warns only (exit 0) — never blocks the agent.
  */
 
 const fs = require('fs');
 const path = require('path');
+const { findConfig } = require('./lib/ddd-config');
 
-// Regex patterns for detection
 const THROW_PATTERN = /^\s*throw\s+new\s/;
 const COMMENT_LINE = /^\s*(\/\/|\/\*|\*)/;
-const INFRA_IMPORT = /from\s+['"].*\/(infrastructure|@nestjs|typeorm|kysely)/;
 
 // Files to skip
 const SKIP_PATTERNS = [
@@ -48,23 +50,42 @@ process.stdin.on('end', () => {
       process.exit(0);
     }
 
-    // Skip test/mock files
     if (SKIP_PATTERNS.some((p) => p.test(filePath))) {
       process.stdout.write(data);
       process.exit(0);
     }
 
-    // Normalize path separators for cross-platform matching
-    const normalized = filePath.replace(/\\/g, '/');
-
-    const isDomainFile = /\/domain\//.test(normalized);
-    const isApplicationFile = /\/application\//.test(normalized);
-
-    // Only check domain and application layer files
-    if (!isDomainFile && !isApplicationFile) {
+    // Load project config — no config means no checks
+    const loaded = findConfig(filePath);
+    if (!loaded || !loaded.config.purity) {
       process.stdout.write(data);
       process.exit(0);
     }
+
+    const { config } = loaded;
+    const purity = config.purity;
+    const normalized = filePath.replace(/\\/g, '/');
+
+    // Determine which layer this file belongs to
+    const noThrowLayers = purity.noThrowLayers || [];
+    const noInfraLayers = purity.noInfraImportLayers || [];
+    const forbiddenImports = purity.forbiddenImports || [];
+
+    const fileLayer = noThrowLayers.concat(noInfraLayers).find((layer) =>
+      new RegExp(`/${layer}/`).test(normalized),
+    );
+
+    if (!fileLayer) {
+      process.stdout.write(data);
+      process.exit(0);
+    }
+
+    const shouldCheckThrow = noThrowLayers.some((layer) =>
+      new RegExp(`/${layer}/`).test(normalized),
+    );
+    const shouldCheckInfra = noInfraLayers.some((layer) =>
+      new RegExp(`/${layer}/`).test(normalized),
+    );
 
     // Read the file
     const resolvedPath = path.resolve(filePath);
@@ -76,26 +97,38 @@ process.stdin.on('end', () => {
     const content = fs.readFileSync(resolvedPath, 'utf8');
     const lines = content.split('\n');
     const basename = path.basename(filePath);
-    const layer = isDomainFile ? 'domain' : 'application';
 
-    // Check 1: No `throw new` in domain or application layer
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
-      if (COMMENT_LINE.test(line)) continue;
-      if (THROW_PATTERN.test(line)) {
-        console.error(
-          `[Hook] DDD: throw at line ${i + 1} in ${basename} (${layer}) — use Result<T, E> instead`,
-        );
+    // Check 1: No `throw new`
+    if (shouldCheckThrow) {
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        if (COMMENT_LINE.test(line)) continue;
+        if (THROW_PATTERN.test(line)) {
+          const layer = noThrowLayers.find((l) =>
+            new RegExp(`/${l}/`).test(normalized),
+          );
+          console.error(
+            `[Hook] DDD: throw at line ${i + 1} in ${basename} (${layer}) — use Result<T, E> instead`,
+          );
+        }
       }
     }
 
-    // Check 2: No infra imports in domain layer only
-    if (isDomainFile) {
+    // Check 2: No forbidden imports
+    if (shouldCheckInfra && forbiddenImports.length > 0) {
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
-        if (INFRA_IMPORT.test(line)) {
+        const importMatch = line.match(/from\s+['"](.*)['"]/);
+        if (!importMatch) continue;
+
+        const importPath = importMatch[1];
+        const forbidden = forbiddenImports.find((f) => importPath.includes(f));
+        if (forbidden) {
+          const layer = noInfraLayers.find((l) =>
+            new RegExp(`/${l}/`).test(normalized),
+          );
           console.error(
-            `[Hook] DDD: Infrastructure import at line ${i + 1} in ${basename} — domain layer must not depend on infrastructure`,
+            `[Hook] DDD: Forbidden import "${forbidden}" at line ${i + 1} in ${basename} — ${layer} layer must not depend on infrastructure`,
           );
         }
       }

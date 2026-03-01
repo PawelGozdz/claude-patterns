@@ -102,12 +102,12 @@ KNOWLEDGE_DIR="$PROJECT_DIR/.claude/knowledge"
 mkdir -p "$KNOWLEDGE_DIR"
 
 # --- 1. Patterns symlink ---
-echo -e "${BLUE}[1/4] Patterns${NC}"
+echo -e "${BLUE}[1/5] Patterns${NC}"
 ensure_symlink "$KNOWLEDGE_DIR/patterns" "$GLOBAL_PATTERNS" "patterns -> global patterns"
 echo ""
 
 # --- 2. Patterns-local directory ---
-echo -e "${BLUE}[2/4] Patterns-local${NC}"
+echo -e "${BLUE}[2/5] Patterns-local${NC}"
 PATTERNS_LOCAL_DIR="$KNOWLEDGE_DIR/patterns-local"
 if [ ! -d "$PATTERNS_LOCAL_DIR" ]; then
   mkdir -p "$PATTERNS_LOCAL_DIR"
@@ -118,7 +118,7 @@ fi
 echo ""
 
 # --- 3. Rules symlinks (based on project.language) ---
-echo -e "${BLUE}[3/4] Rules${NC}"
+echo -e "${BLUE}[3/5] Rules${NC}"
 PROJECT_LANGUAGE=$(yml_get "project.language")
 
 RULES_DIR="$KNOWLEDGE_DIR/rules"
@@ -154,7 +154,7 @@ fi
 echo ""
 
 # --- 4. Skills symlinks (based on skills list) ---
-echo -e "${BLUE}[4/4] Skills${NC}"
+echo -e "${BLUE}[4/5] Skills${NC}"
 SKILLS_DIR="$KNOWLEDGE_DIR/skills"
 mkdir -p "$SKILLS_DIR"
 
@@ -195,6 +195,37 @@ done
 
 echo ""
 
+# --- 5. Stack profile configs (ddd-hooks.json, etc.) ---
+echo -e "${BLUE}[5/5] Stack profile configs${NC}"
+STACK_PROFILE=$(yml_get "project.stack_profile")
+
+if [[ -n "$STACK_PROFILE" ]]; then
+  # Map stack profiles to their config templates
+  case "$STACK_PROFILE" in
+    nestjs-ddd)
+      DDD_HOOKS_SOURCE="$PATTERNS_REPO/templates/ddd-hooks.json"
+      DDD_HOOKS_TARGET="$PROJECT_DIR/ddd-hooks.json"
+
+      if [[ -f "$DDD_HOOKS_SOURCE" ]]; then
+        if [[ -f "$DDD_HOOKS_TARGET" ]]; then
+          echo -e "  ${YELLOW}Already exists:${NC} ddd-hooks.json"
+        else
+          cp "$DDD_HOOKS_SOURCE" "$DDD_HOOKS_TARGET"
+          echo -e "  ${GREEN}Created:${NC} ddd-hooks.json (DDD enforcement hooks config)"
+        fi
+      else
+        echo -e "  ${YELLOW}Warning:${NC} Template ddd-hooks.json not found in repo"
+      fi
+      ;;
+    *)
+      echo -e "  ${YELLOW}Skipped:${NC} No stack-specific configs for profile '$STACK_PROFILE'"
+      ;;
+  esac
+else
+  echo -e "  ${YELLOW}Skipped:${NC} No stack_profile configured in project.yml"
+fi
+echo ""
+
 # --- Verification ---
 echo -e "${BLUE}================================${NC}"
 echo -e "${BLUE}Verification${NC}"
@@ -224,6 +255,11 @@ for dir in "$SKILLS_DIR"/*/; do
   SKILL_COUNT=$((SKILL_COUNT + count))
 done
 echo -e "${GREEN}Skills:${NC} $SKILL_COUNT (categories: ${#CONFIGURED_SKILLS[@]})"
+
+# Check stack profile configs
+if [[ -f "$PROJECT_DIR/ddd-hooks.json" ]]; then
+  echo -e "${GREEN}DDD hooks:${NC} configured (ddd-hooks.json)"
+fi
 
 echo ""
 
