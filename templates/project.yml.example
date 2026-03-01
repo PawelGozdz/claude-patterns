@@ -10,6 +10,10 @@ project:
   # Available: nestjs-ddd, flutter, python (or omit for generic)
   stack_profile: nestjs-ddd
 
+  # Language determines which rules/{language}/ to apply
+  # Available: typescript, python, golang (or omit for common only)
+  language: typescript
+
   stack: "NestJS, TypeScript, PostgreSQL"
   testing: "Vitest"
 
@@ -32,6 +36,23 @@ project:
 
   ddd_library: "@vytches/ddd"
   database: "PostgreSQL 15, PostGIS 3.3"
+
+# Which skill categories to include (per-project scoping)
+# Only listed categories are symlinked into .claude/knowledge/skills/
+skills:
+  - security
+  - testing
+  - database
+  - quality
+  - optimization
+  - decision-frameworks
+  - orchestration
+  - architecture
+  - learning
+  - meta
+  # Available: security, testing, database, quality, optimization,
+  # decision-frameworks, orchestration, architecture, learning, meta,
+  # backend, frontend, infrastructure
 
 contexts:
   - name: auth

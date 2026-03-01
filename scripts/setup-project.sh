@@ -1,10 +1,10 @@
 #!/bin/bash
-# setup-project.sh - Setup symlinks to global patterns in a project
+# setup-project.sh - Setup per-project symlinks (patterns, rules, skills)
 #
 # Usage: ./setup-project.sh /path/to/project
 # Run from: anywhere
 
-set -e  # Exit on error
+set -e
 
 # Colors for output
 GREEN='\033[0;32m'
@@ -13,234 +13,232 @@ YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m' # No Color
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PATTERNS_REPO="$(dirname "$SCRIPT_DIR")"
+
 echo -e "${BLUE}================================${NC}"
-echo -e "${BLUE}Project Symlink Setup v1.0${NC}"
+echo -e "${BLUE}Project Setup v2.0${NC}"
 echo -e "${BLUE}================================${NC}"
 echo ""
 
 # Parse arguments
 PROJECT_DIR="${1:-.}"  # Default to current directory if not provided
-GLOBAL_PATTERNS="$HOME/projects/claude-patterns/patterns"
+GLOBAL_PATTERNS="$PATTERNS_REPO/patterns"
 
 # Resolve absolute path
 PROJECT_DIR=$(cd "$PROJECT_DIR" && pwd)
 
 echo -e "${BLUE}Project:${NC} $PROJECT_DIR"
-echo -e "${BLUE}Global patterns:${NC} $GLOBAL_PATTERNS"
+echo -e "${BLUE}Patterns repo:${NC} $PATTERNS_REPO"
 echo ""
 
 # Validate project directory exists
 if [ ! -d "$PROJECT_DIR" ]; then
-  echo -e "${RED}❌ Error: Project directory not found: $PROJECT_DIR${NC}"
+  echo -e "${RED}Error: Project directory not found: $PROJECT_DIR${NC}"
   exit 1
 fi
 
 # Validate global patterns exist
 if [ ! -d "$GLOBAL_PATTERNS" ]; then
-  echo -e "${RED}❌ Error: Global patterns not found: $GLOBAL_PATTERNS${NC}"
-  echo "   Run extract-patterns.sh first to create global patterns"
+  echo -e "${RED}Error: Global patterns not found: $GLOBAL_PATTERNS${NC}"
+  echo "   Run setup-global.sh first"
   exit 1
 fi
 
-# Create .claude/knowledge structure if it doesn't exist
+# --- YAML helpers (copied from generate-claude-md.sh) ---
+
+PROJECT_YML="$PROJECT_DIR/.claude/config/project.yml"
+
+yml_get() {
+  local key="$1"
+  local section="${key%%.*}"
+  local field="${key#*.}"
+
+  if [[ ! -f "$PROJECT_YML" ]]; then return; fi
+
+  if [[ "$section" == "$field" ]]; then
+    grep "^${key}:" "$PROJECT_YML" | head -1 | sed 's/^[^:]*: *//' | sed 's/^"//' | sed 's/"$//'
+  else
+    sed -n "/^${section}:/,/^[a-z]/p" "$PROJECT_YML" | grep "^  ${field}:" | head -1 | sed 's/^[^:]*: *//' | sed 's/^"//' | sed 's/"$//'
+  fi
+}
+
+yml_list() {
+  local section="$1"
+  if [[ ! -f "$PROJECT_YML" ]]; then return; fi
+  sed -n "/^${section}:/,/^[a-z]/p" "$PROJECT_YML" | grep '^  - ' | sed 's/^  - //' | sed 's/^"//' | sed 's/"$//'
+}
+
+# --- Helper: create or verify a symlink ---
+# Usage: ensure_symlink <link_path> <target_path> <display_name>
+ensure_symlink() {
+  local link_path="$1"
+  local target_path="$2"
+  local display_name="$3"
+
+  if [ -L "$link_path" ]; then
+    CURRENT_TARGET=$(readlink "$link_path")
+    if [ "$CURRENT_TARGET" = "$target_path" ]; then
+      echo -e "  ${YELLOW}Already exists:${NC} $display_name"
+      return 0
+    else
+      echo -e "  ${YELLOW}Updating:${NC} $display_name (was: $CURRENT_TARGET)"
+      rm "$link_path"
+      ln -sf "$target_path" "$link_path"
+      return 0
+    fi
+  elif [ -d "$link_path" ]; then
+    echo -e "  ${YELLOW}Warning:${NC} $display_name is a real directory, skipping"
+    return 1
+  else
+    ln -sf "$target_path" "$link_path"
+    echo -e "  ${GREEN}Created:${NC} $display_name"
+    return 0
+  fi
+}
+
+# --- Create .claude/knowledge structure ---
 KNOWLEDGE_DIR="$PROJECT_DIR/.claude/knowledge"
 mkdir -p "$KNOWLEDGE_DIR"
-echo -e "${GREEN}✅ Created:${NC} .claude/knowledge/"
 
-# Create patterns-local directory for project-specific overrides
-PATTERNS_LOCAL_DIR="$KNOWLEDGE_DIR/patterns-local"
-mkdir -p "$PATTERNS_LOCAL_DIR"
-echo -e "${GREEN}✅ Created:${NC} .claude/knowledge/patterns-local/"
-
-# Check if patterns symlink already exists
-PATTERNS_LINK="$KNOWLEDGE_DIR/patterns"
-
-if [ -L "$PATTERNS_LINK" ]; then
-  # It's a symlink - check where it points
-  CURRENT_TARGET=$(readlink "$PATTERNS_LINK")
-  if [ "$CURRENT_TARGET" = "$GLOBAL_PATTERNS" ]; then
-    echo -e "${YELLOW}⚠️  Symlink already exists and points to correct location${NC}"
-    echo -e "   ${PATTERNS_LINK} → ${CURRENT_TARGET}"
-    SYMLINK_CREATED=false
-  else
-    echo -e "${YELLOW}⚠️  Symlink exists but points to different location${NC}"
-    echo -e "   Current: ${PATTERNS_LINK} → ${CURRENT_TARGET}"
-    echo -e "   Expected: ${PATTERNS_LINK} → ${GLOBAL_PATTERNS}"
-    read -p "   Replace symlink? (y/N): " -n 1 -r
-    echo
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-      rm "$PATTERNS_LINK"
-      ln -sf "$GLOBAL_PATTERNS" "$PATTERNS_LINK"
-      echo -e "${GREEN}✅ Updated symlink${NC}"
-      SYMLINK_CREATED=true
-    else
-      echo -e "${YELLOW}⏭️  Skipped symlink update${NC}"
-      SYMLINK_CREATED=false
-    fi
-  fi
-elif [ -d "$PATTERNS_LINK" ]; then
-  # It's a real directory
-  echo -e "${YELLOW}⚠️  patterns/ is a real directory (not a symlink)${NC}"
-  echo -e "   ${PATTERNS_LINK} exists as directory"
-  read -p "   Backup and replace with symlink? (y/N): " -n 1 -r
-  echo
-  if [[ $REPLY =~ ^[Yy]$ ]]; then
-    BACKUP_DIR="${PATTERNS_LINK}.backup.$(date +%Y%m%d-%H%M%S)"
-    mv "$PATTERNS_LINK" "$BACKUP_DIR"
-    echo -e "${GREEN}✅ Backed up to:${NC} $BACKUP_DIR"
-    ln -sf "$GLOBAL_PATTERNS" "$PATTERNS_LINK"
-    echo -e "${GREEN}✅ Created symlink${NC}"
-    SYMLINK_CREATED=true
-  else
-    echo -e "${YELLOW}⏭️  Skipped symlink creation${NC}"
-    SYMLINK_CREATED=false
-  fi
-elif [ -e "$PATTERNS_LINK" ]; then
-  # It's some other file type
-  echo -e "${RED}❌ Error: patterns/ exists but is not a directory or symlink${NC}"
-  exit 1
-else
-  # Doesn't exist - create symlink
-  ln -sf "$GLOBAL_PATTERNS" "$PATTERNS_LINK"
-  echo -e "${GREEN}✅ Created symlink:${NC} patterns/ → $GLOBAL_PATTERNS"
-  SYMLINK_CREATED=true
-fi
-
-# Create patterns-local/README.md if it doesn't exist
-PATTERNS_LOCAL_README="$PATTERNS_LOCAL_DIR/README.md"
-
-if [ ! -f "$PATTERNS_LOCAL_README" ]; then
-  cat > "$PATTERNS_LOCAL_README" <<'EOF'
-# Project-Specific Pattern Overrides
-
-This directory contains patterns that override global patterns from `~/.claude-patterns/`.
-
-## Pattern Precedence
-
-When Claude Code loads patterns, it uses this precedence:
-
-1. **Local patterns** (this directory) - **Highest priority**
-2. **Symlinked global patterns** (`.claude/knowledge/patterns/`)
-3. **Claude Code defaults** - Fallback
-
-## When to Add Local Overrides
-
-Add patterns here when:
-- ✅ Project has unique requirements (e.g., different ORM, framework)
-- ✅ Need to extend/customize generic pattern
-- ✅ Temporary experimental patterns (before upstreaming to global repo)
-- ✅ Project-specific anti-patterns or gotchas
-
-**Example**: Your project uses Prisma instead of Kysely:
-```
-patterns-local/
-└── infrastructure/
-    └── repository-pattern.md  # Prisma-specific override
-```
-
-## Upstreaming Patterns
-
-If your local pattern becomes mature and could benefit other projects:
-
-1. Review pattern for generic applicability
-2. Remove project-specific references
-3. Add to `~/.claude-patterns/patterns/`
-4. Update METADATA.yml with stack tags
-5. Delete local override (will use global version)
-
-## DO NOT Add Here
-
-❌ Project-specific learnings → Use `.claude/knowledge/learned/` instead
-❌ Task files or progress tracking → Use `project-orchestration/` instead
-❌ Temporary notes or scratchpad → Use `.claude/scratchpad/` instead
-
-## Pattern Structure
-
-Keep the same directory structure as global patterns:
-```
-patterns-local/
-├── domain/
-│   └── custom-aggregate.md
-├── application/
-│   └── custom-handler.md
-└── infrastructure/
-    └── custom-repository.md
-```
-
-## Example: Local Override
-
-**Scenario**: Your project uses a different authentication library.
-
-**File**: `patterns-local/architecture/dual-identity-pattern.md`
-
-```markdown
-# Dual Identity Pattern (Project-Specific Override)
-
-**Override Reason**: This project uses Passport.js instead of NestJS @CurrentUser.
-
-## Differences from Global Pattern
-
-- Uses `req.user` from Passport.js
-- JWT tokens stored in cookies (not Authorization header)
-- User context extracted in AuthGuard
-
-... (rest of pattern)
-```
-
----
-
-**Last Updated**: $(date +%Y-%m-%d)
-**Project**: $(basename "$PROJECT_DIR")
-EOF
-
-  echo -e "${GREEN}✅ Created:${NC} patterns-local/README.md"
-else
-  echo -e "${YELLOW}⚠️  patterns-local/README.md already exists (skipped)${NC}"
-fi
-
-# Verify symlink
+# --- 1. Patterns symlink ---
+echo -e "${BLUE}[1/4] Patterns${NC}"
+ensure_symlink "$KNOWLEDGE_DIR/patterns" "$GLOBAL_PATTERNS" "patterns -> global patterns"
 echo ""
-echo -e "${BLUE}================================${NC}"
-echo -e "${BLUE}Verification${NC}"
-echo -e "${BLUE}================================${NC}"
 
-if [ -L "$PATTERNS_LINK" ]; then
-  LINK_TARGET=$(readlink "$PATTERNS_LINK")
-  echo -e "${GREEN}✅ Symlink created:${NC}"
-  echo -e "   $PATTERNS_LINK"
-  echo -e "   ${BLUE}→${NC} $LINK_TARGET"
+# --- 2. Patterns-local directory ---
+echo -e "${BLUE}[2/4] Patterns-local${NC}"
+PATTERNS_LOCAL_DIR="$KNOWLEDGE_DIR/patterns-local"
+if [ ! -d "$PATTERNS_LOCAL_DIR" ]; then
+  mkdir -p "$PATTERNS_LOCAL_DIR"
+  echo -e "  ${GREEN}Created:${NC} patterns-local/"
+else
+  echo -e "  ${YELLOW}Already exists:${NC} patterns-local/"
+fi
+echo ""
 
-  # Count patterns accessible via symlink
-  PATTERN_COUNT=$(find "$PATTERNS_LINK" -name "*.md" -not -name "README.md" -not -name "METADATA.yml" | wc -l)
-  echo -e "${GREEN}✅ Accessible patterns:${NC} $PATTERN_COUNT"
+# --- 3. Rules symlinks (based on project.language) ---
+echo -e "${BLUE}[3/4] Rules${NC}"
+PROJECT_LANGUAGE=$(yml_get "project.language")
 
-  # Show layer breakdown
-  echo -e "${BLUE}Layers:${NC}"
-  for layer in domain application architecture; do
-    if [ -d "$PATTERNS_LINK/$layer" ]; then
-      layer_count=$(find "$PATTERNS_LINK/$layer" -name "*.md" -not -name "METADATA.yml" | wc -l)
-      echo -e "   - $layer: $layer_count patterns"
+RULES_DIR="$KNOWLEDGE_DIR/rules"
+mkdir -p "$RULES_DIR"
+
+if [[ -n "$PROJECT_LANGUAGE" ]]; then
+  # Always link common rules
+  COMMON_RULES_SOURCE="$PATTERNS_REPO/rules/common"
+  if [[ -d "$COMMON_RULES_SOURCE" ]]; then
+    ensure_symlink "$RULES_DIR/common" "$COMMON_RULES_SOURCE" "rules/common"
+  fi
+
+  # Link language-specific rules
+  LANG_RULES_SOURCE="$PATTERNS_REPO/rules/$PROJECT_LANGUAGE"
+  if [[ -d "$LANG_RULES_SOURCE" ]]; then
+    ensure_symlink "$RULES_DIR/$PROJECT_LANGUAGE" "$LANG_RULES_SOURCE" "rules/$PROJECT_LANGUAGE"
+  else
+    echo -e "  ${YELLOW}Warning:${NC} No rules found for language '$PROJECT_LANGUAGE'"
+  fi
+
+  # Clean up stale language rule symlinks (languages removed from config)
+  for link in "$RULES_DIR"/*/; do
+    [[ -L "${link%/}" ]] || continue
+    link_name=$(basename "${link%/}")
+    if [[ "$link_name" != "common" && "$link_name" != "$PROJECT_LANGUAGE" ]]; then
+      echo -e "  ${YELLOW}Removing stale:${NC} rules/$link_name"
+      rm "${link%/}"
     fi
   done
 else
-  echo -e "${RED}❌ Symlink verification failed${NC}"
-  exit 1
+  echo -e "  ${YELLOW}Skipped:${NC} No project.language configured in project.yml"
+fi
+echo ""
+
+# --- 4. Skills symlinks (based on skills list) ---
+echo -e "${BLUE}[4/4] Skills${NC}"
+SKILLS_DIR="$KNOWLEDGE_DIR/skills"
+mkdir -p "$SKILLS_DIR"
+
+# Collect configured skill categories
+CONFIGURED_SKILLS=()
+while IFS= read -r category; do
+  [[ -z "$category" ]] && continue
+  CONFIGURED_SKILLS+=("$category")
+
+  SKILL_SOURCE="$PATTERNS_REPO/skills/$category"
+  if [[ -d "$SKILL_SOURCE" ]]; then
+    ensure_symlink "$SKILLS_DIR/$category" "$SKILL_SOURCE" "skills/$category"
+  else
+    echo -e "  ${YELLOW}Warning:${NC} Skill category '$category' not found in repo"
+  fi
+done < <(yml_list "skills")
+
+if [[ ${#CONFIGURED_SKILLS[@]} -eq 0 ]]; then
+  echo -e "  ${YELLOW}Skipped:${NC} No skills configured in project.yml"
 fi
 
+# Clean up stale skill symlinks (categories removed from project.yml)
+for link in "$SKILLS_DIR"/*/; do
+  [[ -L "${link%/}" ]] || continue
+  link_name=$(basename "${link%/}")
+  found=false
+  for cat in "${CONFIGURED_SKILLS[@]}"; do
+    if [[ "$cat" == "$link_name" ]]; then
+      found=true
+      break
+    fi
+  done
+  if [[ "$found" == "false" ]]; then
+    echo -e "  ${YELLOW}Removing stale:${NC} skills/$link_name"
+    rm "${link%/}"
+  fi
+done
+
 echo ""
+
+# --- Verification ---
 echo -e "${BLUE}================================${NC}"
-echo -e "${GREEN}🎉 Setup Complete!${NC}"
+echo -e "${BLUE}Verification${NC}"
 echo -e "${BLUE}================================${NC}"
 echo ""
 
-if [ "$SYMLINK_CREATED" = true ]; then
-  echo -e "${YELLOW}Next steps:${NC}"
-  echo "1. Test project: run tests to verify patterns work"
-  echo "2. Add local overrides: edit patterns-local/ if needed"
-  echo "3. Commit changes: git add .claude/ && git commit -m 'Setup global patterns symlink'"
+# Count patterns
+if [ -L "$KNOWLEDGE_DIR/patterns" ]; then
+  PATTERN_COUNT=$(find "$KNOWLEDGE_DIR/patterns" -name "*.md" -not -name "README.md" -not -name "METADATA.yml" 2>/dev/null | wc -l)
+  echo -e "${GREEN}Patterns:${NC} $PATTERN_COUNT"
+fi
+
+# Count rules
+RULE_COUNT=0
+for dir in "$RULES_DIR"/*/; do
+  [[ -d "$dir" ]] || continue
+  count=$(find "$dir" -name "*.md" 2>/dev/null | wc -l)
+  RULE_COUNT=$((RULE_COUNT + count))
+done
+echo -e "${GREEN}Rules:${NC} $RULE_COUNT (language: ${PROJECT_LANGUAGE:-none})"
+
+# Count skills
+SKILL_COUNT=0
+for dir in "$SKILLS_DIR"/*/; do
+  [[ -d "$dir" ]] || continue
+  count=$(find "$dir" -name "SKILL.md" 2>/dev/null | wc -l)
+  SKILL_COUNT=$((SKILL_COUNT + count))
+done
+echo -e "${GREEN}Skills:${NC} $SKILL_COUNT (categories: ${#CONFIGURED_SKILLS[@]})"
+
+echo ""
+
+# --- Auto-run generate-claude-md.sh ---
+echo -e "${BLUE}Regenerating CLAUDE.md...${NC}"
+if [[ -f "$PROJECT_YML" ]]; then
+  bash "$SCRIPT_DIR/generate-claude-md.sh" "$PROJECT_DIR"
 else
-  echo -e "${YELLOW}Note:${NC} Symlink already existed, no changes made"
+  echo -e "${YELLOW}Skipped:${NC} No project.yml found (CLAUDE.md not regenerated)"
 fi
+
+echo ""
+echo -e "${BLUE}================================${NC}"
+echo -e "${GREEN}Project setup complete!${NC}"
+echo -e "${BLUE}================================${NC}"
 echo ""
 
 exit 0

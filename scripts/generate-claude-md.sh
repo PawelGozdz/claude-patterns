@@ -182,6 +182,83 @@ while IFS= read -r doc; do
   DOCS_LIST="${DOCS_LIST}- [${doc}](./${doc})\n"
 done < <(yml_list "docs")
 
+# --- Generate rules reference ---
+
+PROJECT_LANGUAGE=$(yml_get "project.language")
+RULES_REFERENCE=""
+
+if [[ -n "$PROJECT_LANGUAGE" ]]; then
+  # Build list of rule files for common and language-specific
+  COMMON_RULES_DIR="$PATTERNS_DIR/rules/common"
+  LANG_RULES_DIR="$PATTERNS_DIR/rules/$PROJECT_LANGUAGE"
+
+  COMMON_RULES_LIST=""
+  if [[ -d "$COMMON_RULES_DIR" ]]; then
+    for f in "$COMMON_RULES_DIR"/*.md; do
+      [[ -f "$f" ]] || continue
+      name=$(basename "$f" .md)
+      COMMON_RULES_LIST="${COMMON_RULES_LIST}${name}, "
+    done
+    COMMON_RULES_LIST="${COMMON_RULES_LIST%, }"  # trim trailing comma
+  fi
+
+  LANG_RULES_LIST=""
+  if [[ -d "$LANG_RULES_DIR" ]]; then
+    for f in "$LANG_RULES_DIR"/*.md; do
+      [[ -f "$f" ]] || continue
+      name=$(basename "$f" .md)
+      LANG_RULES_LIST="${LANG_RULES_LIST}${name}, "
+    done
+    LANG_RULES_LIST="${LANG_RULES_LIST%, }"
+  fi
+
+  RULES_REFERENCE="## Coding Standards & Rules\n\n"
+  RULES_REFERENCE="${RULES_REFERENCE}Follow coding standards in \`.claude/knowledge/rules/\`:\n"
+  if [[ -n "$COMMON_RULES_LIST" ]]; then
+    RULES_REFERENCE="${RULES_REFERENCE}- Common: \`.claude/knowledge/rules/common/\` (${COMMON_RULES_LIST})\n"
+  fi
+  if [[ -n "$LANG_RULES_LIST" ]]; then
+    display_lang=$(echo "$PROJECT_LANGUAGE" | sed 's/\b\(.\)/\u\1/g')
+    RULES_REFERENCE="${RULES_REFERENCE}- ${display_lang}: \`.claude/knowledge/rules/${PROJECT_LANGUAGE}/\` (${LANG_RULES_LIST})\n"
+  fi
+  RULES_REFERENCE="${RULES_REFERENCE}\nRead relevant rule files before implementing."
+fi
+
+# --- Generate skills reference ---
+
+SKILLS_LIST_ITEMS=""
+while IFS= read -r category; do
+  [[ -z "$category" ]] && continue
+  CATEGORY_DIR="$PATTERNS_DIR/skills/$category"
+  if [[ -d "$CATEGORY_DIR" ]]; then
+    for skill_dir in "$CATEGORY_DIR"/*/; do
+      [[ -d "$skill_dir" ]] || continue
+      skill_name=$(basename "$skill_dir")
+      # Try to extract description from first line of SKILL.md
+      skill_desc=""
+      if [[ -f "$skill_dir/SKILL.md" ]]; then
+        skill_desc=$(head -5 "$skill_dir/SKILL.md" | grep -i "description:" | head -1 | sed 's/^.*description: *//' | sed 's/^"//' | sed 's/"$//')
+        if [[ -z "$skill_desc" ]]; then
+          # Fallback: use the title (first # heading)
+          skill_desc=$(grep "^# " "$skill_dir/SKILL.md" | head -1 | sed 's/^# //')
+        fi
+      fi
+      if [[ -n "$skill_desc" ]]; then
+        SKILLS_LIST_ITEMS="${SKILLS_LIST_ITEMS}- ${category}/${skill_name} — ${skill_desc}\n"
+      else
+        SKILLS_LIST_ITEMS="${SKILLS_LIST_ITEMS}- ${category}/${skill_name}\n"
+      fi
+    done
+  fi
+done < <(yml_list "skills")
+
+SKILLS_REFERENCE=""
+if [[ -n "$SKILLS_LIST_ITEMS" ]]; then
+  SKILLS_REFERENCE="## Available Skills\n\n"
+  SKILLS_REFERENCE="${SKILLS_REFERENCE}Reference skills in \`.claude/knowledge/skills/\`:\n"
+  SKILLS_REFERENCE="${SKILLS_REFERENCE}${SKILLS_LIST_ITEMS}"
+fi
+
 # --- Load stack-specific content ---
 
 STACK_CONTENT=""
@@ -224,6 +301,23 @@ awk -v replacement="$(echo -e "$PROJECT_TABLE")" '{gsub(/%%PROJECT_TABLE%%/, rep
 
 # Replace %%RULES%%
 awk -v replacement="$(echo -e "$RULES")" '{gsub(/%%RULES%%/, replacement)}1' "$TMPFILE" > "${TMPFILE}.2" && mv "${TMPFILE}.2" "$TMPFILE"
+
+# Replace %%RULES_REFERENCE%% (using perl to avoid awk & backreference issues)
+if [[ -n "$RULES_REFERENCE" ]]; then
+  export MARKER_REPLACEMENT="$(echo -e "$RULES_REFERENCE")"
+  perl -0777 -i -pe 's/%%RULES_REFERENCE%%/$ENV{MARKER_REPLACEMENT}/g' "$TMPFILE"
+else
+  sed -i 's/%%RULES_REFERENCE%%//' "$TMPFILE"
+fi
+
+# Replace %%SKILLS_REFERENCE%% (using perl to avoid awk & backreference issues)
+if [[ -n "$SKILLS_REFERENCE" ]]; then
+  export MARKER_REPLACEMENT="$(echo -e "$SKILLS_REFERENCE")"
+  perl -0777 -i -pe 's/%%SKILLS_REFERENCE%%/$ENV{MARKER_REPLACEMENT}/g' "$TMPFILE"
+else
+  sed -i 's/%%SKILLS_REFERENCE%%//' "$TMPFILE"
+fi
+unset MARKER_REPLACEMENT
 
 # Replace %%STACK_CONTENT%% (entire stack profile section)
 if [[ -n "$STACK_CONTENT" ]]; then

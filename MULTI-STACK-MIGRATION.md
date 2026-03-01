@@ -2,21 +2,48 @@
 
 > **Status**: PLANNED (nie implementować gdy inne sesje Claude Code są aktywne!)
 > **Created**: 2026-02-10
-> **Author**: Conversation analysis — claude-patterns multi-stack support
+> **Updated**: 2026-02-13 (skonsolidowany z RFC-001-CRITICAL-RULES-INJECTION)
 > **Affects**: claude-patterns, local-hero-3, local-hero-4, universal-learning-system
 
 ---
 
-## 1. Problem
+## 1. Problemy (dwa, jedno rozwiązanie)
 
-claude-patterns repo działa świetnie dla TypeScript/NestJS (local-hero-{3,4}, universal-learning-system), ale:
+### Problem A: Brak multi-stack (oryginalny MULTI-STACK-MIGRATION)
+
+claude-patterns działa dla TypeScript/NestJS, ale:
 - Wszystkie agents/skills/patterns są NestJS-specific i globalnie widoczne (`~/.claude/` symlinks)
 - Nie da się dodać Flutter/Python projektu bez zaśmiecania go NestJS agentami
 - Brak mechanizmu "ten projekt używa tych narzędzi, tamten innych"
 
+### Problem B: Pomijanie patterns (oryginalny RFC-001)
+
+Claude Code wielokrotnie łamie architekturę mimo pełnej dokumentacji w patterns/:
+- Kontrolery w `src/contexts/` zamiast `src/app/api/`
+- Brakujące schema testy z 6 kategoriami
+- Pattern: Claude implementuje → pomija czytanie patterns → błędy → user pyta "sprawdziłeś patterns?" → "nie"
+
+### Dlaczego jedno rozwiązanie
+
+RFC-001 proponował nowy system injection (snippety, lib/, docs symlinki). Ale **infrastruktura już istnieje**:
+
+```
+templates/core.md              → %%RULES%% + %%STACK_CONTENT%% placeholders
+templates/stacks/nestjs-ddd.md → "Key Architecture Rules" sekcja (niepełna)
+project.yml                    → rules: [...] + stack_profile: nestjs-ddd
+generate-claude-md.sh          → składa core + stack + local → CLAUDE.md
+```
+
+RFC-001 = **rozszerz `stacks/nestjs-ddd.md`** o brakujące krytyczne reguły. Żadnych nowych plików.
+
+---
+
 ## 2. Cel
 
-Architektura **preset-based**: każdy projekt deklaruje `preset: nestjs-ddd` lub `preset: flutter` w `project.yml`, a `setup-project.sh` linkuje **tylko to co potrzebne** do `.claude/` projektu.
+Architektura **stack_profile-based**: każdy projekt deklaruje `stack_profile: nestjs-ddd` w `project.yml`, a `setup-project.sh`:
+1. Linkuje **tylko właściwe** agents/patterns/skills do `.claude/` projektu
+2. Generuje `settings.json` z właściwymi permissions per stack
+3. Generuje `CLAUDE.md` z **krytycznymi regułami** widocznymi w system prompt
 
 ---
 
@@ -26,26 +53,17 @@ Architektura **preset-based**: każdy projekt deklaruje `preset: nestjs-ddd` lub
 
 ```
 claude-patterns/
-├── presets.yml                            ← routing: preset → directories
-│
 ├── agents/
 │   ├── universal/                         ← global: ~/.claude/agents/
 │   │   ├── technical-architecture-lead.md
 │   │   └── security-privacy-architect.md
 │   │
 │   └── stacks/
-│       ├── nestjs-ddd/                    ← per-project: .claude/agents/shared/
-│       │   ├── backend-technology-expert.md
-│       │   ├── ddd-application-expert.md
-│       │   ├── code-quality-verifier.md
-│       │   └── security-e2e-verifier.md
-│       │
-│       ├── flutter/
-│       │   ├── flutter-architecture-expert.md
-│       │   └── flutter-quality-verifier.md
-│       │
-│       └── python/                        ← przyszłość
-│           └── ...
+│       └── nestjs-ddd/                    ← per-project: .claude/agents/shared/
+│           ├── backend-technology-expert.md
+│           ├── ddd-application-expert.md
+│           ├── code-quality-verifier.md
+│           └── security-e2e-verifier.md
 │
 ├── skills/                                ← ZASTĘPUJE commands/
 │   ├── universal/                         ← global: ~/.claude/skills/
@@ -53,20 +71,11 @@ claude-patterns/
 │   │       └── SKILL.md
 │   │
 │   └── stacks/
-│       ├── nestjs-ddd/                    ← per-project: .claude/skills/shared/
-│       │   ├── orchestrate/
-│       │   │   └── SKILL.md                  (NestJS delegation chain)
-│       │   └── scaffold/
-│       │       └── SKILL.md                  (NestJS types & patterns)
-│       │
-│       ├── flutter/
-│       │   ├── orchestrate/
-│       │   │   └── SKILL.md                  (Flutter delegation chain)
-│       │   └── scaffold/
-│       │       └── SKILL.md                  (Flutter types & patterns)
-│       │
-│       └── python/                        ← przyszłość
-│           └── ...
+│       └── nestjs-ddd/                    ← per-project: .claude/skills/shared/
+│           ├── orchestrate/
+│           │   └── SKILL.md
+│           └── scaffold/
+│               └── SKILL.md
 │
 ├── hooks/                                 ← global: ~/.claude/hooks/
 │   ├── cost-optimizer.sh
@@ -74,154 +83,101 @@ claude-patterns/
 │   └── state-manager.sh
 │
 ├── patterns/
-│   ├── _shared/                           ← universal concepts
-│   │   ├── fresh-context-pattern.md
-│   │   ├── testing-pyramid-concept.md
-│   │   └── dual-identity-concept.md
-│   │
-│   ├── nestjs-ddd/                        ← PRZENIESIONE z patterns/ (bez zmian wewnątrz!)
-│   │   ├── domain/
-│   │   │   ├── aggregate-pattern.md
-│   │   │   ├── value-object-pattern.md
-│   │   │   ├── entity-pattern.md
-│   │   │   ├── domain-event-pattern.md
-│   │   │   ├── specification-policy-pattern.md
-│   │   │   └── domain-service-pattern.md
-│   │   ├── application/
-│   │   │   ├── command-handler-pattern.md
-│   │   │   ├── query-handler-pattern.md
-│   │   │   ├── application-service-pattern.md
-│   │   │   └── audit-handler-pattern.md
-│   │   ├── infrastructure/
-│   │   │   ├── repository-pattern.md
-│   │   │   ├── repository-events-pattern.md
-│   │   │   ├── mapper-pattern.md
-│   │   │   └── controller-schema-pattern.md
-│   │   ├── architecture/
-│   │   │   ├── acl-registry-pattern.md
-│   │   │   ├── dual-identity-pattern.md
-│   │   │   ├── transactional-pattern.md
-│   │   │   ├── user-projection-pattern.md
-│   │   │   ├── bullmq-queue-pattern.md
-│   │   │   ├── integration-event-pattern.md
-│   │   │   └── entity-event-emission-pattern.md
-│   │   ├── testing/
-│   │   │   ├── testing-pyramid-pattern.md
-│   │   │   ├── schema-testing-pattern.md
-│   │   │   ├── context-isolation-pattern.md
-│   │   │   ├── e2e-hybrid-fixture-pattern.md
-│   │   │   ├── test-seeding-performance-guide.md
-│   │   │   ├── rate-limit-testing-pattern.md
-│   │   │   └── redis-test-isolation-pattern.md
-│   │   └── cross-layer/
-│   │       ├── domain-errors-pattern.md
-│   │       ├── logger-pattern.md
-│   │       ├── error-handler-chain-pattern.md
-│   │       └── conventions-pattern.md
-│   │
-│   ├── flutter/                           ← NOWE (do napisania)
-│   │   ├── state/
-│   │   ├── data/
-│   │   ├── presentation/
-│   │   ├── testing/
-│   │   └── architecture/
-│   │
-│   └── python/                            ← przyszłość
-│       └── ...
+│   └── nestjs-ddd/                        ← PRZENIESIONE z patterns/ (bez zmian wewnątrz!)
+│       ├── domain/
+│       │   ├── aggregate-pattern.md
+│       │   ├── value-object-pattern.md
+│       │   ├── entity-pattern.md
+│       │   ├── domain-event-pattern.md
+│       │   ├── specification-policy-pattern.md
+│       │   └── domain-service-pattern.md
+│       ├── application/
+│       │   ├── command-handler-pattern.md
+│       │   ├── query-handler-pattern.md
+│       │   ├── application-service-pattern.md
+│       │   └── audit-handler-pattern.md
+│       ├── infrastructure/
+│       │   ├── repository-pattern.md
+│       │   ├── repository-events-pattern.md
+│       │   ├── mapper-pattern.md
+│       │   └── controller-schema-pattern.md
+│       ├── architecture/
+│       │   ├── acl-registry-pattern.md
+│       │   ├── dual-identity-pattern.md
+│       │   ├── transactional-pattern.md
+│       │   ├── user-projection-pattern.md
+│       │   ├── bullmq-queue-pattern.md
+│       │   ├── integration-event-pattern.md
+│       │   └── entity-event-emission-pattern.md
+│       ├── testing/
+│       │   ├── testing-pyramid-pattern.md
+│       │   ├── schema-testing-pattern.md
+│       │   ├── context-isolation-pattern.md
+│       │   ├── e2e-hybrid-fixture-pattern.md
+│       │   ├── test-seeding-performance-guide.md
+│       │   ├── rate-limit-testing-pattern.md
+│       │   └── redis-test-isolation-pattern.md
+│       └── cross-layer/
+│           ├── domain-errors-pattern.md
+│           ├── logger-pattern.md
+│           ├── error-handler-chain-pattern.md
+│           └── conventions-pattern.md
 │
 ├── templates/
-│   ├── settings/
-│   │   ├── base.json                      ← wspólne: hooks, context, mcp__zen, thinking
-│   │   ├── nestjs-ddd.json                ← Bash: pnpm, psql; paths: src/**
-│   │   ├── flutter.json                   ← Bash: flutter, dart; paths: lib/**
-│   │   └── python.json                    ← Bash: pip, pytest; paths: src/**
-│   │
-│   ├── stacks/                            ← istniejące (do aktualizacji)
-│   │   ├── nestjs-ddd.md
-│   │   ├── flutter.md
-│   │   └── python.md
-│   │
-│   └── project.yml.example               ← zaktualizować o preset field
+│   ├── core.md                            ← BEZ ZMIAN (universal CLAUDE.md template)
+│   ├── project.yml.example                ← BEZ ZMIAN
+│   ├── CLAUDE-LOCAL.md.example            ← BEZ ZMIAN
+│   ├── README.md                          ← BEZ ZMIAN
+│   ├── stacks/                            ← ZAKTUALIZOWAĆ (critical rules)
+│   │   ├── nestjs-ddd.md                     ← rozszerzyć o reguły z RFC-001
+│   │   ├── flutter.md                        ← istniejący
+│   │   └── python.md                         ← istniejący
+│   ├── settings/                          ← NOWE
+│   │   ├── base.json                         ← wspólne: hooks, permissions, mcp
+│   │   ├── nestjs-ddd.json                   ← Bash: pnpm, psql; paths: src/**
+│   │   └── flutter.json                      ← Bash: flutter, dart; paths: lib/**
+│   └── examples/                          ← BEZ ZMIAN
+│       ├── flutter-project.yml
+│       └── python-project.yml
 │
-├── mcp-server/                            ← zachować, ale nie aktywny
-│
-├── tooling/                               ← zachować (kompilacja project-specific agents)
+├── mcp-server/                            ← zachować
+├── tooling/                               ← zachować
 │
 ├── scripts/
+│   ├── generate-claude-md.sh              ← BEZ ZMIAN (działa z %%STACK_CONTENT%%)
 │   ├── setup-global.sh                    ← PRZEPISAĆ
 │   ├── setup-project.sh                   ← PRZEPISAĆ
-│   ├── setup-all.sh                       ← USUNĄĆ lub redirect do nowych
-│   ├── extract-patterns.sh                ← zachować
 │   └── validate-metadata.sh              ← zaktualizować ścieżki
-│
-├── test-compilation/                      ← zaktualizować
 │
 └── MULTI-STACK-MIGRATION.md              ← ten plik
 ```
 
-### 3.2 presets.yml
+### 3.2 Co WYRZUCAMY vs oryginalne plany
 
-```yaml
-version: "3.0"
+| Element | Werdykt | Dlaczego |
+|---------|---------|----------|
+| `presets.yml` | Nie robimy | Konwencja `stack_profile` → nazwa katalogu wystarczy |
+| `patterns/_shared/` | Nie robimy | Z jednym stackiem nie ma co współdzielić; dodamy przy 2+ |
+| Puste placeholdery flutter/python | Nie robimy | Dodamy katalogi gdy będą potrzebne |
+| `templates/critical-rules/*.snippet.md` | Nie robimy | `stacks/nestjs-ddd.md` już pełni tę rolę |
+| `templates/docs/` symlinki | Nie robimy | `patterns/` już jest w knowledge/ via symlink |
+| `lib/inject-critical-rules.sh` | Nie robimy | `generate-claude-md.sh` + `%%STACK_CONTENT%%` wystarczy |
 
-# Convenience presets — project.yml references these by name
-presets:
-  nestjs-ddd:
-    agents_dir: nestjs-ddd
-    skills_dir: nestjs-ddd
-    patterns_dir: nestjs-ddd
-    settings_template: nestjs-ddd
+### 3.3 Jak `stack_profile` steruje wszystkim
 
-  flutter:
-    agents_dir: flutter
-    skills_dir: flutter
-    patterns_dir: flutter
-    settings_template: flutter
-
-  python:
-    agents_dir: python
-    skills_dir: python
-    patterns_dir: python
-    settings_template: python
-```
-
-### 3.3 project.yml format (per project)
-
-```yaml
-project:
-  name: LocalHero
-  preset: nestjs-ddd
-  # opcjonalnie:
-  # description: "Neighborhood platform for Starachowice"
-  # extra fields per stack...
-
-contexts:
-  - name: auth
-    status: production
-  # ...
-
-rules:
-  - "NEVER import between contexts."
-  # ...
-```
-
-### 3.4 Symlinking — co gdzie idzie
+`project.yml` ma pole `stack_profile: nestjs-ddd`. To jest jedyny "routing key":
 
 ```
-setup-global.sh:
-  ~/.claude/agents/     → claude-patterns/agents/universal/
-  ~/.claude/skills/     → claude-patterns/skills/universal/
-  ~/.claude/hooks/      → claude-patterns/hooks/
-
-setup-project.sh (czyta preset z project.yml):
-  .claude/agents/shared/          → claude-patterns/agents/stacks/{preset}/
-  .claude/skills/shared/          → claude-patterns/skills/stacks/{preset}/
-  .claude/knowledge/patterns/     → claude-patterns/patterns/{preset}/
-  .claude/knowledge/patterns-shared/ → claude-patterns/patterns/_shared/
-  .claude/settings.json           ← merge(base.json + {preset}.json) — tylko jeśli nie istnieje
+stack_profile: nestjs-ddd
+  │
+  ├─ generate-claude-md.sh  → templates/stacks/nestjs-ddd.md  → %%STACK_CONTENT%%
+  ├─ setup-project.sh       → agents/stacks/nestjs-ddd/       → .claude/agents/shared/
+  ├─ setup-project.sh       → skills/stacks/nestjs-ddd/       → .claude/skills/shared/
+  ├─ setup-project.sh       → patterns/nestjs-ddd/            → .claude/knowledge/patterns/
+  └─ setup-project.sh       → templates/settings/nestjs-ddd.json → .claude/settings.json
 ```
 
-### 3.5 Rezultat w projekcie
+### 3.4 Rezultat w projekcie
 
 ```
 local-hero-4/.claude/
@@ -234,60 +190,110 @@ local-hero-4/.claude/
 ├── skills/
 │   └── shared/           → claude-patterns/skills/stacks/nestjs-ddd/  (dir symlink)
 │
-├── hooks/
-│   └── (opcjonalnie project-specific hooks)
-│
 ├── knowledge/
 │   ├── patterns/         → claude-patterns/patterns/nestjs-ddd/       (dir symlink)
-│   ├── patterns-shared/  → claude-patterns/patterns/_shared/          (dir symlink)
 │   ├── patterns-local/                    (project-specific overrides)
 │   └── learned/                           (project-specific discoveries)
 │
 ├── config/
 │   └── project.yml
 │
-└── settings.json                          (wygenerowany z templates lub own)
+└── settings.json                          (wygenerowany z templates)
 ```
 
 ---
 
-## 4. Klasyfikacja agentów
+## 4. Rozwiązanie RFC-001: rozszerzenie stacks/nestjs-ddd.md
 
-| Agent | Kategoria | Preset | Model |
-|-------|-----------|--------|-------|
+### 4.1 Obecna treść (niepełna)
+
+```markdown
+## Key Architecture Rules
+- **ACL Registry**: NEVER import between contexts...
+- **Dual Identity**: NEVER accept userId from request body...
+```
+
+### 4.2 Docelowa treść (rozszerzona o critical rules)
+
+```markdown
+## Implementation Workflow (MANDATORY)
+
+BEFORE any implementation:
+1. Read relevant pattern from `.claude/knowledge/patterns/`
+2. Find existing example in codebase (Glob/Grep)
+3. THEN implement following the pattern
+
+## Key Architecture Rules
+
+- **Controllers:** `src/app/api/{domain}/` — NEVER in `src/contexts/{context}/infrastructure/`
+- **Schemas:** `src/shared/validation/schemas/{domain}/` — NEVER in contexts
+- **Schema tests:** ALL schemas MUST have `__tests__/` with 6-category security tests
+- **Contexts:** ONLY `domain/`, `application/`, `infrastructure/` (repos, ACL)
+- **Module Organization**: If file imports from `./index`, it CANNOT be exported from that `./index`
+- **ACL Registry**: NEVER import between contexts. Use `aclRegistry.getGlobalRequired()`
+- **Hybrid Events**: Domain events in aggregates, Integration events from handlers only
+- **PolicyBuilder**: ALWAYS use `.must(spec)`. NEVER `BusinessRuleValidator.addRule()`
+- **Dual Identity**: NEVER accept userId from request body. Extract from `RequestContextService`
+- **@Transactional**: `Result.fail()` rollback, `Result.ok()` commit
+
+## Testing Strategy
+
+- **Test Pyramid:** L1 ~50%, L2 ~30%, L3 ~20%
+- **E2E tests:** `test/app/api/{domain}/` — happy path + auth + rate limits (SEPARATE files)
+- **Rate limit tests:** ALWAYS in separate `*-rate-limits.e2e.spec.ts` files
+```
+
+### 4.3 Dlaczego to rozwiązuje problem RFC-001
+
+1. `generate-claude-md.sh` wstawia tę treść do `%%STACK_CONTENT%%` w CLAUDE.md
+2. CLAUDE.md jest w system prompt → Claude WIDZI te reguły przy każdej odpowiedzi
+3. Zero nowych plików, zero nowej infrastruktury — rozszerzenie istniejącego mechanizmu
+4. Update: edytuj `stacks/nestjs-ddd.md` → uruchom `generate-claude-md.sh` → gotowe
+
+### 4.4 Odrzucone alternatywy (z RFC-001)
+
+| Podejście | Dlaczego odrzucone |
+|-----------|-------------------|
+| **Osobne snippety** (`templates/critical-rules/*.snippet.md`) | Duplikacja — `stacks/nestjs-ddd.md` + `%%STACK_CONTENT%%` już robi to samo |
+| **Referencja do pliku** ("see .claude/WORKFLOW_RULES.md") | Wymaga aktywnego czytania — ten sam failure mode co patterns |
+| **Enforcement przez /orchestrate** | Nie działa gdy user mówi "implement X" bez /o |
+| **Post-implementation validation** (`validate-structure.sh`) | Łapie błędy PO fakcie — marnuje czas na rework |
+| **Auto-ekstrakcja MUST z patterns** | Sekcje MUST są zbyt verbose (60+ linii); CLAUDE.md potrzebuje zwięzłej ściągi, nie podręcznika |
+
+---
+
+## 5. Klasyfikacja agentów
+
+| Agent | Kategoria | Stack | Model |
+|-------|-----------|-------|-------|
 | technical-architecture-lead | **UNIVERSAL** | global | Opus |
 | security-privacy-architect | **UNIVERSAL** | global | Opus |
 | backend-technology-expert | nestjs-ddd | stack | Opus |
 | ddd-application-expert | nestjs-ddd | stack | Sonnet |
 | code-quality-verifier | nestjs-ddd | stack | Sonnet, VETO |
 | security-e2e-verifier | nestjs-ddd | stack | Opus, VETO |
-| flutter-architecture-expert | flutter | stack | Sonnet |
-| flutter-quality-verifier | flutter | stack | Sonnet, VETO |
-| python-api-expert | python | stack | Sonnet |
-| ml-pipeline-expert | python | stack | Sonnet |
 
 ---
 
-## 5. Skills (zastępują commands)
+## 6. Skills (zastępują commands/)
 
-### 5.1 Dlaczego skills > commands
+### 6.1 Dlaczego skills > commands
 
 - **Auto-detection**: Claude sam rozpoznaje "implement aggregate" i odpala skill
 - **Modularność**: SKILL.md + helpery w katalogu
-- **Opis w kontekście**: per-stack description → trafniejsze auto-detection
+- **Per-stack**: orchestrate/scaffold mają inny workflow per stack
 - **Model per skill**: haiku dla scaffold, sonnet dla orchestrate
 
-### 5.2 Skill definitions
+### 6.2 Migracja
 
-| Skill | Kategoria | Model | Opis |
-|-------|-----------|-------|------|
-| progress | **UNIVERSAL** | Haiku | Czyta STATE.md, git log, formatuje raport |
-| orchestrate | **per-stack** | Sonnet | Delegation chain specyficzny dla stacku |
-| scaffold | **per-stack** | Haiku | Routing table + pattern paths per stack |
+| Źródło | Cel | Kategoria |
+|--------|-----|-----------|
+| `commands/progress.md` | `skills/universal/progress/SKILL.md` | universal |
+| `commands/orchestrate.md` | `skills/stacks/nestjs-ddd/orchestrate/SKILL.md` | per-stack |
+| `commands/scaffold.md` | `skills/stacks/nestjs-ddd/scaffold/SKILL.md` | per-stack |
 
-### 5.3 orchestrate — per-stack delegation chains
+### 6.3 orchestrate — nestjs-ddd delegation chain
 
-**nestjs-ddd:**
 ```
 Phase 1: Context Discovery       → Task(subagent_type='Explore')
 Phase 2A: Business Validation    → Task(subagent_type='customer-value-guardian')  [project-specific]
@@ -300,18 +306,8 @@ Phase 4B: Security + E2E (VETO)  → Task(subagent_type='security-e2e-verifier')
 Phase 5: Schema Testing          → Zod schema tests (Haiku)
 ```
 
-**flutter:**
-```
-Phase 1: Context Discovery       → Task(subagent_type='Explore')
-Phase 2: Architecture Review     → Task(subagent_type='flutter-architecture-expert')
-Phase 3: Implementation          → Task(subagent_type='flutter-implementer')  [project-specific]
-Phase 4: Quality Verification    → Task(subagent_type='flutter-quality-verifier')
-Phase 5: Widget/Golden Tests     → Flutter test verification
-```
+### 6.4 scaffold — nestjs-ddd routing table
 
-### 5.4 scaffold — per-stack routing tables
-
-**nestjs-ddd (istniejące):**
 | Type | Pattern File |
 |------|-------------|
 | dto | patterns/application/command-handler-pattern.md |
@@ -324,21 +320,11 @@ Phase 5: Widget/Golden Tests     → Flutter test verification
 | query-handler | patterns/application/query-handler-pattern.md |
 | test | patterns/testing/schema-testing-pattern.md |
 
-**flutter (nowe):**
-| Type | Pattern File |
-|------|-------------|
-| bloc | patterns/state/bloc-pattern.md |
-| cubit | patterns/state/cubit-pattern.md |
-| repository | patterns/data/repository-pattern.md |
-| model | patterns/data/freezed-model-pattern.md |
-| widget-test | patterns/testing/widget-test-pattern.md |
-| feature | patterns/architecture/feature-structure-pattern.md |
-
 ---
 
-## 6. Settings templates
+## 7. Settings templates
 
-### 6.1 base.json (wspólne dla wszystkich)
+### 7.1 base.json (wspólne dla wszystkich)
 
 ```json
 {
@@ -422,7 +408,7 @@ Phase 5: Widget/Golden Tests     → Flutter test verification
 }
 ```
 
-### 6.2 nestjs-ddd.json (merge z base)
+### 7.2 nestjs-ddd.json (merge z base)
 
 ```json
 {
@@ -459,39 +445,11 @@ Phase 5: Widget/Golden Tests     → Flutter test verification
 }
 ```
 
-### 6.3 flutter.json (merge z base)
-
-```json
-{
-  "permissions": {
-    "allow": [
-      "Bash(flutter:*)",
-      "Bash(dart:*)",
-      "Bash(pub:*)",
-      "Bash(adb:*)",
-      "Bash(xcrun:*)",
-      "Bash(pod:*)",
-      "Read(lib/**)",
-      "Read(test/**)",
-      "Read(integration_test/**)",
-      "Read(android/**)",
-      "Read(ios/**)",
-      "Edit(lib/**)",
-      "Edit(test/**)",
-      "Edit(integration_test/**)",
-      "Write(lib/**)",
-      "Write(test/**)",
-      "Write(integration_test/**)"
-    ]
-  }
-}
-```
-
 ---
 
-## 7. Scripts
+## 8. Scripts
 
-### 7.1 setup-global.sh
+### 8.1 setup-global.sh
 
 ```bash
 #!/bin/bash
@@ -507,29 +465,30 @@ echo "Repo: $REPO"
 # Universal agents
 rm -f ~/.claude/agents 2>/dev/null
 ln -sfn "$REPO/agents/universal" ~/.claude/agents
-echo "✅ ~/.claude/agents/ → agents/universal/"
+echo "  ~/.claude/agents/ -> agents/universal/"
 
 # Universal skills
 rm -f ~/.claude/skills 2>/dev/null
 ln -sfn "$REPO/skills/universal" ~/.claude/skills
-echo "✅ ~/.claude/skills/ → skills/universal/"
+echo "  ~/.claude/skills/ -> skills/universal/"
 
 # Hooks (all universal)
 rm -f ~/.claude/hooks 2>/dev/null
 ln -sfn "$REPO/hooks" ~/.claude/hooks
-echo "✅ ~/.claude/hooks/ → hooks/"
+echo "  ~/.claude/hooks/ -> hooks/"
 
 echo ""
 echo "=== Done ==="
 echo "Global resources linked. Run setup-project.sh per project for stack-specific setup."
 ```
 
-### 7.2 setup-project.sh
+### 8.2 setup-project.sh
 
 ```bash
 #!/bin/bash
 # setup-project.sh <project-path>
-# Reads project.yml preset, links stack-specific agents/skills/patterns, generates settings.json
+# Reads stack_profile from project.yml, links stack-specific resources,
+# generates settings.json, generates CLAUDE.md
 
 set -e
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
@@ -541,62 +500,56 @@ echo "=== Claude Patterns: Project Setup ==="
 echo "Project: $PROJECT_DIR"
 echo "Repo: $REPO"
 
-# Read preset from project.yml
+# Read stack_profile from project.yml
 if [ ! -f "$PROJECT_YML" ]; then
-  echo "❌ Missing: $PROJECT_YML"
-  echo "   Create it with: preset: nestjs-ddd (or flutter, python)"
+  echo "Missing: $PROJECT_YML"
+  echo "  Copy from: $REPO/templates/project.yml.example"
   exit 1
 fi
 
-PRESET=$(grep 'preset:' "$PROJECT_YML" | head -1 | awk '{print $2}')
-if [ -z "$PRESET" ]; then
-  echo "❌ No 'preset:' field in project.yml"
+STACK=$(grep 'stack_profile:' "$PROJECT_YML" | head -1 | awk '{print $2}')
+if [ -z "$STACK" ]; then
+  echo "No 'stack_profile:' in project.yml"
   exit 1
 fi
 
-echo "Preset: $PRESET"
+echo "Stack profile: $STACK"
 echo ""
 
-# Validate preset directories exist
-for dir in "agents/stacks/$PRESET" "skills/stacks/$PRESET" "patterns/$PRESET"; do
+# Validate stack directories exist
+MISSING=0
+for dir in "agents/stacks/$STACK" "skills/stacks/$STACK" "patterns/$STACK"; do
   if [ ! -d "$REPO/$dir" ]; then
-    echo "❌ Missing preset directory: $REPO/$dir"
-    exit 1
+    echo "Missing: $REPO/$dir"
+    MISSING=1
   fi
 done
+[ $MISSING -eq 1 ] && exit 1
 
 # 1. Stack agents
 mkdir -p "$PROJECT_DIR/.claude/agents"
 rm -f "$PROJECT_DIR/.claude/agents/shared" 2>/dev/null
-ln -sfn "$REPO/agents/stacks/$PRESET" "$PROJECT_DIR/.claude/agents/shared"
-echo "✅ .claude/agents/shared/ → agents/stacks/$PRESET/"
+ln -sfn "$REPO/agents/stacks/$STACK" "$PROJECT_DIR/.claude/agents/shared"
+echo "  .claude/agents/shared/ -> agents/stacks/$STACK/"
 
 # 2. Stack skills
 mkdir -p "$PROJECT_DIR/.claude/skills"
 rm -f "$PROJECT_DIR/.claude/skills/shared" 2>/dev/null
-ln -sfn "$REPO/skills/stacks/$PRESET" "$PROJECT_DIR/.claude/skills/shared"
-echo "✅ .claude/skills/shared/ → skills/stacks/$PRESET/"
+ln -sfn "$REPO/skills/stacks/$STACK" "$PROJECT_DIR/.claude/skills/shared"
+echo "  .claude/skills/shared/ -> skills/stacks/$STACK/"
 
 # 3. Stack patterns
 mkdir -p "$PROJECT_DIR/.claude/knowledge"
 rm -f "$PROJECT_DIR/.claude/knowledge/patterns" 2>/dev/null
-ln -sfn "$REPO/patterns/$PRESET" "$PROJECT_DIR/.claude/knowledge/patterns"
-echo "✅ .claude/knowledge/patterns/ → patterns/$PRESET/"
+ln -sfn "$REPO/patterns/$STACK" "$PROJECT_DIR/.claude/knowledge/patterns"
+echo "  .claude/knowledge/patterns/ -> patterns/$STACK/"
 
-# 4. Shared patterns
-rm -f "$PROJECT_DIR/.claude/knowledge/patterns-shared" 2>/dev/null
-if [ -d "$REPO/patterns/_shared" ]; then
-  ln -sfn "$REPO/patterns/_shared" "$PROJECT_DIR/.claude/knowledge/patterns-shared"
-  echo "✅ .claude/knowledge/patterns-shared/ → patterns/_shared/"
-fi
-
-# 5. Settings (merge base + preset, only if not exists)
+# 4. Settings (merge base + stack, only if not exists)
 SETTINGS_FILE="$PROJECT_DIR/.claude/settings.json"
 if [ ! -f "$SETTINGS_FILE" ]; then
   BASE="$REPO/templates/settings/base.json"
-  STACK="$REPO/templates/settings/$PRESET.json"
-  if [ -f "$BASE" ] && [ -f "$STACK" ]; then
-    # Deep merge: base + stack overlay
+  STACK_SETTINGS="$REPO/templates/settings/$STACK.json"
+  if [ -f "$BASE" ] && [ -f "$STACK_SETTINGS" ]; then
     if command -v jq &> /dev/null; then
       jq -s '
         def deepmerge(a;b):
@@ -613,88 +566,90 @@ if [ ! -f "$SETTINGS_FILE" ]; then
           else $b
           end;
         deepmerge(.[0]; .[1])
-      ' "$BASE" "$STACK" > "$SETTINGS_FILE"
-      echo "✅ .claude/settings.json ← merged(base + $PRESET)"
+      ' "$BASE" "$STACK_SETTINGS" > "$SETTINGS_FILE"
+      echo "  .claude/settings.json <- merged(base + $STACK)"
     else
-      echo "⚠️  jq not found — copying base settings only"
+      echo "  jq not found - copying base settings only"
       cp "$BASE" "$SETTINGS_FILE"
     fi
   fi
 else
-  echo "⏭️  .claude/settings.json exists (not overwriting)"
+  echo "  .claude/settings.json exists (not overwriting)"
 fi
 
-# 6. Ensure patterns-local exists
+# 5. Generate CLAUDE.md
+"$REPO/scripts/generate-claude-md.sh" "$PROJECT_DIR"
+
+# 6. Ensure patterns-local exists for project overrides
 mkdir -p "$PROJECT_DIR/.claude/knowledge/patterns-local"
 
-# Summary
 echo ""
 echo "=== Setup Complete ==="
-echo "Preset: $PRESET"
-echo ""
-echo "Linked:"
-echo "  agents/shared/          → $PRESET agents"
-echo "  skills/shared/          → $PRESET skills"
-echo "  knowledge/patterns/     → $PRESET patterns"
-echo "  knowledge/patterns-shared/ → shared patterns"
+echo "Stack: $STACK"
 echo ""
 echo "Next steps:"
 echo "  1. Add project-specific agents to .claude/agents/ (orchestrator, implementers)"
-echo "  2. Review .claude/settings.json and customize if needed"
-echo "  3. Test: open Claude Code in this project"
+echo "  2. Review .claude/settings.json"
+echo "  3. Open Claude Code in this project"
 ```
 
 ---
 
-## 8. Kroki migracji (SEQUENTIAL!)
+## 9. Kroki migracji (SEQUENTIAL!)
 
-> **UWAGA**: Wykonuj gdy ŻADNE inne sesje Claude Code nie są aktywne!
+> **UWAGA**: Wykonuj gdy ZADNE inne sesje Claude Code nie sa aktywne!
 > Zmiana symlinków w trakcie sesji może powodować błędy.
 
 ### Krok 1: Backup
 
 ```bash
-# Backup obecnych symlinków
 ls -la ~/.claude/agents ~/.claude/commands ~/.claude/hooks ~/.claude/skills > ~/claude-symlinks-backup.txt
 ```
 
-### Krok 2: Reorganizacja agents/
+### Krok 2: Rozszerz stacks/nestjs-ddd.md o critical rules (RFC-001)
+
+Edytuj `templates/stacks/nestjs-ddd.md`:
+- Dodaj sekcję "Implementation Workflow (MANDATORY)"
+- Rozszerz "Key Architecture Rules" o reguły z sekcji 4.2 tego dokumentu
+- Dodaj pełniejszą sekcję "Testing Strategy"
+
+```bash
+# Zweryfikuj rezultat:
+./scripts/generate-claude-md.sh ~/projects/local-hero-4
+# Sprawdź czy critical rules pojawiają się w CLAUDE.md
+grep -A5 "Implementation Workflow" ~/projects/local-hero-4/CLAUDE.md
+```
+
+### Krok 3: Reorganizacja agents/
 
 ```bash
 cd ~/projects/claude-patterns
 
-# Przenieś do universal/
+# Universal agents
 mkdir -p agents/universal
-# UWAGA: sprawdź które pliki są truly universal przed przeniesieniem!
-# Na podstawie analizy:
 mv agents/specialists/technical-architecture-lead.md agents/universal/
 mv agents/specialists/security-privacy-architect.md agents/universal/
 
-# Przenieś do stacks/nestjs-ddd/
+# NestJS stack agents
 mkdir -p agents/stacks/nestjs-ddd
 mv agents/specialists/backend-technology-expert.md agents/stacks/nestjs-ddd/
 mv agents/specialists/ddd-application-expert.md agents/stacks/nestjs-ddd/
 mv agents/verifiers/code-quality-verifier.md agents/stacks/nestjs-ddd/
 mv agents/verifiers/security-e2e-verifier.md agents/stacks/nestjs-ddd/
 
-# Przenieś agents-universal.yml i README do bezpiecznego miejsca
+# Przenieś metadata
 mv agents/agents-universal.yml tooling/
-mv agents/README.md agents/README.md.bak
 
-# Utwórz placeholder dla flutter
-mkdir -p agents/stacks/flutter
-# (agentów flutter trzeba napisać)
-
-# Cleanup puste katalogi
-rmdir agents/specialists agents/verifiers 2>/dev/null || true
+# Cleanup
+rm -rf agents/specialists agents/verifiers agents/README.md
 ```
 
-### Krok 3: Reorganizacja patterns/
+### Krok 4: Reorganizacja patterns/
 
 ```bash
 cd ~/projects/claude-patterns
 
-# Przenieś CAŁĄ obecną strukturę do nestjs-ddd/ (zachowując wewnętrzny układ!)
+# Przenieś CALA strukturę do nestjs-ddd/ (wewnętrzny układ BEZ ZMIAN!)
 mkdir -p patterns/nestjs-ddd
 mv patterns/domain patterns/nestjs-ddd/
 mv patterns/application patterns/nestjs-ddd/
@@ -703,100 +658,54 @@ mv patterns/architecture patterns/nestjs-ddd/
 mv patterns/testing patterns/nestjs-ddd/
 mv patterns/cross-layer patterns/nestjs-ddd/
 mv patterns/README.md patterns/nestjs-ddd/
-
-# Zachowaj METADATA.yml
-# (są w subdirach domain/, application/ etc. — przeniosły się automatycznie)
-
-# Utwórz _shared/ z universal concepts
-mkdir -p patterns/_shared
-cp patterns/nestjs-ddd/architecture/fresh-context-pattern.md patterns/_shared/
-# Dodaj inne shared concepts wg potrzeby
-
-# Utwórz placeholder dla flutter
-mkdir -p patterns/flutter/{state,data,presentation,testing,architecture}
-
-# Utwórz placeholder dla python
-mkdir -p patterns/python
 ```
 
-### Krok 4: Migracja commands/ → skills/
+### Krok 5: Migracja commands/ -> skills/
 
 ```bash
 cd ~/projects/claude-patterns
 
-# Utwórz skills structure
+# Universal skill
 mkdir -p skills/universal/progress
-mkdir -p skills/stacks/nestjs-ddd/orchestrate
-mkdir -p skills/stacks/nestjs-ddd/scaffold
-mkdir -p skills/stacks/flutter/orchestrate
-mkdir -p skills/stacks/flutter/scaffold
-
-# Migruj progress (universal)
-# Zmień format: .md → SKILL.md w katalogu
-# Treść: dodaj/zachowaj frontmatter z name + description
 mv commands/progress.md skills/universal/progress/SKILL.md
 
-# Migruj orchestrate i scaffold (nestjs-ddd)
+# NestJS stack skills
+mkdir -p skills/stacks/nestjs-ddd/orchestrate
+mkdir -p skills/stacks/nestjs-ddd/scaffold
 mv commands/orchestrate.md skills/stacks/nestjs-ddd/orchestrate/SKILL.md
 mv commands/scaffold.md skills/stacks/nestjs-ddd/scaffold/SKILL.md
 
-# Flutter orchestrate i scaffold — NAPISAĆ NOWE
-# (placeholder: skopiuj nestjs i dostosuj)
-
-# Zachowaj deprecated/ na wszelki wypadek
-mv commands/deprecated/ skills/deprecated/
-mv commands/README.md skills/README.md
-
-# Usuń pusty commands/
+# Cleanup
+rm -f commands/README.md
 rmdir commands/
-```
-
-### Krok 5: Utwórz presets.yml
-
-```bash
-# Plik już zdefiniowany w sekcji 3.2 tego dokumentu
-# → claude-patterns/presets.yml
 ```
 
 ### Krok 6: Utwórz settings templates
 
 ```bash
 mkdir -p templates/settings
-# Utwórz base.json, nestjs-ddd.json, flutter.json
-# → zdefiniowane w sekcji 6 tego dokumentu
+# Utwórz base.json i nestjs-ddd.json
+# -> zdefiniowane w sekcji 7 tego dokumentu
 ```
 
-### Krok 7: Utwórz nowe scripts
+### Krok 7: Nowe scripts
 
 ```bash
 # Zastąp scripts/setup-global.sh i scripts/setup-project.sh
-# → zdefiniowane w sekcji 7 tego dokumentu
+# -> zdefiniowane w sekcji 8 tego dokumentu
 ```
 
 ### Krok 8: Aktualizuj globalne symlinki
 
 ```bash
-# Usuń stare symlinki
-rm ~/.claude/agents ~/.claude/commands ~/.claude/skills ~/.claude/hooks
+# Usuń stare
+rm -f ~/.claude/agents ~/.claude/commands ~/.claude/skills ~/.claude/hooks
 
-# Uruchom nowy setup-global.sh
+# Uruchom nowy setup
 ~/projects/claude-patterns/scripts/setup-global.sh
 ```
 
-### Krok 9: Aktualizuj project.yml w istniejących projektach
-
-```bash
-# local-hero-3
-echo "  preset: nestjs-ddd" >> ~/projects/local-hero-3/.claude/config/project.yml
-
-# local-hero-4
-echo "  preset: nestjs-ddd" >> ~/projects/local-hero-4/.claude/config/project.yml
-
-# universal-learning-system
-echo "  preset: nestjs-ddd" >> ~/projects/universal-learning-system/.claude/config/project.yml
-```
-
-### Krok 10: Uruchom setup-project.sh na istniejących projektach
+### Krok 9: Uruchom setup-project.sh na istniejących projektach
 
 ```bash
 ~/projects/claude-patterns/scripts/setup-project.sh ~/projects/local-hero-3
@@ -804,10 +713,10 @@ echo "  preset: nestjs-ddd" >> ~/projects/universal-learning-system/.claude/conf
 ~/projects/claude-patterns/scripts/setup-project.sh ~/projects/universal-learning-system
 ```
 
-### Krok 11: Weryfikacja
+### Krok 10: Weryfikacja
 
 ```bash
-# Sprawdź symlinki w każdym projekcie
+# Sprawdź symlinki w kazdym projekcie
 for proj in local-hero-3 local-hero-4 universal-learning-system; do
   echo "=== $proj ==="
   ls -la ~/projects/$proj/.claude/agents/shared/ 2>/dev/null
@@ -818,89 +727,79 @@ done
 
 # Sprawdź globalne
 ls -la ~/.claude/agents/ ~/.claude/skills/ ~/.claude/hooks/
+
+# Sprawdź CLAUDE.md zawiera critical rules
+grep "Implementation Workflow" ~/projects/local-hero-4/CLAUDE.md
+grep "Controllers:" ~/projects/local-hero-4/CLAUDE.md
 ```
 
-### Krok 12: Git commit
+### Krok 11: Git commits (osobne per krok!)
 
 ```bash
 cd ~/projects/claude-patterns
+
+# Commit 1: RFC-001 fix (stack template update)
+git add templates/stacks/nestjs-ddd.md
+git commit -m "fix: add critical rules to nestjs-ddd stack template (resolves RFC-001)"
+
+# Commit 2: Agents reorganization
+git add agents/
+git commit -m "refactor: reorganize agents into universal/ + stacks/nestjs-ddd/"
+
+# Commit 3: Patterns reorganization
+git add patterns/
+git commit -m "refactor: move patterns into patterns/nestjs-ddd/ (internal structure unchanged)"
+
+# Commit 4: Commands -> Skills migration
+git add skills/ commands/
+git commit -m "refactor: migrate commands/ to skills/ (SKILL.md format)"
+
+# Commit 5: Settings templates + scripts
+git add templates/settings/ scripts/
+git commit -m "feat: add settings templates and rewrite setup scripts for multi-stack"
+
+# Commit 6: Cleanup
 git add -A
-git commit -m "feat: multi-stack architecture with preset-based resource selection
-
-- Reorganize agents/ into universal/ + stacks/{preset}/
-- Migrate commands/ to skills/ (SKILL.md format, auto-detection)
-- Reorganize patterns/ into {preset}/ dirs (internal structure unchanged)
-- Add presets.yml for preset → directory mapping
-- Add settings templates (base + per-preset merge)
-- Rewrite setup-global.sh and setup-project.sh
-- Support: nestjs-ddd (existing), flutter (new), python (placeholder)"
+git commit -m "chore: remove RFC-001 (consolidated into migration plan), cleanup"
 ```
-
----
-
-## 9. Co trzeba NAPISAĆ (nie przenieść)
-
-### 9.1 Flutter agents (agents/stacks/flutter/)
-
-| Agent | Model | Odpowiedzialność |
-|-------|-------|------------------|
-| flutter-architecture-expert.md | Sonnet | Feature-first structure, state management choice, navigation, DI |
-| flutter-quality-verifier.md | Sonnet, VETO | Widget test coverage, golden tests, BLoC pattern compliance |
-
-### 9.2 Flutter skills (skills/stacks/flutter/)
-
-| Skill | Model | Do napisania |
-|-------|-------|-------------|
-| orchestrate/SKILL.md | Sonnet | Flutter delegation chain (Phase 1-5 z Flutter agents) |
-| scaffold/SKILL.md | Haiku | Flutter routing table (bloc, cubit, repository, widget-test, feature) |
-
-### 9.3 Flutter patterns (patterns/flutter/)
-
-| Dir | Patterns do napisania |
-|-----|----------------------|
-| state/ | bloc-pattern.md, cubit-pattern.md, riverpod-pattern.md |
-| data/ | repository-pattern.md, freezed-model-pattern.md, dio-client-pattern.md |
-| presentation/ | widget-composition-pattern.md, navigation-pattern.md |
-| testing/ | widget-test-pattern.md, golden-test-pattern.md, integration-test-pattern.md |
-| architecture/ | feature-structure-pattern.md, di-pattern.md |
-
-### 9.4 Settings template (templates/settings/flutter.json)
-
-Zdefiniowany w sekcji 6.3.
 
 ---
 
 ## 10. Zachowanie istniejącej funkcjonalności — checklist
 
-- [ ] Pattern paths w nestjs-ddd agent definitions — nadal `patterns/domain/`, `patterns/application/` (bo symlink wskazuje na patterns/nestjs-ddd/ który ma tę samą wewnętrzną strukturę)
-- [ ] orchestrate skill dla nestjs-ddd — ta sama delegation chain co obecny commands/orchestrate.md
-- [ ] scaffold skill dla nestjs-ddd — ta sama routing table co obecny commands/scaffold.md
-- [ ] Hooks — te same ścieżki w settings.json (nadal `/home/node/.claude/hooks/`)
-- [ ] settings.json — istniejące NIE nadpisywane (setup-project.sh tworzy tylko jeśli brak)
-- [ ] Project-specific agents (orchestrator, implementers) — nietknięte, zostają w .claude/agents/
+- [ ] Pattern paths w agent definitions — nadal `patterns/domain/`, `patterns/application/` (symlink wskazuje na patterns/nestjs-ddd/ z tą samą wewnętrzną strukturą)
+- [ ] orchestrate skill — ta sama delegation chain co commands/orchestrate.md
+- [ ] scaffold skill — ta sama routing table co commands/scaffold.md
+- [ ] Hooks — te same ścieżki w settings.json (`/home/node/.claude/hooks/`)
+- [ ] settings.json — istniejące NIE nadpisywane (tworzy tylko jeśli brak)
+- [ ] Project-specific agents (orchestrator, implementers) — nietknięte
 - [ ] cost-optimizer, session-monitor, state-manager — działają bez zmian
-- [ ] VETO chain (code-quality-verifier → security-e2e-verifier) — zachowana
-- [ ] Haiku for search, Sonnet for implementation, Opus for strategic — zachowane (model w .md files)
-- [ ] compilation system (tooling/compile-agents.js) — nadal działa (dla project-specific agents)
+- [ ] VETO chain (code-quality-verifier -> security-e2e-verifier) — zachowana
+- [ ] Model tiers (Haiku/Sonnet/Opus) — zachowane (model w .md files)
+- [ ] compilation system (tooling/compile-agents.js) — nadal działa
+- [ ] Critical rules widoczne w CLAUDE.md — stacks/nestjs-ddd.md content via %%STACK_CONTENT%%
+- [ ] generate-claude-md.sh — BEZ ZMIAN (template pipeline działa)
 
 ---
 
 ## 11. Ryzyka i mitygacje
 
-| Ryzyko | Prawdopodobieństwo | Mitygacja |
-|--------|-------------------|-----------|
-| Broken symlinks po migracji | Średnie | Krok 11 weryfikacja, backup w kroku 1 |
+| Ryzyko | Prawdop. | Mitygacja |
+|--------|----------|-----------|
+| Broken symlinks po migracji | Średnie | Krok 10 weryfikacja, backup w kroku 1 |
 | Pattern paths w agent definitions nie zgadzają się | Niskie | Wewnętrzna struktura nestjs-ddd/ NIE zmienia się |
 | Claude Code nie odkrywa skills z .claude/skills/shared/ | Niskie | Testować przed pełną migracją |
 | Aktywne sesje Claude Code podczas migracji | Wysokie | **NIE migrować gdy sesje aktywne!** |
 | jq nie zainstalowane (settings merge) | Niskie | Fallback: kopiuj base.json |
+| Critical rules za długie w CLAUDE.md | Niskie | Trzymać <20 linii, reszta w patterns/ |
 
 ---
 
-## 12. Przyszłe rozszerzenia
+## 12. Przyszłe rozszerzenia (gdy będą potrzebne, NIE teraz)
 
-- **Python preset**: agents/stacks/python/, patterns/python/, skills/stacks/python/
-- **AI/ML preset**: rozszerzenie python o ML-specific agents i patterns
-- **MCP server**: opcjonalnie aktywować dla claude.ai / team access
-- **Registry.yml + feature tags**: jeśli ilość presetów > 5, rozważyć granularną kompozycję
+- **Flutter stack**: `agents/stacks/flutter/`, `patterns/flutter/`, `skills/stacks/flutter/`, `templates/settings/flutter.json`
+- **Python stack**: analogicznie
+- **`patterns/_shared/`**: gdy 2+ stacki mają wspólne koncepty (np. testing pyramid concept)
+- **`presets.yml`**: jeśli konwencja nazw nie wystarczy (>5 stacków, niestandardowy routing)
 - **Preset inheritance**: np. `python-ml` inherits from `python` base
+- **MCP server**: opcjonalnie aktywować dla claude.ai / team access

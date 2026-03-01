@@ -1,0 +1,240 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Business Rules YAML v2",
+  "description": "Schema for BUSINESS_RULES.yaml files (v2 format). See patterns/testing/business-rules-yaml-pattern.md",
+  "type": "object",
+  "required": ["metadata", "business_rules"],
+  "additionalProperties": false,
+  "properties": {
+    "metadata": {
+      "type": "object",
+      "required": ["context", "version", "created", "last_updated", "maintainer"],
+      "additionalProperties": false,
+      "properties": {
+        "context": {
+          "type": "string",
+          "description": "Context name, e.g. 'neighborhood-economy/service-provider'"
+        },
+        "subdomain": {
+          "type": "string",
+          "description": "Optional subdomain name for DDD projects"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^2\\.\\d+$",
+          "description": "Schema version, must be 2.x"
+        },
+        "created": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "last_updated": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "maintainer": {
+          "type": "string"
+        },
+        "adr_reference": {
+          "type": "string",
+          "description": "Optional link to Architecture Decision Record"
+        },
+        "notes": {
+          "type": "string",
+          "description": "Optional context-specific architectural notes (1-2 sentences)"
+        }
+      }
+    },
+    "business_rules": {
+      "type": "object",
+      "patternProperties": {
+        "^BR-[A-Z]{2,4}(-[A-Z]{2,6})?-\\d{3}$": {
+          "$ref": "#/$defs/business_rule"
+        }
+      },
+      "additionalProperties": false,
+      "minProperties": 1
+    },
+    "flows": {
+      "type": "object",
+      "patternProperties": {
+        "^[a-z][a-z0-9-]+$": {
+          "$ref": "#/$defs/flow"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "$defs": {
+    "business_rule": {
+      "type": "object",
+      "required": ["title", "description", "rationale", "enforcement", "category", "on_failure"],
+      "additionalProperties": false,
+      "properties": {
+        "title": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "description": {
+          "type": "string"
+        },
+        "rationale": {
+          "type": "string",
+          "description": "Business reason - highest documentation value"
+        },
+        "enforcement": {
+          "type": "string",
+          "description": "Class name or Class.method() - links to code and enables test coverage matching"
+        },
+        "category": {
+          "type": "string",
+          "enum": ["validation", "authorization", "invariant", "policy", "guard"]
+        },
+        "on_failure": {
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "required": ["error_code", "error_class"],
+              "additionalProperties": false,
+              "properties": {
+                "error_code": {
+                  "type": "string",
+                  "pattern": "^[A-Z][A-Z0-9_]+$"
+                },
+                "error_class": {
+                  "type": "string"
+                }
+              }
+            }
+          ]
+        },
+        "requires": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^BR-[A-Z]{2,4}(-[A-Z]{2,6})?-\\d{3}$"
+          }
+        },
+        "on_success": {
+          "type": "object",
+          "properties": {
+            "description": { "type": "string" }
+          },
+          "additionalProperties": false
+        },
+        "deprecated": {
+          "type": "boolean",
+          "const": true
+        },
+        "deprecated_reason": {
+          "type": "string"
+        },
+        "deprecated_date": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        }
+      }
+    },
+    "flow": {
+      "type": "object",
+      "required": ["description", "endpoint", "handler", "steps"],
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "endpoint": {
+          "type": "string",
+          "pattern": "^(GET|POST|PUT|PATCH|DELETE) /"
+        },
+        "handler": {
+          "type": "string"
+        },
+        "request_schema": {
+          "type": "string",
+          "description": "Zod schema class name - links to OpenAPI spec"
+        },
+        "response_schema": {
+          "type": "string",
+          "description": "Response DTO class name - links to OpenAPI spec"
+        },
+        "steps": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/flow_step" },
+          "minItems": 1
+        },
+        "on_success": {
+          "type": "object",
+          "required": ["entity", "state"],
+          "properties": {
+            "entity": { "type": "string" },
+            "state": { "type": "string" },
+            "emits": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Domain events emitted on flow completion"
+            },
+            "next_possible_flows": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "notes": {
+              "type": "string",
+              "description": "Optional side effects, cascading behavior, etc."
+            }
+          },
+          "additionalProperties": false
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["error_code", "from", "http_status"],
+            "additionalProperties": false,
+            "properties": {
+              "error_code": {
+                "type": "string",
+                "pattern": "^[A-Z][A-Z0-9_]+$"
+              },
+              "from": {
+                "type": "string",
+                "pattern": "^BR-[A-Z]{2,4}(-[A-Z]{2,6})?-\\d{3}$"
+              },
+              "http_status": {
+                "type": "integer",
+                "minimum": 400,
+                "maximum": 599
+              }
+            }
+          }
+        }
+      }
+    },
+    "flow_step": {
+      "type": "object",
+      "required": ["step"],
+      "additionalProperties": false,
+      "properties": {
+        "step": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]+$"
+        },
+        "rule": {
+          "type": "string",
+          "pattern": "^BR-[A-Z]{2,4}(-[A-Z]{2,6})?-\\d{3}$"
+        },
+        "action": {
+          "type": "string"
+        },
+        "on_failure": {
+          "type": "string",
+          "enum": ["rollback", "continue", "retry"]
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,284 @@
+# Business Rules - {Context Name}
+# Template Version: 2.0
+# Compatible with: NestJS + DDD + Specification Pattern
+# Repository: https://github.com/vytch/claude-patterns
+#
+# ============================================================================
+# YAML STYLE GUIDE
+# ============================================================================
+#
+# Use pure multi-line YAML format. Never use condensed JSON-style.
+#
+# CORRECT:
+#   on_failure:
+#     error_code: VALIDATION_ERROR
+#     error_class: ValidationError
+#
+# WRONG (do not use):
+#   on_failure: {error_code: VALIDATION_ERROR, error_class: ValidationError}
+#
+# Reasons: readability, clean git diffs, easier maintenance, better tooling.
+#
+# ============================================================================
+# TEST COVERAGE - NOT IN THIS FILE
+# ============================================================================
+#
+# Test coverage is tracked via the `enforcement` field, not inline test blocks.
+# Tooling matches enforcement class names to test files automatically:
+#
+#   L1: enforcement.primary.class -> find *.spec.ts that imports/tests it
+#   L2: flow handler              -> find *.integration.spec.ts for that handler
+#   L3: flow endpoint             -> find *.e2e.spec.ts for that endpoint
+#
+# Run `pnpm validate:br` to validate enforcement references exist in code.
+# Run `pnpm validate:br --context {ctx}` to validate a single context.
+#
+# Zero manual tracking. Refactor-proof. Can't go stale.
+#
+# ============================================================================
+# RULE CATEGORIES
+# ============================================================================
+#
+#   validation    - Input/format validation (UUID, price range, title length)
+#   authorization - Who can do this (only owner, only moderator)
+#   invariant     - Domain state constraints (must be published to receive offers)
+#   policy        - Business decisions (monthly quota, max offers, rate limits)
+#   guard         - Preconditions (time window not expired, not already claimed)
+#
+# Domain expert test: "Would a business stakeholder care about this rule?"
+# If not (transaction boundary, repository save, return value) -> don't add it.
+#
+# ============================================================================
+# NAMING CONVENTION
+# ============================================================================
+#
+# Format: BR-{CTX}-{GROUP?}-{SEQ}
+#
+#   CTX   = 2-4 letter context abbreviation (QJ, AUTH, GEO, SP, COMM, ENG)
+#   GROUP = optional sub-namespace (PUB, CMP, UPD, NEG, QUOTA)
+#   SEQ   = 3-digit sequential number, no gaps within group
+#
+# Examples:
+#   BR-QJ-001          (quick-jobs, rule 1)
+#   BR-QJ-PUB-001      (quick-jobs, publish group, rule 1)
+#   BR-QJ-QUOTA-001    (quick-jobs, quota group, rule 1)
+#   BR-AUTH-001         (auth, rule 1)
+#
+# ============================================================================
+
+# ============================================================================
+# METADATA
+# ============================================================================
+
+metadata:
+  context: {context-name}
+  subdomain: {subdomain-name}  # Optional: for DDD projects with subdomains
+  version: "2.0"
+  created: {YYYY-MM-DD}
+  last_updated: {YYYY-MM-DD}
+  maintainer: {AGENT/TEAM}
+  adr_reference: {ADR-XXXX}  # Optional: link to Architecture Decision Record
+  notes: |
+    Optional context-specific architectural notes (1-2 sentences).
+    Remove this field if not needed.
+
+# ============================================================================
+# BUSINESS RULES (Atomic, Domain-Only)
+# ============================================================================
+#
+# Required fields: title, description, rationale, enforcement, category, on_failure
+# Optional fields: requires, on_success, deprecated/deprecated_reason/deprecated_date
+#
+# Principles:
+# - Rules are ATOMIC - don't know "next" steps (flows handle orchestration)
+# - Error codes are stable identifiers (UPPER_SNAKE_CASE, matches enum value without D_ prefix)
+# - Only domain rules - no infrastructure concerns (repo save, transaction, etc.)
+# - Domain expert test: "Would a business stakeholder care about this rule?"
+# - `on_failure: null` = rule cannot fail (explicit intent, not omission)
+# - `on_success` = description only, for non-obvious outcomes (no emits - events belong in flows)
+# - `deprecated: true` marks rule for removal (tooling ignores in coverage)
+#
+# enforcement field (structured):
+#   primary.class  — REQUIRED: main enforcing class name
+#   primary.method — OPTIONAL: specific method (omit for class-level enforcement)
+#   primary.layer  — REQUIRED: domain | application | infrastructure | framework
+#   additional     — OPTIONAL: list of secondary enforcement points (human-readable only)
+#   notes          — OPTIONAL: free-text for complex cases that can't be structured
+#
+# layer values:
+#   domain         — Aggregates, Value Objects, Specifications, Domain Services
+#   application    — Command/Query/Event Handlers, Application Services, Commands
+#   infrastructure — Guards (custom), Repositories, Crons, Cache Services
+#   framework      — NestJS built-ins (AuthGuard, ThrottlerGuard) — CLASS_EXISTS skipped
+#
+# ============================================================================
+
+business_rules:
+
+  # --- Standard rule (domain enforcement) ---
+  BR-{CTX}-001:
+    title: {Short rule name}
+    description: {What this rule enforces}
+    rationale: {Business reason - security, GDPR, UX, domain requirement}
+    enforcement:
+      primary:
+        class: {SpecificationOrAggregateClassName}
+        method: {methodName}     # OPTIONAL — omit if enforcement is at class level
+        layer: domain            # domain | application | infrastructure | framework
+    category: validation  # validation | authorization | invariant | policy | guard
+    on_failure:
+      error_code: {ERROR_CODE}   # matches LocalHeroErrorCode enum value without D_ prefix
+      error_class: {ErrorClassName}
+
+  # --- Rule enforced at application layer ---
+  BR-{CTX}-002:
+    title: {Handler-enforced rule}
+    description: {What this rule enforces}
+    rationale: {Business reason}
+    enforcement:
+      primary:
+        class: {HandlerClassName}
+        layer: application
+    category: authorization
+    requires:
+      - BR-{CTX}-001
+    on_failure:
+      error_code: {ERROR_CODE}
+      error_class: {ErrorClassName}
+
+  # --- Rule with multiple enforcement points ---
+  BR-{CTX}-003:
+    title: {Rule enforced at multiple layers}
+    description: {What this rule enforces}
+    rationale: {Business reason}
+    enforcement:
+      primary:
+        class: {DomainClassName}
+        method: {methodName}
+        layer: domain
+      additional:
+        - "{HandlerClassName} (ACL check)"  # human-readable, not machine-verified
+    category: invariant
+    on_failure:
+      error_code: {ERROR_CODE}
+      error_class: {ErrorClassName}
+
+  # --- Rule with framework class (NestJS guard, throttler, etc.) ---
+  BR-{CTX}-004:
+    title: {Framework-enforced rule}
+    description: {What this rule enforces}
+    rationale: {Business reason}
+    enforcement:
+      primary:
+        class: AuthGuard        # NestJS built-in — validator skips existence check
+        layer: framework        # framework = skip CLASS_EXISTS check
+    category: authorization
+    on_failure:
+      error_code: UNAUTHORIZED
+      error_class: UnauthorizedException
+
+  # --- Rule that cannot fail (explicit null = intentional, not omission) ---
+  BR-{CTX}-005:
+    title: {Initial state rule}
+    description: {What state is set}
+    rationale: {Business reason}
+    enforcement:
+      primary:
+        class: {AggregateClassName}
+        method: create
+        layer: domain
+    category: invariant
+    on_failure: null
+
+  # --- Rule with non-obvious success outcome ---
+  BR-{CTX}-006:
+    title: {Rule with important success outcome}
+    description: {What this rule enforces}
+    rationale: {Business reason}
+    enforcement:
+      primary:
+        class: {AggregateClassName}
+        method: {methodName}
+        layer: domain
+    category: policy
+    on_failure:
+      error_code: {ERROR_CODE}
+      error_class: {ErrorClassName}
+    on_success:
+      description: {What happens - e.g. "Quota decremented", "Status transitioned to active"}
+
+  # --- Deprecated rule (commented example) ---
+  # BR-{CTX}-007:
+  #   title: {Old rule being retired}
+  #   ...all normal fields...
+  #   deprecated: true
+  #   deprecated_reason: {Why - e.g. "Merged into BR-{CTX}-001"}
+  #   deprecated_date: {YYYY-MM-DD}
+
+# ============================================================================
+# FLOWS (High-Level Orchestration)
+# ============================================================================
+#
+# Principles:
+# - One flow per handler/endpoint
+# - Step names are human-readable (PM/mobile team can understand)
+# - `on_failure: abort` is the IMPLICIT DEFAULT - don't write it
+# - Only specify on_failure when it differs: rollback | continue | retry
+# - `errors` section = complete error list for API consumers
+# - `emits` documents events at flow level (not as separate rules)
+# - `request_schema` / `response_schema` bridge to OpenAPI specs
+#
+# ============================================================================
+
+flows:
+
+  {flow-name}:
+    description: {High-level description of this process}
+    endpoint: {HTTP_METHOD} {/api/path}
+    handler: {HandlerClassName}
+    request_schema: {ZodSchemaClassName}      # Optional: link to OpenAPI
+    response_schema: {ResponseDtoClassName}   # Optional: link to OpenAPI
+
+    steps:
+      - step: {human-readable-step-name}
+        rule: BR-{CTX}-001
+        # on_failure: abort (implicit default, don't write)
+
+      - step: {another-validation-step}
+        rule: BR-{CTX}-002
+        notes: {Optional context, e.g. "Skipped for premium users"}
+
+      - step: {domain-action-step}
+        action: {AggregateName.method()}
+
+      - step: {persistence-step}
+        action: repository.save()
+        on_failure: rollback  # Only when NOT abort
+
+    on_success:
+      entity: {EntityName}
+      state: {final-state}
+      emits:
+        - {DomainEventClassName}
+      next_possible_flows:
+        - {next-flow-name}
+        - {alternative-flow-name}
+      notes: {Optional - side effects, cascading behavior, etc.}
+
+    errors:
+      - error_code: {ERROR_CODE}
+        from: BR-{CTX}-001
+        http_status: 400
+
+      - error_code: {ANOTHER_ERROR}
+        from: BR-{CTX}-002
+        http_status: 422
+
+# ============================================================================
+# END OF FILE
+# ============================================================================
+#
+# NO test_coverage_summary - computed by `npm run rules:coverage`
+# NO notes/migration status - belongs in git commits / task tracker
+#
+# ============================================================================

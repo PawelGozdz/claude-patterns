@@ -265,6 +265,55 @@ Is it format/structure validation?
 
 ## Anti-Patterns
 
+### Async Specifications with Injected Repositories
+
+**NEVER** create specifications that:
+- Have `@Injectable()` decorator
+- Inject repositories in their constructor
+- Have `async isSatisfiedBy()` that performs DB queries
+- Are registered as NestJS providers with symbol token keys (`useFactory` + `provide: SOME_SPEC_TOKEN`)
+
+**WHY**: Specifications are domain-layer pure logic. Injecting repositories couples domain to infrastructure. Testing requires mocking. Module wiring becomes complex.
+
+**CORRECT PATTERN**: If a specification needs a count/value from the database:
+1. Handler (application layer) calls the repository to get the value
+2. Handler instantiates the specification inline: `new MySpecification()`
+3. Handler calls SYNC spec: `spec.isSatisfiedBy(value)`
+
+```typescript
+// ❌ WRONG — async spec with injected repo
+@Injectable()
+export class MaxGroupsPerUserSpecification extends CompositeSpecification<string> {
+  constructor(@Inject(REPO_TOKEN) private repo: IGroupCountRepository) { super(); }
+  async isSatisfiedBy(userId: string): Promise<boolean> {
+    const count = await this.repo.countActiveGroupsByUserId(userId);
+    return count < MAX_GROUPS_PER_USER;
+  }
+}
+// Registered in module as:
+// { provide: MAX_GROUPS_PER_USER_SPEC, useFactory: (repo) => new MaxGroupsPerUserSpecification(repo), inject: [...] }
+
+// ✅ CORRECT — sync spec, repo in handler
+export class MaxGroupsPerUserSpecification extends CompositeSpecification<number> {
+  isSatisfiedBy(currentGroupCount: number): boolean {
+    return currentGroupCount < MAX_GROUPS_PER_USER;
+  }
+}
+
+// In handler (application layer):
+const currentCount = await this.groupQueryRepository.countActiveGroupsByUserId(authenticatedUserId);
+const maxGroupsSpec = new MaxGroupsPerUserSpecification();
+if (!maxGroupsSpec.isSatisfiedBy(currentCount)) {
+  return Result.fail(GroupDomainError.maxGroupsPerUser(MAX_GROUPS_PER_USER));
+}
+```
+
+**When is `AsyncCompositeSpecification` acceptable?**
+
+Only when used inside a `PolicyBuilder.mustAsync()` call within a domain service or application service — and ONLY if the async dependency is a domain service interface, not a repository. DB repositories always belong in handlers.
+
+---
+
 ### Inline Business Logic
 ```typescript
 // ❌ WRONG: inline logic in aggregate

@@ -27,6 +27,14 @@
 
 ---
 
+%%RULES_REFERENCE%%
+
+---
+
+%%SKILLS_REFERENCE%%
+
+---
+
 %%STACK_CONTENT%%
 
 ---
