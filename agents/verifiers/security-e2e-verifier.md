@@ -1,6 +1,7 @@
 ---
 name: security-e2e-verifier
 description: Security & E2E Verifier with VETO POWER - Final quality gate that validates security compliance, E2E tests, performance, and testing pyramid. Makes final GO/NO-GO decision. BLOCKS task if critical issues found.
+tools: Read, Glob, Grep, Bash, mcp__zen__secaudit, mcp__zen__analyze
 model: opus
 cost_estimate: $10-15/mo
 layer: verification

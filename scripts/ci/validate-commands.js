@@ -18,37 +18,40 @@ function validateCommands() {
     process.exit(0);
   }
 
-  const files = fs.readdirSync(COMMANDS_DIR).filter(f => f.endsWith('.md'));
+  const files = fs.readdirSync(COMMANDS_DIR).filter(f => f.endsWith('.md') && f !== 'README.md');
   let hasErrors = false;
   let warnCount = 0;
 
   // Build set of valid command names (without .md extension)
   const validCommands = new Set(files.map(f => f.replace(/\.md$/, '')));
 
-  // Build set of valid agent names (without .md extension)
+  // Build set of valid agent names (without .md extension) — recursive search
   const validAgents = new Set();
-  if (fs.existsSync(AGENTS_DIR)) {
-    for (const f of fs.readdirSync(AGENTS_DIR)) {
-      if (f.endsWith('.md')) {
-        validAgents.add(f.replace(/\.md$/, ''));
+  function findAgentNames(dir) {
+    if (!fs.existsSync(dir)) return;
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (entry.isDirectory()) {
+        findAgentNames(path.join(dir, entry.name));
+      } else if (entry.name.endsWith('.md') && entry.name !== 'README.md') {
+        validAgents.add(entry.name.replace(/\.md$/, ''));
       }
     }
   }
+  findAgentNames(AGENTS_DIR);
 
-  // Build set of valid skill directory names
+  // Build set of valid skill directory names — recursive search
   const validSkills = new Set();
-  if (fs.existsSync(SKILLS_DIR)) {
-    for (const f of fs.readdirSync(SKILLS_DIR)) {
-      const skillPath = path.join(SKILLS_DIR, f);
-      try {
-        if (fs.statSync(skillPath).isDirectory()) {
-          validSkills.add(f);
-        }
-      } catch {
-        // skip unreadable entries
+  function findSkillNames(dir) {
+    if (!fs.existsSync(dir)) return;
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const fullPath = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        validSkills.add(entry.name);
+        findSkillNames(fullPath);
       }
     }
   }
+  findSkillNames(SKILLS_DIR);
 
   for (const file of files) {
     const filePath = path.join(COMMANDS_DIR, file);

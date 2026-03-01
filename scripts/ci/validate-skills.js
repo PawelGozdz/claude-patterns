@@ -8,47 +8,69 @@ const path = require('path');
 
 const SKILLS_DIR = path.join(__dirname, '../../skills');
 
+/**
+ * Recursively find all SKILL.md files under a directory
+ */
+function findSkillFiles(dir, results = []) {
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const fullPath = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      findSkillFiles(fullPath, results);
+    } else if (entry.name === 'SKILL.md') {
+      results.push(fullPath);
+    }
+  }
+  return results;
+}
+
 function validateSkills() {
   if (!fs.existsSync(SKILLS_DIR)) {
     console.log('No skills directory found, skipping validation');
     process.exit(0);
   }
 
-  const entries = fs.readdirSync(SKILLS_DIR, { withFileTypes: true });
-  const dirs = entries.filter(e => e.isDirectory()).map(e => e.name);
+  // Verify each category directory has at least one SKILL.md in its subtree
+  const categories = fs.readdirSync(SKILLS_DIR, { withFileTypes: true })
+    .filter(e => e.isDirectory())
+    .map(e => e.name);
+
   let hasErrors = false;
   let validCount = 0;
 
-  for (const dir of dirs) {
-    const skillMd = path.join(SKILLS_DIR, dir, 'SKILL.md');
-    if (!fs.existsSync(skillMd)) {
-      console.error(`ERROR: ${dir}/ - Missing SKILL.md`);
+  for (const category of categories) {
+    const categoryDir = path.join(SKILLS_DIR, category);
+    const skillFiles = findSkillFiles(categoryDir);
+
+    if (skillFiles.length === 0) {
+      console.error(`ERROR: ${category}/ - No SKILL.md found in any subdirectory`);
       hasErrors = true;
       continue;
     }
 
-    let content;
-    try {
-      content = fs.readFileSync(skillMd, 'utf-8');
-    } catch (err) {
-      console.error(`ERROR: ${dir}/SKILL.md - ${err.message}`);
-      hasErrors = true;
-      continue;
+    for (const skillFile of skillFiles) {
+      const relPath = path.relative(SKILLS_DIR, skillFile);
+      let content;
+      try {
+        content = fs.readFileSync(skillFile, 'utf-8');
+      } catch (err) {
+        console.error(`ERROR: ${relPath} - ${err.message}`);
+        hasErrors = true;
+        continue;
+      }
+      if (content.trim().length === 0) {
+        console.error(`ERROR: ${relPath} - Empty file`);
+        hasErrors = true;
+        continue;
+      }
+      validCount++;
     }
-    if (content.trim().length === 0) {
-      console.error(`ERROR: ${dir}/SKILL.md - Empty file`);
-      hasErrors = true;
-      continue;
-    }
-
-    validCount++;
   }
 
   if (hasErrors) {
     process.exit(1);
   }
 
-  console.log(`Validated ${validCount} skill directories`);
+  console.log(`Validated ${validCount} skill files across ${categories.length} categories`);
 }
 
 validateSkills();

@@ -4,7 +4,7 @@
 **Level:** Advanced
 **Prerequisites:** Testing Pyramid Pattern, DDD basics, Specification Pattern
 **Compatible with:** NestJS, DDD, CQRS
-**Version:** 2.0
+**Version:** 2.1
 
 ---
 
@@ -25,9 +25,9 @@ Traditional business rules documentation (v1 YAML or markdown):
 
 ### Solution
 
-YAML-based business rules (v2) with:
-- Slim rule structure (~9 lines, no inline test tracking)
-- Automated test coverage via `enforcement` field matching
+YAML-based business rules (v2.1) with:
+- Slim rule structure (no inline test tracking)
+- Automated test coverage via `enforcement.primary.class` matching
 - Rule categories (validation/authorization/invariant/policy/guard)
 - Domain expert test: only business-relevant rules
 - Events documented at flow level (`on_success.emits`)
@@ -92,8 +92,8 @@ Format: `BR-{CTX}-{GROUP?}-{SEQ}`
 
 | Part | Description | Examples |
 |------|-------------|----------|
-| `CTX` | 2-4 letter context abbreviation | QJ, AUTH, GEO, SP, COMM, ENG |
-| `GROUP` | Optional sub-namespace | PUB, CMP, UPD, NEG, QUOTA |
+| `CTX` | 2-5 letter context abbreviation | QJ, AUTH, GEO, SP, COMM, AUTHZ |
+| `GROUP` | Optional sub-namespace (2-6 chars) | PUB, CMP, UPD, NEG, QUOTA, VERIF |
 | `SEQ` | 3-digit sequential number | 001, 002, 003 |
 
 ```
@@ -118,11 +118,13 @@ Rules: sequential within groups, no gaps, no suffixes like `-A`.
 | `title` | yes | Short identification name (max 80 chars) |
 | `description` | yes | What the rule enforces |
 | `rationale` | yes | Business reason - highest documentation value |
-| `enforcement` | yes | Link to code class/method, base for coverage tooling |
+| `enforcement` | yes | Object with `primary` (required) and optional `secondary` enforcement targets |
 | `category` | yes | Classification (validation/authorization/invariant/policy/guard) |
-| `on_failure` | yes | `null` = can't fail (explicit intent), `{error_code, error_class}` = can fail |
+| `on_failure` | yes | `null` = can't fail, or object with `error_code` (required, can be null), optional `error_class`, `http_status`, `message`, `notes` |
 | `requires` | no | Rule dependencies - omit if none |
 | `on_success` | no | Description only, for non-obvious outcomes |
+| `tests` | no | Test coverage mapping by pyramid level (e.g., `L1_spec: "file.spec.ts"`) |
+| `gherkin` | no | BDD scenario in Gherkin format (Given/When/Then) |
 | `deprecated` | no | Mark rule for retirement with `deprecated_reason` and `deprecated_date` |
 
 **Flow Fields:**
@@ -130,12 +132,13 @@ Rules: sequential within groups, no gaps, no suffixes like `-A`.
 | Field | Required | Description |
 |-------|----------|-------------|
 | `description` | yes | High-level description |
-| `endpoint` | yes | HTTP method + path |
+| `endpoint` | yes | HTTP method + path, or INTERNAL/CRON prefix for non-HTTP flows |
 | `handler` | yes | Handler class name |
 | `steps` | yes | Ordered execution steps |
 | `request_schema` | no | Zod schema class - bridge to OpenAPI |
 | `response_schema` | no | Response DTO class - bridge to OpenAPI |
-| `on_success` | no | Entity, state, emits, next_possible_flows, notes |
+| `deprecated` | no | Mark flow as deprecated (kept for backward compatibility) |
+| `on_success` | no | Entity, state, emits, next_possible_flows, response, notes |
 | `errors` | no | Complete error list with HTTP status codes |
 
 ### 1. Business Rules (Atomic, ~9 lines each)
@@ -143,51 +146,78 @@ Rules: sequential within groups, no gaps, no suffixes like `-A`.
 ```yaml
 business_rules:
 
-  # Standard rule (9 lines)
+  # Standard rule (~12 lines with enforcement object)
   BR-AUTH-001:
     title: Password strength requirements
     description: Password must be 8+ chars with uppercase, lowercase, number
     rationale: Security - prevent weak passwords
-    enforcement: PasswordStrengthSpecification
+    enforcement:
+      primary:
+        class: PasswordStrengthSpecification
+        layer: domain
     category: validation
     on_failure:
       error_code: WEAK_PASSWORD
       error_class: WeakPasswordError
+      http_status: 400
 
   # Rule with dependencies
   BR-AUTH-002:
     title: Email must be unique
     description: No duplicate email addresses allowed
     rationale: Data integrity - one account per email
-    enforcement: EmailUniqueSpecification
+    enforcement:
+      primary:
+        class: EmailUniqueSpecification
+        layer: domain
     category: validation
     requires:
       - BR-AUTH-001
     on_failure:
       error_code: EMAIL_ALREADY_EXISTS
       error_class: EmailAlreadyExistsError
+      http_status: 409
 
   # Rule that cannot fail (on_failure: null = intentional, not omission)
   BR-AUTH-003:
     title: Initial status is unverified
     description: New accounts start as unverified
     rationale: Domain invariant - security requirement
-    enforcement: UserIdentityAggregate.create()
+    enforcement:
+      primary:
+        class: UserIdentityAggregate
+        method: create()
+        layer: domain
     category: invariant
     on_failure: null
 
-  # Rule with non-obvious success outcome
+  # Rule with secondary enforcement and gherkin
   BR-AUTH-004:
     title: Quota decremented on creation
     description: Free tier quota counter decremented when job created
     rationale: Monetization - enforce free tier limits
-    enforcement: QuotaService.decrement()
+    enforcement:
+      primary:
+        class: QuotaService
+        method: decrement()
+        layer: application
+      secondary:
+        class: QuotaGuard
+        layer: application
     category: policy
     on_failure:
       error_code: QUOTA_DECREMENT_FAILED
       error_class: QuotaError
+      http_status: 403
     on_success:
       description: Quota counter decremented, remaining count updated
+    gherkin: |
+      Given a user on the free tier with 3 remaining quota
+      When they create a new job
+      Then quota is decremented to 2
+    tests:
+      L1_spec: quota-service.spec.ts
+      L2_hdl: create-job.handler.integration.spec.ts
 ```
 
 **Key Principles:**
@@ -195,7 +225,9 @@ business_rules:
 - **Domain-only** - no infrastructure concerns (repo save, transaction, return value)
 - **`on_failure` is always required** - `null` = explicit "can't fail", not omission
 - **`on_success` is optional** - description only, for non-obvious outcomes
-- **`enforcement`** - links rule to code AND enables automated test coverage matching
+- **`enforcement` is an object** - `primary.class` required, optional `primary.layer`, `primary.method`, `secondary` enforcement target
+- **`tests` is optional** - maps pyramid levels to test files (e.g., `L1_spec`, `L2_hdl`)
+- **`gherkin` is optional** - BDD scenario for domain experts (Given/When/Then)
 - **Terminality is a flow concern** - rules say what error, flows decide what to do with it
 - **No `emits`** - event emission belongs in flows, not rules
 
@@ -264,13 +296,13 @@ v2 removes inline test tracking from YAML entirely. Coverage is computed automat
 ```
 YAML rule                    Code                         Test file
 ─────────────                ────                         ─────────
-enforcement:                 class                        test imports/describes
+enforcement.primary.class:   class                        test imports/describes
 PasswordStrengthSpec   →     PasswordStrengthSpec    ←    password-strength.spec.ts
 ```
 
 | Level | What's matched | How |
 |-------|---------------|-----|
-| L1 | Rule -> Spec test | `enforcement` class name -> find `*.spec.ts` that imports/tests it |
+| L1 | Rule -> Spec test | `enforcement.primary.class` -> find `*.spec.ts` that imports/tests it |
 | L2 | Flow -> Handler test | flow `handler` field -> find `*.integration.spec.ts` for that handler |
 | L3 | Flow -> Endpoint test | flow `endpoint` field -> find `*.e2e.spec.ts` for that endpoint |
 
@@ -280,6 +312,8 @@ PasswordStrengthSpec   →     PasswordStrengthSpec    ←    password-strength.
 - **L2/L3 coverage is per-flow** (does the handler/endpoint have integration/E2E tests?)
 
 This matches how testing actually works - you don't write a separate E2E test per rule, you write one E2E test per endpoint that exercises multiple rules.
+
+When the optional `tests` field is present on a rule, it provides explicit mappings (e.g., `L1_spec: "file.spec.ts"`) that supplement automated matching.
 
 ### CI Script Output
 
@@ -301,7 +335,7 @@ L3 Coverage (per-flow):
 ### Why This Is Better Than Inline Test Blocks
 
 - **Zero manual tracking** - no `status: done` to update
-- **Refactor-proof** - rename file, enforcement field follows
+- **Refactor-proof** - rename file, `enforcement.primary.class` follows
 - **Can't go stale** - coverage is computed, not self-reported
 - **DRY** - test file IS the source of truth
 - **~70% file size reduction** - test blocks were the biggest bloat
@@ -408,15 +442,22 @@ flows:
 # BAD - not business rules
 BR-AUTH-009:
   title: Repository Save
-  enforcement: repository.save()
+  enforcement:
+    primary:
+      class: UserRepository
+      method: save()
 
 BR-AUTH-010:
   title: Returns User ID
-  enforcement: Handler return value
+  enforcement:
+    primary:
+      class: RegisterUserHandler
 
 BR-AUTH-011:
   title: Transaction Boundary
-  enforcement: "@Transactional decorator"
+  enforcement:
+    primary:
+      class: TransactionalDecorator
 ```
 
 **Fix:** Apply the domain expert test. These are infrastructure - test them in L2/L3, don't document as business rules.
@@ -462,7 +503,13 @@ tests:
       status: done
 ```
 
-**Fix (v2):** Remove test blocks. Use `enforcement` field matching + CI tooling.
+**Fix (v2.1):** Remove verbose test blocks. Use `enforcement.primary.class` matching + CI tooling. For explicit overrides, use the slim `tests` field:
+```yaml
+# GOOD (v2.1) - optional, slim mapping
+tests:
+  L1_spec: password-strength.spec.ts
+  L2_hdl: register.integration.spec.ts
+```
 
 ### Event emission as separate business rules
 
@@ -471,7 +518,10 @@ tests:
 BR-AUTH-005:
   title: UserRegisteredEvent Fired
   description: Event emitted when user registers
-  enforcement: UserIdentityAggregate.create()
+  enforcement:
+    primary:
+      class: UserIdentityAggregate
+      method: create()
   on_failure: null
 ```
 
@@ -505,7 +555,7 @@ flows:
 
 ### Lint Scripts (Reference Integrity)
 
-**`rules:lint`** - Validates enforcement references resolve to real classes:
+**`rules:lint`** - Validates `enforcement.primary.class` references resolve to real classes:
 ```
 BR-SP-001 (EnableServiceProviderHandler)  → src/.../handler.ts ✅
 BR-SP-004 (ServiceRadius)                → src/.../service-radius.vo.ts ✅
@@ -524,52 +574,61 @@ BR-SP-099 (DeletedSpecification)          → ❌ CLASS NOT FOUND
 ```typescript
 // scripts/rules-coverage.ts (pseudocode)
 
-// 1. Parse all BUSINESS_RULES.yaml → extract enforcement classes + flow handlers/endpoints
-// 2. Scan all *.spec.ts for imports matching enforcement classes (L1)
-// 3. Scan all *.integration.spec.ts for handler class references (L2)
-// 4. Scan all *.e2e.spec.ts for endpoint path references (L3)
-// 5. Report gaps
+// 1. Parse all BUSINESS_RULES.yaml → extract enforcement.primary.class + flow handlers/endpoints
+// 2. Check rule.tests field first (explicit mapping takes priority)
+// 3. Scan all *.spec.ts for imports matching enforcement classes (L1)
+// 4. Scan all *.integration.spec.ts for handler class references (L2)
+// 5. Scan all *.e2e.spec.ts for endpoint path references (L3)
+// 6. Report gaps
 
 const rules = parseAllBusinessRules('contexts/**/BUSINESS_RULES.yaml');
 const testFiles = glob('**/*.spec.ts');
 
 for (const rule of rules) {
-  const l1Match = testFiles.find(f => fileImports(f, rule.enforcement));
-  console.log(`${rule.id} (${rule.enforcement}) → ${l1Match ?? '❌ NO TEST'}`);
+  const enfClass = rule.enforcement.primary.class;
+  const explicit = rule.tests?.L1_spec;
+  const l1Match = explicit ?? testFiles.find(f => fileImports(f, enfClass));
+  console.log(`${rule.id} (${enfClass}) → ${l1Match ?? '❌ NO TEST'}`);
 }
 ```
 
 ---
 
-## v1 to v2 Migration
+## v1 to v2.1 Migration
 
 ### Rule Changes
 
-| v1 | v2 |
-|----|-----|
+| v1 | v2.1 |
+|----|------|
 | `outcomes.success` + `outcomes.failure` | `on_failure` (required) + optional `on_success` |
 | `terminal: true` in rule | Removed (terminality is flow concern) |
-| `tests:` block (30+ lines) | Removed entirely (enforcement matching) |
+| `tests:` block (30+ lines) | Optional `tests` object for explicit mapping; automated enforcement matching |
 | `pyramid_complete: true` | Removed (computed by tooling) |
 | `test_coverage_summary` section | Removed (output of tooling, not input) |
 | `notes` section (migration status) | Removed (belongs in git/task tracker) |
 | No `category` field | Required: validation/authorization/invariant/policy/guard |
+| `enforcement` as string | `enforcement` as object: `primary.class` (required), `primary.layer`, `secondary` |
+| No BDD support | Optional `gherkin` field (Given/When/Then) |
 | Implementation-detail "rules" | Removed (domain expert test) |
 | Event emission as rules | Moved to flow `on_success.emits` |
 | No deprecation mechanism | Optional `deprecated`, `deprecated_reason`, `deprecated_date` |
-| No schema validation | JSON Schema (`business-rules.schema.json`) |
+| No schema validation | JSON Schema (`business-rules.schema.json` v2.1) |
+| `on_failure` minimal | `on_failure` extended: `error_code` (can be null), `http_status`, `message`, `notes` |
 
 ### Flow Changes
 
-| v1 | v2 |
-|----|-----|
+| v1 | v2.1 |
+|----|------|
 | `execution_order` | `steps` |
 | `on_failure: abort` on every step | Implicit default (don't write) |
 | `possible_errors` | `errors` |
-| `from_rule` | `from` |
+| `from_rule` | `from` (accepts BR-ID or step name) |
 | No schema references | `request_schema`, `response_schema` |
 | No event documentation | `on_success.emits` (array) |
 | No notes on success | `on_success.notes` (optional) |
+| No response docs | `on_success.response` (array of response fields) |
+| No flow deprecation | Optional `deprecated` boolean |
+| HTTP-only endpoints | Supports INTERNAL and CRON prefixes |
 
 ### Size Impact
 
@@ -594,7 +653,8 @@ for (const rule of rules) {
 ## References
 
 - **Template:** `templates/BUSINESS_RULES.yaml.template`
-- **JSON Schema:** `schemas/business-rules.schema.json`
+- **JSON Schema:** `schemas/business-rules.schema.json` (v2.1)
+- **CI Validator:** `scripts/ci/validate-business-rules.js`
 - **ADR:** ADR-0066 (Business Rules YAML v2)
 - **Testing Pyramid:** `patterns/testing/testing-pyramid-pattern.md`
 - **Specification Pattern:** `patterns/domain/specification-policy-pattern.md`
@@ -605,6 +665,7 @@ for (const rule of rules) {
 
 | Date | Change | Author |
 |------|--------|--------|
+| 2026-03-01 | v2.1: Enforcement as object (`primary`/`secondary`), `tests` mapping, `gherkin`, `on_failure` extended, flow `deprecated`/`response`, INTERNAL/CRON endpoints, CI validator | Claude Code |
 | 2026-02-15 | v2: Slim structure, enforcement matching, categories, flow-level emits, schema refs | Claude Code |
 | 2026-02-13 | Initial pattern creation (v1) | Claude Code |
 

@@ -109,5 +109,4 @@ After planning:
 
 ## Related Agents
 
-This command invokes the `planner` agent located at:
-`~/.claude/agents/planner.md`
+This command uses the built-in Plan agent (EnterPlanMode) for structured implementation planning.
