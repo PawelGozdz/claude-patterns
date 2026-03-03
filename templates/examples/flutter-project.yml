@@ -5,6 +5,7 @@ project:
   name: MyFlutterApp
   description: "Cross-platform mobile app for iOS and Android"
   stack_profile: flutter
+  agent_profile: frontend-ui
   stack: "Flutter 3.x, Dart, Firebase"
   testing: "flutter_test + patrol"
   state_management: "Riverpod"

@@ -35,6 +35,24 @@ domain  ←  services  ←  api
 
 **Enforced by**: `check-python-layers.js` hook — forbidden imports in domain/services layers.
 
+### Adapting for Non-Standard Architectures
+
+The default config assumes `domain/services` layering. Adjust `python-hooks.json` for your structure:
+
+| Architecture | `noInfraImportLayers` | `layerPath` | Notes |
+|---|---|---|---|
+| **DDD / layered** (default) | `["domain", "services"]` | `"src"` | Full layer purity |
+| **Modular monolith** | `["core", "domain"]` | `"src/modules"` | Per-module `core/` layers |
+| **Pipeline / data** | `[]` | `"src"` | No layer enforcement, typing only |
+| **Content / creative** | `[]` | `"src"` | Minimal — typing on core modules only |
+
+**Key adjustments:**
+- Change `layerPath` to match where your modules live
+- Empty `noInfraImportLayers` disables layer enforcement (keeps typing checks)
+- Adjust `typing.checkUntyped.filePatterns` to target your important modules
+
+Full config examples for each variant: see [`PYTHON-HOOKS-GUIDE.md`](../PYTHON-HOOKS-GUIDE.md).
+
 ---
 
 ## Framework: %%FRAMEWORK%%

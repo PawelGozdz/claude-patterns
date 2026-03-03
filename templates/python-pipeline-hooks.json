@@ -1,0 +1,14 @@
+{
+  "layerPath": ".",
+  "purity": {
+    "noInfraImportLayers": [],
+    "forbiddenImports": []
+  },
+  "typing": {
+    "checkUntyped": {
+      "enabled": true,
+      "filePatterns": ["**/*.py"]
+    }
+  },
+  "skipPatterns": ["test_", "_test.py", "conftest.py", "__pycache__", ".venv", "data/", "notebooks/"]
+}

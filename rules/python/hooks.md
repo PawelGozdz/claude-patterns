@@ -63,3 +63,5 @@ Detects public functions missing return type annotations:
 ## Setup
 
 Set `stack_profile: python` in `project.yml` and run `setup-project.sh` to copy the config template.
+
+For config variants by project type (modular monolith, data pipeline, content/creative), see [`templates/PYTHON-HOOKS-GUIDE.md`](../../templates/PYTHON-HOOKS-GUIDE.md).

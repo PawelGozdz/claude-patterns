@@ -482,6 +482,35 @@ When Claude Code loads patterns, it uses this precedence:
 
 ---
 
+### Config-Only Hook Pattern
+
+Most Python projects need **zero hook scripts** — only a config file:
+
+```
+your-project/
+├── python-hooks.json          ← Only this file needed
+└── .claude/config/project.yml
+```
+
+**How it works:**
+
+1. Global hooks live at `~/.claude/hooks/` (symlinked from claude-patterns)
+2. When triggered, each hook walks upward from the edited file to find `python-hooks.json`
+3. Config found → enforce rules from config
+4. No config found → silent skip (no false positives)
+
+**Analogy**: Like `.eslintrc.json` configures ESLint without copying the ESLint binary into your project. The enforcement engine is global; the rules are local.
+
+**What goes in `python-hooks.json`:**
+- Which layers to enforce purity on (domain, services, etc.)
+- Which imports are forbidden in pure layers
+- Which file patterns to check for type annotations
+- Skip patterns for tests, venvs, etc.
+
+See [`templates/PYTHON-HOOKS-GUIDE.md`](templates/PYTHON-HOOKS-GUIDE.md) for config variants by project type.
+
+---
+
 ## 🔀 MCP vs Symlinks: Which to Use?
 
 ### Quick Decision Matrix

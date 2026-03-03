@@ -5,6 +5,7 @@ project:
   name: MyPythonAPI
   description: "FastAPI backend with async PostgreSQL"
   stack_profile: python
+  agent_profile: backend-api
   stack: "Python 3.12, FastAPI, PostgreSQL"
   testing: "pytest + pytest-cov"
   framework: "FastAPI"

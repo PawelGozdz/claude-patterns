@@ -1,0 +1,58 @@
+# CLAUDE-LOCAL.md — Python Project Additions
+# Copy to: <project>/CLAUDE-LOCAL.md
+# This file is appended to the generated CLAUDE.md
+
+## Python Environment
+
+- **Python**: 3.12
+- **Virtual env**: `.venv/` (activate: `source .venv/bin/activate`)
+- **Package manager**: pip + pyproject.toml
+- **Linting**: ruff (`ruff check .`)
+- **Type checking**: mypy strict (`mypy .`)
+- **Formatting**: ruff format (`ruff format .`)
+
+## Project-Specific Commands
+
+```bash
+# Run all tests
+pytest
+
+# Run with coverage
+pytest --cov=src --cov-report=term-missing
+
+# Type check
+mypy src/
+
+# Lint + format
+ruff check . --fix && ruff format .
+```
+
+## Architecture Notes
+
+<!-- Uncomment the section that matches your project type -->
+
+<!-- CONTENT / CREATIVE PROJECT
+- Content generation pipelines in `src/generators/`
+- Templates in `src/templates/`
+- No strict layering — focus on typing and test coverage
+-->
+
+<!-- DATA PIPELINE PROJECT
+- Pipeline definitions in `src/pipelines/`
+- Data models in `src/models/`
+- No layer enforcement — typing checks on all modules
+-->
+
+<!-- API PROJECT (default)
+- Standard layered architecture: domain → services → api
+- Repository pattern for data access
+- Pydantic models for validation at boundaries
+-->
+
+## Lessons Learned
+
+<!-- Add project-specific lessons as you discover them -->
+
+## Active Work
+
+<!-- Track current focus areas -->

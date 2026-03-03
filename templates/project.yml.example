@@ -14,6 +14,10 @@ project:
   # Available: typescript, python, dart (or omit for common only)
   language: typescript
 
+  # Agent profile hints which agent set/workflow best fits this project
+  # Available: backend-ddd, backend-api, frontend-ui, content-creative, data-pipeline
+  # agent_profile: backend-ddd
+
   stack: "NestJS, TypeScript, PostgreSQL"
   testing: "Vitest"
 

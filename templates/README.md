@@ -25,6 +25,7 @@ generate-claude-md.sh → CLAUDE.md (auto-generated)
 | `nestjs-ddd` | stacks/nestjs-ddd.md | NestJS + DDD + CQRS + Event Sourcing |
 | `flutter` | stacks/flutter.md | Cross-platform mobile apps (iOS/Android/Web) |
 | `python` | stacks/python.md | Python backends (FastAPI/Django/Flask) |
+| `python-pipeline` | stacks/python-pipeline.md | Data pipelines, ML processing, collectors |
 | (omit) | core.md only | Generic - no stack-specific sections |
 
 ---
@@ -114,11 +115,18 @@ state_management: "Riverpod"  # or Bloc, Provider, etc.
 platforms: "iOS, Android, Web"
 ```
 
-### Python
+### Python (API Backend)
 ```yaml
 stack_profile: python
 framework: "FastAPI"  # or Django, Flask, etc.
 database: "PostgreSQL 15"
+```
+
+### Python (Data Pipeline)
+```yaml
+stack_profile: python-pipeline
+framework: "Custom (pipeline + MCP server)"
+database: "PostgreSQL, Neo4j, Qdrant"  # multi-database typical
 ```
 
 Only fields with values appear in the generated project table (no empty rows).
@@ -133,13 +141,16 @@ templates/
 ├── core.md                      # Universal template (all stacks)
 ├── project.yml.example          # Full example with all options
 ├── CLAUDE-LOCAL.md.example      # Example project-specific additions
+├── PYTHON-HOOKS-GUIDE.md        # Config variants for python-hooks.json
 ├── stacks/
 │   ├── nestjs-ddd.md           # NestJS + DDD sections
 │   ├── flutter.md              # Flutter sections
-│   └── python.md               # Python sections
+│   ├── python.md               # Python API backend sections
+│   └── python-pipeline.md      # Python data pipeline sections
 └── examples/
     ├── flutter-project.yml     # Complete Flutter example
-    └── python-project.yml      # Complete Python example
+    ├── python-project.yml      # Complete Python example
+    └── python-CLAUDE-LOCAL.md.example  # Python-specific CLAUDE-LOCAL template
 ```
 
 ---

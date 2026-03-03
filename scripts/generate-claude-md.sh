@@ -330,7 +330,10 @@ if [[ -n "$STACK_CONTENT" ]]; then
   STACK_CONTENT="${STACK_CONTENT//%%FRAMEWORK%%/$FRAMEWORK}"
   STACK_CONTENT="${STACK_CONTENT//%%STATE_MANAGEMENT%%/$STATE_MANAGEMENT}"
   STACK_CONTENT="${STACK_CONTENT//%%PLATFORMS%%/$PLATFORMS}"
-  awk -v replacement="$STACK_CONTENT" '{gsub(/%%STACK_CONTENT%%/, replacement)}1' "$TMPFILE" > "${TMPFILE}.2" && mv "${TMPFILE}.2" "$TMPFILE"
+  # Escape & in replacement (awk treats & as matched text in gsub)
+  # Double-escape: bash \& → awk \\& → literal &
+  STACK_ESCAPED="${STACK_CONTENT//&/\\\\&}"
+  awk -v replacement="$STACK_ESCAPED" '{gsub(/%%STACK_CONTENT%%/, replacement)}1' "$TMPFILE" > "${TMPFILE}.2" && mv "${TMPFILE}.2" "$TMPFILE"
 else
   sed -i 's/%%STACK_CONTENT%%//' "$TMPFILE"
 fi
@@ -343,7 +346,8 @@ awk -v replacement="$(echo -e "$DOCS_LIST")" '{gsub(/%%DOCS_LIST%%/, replacement
 
 # Replace %%LOCAL_CONTENT%%
 if [[ -n "$LOCAL_CONTENT" ]]; then
-  awk -v replacement="$LOCAL_CONTENT" '{gsub(/%%LOCAL_CONTENT%%/, replacement)}1' "$TMPFILE" > "${TMPFILE}.2" && mv "${TMPFILE}.2" "$TMPFILE"
+  LOCAL_ESCAPED="${LOCAL_CONTENT//&/\\\\&}"
+  awk -v replacement="$LOCAL_ESCAPED" '{gsub(/%%LOCAL_CONTENT%%/, replacement)}1' "$TMPFILE" > "${TMPFILE}.2" && mv "${TMPFILE}.2" "$TMPFILE"
 else
   sed -i 's/%%LOCAL_CONTENT%%//' "$TMPFILE"
 fi

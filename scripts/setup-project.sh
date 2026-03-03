@@ -103,7 +103,18 @@ mkdir -p "$KNOWLEDGE_DIR"
 
 # --- 1. Patterns symlink ---
 echo -e "${BLUE}[1/5] Patterns${NC}"
-ensure_symlink "$KNOWLEDGE_DIR/patterns" "$GLOBAL_PATTERNS" "patterns -> global patterns"
+PROJECT_LANGUAGE=$(yml_get "project.language")
+if [[ "$PROJECT_LANGUAGE" == "typescript" || -z "$PROJECT_LANGUAGE" ]]; then
+  ensure_symlink "$KNOWLEDGE_DIR/patterns" "$GLOBAL_PATTERNS" "patterns -> global patterns"
+else
+  # Patterns are TypeScript/DDD-specific — skip for other languages
+  if [ -L "$KNOWLEDGE_DIR/patterns" ]; then
+    rm "$KNOWLEDGE_DIR/patterns"
+    echo -e "  ${YELLOW}Removed:${NC} patterns symlink (TS-specific, not applicable for $PROJECT_LANGUAGE)"
+  else
+    echo -e "  ${YELLOW}Skipped:${NC} patterns (TS-specific — use patterns-local/ for $PROJECT_LANGUAGE patterns)"
+  fi
+fi
 echo ""
 
 # --- 2. Patterns-local directory ---
@@ -219,15 +230,17 @@ if [[ -n "$STACK_PROFILE" ]]; then
   fi
 
   if [[ -n "$HOOKS_SOURCE" ]]; then
-    HOOKS_FILENAME=$(basename "$HOOKS_SOURCE")
+    # Target filename: use base-stack hooks name so hook scripts can find it
+    # e.g. python-pipeline-hooks.json → python-hooks.json (hooks search for python-hooks.json)
+    HOOKS_FILENAME="${BASE_STACK}-hooks.json"
     HOOKS_TARGET="$PROJECT_DIR/$HOOKS_FILENAME"
 
     if [[ -f "$HOOKS_TARGET" ]]; then
       if diff -q "$HOOKS_SOURCE" "$HOOKS_TARGET" > /dev/null 2>&1; then
         echo -e "  ${YELLOW}Up to date:${NC} $HOOKS_FILENAME"
       else
-        cp "$HOOKS_SOURCE" "$HOOKS_TARGET"
-        echo -e "  ${GREEN}Updated:${NC} $HOOKS_FILENAME (synced from template)"
+        echo -e "  ${YELLOW}Custom config:${NC} $HOOKS_FILENAME differs from template (preserved)"
+        echo -e "  ${YELLOW}  Template at:${NC} $HOOKS_SOURCE"
       fi
     else
       cp "$HOOKS_SOURCE" "$HOOKS_TARGET"
