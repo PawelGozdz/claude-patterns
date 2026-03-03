@@ -563,6 +563,137 @@ describe('NeighborhoodEconomyModule - Handler Registration', () => {
 
 ---
 
+## ✅ L2 Integration Tests for Handlers (ADR-0035)
+
+### CRITICAL: Handler tests = L2 Integration Tests with real DB
+
+**Handler tests MUST use `createStandardTestSetup()` with a real NestJS app and real database.**
+**DO NOT mock repositories with `vi.fn()` — that is a unit test, not L2.**
+
+```typescript
+/**
+ * CreateUserProfileHandler Integration Tests (L2)
+ *
+ * @see ADR-0035 - L2 Integration Test (Handler)
+ */
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { AppUtils } from '@app/shared';
+import { UserIdentityFixture } from '@test/shared/fixtures/auth/user-identity-fixture.class';
+import {
+  createStandardTestSetup,
+  type ExtendedTestAppContext,
+} from 'test/shared/nestjs-test-setup';
+import { withUserContext } from 'test/shared/utils/test-context';
+import { DatabaseService } from '@shared/database/database.service';
+import { CreateUserProfileHandler } from '../create-user-profile.handler';
+import { CreateUserProfileCommand } from '../create-user-profile.command';
+
+describe('CreateUserProfileHandler (L2 Integration)', () => {
+  let context: ExtendedTestAppContext;
+  let handler: CreateUserProfileHandler;
+  let dbService: DatabaseService;
+
+  beforeAll(async () => {
+    context = await createStandardTestSetup({
+      enableMockedProviders: true,
+      testing: {
+        skipAuthRateLimiting: true,
+        skipApiRateLimiting: true,
+        skipGlobalRateLimiting: true,
+        skipEndpointRateLimiting: true,
+      },
+    }).setup();
+
+    handler = context.app.get(CreateUserProfileHandler);
+    dbService = context.app.get(DatabaseService);
+  });
+
+  afterAll(async () => {
+    if (context) await context.app.close();
+  });
+
+  beforeEach(async () => {
+    await context.cleaner.cleanAll(context.app);
+  });
+
+  it('should create profile for new user (BR-UP-007)', async () => {
+    // Given: User exists in auth context
+    const db = dbService.getDatabase();
+    const userId = await UserIdentityFixture.createAsync(db, { isEmailVerified: true });
+
+    // When: Command executed
+    const result = await withUserContext(context.app, userId, async () => {
+      return handler.execute(new CreateUserProfileCommand(userId));
+    });
+
+    // Then: Result.ok()
+    expect(result.isSuccess).toBe(true);
+
+    // Then: Profile exists in DB
+    const profile = await db
+      .selectFrom('user_profiles')
+      .select(['user_id', 'profile_status'])
+      .where('user_id', '=', userId)
+      .executeTakeFirst();
+
+    expect(profile).toBeDefined();
+    expect(profile!.profile_status).toBe('active');
+  });
+
+  it('should be idempotent (BR-UP-007)', async () => {
+    // Given: Profile already exists
+    const db = dbService.getDatabase();
+    const userId = await UserIdentityFixture.createAsync(db, { isEmailVerified: true });
+    await handler.execute(new CreateUserProfileCommand(userId));
+
+    // When: Command executed again
+    const result = await withUserContext(context.app, userId, async () => {
+      return handler.execute(new CreateUserProfileCommand(userId));
+    });
+
+    // Then: Still ok, no duplicate
+    expect(result.isSuccess).toBe(true);
+
+    const count = await db
+      .selectFrom('user_profiles')
+      .select(db.fn.count('user_id').as('count'))
+      .where('user_id', '=', userId)
+      .executeTakeFirst();
+    expect(Number(count!.count)).toBe(1);
+  });
+});
+```
+
+### Anti-Pattern: Mock-based "L2" handler tests
+
+```typescript
+// ❌ WRONG: Using vi.fn() in "L2" handler test — this is actually a L1 UNIT test
+describe('CreateUserProfileHandler (L2)', () => {
+  const mockRepo = { findByUserId: vi.fn(), save: vi.fn() }; // ← WRONG for L2
+  const handler = new CreateUserProfileHandler(mockRepo, ...);
+
+  it('should create profile', async () => {
+    mockRepo.findByUserId.mockResolvedValue(null);
+    mockRepo.save.mockResolvedValue(undefined);
+    const result = await handler.execute(...);
+    expect(result.isSuccess).toBe(true);
+  });
+});
+```
+
+**Why this is wrong**:
+- Mock repos test handler orchestration logic in isolation (L1 unit test)
+- L2 should test that the handler + DB works together correctly
+- Mock tests miss: real SQL errors, constraint violations, migration issues
+
+**What L2 handler tests verify**:
+- Actual DB persistence (not mocked)
+- Idempotency via real ON CONFLICT behavior
+- Domain events emitted to `domain_events` table
+- Integration with real transaction management
+
+---
+
 ## 📚 References
 
 ### ADRs

@@ -78,7 +78,13 @@ process.stdin.on('end', () => {
       );
 
       if (match) {
-        const hasRequired = match.extends.some((ext) => content.includes(ext));
+        // Check for "extends BaseClass" — not just substring, to avoid
+        // false positives like "UserCreatedIntegrationEvent".includes("IntegrationEvent")
+        const hasRequired = match.extends.some((ext) => {
+          // "extends AggregateRoot<" or "extends LocalHeroIntegrationEvent"
+          const extendsPattern = new RegExp(`extends\\s+${ext.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`);
+          return extendsPattern.test(content);
+        });
         if (!hasRequired) {
           const expected = match.extends.join(' or ');
           console.error(
