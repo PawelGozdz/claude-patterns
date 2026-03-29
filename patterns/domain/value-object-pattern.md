@@ -385,6 +385,72 @@ export class ModerationStatus extends BaseValueObject<ModerationStatusProps> {
 
 ---
 
+### Example 2b: Simple Enum-Based VO (Canonical Pattern)
+
+**File**: `src/contexts/pricing/domain/subscriptions/value-objects/subscription-entity-type.vo.ts`
+
+**⚠️ THIS IS THE CANONICAL PATTERN FOR ENUM VOs** — use this, not a plain class.
+
+**Key characteristics**:
+- `extends BaseValueObject<EnumType>` — **ALWAYS**, no exceptions
+- `declare public readonly value: EnumType` — re-declares protected field as public (no JS emitted)
+- Private constructor + factory `create()` + convenience factories per enum value
+- `validate()` + `getValue()` override (with `@ts-ignore TS2416`)
+
+```typescript
+import { BaseError, BaseValueObject, Result } from '@vytches/ddd';
+import { LocalHeroErrorCode } from '@shared/domain/errors';
+
+export enum SubscriptionEntityTypeEnum {
+  CLUB = 'CLUB',
+  SERVICE_PROVIDER = 'SERVICE_PROVIDER',
+}
+
+export class InvalidSubscriptionEntityTypeError extends BaseError {
+  public readonly code = LocalHeroErrorCode.SUB_INVALID_ENTITY_TYPE;
+  constructor(value: string) {
+    super(`Invalid subscription entity type: "${value}".`);
+  }
+}
+
+export class SubscriptionEntityType extends BaseValueObject<SubscriptionEntityTypeEnum> {
+  // ✅ declare re-declares protected → public WITHOUT emitting JS
+  declare public readonly value: SubscriptionEntityTypeEnum;
+
+  private constructor(value: SubscriptionEntityTypeEnum) {
+    super(value);
+  }
+
+  public static create(value: string): Result<SubscriptionEntityType, InvalidSubscriptionEntityTypeError> {
+    const normalized = value?.toUpperCase().trim();
+    if (!Object.values(SubscriptionEntityTypeEnum).includes(normalized as SubscriptionEntityTypeEnum)) {
+      return Result.fail(new InvalidSubscriptionEntityTypeError(value));
+    }
+    return Result.ok(new SubscriptionEntityType(normalized as SubscriptionEntityTypeEnum));
+  }
+
+  // ✅ Convenience factory per enum value
+  public static club(): SubscriptionEntityType {
+    return new SubscriptionEntityType(SubscriptionEntityTypeEnum.CLUB);
+  }
+
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore: TS2416 — intentional covariant override: returns enum, not generic T
+  override getValue(): SubscriptionEntityTypeEnum { return this.value; }
+
+  validate(value: unknown): boolean {
+    return typeof value === 'string' &&
+      Object.values(SubscriptionEntityTypeEnum).includes(value as SubscriptionEntityTypeEnum);
+  }
+
+  isClub(): boolean { return this.value === SubscriptionEntityTypeEnum.CLUB; }
+
+  public override toString(): string { return this.value; }
+}
+```
+
+---
+
 ### Example 3: Coordinates (Calculation Pattern)
 
 **File**: `src/contexts/geographic-auth/domain/value-objects/coordinates.vo.ts`
@@ -494,9 +560,21 @@ export class Coordinates extends BaseValueObject<CoordinatesProps> {
 
 ## 📋 Rules
 
+### File Naming Convention
+
+**Standard**: `{name}.vo.ts` — unified convention across all contexts (115 files).
+
+| ✅ Correct | ❌ Avoid |
+|-----------|---------|
+| `entity-type.vo.ts` | `entity-type.value-object.ts` |
+| `thread-type.vo.ts` | `thread-type.ts` |
+| `subscription-status.vo.ts` | `subscriptionStatus.ts` |
+
+---
+
 ### MUST
 
-1. **Extend `BaseValueObject<Props>`** from @vytches/ddd
+1. **Extend `BaseValueObject<Props>`** from @vytches/ddd — **ALWAYS, no exceptions, including enum-based VOs**
 2. **Private constructor** - NEVER called directly
 3. **Factory method**: `static create()` returns `Result<VO, ValidationError>`
 4. **Immutability**: All fields readonly, NO setters
@@ -643,6 +721,51 @@ export class Email extends BaseValueObject<string> {
 // Later: email comparison works
 user1.email.equals(user2.email); // "john@example.com" === "john@example.com" ✅
 ```
+
+---
+
+### 6. Plain Class Instead of BaseValueObject ⚠️ CRITICAL
+
+This is the most common mistake Claude Code makes when generating VOs.
+
+```typescript
+// ❌ WRONG: Plain class — NEVER do this
+export class EntityType {
+  private constructor(private readonly _value: EntityTypeEnum) {}
+
+  get value(): EntityTypeEnum { return this._value; }
+
+  static thread(): EntityType { return new EntityType(EntityTypeEnum.THREAD); }
+
+  equals(other: EntityType): boolean { return this._value === other._value; }
+}
+
+// ✅ CORRECT: Always extend BaseValueObject
+export class EntityType extends BaseValueObject<EntityTypeEnum> {
+  declare public readonly value: EntityTypeEnum;
+
+  private constructor(value: EntityTypeEnum) {
+    super(value);
+  }
+
+  public static create(value: string): Result<EntityType, SomeError> { ... }
+  public static thread(): EntityType { return new EntityType(EntityTypeEnum.THREAD); }
+
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore: TS2416 — intentional covariant override
+  override getValue(): EntityTypeEnum { return this.value; }
+
+  validate(value: unknown): boolean {
+    return typeof value === 'string' && Object.values(EntityTypeEnum).includes(value as EntityTypeEnum);
+  }
+}
+```
+
+**Why plain class is wrong**:
+- No `.equals()` integration with `@vytches/ddd` infrastructure
+- No hash/serialization support
+- Manual equality is error-prone and not polymorphic
+- Breaks type contracts expected by aggregates and domain services
 
 ---
 

@@ -104,6 +104,7 @@ Cross-cutting architectural patterns spanning multiple layers.
 | **[bullmq-queue-pattern.md](architecture/bullmq-queue-pattern.md)** | 490 | Production | Async job processing with BullMQ | infrastructure-testing-implementer |
 | **[integration-event-pattern.md](architecture/integration-event-pattern.md)** | ~800 | Production | Cross-context events via Outbox Pattern, NO PII, priority-based processing | domain-application-implementer, infrastructure-testing-implementer |
 | **[entity-event-emission-pattern.md](architecture/entity-event-emission-pattern.md)** | 480 | Production | Manual domain event emission for Entities (non-Aggregates), eventPersistenceHandler + eventDispatcher | domain-application-implementer |
+| **[golden-rule-endpoints.md](architecture/golden-rule-endpoints.md)** | ~120 | Production | GET /{resource} = public (approved only), GET /{resource}/my = owner (all statuses). ADR-0071 | infrastructure-testing-implementer, domain-application-implementer |
 | **[fresh-context-pattern.md](architecture/fresh-context-pattern.md)** | 553 | Production | Keep orchestrator lean (~15%), subagents fresh (~100% relevant), context rot detection | project-orchestrator, all agents |
 
 **Architecture Layer Key Principles**:

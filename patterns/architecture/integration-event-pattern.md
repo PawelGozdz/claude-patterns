@@ -806,6 +806,162 @@ export class ContextTrustDeltaHandler implements IEventHandler<ContextTrustDelta
 
 ---
 
+---
+
+## BullMQ Per-Context Consumer Pattern (TS-INFRA-002)
+
+> **STATUS**: This is the CANONICAL pattern for integration event consumption as of TS-INFRA-002.
+> The old `IntegrationEventsQueueProcessor` (single shared processor + eventDispatcher) has been
+> REPLACED by per-context processors calling commandBus directly.
+
+### Problem with the old pattern
+
+```
+// ❌ OLD: Single shared queue + eventDispatcher (BROKEN)
+// - eventDispatcher.dispatchEvent() only calls @EventHandler-decorated handlers
+// - 4 contexts (CC, NE, Engagement, GeoAuth) had no @EventHandler → never called
+// - One retry = ALL contexts retry (no independent failure isolation)
+@Processor(QueueName.INTEGRATION_EVENTS)
+export class IntegrationEventsQueueProcessor extends WorkerHost {
+  async process(job): Promise<void> {
+    await this.eventDispatcher.dispatchEvent(integrationEvent); // ❌ broken
+  }
+}
+```
+
+### New pattern: IntegrationEventFanOutService + Per-Context Processors
+
+**Step 1 — Fan-out at emission point**
+
+```typescript
+// src/shared/infrastructure/queues/services/integration-event-fan-out.service.ts
+@Injectable()
+export class IntegrationEventFanOutService {
+  constructor(
+    @InjectQueue(QueueName.INTEGRATION_AUTHORIZATION) private readonly authQueue: Queue,
+    @InjectQueue(QueueName.INTEGRATION_TRUST) private readonly trustQueue: Queue,
+    @InjectQueue(QueueName.INTEGRATION_USER_PROFILE) private readonly userProfileQueue: Queue,
+    @InjectQueue(QueueName.INTEGRATION_COMMUNITY_COMMUNICATION) private readonly ccQueue: Queue,
+    @InjectQueue(QueueName.INTEGRATION_NEIGHBORHOOD_ECONOMY) private readonly neQueue: Queue,
+    @InjectQueue(QueueName.INTEGRATION_ENGAGEMENT) private readonly engQueue: Queue,
+    @InjectQueue(QueueName.INTEGRATION_GEOGRAPHIC_AUTH) private readonly geoQueue: Queue,
+  ) {}
+
+  async fanOut(jobData: IntegrationEventJobData): Promise<void> {
+    const { eventName, correlationId } = jobData;
+    const jobOpts = {
+      attempts: 5,
+      backoff: { type: 'exponential', delay: 2000 },
+      removeOnFail: 200,
+    };
+
+    const routingTable: Record<string, Queue[]> = {
+      UserRegisteredIntegrationEvent: [this.trustQueue, this.userProfileQueue, this.ccQueue, this.neQueue, this.engQueue, this.geoQueue],
+      EmailVerifiedIntegrationEvent: [this.authQueue],
+      UserDisplayNameUpdatedIntegrationEvent: [this.ccQueue, this.neQueue, this.engQueue, this.geoQueue],
+      UserProfileUpdatedIntegrationEvent: [this.ccQueue, this.neQueue, this.engQueue, this.geoQueue],
+      UserRoleChangedIntegrationEvent: [this.ccQueue, this.neQueue, this.engQueue, this.geoQueue],
+      UserTrustScoreUpdatedIntegrationEvent: [this.authQueue, this.userProfileQueue],
+      TrustScoreUpdateRequestedIntegrationEvent: [this.trustQueue],
+      ModerationSuspensionRequestedIntegrationEvent: [this.trustQueue],
+      PaymentCompletedIntegrationEvent: [this.ccQueue, this.neQueue, this.engQueue],
+      ClubSubscriptionActivatedIntegrationEvent: [this.ccQueue, this.neQueue],
+      ClubSubscriptionExpiredIntegrationEvent: [this.ccQueue],
+      ClubSubscriptionFinallyExpiredIntegrationEvent: [this.ccQueue],
+    };
+
+    const targetQueues = routingTable[eventName] ?? [];
+    for (const queue of targetQueues) {
+      const contextName = queue.name.replace('integration-', '');
+      await queue.add(eventName, jobData, {
+        ...jobOpts,
+        jobId: `${eventName}:${correlationId}:${contextName}`, // idempotency
+      });
+    }
+  }
+}
+```
+
+**Step 2 — Per-context processor (switch on eventName)**
+
+```typescript
+// src/contexts/geographic-auth/infrastructure/queues/geo-auth-integration.processor.ts
+@Injectable()
+@Processor(QueueName.INTEGRATION_GEOGRAPHIC_AUTH)
+export class GeoAuthIntegrationProcessor extends WorkerHost {
+  constructor(private readonly commandBus: CommandBus) { super(); }
+
+  async process(job: Job<IntegrationEventJobData>): Promise<void> {
+    const { eventName, payload } = job.data;
+    switch (eventName) {
+      case 'UserRegisteredIntegrationEvent':
+        await this.commandBus.execute(new CreateUserReadModelCommand(
+          payload.userId as string, payload.displayName as string | undefined,
+          payload.email as string, payload.registrationMethod as string,
+        ));
+        break;
+      case 'UserDisplayNameUpdatedIntegrationEvent':
+        await this.commandBus.execute(new UpdateUserDisplayNameCommand(
+          payload.userId as string, payload.displayName as string, payload.avatarUrl as string | null,
+        ));
+        break;
+      case 'UserProfileUpdatedIntegrationEvent':
+        await this.commandBus.execute(new SyncUserProfileCommand(payload.userId as string, payload.profileChanges));
+        break;
+      case 'UserRoleChangedIntegrationEvent':
+        await this.commandBus.execute(new SyncUserRoleCommand(payload.userId as string, payload.newRole as string));
+        break;
+      default:
+        // Unknown event for this context — log and skip (do NOT throw)
+        break;
+    }
+  }
+}
+```
+
+**Step 3 — Register processor in context module**
+
+```typescript
+// src/contexts/geographic-auth/geographic-auth.module.ts
+@Module({
+  imports: [
+    BullModule.registerQueue({ name: QueueName.INTEGRATION_GEOGRAPHIC_AUTH }),
+  ],
+  providers: [
+    GeoAuthIntegrationProcessor, // ← add to providers
+    // ... other providers
+  ],
+})
+export class GeographicAuthModule {}
+```
+
+**Step 4 — Emitters use IntegrationEventFanOutService instead of direct queue**
+
+```typescript
+// ❌ OLD:
+await this.integrationEventsQueue.add('user-registered', jobData, { attempts: 3 });
+
+// ✅ NEW:
+await this.fanOutService.fanOut(jobData);
+```
+
+### Key rules for per-context processors
+
+1. **NEVER use `eventDispatcher`** — call `commandBus.execute()` directly
+2. **Switch on `eventName`** — each processor handles all events for its context
+3. **`default:` case must NOT throw** — unknown events logged and skipped
+4. **JobId = `{eventName}:{correlationId}:{contextName}`** — idempotency via BullMQ deduplication
+5. **Retry config**: `attempts: 5`, `backoff: { type: 'exponential', delay: 2000 }`, `removeOnFail: 200`
+6. **500ms delay** preserved — add `await new Promise(r => setTimeout(r, 500))` before processing in each processor (same FK-commit-wait rationale as old processor)
+
+### Routing Table (canonical — TS-INFRA-002)
+
+See `project-orchestration/tasks/TS-INFRA-002-bullmq-integration-events-fan-out.md` for
+the complete event→context routing matrix. The `IntegrationEventFanOutService` is the
+SINGLE source of truth for routing — `targetContexts` field in job data is deprecated.
+
+---
+
 ## Decision Tree: When to Use Integration Events
 
 ```
