@@ -128,44 +128,23 @@ else
 fi
 echo ""
 
-# --- 3. Rules symlinks (based on project.language) ---
-echo -e "${BLUE}[3a/7] Rules (knowledge — backward compat)${NC}"
+# --- 3. Rules: migrate from knowledge/rules/ to native .claude/rules/ ---
+echo -e "${BLUE}[3/7] Rules (.claude/rules/ — native auto-discovery)${NC}"
 PROJECT_LANGUAGE=$(yml_get "project.language")
 
-RULES_DIR="$KNOWLEDGE_DIR/rules"
-mkdir -p "$RULES_DIR"
-
-if [[ -n "$PROJECT_LANGUAGE" ]]; then
-  # Always link common rules
-  COMMON_RULES_SOURCE="$PATTERNS_REPO/rules/common"
-  if [[ -d "$COMMON_RULES_SOURCE" ]]; then
-    ensure_symlink "$RULES_DIR/common" "$COMMON_RULES_SOURCE" "rules/common"
-  fi
-
-  # Link language-specific rules
-  LANG_RULES_SOURCE="$PATTERNS_REPO/rules/$PROJECT_LANGUAGE"
-  if [[ -d "$LANG_RULES_SOURCE" ]]; then
-    ensure_symlink "$RULES_DIR/$PROJECT_LANGUAGE" "$LANG_RULES_SOURCE" "rules/$PROJECT_LANGUAGE"
-  else
-    echo -e "  ${YELLOW}Warning:${NC} No rules found for language '$PROJECT_LANGUAGE'"
-  fi
-
-  # Clean up stale language rule symlinks (languages removed from config)
-  for link in "$RULES_DIR"/*/; do
-    [[ -L "${link%/}" ]] || continue
-    link_name=$(basename "${link%/}")
-    if [[ "$link_name" != "common" && "$link_name" != "$PROJECT_LANGUAGE" ]]; then
-      echo -e "  ${YELLOW}Removing stale:${NC} rules/$link_name"
-      rm "${link%/}"
-    fi
+# Remove deprecated .claude/knowledge/rules/ (replaced by native .claude/rules/)
+OLD_RULES_DIR="$KNOWLEDGE_DIR/rules"
+if [[ -d "$OLD_RULES_DIR" ]]; then
+  # Remove symlinks inside (not real directories)
+  for link in "$OLD_RULES_DIR"/*/; do
+    [[ -L "${link%/}" ]] && rm "${link%/}"
   done
-else
-  echo -e "  ${YELLOW}Skipped:${NC} No project.language configured in project.yml"
+  # Remove the directory if empty
+  rmdir "$OLD_RULES_DIR" 2>/dev/null && echo -e "  ${YELLOW}Removed:${NC} knowledge/rules/ (migrated to .claude/rules/)" || true
 fi
-echo ""
 
-# --- 3b. Native .claude/rules/ (auto-discovered by Claude Code) ---
-echo -e "${BLUE}[3b/7] Native rules (.claude/rules/ — auto-discovery)${NC}"
+# Create native .claude/rules/ (auto-discovered by Claude Code)
+echo -e "${BLUE}       Native rules (.claude/rules/ — auto-discovery)${NC}"
 NATIVE_RULES_DIR="$PROJECT_DIR/.claude/rules"
 mkdir -p "$NATIVE_RULES_DIR"
 

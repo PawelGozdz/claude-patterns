@@ -64,9 +64,20 @@ echo ""
 
 CHANGES=0
 
-# --- 1. Native .claude/rules/ ---
+# --- 1. Native .claude/rules/ (replaces .claude/knowledge/rules/) ---
 echo -e "${BLUE}[1/5] Native .claude/rules/${NC}"
 NATIVE_RULES="$PROJECT_DIR/.claude/rules"
+
+# Remove deprecated .claude/knowledge/rules/ (duplicated by .claude/rules/)
+OLD_RULES="$PROJECT_DIR/.claude/knowledge/rules"
+if [[ -d "$OLD_RULES" ]]; then
+  for link in "$OLD_RULES"/*/; do
+    [[ -L "${link%/}" ]] && rm "${link%/}"
+  done
+  rmdir "$OLD_RULES" 2>/dev/null && echo -e "  ${YELLOW}Removed:${NC} knowledge/rules/ (migrated to .claude/rules/)" || true
+  CHANGES=$((CHANGES + 1))
+fi
+
 if [[ -n "$PROJECT_LANGUAGE" ]]; then
   mkdir -p "$NATIVE_RULES"
 
