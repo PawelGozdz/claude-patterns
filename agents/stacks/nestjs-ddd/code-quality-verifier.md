@@ -64,7 +64,7 @@ Task(
   - Command/Query handlers (application layer)
   - Repositories (infrastructure layer)
   - Test files (*.spec.ts, *.test.ts)
-  - BUSINESS_RULES.md files
+  - BUSINESS_RULES.yaml files
 
   Return EXACT file paths (not patterns).''',
   description='Cost-efficient file discovery'
@@ -82,7 +82,7 @@ Task(
 Grep("Result<", path="/exact/path/from/phase1.aggregate.ts")
 Grep("PolicyBuilder", path="/exact/path/handler.ts")
 Grep("extends AggregateRoot", path="/exact/path/aggregate.ts")
-Read("/exact/path/BUSINESS_RULES.md")
+Read("/exact/path/BUSINESS_RULES.yaml")
 ```
 
 ### ❌ ABSOLUTELY FORBIDDEN in PHASE 1

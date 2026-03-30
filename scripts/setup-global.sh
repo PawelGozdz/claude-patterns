@@ -57,9 +57,28 @@ setup_symlink() {
   fi
 }
 
-# --- Global symlinks ---
-echo -e "${BLUE}[1/3] Agents${NC} (specialists + verifiers with permissionMode, memory, isolation)"
-setup_symlink "agents" "$REPO_DIR/agents"
+# --- Global agents (universal only — stack-specific are per-project) ---
+echo -e "${BLUE}[1/3] Agents${NC} (universal specialists — stack agents are per-project)"
+
+# Remove old symlink if it pointed to entire agents/ dir
+if [ -L "$USER_CLAUDE_DIR/agents" ]; then
+  rm "$USER_CLAUDE_DIR/agents"
+  echo -e "  ${YELLOW}Removed:${NC} old agents/ symlink (migrating to per-file links)"
+fi
+mkdir -p "$USER_CLAUDE_DIR/agents"
+
+# Link universal agents (stack-agnostic)
+for agent_file in "$REPO_DIR/agents/universal/"*.md; do
+  [ -f "$agent_file" ] || continue
+  agent_name=$(basename "$agent_file")
+  target="$USER_CLAUDE_DIR/agents/$agent_name"
+  if [ -L "$target" ]; then
+    echo -e "  ${YELLOW}Already linked:${NC} $agent_name"
+  else
+    ln -sf "$agent_file" "$target"
+    echo -e "  ${GREEN}Linked:${NC} $agent_name"
+  fi
+done
 echo ""
 
 echo -e "${BLUE}[2/3] Commands${NC} (slash commands: /plan, /tdd, /scaffold, etc.)"

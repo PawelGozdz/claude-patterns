@@ -147,6 +147,29 @@ else
 fi
 echo ""
 
+# --- 2b. Stack-specific agents ---
+echo -e "${BLUE}[2b/7] Stack agents${NC}"
+STACK_AGENTS_DIR="$PATTERNS_REPO/agents/stacks/$STACK_PROFILE"
+PROJECT_AGENTS_DIR="$PROJECT_DIR/.claude/agents"
+
+if [[ -d "$STACK_AGENTS_DIR" ]]; then
+  mkdir -p "$PROJECT_AGENTS_DIR"
+  for agent_file in "$STACK_AGENTS_DIR"/*.md; do
+    [[ -f "$agent_file" ]] || continue
+    agent_name=$(basename "$agent_file")
+    target="$PROJECT_AGENTS_DIR/$agent_name"
+    if [[ -L "$target" ]]; then
+      echo -e "  ${YELLOW}Already linked:${NC} $agent_name"
+    else
+      ln -sf "$agent_file" "$target"
+      echo -e "  ${GREEN}Linked:${NC} $agent_name (${STACK_PROFILE})"
+    fi
+  done
+else
+  echo -e "  ${YELLOW}Skipped:${NC} No stack agents for '$STACK_PROFILE'"
+fi
+echo ""
+
 # --- 3. Rules: migrate from knowledge/rules/ to native .claude/rules/ ---
 echo -e "${BLUE}[3/7] Rules (.claude/rules/ — native auto-discovery)${NC}"
 PROJECT_LANGUAGE=$(yml_get "project.language")

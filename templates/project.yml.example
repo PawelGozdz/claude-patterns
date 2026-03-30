@@ -75,7 +75,7 @@ contexts:
 rules:
   - "NEVER import between contexts. Use ACL Registry."
   - "Test Pyramid: L1 ~50%, L2 ~30%, L3 ~20%."
-  - "BUSINESS_RULES.md: Update IMMEDIATELY on code changes."
+  - "BUSINESS_RULES.yaml: Update IMMEDIATELY on code changes (YAML format, not .md)."
   - "Audit fields NEVER from request body - always from RequestContext."
   - "Cross-context calls via aclRegistry.getGlobalRequired() only."
 

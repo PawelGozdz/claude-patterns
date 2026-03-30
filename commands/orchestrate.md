@@ -81,7 +81,7 @@ Task(subagent_type='backend-technology-expert', prompt='Analyze technology decis
 
 **3A. Domain + Application**:
 ```
-Task(subagent_type='domain-application-implementer', prompt='Implement domain and application layers. Update BUSINESS_RULES.md.', description='Domain+App implementation')
+Task(subagent_type='domain-application-implementer', prompt='Implement domain and application layers. Update BUSINESS_RULES.yaml.', description='Domain+App implementation')
 ```
 
 **3B. Infrastructure + Testing**:
@@ -124,7 +124,7 @@ Delegate validation to appropriate verifier(s).
 | ddd-compliance | code-quality-verifier | DDD pattern validation |
 | test-pyramid | code-quality-verifier | L1/L2/L3 ratio check |
 | security | security-e2e-verifier | OWASP compliance |
-| business-rules | code-quality-verifier | BUSINESS_RULES.md sync |
+| business-rules | code-quality-verifier | BUSINESS_RULES.yaml sync |
 | all | Both verifiers | Full validation suite |
 
 ```
@@ -200,7 +200,7 @@ Report combined findings.
 1. **NEVER implement code** - this skill has NO Write/Edit tools
 2. **Sequential delegation** in implement mode (except Phase 2 sub-phases)
 3. **Respect VETO power** - STOP on VETO, report to user
-4. **Always verify BUSINESS_RULES.md** is updated after implementation
+4. **Always verify BUSINESS_RULES.yaml** is updated after implementation
 5. **Use Haiku for searches** - never search directly
 
 ---
