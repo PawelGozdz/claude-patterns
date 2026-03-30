@@ -3,36 +3,6 @@
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node -e \"let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{const i=JSON.parse(d);const cmd=i.tool_input?.command||'';if(process.platform!=='win32'&&/(npm run dev\\b|pnpm( run)? dev\\b|yarn dev\\b|bun run dev\\b)/.test(cmd)){console.error('[Hook] BLOCKED: Dev server must run in tmux for log access');console.error('[Hook] Use: tmux new-session -d -s dev \\\"npm run dev\\\"');console.error('[Hook] Then: tmux attach -t dev');process.exit(2)}}catch{}console.log(d)})\""
-          }
-        ],
-        "description": "Block dev servers outside tmux - ensures you can access logs"
-      },
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node -e \"let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{const i=JSON.parse(d);const cmd=i.tool_input?.command||'';if(process.platform!=='win32'&&!process.env.TMUX&&/(npm (install|test)|pnpm (install|test)|yarn (install|test)?|bun (install|test)|cargo build|make\\b|docker\\b|pytest|vitest|playwright)/.test(cmd)){console.error('[Hook] Consider running in tmux for session persistence');console.error('[Hook] tmux new -s dev  |  tmux attach -t dev')}}catch{}console.log(d)})\""
-          }
-        ],
-        "description": "Reminder to use tmux for long-running commands"
-      },
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node -e \"let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{const i=JSON.parse(d);const cmd=i.tool_input?.command||'';if(/git push/.test(cmd)){console.error('[Hook] Review changes before push...');console.error('[Hook] Continuing with push (remove this hook to add interactive review)')}}catch{}console.log(d)})\""
-          }
-        ],
-        "description": "Reminder before git push to review changes"
-      },
-      {
         "matcher": "Write",
         "hooks": [
           {
@@ -40,7 +10,7 @@
             "command": "node \"$HOME/.claude/hooks/pre-write-doc-warn.js\""
           }
         ],
-        "description": "Doc file warning: warn about non-standard documentation files (exit code 0; warns only)"
+        "description": "Doc file warning: warn about non-standard documentation files"
       },
       {
         "matcher": "Edit|Write",
@@ -51,6 +21,16 @@
           }
         ],
         "description": "Suggest manual compaction at logical intervals"
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node -e \"let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{const i=JSON.parse(d);const cmd=i.tool_input?.command||'';if(/git push/.test(cmd)){console.error('[Hook] Review changes before push...')}}catch{}console.log(d)})\""
+          }
+        ],
+        "description": "Reminder before git push"
       }
     ],
     "PreCompact": [
@@ -74,7 +54,7 @@
             "command": "node \"$HOME/.claude/hooks/session-start.js\""
           }
         ],
-        "description": "Load previous context and detect package manager on new session"
+        "description": "Load previous context and detect package manager"
       }
     ],
     "PostToolUse": [
@@ -83,22 +63,10 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node -e \"let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{const i=JSON.parse(d);const cmd=i.tool_input?.command||'';if(/gh pr create/.test(cmd)){const out=i.tool_output?.output||'';const m=out.match(/https:\\/\\/github.com\\/[^/]+\\/[^/]+\\/pull\\/\\d+/);if(m){console.error('[Hook] PR created: '+m[0]);const repo=m[0].replace(/https:\\/\\/github.com\\/([^/]+\\/[^/]+)\\/pull\\/\\d+/,'$1');const pr=m[0].replace(/.+\\/pull\\/(\\d+)/,'$1');console.error('[Hook] To review: gh pr review '+pr+' --repo '+repo)}}}catch{}console.log(d)})\""
+            "command": "node -e \"let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{const i=JSON.parse(d);const cmd=i.tool_input?.command||'';if(/gh pr create/.test(cmd)){const out=i.tool_output?.output||'';const m=out.match(/https:\\/\\/github.com\\/[^/]+\\/[^/]+\\/pull\\/\\d+/);if(m){console.error('[Hook] PR created: '+m[0])}}}catch{}console.log(d)})\""
           }
         ],
-        "description": "Log PR URL and provide review command after PR creation"
-      },
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node -e \"let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{const i=JSON.parse(d);const cmd=i.tool_input?.command||'';if(/(npm run build|pnpm build|yarn build)/.test(cmd)){console.error('[Hook] Build completed - async analysis running in background')}}catch{}console.log(d)})\"",
-            "async": true,
-            "timeout": 30
-          }
-        ],
-        "description": "Example: async hook for build analysis (runs in background without blocking)"
+        "description": "Log PR URL after creation"
       },
       {
         "matcher": "Edit",
@@ -108,17 +76,7 @@
             "command": "node \"$HOME/.claude/hooks/post-edit-format.js\""
           }
         ],
-        "description": "Auto-format JS/TS files after edits (auto-detects Biome or Prettier)"
-      },
-      {
-        "matcher": "Edit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"$HOME/.claude/hooks/post-edit-typecheck.js\""
-          }
-        ],
-        "description": "TypeScript check after editing .ts/.tsx files"
+        "description": "Auto-format files after edits (Biome/Prettier)"
       },
       {
         "matcher": "Edit",
@@ -128,67 +86,7 @@
             "command": "node \"$HOME/.claude/hooks/post-edit-console-warn.js\""
           }
         ],
-        "description": "Warn about console.log statements after edits"
-      },
-      {
-        "matcher": "Edit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"$HOME/.claude/hooks/check-ddd-patterns.js\""
-          }
-        ],
-        "description": "Validate DDD building block base classes (aggregate, VO, entity, spec, events)"
-      },
-      {
-        "matcher": "Edit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"$HOME/.claude/hooks/check-domain-purity.js\""
-          }
-        ],
-        "description": "Check domain/application layer purity (no throw, no infra imports)"
-      },
-      {
-        "matcher": "Edit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"$HOME/.claude/hooks/check-clean-arch.js\""
-          }
-        ],
-        "description": "Flutter: domain/application layer purity (no infra imports)"
-      },
-      {
-        "matcher": "Edit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"$HOME/.claude/hooks/check-riverpod-patterns.js\""
-          }
-        ],
-        "description": "Flutter: Riverpod ref.read() inside build() detection"
-      },
-      {
-        "matcher": "Edit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"$HOME/.claude/hooks/check-python-layers.js\""
-          }
-        ],
-        "description": "Python: domain/services layer purity (no infra imports)"
-      },
-      {
-        "matcher": "Edit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"$HOME/.claude/hooks/check-python-typing.js\""
-          }
-        ],
-        "description": "Python: missing type annotations on public functions"
+        "description": "Warn about console.log after edits"
       }
     ],
     "Stop": [
@@ -200,27 +98,45 @@
             "command": "node \"$HOME/.claude/hooks/check-console-log.js\""
           }
         ],
-        "description": "Check for console.log in modified files after each response"
-      },
+        "description": "Check for console.log in modified files"
+      }
+    ],
+    "SubagentStart": [
       {
         "matcher": "*",
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$HOME/.claude/hooks/check-context-isolation.js\""
+            "command": "node -e \"let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{const i=JSON.parse(d);console.error('[Subagent] Started: '+(i.agent_name||'?')+' ('+(i.model||'?')+')')}catch{}console.log(d)})\"",
+            "async": true
           }
         ],
-        "description": "Detect cross-context imports in modified files"
-      },
+        "description": "Log subagent start for cost monitoring"
+      }
+    ],
+    "SubagentStop": [
       {
         "matcher": "*",
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$HOME/.claude/hooks/check-flutter-imports.js\""
+            "command": "node -e \"let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{const i=JSON.parse(d);console.error('[Subagent] Stopped: '+(i.agent_name||'?')+' ('+(i.duration_ms?Math.round(i.duration_ms/1000)+'s':'?')+')')}catch{}console.log(d)})\"",
+            "async": true
           }
         ],
-        "description": "Flutter: Detect cross-feature imports in modified Dart files"
+        "description": "Log subagent stop for cost monitoring"
+      }
+    ],
+    "WorktreeCreate": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node -e \"let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{const i=JSON.parse(d);const wt=i.worktree_path||'';if(wt){const fs=require('fs');const p=require('path');['.env','.env.local','.env.development','.env.test'].forEach(f=>{const s=p.resolve(process.cwd(),f);const d2=p.join(wt,f);if(fs.existsSync(s)&&!fs.existsSync(d2)){fs.copyFileSync(s,d2);console.error('[Hook] Copied '+f+' to worktree')}})}}catch{}console.log(d)})\""
+          }
+        ],
+        "description": "Copy .env files to worktree on creation"
       }
     ],
     "SessionEnd": [
@@ -232,7 +148,7 @@
             "command": "node \"$HOME/.claude/hooks/session-end.js\""
           }
         ],
-        "description": "Persist session state on end"
+        "description": "Persist session state"
       },
       {
         "matcher": "*",

@@ -7,8 +7,10 @@ description: |
 tools: Read, mcp__zen__thinkdeep, mcp__zen__planner, mcp__zen__analyze
 disallowedTools: Grep, Glob, Write, Edit, MultiEdit, NotebookEdit, Task, WebFetch
 model: sonnet
-color: purple
-priority: high
+permissionMode: plan
+effort: high
+memory: project
+maxTurns: 25
 ---
 
 # ddd-application-expert

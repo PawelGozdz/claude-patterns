@@ -17,7 +17,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PATTERNS_REPO="$(dirname "$SCRIPT_DIR")"
 
 echo -e "${BLUE}================================${NC}"
-echo -e "${BLUE}Project Setup v2.0${NC}"
+echo -e "${BLUE}Project Setup v3.0${NC}"
 echo -e "${BLUE}================================${NC}"
 echo ""
 
@@ -102,7 +102,7 @@ KNOWLEDGE_DIR="$PROJECT_DIR/.claude/knowledge"
 mkdir -p "$KNOWLEDGE_DIR"
 
 # --- 1. Patterns symlink ---
-echo -e "${BLUE}[1/5] Patterns${NC}"
+echo -e "${BLUE}[1/7] Patterns${NC}"
 PROJECT_LANGUAGE=$(yml_get "project.language")
 if [[ "$PROJECT_LANGUAGE" == "typescript" || -z "$PROJECT_LANGUAGE" ]]; then
   ensure_symlink "$KNOWLEDGE_DIR/patterns" "$GLOBAL_PATTERNS" "patterns -> global patterns"
@@ -118,7 +118,7 @@ fi
 echo ""
 
 # --- 2. Patterns-local directory ---
-echo -e "${BLUE}[2/5] Patterns-local${NC}"
+echo -e "${BLUE}[2/7] Patterns-local${NC}"
 PATTERNS_LOCAL_DIR="$KNOWLEDGE_DIR/patterns-local"
 if [ ! -d "$PATTERNS_LOCAL_DIR" ]; then
   mkdir -p "$PATTERNS_LOCAL_DIR"
@@ -129,7 +129,7 @@ fi
 echo ""
 
 # --- 3. Rules symlinks (based on project.language) ---
-echo -e "${BLUE}[3/5] Rules${NC}"
+echo -e "${BLUE}[3a/7] Rules (knowledge — backward compat)${NC}"
 PROJECT_LANGUAGE=$(yml_get "project.language")
 
 RULES_DIR="$KNOWLEDGE_DIR/rules"
@@ -164,8 +164,38 @@ else
 fi
 echo ""
 
+# --- 3b. Native .claude/rules/ (auto-discovered by Claude Code) ---
+echo -e "${BLUE}[3b/7] Native rules (.claude/rules/ — auto-discovery)${NC}"
+NATIVE_RULES_DIR="$PROJECT_DIR/.claude/rules"
+mkdir -p "$NATIVE_RULES_DIR"
+
+if [[ -n "$PROJECT_LANGUAGE" ]]; then
+  COMMON_RULES_SOURCE="$PATTERNS_REPO/rules/common"
+  if [[ -d "$COMMON_RULES_SOURCE" ]]; then
+    ensure_symlink "$NATIVE_RULES_DIR/common" "$COMMON_RULES_SOURCE" ".claude/rules/common"
+  fi
+
+  LANG_RULES_SOURCE="$PATTERNS_REPO/rules/$PROJECT_LANGUAGE"
+  if [[ -d "$LANG_RULES_SOURCE" ]]; then
+    ensure_symlink "$NATIVE_RULES_DIR/$PROJECT_LANGUAGE" "$LANG_RULES_SOURCE" ".claude/rules/$PROJECT_LANGUAGE"
+  fi
+
+  # Clean up stale language rule symlinks
+  for link in "$NATIVE_RULES_DIR"/*/; do
+    [[ -L "${link%/}" ]] || continue
+    link_name=$(basename "${link%/}")
+    if [[ "$link_name" != "common" && "$link_name" != "$PROJECT_LANGUAGE" ]]; then
+      echo -e "  ${YELLOW}Removing stale:${NC} .claude/rules/$link_name"
+      rm "${link%/}"
+    fi
+  done
+else
+  echo -e "  ${YELLOW}Skipped:${NC} No project.language configured"
+fi
+echo ""
+
 # --- 4. Skills symlinks (based on skills list) ---
-echo -e "${BLUE}[4/5] Skills${NC}"
+echo -e "${BLUE}[4/7] Skills${NC}"
 SKILLS_DIR="$KNOWLEDGE_DIR/skills"
 mkdir -p "$SKILLS_DIR"
 
@@ -207,7 +237,7 @@ done
 echo ""
 
 # --- 5. Stack profile configs (ddd-hooks.json, etc.) ---
-echo -e "${BLUE}[5/5] Stack profile configs${NC}"
+echo -e "${BLUE}[5/7] Stack profile configs${NC}"
 STACK_PROFILE=$(yml_get "project.stack_profile")
 
 if [[ -n "$STACK_PROFILE" ]]; then
@@ -260,6 +290,31 @@ else
 fi
 echo ""
 
+# --- 6. .mcp.json (project-scope MCP server) ---
+echo -e "${BLUE}[6/7] MCP configuration (.mcp.json)${NC}"
+MCP_JSON="$PROJECT_DIR/.mcp.json"
+MCP_TEMPLATE="$PATTERNS_REPO/templates/mcp.json.template"
+
+if [[ -f "$MCP_JSON" ]]; then
+  echo -e "  ${YELLOW}Already exists:${NC} .mcp.json (preserved)"
+elif [[ -f "$MCP_TEMPLATE" ]]; then
+  # Expand ${HOME} in template
+  sed "s|\${HOME}/projects/claude-patterns|$PATTERNS_REPO|g" "$MCP_TEMPLATE" > "$MCP_JSON"
+  echo -e "  ${GREEN}Created:${NC} .mcp.json (claude-patterns MCP server)"
+else
+  echo -e "  ${YELLOW}Skipped:${NC} MCP template not found"
+fi
+echo ""
+
+# --- 7. Regenerate CLAUDE.md ---
+echo -e "${BLUE}[7/7] CLAUDE.md generation${NC}"
+if [[ -f "$PROJECT_YML" ]]; then
+  bash "$SCRIPT_DIR/generate-claude-md.sh" "$PROJECT_DIR"
+else
+  echo -e "${YELLOW}Skipped:${NC} No project.yml found (CLAUDE.md not regenerated)"
+fi
+echo ""
+
 # --- Verification ---
 echo -e "${BLUE}================================${NC}"
 echo -e "${BLUE}Verification${NC}"
@@ -299,15 +354,6 @@ done
 
 echo ""
 
-# --- Auto-run generate-claude-md.sh ---
-echo -e "${BLUE}Regenerating CLAUDE.md...${NC}"
-if [[ -f "$PROJECT_YML" ]]; then
-  bash "$SCRIPT_DIR/generate-claude-md.sh" "$PROJECT_DIR"
-else
-  echo -e "${YELLOW}Skipped:${NC} No project.yml found (CLAUDE.md not regenerated)"
-fi
-
-echo ""
 echo -e "${BLUE}================================${NC}"
 echo -e "${GREEN}Project setup complete!${NC}"
 echo -e "${BLUE}================================${NC}"

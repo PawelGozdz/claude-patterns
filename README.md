@@ -1,8 +1,8 @@
 # Global Claude Code Patterns Repository
 
-**Version**: 2.1.0
+**Version**: 3.0.0
 **Created**: 2026-02-05
-**Updated**: 2026-02-05
+**Updated**: 2026-03-30
 **Purpose**: Reusable DDD/CQRS patterns + universal agent templates for multi-project use
 
 ---
@@ -12,9 +12,9 @@
 A **single source of truth** for production-tested software patterns and agent templates that can be shared across multiple Claude Code projects.
 
 **Three Distribution Systems**:
-1. **MCP Server** (Patterns) - Pattern delivery to Claude Code
-2. **Filesystem Symlinks** (Global Agents/Commands) - User-level resources
-3. **Compilation System** (Project Agents) - Project-specific agent generation
+1. **MCP Server** (`.mcp.json` per project) - Pattern delivery to Claude Code
+2. **Filesystem Symlinks** (Global agents/commands/hooks) - Universal resources
+3. **Stack Presets** (Settings templates) - Per-stack hooks, autoMode, worktree config
 
 **Key Benefits**:
 - ✅ **Write once, use everywhere** - No pattern duplication
@@ -22,6 +22,8 @@ A **single source of truth** for production-tested software patterns and agent t
 - ✅ **Consistency** - Same patterns = consistent AI agent behavior
 - ✅ **Multi-project support** - Works across different projects, not just multiple folders
 - ✅ **Proven quality** - Extracted from LocalHero production codebase (1355+ tests)
+- ✅ **Stack presets** - DDD hooks only in NestJS, Flutter hooks only in Flutter
+- ✅ **Native integration** - .claude/rules/ auto-discovery, @import directives, worktree config
 
 ---
 
@@ -241,6 +243,45 @@ For more control or specific use cases, see detailed options below:
 - **Option A**: MCP Server (multi-project, team collaboration)
 - **Option B**: Filesystem Symlinks (manual control)
 - **Option C**: Compilation System (project-specific agents)
+
+---
+
+## v3 Migration (Existing Projects)
+
+For projects already set up with v2, run:
+
+```bash
+# Single project
+./scripts/migrate-v2.sh /path/to/project
+
+# All projects in /opt/projects/
+./scripts/migrate-all.sh
+```
+
+### What v3 Adds
+
+| Feature | How It Works |
+|---------|-------------|
+| `.claude/rules/` auto-discovery | Claude Code natively finds rules without CLAUDE.md reference |
+| `@import` in CLAUDE.md | Rules and skills loaded via native import directives |
+| `.mcp.json` per project | Project-scope MCP server, committed to git |
+| Stack-specific hooks | DDD/Flutter/Python hooks only in matching projects |
+| `worktree` config | `node_modules` symlinked, `.env` copied to worktrees |
+| `autoMode` classifier | Custom per-stack permission rules |
+| Agent `memory: project` | Specialists remember decisions between sessions |
+| Agent `isolation: worktree` | Verifiers run without blocking working tree |
+| Skill `paths:` filtering | Skills auto-activate only for matching files |
+
+### Stack Presets
+
+Each project gets hooks and settings matching its `stack_profile`:
+
+| Preset | Hooks | autoMode |
+|--------|-------|----------|
+| `nestjs-ddd` | DDD patterns, domain purity, TypeScript check, context isolation | pnpm test, pnpm lint, tsc |
+| `flutter` | Clean arch, Riverpod patterns, cross-feature imports | flutter test, flutter analyze |
+| `python` | Layer purity, type annotations | pytest, mypy, ruff |
+| (base) | Universal only (formatting, console.log, git push) | Read, Glob, Grep |
 
 ---
 

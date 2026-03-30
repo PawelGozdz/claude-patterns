@@ -43,9 +43,10 @@ description: 🏗️ Technical Architecture Lead - Strategic architectural decis
 
 tools: Task, Read, Glob, Grep, WebFetch, WebSearch, mcp__zen__chat, mcp__zen__thinkdeep, mcp__zen__analyze
 model: opus
-temperature: 0.4
-color: blue
-priority: high
+permissionMode: plan
+effort: max
+memory: project
+maxTurns: 30
 ---
 
 ## 🚨 AUTO-INVOKE KEYWORDS

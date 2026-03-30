@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "worktree": {
+    "symlinkDirectories": ["node_modules", "dist"]
+  },
+  "autoMode": {
+    "environment": [
+      "DDD/CQRS NestJS project using @vytches/ddd library.",
+      "Domain layer must remain pure (no infrastructure imports).",
+      "Use Result<T> pattern instead of thrown exceptions.",
+      "Follow testing pyramid: L1 ~50%, L2 ~30%, L3 ~20%."
+    ],
+    "allow": [
+      "Read(*)",
+      "Glob(*)",
+      "Grep(*)",
+      "Bash(pnpm test *)",
+      "Bash(pnpm run lint *)",
+      "Bash(pnpm tsc --noEmit *)"
+    ],
+    "soft_deny": [
+      "Bash(rm -rf *)",
+      "Bash(git push --force *)",
+      "Bash(git reset --hard *)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$HOME/.claude/hooks/post-edit-typecheck.js\""
+          }
+        ],
+        "description": "TypeScript type check after editing .ts/.tsx files"
+      },
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$HOME/.claude/hooks/check-ddd-patterns.js\""
+          }
+        ],
+        "description": "Validate DDD base classes (Aggregate, VO, Entity, Spec)"
+      },
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$HOME/.claude/hooks/check-domain-purity.js\""
+          }
+        ],
+        "description": "Domain/application layer purity (no infra imports)"
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$HOME/.claude/hooks/check-context-isolation.js\""
+          }
+        ],
+        "description": "Detect cross-context imports in modified files"
+      }
+    ]
+  }
+}

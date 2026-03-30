@@ -27,11 +27,11 @@
 
 ---
 
-%%RULES_REFERENCE%%
+%%RULES_IMPORTS%%
 
 ---
 
-%%SKILLS_REFERENCE%%
+%%SKILLS_IMPORTS%%
 
 ---
 

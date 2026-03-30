@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "worktree": {
+    "symlinkDirectories": [".venv", "__pycache__"]
+  },
+  "autoMode": {
+    "environment": [
+      "Python application with layered architecture.",
+      "Domain/service layers must remain pure (no infrastructure imports).",
+      "Use type annotations on all public functions.",
+      "Follow PEP 8 coding standards."
+    ],
+    "allow": [
+      "Read(*)",
+      "Glob(*)",
+      "Grep(*)",
+      "Bash(pytest *)",
+      "Bash(python -m mypy *)",
+      "Bash(ruff check *)"
+    ],
+    "soft_deny": [
+      "Bash(rm -rf *)",
+      "Bash(git push --force *)",
+      "Bash(git reset --hard *)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$HOME/.claude/hooks/check-python-layers.js\""
+          }
+        ],
+        "description": "Python: domain/services layer purity"
+      },
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$HOME/.claude/hooks/check-python-typing.js\""
+          }
+        ],
+        "description": "Python: missing type annotations"
+      }
+    ]
+  }
+}

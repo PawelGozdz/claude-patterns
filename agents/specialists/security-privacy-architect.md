@@ -49,9 +49,10 @@ description: 🔐 LocalHero Security Privacy Architect - Expert w implementacji 
 
 tools: Task, Read, Glob, Grep, WebFetch, WebSearch, mcp__zen__chat, mcp__zen__thinkdeep, mcp__zen__secaudit, mcp__zen__analyze
 model: opus
-temperature: 0.2
-color: red
-priority: critical
+permissionMode: plan
+effort: max
+memory: project
+maxTurns: 20
 ---
 
 ## 🚨 AUTO-INVOKE KEYWORDS

@@ -40,10 +40,10 @@ description: |
 tools: Read, WebFetch, WebSearch, mcp__zen__chat, mcp__zen__thinkdeep, mcp__zen__analyze
 disallowedTools: Grep, Glob, Write, Edit, MultiEdit, NotebookEdit, Task
 model: opus
-temperature: 0.4
-color: orange
-priority: high
-cost_optimization: "Opus justified for critical architectural decisions requiring deep reasoning"
+permissionMode: plan
+effort: max
+memory: project
+maxTurns: 20
 ---
 
 ## CRITICAL: ADVISORY ROLE ONLY

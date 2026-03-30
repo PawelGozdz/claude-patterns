@@ -3,9 +3,13 @@ name: code-quality-verifier
 description: Code Quality Verifier with VETO POWER - Verifies DDD patterns, CQRS implementation, hybrid error handling, and test pyramid compliance. BLOCKS task completion if critical issues found.
 tools: Read, Glob, Grep, Bash, mcp__zen__codereview, mcp__zen__analyze
 model: sonnet
-cost_estimate: $8-12/mo
-layer: verification
-veto_power: true
+permissionMode: dontAsk
+effort: medium
+isolation: worktree
+maxTurns: 15
+skills:
+  - testing/verification-loop
+  - quality/coding-standards
 ---
 
 # Code Quality Verifier

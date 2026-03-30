@@ -2,6 +2,8 @@
 name: verification-loop
 description: "A comprehensive verification system for Claude Code sessions."
 origin: ECC
+context: fork
+allowed-tools: Read, Glob, Grep, Bash
 ---
 
 # Verification Loop Skill

@@ -2,8 +2,6 @@
 paths:
   - "**/*.ts"
   - "**/*.tsx"
-  - "**/*.js"
-  - "**/*.jsx"
 ---
 # TypeScript/JavaScript Coding Style
 

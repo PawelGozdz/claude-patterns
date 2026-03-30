@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "worktree": {
+    "symlinkDirectories": [".dart_tool", "build"]
+  },
+  "autoMode": {
+    "environment": [
+      "Flutter mobile application with clean architecture.",
+      "Domain layer must remain pure (no framework imports).",
+      "Use Riverpod for state management.",
+      "Follow feature-first folder structure."
+    ],
+    "allow": [
+      "Read(*)",
+      "Glob(*)",
+      "Grep(*)",
+      "Bash(flutter test *)",
+      "Bash(flutter analyze *)",
+      "Bash(dart format *)"
+    ],
+    "soft_deny": [
+      "Bash(rm -rf *)",
+      "Bash(git push --force *)",
+      "Bash(git reset --hard *)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$HOME/.claude/hooks/check-clean-arch.js\""
+          }
+        ],
+        "description": "Flutter: domain/application layer purity"
+      },
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$HOME/.claude/hooks/check-riverpod-patterns.js\""
+          }
+        ],
+        "description": "Flutter: Riverpod ref.read() inside build() detection"
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$HOME/.claude/hooks/check-flutter-imports.js\""
+          }
+        ],
+        "description": "Detect cross-feature imports in Dart files"
+      }
+    ]
+  }
+}

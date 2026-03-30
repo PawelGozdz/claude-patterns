@@ -1,8 +1,6 @@
 ---
 paths:
-  - "**/*_test.dart"
-  - "**/test/**/*.dart"
-  - "**/integration_test/**/*.dart"
+  - "**/*.dart"
 ---
 # Flutter Testing
 

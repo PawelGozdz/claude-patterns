@@ -2,6 +2,8 @@
 name: database-migrations
 description: Database migration best practices for schema changes, data migrations, rollbacks, and zero-downtime deployments across PostgreSQL, MySQL, and common ORMs (Prisma, Drizzle, Django, TypeORM, golang-migrate).
 origin: ECC
+paths:
+  - "**/migrations/**"
 ---
 
 # Database Migration Patterns
