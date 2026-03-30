@@ -44,7 +44,7 @@ Add this to `mcpServers` section:
   "mcpServers": {
     "claude-patterns": {
       "command": "python3",
-      "args": ["/home/node/projects/claude-patterns/mcp-server/server.py"],
+      "args": ["/opt/projects/claude-patterns/mcp-server/server.py"],
       "disabled": false
     }
   }
@@ -174,7 +174,7 @@ cat > .claude/settings.json << 'EOF'
   "mcpServers": {
     "claude-patterns": {
       "command": "python3",
-      "args": ["/home/node/projects/claude-patterns/mcp-server/server.py"],
+      "args": ["/opt/projects/claude-patterns/mcp-server/server.py"],
       "disabled": false
     }
   }

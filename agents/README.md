@@ -74,7 +74,7 @@ ln -sf ~/projects/claude-patterns/agents ~/.claude/agents
 
 # Verify
 ls -la ~/.claude/
-# Should show: agents -> /home/node/projects/claude-patterns/agents
+# Should show: agents -> /opt/projects/claude-patterns/agents
 ```
 
 ### Step 3: Restart Claude Code
@@ -273,7 +273,7 @@ User: "@codebase-explorer Find all aggregates in src/"
 ls -la ~/.claude/agents
 
 # Should show symlink target:
-# agents -> /home/node/projects/claude-patterns/agents
+# agents -> /opt/projects/claude-patterns/agents
 
 # If broken, recreate:
 rm ~/.claude/agents

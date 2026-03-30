@@ -211,28 +211,34 @@ echo -e "${BLUE}[5/5] Stack profile configs${NC}"
 STACK_PROFILE=$(yml_get "project.stack_profile")
 
 if [[ -n "$STACK_PROFILE" ]]; then
-  # Generic hook config discovery: look for exact {profile}-hooks.json first, then base stack name
-  # e.g. flutter-clean-arch → try flutter-clean-arch-hooks.json, then flutter-hooks.json
-  PROFILE_HOOKS="$PATTERNS_REPO/templates/${STACK_PROFILE}-hooks.json"
-  BASE_STACK="${STACK_PROFILE%%-*}"  # "nestjs-ddd" → "nestjs", "flutter-clean-arch" → "flutter"
-  BASE_HOOKS="$PATTERNS_REPO/templates/${BASE_STACK}-hooks.json"
+  # Hook config filenames are defined by the hook scripts themselves:
+  #   ddd-config.js    → looks for "ddd-hooks.json"
+  #   flutter-config.js → looks for "flutter-hooks.json"
+  #   python-config.js  → looks for "python-hooks.json"
+  #
+  # Map stack_profile → hook config filename that hooks actually search for
+  case "$STACK_PROFILE" in
+    nestjs-ddd)       HOOKS_FILENAME="ddd-hooks.json" ;;
+    flutter*)         HOOKS_FILENAME="flutter-hooks.json" ;;
+    python*)          HOOKS_FILENAME="python-hooks.json" ;;
+    *)                HOOKS_FILENAME="" ;;
+  esac
 
-  # Special case: nestjs-ddd → ddd-hooks.json (legacy naming)
-  LEGACY_HOOKS="$PATTERNS_REPO/templates/ddd-hooks.json"
-
+  # Find the template source file in templates/
   HOOKS_SOURCE=""
-  if [[ -f "$PROFILE_HOOKS" ]]; then
-    HOOKS_SOURCE="$PROFILE_HOOKS"
-  elif [[ -f "$BASE_HOOKS" ]]; then
-    HOOKS_SOURCE="$BASE_HOOKS"
-  elif [[ "$STACK_PROFILE" == "nestjs-ddd" && -f "$LEGACY_HOOKS" ]]; then
-    HOOKS_SOURCE="$LEGACY_HOOKS"
+  if [[ -n "$HOOKS_FILENAME" ]]; then
+    # Try exact match first, then profile-specific template
+    PROFILE_HOOKS="$PATTERNS_REPO/templates/${STACK_PROFILE}-hooks.json"
+    CANONICAL_HOOKS="$PATTERNS_REPO/templates/$HOOKS_FILENAME"
+
+    if [[ -f "$PROFILE_HOOKS" ]]; then
+      HOOKS_SOURCE="$PROFILE_HOOKS"
+    elif [[ -f "$CANONICAL_HOOKS" ]]; then
+      HOOKS_SOURCE="$CANONICAL_HOOKS"
+    fi
   fi
 
   if [[ -n "$HOOKS_SOURCE" ]]; then
-    # Target filename: use base-stack hooks name so hook scripts can find it
-    # e.g. python-pipeline-hooks.json → python-hooks.json (hooks search for python-hooks.json)
-    HOOKS_FILENAME="${BASE_STACK}-hooks.json"
     HOOKS_TARGET="$PROJECT_DIR/$HOOKS_FILENAME"
 
     if [[ -f "$HOOKS_TARGET" ]]; then

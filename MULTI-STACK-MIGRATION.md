@@ -362,7 +362,7 @@ Phase 5: Schema Testing          → Zod schema tests (Haiku)
       "Bash(tee:*)",
       "Bash(xargs:*)",
       "Read(.claude/**)",
-      "Read(/home/node/projects/**)",
+      "Read(/opt/projects/**)",
       "Read(/tmp/**)",
       "Edit(.claude/**)",
       "Write(.claude/**)",
@@ -383,25 +383,25 @@ Phase 5: Schema Testing          → Zod schema tests (Haiku)
     "PreToolUse": [
       {
         "matcher": "*",
-        "hooks": [{ "type": "command", "command": "/home/node/.claude/hooks/cost-optimizer.sh" }]
+        "hooks": [{ "type": "command", "command": "/home/dev/.claude/hooks/cost-optimizer.sh" }]
       }
     ],
     "SessionStart": [
       {
         "matcher": "",
-        "hooks": [{ "type": "command", "command": "/home/node/.claude/hooks/state-manager.sh show" }]
+        "hooks": [{ "type": "command", "command": "/home/dev/.claude/hooks/state-manager.sh show" }]
       }
     ],
     "PostToolUse": [
       {
         "matcher": "*",
-        "hooks": [{ "type": "command", "command": "/home/node/.claude/hooks/session-monitor.sh" }]
+        "hooks": [{ "type": "command", "command": "/home/dev/.claude/hooks/session-monitor.sh" }]
       }
     ],
     "SessionEnd": [
       {
         "matcher": "",
-        "hooks": [{ "type": "command", "command": "/home/node/.claude/hooks/session-monitor.sh" }]
+        "hooks": [{ "type": "command", "command": "/home/dev/.claude/hooks/session-monitor.sh" }]
       }
     ]
   }
@@ -770,7 +770,7 @@ git commit -m "chore: remove RFC-001 (consolidated into migration plan), cleanup
 - [ ] Pattern paths w agent definitions — nadal `patterns/domain/`, `patterns/application/` (symlink wskazuje na patterns/nestjs-ddd/ z tą samą wewnętrzną strukturą)
 - [ ] orchestrate skill — ta sama delegation chain co commands/orchestrate.md
 - [ ] scaffold skill — ta sama routing table co commands/scaffold.md
-- [ ] Hooks — te same ścieżki w settings.json (`/home/node/.claude/hooks/`)
+- [ ] Hooks — te same ścieżki w settings.json (`/home/dev/.claude/hooks/`)
 - [ ] settings.json — istniejące NIE nadpisywane (tworzy tylko jeśli brak)
 - [ ] Project-specific agents (orchestrator, implementers) — nietknięte
 - [ ] cost-optimizer, session-monitor, state-manager — działają bez zmian

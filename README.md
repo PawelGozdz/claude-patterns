@@ -176,7 +176,7 @@ cd ~/projects/your-project
 🚀 Claude Patterns - Unified Setup
 ═══════════════════════════════════════════════════════════
 
-Project: /home/node/projects/local-hero-3
+Project: /opt/projects/local-hero-3
 Claude Patterns: ~/projects/claude-patterns
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -189,7 +189,7 @@ PHASE 1: Global Setup (shared by all projects)
 ✅ hooks symlink correct
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-PHASE 2: Project Setup (/home/node/projects/local-hero-3)
+PHASE 2: Project Setup (/opt/projects/local-hero-3)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ✅ Verified .claude/knowledge/ exists
@@ -202,13 +202,13 @@ PHASE 3: Verification
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Global Symlinks:
-  ✅ agents → /home/node/projects/claude-patterns/agents
-  ✅ skills → /home/node/projects/claude-patterns/skills
-  ✅ commands → /home/node/projects/claude-patterns/commands
-  ✅ hooks → /home/node/projects/claude-patterns/hooks
+  ✅ agents → /opt/projects/claude-patterns/agents
+  ✅ skills → /opt/projects/claude-patterns/skills
+  ✅ commands → /opt/projects/claude-patterns/commands
+  ✅ hooks → /opt/projects/claude-patterns/hooks
 
 Project Symlinks:
-  ✅ patterns/ → /home/node/projects/claude-patterns/patterns
+  ✅ patterns/ → /opt/projects/claude-patterns/patterns
   ✅ 33 patterns accessible
 
 Available Resources:
@@ -269,7 +269,7 @@ Add this to `.claude/settings.json`:
   "mcpServers": {
     "claude-patterns": {
       "command": "python3",
-      "args": ["/home/node/projects/claude-patterns/mcp-server/server.py"],
+      "args": ["/opt/projects/claude-patterns/mcp-server/server.py"],
       "disabled": false
     }
   }
@@ -413,8 +413,8 @@ ln -sf ~/projects/claude-patterns/commands ~/.claude/commands
 # Verify
 ls -la ~/.claude/
 # Should show:
-# agents -> /home/node/projects/claude-patterns/agents
-# commands -> /home/node/projects/claude-patterns/commands
+# agents -> /opt/projects/claude-patterns/agents
+# commands -> /opt/projects/claude-patterns/commands
 ```
 
 ### Available Resources

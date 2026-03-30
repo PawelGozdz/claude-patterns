@@ -529,7 +529,7 @@ const capabilityId = await CapabilityFixture.createAsync(db, { residenceId });
 **Projections are auto-created** by `UserIdentityFixture.createProjections()`:
 
 ```typescript
-// /home/node/projects/project-4/test/shared/fixtures/auth/user-identity-fixture.class.ts
+// /opt/projects/project-4/test/shared/fixtures/auth/user-identity-fixture.class.ts
 protected override async createProjections(
   trx: Transaction<Database>,
   userId: string,
