@@ -1,0 +1,429 @@
+# Freezed Immutability Pattern
+
+## When to Use
+
+- All domain entities that need equality by value
+- All state classes managed by StateNotifier (loading/success/error unions)
+- All DTOs that serialize to/from JSON
+- Any class where you need `copyWith`, `==`, `hashCode`, and `toString` generated
+- When pattern matching on sealed union types
+
+**Do NOT use** for trivial wrapper types with 1-2 fields where a manual implementation is shorter than the annotation boilerplate.
+
+---
+
+## Implementation
+
+### Dependencies Setup
+
+```yaml
+# pubspec.yaml
+dependencies:
+  freezed_annotation: ^2.4.1
+  json_annotation: ^4.8.1
+
+dev_dependencies:
+  build_runner: ^2.4.6
+  freezed: ^2.4.5
+  json_serializable: ^6.7.1
+```
+
+### Build Runner Commands
+
+```bash
+# One-time generation
+dart run build_runner build --delete-conflicting-outputs
+
+# Watch mode during development
+dart run build_runner watch --delete-conflicting-outputs
+```
+
+### Entity with Freezed (Domain Layer)
+
+```dart
+// features/products/domain/entities/product.dart
+import 'package:freezed_annotation/freezed_annotation.dart';
+
+part 'product.freezed.dart';
+
+/// Domain entity. No JSON serialization — that lives in the data layer model.
+@freezed
+class Product with _$Product {
+  const Product._(); // Enable custom methods on frozen class
+
+  const factory Product({
+    required String id,
+    required String name,
+    required String description,
+    required double price,
+    required ProductCategory category,
+    required DateTime createdAt,
+    @Default(0) int stockCount,
+    String? imageUrl,
+  }) = _Product;
+
+  /// Domain logic: business rules live on the entity.
+  bool get isInStock => stockCount > 0;
+  bool get isExpensive => price > 100.0;
+
+  /// Named constructor for common test/seed scenarios.
+  factory Product.empty() => Product(
+        id: '',
+        name: '',
+        description: '',
+        price: 0,
+        category: ProductCategory.other,
+        createdAt: DateTime.now(),
+      );
+}
+
+enum ProductCategory { electronics, clothing, food, books, other }
+```
+
+### State Union with Freezed (Presentation Layer)
+
+```dart
+// features/products/presentation/providers/product_detail_state.dart
+import 'package:freezed_annotation/freezed_annotation.dart';
+import '../../domain/entities/product.dart';
+
+part 'product_detail_state.freezed.dart';
+
+@freezed
+class ProductDetailState with _$ProductDetailState {
+  /// No data loaded yet.
+  const factory ProductDetailState.initial() = ProductDetailInitial;
+
+  /// Fetching product data.
+  const factory ProductDetailState.loading() = ProductDetailLoading;
+
+  /// Product loaded successfully.
+  const factory ProductDetailState.loaded({
+    required Product product,
+    @Default(false) bool isFavorite,
+  }) = ProductDetailLoaded;
+
+  /// Failed to load product.
+  const factory ProductDetailState.error({
+    required String message,
+    String? code,
+  }) = ProductDetailError;
+}
+```
+
+### Consuming State Unions with when/map
+
+```dart
+// In a widget build method
+Widget build(BuildContext context, WidgetRef ref) {
+  final state = ref.watch(productDetailProvider(productId));
+
+  // --- when: handle ALL cases (exhaustive) ---
+  return state.when(
+    initial: () => const SizedBox.shrink(),
+    loading: () => const Center(child: CircularProgressIndicator()),
+    loaded: (product, isFavorite) => ProductDetailBody(
+      product: product,
+      isFavorite: isFavorite,
+    ),
+    error: (message, code) => ErrorDisplay(message: message),
+  );
+}
+
+// --- maybeWhen: handle some cases, default for the rest ---
+Widget buildFavoriteButton(ProductDetailState state) {
+  return state.maybeWhen(
+    loaded: (product, isFavorite) => IconButton(
+      icon: Icon(isFavorite ? Icons.favorite : Icons.favorite_border),
+      onPressed: () => toggleFavorite(product.id),
+    ),
+    orElse: () => const SizedBox.shrink(),
+  );
+}
+
+// --- map: access the typed state object directly ---
+void logState(ProductDetailState state) {
+  state.map(
+    initial: (_) => log('Initial state'),
+    loading: (_) => log('Loading...'),
+    loaded: (s) => log('Loaded: ${s.product.name}, fav=${s.isFavorite}'),
+    error: (s) => log('Error: ${s.message} (${s.code})'),
+  );
+}
+```
+
+### DTO with JSON Serialization (Data Layer)
+
+```dart
+// features/products/data/models/product_model.dart
+import 'package:freezed_annotation/freezed_annotation.dart';
+import '../../domain/entities/product.dart';
+
+part 'product_model.freezed.dart';
+part 'product_model.g.dart';
+
+@freezed
+class ProductModel with _$ProductModel {
+  const ProductModel._();
+
+  const factory ProductModel({
+    required String id,
+    required String name,
+    required String description,
+    required double price,
+    @JsonKey(name: 'stock_count') @Default(0) int stockCount,
+    @JsonKey(name: 'image_url') String? imageUrl,
+    @JsonKey(name: 'category') required String categoryRaw,
+    @JsonKey(name: 'created_at') required DateTime createdAt,
+  }) = _ProductModel;
+
+  /// JSON deserialization (generated by json_serializable).
+  factory ProductModel.fromJson(Map<String, dynamic> json) =>
+      _$ProductModelFromJson(json);
+
+  /// Convert to domain entity.
+  Product toEntity() => Product(
+        id: id,
+        name: name,
+        description: description,
+        price: price,
+        stockCount: stockCount,
+        imageUrl: imageUrl,
+        category: _parseCategory(categoryRaw),
+        createdAt: createdAt,
+      );
+
+  /// Convert from domain entity.
+  factory ProductModel.fromEntity(Product product) => ProductModel(
+        id: product.id,
+        name: product.name,
+        description: product.description,
+        price: product.price,
+        stockCount: product.stockCount,
+        imageUrl: product.imageUrl,
+        categoryRaw: product.category.name,
+        createdAt: product.createdAt,
+      );
+
+  static ProductCategory _parseCategory(String raw) {
+    return ProductCategory.values.firstWhere(
+      (e) => e.name == raw,
+      orElse: () => ProductCategory.other,
+    );
+  }
+}
+```
+
+### copyWith for Immutable Updates
+
+```dart
+// Updating a single field — returns a new instance
+final updatedProduct = product.copyWith(price: 29.99);
+
+// Updating nested state
+final currentState = ProductDetailState.loaded(
+  product: existingProduct,
+  isFavorite: false,
+);
+
+// Toggle favorite without touching the product
+final newState = (currentState as ProductDetailLoaded).copyWith(
+  isFavorite: true,
+);
+
+// Update nested product price within loaded state
+final updatedState = (currentState as ProductDetailLoaded).copyWith(
+  product: currentState.product.copyWith(price: 19.99),
+);
+```
+
+### Complex Nested Freezed (Event with Attendees)
+
+```dart
+// features/events/domain/entities/event.dart
+import 'package:freezed_annotation/freezed_annotation.dart';
+
+part 'event.freezed.dart';
+
+@freezed
+class Event with _$Event {
+  const Event._();
+
+  const factory Event({
+    required String id,
+    required String title,
+    required DateTime startsAt,
+    required DateTime endsAt,
+    required EventStatus status,
+    @Default([]) List<Attendee> attendees,
+    @Default(100) int maxCapacity,
+  }) = _Event;
+
+  bool get isFull => attendees.length >= maxCapacity;
+  int get spotsRemaining => maxCapacity - attendees.length;
+  bool get isUpcoming => startsAt.isAfter(DateTime.now());
+}
+
+@freezed
+class Attendee with _$Attendee {
+  const factory Attendee({
+    required String userId,
+    required String name,
+    required DateTime registeredAt,
+    @Default(AttendeeStatus.confirmed) AttendeeStatus status,
+  }) = _Attendee;
+}
+
+enum EventStatus { draft, published, cancelled, completed }
+enum AttendeeStatus { confirmed, waitlisted, cancelled }
+```
+
+### Generated Files Management
+
+```gitignore
+# .gitignore — choose ONE strategy:
+
+# Strategy A: Do NOT commit generated files (recommended for teams)
+*.freezed.dart
+*.g.dart
+
+# Strategy B: Commit generated files (for CI without build_runner)
+# (commit everything, run build_runner locally)
+```
+
+```yaml
+# build.yaml — configure build_runner behavior
+targets:
+  $default:
+    builders:
+      freezed:
+        options:
+          # Generate toString, == and hashCode
+          equal: true
+          to_string: true
+          # Do not generate map/maybeMap (use when/maybeWhen instead)
+          map: true
+          when: true
+```
+
+---
+
+## Key Rules (Enforced by Hooks)
+
+1. **All domain entities use `@freezed`** — no mutable fields, no manual `==` overrides.
+2. **State classes use union types** — `initial | loading | loaded | error`. Never boolean flags.
+3. **DTOs live in `data/models/`** — they have `fromJson`/`toJson`. Entities in `domain/` do NOT.
+4. **Always include `const factory`** — enables const constructors for better performance.
+5. **Add `const ClassName._();`** before custom methods — required by Freezed for adding methods.
+6. **Run `build_runner` after any Freezed class change** — stale generated files cause cryptic errors.
+
+---
+
+## Anti-Patterns
+
+```dart
+// BAD: Mutable entity
+class Product {
+  String name;     // Mutable — can be changed anywhere
+  double price;    // No copyWith, no equality
+  Product(this.name, this.price);
+}
+
+// BAD: Boolean state flags
+class ProductState {
+  final bool isLoading;
+  final bool hasError;
+  final Product? product;
+  // Allows impossible combinations: isLoading=true AND hasError=true
+}
+
+// BAD: JSON serialization on domain entity
+@freezed
+class User with _$User {
+  const factory User({required String id}) = _User;
+  factory User.fromJson(Map<String, dynamic> json) => _$UserFromJson(json);
+  // Domain should not know about JSON — that is data layer concern
+}
+
+// BAD: Missing const on factory constructors
+@freezed
+class MyState with _$MyState {
+  factory MyState.loading() = _Loading;  // Missing const — less efficient
+}
+
+// BAD: Modifying a list inside a frozen class
+final event = Event(attendees: [attendee1]);
+event.attendees.add(attendee2); // Runtime error or silent corruption
+// Use copyWith: event.copyWith(attendees: [...event.attendees, attendee2])
+```
+
+---
+
+## Testing
+
+```dart
+// Test equality (generated by Freezed)
+test('two Products with same fields are equal', () {
+  final a = Product(id: '1', name: 'X', price: 10, ...);
+  final b = Product(id: '1', name: 'X', price: 10, ...);
+  expect(a, equals(b));
+  expect(a.hashCode, b.hashCode);
+});
+
+// Test copyWith produces new instance
+test('copyWith does not mutate original', () {
+  final original = Product(id: '1', name: 'Widget', price: 10, ...);
+  final updated = original.copyWith(price: 20);
+
+  expect(original.price, 10);  // Unchanged
+  expect(updated.price, 20);
+  expect(original, isNot(equals(updated)));
+});
+
+// Test state union exhaustiveness
+test('when handles all state variants', () {
+  final states = [
+    const ProductDetailState.initial(),
+    const ProductDetailState.loading(),
+    ProductDetailState.loaded(product: testProduct),
+    const ProductDetailState.error(message: 'fail'),
+  ];
+
+  for (final state in states) {
+    // This compiles only if when() covers all cases
+    final label = state.when(
+      initial: () => 'initial',
+      loading: () => 'loading',
+      loaded: (_, __) => 'loaded',
+      error: (_, __) => 'error',
+    );
+    expect(label, isNotEmpty);
+  }
+});
+
+// Test DTO serialization round-trip
+test('ProductModel fromJson/toJson round trip', () {
+  final json = {
+    'id': '123',
+    'name': 'Laptop',
+    'description': 'A laptop',
+    'price': 999.99,
+    'stock_count': 5,
+    'image_url': null,
+    'category': 'electronics',
+    'created_at': '2025-06-15T10:30:00.000Z',
+  };
+
+  final model = ProductModel.fromJson(json);
+  final backToJson = model.toJson();
+
+  expect(backToJson['id'], '123');
+  expect(backToJson['stock_count'], 5);
+  expect(backToJson['category'], 'electronics');
+
+  // Entity conversion
+  final entity = model.toEntity();
+  expect(entity.category, ProductCategory.electronics);
+  expect(entity.isInStock, true);
+});
+```

@@ -1,49 +1,50 @@
-# Flutter Project Example
+# Flutter Clean Architecture Project Example
 # Copy to: <flutter-project>/.claude/config/project.yml
 
 project:
   name: MyFlutterApp
-  description: "Cross-platform mobile app for iOS and Android"
-  stack_profile: flutter
-  agent_profile: frontend-ui
-  stack: "Flutter 3.x, Dart, Firebase"
-  testing: "flutter_test + patrol"
-  state_management: "Riverpod"
-  platforms: "iOS, Android, Web"
+  description: "Cross-platform mobile app with Clean Architecture"
+  stack_profile: flutter-clean-arch
+  language: dart
+  stack: "Flutter 3.x, Dart, Riverpod, Freezed, GoRouter, Dio"
+  testing: "flutter_test, mocktail, golden_toolkit"
+  state_management: "Riverpod 2.x with StateNotifier"
+  platforms: "iOS, Android"
+
+skills:
+  - security
+  - testing
+  - quality
+  - optimization
+  - architecture
+  - flutter
 
 contexts:
-  - name: authentication
+  - name: auth
     status: production
     tests: 45
-    notes: "Firebase Auth, biometrics"
+    notes: "Login, register, OAuth, biometric"
   - name: user-profile
     status: production
     tests: 32
-    notes: "Profile management, settings"
+    notes: "Profile management, settings, avatar"
   - name: feed
     status: in-progress
     tests: 18
     notes: "Infinite scroll, pull-to-refresh"
-  - name: notifications
-    status: planned
-    tests: 0
-    notes: "Push notifications, FCM"
 
 rules:
-  - "Feature-first structure: lib/features/{feature}/"
-  - "BLoC pattern: Business logic in BLoCs, UI in widgets"
-  - "Golden tests for visual regression"
-  - "Freezed for immutable models"
-  - "GetIt for dependency injection"
+  - "NEVER import between features — use shared/ for cross-feature code"
+  - "Domain/application layers: NO Flutter/infrastructure imports (pure Dart)"
+  - "ref.watch() in build(), ref.read() in callbacks ONLY"
+  - "ALL models use @freezed — entities, states, DTOs"
+  - "ALL use cases return Either<Failure, T> — never throw exceptions"
+  - "Polish-first localization (pl_PL primary, ARB files)"
 
 cost:
   opus: "<25%"
-  sonnet: "~60%"
-  haiku: ">15%"
-
-docs:
-  - PRODUCT.md
-  - ARCHITECTURE.md
+  sonnet: "~55%"
+  haiku: ">20%"
 
 entry_points:
   orchestrate: "/o"

@@ -101,20 +101,39 @@ ensure_symlink() {
 KNOWLEDGE_DIR="$PROJECT_DIR/.claude/knowledge"
 mkdir -p "$KNOWLEDGE_DIR"
 
-# --- 1. Patterns symlink ---
+# --- 1. Patterns symlink (stack-aware) ---
 echo -e "${BLUE}[1/7] Patterns${NC}"
 PROJECT_LANGUAGE=$(yml_get "project.language")
-if [[ "$PROJECT_LANGUAGE" == "typescript" || -z "$PROJECT_LANGUAGE" ]]; then
-  ensure_symlink "$KNOWLEDGE_DIR/patterns" "$GLOBAL_PATTERNS" "patterns -> global patterns"
-else
-  # Patterns are TypeScript/DDD-specific — skip for other languages
-  if [ -L "$KNOWLEDGE_DIR/patterns" ]; then
-    rm "$KNOWLEDGE_DIR/patterns"
-    echo -e "  ${YELLOW}Removed:${NC} patterns symlink (TS-specific, not applicable for $PROJECT_LANGUAGE)"
-  else
-    echo -e "  ${YELLOW}Skipped:${NC} patterns (TS-specific — use patterns-local/ for $PROJECT_LANGUAGE patterns)"
-  fi
-fi
+STACK_PROFILE=$(yml_get "project.stack_profile")
+
+# Determine which patterns to link based on stack_profile
+case "$STACK_PROFILE" in
+  nestjs-ddd)
+    # DDD patterns (domain, application, infrastructure, architecture, testing, cross-layer)
+    ensure_symlink "$KNOWLEDGE_DIR/patterns" "$GLOBAL_PATTERNS" "patterns -> DDD patterns"
+    ;;
+  flutter*)
+    # Flutter patterns
+    FLUTTER_PATTERNS="$PATTERNS_REPO/patterns/flutter"
+    if [[ -d "$FLUTTER_PATTERNS" ]]; then
+      ensure_symlink "$KNOWLEDGE_DIR/patterns" "$FLUTTER_PATTERNS" "patterns -> Flutter patterns"
+    else
+      echo -e "  ${YELLOW}Warning:${NC} Flutter patterns not found at $FLUTTER_PATTERNS"
+    fi
+    ;;
+  python*)
+    # Python — no dedicated patterns yet, skip
+    echo -e "  ${YELLOW}Skipped:${NC} No Python patterns library yet (use patterns-local/)"
+    ;;
+  *)
+    # Unknown stack — link all patterns
+    if [[ "$PROJECT_LANGUAGE" == "typescript" ]]; then
+      ensure_symlink "$KNOWLEDGE_DIR/patterns" "$GLOBAL_PATTERNS" "patterns -> all patterns"
+    else
+      echo -e "  ${YELLOW}Skipped:${NC} No patterns for stack '$STACK_PROFILE' (use patterns-local/)"
+    fi
+    ;;
+esac
 echo ""
 
 # --- 2. Patterns-local directory ---

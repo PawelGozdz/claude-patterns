@@ -1,0 +1,8 @@
+category: flutter
+version: 1.0.0
+maturity: production
+last_verified: 2026-03-30
+stack: Flutter, Dart, Riverpod, Freezed, GoRouter, Dio
+source_project: juz-ide-mobile-app
+patterns_count: 7
+description: Production-tested Flutter Clean Architecture patterns
