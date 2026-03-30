@@ -1,14 +1,19 @@
 ## Agent Ecosystem
 
-**3 tiers** (all auto-discovered via symlinks):
+**Global agents** (auto-discovered via `~/.claude/agents/`):
 
-| Tier | Agents | Model |
-|------|--------|-------|
-| Implementation | domain-application-implementer, infrastructure-testing-implementer | Sonnet |
-| Verification | code-quality-verifier (Sonnet), security-e2e-verifier (Opus, VETO) | Mixed |
-| Utility | codebase-explorer, schema-testing-agent, test-scaffolder, documentation-writer, migration-generator | Haiku |
+| Role | Agent | Model |
+|------|-------|-------|
+| Advisory | ddd-application-expert | Sonnet |
+| Advisory | backend-technology-expert | Opus |
+| Advisory | security-privacy-architect | Opus |
+| Advisory | technical-architecture-lead | Opus |
+| Verification | code-quality-verifier (VETO) | Sonnet |
+| Verification | security-e2e-verifier (VETO) | Opus |
 
-**Advisory** (on-demand): ddd-application-expert, backend-technology-expert (both Sonnet/Opus).
+**Built-in**: Explore agent (Haiku) — use for cost-efficient file discovery.
+
+**Per-project** (optional in `.claude/agents/`): implementers, orchestrator — project-specific, not shared.
 
 **Cost targets**:
 
