@@ -278,7 +278,7 @@ if [[ -f "$MCP_JSON" ]]; then
   echo -e "  ${YELLOW}Already exists:${NC} .mcp.json (preserved)"
 elif [[ -f "$MCP_TEMPLATE" ]]; then
   # Expand ${HOME} in template
-  sed "s|\${HOME}/projects/claude-patterns|$PATTERNS_REPO|g" "$MCP_TEMPLATE" > "$MCP_JSON"
+  sed "s|%%PATTERNS_REPO%%|$PATTERNS_REPO|g" "$MCP_TEMPLATE" > "$MCP_JSON"
   echo -e "  ${GREEN}Created:${NC} .mcp.json (claude-patterns MCP server)"
 else
   echo -e "  ${YELLOW}Skipped:${NC} MCP template not found"

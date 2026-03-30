@@ -110,7 +110,7 @@ echo -e "${BLUE}[2/5] .mcp.json${NC}"
 MCP_JSON="$PROJECT_DIR/.mcp.json"
 MCP_TEMPLATE="$PATTERNS_REPO/templates/mcp.json.template"
 if [[ ! -f "$MCP_JSON" && -f "$MCP_TEMPLATE" ]]; then
-  sed "s|\${HOME}/projects/claude-patterns|$PATTERNS_REPO|g" "$MCP_TEMPLATE" > "$MCP_JSON"
+  sed "s|%%PATTERNS_REPO%%|$PATTERNS_REPO|g" "$MCP_TEMPLATE" > "$MCP_JSON"
   echo -e "  ${GREEN}Created:${NC} .mcp.json"
   CHANGES=$((CHANGES + 1))
 else

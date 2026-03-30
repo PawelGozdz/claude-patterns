@@ -5,6 +5,7 @@ tools: Read, Glob, Grep, Bash, mcp__zen__secaudit, mcp__zen__analyze
 model: opus
 permissionMode: dontAsk
 effort: max
+memory: project
 isolation: worktree
 maxTurns: 20
 skills:

@@ -5,6 +5,7 @@ tools: Read, Glob, Grep, Bash, mcp__zen__codereview, mcp__zen__analyze
 model: sonnet
 permissionMode: dontAsk
 effort: medium
+memory: project
 isolation: worktree
 maxTurns: 15
 skills:
