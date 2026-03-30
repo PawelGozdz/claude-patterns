@@ -187,8 +187,33 @@ if [[ -f "$SETTINGS_TEMPLATE" ]]; then
 fi
 echo ""
 
-# --- 5. Regenerate CLAUDE.md with @import ---
-echo -e "${BLUE}[5/5] CLAUDE.md with @import${NC}"
+# --- 5. Update .gitignore ---
+echo -e "${BLUE}[5/6] .gitignore${NC}"
+GITIGNORE="$PROJECT_DIR/.gitignore"
+GITIGNORE_TEMPLATE="$PATTERNS_REPO/templates/gitignore-claude.template"
+if [[ -f "$GITIGNORE" && -f "$GITIGNORE_TEMPLATE" ]]; then
+  # Add entries not already present
+  ADDED=0
+  while IFS= read -r line; do
+    [[ -z "$line" || "$line" == \#* ]] && continue
+    if ! grep -qxF "$line" "$GITIGNORE" 2>/dev/null; then
+      echo "$line" >> "$GITIGNORE"
+      ADDED=$((ADDED + 1))
+    fi
+  done < "$GITIGNORE_TEMPLATE"
+  if [[ $ADDED -gt 0 ]]; then
+    echo -e "  ${GREEN}Added:${NC} $ADDED entries to .gitignore"
+    CHANGES=$((CHANGES + 1))
+  else
+    echo -e "  ${YELLOW}Up to date:${NC} .gitignore"
+  fi
+else
+  echo -e "  ${YELLOW}Skipped:${NC} No .gitignore found"
+fi
+echo ""
+
+# --- 6. Regenerate CLAUDE.md with @import ---
+echo -e "${BLUE}[6/6] CLAUDE.md with @import${NC}"
 bash "$SCRIPT_DIR/generate-claude-md.sh" "$PROJECT_DIR"
 CHANGES=$((CHANGES + 1))
 echo ""
