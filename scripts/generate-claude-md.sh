@@ -217,10 +217,13 @@ fi
 
 # --- Generate skills reference ---
 
-# --- Generate skills @import directives ---
+# --- Generate skills reference list (NOT @import — skills are auto-discovered) ---
+# Skills are loaded by Claude Code via tool descriptions, NOT imported into CLAUDE.md.
+# Importing full SKILL.md files wastes ~3700 lines of context per session.
+# We only list them as a reference so the user knows what's available.
 
 SKILLS_IMPORTS=""
-SKILLS_IMPORTS_ITEMS=""
+SKILLS_LIST_ITEMS=""
 
 while IFS= read -r category; do
   [[ -z "$category" ]] && continue
@@ -230,15 +233,15 @@ while IFS= read -r category; do
       [[ -d "$skill_dir" ]] || continue
       skill_name=$(basename "$skill_dir")
       if [[ -f "$skill_dir/SKILL.md" ]]; then
-        SKILLS_IMPORTS_ITEMS="${SKILLS_IMPORTS_ITEMS}@.claude/knowledge/skills/${category}/${skill_name}/SKILL.md\n"
+        SKILLS_LIST_ITEMS="${SKILLS_LIST_ITEMS}- \`${category}/${skill_name}\`\n"
       fi
     done
   fi
 done < <(yml_list "skills")
 
-if [[ -n "$SKILLS_IMPORTS_ITEMS" ]]; then
-  SKILLS_IMPORTS="## Available Skills\n\n"
-  SKILLS_IMPORTS="${SKILLS_IMPORTS}${SKILLS_IMPORTS_ITEMS}"
+if [[ -n "$SKILLS_LIST_ITEMS" ]]; then
+  SKILLS_IMPORTS="## Available Skills (auto-discovered from .claude/knowledge/skills/)\n\n"
+  SKILLS_IMPORTS="${SKILLS_IMPORTS}${SKILLS_LIST_ITEMS}"
 fi
 
 # --- Load stack-specific content ---
