@@ -86,37 +86,28 @@ A **single source of truth** for production-tested software patterns and agent t
 │   ├── requirements.txt         # Python dependencies
 │   ├── settings.json.example    # Example Claude settings
 │   └── README.md                # MCP setup & usage guide
-├── agents/                      # Universal agent templates + Global agents
-│   ├── agents-universal.yml     # Universal template (Handlebars)
+├── agents/                      # Agent definitions (universal + per-stack)
 │   ├── README.md                # Agent setup & usage guide
-│   ├── specialists/             # Global expert agents (4 total)
-│   │   ├── ddd-application-expert.md
+│   ├── universal/               # Stack-agnostic agents (3 — linked to ~/.claude/agents/)
 │   │   ├── backend-technology-expert.md
 │   │   ├── security-privacy-architect.md
 │   │   └── technical-architecture-lead.md
-│   ├── utilities/               # Global utility agents (3 total)
-│   │   ├── codebase-explorer.md
-│   │   ├── schema-testing-agent.md
-│   │   └── test-scaffolder.md
-│   └── verifiers/               # Global verifier agents (2 total)
-│       ├── code-quality-verifier.md
-│       └── security-e2e-verifier.md
-├── tooling/                     # Compilation tooling (NEW)
-│   ├── compile-agents.js        # Main compilation script
-│   ├── package.json             # Dependencies (Handlebars, YAML, etc.)
-│   └── node_modules/            # 55 npm packages
+│   └── stacks/                  # Stack-specific agents (linked per-project)
+│       ├── nestjs-ddd/          # DDD quality + expert (3 agents)
+│       ├── flutter-clean-arch/  # Flutter quality + arch + UI (3 agents)
+│       ├── nextjs-app/          # Next.js quality + arch (2 agents)
+│       ├── python/              # Python quality + arch (2 agents)
+│       └── typescript-library/  # Library quality + API guardian (2 agents)
 ├── commands/                    # Global commands (symlinked from ~/.claude/commands)
 │   ├── orchestrate.md           # Unified orchestration (search/implement/validate/analyze/review)
 │   ├── progress.md              # Visual progress tracking (Haiku)
 │   ├── scaffold.md              # Haiku template generator
 │   └── README.md                # Command setup & usage guide
-├── COMPILATION_ARCHITECTURE.md  # Compilation system architecture (642 lines)
-├── test-compilation/            # Test project for compilation system
-│   └── .claude/
-│       ├── config/project.yml   # Test configuration
-│       └── roles/               # Compiled test output
 ├── scripts/                     # Setup & maintenance scripts
-│   ├── setup-project.sh         # Setup symlinks in new project
+│   ├── setup-project.sh         # Setup per-project (patterns, agents, rules, skills, MCP)
+│   ├── setup-global.sh          # Setup global ~/.claude/ (universal agents, commands, hooks)
+│   ├── migrate-v2.sh            # Migrate existing project to v3 features
+│   ├── migrate-all.sh           # Batch migrate all projects
 │   ├── setup-global.sh          # Setup global agents/commands (NEW)
 │   ├── extract-patterns.sh      # Extract patterns from LocalHero
 │   ├── validate-metadata.sh     # Validate METADATA.yml files
@@ -362,62 +353,6 @@ ls -la .claude/knowledge/patterns  # Should show symlink
 **Note**: Symlinks require global repo to exist on each machine. When cloning project on new machine, run `setup-project.sh` again.
 
 ---
-
-### Option C: Compilation System (Project-Specific Agents)
-
-**Use when**: Need project-specific agent configurations (bounded contexts, tech stack)
-
-**What it does**: Generates project-specific agents from universal templates with Handlebars compilation.
-
-**Quick Start** (30 minutes per project):
-
-```bash
-# 1. Create project configuration
-mkdir -p <your-project>/.claude/config
-cat > <your-project>/.claude/config/project.yml <<EOF
-name: "YourProject"
-slug: "your-project"
-version: "1.0.0"
-
-contexts:
-  - context-1
-  - context-2
-
-tech_stack:
-  framework: NestJS
-  language: TypeScript
-  database: PostgreSQL
-  testing: Vitest
-  ddd_library: "@vytches/ddd"
-
-patterns_repo:
-  path: "~/projects/claude-patterns"
-  version: "2.0.0"
-EOF
-
-# 2. Compile agents
-cd ~/projects/claude-patterns
-node tooling/compile-agents.js \
-  --template agents/agents-universal.yml \
-  --config <your-project>/.claude/config/project.yml \
-  --output <your-project>/.claude/roles
-
-# 3. Update .gitignore
-echo -e "\n# Claude Code compiled agents\n.claude/roles/" >> <your-project>/.gitignore
-
-# 4. Verify
-node tooling/compile-agents.js \
-  --verify \
-  --output <your-project>/.claude/roles
-```
-
-**Result**: 12 project-specific agents compiled!
-- 3 Specialists (Sonnet/Opus)
-- 2 Implementers (Sonnet)
-- 2 Verifiers (Sonnet/Opus)
-- 5 Utilities (Haiku - 60x cheaper!)
-
-**Full documentation**: See `COMPILATION_ARCHITECTURE.md` (642 lines)
 
 ---
 

@@ -1,3 +1,7 @@
+---
+description: Diagnose and fix TypeScript build errors with minimal changes
+---
+
 # Build and Fix
 
 Incrementally fix build and type errors with minimal, safe changes.

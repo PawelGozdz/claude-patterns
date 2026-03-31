@@ -1,3 +1,7 @@
+---
+description: Configure PM2 process manager for Node.js application
+---
+
 # PM2 Init
 
 Auto-analyze project and generate PM2 service commands.

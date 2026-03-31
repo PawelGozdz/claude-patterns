@@ -1,3 +1,7 @@
+---
+description: Structured code review with severity levels and actionable feedback
+---
+
 # Code Review
 
 Comprehensive security and quality review of uncommitted changes:

@@ -1,3 +1,7 @@
+---
+description: "Run quality gates: typecheck, lint, test, build, coverage"
+---
+
 # Verification Command
 
 Run comprehensive verification on current codebase state.

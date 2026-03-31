@@ -1,3 +1,7 @@
+---
+description: Save session state snapshot for cross-session continuity
+---
+
 # Checkpoint Command
 
 Create or verify a checkpoint in your workflow.

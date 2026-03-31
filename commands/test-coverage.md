@@ -1,3 +1,7 @@
+---
+description: Analyze test coverage gaps prioritized by business criticality
+---
+
 # Test Coverage
 
 Analyze test coverage, identify gaps, and generate missing tests to reach 80%+ coverage.
