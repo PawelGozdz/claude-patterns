@@ -122,8 +122,13 @@ case "$STACK_PROFILE" in
     fi
     ;;
   python*)
-    # Python — no dedicated patterns yet, skip
-    echo -e "  ${YELLOW}Skipped:${NC} No Python patterns library yet (use patterns-local/)"
+    # Python patterns
+    PYTHON_PATTERNS="$PATTERNS_REPO/patterns/python"
+    if [[ -d "$PYTHON_PATTERNS" ]]; then
+      ensure_symlink "$KNOWLEDGE_DIR/patterns" "$PYTHON_PATTERNS" "patterns -> Python patterns"
+    else
+      echo -e "  ${YELLOW}Warning:${NC} Python patterns not found at $PYTHON_PATTERNS"
+    fi
     ;;
   *)
     # Unknown stack — link all patterns
@@ -149,8 +154,14 @@ echo ""
 
 # --- 2b. Stack-specific agents ---
 echo -e "${BLUE}[2b/7] Stack agents${NC}"
-STACK_AGENTS_DIR="$PATTERNS_REPO/agents/stacks/$STACK_PROFILE"
 PROJECT_AGENTS_DIR="$PROJECT_DIR/.claude/agents"
+
+# Try exact match first, then base stack (e.g., python-pipeline → python)
+STACK_AGENTS_DIR="$PATTERNS_REPO/agents/stacks/$STACK_PROFILE"
+if [[ ! -d "$STACK_AGENTS_DIR" ]]; then
+  BASE_STACK="${STACK_PROFILE%%-*}"
+  STACK_AGENTS_DIR="$PATTERNS_REPO/agents/stacks/$BASE_STACK"
+fi
 
 if [[ -d "$STACK_AGENTS_DIR" ]]; then
   mkdir -p "$PROJECT_AGENTS_DIR"

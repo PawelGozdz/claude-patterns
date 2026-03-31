@@ -1,0 +1,8 @@
+category: python
+version: 1.0.0
+maturity: production
+last_verified: 2026-03-30
+stack: Python 3.11+, FastAPI, SQLAlchemy, pytest
+source_projects: my-intelligence, pcu
+patterns_count: 5
+description: Production-tested Python layered architecture patterns
