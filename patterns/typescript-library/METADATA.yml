@@ -1,0 +1,8 @@
+category: typescript-library
+version: 1.0.0
+maturity: production
+last_verified: 2026-03-31
+stack: TypeScript 5.x, Nx, Vitest, pnpm
+source_project: vytches-ddd
+patterns_count: 5
+description: Patterns for shared TypeScript npm libraries in Nx monorepos

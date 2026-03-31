@@ -139,6 +139,15 @@ case "$STACK_PROFILE" in
       echo -e "  ${YELLOW}Warning:${NC} Python patterns not found at $PYTHON_PATTERNS"
     fi
     ;;
+  typescript-library)
+    # TypeScript library patterns
+    TSLIB_PATTERNS="$PATTERNS_REPO/patterns/typescript-library"
+    if [[ -d "$TSLIB_PATTERNS" ]]; then
+      ensure_symlink "$KNOWLEDGE_DIR/patterns" "$TSLIB_PATTERNS" "patterns -> TS library patterns"
+    else
+      echo -e "  ${YELLOW}Warning:${NC} TS library patterns not found at $TSLIB_PATTERNS"
+    fi
+    ;;
   *)
     # Unknown stack — link all patterns
     if [[ "$PROJECT_LANGUAGE" == "typescript" ]]; then
