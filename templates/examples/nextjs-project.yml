@@ -1,0 +1,47 @@
+# Next.js 16 App Router Project Example
+# Copy to: <nextjs-project>/.claude/config/project.yml
+
+project:
+  name: MyNextApp
+  description: "Fullstack web application with Next.js 16 App Router"
+  stack_profile: nextjs-app
+  language: typescript
+  stack: "Next.js 16, React 19.2, TypeScript, Tailwind CSS 4, Turbopack"
+  testing: "Vitest, React Testing Library, Playwright"
+
+skills:
+  - security
+  - testing
+  - quality
+  - optimization
+  - architecture
+  - nextjs
+
+contexts:
+  - name: auth
+    status: production
+    tests: 20
+    notes: "Login, register, sessions, proxy.ts guard"
+  - name: dashboard
+    status: in-progress
+    tests: 10
+    notes: "Cache Components, Server Actions"
+
+rules:
+  - "Server Components by default — 'use client' only for interactivity"
+  - "'use cache' for caching — explicit, opt-in"
+  - "proxy.ts NOT middleware.ts — renamed export"
+  - "Async APIs: await params, await cookies(), await headers()"
+  - "Server Actions for mutations — not API routes"
+  - "No manual useMemo/useCallback — React Compiler handles this"
+  - "Vitest for testing — not Jest"
+
+cost:
+  opus: "<20%"
+  sonnet: "~60%"
+  haiku: ">20%"
+
+entry_points:
+  orchestrate: "/o"
+  scaffold: "/scaffold"
+  progress: "/progress"

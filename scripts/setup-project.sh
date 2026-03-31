@@ -121,6 +121,15 @@ case "$STACK_PROFILE" in
       echo -e "  ${YELLOW}Warning:${NC} Flutter patterns not found at $FLUTTER_PATTERNS"
     fi
     ;;
+  nextjs*)
+    # Next.js patterns
+    NEXTJS_PATTERNS="$PATTERNS_REPO/patterns/nextjs"
+    if [[ -d "$NEXTJS_PATTERNS" ]]; then
+      ensure_symlink "$KNOWLEDGE_DIR/patterns" "$NEXTJS_PATTERNS" "patterns -> Next.js patterns"
+    else
+      echo -e "  ${YELLOW}Warning:${NC} Next.js patterns not found at $NEXTJS_PATTERNS"
+    fi
+    ;;
   python*)
     # Python patterns
     PYTHON_PATTERNS="$PATTERNS_REPO/patterns/python"

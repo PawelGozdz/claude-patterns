@@ -138,6 +138,7 @@ SETTINGS_FILE="$PROJECT_DIR/.claude/settings.json"
 # Determine which settings template to use
 case "$STACK_PROFILE" in
   nestjs-ddd)  SETTINGS_TEMPLATE="$PATTERNS_REPO/templates/settings/nestjs-ddd.json" ;;
+  nextjs*)     SETTINGS_TEMPLATE="$PATTERNS_REPO/templates/settings/nextjs-app.json" ;;
   flutter*)    SETTINGS_TEMPLATE="$PATTERNS_REPO/templates/settings/flutter.json" ;;
   python*)     SETTINGS_TEMPLATE="$PATTERNS_REPO/templates/settings/python.json" ;;
   *)           SETTINGS_TEMPLATE="$PATTERNS_REPO/templates/settings/base.json" ;;
