@@ -1,0 +1,8 @@
+category: sveltekit
+version: 1.0.0
+maturity: production
+last_verified: 2026-03-31
+stack: SvelteKit 2, Svelte 5, TypeScript, Tailwind CSS, Vite
+source_project: pcu
+patterns_count: 5
+description: SvelteKit 2 + Svelte 5 runes patterns with TypeScript and Tailwind
