@@ -4,9 +4,9 @@
 
 This knowledge base contains production-enforced patterns for DDD/CQRS projects. Each pattern is derived from real implementations (2-3 verified code examples) and includes comprehensive anti-patterns sections.
 
-**Version**: 3.0
-**Last Updated**: 2026-02-05
-**Status**: PRODUCTION (33 patterns complete)
+**Version**: 3.1
+**Last Updated**: 2026-04-03
+**Status**: PRODUCTION (38 core patterns + 29 stack-specific)
 
 ---
 
@@ -17,9 +17,16 @@ patterns/
 ├── domain/              # Domain Layer (core business logic) - 6 patterns
 ├── application/         # Application Layer (CQRS handlers) - 4 patterns
 ├── infrastructure/      # Infrastructure Layer (persistence, API) - 4 patterns
-├── architecture/        # Cross-cutting architecture patterns - 8 patterns
-├── testing/            # Testing patterns - 7 patterns
-└── cross-layer/        # Used everywhere (errors, logging, error handlers) - 4 patterns
+├── architecture/        # Cross-cutting architecture patterns - 11 patterns
+├── testing/            # Testing patterns - 8 patterns
+├── cross-layer/        # Used everywhere (errors, logging, error handlers) - 4 patterns
+├── orchestration/      # Project management and team coordination - 1 pattern
+│
+├── flutter/            # Flutter-specific patterns - 7 patterns (per-project)
+├── nextjs/             # Next.js-specific patterns - 7 patterns (per-project)
+├── python/             # Python-specific patterns - 5 patterns (per-project)
+├── sveltekit/          # SvelteKit-specific patterns - 5 patterns (per-project)
+└── typescript-library/ # TS library-specific patterns - 5 patterns (per-project)
 ```
 
 ---
@@ -91,7 +98,7 @@ Persistence, API, and technical implementation patterns.
 
 ---
 
-### Architecture Layer (8 patterns)
+### Architecture Layer (11 patterns)
 
 Cross-cutting architectural patterns spanning multiple layers.
 
@@ -105,6 +112,8 @@ Cross-cutting architectural patterns spanning multiple layers.
 | **[integration-event-pattern.md](architecture/integration-event-pattern.md)** | ~800 | Production | Cross-context events via Outbox Pattern, NO PII, priority-based processing | domain-application-implementer, infrastructure-testing-implementer |
 | **[entity-event-emission-pattern.md](architecture/entity-event-emission-pattern.md)** | 480 | Production | Manual domain event emission for Entities (non-Aggregates), eventPersistenceHandler + eventDispatcher | domain-application-implementer |
 | **[golden-rule-endpoints.md](architecture/golden-rule-endpoints.md)** | ~120 | Production | GET /{resource} = public (approved only), GET /{resource}/my = owner (all statuses). ADR-0071 | infrastructure-testing-implementer, domain-application-implementer |
+| **[cross-context-communication.md](architecture/cross-context-communication.md)** | ~200 | Production | Decision guide: ACL vs Integration Events vs queues for cross-context communication | All implementers |
+| **[token-optimization-pattern.md](architecture/token-optimization-pattern.md)** | ~300 | Production | Token reduction settings, session quality, model selection strategy | All users |
 | **[fresh-context-pattern.md](architecture/fresh-context-pattern.md)** | 553 | Production | Keep orchestrator lean (~15%), subagents fresh (~100% relevant), context rot detection | project-orchestrator, all agents |
 
 **Architecture Layer Key Principles**:
@@ -118,7 +127,7 @@ Cross-cutting architectural patterns spanning multiple layers.
 
 ---
 
-### Testing Layer (7 patterns)
+### Testing Layer (8 patterns)
 
 Testing strategies and patterns for all levels of the test pyramid.
 
@@ -131,6 +140,7 @@ Testing strategies and patterns for all levels of the test pyramid.
 | **[test-seeding-performance-guide.md](testing/test-seeding-performance-guide.md)** | ~700 | Production | Performance optimization for test data seeding | All implementers |
 | **[rate-limit-testing-pattern.md](testing/rate-limit-testing-pattern.md)** | ~400 | Production | Separate E2E files for rate limiting tests | infrastructure-testing-implementer |
 | **[redis-test-isolation-pattern.md](testing/redis-test-isolation-pattern.md)** | ~350 | Production | Redis database isolation in tests | infrastructure-testing-implementer |
+| **[business-rules-yaml-pattern.md](testing/business-rules-yaml-pattern.md)** | ~400 | Production | BUSINESS_RULES.yaml as test oracle, specification/policy alignment | All implementers |
 
 **Testing Layer Key Principles**:
 - Test Pyramid: L1 (unit) ~50%, L2 (integration) ~30%, L3 (E2E) ~20%
@@ -158,6 +168,22 @@ Patterns used across all architectural layers.
 - Logging: Structured logs with correlation IDs, PII redaction via logger config
 - Error Handlers: Priority-ordered chain (9 handlers), specialized handling per error type
 - Conventions: Consistent naming, file organization, module structure across all contexts
+
+---
+
+### Orchestration Layer (1 pattern)
+
+Patterns for project management and team coordination.
+
+| Pattern | Lines | Status | Description | Primary Users |
+|---------|-------|--------|-------------|---------------|
+| **[project-management-system.md](orchestration/project-management-system.md)** | ~275 | Production | File-based PM system: @tech-lead + @product-owner agents, TEAM-STATE.md shared brain, task YAML schema, event-driven triggers | All projects |
+
+**Orchestration Layer Key Principles**:
+- TEAM-STATE.md as shared brain — all agents read it first, write after analysis
+- Two advisory agents with separate lenses (technical + business)
+- Event-driven triggers (PostToolUse on task file changes)
+- Skills: /pulse, /pm-status, /task-health, /tech-debt, /sprint
 
 ---
 
@@ -197,22 +223,28 @@ Patterns used across all architectural layers.
 
 ## 📊 Pattern Statistics
 
-**Total Patterns**: 33
-**Total Lines**: ~15,000+
+**Core Patterns**: 38
+**Stack-Specific Patterns**: 29 (flutter, nextjs, python, sveltekit, typescript-library)
+**Total**: 67
 **Production Status**: 100% (all patterns verified in production code)
-**Coverage**: Complete DDD/CQRS stack (domain → infrastructure → testing)
 
-**Pattern Distribution**:
-- Domain Layer: 18% (6 patterns)
-- Application Layer: 12% (4 patterns)
-- Infrastructure Layer: 12% (4 patterns)
-- Architecture Layer: 24% (8 patterns)
-- Testing Layer: 21% (7 patterns)
-- Cross-Layer: 12% (4 patterns)
+**Core Pattern Distribution**:
+- Domain: 16% (6)
+- Application: 11% (4)
+- Infrastructure: 11% (4)
+- Architecture: 29% (11)
+- Testing: 21% (8)
+- Cross-Layer: 11% (4)
+- Orchestration: 3% (1)
 
 ---
 
 ## 🔄 Pattern Updates
+
+**Version 3.1** (2026-04-03):
+- Added orchestration layer with project-management-system.md
+- Added architecture/cross-context-communication.md (decision guide)
+- Total patterns: 35 (was 33)
 
 **Version 3.0** (2026-02-05):
 - Migrated 20 generic patterns from project-specific repositories

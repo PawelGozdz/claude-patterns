@@ -1,5 +1,5 @@
 #!/bin/bash
-# setup-project.sh - Setup per-project symlinks (patterns, rules, skills)
+# setup-project.sh - Setup per-project symlinks (patterns, rules, skills, PM)
 #
 # Usage: ./setup-project.sh /path/to/project
 # Run from: anywhere
@@ -102,7 +102,7 @@ KNOWLEDGE_DIR="$PROJECT_DIR/.claude/knowledge"
 mkdir -p "$KNOWLEDGE_DIR"
 
 # --- 1. Patterns symlink (stack-aware) ---
-echo -e "${BLUE}[1/7] Patterns${NC}"
+echo -e "${BLUE}[1/8] Patterns${NC}"
 PROJECT_LANGUAGE=$(yml_get "project.language")
 STACK_PROFILE=$(yml_get "project.stack_profile")
 
@@ -169,7 +169,7 @@ esac
 echo ""
 
 # --- 2. Patterns-local directory ---
-echo -e "${BLUE}[2/7] Patterns-local${NC}"
+echo -e "${BLUE}[2/8] Patterns-local${NC}"
 PATTERNS_LOCAL_DIR="$KNOWLEDGE_DIR/patterns-local"
 if [ ! -d "$PATTERNS_LOCAL_DIR" ]; then
   mkdir -p "$PATTERNS_LOCAL_DIR"
@@ -180,7 +180,7 @@ fi
 echo ""
 
 # --- 2b. Stack-specific agents ---
-echo -e "${BLUE}[2b/7] Stack agents${NC}"
+echo -e "${BLUE}[2b/8] Stack agents${NC}"
 PROJECT_AGENTS_DIR="$PROJECT_DIR/.claude/agents"
 
 # Try exact match first, then base stack (e.g., python-pipeline → python)
@@ -209,7 +209,7 @@ fi
 echo ""
 
 # --- 3. Rules: migrate from knowledge/rules/ to native .claude/rules/ ---
-echo -e "${BLUE}[3/7] Rules (.claude/rules/ — native auto-discovery)${NC}"
+echo -e "${BLUE}[3/8] Rules (.claude/rules/ — native auto-discovery)${NC}"
 PROJECT_LANGUAGE=$(yml_get "project.language")
 
 # Remove deprecated .claude/knowledge/rules/ (replaced by native .claude/rules/)
@@ -231,12 +231,12 @@ mkdir -p "$NATIVE_RULES_DIR"
 if [[ -n "$PROJECT_LANGUAGE" ]]; then
   COMMON_RULES_SOURCE="$PATTERNS_REPO/rules/common"
   if [[ -d "$COMMON_RULES_SOURCE" ]]; then
-    ensure_symlink "$NATIVE_RULES_DIR/common" "$COMMON_RULES_SOURCE" ".claude/rules/common"
+    ensure_symlink "$NATIVE_RULES_DIR/common" "$COMMON_RULES_SOURCE" ".claude/rules/common" || true
   fi
 
   LANG_RULES_SOURCE="$PATTERNS_REPO/rules/$PROJECT_LANGUAGE"
   if [[ -d "$LANG_RULES_SOURCE" ]]; then
-    ensure_symlink "$NATIVE_RULES_DIR/$PROJECT_LANGUAGE" "$LANG_RULES_SOURCE" ".claude/rules/$PROJECT_LANGUAGE"
+    ensure_symlink "$NATIVE_RULES_DIR/$PROJECT_LANGUAGE" "$LANG_RULES_SOURCE" ".claude/rules/$PROJECT_LANGUAGE" || true
   fi
 
   # Clean up stale language rule symlinks
@@ -254,7 +254,7 @@ fi
 echo ""
 
 # --- 4. Skills symlinks (based on skills list) ---
-echo -e "${BLUE}[4/7] Skills${NC}"
+echo -e "${BLUE}[4/8] Skills${NC}"
 SKILLS_DIR="$KNOWLEDGE_DIR/skills"
 mkdir -p "$SKILLS_DIR"
 
@@ -296,7 +296,7 @@ done
 echo ""
 
 # --- 5. Stack profile configs (ddd-hooks.json, etc.) ---
-echo -e "${BLUE}[5/7] Stack profile configs${NC}"
+echo -e "${BLUE}[5/8] Stack profile configs${NC}"
 STACK_PROFILE=$(yml_get "project.stack_profile")
 
 if [[ -n "$STACK_PROFILE" ]]; then
@@ -350,7 +350,7 @@ fi
 echo ""
 
 # --- 6. .mcp.json (project-scope MCP server) ---
-echo -e "${BLUE}[6/7] MCP configuration (.mcp.json)${NC}"
+echo -e "${BLUE}[6/8] MCP configuration (.mcp.json)${NC}"
 MCP_JSON="$PROJECT_DIR/.mcp.json"
 MCP_TEMPLATE="$PATTERNS_REPO/templates/mcp.json.template"
 
@@ -365,8 +365,48 @@ else
 fi
 echo ""
 
-# --- 7. Regenerate CLAUDE.md ---
-echo -e "${BLUE}[7/7] CLAUDE.md generation${NC}"
+# --- 7. Project Management System (optional) ---
+echo -e "${BLUE}[7/8] Project Management System${NC}"
+PM_DIR="$PROJECT_DIR/project-orchestration"
+PM_TEMPLATE="$PATTERNS_REPO/templates/project-orchestration"
+
+if [[ -d "$PM_DIR" ]]; then
+  echo -e "  ${YELLOW}Already exists:${NC} project-orchestration/ (preserved)"
+
+  # Check if pm-task-check hook is configured in project settings
+  PROJECT_SETTINGS="$PROJECT_DIR/.claude/settings.json"
+  if [[ -f "$PROJECT_SETTINGS" ]] && grep -q "pm-task-check" "$PROJECT_SETTINGS" 2>/dev/null; then
+    echo -e "  ${YELLOW}Hook configured:${NC} pm-task-check.js in settings.json"
+  else
+    echo -e "  ${YELLOW}Hint:${NC} Add pm-task-check hook to .claude/settings.json for auto-briefing"
+    echo -e "  ${YELLOW}  See:${NC} patterns/orchestration/project-management-system.md (Setup step 3)"
+  fi
+elif [[ -d "$PM_TEMPLATE" ]]; then
+  # Check if project.yml has pm_system enabled
+  PM_ENABLED=$(yml_get "project.pm_system")
+  if [[ "$PM_ENABLED" == "true" ]]; then
+    cp -r "$PM_TEMPLATE" "$PM_DIR"
+    echo -e "  ${GREEN}Created:${NC} project-orchestration/ (from template)"
+    echo -e "  ${GREEN}  Next:${NC} Edit TEAM-STATE.md with project name, then run /pulse"
+
+    # Add pm-task-check hook to project settings if not present
+    PROJECT_SETTINGS="$PROJECT_DIR/.claude/settings.json"
+    if [[ -f "$PROJECT_SETTINGS" ]]; then
+      if ! grep -q "pm-task-check" "$PROJECT_SETTINGS" 2>/dev/null; then
+        echo -e "  ${YELLOW}Hint:${NC} Add pm-task-check hook to .claude/settings.json:"
+        echo -e "  ${YELLOW}  See:${NC} patterns/orchestration/project-management-system.md (Setup step 3)"
+      fi
+    fi
+  else
+    echo -e "  ${YELLOW}Skipped:${NC} pm_system not enabled in project.yml (set project.pm_system: true to enable)"
+  fi
+else
+  echo -e "  ${YELLOW}Skipped:${NC} PM template not found"
+fi
+echo ""
+
+# --- 8. Regenerate CLAUDE.md ---
+echo -e "${BLUE}[8/8] CLAUDE.md generation${NC}"
 if [[ -f "$PROJECT_YML" ]]; then
   bash "$SCRIPT_DIR/generate-claude-md.sh" "$PROJECT_DIR"
 else
@@ -410,6 +450,12 @@ for hooks_file in "$PROJECT_DIR"/*-hooks.json; do
   hooks_name=$(basename "$hooks_file")
   echo -e "${GREEN}Hooks:${NC} configured ($hooks_name)"
 done
+
+# Check PM system
+if [[ -d "$PROJECT_DIR/project-orchestration" ]]; then
+  TASK_COUNT=$(find "$PROJECT_DIR/project-orchestration/tasks" -name "*.md" 2>/dev/null | wc -l)
+  echo -e "${GREEN}PM System:${NC} active ($TASK_COUNT tasks)"
+fi
 
 echo ""
 

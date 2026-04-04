@@ -1,9 +1,9 @@
 # Global Claude Code Patterns Repository
 
-**Version**: 3.0.0
+**Version**: 3.1.0
 **Created**: 2026-02-05
-**Updated**: 2026-03-30
-**Purpose**: Reusable DDD/CQRS patterns + universal agent templates for multi-project use
+**Updated**: 2026-04-03
+**Purpose**: Reusable patterns, agents, skills, and project management system for Claude Code
 
 ---
 
@@ -34,206 +34,210 @@ A **single source of truth** for production-tested software patterns and agent t
 ├── README.md                    # This file
 ├── METADATA.yml                 # Repository metadata
 ├── .gitignore                   # Git exclusions
-├── patterns/                    # Generic patterns (33 total + README)
+├── patterns/                    # Production patterns (38 core + 29 stack-specific)
 │   ├── README.md                # Pattern index & usage guide
 │   ├── domain/                  # Domain layer (6 patterns)
-│   │   ├── aggregate-pattern.md
-│   │   ├── value-object-pattern.md
-│   │   ├── domain-event-pattern.md
-│   │   ├── entity-pattern.md
-│   │   ├── specification-policy-pattern.md
-│   │   ├── domain-service-pattern.md
-│   │   └── METADATA.yml
 │   ├── application/             # Application layer (4 patterns)
-│   │   ├── command-handler-pattern.md
-│   │   ├── query-handler-pattern.md
-│   │   ├── application-service-pattern.md
-│   │   ├── audit-handler-pattern.md
-│   │   └── METADATA.yml
 │   ├── infrastructure/          # Infrastructure layer (4 patterns)
-│   │   ├── repository-pattern.md
-│   │   ├── repository-events-pattern.md
-│   │   ├── mapper-pattern.md
-│   │   ├── controller-schema-pattern.md
-│   │   └── METADATA.yml
-│   ├── architecture/            # Architecture patterns (8 patterns)
-│   │   ├── dual-identity-pattern.md
-│   │   ├── transactional-pattern.md
-│   │   ├── fresh-context-pattern.md
-│   │   ├── acl-registry-pattern.md
-│   │   ├── user-projection-pattern.md
-│   │   ├── bullmq-queue-pattern.md
-│   │   ├── integration-event-pattern.md
-│   │   ├── entity-event-emission-pattern.md
-│   │   └── METADATA.yml
+│   ├── architecture/            # Architecture patterns (9 patterns)
 │   ├── testing/                 # Testing patterns (7 patterns)
-│   │   ├── testing-pyramid-pattern.md
-│   │   ├── schema-testing-pattern.md
-│   │   ├── context-isolation-pattern.md
-│   │   ├── e2e-hybrid-fixture-pattern.md
-│   │   ├── test-seeding-performance-guide.md
-│   │   ├── rate-limit-testing-pattern.md
-│   │   ├── redis-test-isolation-pattern.md
-│   │   └── METADATA.yml
-│   └── cross-layer/             # Cross-layer patterns (4 patterns)
-│       ├── domain-errors-pattern.md
-│       ├── logger-pattern.md
-│       ├── error-handler-chain-pattern.md
-│       ├── conventions-pattern.md
-│       └── METADATA.yml
+│   ├── cross-layer/             # Cross-layer patterns (4 patterns)
+│   └── orchestration/           # Orchestration patterns (1 pattern)
 ├── mcp-server/                  # MCP Server for multi-project use
 │   ├── server.py                # MCP server implementation
 │   ├── requirements.txt         # Python dependencies
 │   ├── settings.json.example    # Example Claude settings
 │   └── README.md                # MCP setup & usage guide
-├── agents/                      # Agent definitions (universal + per-stack)
+├── agents/                      # Agent definitions (5 universal + 14 stack-specific)
 │   ├── README.md                # Agent setup & usage guide
-│   ├── universal/               # Stack-agnostic agents (3 — linked to ~/.claude/agents/)
+│   ├── universal/               # Stack-agnostic agents (linked to ~/.claude/agents/)
 │   │   ├── backend-technology-expert.md
 │   │   ├── security-privacy-architect.md
-│   │   └── technical-architecture-lead.md
+│   │   ├── technical-architecture-lead.md
+│   │   ├── tech-lead.md         # PM: project health, debt, dependencies
+│   │   └── product-owner.md     # PM: business value, mobile UX, milestones
 │   └── stacks/                  # Stack-specific agents (linked per-project)
-│       ├── nestjs-ddd/          # DDD quality + expert (3 agents)
-│       ├── flutter-clean-arch/  # Flutter quality + arch + UI (3 agents)
-│       ├── nextjs-app/          # Next.js quality + arch (2 agents)
-│       ├── python/              # Python quality + arch (2 agents)
-│       └── typescript-library/  # Library quality + API guardian (2 agents)
-├── commands/                    # Global commands (symlinked from ~/.claude/commands)
-│   ├── orchestrate.md           # Unified orchestration (search/implement/validate/analyze/review)
-│   ├── progress.md              # Visual progress tracking (Haiku)
-│   ├── scaffold.md              # Haiku template generator
-│   └── README.md                # Command setup & usage guide
+│       ├── nestjs-ddd/          # 3 agents (DDD expert, quality, security)
+│       ├── flutter-clean-arch/  # 3 agents (arch, quality, UI)
+│       ├── nextjs-app/          # 2 agents (arch, quality)
+│       ├── sveltekit/           # 2 agents (arch, quality)
+│       ├── python/              # 2 agents (arch, quality)
+│       └── typescript-library/  # 2 agents (API guardian, quality)
+├── skills/                      # Skills (slash commands) by category
+│   ├── orchestration/           # [NEW] Project management skills
+│   │   ├── pulse/SKILL.md       # Full team sync — runs @tech-lead + @product-owner
+│   │   ├── pm-status/SKILL.md   # Quick read of TEAM-STATE.md (no agents, ~$0)
+│   │   ├── task-health/SKILL.md # Deep task audit — broken deps, stale, orphaned
+│   │   ├── tech-debt/SKILL.md   # Debt analysis + TECH-DEBT.md update
+│   │   └── sprint/SKILL.md      # Interactive sprint planning (both agents)
+│   └── ...                      # (other skill categories)
+├── templates/                   # Project templates
+│   ├── project-orchestration/   # [NEW] Full PM system folder template
+│   │   ├── TEAM-STATE.md        # Shared brain template
+│   │   ├── KANBAN.md            # Board view template
+│   │   ├── TECH-DEBT.md         # Debt register template
+│   │   ├── README.md            # System usage guide
+│   │   ├── tasks/               # Active tasks folder
+│   │   ├── completed-tasks/     # Completed tasks archive
+│   │   └── _archive/            # Historical docs
+│   └── ...                      # (other templates)
+├── hooks/                       # PostToolUse/Stop hooks
+│   ├── pm-task-check.js         # [NEW] PM briefing when task files change
+│   └── ...                      # (other hooks)
+├── commands/                    # Global commands (22 — symlinked to ~/.claude/commands/)
+│   ├── README.md                # Command catalog & usage guide
+│   ├── pulse.md                 # PM: full team sync
+│   ├── pm-status.md             # PM: quick state read (~$0)
+│   ├── sprint.md                # PM: interactive sprint planning
+│   ├── task-health.md           # PM: deep task audit
+│   ├── tech-debt.md             # PM: debt analysis
+│   ├── orchestrate.md           # Unified orchestration (5 modes)
+│   ├── plan.md                  # Requirements + implementation plan
+│   ├── verify.md                # Quality gates (typecheck, lint, test)
+│   └── ...                      # +14 more (see commands/README.md)
 ├── scripts/                     # Setup & maintenance scripts
+│   ├── setup-global.sh          # Setup global ~/.claude/ (agents, commands, hooks)
 │   ├── setup-project.sh         # Setup per-project (patterns, agents, rules, skills, MCP)
-│   ├── setup-global.sh          # Setup global ~/.claude/ (universal agents, commands, hooks)
+│   ├── generate-claude-md.sh    # Generate CLAUDE.md from project.yml
 │   ├── migrate-v2.sh            # Migrate existing project to v3 features
 │   ├── migrate-all.sh           # Batch migrate all projects
-│   ├── setup-global.sh          # Setup global agents/commands (NEW)
-│   ├── extract-patterns.sh      # Extract patterns from LocalHero
-│   ├── validate-metadata.sh     # Validate METADATA.yml files
-│   └── migration-guide.md       # User migration documentation
+│   └── validate-metadata.sh     # Validate METADATA.yml files
 └── docs/                        # Additional documentation
     └── troubleshooting.md       # Common issues & solutions
 ```
 
 ---
 
-## ⚡ Quick Setup (Recommended)
+## 🧠 Project Management System (NEW in v3.1)
 
-**For new projects or clean integration**: Use the unified setup script that handles BOTH global and project-level configuration in one command.
+A **living team** for any project using claude-code. Two advisory agents share a
+common state file (`TEAM-STATE.md`) and are triggered by task changes — creating
+continuity across tmux sessions that can last days or weeks.
 
-### One-Command Setup
+### The Concept
+
+```
+TEAM-STATE.md (shared brain)
+├── Technical Pulse  ← @tech-lead writes here
+└── Business Pulse   ← @product-owner writes here
+
+project-orchestration/
+├── tasks/           ← YAML-frontmatter tasks
+├── TEAM-STATE.md    ← shared brain (auto-updated)
+├── KANBAN.md        ← board view (auto-generated)
+└── TECH-DEBT.md     ← debt register (auto-updated)
+```
+
+### Agents
+
+| Agent | Lens | Key Questions |
+|-------|------|--------------|
+| `@tech-lead` | Technical | Blocked? Stale? Debt? Critical path? Mobile API risk? |
+| `@product-owner` | Business | Customer value? Mobile UX? Milestone gap? Validated? |
+
+### Skills (slash commands)
+
+| Skill | When | Cost |
+|-------|------|------|
+| `/pm-status` | Quick check — reads TEAM-STATE.md only | ~$0 |
+| `/pulse` | Full team sync — runs both agents | ~$0.10 |
+| `/task-tidy` | Housekeeping: move done tasks, fix fields, validate YAML | ~$0.03 |
+| `/task-health` | Deep task audit (broken deps, stale, orphaned) | ~$0.05 |
+| `/tech-debt` | Debt analysis + TECH-DEBT.md update | ~$0.05 |
+| `/sprint` | Interactive sprint planning | ~$0.20 |
+
+### Trigger Mechanism
+
+The system fires on task file changes (not session start — handles long tmux sessions):
+
+```json
+// Add to .claude/settings.json
+{
+  "hooks": {
+    "PostToolUse": [{
+      "matcher": "Write|Edit|MultiEdit",
+      "hooks": [{ "type": "command",
+        "command": "node /path/to/claude-patterns/hooks/pm-task-check.js" }]
+    }]
+  }
+}
+```
+
+When a task file changes → compact PM briefing in Claude's context:
+```
+[PM] 74 active | P0: 3 | P1: 12 | Blocked: 5 | Stale: 8
+[PM] ⚠️  Overdue: TS-AUTH-003 (2026-03-15, 18d ago)
+[PM] 🔧 Debt: 🔴 3 major, 7 minor
+```
+
+### Setup for New Project
 
 ```bash
-# From claude-patterns directory
+# 1. Copy template folder
+cp -r ~/projects/claude-patterns/templates/project-orchestration ./project-orchestration
+
+# 2. Agents available via global symlink (already in ~/.claude/agents/)
+# Verify: ls ~/.claude/agents/ | grep -E "tech-lead|product-owner"
+
+# 3. Add hook to .claude/settings.json (see above)
+
+# 4. Initialize: edit project-orchestration/TEAM-STATE.md, then run /pulse
+```
+
+**Full documentation**: `patterns/orchestration/project-management-system.md`
+
+---
+
+## Quick Setup (Recommended)
+
+Two-step setup: global (once per machine) + project (once per project).
+
+### Step 1: Global Setup (once per machine)
+
+```bash
 cd ~/projects/claude-patterns
-
-# Setup for specific project
-./setup-all.sh ~/projects/your-project
-
-# Or setup for current directory
-cd ~/projects/your-project
-~/projects/claude-patterns/setup-all.sh .
+./scripts/setup-global.sh
 ```
 
-### What This Does
+**What this does**:
+- Creates per-file symlinks in `~/.claude/agents/` for 5 universal agents
+- Creates `~/.claude/commands/` symlink (22 commands)
+- Creates `~/.claude/hooks/` symlink (12 hooks)
+- Idempotent — safe to run multiple times
 
-**Phase 1: Global Setup** (idempotent, shared by all projects)
-- Creates `~/.claude/agents` → symlink to `~/projects/claude-patterns/agents/`
-- Creates `~/.claude/skills` → symlink to `~/projects/claude-patterns/skills/`
-- Creates `~/.claude/commands` → symlink to `~/projects/claude-patterns/commands/`
-- Creates `~/.claude/hooks` → symlink to `~/projects/claude-patterns/hooks/`
+### Step 2: Project Setup (once per project)
 
-**Phase 2: Project Setup** (per-project configuration)
-- Creates `.claude/knowledge/patterns/` → symlink to `~/projects/claude-patterns/patterns/`
-- Creates `.claude/knowledge/patterns-local/` for project-specific overrides
-- Generates `patterns-local/README.md` with override documentation
-
-**Phase 3: Verification**
-- Verifies all symlinks are correct
-- Counts available resources (agents, skills, commands, hooks, patterns)
-- Displays setup summary
-
-### Features
-
-- **Idempotent**: Safe to run multiple times, won't break existing setup
-- **Auto-update detection**: Fixes broken/wrong symlinks automatically
-- **Backup protection**: Backs up existing directories before symlinking
-- **Comprehensive verification**: Shows exactly what's available after setup
-- **Single source of truth**: All projects use symlinks → instant updates across projects
-
-### Example Output
-
+```bash
+./scripts/setup-project.sh ~/projects/your-project
 ```
-═══════════════════════════════════════════════════════════
-🚀 Claude Patterns - Unified Setup
-═══════════════════════════════════════════════════════════
 
-Project: /opt/projects/local-hero-3
-Claude Patterns: ~/projects/claude-patterns
+**What this does**:
+- Links patterns (stack-aware: DDD, Flutter, Python, etc.)
+- Links stack-specific agents to `.claude/agents/`
+- Links language rules to `.claude/rules/`
+- Links configured skills to `.claude/knowledge/skills/`
+- Copies stack hooks config (ddd-hooks.json, python-hooks.json)
+- Sets up `.mcp.json` for project-scope MCP server
+- Generates `CLAUDE.md` from `project.yml`
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-PHASE 1: Global Setup (shared by all projects)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+### Step 3 (optional): PM System
 
-✅ agents symlink correct
-✅ skills symlink correct
-✅ commands symlink correct
-✅ hooks symlink correct
+```bash
+# Copy template
+cp -r ~/projects/claude-patterns/templates/project-orchestration ./project-orchestration
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-PHASE 2: Project Setup (/opt/projects/local-hero-3)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Add hook to .claude/settings.json (see PM System section below)
 
-✅ Verified .claude/knowledge/ exists
-✅ Verified patterns-local/ exists
-✅ patterns/ symlink correct
-✅ patterns-local/README.md exists
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-PHASE 3: Verification
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Global Symlinks:
-  ✅ agents → /opt/projects/claude-patterns/agents
-  ✅ skills → /opt/projects/claude-patterns/skills
-  ✅ commands → /opt/projects/claude-patterns/commands
-  ✅ hooks → /opt/projects/claude-patterns/hooks
-
-Project Symlinks:
-  ✅ patterns/ → /opt/projects/claude-patterns/patterns
-  ✅ 33 patterns accessible
-
-Available Resources:
-  ✅ Agents: 9
-  ✅ Skills: 0
-  ✅ Commands: 2
-  ✅ Hooks: 11
-
-═══════════════════════════════════════════════════════════
-🎉 Setup Complete!
-═══════════════════════════════════════════════════════════
-
-Next Steps:
-  1. Restart Claude Code
-  2. Test with: znajdź wszystkie aggregates
-  3. Test with: /scaffold dto TestDTO auth
+# Initialize
+/pulse
 ```
 
 ### When to Use
 
-- ✅ **New project**: First-time claude-patterns integration
-- ✅ **Existing project**: Migrating from old setup scripts
-- ✅ **Broken symlinks**: Fixing incorrect/missing symlinks
-- ✅ **Multi-machine**: Setting up claude-patterns on new development machine
-- ✅ **Team onboarding**: New developer needs full claude-patterns setup
-
-### Alternative: Detailed Setup Options
-
-For more control or specific use cases, see detailed options below:
-- **Option A**: MCP Server (multi-project, team collaboration)
-- **Option B**: Filesystem Symlinks (manual control)
-- **Option C**: Compilation System (project-specific agents)
+- **New project**: Run Step 1 + Step 2
+- **New machine**: Run Step 1, then Step 2 for each project
+- **Broken symlinks**: Re-run the relevant step
+- **PM system**: Also run Step 3
 
 ---
 
@@ -356,75 +360,42 @@ ls -la .claude/knowledge/patterns  # Should show symlink
 
 ---
 
-## 🤖 Global Agents & Commands Setup
+## Global Agents & Commands
 
-**What are these?** User-level agents and commands that work across ALL projects on your system.
+User-level resources available across ALL projects on your system.
 
-### Quick Setup (5 minutes)
+### Universal Agents (5)
 
-```bash
-# 1. Run setup script
-cd ~/projects/claude-patterns
-./scripts/setup-global.sh
+| Agent | Purpose | Model |
+|-------|---------|-------|
+| `@tech-lead` | Project health: blocked/stale tasks, debt, dependencies | Sonnet |
+| `@product-owner` | Business value: milestones, mobile UX, segment gaps | Sonnet |
+| `@backend-technology-expert` | Sync/async decisions, performance, tech stack | Opus |
+| `@security-privacy-architect` | OWASP, GDPR, encryption, auth | Opus |
+| `@technical-architecture-lead` | Infrastructure, scalability, architecture | Opus |
 
-# 2. Restart Claude Code
+### Commands (22)
 
-# 3. Done! Global agents and commands now available in all projects
-```
+Organized by category: PM (5), orchestration (4), quality (4), session (3), learning (4), infrastructure (2).
 
-**What this does**:
-- Creates `~/.claude/agents` → symlink to `~/projects/claude-patterns/agents/`
-- Creates `~/.claude/commands` → symlink to `~/projects/claude-patterns/commands/`
-- Backs up existing directories if present
+Key commands:
+- `/pulse` — Full team sync (~$0.10)
+- `/pm-status` — Quick state check (~$0)
+- `/orchestrate` — Unified orchestration (5 modes)
+- `/verify` — Quality gates (typecheck, lint, test, build)
+- `/plan` — Requirements + implementation plan
 
-### Manual Setup (Alternative)
+See `commands/README.md` for full catalog.
 
-```bash
-# Agents
-ln -sf ~/projects/claude-patterns/agents ~/.claude/agents
+### Cost Optimization
 
-# Commands
-ln -sf ~/projects/claude-patterns/commands ~/.claude/commands
+| Task Type | Model | Cost |
+|-----------|-------|------|
+| Search, scaffolding, progress | Haiku | ~$0.02 |
+| Implementation, domain work | Sonnet | ~$0.10 |
+| Security VETO, architecture | Opus | ~$0.50 |
 
-# Verify
-ls -la ~/.claude/
-# Should show:
-# agents -> /opt/projects/claude-patterns/agents
-# commands -> /opt/projects/claude-patterns/commands
-```
-
-### Available Resources
-
-**Global Agents** (6 total):
-- **Specialists** (3): ddd-application-expert, backend-technology-expert, security-privacy-architect
-- **Utilities** (3): codebase-explorer, schema-testing-agent, test-scaffolder
-
-**Global Commands** (3 total):
-- `/orchestrate` - Unified orchestration with mode detection (search, implement, validate, analyze, review)
-- `/progress` - Visual progress tracking (shows task status, git changes, recent completions)
-- `/scaffold` - Haiku-based boilerplate generator (60x cost savings)
-
-### Cost Optimization Strategy
-
-The orchestrator automatically delegates to the most cost-effective agents:
-
-| Task Type | Before | After | Savings |
-|-----------|--------|-------|---------|
-| Search queries | Sonnet ($3/M) | Haiku via Explore ($0.25/M) | **92%** |
-| Scaffolding | Manual (Sonnet) | Haiku auto-gen ($0.25/M) | **92%** |
-| Progress check | Manual (Sonnet) | Haiku read-only ($0.25/M) | **92%** |
-| Implementation | Sonnet ($3/M) | Sonnet ($3/M) | 0% (needs intelligence) |
-| Security VETO | N/A | Opus ($15/M) | New feature |
-
-**Target Distribution**: Opus <30%, Sonnet ~55%, Haiku >15%
-
-**Example**: "Find all aggregates" query:
-- Before: ~89k tokens × $3/M = **$0.27**
-- After: ~89k tokens × $0.25/M = **$0.022** (12x cheaper)
-
-**Full documentation**:
-- Agents: `agents/README.md`
-- Commands: `commands/README.md`
+**Full documentation**: `agents/README.md`, `commands/README.md`
 
 ---
 
@@ -565,36 +536,24 @@ patterns:
 
 ---
 
-## 📝 Pattern Categories
+## Pattern Categories
 
-### Domain Layer (6 patterns)
+38 core patterns + 29 stack-specific. Full index in `patterns/README.md`.
 
-Production-tested domain modeling patterns:
-- `aggregate-pattern.md` - Factory methods, event emission, invariants
-- `value-object-pattern.md` - Immutability, validation, reconstruction
-- `domain-event-pattern.md` - Event naming, correlation IDs, GDPR segregation
-- `entity-pattern.md` - Identity-based equality, lifecycle management
-- `specification-policy-pattern.md` - PolicyBuilder pattern, business rules
-- `domain-service-pattern.md` - Cross-aggregate operations
-
-### Application Layer (4 patterns)
-
-CQRS and orchestration patterns:
-- `command-handler-pattern.md` - Write-side, @CommandHandler auto-discovery
-- `query-handler-pattern.md` - Read-side, @QueryHandler auto-discovery
-- `application-service-pattern.md` - Multi-step workflows, saga pattern
-- `audit-handler-pattern.md` - @EventHandler auto-discovery, GDPR audit
-
-### Architecture Layer (3 patterns)
-
-Cross-cutting architectural patterns:
-- `dual-identity-pattern.md` - Security pattern (userId extraction)
-- `transactional-pattern.md` - Transaction management
-- `fresh-context-pattern.md` - Claude Code context management
+| Layer | Count | Key Patterns |
+|-------|-------|-------------|
+| Domain | 6 | aggregate, value-object, domain-event, entity, specification, domain-service |
+| Application | 4 | command-handler, query-handler, application-service, audit-handler |
+| Infrastructure | 4 | repository, repository-events, mapper, controller-schema |
+| Architecture | 11 | ACL registry, dual-identity, transactional, integration-event, cross-context-communication, token-optimization, ... |
+| Testing | 8 | testing-pyramid, schema-testing, context-isolation, e2e-hybrid-fixture, business-rules-yaml, ... |
+| Cross-Layer | 4 | domain-errors, logger, error-handler-chain, conventions |
+| Orchestration | 1 | project-management-system |
+| Stack-specific | 29 | flutter (7), nextjs (7), python (5), sveltekit (5), typescript-library (5) |
 
 ---
 
-## 🔧 Maintenance
+## Maintenance
 
 ### Updating Patterns
 
@@ -646,51 +605,16 @@ git pull  # All projects see updates via symlinks
 
 ---
 
-## 🛠️ Scripts Reference
+## Scripts Reference
 
-### `setup-project.sh`
-
-Setup symlinks in a new or existing project.
-
-**Usage**:
-```bash
-~/projects/claude-patterns/scripts/setup-project.sh /path/to/project
-```
-
-**What it does**:
-1. Creates `.claude/knowledge/patterns-local/` directory
-2. Creates symlink: `patterns/ → ~/projects/claude-patterns/patterns/`
-3. Creates `patterns-local/README.md` with override documentation
-
-### `extract-patterns.sh`
-
-Extract generic patterns from LocalHero to global repo.
-
-**Usage**:
-```bash
-cd ~/.claude-patterns
-./scripts/extract-patterns.sh
-```
-
-**What it does**:
-1. Copies 13 generic patterns from LocalHero
-2. Generates METADATA.yml for each directory
-3. Validates pattern integrity
-
-### `validate-metadata.sh`
-
-Validate all METADATA.yml files in the repository.
-
-**Usage**:
-```bash
-cd ~/.claude-patterns
-./scripts/validate-metadata.sh
-```
-
-**What it does**:
-1. Finds all METADATA.yml files
-2. Validates YAML syntax
-3. Reports errors or success
+| Script | Purpose |
+|--------|---------|
+| `setup-global.sh` | Global setup: agents, commands, hooks to `~/.claude/` |
+| `setup-project.sh` | Per-project: patterns, stack agents, rules, skills, MCP, CLAUDE.md |
+| `generate-claude-md.sh` | Generate CLAUDE.md from `project.yml` config |
+| `migrate-v2.sh` | Migrate single project to v3 |
+| `migrate-all.sh` | Batch migrate all projects in `/opt/projects/` |
+| `validate-metadata.sh` | Validate all METADATA.yml files |
 
 ---
 
@@ -707,14 +631,14 @@ Each pattern has a maturity level in METADATA.yml:
 
 ---
 
-## 🎯 Success Metrics
+## Success Metrics
 
 After setup, you should see:
-- ✅ 13+ generic patterns in `~/projects/claude-patterns/patterns/`
-- ✅ Symlink working: `ls -la .claude/knowledge/patterns` shows `→ ~/projects/claude-patterns/patterns/`
-- ✅ Claude agents reference patterns correctly
-- ✅ All tests pass (if migrating existing project)
-- ✅ ~85% disk savings (no pattern duplication across projects)
+- `ls ~/.claude/agents/` shows 5 universal agent symlinks
+- `ls ~/.claude/commands/` shows 22 command files
+- `ls ~/.claude/hooks/` shows hook scripts + hooks.json
+- `ls .claude/knowledge/patterns/` shows pattern symlink (per project)
+- All slash commands work: `/pm-status`, `/pulse`, `/verify`, etc.
 
 ---
 
@@ -791,25 +715,13 @@ cat .claude/settings.json  # Ensure patterns path is correct
 - Validated across 1355+ tests
 - Production-tested patterns since 2026-01-06
 
-**Related Documentation**:
-- [TS-INFRA-002 Task](../../local-hero-3/project-orchestration/tasks/TS-INFRA-002-global-patterns-repository.md) - Implementation task
-- [TS-KNOWLEDGE-001](../../local-hero-3/project-orchestration/completed-tasks/TS-KNOWLEDGE-001-pattern-library-migration.md) - Pattern library migration
-
-**External Resources**:
-- [Dotfiles Guide](https://dotfiles.github.io/) - Inspiration for symlink architecture
-- [DDD Reference](https://www.domainlanguage.com/ddd/reference/) - Domain-Driven Design concepts
+**Key Documentation**:
+- `patterns/README.md` — Full pattern index (67 patterns)
+- `agents/README.md` — Agent catalog (19 agents)
+- `commands/README.md` — Command catalog (22 commands)
+- `patterns/orchestration/project-management-system.md` — PM system docs
 
 ---
 
-## 📧 Support
-
-**Issues?** Check:
-1. `docs/troubleshooting.md` in this repo
-2. LocalHero CLAUDE.md (if working in LocalHero context)
-3. Open issue on GitHub (after repo is created)
-
----
-
-**License**: MIT (if public) / Private (if personal repo)
-**Author**: Extracted from LocalHero by @localhero-project-orchestrator
-**Maintained By**: You (the project owner)
+**Version**: 3.1.0
+**Last Updated**: 2026-04-03

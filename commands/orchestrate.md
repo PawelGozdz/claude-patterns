@@ -21,7 +21,6 @@ description: |
     /o review auth context handlers
 tools: Task, Read, TodoWrite
 disallowedTools: Bash, Grep, Glob, Write, Edit, MultiEdit, NotebookEdit
-model: sonnet
 ---
 
 # /orchestrate - Unified Orchestration Skill

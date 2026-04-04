@@ -24,7 +24,8 @@ generate-claude-md.sh → CLAUDE.md (auto-generated)
 |---------------|----------|----------|
 | `nestjs-ddd` | stacks/nestjs-ddd.md | NestJS + DDD + CQRS + Event Sourcing |
 | `flutter` | stacks/flutter.md | Cross-platform mobile apps (iOS/Android/Web) |
-| `python` | stacks/python.md | Python backends (FastAPI/Django/Flask) |
+| `python` | stacks/python.md | Python backends with DDD layering (FastAPI/Django/Flask) |
+| `python-modular` | stacks/python-modular.md | Python modular monolith — layered without DDD |
 | `python-pipeline` | stacks/python-pipeline.md | Data pipelines, ML processing, collectors |
 | (omit) | core.md only | Generic - no stack-specific sections |
 
@@ -71,9 +72,9 @@ rules:
 
 ```bash
 cd ~/projects/claude-patterns
-./setup-all.sh ~/my-project
-# or just regenerate:
-./setup-all.sh --update ~/my-project
+./scripts/setup-project.sh ~/my-project
+# or just regenerate CLAUDE.md:
+./scripts/generate-claude-md.sh ~/my-project
 ```
 
 ---
@@ -115,11 +116,19 @@ state_management: "Riverpod"  # or Bloc, Provider, etc.
 platforms: "iOS, Android, Web"
 ```
 
-### Python (API Backend)
+### Python (DDD Backend)
 ```yaml
 stack_profile: python
 framework: "FastAPI"  # or Django, Flask, etc.
 database: "PostgreSQL 15"
+```
+
+### Python (Modular Monolith)
+```yaml
+stack_profile: python-modular
+framework: "FastAPI"  # or Django, Flask, etc.
+database: "PostgreSQL 15, Neo4j, Redis"  # multi-database typical
+architecture: "layered-modular-monolith"
 ```
 
 ### Python (Data Pipeline)
@@ -145,7 +154,8 @@ templates/
 ├── stacks/
 │   ├── nestjs-ddd.md           # NestJS + DDD sections
 │   ├── flutter.md              # Flutter sections
-│   ├── python.md               # Python API backend sections
+│   ├── python.md               # Python DDD backend sections
+│   ├── python-modular.md       # Python modular monolith sections
 │   └── python-pipeline.md      # Python data pipeline sections
 └── examples/
     ├── flutter-project.yml     # Complete Flutter example

@@ -191,8 +191,9 @@ PROJECT_LANGUAGE=$(yml_get "project.language")
 RULES_IMPORTS=""
 
 if [[ -n "$PROJECT_LANGUAGE" ]]; then
-  COMMON_RULES_DIR="$PATTERNS_DIR/rules/common"
-  LANG_RULES_DIR="$PATTERNS_DIR/rules/$PROJECT_LANGUAGE"
+  # Scan LOCAL project rules (respects selective symlinks)
+  COMMON_RULES_DIR="$PROJECT_DIR/.claude/rules/common"
+  LANG_RULES_DIR="$PROJECT_DIR/.claude/rules/$PROJECT_LANGUAGE"
 
   RULES_IMPORTS="## Coding Standards & Rules\n\n"
 
