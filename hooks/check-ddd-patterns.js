@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * PostToolUse Hook: Validate DDD building block base classes + NestJS @Inject
+ * PostToolUse Hook: Validate DDD building block patterns + NestJS @Inject
  *
  * Cross-platform (Windows, macOS, Linux)
  *
@@ -8,8 +8,10 @@
  * No config = no warnings (silent skip for non-DDD projects).
  *
  * Checks:
- * 1. DDD building blocks extend correct base classes (per config baseClasses)
- * 2. NestJS constructor params have @Inject decorator (per config nestjs)
+ * 1. DDD building blocks extend correct base classes (per config baseClasses.extends)
+ * 2. DDD building blocks implement required interfaces (per config baseClasses.implements)
+ * 3. Forbidden patterns absent from specific files (per config baseClasses.forbidden)
+ * 4. NestJS constructor params have @Inject decorator (per config nestjs)
  *
  * Always warns only (exit 0) — never blocks the agent.
  */
@@ -71,25 +73,51 @@ process.stdin.on('end', () => {
     const content = fs.readFileSync(resolvedPath, 'utf8');
     const basename = path.basename(filePath);
 
-    // Check 1: Base class validation
+    // Check 1: Base class / interface / forbidden pattern validation
     if (config.baseClasses) {
       const match = config.baseClasses.find((rule) =>
         matchesPattern(normalized, rule.file),
       );
 
       if (match) {
-        // Check for "extends BaseClass" — not just substring, to avoid
-        // false positives like "UserCreatedIntegrationEvent".includes("IntegrationEvent")
-        const hasRequired = match.extends.some((ext) => {
-          // "extends AggregateRoot<" or "extends LocalHeroIntegrationEvent"
-          const extendsPattern = new RegExp(`extends\\s+${ext.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`);
-          return extendsPattern.test(content);
-        });
-        if (!hasRequired) {
-          const expected = match.extends.join(' or ');
-          console.error(
-            `[Hook] DDD: ${match.label} "${basename}" should extend ${expected}`,
-          );
+        // Check 1a: "extends BaseClass"
+        if (match.extends) {
+          const hasRequired = match.extends.some((ext) => {
+            const extendsPattern = new RegExp(`extends\\s+${ext.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`);
+            return extendsPattern.test(content);
+          });
+          if (!hasRequired) {
+            const expected = match.extends.join(' or ');
+            console.error(
+              `[Hook] DDD: ${match.label} "${basename}" should extend ${expected}`,
+            );
+          }
+        }
+
+        // Check 1b: "implements IInterface"
+        if (match.implements) {
+          const hasImplements = match.implements.some((iface) => {
+            const implPattern = new RegExp(`implements\\s+[\\w,\\s<>]*${iface.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`);
+            return implPattern.test(content);
+          });
+          if (!hasImplements) {
+            const expected = match.implements.join(' or ');
+            console.error(
+              `[Hook] DDD: ${match.label} "${basename}" should implement ${expected}`,
+            );
+          }
+        }
+
+        // Check 1c: forbidden patterns (things that should NOT be in this file)
+        if (match.forbidden) {
+          for (const rule of match.forbidden) {
+            const forbiddenPattern = new RegExp(rule.pattern);
+            if (forbiddenPattern.test(content)) {
+              console.error(
+                `[Hook] DDD: ${match.label} "${basename}" — ${rule.message}`,
+              );
+            }
+          }
         }
       }
     }

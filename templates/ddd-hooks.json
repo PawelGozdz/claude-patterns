@@ -12,13 +12,38 @@
     },
     {
       "file": "*/domain/**/*.event.ts",
-      "extends": ["LocalHeroDomainEvent<", "ProjectDomainEvent<"],
+      "extends": ["ProjectDomainEvent<"],
       "label": "Domain Event"
     },
     {
       "file": "*.integration-event.ts",
-      "extends": ["LocalHeroIntegrationEvent", "IntegrationEvent"],
+      "extends": ["IntegrationEvent"],
       "label": "Integration Event"
+    },
+    {
+      "file": "*/application/commands/**/command.ts",
+      "implements": ["ICommand"],
+      "label": "Command"
+    },
+    {
+      "file": "*/application/queries/**/*.query.ts",
+      "implements": ["IQuery"],
+      "label": "Query"
+    },
+    {
+      "file": "*-command.kysely.repository.ts",
+      "extends": ["BaseKyselyRepository<"],
+      "label": "Command Repository"
+    },
+    {
+      "file": "*-query.kysely.repository.ts",
+      "label": "Query Repository",
+      "forbidden": [
+        {
+          "pattern": "TransactionHost",
+          "message": "Query repositories must NOT use TransactionHost — use @Inject(DATABASE_TOKEN) + Kysely<Database> instead"
+        }
+      ]
     }
   ],
 

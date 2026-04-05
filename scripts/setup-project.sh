@@ -106,61 +106,85 @@ echo -e "${BLUE}[1/8] Patterns${NC}"
 PROJECT_LANGUAGE=$(yml_get "project.language")
 STACK_PROFILE=$(yml_get "project.stack_profile")
 
+# Core pattern directories shared across all stacks (stack-agnostic)
+CORE_PATTERN_DIRS=(architecture testing cross-layer orchestration)
+
+# DDD-specific pattern directories (nestjs-ddd only)
+DDD_PATTERN_DIRS=(domain application infrastructure)
+
+# Helper: migrate old single symlink to directory with per-subdir symlinks
+# Usage: link_pattern_dirs <dir1> <dir2> ...
+link_pattern_dirs() {
+  local target_dir="$KNOWLEDGE_DIR/patterns"
+
+  # Migration: remove old single symlink pointing to entire patterns/
+  if [[ -L "$target_dir" ]]; then
+    echo -e "  ${YELLOW}Migrating:${NC} removing old single symlink (was: $(readlink "$target_dir"))"
+    rm "$target_dir"
+  fi
+
+  mkdir -p "$target_dir"
+
+  # Link requested subdirectories
+  local requested_dirs=("$@")
+  for subdir in "${requested_dirs[@]}"; do
+    local source="$GLOBAL_PATTERNS/$subdir"
+    if [[ -d "$source" ]]; then
+      ensure_symlink "$target_dir/$subdir" "$source" "patterns/$subdir"
+    else
+      echo -e "  ${YELLOW}Warning:${NC} Pattern dir '$subdir' not found"
+    fi
+  done
+
+  # Clean up stale subdirectory symlinks (removed from this stack's list)
+  for link in "$target_dir"/*/; do
+    [[ -L "${link%/}" ]] || continue
+    local link_name
+    link_name=$(basename "${link%/}")
+    local found=false
+    for req in "${requested_dirs[@]}"; do
+      if [[ "$req" == "$link_name" ]]; then
+        found=true
+        break
+      fi
+    done
+    if [[ "$found" == "false" ]]; then
+      echo -e "  ${YELLOW}Removing stale:${NC} patterns/$link_name (not in stack profile)"
+      rm "${link%/}"
+    fi
+  done
+}
+
 # Determine which patterns to link based on stack_profile
 case "$STACK_PROFILE" in
   nestjs-ddd)
-    # DDD patterns (domain, application, infrastructure, architecture, testing, cross-layer)
-    ensure_symlink "$KNOWLEDGE_DIR/patterns" "$GLOBAL_PATTERNS" "patterns -> DDD patterns"
+    # DDD core + shared core patterns (NO flutter/python/nextjs/sveltekit/ts-library)
+    link_pattern_dirs "${DDD_PATTERN_DIRS[@]}" "${CORE_PATTERN_DIRS[@]}"
     ;;
   flutter*)
-    # Flutter patterns
-    FLUTTER_PATTERNS="$PATTERNS_REPO/patterns/flutter"
-    if [[ -d "$FLUTTER_PATTERNS" ]]; then
-      ensure_symlink "$KNOWLEDGE_DIR/patterns" "$FLUTTER_PATTERNS" "patterns -> Flutter patterns"
-    else
-      echo -e "  ${YELLOW}Warning:${NC} Flutter patterns not found at $FLUTTER_PATTERNS"
-    fi
+    # Flutter + shared core patterns
+    link_pattern_dirs flutter "${CORE_PATTERN_DIRS[@]}"
     ;;
   sveltekit*)
-    # SvelteKit patterns
-    SVELTE_PATTERNS="$PATTERNS_REPO/patterns/sveltekit"
-    if [[ -d "$SVELTE_PATTERNS" ]]; then
-      ensure_symlink "$KNOWLEDGE_DIR/patterns" "$SVELTE_PATTERNS" "patterns -> SvelteKit patterns"
-    else
-      echo -e "  ${YELLOW}Warning:${NC} SvelteKit patterns not found at $SVELTE_PATTERNS"
-    fi
+    # SvelteKit + shared core patterns
+    link_pattern_dirs sveltekit "${CORE_PATTERN_DIRS[@]}"
     ;;
   nextjs*)
-    # Next.js patterns
-    NEXTJS_PATTERNS="$PATTERNS_REPO/patterns/nextjs"
-    if [[ -d "$NEXTJS_PATTERNS" ]]; then
-      ensure_symlink "$KNOWLEDGE_DIR/patterns" "$NEXTJS_PATTERNS" "patterns -> Next.js patterns"
-    else
-      echo -e "  ${YELLOW}Warning:${NC} Next.js patterns not found at $NEXTJS_PATTERNS"
-    fi
+    # Next.js + shared core patterns
+    link_pattern_dirs nextjs "${CORE_PATTERN_DIRS[@]}"
     ;;
   python*)
-    # Python patterns
-    PYTHON_PATTERNS="$PATTERNS_REPO/patterns/python"
-    if [[ -d "$PYTHON_PATTERNS" ]]; then
-      ensure_symlink "$KNOWLEDGE_DIR/patterns" "$PYTHON_PATTERNS" "patterns -> Python patterns"
-    else
-      echo -e "  ${YELLOW}Warning:${NC} Python patterns not found at $PYTHON_PATTERNS"
-    fi
+    # Python + shared core patterns
+    link_pattern_dirs python "${CORE_PATTERN_DIRS[@]}"
     ;;
   typescript-library)
-    # TypeScript library patterns
-    TSLIB_PATTERNS="$PATTERNS_REPO/patterns/typescript-library"
-    if [[ -d "$TSLIB_PATTERNS" ]]; then
-      ensure_symlink "$KNOWLEDGE_DIR/patterns" "$TSLIB_PATTERNS" "patterns -> TS library patterns"
-    else
-      echo -e "  ${YELLOW}Warning:${NC} TS library patterns not found at $TSLIB_PATTERNS"
-    fi
+    # TypeScript library + shared core patterns
+    link_pattern_dirs typescript-library "${CORE_PATTERN_DIRS[@]}"
     ;;
   *)
     # Unknown stack — link all patterns
     if [[ "$PROJECT_LANGUAGE" == "typescript" ]]; then
-      ensure_symlink "$KNOWLEDGE_DIR/patterns" "$GLOBAL_PATTERNS" "patterns -> all patterns"
+      link_pattern_dirs "${DDD_PATTERN_DIRS[@]}" "${CORE_PATTERN_DIRS[@]}" flutter sveltekit nextjs typescript-library
     else
       echo -e "  ${YELLOW}Skipped:${NC} No patterns for stack '$STACK_PROFILE' (use patterns-local/)"
     fi
@@ -420,15 +444,16 @@ echo -e "${BLUE}Verification${NC}"
 echo -e "${BLUE}================================${NC}"
 echo ""
 
-# Count patterns
-if [ -L "$KNOWLEDGE_DIR/patterns" ]; then
-  PATTERN_COUNT=$(find "$KNOWLEDGE_DIR/patterns" -name "*.md" -not -name "README.md" -not -name "METADATA.yml" 2>/dev/null | wc -l)
-  echo -e "${GREEN}Patterns:${NC} $PATTERN_COUNT"
+# Count patterns (patterns/ is now a directory with per-subdir symlinks, not a single symlink)
+if [ -d "$KNOWLEDGE_DIR/patterns" ]; then
+  PATTERN_COUNT=$(find -L "$KNOWLEDGE_DIR/patterns" -name "*.md" -not -name "README.md" -not -name "METADATA.yml" 2>/dev/null | wc -l)
+  PATTERN_DIRS=$(find "$KNOWLEDGE_DIR/patterns" -mindepth 1 -maxdepth 1 -type l 2>/dev/null | wc -l)
+  echo -e "${GREEN}Patterns:${NC} $PATTERN_COUNT (${PATTERN_DIRS} categories)"
 fi
 
 # Count rules
 RULE_COUNT=0
-for dir in "$RULES_DIR"/*/; do
+for dir in "$NATIVE_RULES_DIR"/*/; do
   [[ -d "$dir" ]] || continue
   count=$(find "$dir" -name "*.md" 2>/dev/null | wc -l)
   RULE_COUNT=$((RULE_COUNT + count))
