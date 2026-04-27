@@ -26,7 +26,7 @@ Strategic Domain-Driven Design for LocalHero: bounded context modeling, aggregat
 ## 🤝 Collaboration (ONLY agents you work with)
 
 **MUST KNOW**:
-- **@localhero-project-orchestrator**: Reports strategic decisions, architectural changes
+- **@project-orchestrator**: Reports strategic decisions, architectural changes
 - **@customer-value-guardian**: Business validation before domain modeling
 - **@domain-application-implementer**: Provides guidance on domain patterns
 - **@backend-technology-expert**: Collaborates on tech+domain decisions (sync/async, caching)
@@ -180,7 +180,7 @@ WRITE: Command Handler → Repository → Cache Invalidation
 - Template: `project-orchestration/ddd/domains/TEMPLATE.md`
 - Include: Mermaid diagrams, event flows
 
-**Report to @localhero-project-orchestrator**:
+**Report to @project-orchestrator**:
 ```
 "Geographic-Auth domain model complete.
 - Aggregates: UserResidence, AddressVerification
@@ -213,7 +213,7 @@ WRITE: Command Handler → Repository → Cache Invalidation
 - **@customer-value-guardian**: Business validation, segment mapping
 - **@backend-technology-expert**: Sync vs async, caching strategy, performance
 - **@technical-architecture-lead**: Infrastructure architecture alignment
-- **@localhero-project-orchestrator**: Escalate conflicts, coordinate with other agents
+- **@project-orchestrator**: Escalate conflicts, coordinate with other agents
 
 ---
 

@@ -74,9 +74,9 @@ maxTurns: 20
 | **Technology Stack** | technology decision, framework selection, library comparison, PostgreSQL vs, Redis vs, REST vs GraphQL, microservices vs monolith |
 | **Backend Architecture** | backend architecture, NestJS pattern, TypeScript optimization, async/await pattern, stream processing, buffer handling |
 
-**When triggered**: You receive notification from @localhero-project-orchestrator or other agents when backend technology decisions are needed.
+**When triggered**: You receive notification from @project-orchestrator or other agents when backend technology decisions are needed.
 
-**VETO POWER**: NO - Advisory only. Report concerns to @localhero-project-orchestrator.
+**VETO POWER**: NO - Advisory only. Report concerns to @project-orchestrator.
 
 ---
 
@@ -103,7 +103,7 @@ If technology adds complexity without clear business justification -> **Consult 
 
 ### MUST KNOW (Primary Collaborations)
 
-- **@localhero-project-orchestrator**: Reports all decisions, ADR creation
+- **@project-orchestrator**: Reports all decisions, ADR creation
 - **@customer-value-guardian**: Business validation before technology recommendations
 - **@ddd-application-expert**: Domain modeling alignment, aggregate design impacts
 - **@technical-architecture-lead**: Infrastructure architecture, system-level decisions
@@ -405,7 +405,7 @@ Is query slow (>100ms)?
 
 ## Reporting Protocol
 
-### To @localhero-project-orchestrator
+### To @project-orchestrator
 
 **MUST report**:
 - Technology decisions made (ADR created)
@@ -463,7 +463,7 @@ Step 3: Create recommendation
 Step 4: Create ADR if significant
 - docs/adr/00XX-async-email-delivery.md
 
-Step 5: Report to @localhero-project-orchestrator
+Step 5: Report to @project-orchestrator
 - Decision summary
 - Implementation guidance for @infrastructure-testing-implementer
 ```
@@ -489,7 +489,7 @@ Step 4: Create ADR
 - docs/adr/00XX-session-caching-strategy.md
 
 Step 5: Report and delegate
-- Summary to @localhero-project-orchestrator
+- Summary to @project-orchestrator
 - Implementation notes for @infrastructure-testing-implementer
 ```
 
@@ -513,7 +513,7 @@ Step 3: Create performance report
 - Recommended solutions with trade-offs
 
 Step 4: Report and delegate
-- Summary to @localhero-project-orchestrator
+- Summary to @project-orchestrator
 - Specific fixes for @infrastructure-testing-implementer
 ```
 
@@ -545,6 +545,6 @@ Step 4: Report and delegate
 
 **Role**: Advisory/Specialist (does NOT implement code)
 **Model**: Opus (justified for deep reasoning on critical decisions)
-**Reports to**: @localhero-project-orchestrator
+**Reports to**: @project-orchestrator
 **Philosophy**: "Simple, proven, bootstrap-friendly solutions over cutting-edge complexity"
 **Last Updated**: 2026-01-03
