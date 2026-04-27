@@ -10,23 +10,23 @@
  * count Read calls whose file_path matches `.claude/knowledge/patterns/`.
  *
  * Modes (set via env CHECK_PATTERNS_MODE):
- *   warn  (default) — print warning to stderr, allow tool call (exit 0)
- *   block           — block tool call (exit 2 — Claude Code surfaces stderr to user)
+ *   block (default) — block tool call (exit 2 — stderr surfaces to Claude)
+ *   warn            — print warning to stderr, allow tool call (exit 0)
  *
  * Bypass: if file path matches one of EXEMPT_PATHS (test files, configs,
  * markdown docs), skip the check entirely.
  *
  * Configuration:
- *   CHECK_PATTERNS_MODE=warn|block      (default: warn)
- *   CHECK_PATTERNS_LOOKBACK=30          (tool calls to check, default: 30)
+ *   CHECK_PATTERNS_MODE=block|warn      (default: block — hard gate)
+ *   CHECK_PATTERNS_LOOKBACK=15          (tool calls to check, default: 15)
  *   CHECK_PATTERNS_REQUIRED_HITS=1      (min pattern reads required, default: 1)
  */
 
 const fs = require('fs');
 const path = require('path');
 
-const MODE = process.env.CHECK_PATTERNS_MODE || 'warn';
-const LOOKBACK = parseInt(process.env.CHECK_PATTERNS_LOOKBACK || '30', 10);
+const MODE = process.env.CHECK_PATTERNS_MODE || 'block';
+const LOOKBACK = parseInt(process.env.CHECK_PATTERNS_LOOKBACK || '15', 10);
 const REQUIRED_HITS = parseInt(process.env.CHECK_PATTERNS_REQUIRED_HITS || '1', 10);
 
 // Files we don't enforce on
@@ -152,23 +152,32 @@ function main() {
     process.exit(0); // Pattern was read, allow
   }
 
-  // No pattern read — warn or block
+  // No pattern read — block by default
+  const isBlock = MODE !== 'warn';
+  const verb = isBlock ? '🛑 BLOCKED' : '⚠️  WARN';
   const msg =
-    `\n⚠️  PATTERN-CHECK: About to ${toolName} ${filePath}\n` +
+    `\n${verb}: PATTERN-CHECK on ${toolName} ${filePath}\n` +
     `    No Read on .claude/knowledge/patterns/* in last ${LOOKBACK} tool calls.\n` +
-    `    Source files under src/ MUST be grounded in canonical patterns.\n` +
-    `    Read the relevant pattern(s) first:\n` +
-    `      Read(".claude/knowledge/patterns/<layer>/<name>-pattern.md")\n` +
-    `    Layers: domain, application, infrastructure, architecture, testing, cross-layer\n` +
-    `    Mode: ${MODE.toUpperCase()} (set CHECK_PATTERNS_MODE=block to enforce hard gate)\n`;
+    `    Source files MUST be grounded in canonical patterns from\n` +
+    `    .claude/knowledge/patterns/ — NOT your training data.\n\n` +
+    `    REQUIRED ACTION before retrying this ${toolName}:\n` +
+    `      1. Read(".claude/knowledge/patterns/README.md")  # discover layers\n` +
+    `      2. Read the pattern(s) for the layer you're touching:\n` +
+    `         - domain/aggregate-pattern.md, entity-pattern.md, value-object-pattern.md\n` +
+    `         - application/command-handler-pattern.md\n` +
+    `         - infrastructure/repository-pattern.md, controller-schema-pattern.md\n` +
+    `         - cross-layer/conventions-pattern.md  (always)\n` +
+    `         - cross-layer/domain-errors-pattern.md  (Result API)\n` +
+    `         - cross-layer/safe-error-propagation-pattern.md  (CRITICAL)\n` +
+    `      3. Print "📚 Patterns read: [list]" so the verifier can audit.\n` +
+    `      4. THEN retry the ${toolName}.\n\n` +
+    `    Mode: ${MODE.toUpperCase()}` +
+    (isBlock
+      ? ` (hard gate — set CHECK_PATTERNS_MODE=warn to soft-warn instead)\n`
+      : ` (soft warning — set CHECK_PATTERNS_MODE=block to enforce hard gate)\n`);
 
   process.stderr.write(msg);
-
-  if (MODE === 'block') {
-    process.exit(2); // Claude Code surfaces stderr + blocks the tool call
-  } else {
-    process.exit(0); // warn-only: surface stderr, allow call
-  }
+  process.exit(isBlock ? 2 : 0);
 }
 
 main();
