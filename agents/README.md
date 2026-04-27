@@ -1,7 +1,7 @@
 # Global Claude Code Agents
 
 **Purpose**: Reusable specialist and advisory agents for Claude Code projects.
-**Total**: 5 universal + 14 stack-specific = 19 agents
+**Total**: 6 universal + 14 stack-specific = 20 agents
 
 ---
 
@@ -10,6 +10,7 @@
 ```
 ~/.claude/agents/              <- universal agents (global, all projects)
     backend-technology-expert.md  -> agents/universal/
+    project-orchestrator.md       -> agents/universal/
     security-privacy-architect.md -> agents/universal/
     technical-architecture-lead.md -> agents/universal/
     tech-lead.md                  -> agents/universal/
@@ -24,9 +25,17 @@ project/.claude/agents/        <- stack agents (per-project, via setup-project.s
 
 ---
 
-## Universal Agents (5)
+## Universal Agents (6)
 
 Linked globally to `~/.claude/agents/` via `setup-global.sh`.
+
+### Orchestration (1)
+
+| Agent | Purpose | Model | Writes Code |
+|-------|---------|-------|-------------|
+| **project-orchestrator** | Stack-aware orchestration: reads `project.yml`, resolves patterns + agent mapping per stack preset, delegates implement/validate/review sequentially, enforces Phase-4 verification gate | Opus | No |
+
+Mirror of the `/orchestrate` skill, callable from `Task()` for async/delegated orchestration. Honors per-project overrides in `project.yml` under `project.orchestrator.overrides`.
 
 ### Advisory / PM (2)
 
