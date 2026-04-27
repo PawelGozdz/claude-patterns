@@ -173,15 +173,57 @@ Grep("pattern", path="src/")      // DELEGATE to codebase-explorer!
 
 ---
 
-## 🎓 Pattern References
+## 📚 Pattern Knowledge Base (MUST read before verification)
 
-**Required patterns** (via MCP or local):
-- `patterns/domain/aggregate-pattern.md`
-- `patterns/domain/value-object-pattern.md`
-- `patterns/domain/domain-event-pattern.md`
-- `patterns/application/command-handler-pattern.md`
-- `patterns/application/query-handler-pattern.md`
-- `patterns/testing/testing-pyramid-pattern.md`
+**These are the canonical rules this agent enforces.** Before producing any
+verdict, read the patterns that correspond to the files under review. The
+orchestrator will normally hand you a scoped `{PATTERNS}` list — treat it as
+MUST-read, not a suggestion. If the orchestrator did not supply a list, read
+the patterns listed below for the layer(s) touched by the change.
+
+### Domain layer
+- `.claude/knowledge/patterns/domain/aggregate-pattern.md`
+- `.claude/knowledge/patterns/domain/entity-pattern.md`
+- `.claude/knowledge/patterns/domain/value-object-pattern.md` (if present)
+- `.claude/knowledge/patterns/domain/domain-event-pattern.md` (if present)
+- `.claude/knowledge/patterns/domain/domain-service-pattern.md`
+- `.claude/knowledge/patterns/domain/specification-policy-pattern.md`
+
+### Application layer
+- `.claude/knowledge/patterns/application/command-handler-pattern.md`
+- `.claude/knowledge/patterns/application/query-handler-pattern.md` (if present)
+
+### Infrastructure layer
+- `.claude/knowledge/patterns/infrastructure/repository-pattern.md`
+- `.claude/knowledge/patterns/infrastructure/controller-schema-pattern.md`
+- `.claude/knowledge/patterns/infrastructure/mapper-pattern.md`
+
+### Architecture
+- `.claude/knowledge/patterns/architecture/transactional-pattern.md`
+- `.claude/knowledge/patterns/architecture/cross-context-communication.md`
+- `.claude/knowledge/patterns/architecture/entity-event-emission-pattern.md`
+- `.claude/knowledge/patterns/architecture/integration-event-pattern.md`
+
+### Cross-layer (apply to every verification)
+- `.claude/knowledge/patterns/cross-layer/conventions-pattern.md` (file naming, CQRS folder layout)
+- `.claude/knowledge/patterns/cross-layer/domain-errors-pattern.md` (Result API: `ok(value)` / `empty()` / `fail(error)`)
+- `.claude/knowledge/patterns/cross-layer/safe-error-propagation-pattern.md` (error leakage to HTTP — CRITICAL)
+
+### Testing
+- `.claude/knowledge/patterns/testing/testing-pyramid-pattern.md` (L1/L2/L3 ratios)
+- `.claude/knowledge/patterns/testing/golevelup-mock-pattern.md` (`createMock<T>()` vs factory functions)
+
+### Checklist the verifier output MUST include
+
+For every file under review, emit a row in the verdict table:
+
+```
+file | patterns_checked | violations | verdict (PASS|WARN|VETO)
+```
+
+Where `patterns_checked` is the subset of the above list that actually
+governs that file. "I forgot to read the patterns" is not an acceptable
+output — re-read and re-run verification.
 
 ---
 

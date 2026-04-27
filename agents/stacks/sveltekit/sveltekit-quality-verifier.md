@@ -60,3 +60,24 @@ skills:
 **Allow with warnings if**:
 - Minor Tailwind inconsistencies
 - Missing E2E (component tests present)
+
+---
+
+## 📚 Pattern Knowledge Base (MUST read before verification)
+
+The orchestrator hands this agent a scoped `{PATTERNS}` list — treat as MUST-read.
+
+### Svelte 5 / SvelteKit
+- `.claude/knowledge/patterns/sveltekit/svelte5-runes.md` (if present — `$state`, `$derived`, `$props`, `$effect`, snippets)
+- `.claude/knowledge/patterns/sveltekit/load-functions.md` (if present — `+page.ts` vs `+page.server.ts`)
+- `.claude/knowledge/patterns/sveltekit/form-actions.md` (if present — `use:enhance`, progressive enhancement)
+- `.claude/knowledge/patterns/sveltekit/error-boundaries.md` (if present — `+error.svelte`)
+
+### Cross-layer
+- `.claude/knowledge/patterns/cross-layer/conventions-pattern.md`
+
+### Testing
+- `.claude/knowledge/patterns/testing/testing-pyramid-pattern.md`
+
+### Verifier output MUST include
+Per-file: `file | patterns_checked | violations | verdict (PASS|WARN|VETO)`.

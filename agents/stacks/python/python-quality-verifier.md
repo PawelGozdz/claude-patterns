@@ -132,6 +132,28 @@ Grep("f\".*SELECT|f\".*MATCH|f\".*INSERT|f'.*SELECT|f'.*MATCH", path="core/")  #
 
 ---
 
+## 📚 Pattern Knowledge Base (MUST read before verification)
+
+The orchestrator hands this agent a scoped `{PATTERNS}` list — treat as MUST-read.
+
+### Python modular architecture
+- `.claude/knowledge/patterns/python/module-isolation.md` (if present — dependency direction)
+- `.claude/knowledge/patterns/python/async-patterns.md` (if present — asyncio, structured concurrency)
+- `.claude/knowledge/patterns/python/type-annotations.md` (if present — public API typing)
+- `.claude/knowledge/patterns/python/query-safety.md` (if present — parameterized queries, no f-string SQL/Cypher)
+
+### Cross-layer
+- `.claude/knowledge/patterns/cross-layer/conventions-pattern.md` — naming, organization.
+- `.claude/knowledge/patterns/cross-layer/domain-errors-pattern.md` — error semantics.
+
+### Testing
+- `.claude/knowledge/patterns/testing/testing-pyramid-pattern.md` — pytest L1/L2/L3.
+
+### Verifier output MUST include
+Per-file: `file | patterns_checked | violations | verdict (PASS|WARN|VETO)`.
+
+---
+
 ## Collaboration
 
 - @python-architecture-expert — module placement and boundary decisions

@@ -69,3 +69,26 @@ skills:
 - Minor "use client" scope could be narrower
 - Missing loading.tsx (not critical)
 - Test coverage >70% but not ideal
+
+---
+
+## 📚 Pattern Knowledge Base (MUST read before verification)
+
+The orchestrator hands this agent a scoped `{PATTERNS}` list — treat as MUST-read.
+
+### Next.js App Router
+- `.claude/knowledge/patterns/nextjs/server-vs-client-components.md` (if present)
+- `.claude/knowledge/patterns/nextjs/caching-strategies.md` (if present — `"use cache"`, `cacheTag`, `cacheLife`, `revalidateTag`, `updateTag`)
+- `.claude/knowledge/patterns/nextjs/proxy-vs-middleware.md` (if present — proxy.ts replaces middleware.ts)
+- `.claude/knowledge/patterns/nextjs/async-params.md` (if present — `await params`, `await cookies()`)
+- `.claude/knowledge/patterns/nextjs/server-actions.md` (if present)
+
+### Cross-layer
+- `.claude/knowledge/patterns/cross-layer/conventions-pattern.md`
+- `.claude/knowledge/patterns/cross-layer/domain-errors-pattern.md`
+
+### Testing
+- `.claude/knowledge/patterns/testing/testing-pyramid-pattern.md`
+
+### Verifier output MUST include
+Per-file: `file | patterns_checked | violations | verdict (PASS|WARN|VETO)`.

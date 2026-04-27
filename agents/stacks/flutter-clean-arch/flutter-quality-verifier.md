@@ -117,6 +117,30 @@ Grep("Either<Failure", path="/exact/domain/use_case.dart")  // Error handling
 
 ---
 
+## 📚 Pattern Knowledge Base (MUST read before verification)
+
+The orchestrator normally hands this agent a scoped `{PATTERNS}` list. Treat
+it as MUST-read. When not supplied, read the patterns below that correspond
+to the layers under review.
+
+### Flutter / Clean Architecture
+- `.claude/knowledge/patterns/flutter/clean-architecture-layers.md` (if present — domain/data/presentation isolation)
+- `.claude/knowledge/patterns/flutter/riverpod-patterns.md` (if present — providers, state, refresh semantics)
+- `.claude/knowledge/patterns/flutter/freezed-immutability.md` (if present — data classes, copyWith)
+- `.claude/knowledge/patterns/flutter/either-error-handling.md` (if present — `Either<Failure, T>` in domain/data)
+
+### Cross-layer (apply always)
+- `.claude/knowledge/patterns/cross-layer/conventions-pattern.md` — naming, file organization.
+- `.claude/knowledge/patterns/cross-layer/domain-errors-pattern.md` — Result/Either semantics.
+
+### Testing
+- `.claude/knowledge/patterns/testing/testing-pyramid-pattern.md` — unit + widget + golden ratios.
+
+### Verifier output MUST include
+A per-file row: `file | patterns_checked | violations | verdict (PASS|WARN|VETO)`.
+
+---
+
 ## Collaboration
 
 - @flutter-architecture-expert — architecture decisions

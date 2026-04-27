@@ -70,6 +70,24 @@ skills:
 
 ---
 
+## 📚 Pattern Knowledge Base (MUST read before verification)
+
+The orchestrator hands this agent a scoped `{PATTERNS}` list — treat as MUST-read.
+
+### UI / widget patterns
+- `.claude/knowledge/patterns/flutter/widget-composition.md` (if present)
+- `.claude/knowledge/patterns/flutter/accessibility.md` (if present — semantic labels, touch targets)
+- `.claude/knowledge/patterns/flutter/localization.md` (if present — no hardcoded user-visible strings)
+- `.claude/knowledge/patterns/flutter/design-system-tokens.md` (if present)
+
+### Testing
+- `.claude/knowledge/patterns/testing/testing-pyramid-pattern.md` — widget + golden test coverage.
+
+### Verifier output MUST include
+Per-screen/widget: `file | patterns_checked | a11y_violations | verdict`.
+
+---
+
 ## Collaboration
 
 - @flutter-architecture-expert — component structure decisions

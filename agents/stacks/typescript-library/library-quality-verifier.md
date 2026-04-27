@@ -65,3 +65,21 @@ skills:
 - Internal refactoring with same public surface
 - Minor JSDoc improvements
 - Test coverage slightly below 80%
+
+---
+
+## 📚 Pattern Knowledge Base (MUST read before verification)
+
+The orchestrator hands this agent a scoped `{PATTERNS}` list — treat as MUST-read.
+
+### TypeScript library patterns
+- `.claude/knowledge/patterns/typescript-library/public-api.md` (if present — barrel files, export discipline)
+- `.claude/knowledge/patterns/typescript-library/backward-compatibility.md` (if present — semver, deprecation)
+- `.claude/knowledge/patterns/typescript-library/type-safety.md` (if present — no `any` in public API)
+- `.claude/knowledge/patterns/typescript-library/build-output.md` (if present — ESM + CJS, `.d.ts`)
+
+### Testing
+- `.claude/knowledge/patterns/testing/testing-pyramid-pattern.md`
+
+### Verifier output MUST include
+Per-exported-symbol: `export | patterns_checked | api_diff | verdict`.
