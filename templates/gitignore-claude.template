@@ -4,6 +4,11 @@
 .claude/knowledge/skills/
 .claude/rules/
 
+# Claude Code — symlinked SH hooks (from claude-patterns/hooks/)
+.claude/hooks/cost-optimizer.sh
+.claude/hooks/session-monitor.sh
+.claude/hooks/state-manager.sh
+
 # Claude Code — generated/ephemeral (not committed)
 .claude/settings.local.json
 .claude/analytics/

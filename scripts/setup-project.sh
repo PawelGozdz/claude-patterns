@@ -373,6 +373,68 @@ else
 fi
 echo ""
 
+# --- 5b. Universal SH hooks (symlinked from claude-patterns/hooks/) ---
+echo -e "${BLUE}[5b/8] Universal SH hooks${NC} (symlinked, kept out of git)"
+SH_HOOKS_DIR="$PROJECT_DIR/.claude/hooks"
+mkdir -p "$SH_HOOKS_DIR"
+
+UNIVERSAL_SH_HOOKS=(
+  "cost-optimizer.sh"
+  "state-manager.sh"
+  "session-monitor.sh"
+)
+
+for hook in "${UNIVERSAL_SH_HOOKS[@]}"; do
+  source_path="$PATTERNS_REPO/hooks/$hook"
+  target_path="$SH_HOOKS_DIR/$hook"
+
+  if [[ ! -f "$source_path" ]]; then
+    echo -e "  ${YELLOW}Missing source:${NC} $hook (skipped)"
+    continue
+  fi
+
+  if [[ -L "$target_path" ]]; then
+    # Already a symlink — refresh to current target
+    ln -sf "$source_path" "$target_path"
+    echo -e "  ${YELLOW}Up to date:${NC} $hook (symlink)"
+  elif [[ -f "$target_path" ]]; then
+    # Local copy exists — back it up and replace with symlink
+    mv "$target_path" "$target_path.bak.$(date +%Y%m%d%H%M%S)"
+    ln -sf "$source_path" "$target_path"
+    echo -e "  ${GREEN}Replaced local copy:${NC} $hook (backed up as .bak.*, now symlinked)"
+  else
+    ln -sf "$source_path" "$target_path"
+    echo -e "  ${GREEN}Symlinked:${NC} $hook → claude-patterns/hooks/"
+  fi
+done
+echo ""
+
+# --- 5c. .gitignore — append claude-patterns entries ---
+echo -e "${BLUE}[5c/8] .gitignore${NC}"
+GITIGNORE="$PROJECT_DIR/.gitignore"
+GITIGNORE_TEMPLATE="$PATTERNS_REPO/templates/gitignore-claude.template"
+
+if [[ -f "$GITIGNORE" && -f "$GITIGNORE_TEMPLATE" ]]; then
+  ADDED=0
+  while IFS= read -r line; do
+    [[ -z "$line" || "$line" == \#* ]] && continue
+    if ! grep -qxF "$line" "$GITIGNORE" 2>/dev/null; then
+      echo "$line" >> "$GITIGNORE"
+      ADDED=$((ADDED + 1))
+    fi
+  done < "$GITIGNORE_TEMPLATE"
+  if [[ $ADDED -gt 0 ]]; then
+    echo -e "  ${GREEN}Added:${NC} $ADDED entries to .gitignore"
+  else
+    echo -e "  ${YELLOW}Up to date:${NC} .gitignore"
+  fi
+elif [[ ! -f "$GITIGNORE" ]]; then
+  echo -e "  ${YELLOW}Skipped:${NC} No .gitignore in project (not a git repo?)"
+else
+  echo -e "  ${YELLOW}Skipped:${NC} gitignore-claude.template not found"
+fi
+echo ""
+
 # --- 6. .mcp.json (project-scope MCP server) ---
 echo -e "${BLUE}[6/8] MCP configuration (.mcp.json)${NC}"
 MCP_JSON="$PROJECT_DIR/.mcp.json"
