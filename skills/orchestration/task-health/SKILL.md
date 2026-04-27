@@ -11,25 +11,67 @@ effort: medium
 Deep audit of the entire task graph. Identifies structural issues that
 accumulate silently over weeks of development.
 
-**Cost**: ~$0.05 (one @tech-lead call)
+**Cost**: ~$0.02 (1 Haiku extraction + 1 Sonnet analysis — was $0.05 with Sonnet-only)
 **When**: Weekly, or before sprint planning
+
+---
+
+## Architecture (cost-optimized — 2 phases)
+
+**Phase 1: extraction (Haiku)** — `state-reader` agent reads all `project-orchestration/tasks/*.md`, extracts YAML frontmatter + signals into structured data. Pure mechanical, no judgment.
+
+**Phase 2: analysis (Sonnet)** — `tech-lead` agent receives structured data from Phase 1 and produces the prioritized audit report.
+
+This split saves ~60% tokens vs. running tech-lead over raw task files (no need for Sonnet to parse 70 markdown files when Haiku can extract them at 12× the rate).
+
+---
 
 ## Steps
 
-1. Run @tech-lead with focused prompt:
-   "Perform a task health audit of project-orchestration/tasks/. Report:
-   1. Tasks with broken dependencies (dep file doesn't exist in tasks/)
-   2. Tasks stuck in 'in-progress' for >7 days
-   3. Tasks with 'blocked' status and no explanation in description
-   4. Tasks missing required YAML fields (priority, updated_date, assignee)
-   5. Tasks with no corresponding story_id (orphaned)
-   6. Circular dependency chains
-   7. P0/P1 tasks with no due_date
-   Provide a prioritized fix list."
+### Phase 1 — Extract structured task data
 
-2. Display audit results with fix recommendations
+```
+Agent(subagent_type='state-reader',
+      prompt='Read all project-orchestration/tasks/*.md and return structured
+              data per task: { id, title, status, priority, story_id,
+              assignee, due_date, depends_on[], updated_date, days_since_update,
+              has_required_fields_complete, in_progress_days_if_applicable }.
+              Also return aggregate: { total_tasks, by_status, by_priority }.
+              Format: YAML.',
+      description='Task data extraction (Haiku)')
+```
 
-3. Ask user: "Fix issues automatically where safe (missing fields)? Y/N"
+### Phase 2 — Audit analysis
+
+```
+Agent(subagent_type='tech-lead',
+      prompt='Audit task health using this structured data:
+              {PHASE_1_OUTPUT}
+
+              Also resolve completed tasks list:
+              {GLOB: project-orchestration/completed-tasks/*.md → IDs only}
+
+              Report:
+              1. Broken dependencies — task depends on ID not present in tasks/
+                 or completed-tasks/
+              2. Stuck in-progress >7 days
+              3. Status=blocked without explanation in description
+              4. Missing required fields (priority, updated_date, assignee)
+              5. Orphaned (no story_id)
+              6. Circular dependency chains
+              7. P0/P1 with no due_date
+
+              Prioritize fixes: critical (broken deps) → high (stuck) → cleanup.',
+      description='Task health analysis (Sonnet)')
+```
+
+### Phase 3 — Render
+
+Display audit results with fix recommendations.
+
+Ask user: "Fix issues automatically where safe (missing fields)? Y/N"
+
+---
 
 ## Output Example
 
@@ -56,4 +98,6 @@ ORPHANED (no story_id):
 CIRCULAR DEPS: None found ✅
 
 → 4 critical fixes needed | 17 field updates recommended
+
+(extraction: state-reader/Haiku, analysis: tech-lead/Sonnet)
 ```

@@ -1,7 +1,7 @@
 # Global Claude Code Agents
 
 **Purpose**: Reusable specialist and advisory agents for Claude Code projects.
-**Total**: 6 universal + 14 stack-specific = 20 agents
+**Total**: 8 universal + 14 stack-specific = 22 agents
 
 ---
 
@@ -10,8 +10,10 @@
 ```
 ~/.claude/agents/              <- universal agents (global, all projects)
     backend-technology-expert.md  -> agents/universal/
+    changelog-bot.md              -> agents/universal/
     project-orchestrator.md       -> agents/universal/
     security-privacy-architect.md -> agents/universal/
+    state-reader.md               -> agents/universal/
     technical-architecture-lead.md -> agents/universal/
     tech-lead.md                  -> agents/universal/
     product-owner.md              -> agents/universal/
@@ -25,7 +27,7 @@ project/.claude/agents/        <- stack agents (per-project, via setup-project.s
 
 ---
 
-## Universal Agents (6)
+## Universal Agents (8)
 
 Linked globally to `~/.claude/agents/` via `setup-global.sh`.
 
@@ -36,6 +38,15 @@ Linked globally to `~/.claude/agents/` via `setup-global.sh`.
 | **project-orchestrator** | Stack-aware orchestration: reads `project.yml`, resolves patterns + agent mapping per stack preset, delegates implement/validate/review sequentially, enforces Phase-4 verification gate | Opus | No |
 
 Mirror of the `/orchestrate` skill, callable from `Task()` for async/delegated orchestration. Honors per-project overrides in `project.yml` under `project.orchestrator.overrides`.
+
+### Cost-optimized utility (2)
+
+| Agent | Purpose | Model | Writes Code |
+|-------|---------|-------|-------------|
+| **state-reader** | Read-only extraction from STATE.md / TEAM-STATE.md / KANBAN.md / TECH-DEBT.md / tasks/. Returns structured summaries — no synthesis, no judgment. | Haiku | No |
+| **changelog-bot** | `git log` → CHANGELOG.md (Keep-a-Changelog format). Mechanical conversion using Conventional Commits prefixes. | Haiku | Yes (CHANGELOG.md only) |
+
+Use these instead of running discovery/extraction in Sonnet/Opus context — 12-60× cheaper for bounded I/O work. Default delegation target for skills like `/task-health`, `/task-tidy`, `/pm-status`, `/changelog`.
 
 ### Advisory / PM (2)
 
