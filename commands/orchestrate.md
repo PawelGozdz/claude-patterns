@@ -94,24 +94,56 @@ across every task).
 If the project has a local `patterns/` mirror (e.g., via symlink), both roots
 apply — check local first, canonical second.
 
-### Step 0.5d — Report the pattern list to the user
+### Step 0.5d — REQUIRED visible output
 
-Before invoking any other agent, print:
+**You MUST print this to the user before invoking ANY other agent.** Skipping
+this step is the #1 cause of implementer agents ignoring patterns. Make the
+list **explicit, file-by-file, with full paths**:
 
 ```
-📚 Pattern Discovery
-Layers touched: {layers}
-Canonical patterns for this task:
-  - .claude/knowledge/patterns/domain/aggregate-pattern.md
-  - .claude/knowledge/patterns/domain/value-object-pattern.md
-  - .claude/knowledge/patterns/cross-layer/domain-errors-pattern.md
-  - .claude/knowledge/patterns/cross-layer/safe-error-propagation-pattern.md
-  - .claude/knowledge/patterns/cross-layer/conventions-pattern.md
-  - .claude/knowledge/patterns/testing/testing-pyramid-pattern.md
+📚 Pattern Discovery — stack: {stack_profile}, layers touched: {layers}
+
+Canonical patterns I will pass to every sub-agent:
+  1. .claude/knowledge/patterns/cross-layer/conventions-pattern.md  (always)
+  2. .claude/knowledge/patterns/cross-layer/domain-errors-pattern.md
+  3. .claude/knowledge/patterns/cross-layer/safe-error-propagation-pattern.md
+  4. .claude/knowledge/patterns/domain/aggregate-pattern.md
+  5. .claude/knowledge/patterns/domain/value-object-pattern.md
+  6. .claude/knowledge/patterns/application/command-handler-pattern.md
+  7. .claude/knowledge/patterns/testing/testing-pyramid-pattern.md
   ...
+Total: N patterns
+
+➡️ Each agent prompt below will include the **literal list above** (full
+   paths). I will NOT use abstract references like "the patterns".
 ```
 
-Every subsequent `Agent()` call MUST embed this list in its prompt.
+**Reasons this output is mandatory**:
+- User sees what patterns are in scope before any code is written.
+- Agents downstream get concrete file paths to Read, not vague "patterns".
+- A `PreToolUse` hook (`hooks/check-patterns-read.js`) blocks Write/Edit on
+  source files (.ts/.tsx/.dart/.py/.svelte) if no pattern was Read recently.
+  If you skip Step 0.5, the hook will fire on every implementer Write.
+
+### Step 0.5e — Substitution rule for downstream prompts
+
+In every prompt template below, the placeholder `{PATTERNS}` is **shorthand
+for the literal list from Step 0.5d**. When you actually invoke an agent,
+substitute `{PATTERNS}` with the bullet list verbatim. Example:
+
+```
+# Template (in this skill file):
+prompt='... apply these patterns: {PATTERNS} ...'
+
+# What you actually send to the agent (after substitution):
+prompt='... apply these patterns:
+  - .claude/knowledge/patterns/cross-layer/domain-errors-pattern.md
+  - .claude/knowledge/patterns/domain/aggregate-pattern.md
+  - .claude/knowledge/patterns/testing/testing-pyramid-pattern.md
+...'
+```
+
+**No abstract references.** "Use the relevant patterns" → ❌. Full paths → ✅.
 
 ---
 

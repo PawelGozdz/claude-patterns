@@ -135,11 +135,21 @@ Grep("pattern", path="src/")      // DELEGATE to codebase-explorer!
 ## 🚨 When to Use VETO Power
 
 **BLOCK task completion if**:
+- **Implementer did NOT cite patterns from `.claude/knowledge/patterns/`** in
+  its output (no `📚 Patterns read:` line, no per-file pattern attribution).
+  This means the code was written from training-data knowledge, not project
+  canon. AUTOMATIC VETO.
+- **Code violates a rule that exists in a pattern file** (e.g., `throw` in
+  domain layer when `domain-errors-pattern.md` requires Result<T>). VETO with
+  citation: file:line + pattern:rule.
 - Critical DDD violations (Aggregate invariants not protected)
 - Missing handler registration (runtime failures)
 - Test pyramid severely violated (<30% L1 tests)
 - No tests for new code (0% coverage)
 - Domain exceptions thrown instead of Result<T>
+- `error.message` leaked into HTTP error mapper (see safe-error-propagation-pattern)
+- Manual `function createMockX()` factories instead of `createMock<T>()`
+  (see golevelup-mock-pattern)
 
 **Allow with warnings if**:
 - Minor naming inconsistencies
