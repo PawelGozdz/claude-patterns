@@ -8,15 +8,14 @@
 
 ## File Naming Conventions
 
+### Domain Layer (file name includes a stem)
+
 | Type | Convention | Example |
 |------|------------|---------|
 | **Aggregate** | `entity-name.aggregate.ts` | `user-identity.aggregate.ts` |
 | **Entity** | `entity-name.entity.ts` | `institutional-announcement.entity.ts` |
 | **Value Object** | `name.vo.ts` | `email.vo.ts`, `polish-address.vo.ts` |
 | **Domain Event** | `event-name.event.ts` | `user-registered.event.ts` |
-| **Command** | `command-name.command.ts` | `register-user.command.ts` |
-| **Query** | `query-name.query.ts` | `get-user-by-id.query.ts` |
-| **Handler** | `command/query-name.handler.ts` | `register-user.handler.ts` |
 | **Specification** | `rule-name.specification.ts` | `address-cooldown.specification.ts` |
 | **Policy** | `policy-name.policy.ts` | `address-change.policy.ts` |
 | **Domain Service** | `service-name.domain-service.ts` | `address-change.domain-service.ts` |
@@ -26,6 +25,25 @@
 | **DTO** | `name.dto.ts` | `user-profile.dto.ts` |
 | **Controller** | `feature-name.controller.ts` | `authentication.controller.ts` |
 | **Mapper** | `entity-name.mapper.ts` | `user-identity-aggregate.mapper.ts` |
+
+### CQRS — folder implies the name (NO folder-prefix)
+
+Command, Query, and Handler files live inside a folder that **already carries the name**. Repeating the name in the filename is redundant noise that makes long imports awkward and obscures diffs.
+
+| Type | ❌ Old (folder-prefixed) | ✅ Current (folder implies name) |
+|------|-------------------------|---------------------------------|
+| **Command** | `register-user/register-user.command.ts` | `register-user/command.ts` |
+| **Query** | `get-user-by-id/get-user-by-id.query.ts` | `get-user-by-id/query.ts` |
+| **Handler** | `register-user/register-user.handler.ts` | `register-user/handler.ts` |
+| **Handler tests** | `register-user/register-user.handler.spec.ts` | `register-user/__tests__/handler.spec.ts` |
+| **Event handler (standalone folder)** | `job-completed/job-completed.integration-handler.ts` | `job-completed/integration-handler.ts` |
+| **Event handler (shared folder, keeps stem)** | — | `event-handlers/user-registered.handler.ts` |
+
+**Rule of thumb:**
+- If the file lives in a **dedicated folder** whose name already identifies the operation (`commands/register-user/`, `queries/get-user-by-id/`, `event-handlers/job-completed/`) — drop the prefix and use `command.ts` / `query.ts` / `handler.ts` / `integration-handler.ts`.
+- If multiple files of the same type share a folder (e.g., `application/event-handlers/` with 5 independent handler files), keep the stem so files are distinguishable.
+
+**Why** (regression history, commit `5b157ecd`): folder-prefixed naming produced imports like `import { RegisterUserCommand } from './commands/register-user/register-user.command'` — the `register-user` appears 3× in one line. The shortened form is `./commands/register-user/command` — unambiguous, scannable in tree view, and survives context-aware autocompletion.
 
 ---
 

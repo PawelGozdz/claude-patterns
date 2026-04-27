@@ -434,6 +434,57 @@ export class CommentAggregateMapper implements ICommentAggregateMapper {
 
 ---
 
+### Example 2: Read-Model Mapper with `AuthorSnapshotDto` Nesting
+
+**Query-side mappers** (DB row → response DTO) must assemble author/organizer/creator data into a **nested `AuthorSnapshotDto`**, never flat fields. This keeps the wire format stable across contexts and matches the shared `authorSnapshotSchema` in `controller-schema-pattern.md`.
+
+**Rule:** the DB row stores flat columns (`organizer_id`, `organizer_display_name`, `organizer_avatar_url` — typically denormalized from a join). The mapper is the **only** place where flat → nested happens. Handlers, controllers, and DTOs receive the already-nested shape.
+
+```typescript
+// ✅ CORRECT — read-model mapper assembles AuthorSnapshotDto
+import type { AuthorSnapshotDto } from '@shared/response/dto/author-snapshot.dto';
+
+@Injectable()
+export class EventQueryMapper {
+  toResponseDto(row: EventQueryRow): EventResponseDto {
+    return {
+      id: row.id,
+      title: row.title,
+      organizer: this.toAuthorSnapshot(row.organizer_id, row.organizer_display_name, row.organizer_avatar_url),
+      // ...
+    };
+  }
+
+  private toAuthorSnapshot(
+    userId: string,
+    displayName: string,
+    avatarUrl: string | null
+  ): AuthorSnapshotDto {
+    return { userId, displayName, avatarUrl };
+  }
+}
+
+// ❌ WRONG — mapper returns flat author fields, DTO ends up with drift
+@Injectable()
+export class BAD_EventQueryMapper {
+  toResponseDto(row: EventQueryRow) {
+    return {
+      id: row.id,
+      title: row.title,
+      organizerId: row.organizer_id,           // Flat → wire format inconsistent
+      organizerDisplayName: row.organizer_display_name,
+      organizerAvatarUrl: row.organizer_avatar_url,
+    };
+  }
+}
+```
+
+**Nested key per context:** `organizer` (events), `user` (group members), `author` (announcements, posts), `giver` (local shares), `claimer` (claims). Shape is identical — only the key reflects the role.
+
+**If the author snapshot carries extra fields** (e.g., membership badge for group posts), extend at the schema layer via `authorSnapshotSchema.extend({...})` — do not invent a new nested shape.
+
+---
+
 ## 📋 Rules
 
 ### MUST

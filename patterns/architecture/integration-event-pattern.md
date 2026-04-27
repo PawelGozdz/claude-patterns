@@ -713,7 +713,7 @@ export class TrustDeltaEmitterService {
     }
 
     // Neither threshold met - skip emission
-    return Result.ok();
+    return Result.empty();
   }
 
   private async publishEvent(
@@ -732,7 +732,7 @@ export class TrustDeltaEmitterService {
       event.integrationMetadata.occurredAt
     );
 
-    return Result.ok();
+    return Result.empty();
   }
 }
 ```

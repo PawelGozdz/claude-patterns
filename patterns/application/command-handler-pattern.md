@@ -626,7 +626,7 @@ describe('CreateUserProfileHandler (L2 Integration)', () => {
       return handler.execute(new CreateUserProfileCommand(userId));
     });
 
-    // Then: Result.ok()
+    // Then: Result.ok(value) / Result.empty() (success)
     expect(result.isSuccess).toBe(true);
 
     // Then: Profile exists in DB

@@ -173,7 +173,7 @@ export class ResolveInstitutionalAnnouncementHandler extends BaseCommandHandler<
     // 6. ✅ DISPATCH EVENT TO EVENT HANDLERS
     await this.eventDispatcher.dispatchEvent(resolvedEvent);
 
-    return Result.ok();
+    return Result.empty();
   }
 }
 ```

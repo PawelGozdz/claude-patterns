@@ -77,7 +77,7 @@ export class AddressChangeDomainService {
       return Result.fail(this.mapViolationToError(result.violations[0]));
     }
 
-    return Result.ok();
+    return Result.empty();
   }
 
   /**
@@ -133,7 +133,7 @@ export class ChangeAddressHandler implements ICommandHandler<ChangeAddressComman
       // 4. Save
       await this.residenceRepository.save(residence);
 
-      return Result.ok();
+      return Result.empty();
 
     } catch (error) {
       return Result.fail(new InfrastructureError(error.message));
@@ -175,7 +175,7 @@ export class UserRegistrationDomainService {
       return Result.fail(new DistrictAtCapacityError(districtCode));
     }
 
-    return Result.ok();
+    return Result.empty();
   }
 }
 

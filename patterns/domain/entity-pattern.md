@@ -88,7 +88,7 @@ export class InstitutionalAnnouncement extends BaseEntity<
     source: NoticeSource,
     expiresInHours: number = 24,
     organizationId?: string
-  ): InstitutionalAnnouncement {
+  ): Result<InstitutionalAnnouncement, InstitutionalAnnouncementValidationError> {
     const now = new Date();
     const expiresAt = new Date(now.getTime() + expiresInHours * 60 * 60 * 1000);
 
@@ -104,31 +104,35 @@ export class InstitutionalAnnouncement extends BaseEntity<
 
     const expirationSpec = new ExpirationWithinLimitsSpecification();
     if (!expirationSpec.isSatisfiedBy(validationContext)) {
-      throw InstitutionalAnnouncementValidationError.invalidRange(
-        'expiresInHours',
-        1,
-        MAX_EXPIRATION_HOURS
+      return Result.fail(
+        InstitutionalAnnouncementValidationError.invalidRange(
+          'expiresInHours',
+          1,
+          MAX_EXPIRATION_HOURS
+        )
       );
     }
 
     const id = BaseEntityId.createWithRandomUUID();
 
-    return new InstitutionalAnnouncement(
-      {
-        authorId,
-        createdBy,
-        neighborhoodId,
-        organizationId,
-        announcementContent,
-        category,
-        severity,
-        source,
-        createdAt: now,
-        expiresAt,
-        viewCount: 0,
-        status: AnnouncementStatus.active(),
-      },
-      id
+    return Result.ok(
+      new InstitutionalAnnouncement(
+        {
+          authorId,
+          createdBy,
+          neighborhoodId,
+          organizationId,
+          announcementContent,
+          category,
+          severity,
+          source,
+          createdAt: now,
+          expiresAt,
+          viewCount: 0,
+          status: AnnouncementStatus.active(),
+        },
+        id
+      )
     );
   }
 
@@ -153,20 +157,21 @@ export class InstitutionalAnnouncement extends BaseEntity<
    * - Announcement must be ACTIVE
    * - Announcement must not be expired
    */
-  updateContent(newContent: AnnouncementContent): void {
+  updateContent(newContent: AnnouncementContent): Result<void, InstitutionalAnnouncementValidationError> {
     if (!this.props.status.isActive()) {
-      throw InstitutionalAnnouncementValidationError.notActive();
+      return Result.fail(InstitutionalAnnouncementValidationError.notActive());
     }
 
     const context = this.createSpecificationContext();
     const notExpiredSpec = new AnnouncementNotExpiredSpecification();
 
     if (!notExpiredSpec.isSatisfiedBy(context)) {
-      throw InstitutionalAnnouncementValidationError.alreadyExpired();
+      return Result.fail(InstitutionalAnnouncementValidationError.alreadyExpired());
     }
 
     // Direct mutation (NO domain event)
     this.props.announcementContent = newContent;
+    return Result.empty();
   }
 
   /**
@@ -197,7 +202,7 @@ export class InstitutionalAnnouncement extends BaseEntity<
     this.props.resolvedBy = resolvedBy;
     this.props.resolutionReason = reason;
 
-    return Result.ok();
+    return Result.empty();
   }
 
   // ============================================
@@ -389,7 +394,7 @@ export abstract class BaseEntity<TProps = any, TId extends EntityId = EntityId> 
 2. **NO public constructor** - use factory methods
 3. **NO value-based equality** - entities equal by ID, not props
 4. **NO business logic in constructor** - use factory method + validation
-5. **NO throwing from create()** - return Result or throw domain error
+5. **NEVER throw from factory methods or business methods** — always return `Result<T, DomainError>` or `Result<void, DomainError>` (via `Result.empty()`). DDD layer purity forbids exceptions in domain code
 6. **NO async operations** - entities are synchronous
 7. **NO infrastructure** - entities are pure domain
 
@@ -419,22 +424,23 @@ export class InstitutionalAnnouncement extends AggregateRoot<string> {
   }
 }
 
-// ✅ CORRECT: Entity for simple CRUD (NO events)
+// ✅ CORRECT: Entity for simple CRUD (NO events), Result<T> pattern
 export class InstitutionalAnnouncement extends BaseEntity<...> {
-  public static create(...): InstitutionalAnnouncement {
+  public static create(...): Result<InstitutionalAnnouncement, InstitutionalAnnouncementValidationError> {
     const id = BaseEntityId.createWithRandomUUID();
 
     // ✅ No event sourcing overhead
-    return new InstitutionalAnnouncement({ ... }, id);
+    return Result.ok(new InstitutionalAnnouncement({ ... }, id));
   }
 
-  updateContent(newContent: AnnouncementContent): void {
+  updateContent(newContent: AnnouncementContent): Result<void, InstitutionalAnnouncementValidationError> {
     if (!this.props.status.isActive()) {
-      throw InstitutionalAnnouncementValidationError.notActive();
+      return Result.fail(InstitutionalAnnouncementValidationError.notActive());
     }
 
     // ✅ Direct mutation, NO events
     this.props.announcementContent = newContent;
+    return Result.empty();
   }
 }
 ```
@@ -494,14 +500,14 @@ export class InstitutionalAnnouncement extends BaseEntity<...> {
     super(props, id);
   }
 
-  public static create(...): InstitutionalAnnouncement {
-    // ✅ Validation in factory method
+  public static create(...): Result<InstitutionalAnnouncement, InstitutionalAnnouncementValidationError> {
+    // ✅ Validation in factory method, Result.fail() instead of throw
     const expirationSpec = new ExpirationWithinLimitsSpecification();
     if (!expirationSpec.isSatisfiedBy(context)) {
-      throw InstitutionalAnnouncementValidationError.invalidRange(...);
+      return Result.fail(InstitutionalAnnouncementValidationError.invalidRange(...));
     }
 
-    return new InstitutionalAnnouncement({ ... }, id);
+    return Result.ok(new InstitutionalAnnouncement({ ... }, id));
   }
 }
 ```

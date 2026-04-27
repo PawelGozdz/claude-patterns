@@ -94,7 +94,7 @@ export class SessionValidationService {
     if (result.isFailure) {
       return Result.fail(new SessionError(result.error.message));
     }
-    return Result.ok();
+    return Result.empty();
   }
 }
 ```
@@ -187,7 +187,7 @@ class UserResidenceAggregate extends AggregateRoot<string> {
     this._address = newAddress;
     this._lastAddressChange = new Date();
     this.apply(new AddressChangedEvent(this.getId().value, newAddress));
-    return Result.ok();
+    return Result.empty();
   }
 }
 
@@ -232,7 +232,7 @@ export class AddressChangeDomainService {
       return Result.fail(this.mapViolationToError(result.violations[0]));
     }
 
-    return Result.ok();
+    return Result.empty();
   }
 
   private mapViolationToError(violation: PolicyViolation): BaseError {

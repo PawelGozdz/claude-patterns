@@ -236,7 +236,7 @@ export class CommentAggregate extends AggregateRoot<string> {
       })
     );
 
-    return Result.ok(undefined);
+    return Result.empty();
   }
 
   // 8. ✅ Domain method with moderation integration
@@ -291,7 +291,7 @@ export class CommentAggregate extends AggregateRoot<string> {
       })
     );
 
-    return Result.ok(undefined);
+    return Result.empty();
   }
 
   // 9. ✅ Query methods (no side effects)
@@ -410,7 +410,7 @@ export class UserIdentityAggregate extends AggregateRoot<string> {
     this._updatedAt = new Date();
 
     this.apply(new EmailVerifiedEvent({ /* GDPR segregated */ }));
-    return Result.ok(undefined);
+    return Result.empty();
   }
 }
 ```
@@ -437,7 +437,13 @@ export class UserIdentityAggregate extends AggregateRoot<string> {
 
 ### MUST NOT
 
-1. **NEVER throw exceptions** - always use Result pattern
+1. **NEVER throw exceptions** — always use Result pattern. This is a DDD layer-purity invariant: the domain layer must not leak infrastructure-style error signalling. Applies to:
+   - Aggregate factory methods (`static create()`) → return `Result<T, E>`
+   - Aggregate state transitions (`changeAddress`, `verifyEmail`, etc.) → return `Result<void, E>` via `Result.empty()` or `Result.ok(value)`
+   - Value Object factories (`static create`, `fromString`, `fromHash`, `fromDatabase`) → return `Result<VO, E>`
+   - Entity methods — same rules as aggregates
+   - Domain Services — no throws
+   - Specifications / Policies — no throws (return `Result<void, E>` from `.check()`)
 2. **NEVER async methods** - aggregates must be synchronous
 3. **NEVER infrastructure dependencies** - no DB, HTTP, external services
 4. **NEVER format validation** - delegate to value objects (ADR-0021)
@@ -468,7 +474,7 @@ public updateEmail(email: Email): Result<void, AuthDomainError> {
   }
   this._email = email;
   this.apply(new EmailUpdatedEvent({ /* ... */ }));
-  return Result.ok(undefined);
+  return Result.empty();
 }
 ```
 
@@ -482,7 +488,7 @@ public async changeEmail(email: Email): Promise<Result<void>> {
   const exists = await this.repository.emailExists(email); // ❌ Infrastructure!
   if (exists) return Result.fail(new EmailExistsError());
   this._email = email;
-  return Result.ok(undefined);
+  return Result.empty();
 }
 
 // ✅ CORRECT: Handler checks uniqueness, aggregate applies change
@@ -507,7 +513,7 @@ public updateEmail(emailStr: string): Result<void, AuthDomainError> {
     return Result.fail(new InvalidEmailFormatError());
   }
   this._email = Email.create(emailStr).value;
-  return Result.ok(undefined);
+  return Result.empty();
 }
 
 // ✅ CORRECT: Format validation in value object or Zod schema
@@ -527,7 +533,7 @@ public updateEmail(email: Email): Result<void, AuthDomainError> {
     return Result.fail(new EmailUnchangedError());
   }
   this._email = email;
-  return Result.ok(undefined);
+  return Result.empty();
 }
 ```
 
@@ -548,7 +554,7 @@ export class UserAggregate extends AggregateRoot<string> {
       occurredAt: new Date(),
     }));
 
-    return Result.ok(undefined);
+    return Result.empty();
   }
 }
 
@@ -565,7 +571,7 @@ export class UserAggregate extends AggregateRoot<string> {
       cryptoShredding: { /* ... */ }
     }));
 
-    return Result.ok(undefined);
+    return Result.empty();
   }
 }
 

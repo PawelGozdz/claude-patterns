@@ -56,7 +56,7 @@ export abstract class BaseCommandHandler<TCommand extends ICommand, TResult>
         throw new BusinessLogicFailureException(result.error);
       }
 
-      // Result.ok() → transaction commits automatically
+      // Result.ok(value) / Result.empty() → transaction commits automatically
       return result;
     } catch (error) {
       // Check if this is BusinessLogicFailure (Result.fail() converted)
@@ -78,9 +78,13 @@ export abstract class BaseCommandHandler<TCommand extends ICommand, TResult>
    * Returning Result.fail() triggers automatic rollback.
    *
    * Pattern:
-   * - Return Result.ok(value) for success → transaction commits
+   * - Return Result.ok(value) for success with payload → transaction commits
+   * - Return Result.empty() for success without payload (void) → transaction commits
    * - Return Result.fail(error) for failure → automatic rollback
    * - Throwing exceptions → rollback + error logged
+   *
+   * NOTE: `Result.ok()` (no argument) was removed in @vytches/ddd upgrade.
+   * Use `Result.ok(value)` for payloads or `Result.empty()` for void results.
    */
   protected abstract executeBusinessLogic(command: TCommand): Promise<TResult>;
 }
@@ -226,8 +230,8 @@ export class UserRegistrationService {
 ### MUST
 
 - ✅ **MUST** use `@Transactional()` on `BaseCommandHandler.execute()` ONLY
-- ✅ **MUST** return `Result.ok()` for success (commits transaction)
-- ✅ **MUST** return `Result.fail()` for business failures (triggers rollback)
+- ✅ **MUST** return `Result.ok(value)` or `Result.empty()` for success (commits transaction)
+- ✅ **MUST** return `Result.fail(error)` for business failures (triggers rollback)
 - ✅ **MUST** document handlers with `@transactional` JSDoc tag
 - ✅ **MUST** let base class convert `Result.fail()` to exception
 
@@ -352,7 +356,7 @@ export class UserRepository {
 1. Controller → CommandBus → BaseCommandHandler.execute() [@Transactional START]
 2.   → executeBusinessLogic() [uses TX from step 1]
 3.     → repository.save() [uses TX from step 1]
-4.     → return Result.ok() [TX COMMIT]
+4.     → return Result.ok(value) | Result.empty() [TX COMMIT]
 5.   ← Result returned to controller
 ```
 
@@ -361,10 +365,10 @@ export class UserRepository {
 1. Service.orchestrate() [@Transactional START - TX1]
 2.   → commandBus.execute(cmd1) [@Transactional REUSES TX1]
 3.     → handler1.executeBusinessLogic() [uses TX1]
-4.   ← Result.ok()
+4.   ← Result.ok(value) | Result.empty()
 5.   → commandBus.execute(cmd2) [@Transactional REUSES TX1]
 6.     → handler2.executeBusinessLogic() [uses TX1]
-7.   ← Result.ok()
+7.   ← Result.ok(value) | Result.empty()
 8.   → return [TX1 COMMIT - ALL commands succeed or ALL fail]
 ```
 
@@ -390,7 +394,7 @@ describe('Transaction Rollback (E2E)', () => {
     expect(dbUser.email).toBe('test@example.com'); // Unchanged (rollback worked)
   });
 
-  it('should commit on Result.ok()', async () => {
+  it('should commit on Result.ok(value) / Result.empty()', async () => {
     const user = await createUser({ email: 'test@example.com' });
 
     const result = await request(app)

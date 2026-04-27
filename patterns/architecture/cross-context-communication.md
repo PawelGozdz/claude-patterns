@@ -172,7 +172,7 @@ export class TriggerFlashcardGenerationHandler {
       correlationId: command.correlationId,
       timestamp: new Date(),
     });
-    return Result.ok();
+    return Result.empty();
   }
 }
 

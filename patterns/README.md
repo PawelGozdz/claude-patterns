@@ -18,7 +18,7 @@ patterns/
 ├── application/         # Application Layer (CQRS handlers) - 4 patterns
 ├── infrastructure/      # Infrastructure Layer (persistence, API) - 4 patterns
 ├── architecture/        # Cross-cutting architecture patterns - 11 patterns
-├── testing/            # Testing patterns - 8 patterns
+├── testing/            # Testing patterns - 9 patterns
 ├── cross-layer/        # Used everywhere (errors, logging, error handlers) - 4 patterns
 ├── orchestration/      # Project management and team coordination - 1 pattern
 │
@@ -141,6 +141,7 @@ Testing strategies and patterns for all levels of the test pyramid.
 | **[rate-limit-testing-pattern.md](testing/rate-limit-testing-pattern.md)** | ~400 | Production | Separate E2E files for rate limiting tests | infrastructure-testing-implementer |
 | **[redis-test-isolation-pattern.md](testing/redis-test-isolation-pattern.md)** | ~350 | Production | Redis database isolation in tests | infrastructure-testing-implementer |
 | **[business-rules-yaml-pattern.md](testing/business-rules-yaml-pattern.md)** | ~400 | Production | BUSINESS_RULES.yaml as test oracle, specification/policy alignment | All implementers |
+| **[golevelup-mock-pattern.md](testing/golevelup-mock-pattern.md)** | ~300 | Production | `createMock<T>()` zamiast factory functions, DeepMocked type safety, co NIE migrować | All implementers |
 
 **Testing Layer Key Principles**:
 - Test Pyramid: L1 (unit) ~50%, L2 (integration) ~30%, L3 (E2E) ~20%
@@ -149,6 +150,7 @@ Testing strategies and patterns for all levels of the test pyramid.
 - Hybrid Fixtures: Fixture non-tested flows, real implementation for tested flows
 - Rate Limit Tests: ALWAYS in separate `*-rate-limits.e2e.spec.ts` files
 - Redis Isolation: Use unique database index per test suite
+- Mock Pattern: `createMock<T>()` from @golevelup/ts-vitest for ALL interface mocks — NEVER manual factory functions or `{ method: vi.fn() }` inline objects
 
 ---
 
@@ -162,11 +164,13 @@ Patterns used across all architectural layers.
 | **[logger-pattern.md](cross-layer/logger-pattern.md)** | ~500 | Production | Structured logging, PII redaction, correlation IDs | All implementers |
 | **[error-handler-chain-pattern.md](cross-layer/error-handler-chain-pattern.md)** | ~550 | Production | 9 specialized error handlers in Chain of Responsibility | infrastructure-testing-implementer |
 | **[conventions-pattern.md](cross-layer/conventions-pattern.md)** | ~400 | Production | Naming conventions, file organization, module structure | All implementers |
+| **[safe-error-propagation-pattern.md](cross-layer/safe-error-propagation-pattern.md)** | ~350 | Production | 3-layer defense against infra error leakage to HTTP (TS-SEC-011) | All implementers |
 
 **Cross-Layer Key Principles**:
 - Domain Errors: ErrorCode enum as single source of truth, Result<T> pattern everywhere
 - Logging: Structured logs with correlation IDs, PII redaction via logger config
 - Error Handlers: Priority-ordered chain (9 handlers), specialized handling per error type
+- Safe Error Propagation: NEVER pass error.message to HTTP responses — 3-layer defense (BaseRepo → factory → mapper)
 - Conventions: Consistent naming, file organization, module structure across all contexts
 
 ---
@@ -223,23 +227,27 @@ Patterns for project management and team coordination.
 
 ## 📊 Pattern Statistics
 
-**Core Patterns**: 38
+**Core Patterns**: 39
 **Stack-Specific Patterns**: 29 (flutter, nextjs, python, sveltekit, typescript-library)
-**Total**: 67
+**Total**: 68
 **Production Status**: 100% (all patterns verified in production code)
 
 **Core Pattern Distribution**:
-- Domain: 16% (6)
-- Application: 11% (4)
-- Infrastructure: 11% (4)
-- Architecture: 29% (11)
-- Testing: 21% (8)
-- Cross-Layer: 11% (4)
+- Domain: 15% (6)
+- Application: 10% (4)
+- Infrastructure: 10% (4)
+- Architecture: 28% (11)
+- Testing: 23% (9)
+- Cross-Layer: 10% (4)
 - Orchestration: 3% (1)
 
 ---
 
 ## 🔄 Pattern Updates
+
+**Version 3.2** (2026-04-19):
+- Added testing/golevelup-mock-pattern.md (@golevelup/ts-vitest createMock<T> pattern)
+- Total patterns: 39 (was 38)
 
 **Version 3.1** (2026-04-03):
 - Added orchestration layer with project-management-system.md

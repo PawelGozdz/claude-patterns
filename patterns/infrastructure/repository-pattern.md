@@ -119,17 +119,27 @@ export class CommentCommandKyselyRepository
   /**
    * Implementation of createQueryWithVersionJoin for optimistic locking
    *
-   * Joins engagement_comments with aggregate_versions to get current_version.
+   * Joins engagement_comments with engagement_aggregate_versions to get current_version.
    * Single query approach eliminates N+1 issues.
+   *
+   * NOTE: the version table is **per bounded context**:
+   *   - auth_aggregate_versions
+   *   - engagement_aggregate_versions
+   *   - geographic_auth_aggregate_versions
+   *   - neighborhood_economy_aggregate_versions
+   *   - etc.
+   *
+   * Never use a single shared `aggregate_versions` table — that creates cross-context
+   * write contention and makes migrations riskier. See "Per-Context Version Table" section below.
    */
   protected createQueryWithVersionJoin() {
     return this.getDb()
       .selectFrom('engagement_comments')
-      .leftJoin('aggregate_versions', join =>
-        join.onRef('aggregate_versions.aggregate_id', '=', sql`engagement_comments.id::varchar`)
+      .leftJoin('engagement_aggregate_versions', join =>
+        join.onRef('engagement_aggregate_versions.aggregate_id', '=', sql`engagement_comments.id::varchar`)
       )
       .selectAll('engagement_comments')
-      .select(['aggregate_versions.current_version']);
+      .select(['engagement_aggregate_versions.current_version']);
   }
 
   /**
@@ -646,22 +656,56 @@ protected createQueryWithVersionJoin() {
   return this.getDb()
     .selectFrom('engagement_comments')
     .selectAll('engagement_comments');
-  // Missing: aggregate_versions join
+  // Missing: engagement_aggregate_versions join
 }
 
 // Later: Two users edit same comment → last write wins (lost update!)
 
-// ✅ CORRECT: Version join for optimistic locking
+// ✅ CORRECT: Version join for optimistic locking (per-context version table)
 protected createQueryWithVersionJoin() {
   return this.getDb()
     .selectFrom('engagement_comments')
-    .leftJoin('aggregate_versions', join =>
-      join.onRef('aggregate_versions.aggregate_id', '=', sql`engagement_comments.id::varchar`)
+    .leftJoin('engagement_aggregate_versions', join =>
+      join.onRef('engagement_aggregate_versions.aggregate_id', '=', sql`engagement_comments.id::varchar`)
     )
     .selectAll('engagement_comments')
-    .select(['aggregate_versions.current_version']); // ✅ Optimistic locking
+    .select(['engagement_aggregate_versions.current_version']); // ✅ Optimistic locking
 }
 ```
+
+---
+
+### 7. Wrong Aggregate Version Table (Cross-Context Write Contention)
+
+```typescript
+// ❌ WRONG: single shared `aggregate_versions` table across all contexts
+await trx
+  .deleteFrom('aggregate_versions')
+  .where('aggregate_id', '=', id)
+  .execute();
+
+// Problems:
+// - Every context writes to the same table → hot row contention
+// - Schema migrations affect every bounded context at once
+// - Breaks logical isolation between contexts (and makes per-context DBs impossible)
+
+// ✅ CORRECT: per-context table name derived from the bounded context
+// - auth_aggregate_versions
+// - engagement_aggregate_versions
+// - geographic_auth_aggregate_versions
+// - neighborhood_economy_aggregate_versions
+// - user_profile_aggregate_versions
+//
+// Rule: the table name is ALWAYS `{context}_aggregate_versions`. DELETE/INSERT/UPDATE
+// and every JOIN must reference the per-context table — never a shared `aggregate_versions`.
+
+await trx
+  .deleteFrom('engagement_aggregate_versions') // ✅ Bound to this context
+  .where('aggregate_id', '=', id)
+  .execute();
+```
+
+**Why this matters** (regression caught by commit `c38adaa1`): a repository was deleting from a non-existent shared `aggregate_versions` table, silently succeeding with zero rows affected and leaving orphan version rows in `{ctx}_aggregate_versions`. Always derive the table name from the context the repository belongs to.
 
 ---
 

@@ -436,6 +436,53 @@ export class InvalidDeltaError extends BaseError {
 
 ---
 
+### 6. Result API — Success Branches (`Result.ok(value)` vs `Result.empty()`)
+
+The `Result<T, E>` type from `@vytches/ddd` has **three** factory methods on the success side — the correct choice depends on whether the operation has a payload.
+
+| Method | When to use | Type produced |
+|---|---|---|
+| `Result.ok(value)` | Operation returns a payload | `Result<T, E>` where `T` is the value type |
+| `Result.empty()` | Operation returns nothing (void success) | `Result<void, E>` |
+| `Result.ok(undefined)` | Intentional `undefined` as a value (rare — mappers, optional fields) | `Result<undefined, E>` |
+
+```typescript
+// ✅ CORRECT: payload-returning operation
+create(email: string): Result<Email, EmailValidationError> {
+  if (!email.includes('@')) {
+    return Result.fail(new EmailValidationError(email));
+  }
+  return Result.ok(new Email(email));
+}
+
+// ✅ CORRECT: void-returning operation (no payload)
+changeAddress(newAddress: PolishAddress): Result<void, AddressChangeError> {
+  if (!this.canChange()) {
+    return Result.fail(new AddressChangeCooldownError());
+  }
+  this._address = newAddress;
+  return Result.empty();
+}
+
+// ✅ CORRECT (rare): undefined is an intentional value
+mapOptionalField(row: Row): Result<string | undefined, MapperError> {
+  if (!row.fieldPresent) return Result.ok(undefined); // Explicit undefined
+  return Result.ok(row.value);
+}
+
+// ❌ DEPRECATED: Result.ok() with no argument
+// Removed in @vytches/ddd upgrade (2026-04). Compile-time error.
+changeAddress(): Result<void> {
+  return Result.ok(); // ← TypeScript error: expected 1 argument
+}
+```
+
+**Rationale**: Requiring an explicit argument to `ok()` forces callers to be deliberate about whether a payload is returned. `Result.empty()` is type-narrowed to `Result<void, E>` and cannot be confused with `Result.ok(undefined)` (intentional undefined). This prevents subtle bugs where a caller treats `result.value` as a meaningful payload when it's actually void.
+
+**Migration note**: Legacy code using `Result.ok()` must be migrated — there is no compatibility shim. For void methods use `Result.empty()`; for value methods provide the value.
+
+---
+
 ## 📋 Rules
 
 ### MUST
@@ -857,7 +904,7 @@ export class AddressChangeCooldownError extends BaseError {
 
 ### Related Patterns
 - **Error Mappings Pattern**: IDomainErrorMapper with Map-based O(1) lookup
-- **Result Pattern**: Result.ok/fail for domain layer error handling
+- **Result Pattern**: `Result.ok(value)` / `Result.empty()` / `Result.fail(error)` for domain layer error handling
 - **Hybrid Error Handling Pattern**: Layer-specific error strategies
 - **Error Handler Chain Pattern**: 9 specialized handlers for infrastructure errors
 
