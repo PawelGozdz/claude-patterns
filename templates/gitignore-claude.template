@@ -9,6 +9,27 @@
 .claude/hooks/session-monitor.sh
 .claude/hooks/state-manager.sh
 
+# Claude Code — symlinked stack agents (from claude-patterns/agents/stacks/)
+# Project-local agents (e.g., business-specific guardians) stay tracked.
+.claude/agents/code-quality-verifier.md
+.claude/agents/ddd-application-expert.md
+.claude/agents/security-e2e-verifier.md
+.claude/agents/flutter-architecture-expert.md
+.claude/agents/flutter-quality-verifier.md
+.claude/agents/flutter-ui-verifier.md
+.claude/agents/python-architecture-expert.md
+.claude/agents/python-quality-verifier.md
+.claude/agents/nextjs-architecture-expert.md
+.claude/agents/nextjs-quality-verifier.md
+.claude/agents/sveltekit-architecture-expert.md
+.claude/agents/sveltekit-quality-verifier.md
+.claude/agents/library-api-guardian.md
+.claude/agents/library-quality-verifier.md
+.claude/agents/tech-lead.md
+
+# Claude Code — symlinked implementers (entire dir is preset-driven)
+.claude/agents/implementers/
+
 # Claude Code — generated/ephemeral (not committed)
 .claude/settings.local.json
 .claude/analytics/
