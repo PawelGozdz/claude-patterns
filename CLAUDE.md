@@ -13,22 +13,89 @@ symlinks. Think carefully before removing or renaming anything.
 ## What's In This Repo
 
 ```
-patterns/       68 production patterns (38 core + 29 stack-specific + 1 marketing)
-agents/         9 universal + 14 stack-specific agents
-skills/         71 skills across 19 categories (5 PM + 41 marketing + others)
+patterns/       70 production patterns (38 core + 29 stack-specific + 1 marketing + 2 finance)
+agents/         10 universal + 14 stack-specific agents
+skills/         155 skills across 20 categories (5 PM + 41 marketing + 84 finance + others)
 hooks/          19 hooks + pm-task-check.js (PM, per-project)
 templates/      Stack presets + project-orchestration/ + product-marketing-context.md
-commands/       23 global commands (PM, orchestration, quality, learning, marketing)
+commands/       24 global commands (PM, orchestration, quality, learning, marketing, finance)
 tools/          External tool reference (vendored): marketing/ (CLIs + integrations)
+tests/          Eval frameworks (vendored): finance-evals/ (grade_responses.py + iterations)
 rules/          Language-specific coding rules
-scripts/        Setup and migration scripts (incl. sync-marketing-skills.sh)
+scripts/        Setup and migration scripts (incl. sync-{marketing,finance}-skills.sh)
 ```
 
 ---
 
-## Recent Changes (v3.3 — 2026-05-07)
+## Recent Changes (v3.4 — 2026-05-07)
 
-### Marketing System (NEW)
+### Finance System (NEW)
+
+Vendored 84 finance skills from
+[JoelLewis/finance_skills](https://github.com/JoelLewis/finance_skills) (MIT)
+with plugin-aware structure preserved.
+
+**New skills folder** (`skills/finance/<plugin>/<skill>/`):
+- 7 plugins with dependency graph: `core` (3 skills, math/stats foundations,
+  required by all) → `wealth-management` (32), `compliance` (16),
+  `advisory-practice` (12), `trading-operations` (9), `client-operations` (8),
+  `data-integration` (4)
+- 29 skills include `scripts/*.py` — runnable numpy/scipy implementations
+- Each `SKILL.md` declares `## Layer N` (0-7) for knowledge depth
+- `PLUGINS.md` documents the plugin map and dependency graph
+- `UPSTREAM_VERSION` records the synced upstream commit + version
+
+**New agent** (`agents/universal/`):
+- `finance-strategist.md` — Sonnet coordinator with **data-driven hedged
+  voice** ("Based on [evidence], the most viable approach appears to be X.
+  Trade-offs: ... Confidence: medium.") rather than paralyzing
+  "consult an advisor" deflection. Plugin-aware (enforces dependencies).
+  Three access modes: through `@product-owner`, standalone, or via `/finance`.
+
+**New command** (`commands/`):
+- `finance.md` — `/finance <task>` entry point.
+
+**New patterns** (`patterns/finance/`):
+- `layered-knowledge-pattern.md` — 2-D organization (plugin × layer) for
+  large skill collections. Generalizable beyond finance.
+- `regulatory-disclaimer-pattern.md` — 6-category contextual disclaimer
+  system (educational, general principles, regulatory, investment-specific,
+  trading operational, business operations). Replaces boilerplate "this
+  is not financial advice" deflections that get tuned out.
+
+**New tests folder** (`tests/finance-evals/`):
+- Vendored eval framework: `grade_responses.py` + 2 iterations of
+  test responses + `evals.json`
+
+**New script** (`scripts/`):
+- `sync-finance-skills.sh` — per-plugin rsync from upstream with
+  diff + confirm, preserves local meta files (README.md, PLUGINS.md,
+  UPSTREAM_VERSION).
+
+### Strategic Consultation Integration
+
+`@product-owner` now consults `@marketing-strategist` + `@finance-strategist`
+in parallel during **strategic work** (roadmaps, sprint planning, milestones,
+pricing analysis, growth questions). Skills `/pulse`, `/sprint`, `/reprioritize`
+trigger this consultation automatically.
+
+**Boundary**: code implementation skills (`/orchestrate` impl mode, `/tdd`,
+`/scaffold`, `/build-fix`, `/verify`, `/code-review`) explicitly do NOT
+consult business strategists. They are summoned only for strategy/analysis,
+never for code work.
+
+### Marketing voice updated to match finance
+
+`@marketing-strategist` voice refreshed to use the same data-driven hedged
+format as `@finance-strategist` — replacing "I refuse to invent customer
+quotes" framing with **"Based on industry benchmarks and [observed
+trend]..." + contextual validation note**.
+
+---
+
+## Previous Changes (v3.3 — 2026-05-07)
+
+### Marketing System
 
 Vendored 41 marketing skills from
 [coreyhaines31/marketingskills](https://github.com/coreyhaines31/marketingskills)
@@ -119,6 +186,38 @@ tmux sessions (days/weeks) without relying on session-start hooks.
    ```
 3. Update `patterns/README.md` to add it to the index
 4. Add `METADATA.yml` entry if adding to a new category
+
+### Adding / Updating Finance Skills
+
+The `skills/finance/` and `tests/finance-evals/` folders are **vendored**
+from [JoelLewis/finance_skills](https://github.com/JoelLewis/finance_skills) (MIT).
+
+**Updating from upstream**:
+```bash
+./scripts/sync-finance-skills.sh --diff       # preview
+./scripts/sync-finance-skills.sh              # interactive apply
+./scripts/sync-finance-skills.sh --ref v1.0.0  # pin to a tag
+```
+
+**Local additions / modifications**:
+- `skills/finance/README.md`, `skills/finance/PLUGINS.md`,
+  `skills/finance/UPSTREAM_VERSION` — ours
+- `tests/finance-evals/README.md` — ours (sibling of upstream files)
+- Don't modify individual `SKILL.md` files inside
+  `skills/finance/<plugin>/<skill>/` unless absolutely necessary —
+  the next sync will overwrite them
+
+**Adding a brand-new finance skill that doesn't exist upstream**:
+1. Place it in `skills/finance/<plugin>/<name>/SKILL.md` and add a
+   marker comment `<!-- LOCAL — not synced from upstream -->` at the top
+2. Update `skills/finance/PLUGINS.md` and `skills/finance/README.md`
+3. Add it to the routing table in
+   `agents/universal/finance-strategist.md`
+4. The sync script's `--exclude='LOCAL-*'` won't catch your file by name
+   — rename it with `LOCAL-` prefix or add explicit exclusion to the
+   rsync command for that plugin
+
+---
 
 ### Adding / Updating Marketing Skills
 

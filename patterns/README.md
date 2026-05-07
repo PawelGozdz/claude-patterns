@@ -4,9 +4,9 @@
 
 This knowledge base contains production-enforced patterns for DDD/CQRS projects. Each pattern is derived from real implementations (2-3 verified code examples) and includes comprehensive anti-patterns sections.
 
-**Version**: 3.3
+**Version**: 3.4
 **Last Updated**: 2026-05-07
-**Status**: PRODUCTION (38 core patterns + 29 stack-specific + 1 marketing)
+**Status**: PRODUCTION (38 core patterns + 29 stack-specific + 1 marketing + 2 finance)
 
 ---
 
@@ -22,6 +22,7 @@ patterns/
 ├── cross-layer/        # Used everywhere (errors, logging, error handlers) - 4 patterns
 ├── orchestration/      # Project management and team coordination - 1 pattern
 ├── marketing/          # Marketing workflow patterns - 1 pattern
+├── finance/            # Finance workflow patterns - 2 patterns
 │
 ├── flutter/            # Flutter-specific patterns - 7 patterns (per-project)
 ├── nextjs/             # Next.js-specific patterns - 7 patterns (per-project)
@@ -207,6 +208,30 @@ Patterns for marketing workflows and shared positioning context.
 - Skills: 41 vendored skills in `skills/marketing/` (CRO, copy, SEO, paid, growth, RevOps)
 - Agent: `@marketing-strategist` (universal)
 - Command: `/marketing <task>`
+
+---
+
+### Finance Layer (2 patterns)
+
+Architectural patterns for finance workflows — large skill collections
+with knowledge layering and regulatory exposure.
+
+| Pattern | Lines | Status | Description | Primary Users |
+|---------|-------|--------|-------------|---------------|
+| **[layered-knowledge-pattern.md](finance/layered-knowledge-pattern.md)** | ~200 | Production | 2-D organization (plugin × layer) for 84 skills. Plugin axis = functional domain, Layer axis = knowledge depth (0..7). Generalizes to other large skill collections. | finance-strategist + all skills/finance/ |
+| **[regulatory-disclaimer-pattern.md](finance/regulatory-disclaimer-pattern.md)** | ~180 | Production | Contextual disclaimer system — 6 categories with specific phrasing applied selectively. Replaces boilerplate "consult an advisor" deflections that get tuned out by users. | finance-strategist (primary), marketing-strategist (lighter variant) |
+
+**Finance Layer Key Principles**:
+- Plugin-aware vendoring: `skills/finance/<plugin>/<skill>/` preserves
+  upstream dependency graph (compliance & advisory-practice depend on core/wealth-management)
+- Data-driven hedged voice — "based on [evidence], the most viable approach
+  appears to be X" — not paralyzing "I cannot give advice"
+- Contextual disclaimers (6 categories) — applied only when regulatory risk
+  warrants, never boilerplate
+- Skills: 84 vendored skills in `skills/finance/` across 7 plugins
+- Agent: `@finance-strategist` (universal, consulted by `@product-owner`)
+- Command: `/finance <task>`
+- Tests: `tests/finance-evals/` — vendored eval framework
 
 ---
 

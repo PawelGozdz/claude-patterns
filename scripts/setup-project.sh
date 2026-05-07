@@ -71,10 +71,15 @@ yml_list() {
 
 # --- Helper: create or verify a symlink ---
 # Usage: ensure_symlink <link_path> <target_path> <display_name>
+# Creates parent directory if needed (supports nested skill categories
+# like "finance/core", "finance/compliance" → .claude/knowledge/skills/finance/<plugin>/).
 ensure_symlink() {
   local link_path="$1"
   local target_path="$2"
   local display_name="$3"
+
+  # Ensure parent dir exists (for nested categories like finance/core)
+  mkdir -p "$(dirname "$link_path")"
 
   if [ -L "$link_path" ]; then
     CURRENT_TARGET=$(readlink "$link_path")

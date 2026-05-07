@@ -1,7 +1,7 @@
 # Global Claude Code Agents
 
 **Purpose**: Reusable specialist and advisory agents for Claude Code projects.
-**Total**: 9 universal + 14 stack-specific = 23 agents
+**Total**: 10 universal + 14 stack-specific = 24 agents
 
 ---
 
@@ -11,6 +11,7 @@
 ~/.claude/agents/              <- universal agents (global, all projects)
     backend-technology-expert.md  -> agents/universal/
     changelog-bot.md              -> agents/universal/
+    finance-strategist.md         -> agents/universal/
     marketing-strategist.md       -> agents/universal/
     project-orchestrator.md       -> agents/universal/
     security-privacy-architect.md -> agents/universal/
@@ -28,7 +29,7 @@ project/.claude/agents/        <- stack agents (per-project, via setup-project.s
 
 ---
 
-## Universal Agents (9)
+## Universal Agents (10)
 
 Linked globally to `~/.claude/agents/` via `setup-global.sh`.
 
@@ -67,13 +68,18 @@ See `patterns/orchestration/project-management-system.md` for full docs.
 | **security-privacy-architect** | OWASP, GDPR, encryption, auth strategies | Opus | No |
 | **technical-architecture-lead** | Infrastructure design, scalability, architecture decisions | Opus | No |
 
-### Marketing (1)
+### Marketing & Finance Strategy (2)
 
 | Agent | Purpose | Model | Writes Code |
 |-------|---------|-------|-------------|
 | **marketing-strategist** | Coordinator for 41 marketing skills (CRO, copy, SEO, paid, growth, RevOps). Enforces `product-marketing-context` before any deep analysis, routes tasks to the right skill in `skills/marketing/`. | Sonnet | No |
+| **finance-strategist** | Coordinator for 84 finance skills (investment, compliance, advisory, trading, ops, data). Plugin-aware (7 plugins with dependency graph). Data-driven hedged recommendations with contextual disclaimers. | Sonnet | No |
 
-Powers the `/marketing` slash command. See `patterns/marketing/product-marketing-context-pattern.md` for the foundational context pattern.
+Powers `/marketing` and `/finance` slash commands. Both agents are also
+**automatically consulted by `@product-owner`** during strategic work
+(roadmaps, sprints, milestones, pricing, growth analysis) — see
+`patterns/marketing/product-marketing-context-pattern.md` and
+`patterns/finance/regulatory-disclaimer-pattern.md` for architecture.
 
 ---
 

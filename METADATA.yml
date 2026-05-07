@@ -1,6 +1,6 @@
 # Global Claude Patterns Repository - Metadata
 
-version: "3.3.0"
+version: "3.4.0"
 created: "2026-02-05"
 last_updated: "2026-05-07"
 author: "LocalHero Team"
@@ -9,9 +9,11 @@ license: "MIT"
 
 description: |
   Production-tested software patterns, universal agents, skills, a project
-  management system, and a 41-skill marketing toolkit for Claude Code projects.
+  management system, a 41-skill marketing toolkit, and an 84-skill finance
+  toolkit for Claude Code projects.
   Extracted from LocalHero (1355+ tests, 6 production contexts) and
-  augmented with marketing skills vendored from coreyhaines31/marketingskills (MIT).
+  augmented with vendored marketing skills (coreyhaines31/marketingskills)
+  and finance skills (JoelLewis/finance_skills), both MIT-licensed.
   Uses native filesystem symlinks for zero-duplication sharing.
 
 vendored_dependencies:
@@ -26,6 +28,18 @@ vendored_dependencies:
     sync_script: "scripts/sync-marketing-skills.sh"
     upstream_marker: "skills/marketing/UPSTREAM_VERSION"
 
+  - name: "finance_skills"
+    upstream: "https://github.com/JoelLewis/finance_skills"
+    author: "Joel Lewis (joel@eleazar.dev)"
+    license: "MIT"
+    version_pinned: "1.0.0"  # marketplace.json version at last sync
+    location:
+      - "skills/finance/"
+      - "tests/finance-evals/"
+    sync_script: "scripts/sync-finance-skills.sh"
+    upstream_marker: "skills/finance/UPSTREAM_VERSION"
+    structure: "plugin-aware"  # 7 plugins with dependency graph (see skills/finance/PLUGINS.md)
+
 repository:
   type: "git"
   location: "~/projects/claude-patterns/"
@@ -35,7 +49,8 @@ patterns:
   core_count: 38
   stack_specific_count: 29
   marketing_count: 1
-  total_count: 68
+  finance_count: 2
+  total_count: 70
   core_categories:
     domain: 6
     application: 4
@@ -52,15 +67,17 @@ patterns:
     typescript-library: 5
   marketing_categories:
     marketing: 1  # product-marketing-context-pattern
+  finance_categories:
+    finance: 2    # layered-knowledge-pattern, regulatory-disclaimer-pattern
 
   maturity:
-    production: 68
+    production: 70
     stable: 0
     experimental: 0
     deprecated: 0
 
 agents:
-  universal: 9
+  universal: 10
   stack_specific: 14
   categories:
     universal:
@@ -69,7 +86,8 @@ agents:
       - technical-architecture-lead
       - tech-lead
       - product-owner
-      - marketing-strategist        # NEW v3.3
+      - marketing-strategist        # v3.3
+      - finance-strategist          # NEW v3.4
       - project-orchestrator
       - state-reader
       - changelog-bot
@@ -81,7 +99,7 @@ agents:
       - typescript-library (2)
 
 commands:
-  total: 23
+  total: 24
   categories:
     orchestration: 5  # pulse, pm-status, sprint, task-health, tech-debt
     quality: 4        # verify, code-review, build-fix, test-coverage
@@ -89,12 +107,13 @@ commands:
     learning: 4       # instinct-status, instinct-export, instinct-import, evolve
     session: 3        # sessions, checkpoint, progress
     infrastructure: 2 # pm2, schedule (if exists)
-    marketing: 1      # /marketing  (NEW v3.3)
+    marketing: 1      # /marketing  (v3.3)
+    finance: 1        # /finance    (NEW v3.4)
     meta: 1           # skill-create
 
 skills:
-  total_categories: 19
-  total_skills: 71  # 30 internal + 41 vendored marketing
+  total_categories: 20
+  total_skills: 155  # 30 internal + 41 vendored marketing + 84 vendored finance
   orchestration_skills:
     - pulse
     - pm-status
@@ -152,6 +171,26 @@ skills:
       - competitor-profiling
       - revops
       - sales-enablement
+  finance_skills:                # NEW v3.4 — 84 vendored skills, plugin-aware
+    structure: "skills/finance/<plugin>/<skill>/"
+    plugin_dependency_graph:
+      core: []                              # 3 skills, math/stats foundations, REQUIRED
+      wealth-management: [core]             # 32 skills
+      compliance: [core]                    # 16 skills, SEC/FINRA
+      advisory-practice: [core, wealth-management]  # 12 skills
+      trading-operations: [core]            # 9 skills
+      client-operations: [core]             # 8 skills
+      data-integration: [core]              # 4 skills
+    knowledge_layers:
+      "0":  "Math foundations (returns, statistics, TVM)"
+      "1a": "Historical risk"
+      "1b": "Forward-looking risk"
+      "2":  "Asset classes"
+      "3":  "Valuation"
+      "4":  "Portfolio construction"
+      "5":  "Policy & planning"
+      "6":  "Personal finance"
+      "7":  "Behavioral, reporting, communication"
 
 hooks:
   total: 19
@@ -162,7 +201,17 @@ templates:
   stack_presets: 9
   settings_presets: 7
   project_orchestration: true
-  product_marketing_context: true  # NEW v3.3 — copy to .agents/product-marketing-context.md
+  product_marketing_context: true  # v3.3 — copy to .agents/product-marketing-context.md
+
+tests:
+  finance_evals:                   # NEW v3.4 — vendored eval framework
+    location: "tests/finance-evals/"
+    upstream: "JoelLewis/finance_skills/finance-skills-workspace/"
+    components:
+      - "evals.json (test cases)"
+      - "grade_responses.py (automated grader)"
+      - "iteration-1/ (initial responses)"
+      - "iteration-2/ (improved responses)"
 
 stack_support:
   current:
@@ -197,3 +246,12 @@ notes: |
     /marketing command, product-marketing-context pattern + template,
     tools/marketing/ (60 CLI refs + 75 integration guides),
     sync-marketing-skills.sh script.
+  - v3.4.0: Finance system — 84 finance skills vendored from
+    JoelLewis/finance_skills (MIT) with plugin-aware structure (7 plugins
+    + dependency graph), finance-strategist agent with data-driven hedged
+    voice and contextual disclaimer system (6 categories — not boilerplate),
+    /finance command, layered-knowledge + regulatory-disclaimer patterns,
+    tests/finance-evals/ vendored eval framework, sync-finance-skills.sh.
+    @product-owner now consults marketing + finance strategists during
+    strategic work (roadmaps, sprints, milestones) — not during code
+    implementation.

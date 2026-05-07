@@ -56,12 +56,23 @@ skills:
   - meta
   # Available: security, testing, database, quality, optimization,
   # decision-frameworks, orchestration, architecture, learning, meta,
-  # backend, frontend, infrastructure, marketing
+  # backend, frontend, infrastructure, marketing, finance
   #
   # marketing — adds the 41 vendored marketing skills (CRO, copy, SEO,
   # paid, email, growth, RevOps). Opt-in: only enable for projects that
   # actually do marketing work. Requires .agents/product-marketing-context.md
   # for best results — set it up via `/marketing` or `/product-marketing-context`.
+  #
+  # finance — adds the 84 vendored finance skills across 7 plugins.
+  # PLUGIN GRANULAR: instead of `finance` (all 84), enable per-plugin:
+  #   - finance/core               (3 skills, math foundations, REQUIRED if any other finance/* enabled)
+  #   - finance/wealth-management  (32 skills, investment + portfolio + personal)
+  #   - finance/compliance         (16 skills, SEC/FINRA, KYC, AML, Reg BI)
+  #   - finance/advisory-practice  (12 skills, advisor workflows; needs core + wealth-management)
+  #   - finance/trading-operations (9 skills, order/execution/settlement)
+  #   - finance/client-operations  (8 skills, account lifecycle)
+  #   - finance/data-integration   (4 skills, reference + market data)
+  # See skills/finance/PLUGINS.md for the dependency graph.
 
 contexts:
   - name: auth

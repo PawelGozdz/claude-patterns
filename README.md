@@ -1,9 +1,9 @@
 # Global Claude Code Patterns Repository
 
-**Version**: 3.3.0
+**Version**: 3.4.0
 **Created**: 2026-02-05
 **Updated**: 2026-05-07
-**Purpose**: Reusable patterns, agents, skills, project management system, and marketing skills for Claude Code
+**Purpose**: Reusable patterns, agents, skills, project management, marketing skills, and finance skills for Claude Code
 
 ---
 
@@ -34,7 +34,7 @@ A **single source of truth** for production-tested software patterns and agent t
 ├── README.md                    # This file
 ├── METADATA.yml                 # Repository metadata
 ├── .gitignore                   # Git exclusions
-├── patterns/                    # Production patterns (38 core + 29 stack-specific + 1 marketing)
+├── patterns/                    # Production patterns (38 core + 29 stack-specific + 1 marketing + 2 finance)
 │   ├── README.md                # Pattern index & usage guide
 │   ├── domain/                  # Domain layer (6 patterns)
 │   ├── application/             # Application layer (4 patterns)
@@ -43,21 +43,23 @@ A **single source of truth** for production-tested software patterns and agent t
 │   ├── testing/                 # Testing patterns (7 patterns)
 │   ├── cross-layer/             # Cross-layer patterns (4 patterns)
 │   ├── orchestration/           # Orchestration patterns (1 pattern)
-│   └── marketing/               # [NEW] Marketing patterns (1 pattern)
+│   ├── marketing/               # Marketing patterns (1 pattern)
+│   └── finance/                 # [NEW v3.4] Finance patterns (2 patterns: layered-knowledge, regulatory-disclaimer)
 ├── mcp-server/                  # MCP Server for multi-project use
 │   ├── server.py                # MCP server implementation
 │   ├── requirements.txt         # Python dependencies
 │   ├── settings.json.example    # Example Claude settings
 │   └── README.md                # MCP setup & usage guide
-├── agents/                      # Agent definitions (9 universal + 14 stack-specific)
+├── agents/                      # Agent definitions (10 universal + 14 stack-specific)
 │   ├── README.md                # Agent setup & usage guide
 │   ├── universal/               # Stack-agnostic agents (linked to ~/.claude/agents/)
 │   │   ├── backend-technology-expert.md
 │   │   ├── security-privacy-architect.md
 │   │   ├── technical-architecture-lead.md
-│   │   ├── tech-lead.md             # PM: project health, debt, dependencies
-│   │   ├── product-owner.md         # PM: business value, mobile UX, milestones
-│   │   └── marketing-strategist.md  # [NEW] Marketing coordinator (CRO, copy, SEO, growth)
+│   │   ├── tech-lead.md              # PM: project health, debt, dependencies
+│   │   ├── product-owner.md          # PM: business value, mobile UX, milestones
+│   │   ├── marketing-strategist.md   # Marketing coordinator (CRO, copy, SEO, growth)
+│   │   └── finance-strategist.md     # [NEW v3.4] Finance coordinator (investment, compliance, advisory)
 │   └── stacks/                  # Stack-specific agents (linked per-project)
 │       ├── nestjs-ddd/          # 3 agents (DDD expert, quality, security)
 │       ├── flutter-clean-arch/  # 3 agents (arch, quality, UI)
@@ -72,7 +74,7 @@ A **single source of truth** for production-tested software patterns and agent t
 │   │   ├── task-health/SKILL.md # Deep task audit — broken deps, stale, orphaned
 │   │   ├── tech-debt/SKILL.md   # Debt analysis + TECH-DEBT.md update
 │   │   └── sprint/SKILL.md      # Interactive sprint planning (both agents)
-│   ├── marketing/               # [NEW v3.3] 41 marketing skills (vendored from coreyhaines31/marketingskills, MIT)
+│   ├── marketing/               # 41 marketing skills (vendored from coreyhaines31/marketingskills, MIT)
 │   │   ├── README.md            # Catalog + attribution + sync docs
 │   │   ├── product-marketing-context/   # Foundation — run first
 │   │   ├── page-cro/, signup-flow-cro/, ...   # 6 CRO skills
@@ -82,6 +84,16 @@ A **single source of truth** for production-tested software patterns and agent t
 │   │   ├── cold-email/, email-sequence/       # 2 email skills
 │   │   ├── ab-test-setup/, analytics-tracking/ # 2 measurement skills
 │   │   └── ... (8 growth + 8 strategy/RevOps skills)
+│   ├── finance/                 # [NEW v3.4] 84 finance skills (vendored from JoelLewis/finance_skills, MIT)
+│   │   ├── README.md            # Catalog + attribution + sync docs
+│   │   ├── PLUGINS.md           # Plugin map + dependency graph
+│   │   ├── core/                # 3 skills — math/stats foundations (REQUIRED by all)
+│   │   ├── wealth-management/   # 32 skills — investment, portfolio, personal finance
+│   │   ├── compliance/          # 16 skills — SEC/FINRA, KYC, AML, Reg BI, fiduciary
+│   │   ├── advisory-practice/   # 12 skills — client onboarding, CRM, advisor workflows
+│   │   ├── trading-operations/  # 9 skills — order lifecycle, execution, settlement
+│   │   ├── client-operations/   # 8 skills — account lifecycle, transfers, reconciliation
+│   │   └── data-integration/    # 4 skills — reference data, market data, integration
 │   └── ...                      # (other skill categories)
 ├── templates/                   # Project templates
 │   ├── project-orchestration/   # Full PM system folder template
@@ -94,11 +106,13 @@ A **single source of truth** for production-tested software patterns and agent t
 │   │   └── _archive/            # Historical docs
 │   ├── product-marketing-context.md  # [NEW v3.3] Marketing positioning template
 │   └── ...                      # (other templates)
-├── tools/                       # [NEW v3.3] External tool reference (vendored)
+├── tools/                       # External tool reference (vendored)
 │   └── marketing/               # 60 CLI helpers + 75+ integration guides
 │       ├── REGISTRY.md          # Tool index (GA4, Stripe, HubSpot, …)
 │       ├── integrations/        # Per-tool setup + common ops
 │       └── clis/                # Reference CLI scripts (Node.js)
+├── tests/                       # [NEW v3.4] Eval frameworks (vendored)
+│   └── finance-evals/           # grade_responses.py + iteration-1, iteration-2 + evals.json
 ├── hooks/                       # PostToolUse/Stop hooks
 │   ├── pm-task-check.js         # [NEW] PM briefing when task files change
 │   └── ...                      # (other hooks)
@@ -119,11 +133,104 @@ A **single source of truth** for production-tested software patterns and agent t
 │   ├── generate-claude-md.sh    # Generate CLAUDE.md from project.yml
 │   ├── migrate-v2.sh            # Migrate existing project to v3 features
 │   ├── migrate-all.sh           # Batch migrate all projects
-│   ├── sync-marketing-skills.sh # [NEW v3.3] Pull updates from coreyhaines31/marketingskills
+│   ├── sync-marketing-skills.sh # Pull updates from coreyhaines31/marketingskills
+│   ├── sync-finance-skills.sh   # [NEW v3.4] Pull updates from JoelLewis/finance_skills
 │   └── validate-metadata.sh     # Validate METADATA.yml files
 └── docs/                        # Additional documentation
     └── troubleshooting.md       # Common issues & solutions
 ```
+
+---
+
+## 💰 Finance System (NEW in v3.4)
+
+84 specialized finance skills (investment, regulatory compliance, advisory,
+trading, operations, data integration), vendored from
+[JoelLewis/finance_skills](https://github.com/JoelLewis/finance_skills)
+(MIT, by Joel Lewis), plus a coordinator agent with **data-driven hedged
+voice** and **contextual disclaimers** (not boilerplate).
+
+### The Concept
+
+```
+project.yml: skills: [finance/core, finance/wealth-management, finance/compliance]
+                            ↓
+   ┌────────────────────────┴────────────────────────┐
+   ↓                        ↓                        ↓
+core (3)            wealth-management (32)    compliance (16)
+math/stats          investment + portfolio    Reg BI, KYC, AML
+foundations         + personal finance        fiduciary, suitability
+```
+
+84 skills × 7 plugins × 8 knowledge layers — navigated by `@finance-strategist`
+which respects plugin dependencies and applies contextual disclaimers.
+
+### Three Access Modes
+
+| Mode | When | How |
+|---|---|---|
+| **Strategic consultation** | During roadmap, sprint, milestone, pricing, growth analysis | `@product-owner` automatically consults `@finance-strategist` for unit economics, runway, regulatory exposure lens |
+| **Standalone** | Focused finance analysis | `@finance-strategist` invoked directly |
+| **On demand** | Ad-hoc finance task | `/finance <task>` |
+
+### Communication Style (calibrated, not paralyzed)
+
+`@finance-strategist` produces **data-driven hedged recommendations**:
+
+> "Based on [evidence] and [observed trend], the most viable approach
+> appears to be **A**. Trade-offs: B is less viable here because [...].
+> Confidence: medium — strong on [X], uncertain on [Y]."
+
+Not: *"I cannot give financial advice; consult a licensed advisor."*
+
+Disclaimers are **contextual** — applied only to specific categories
+(Reg BI/KYC/AML rules, investment-specific advice, trade execution
+mechanics). Educational and operational analysis carry no disclaimer.
+
+See `patterns/finance/regulatory-disclaimer-pattern.md` for the 6-category
+table.
+
+### Components
+
+| Component | Path | Purpose |
+|---|---|---|
+| Agent | `agents/universal/finance-strategist.md` | Plugin-aware coordinator with hedged voice |
+| Command | `commands/finance.md` | `/finance <task>` entry point |
+| Skills (84) | `skills/finance/<plugin>/<skill>/` | 7 plugins with dependency graph |
+| Plugin map | `skills/finance/PLUGINS.md` | Dependencies + layer architecture |
+| Patterns | `patterns/finance/` | layered-knowledge + regulatory-disclaimer |
+| Tests | `tests/finance-evals/` | Vendored eval framework + 2 iterations |
+| Sync | `scripts/sync-finance-skills.sh` | Per-plugin rsync from upstream |
+
+### Usage
+
+```bash
+# Through @product-owner (automatic during strategic work)
+claude -p "/sprint"             # consults marketing + finance strategists
+claude -p "/pulse"              # team sync includes finance lens
+
+# Standalone
+claude -p "@finance-strategist analyze the unit economics for our pricing tiers"
+
+# On demand
+claude -p "/finance compute TWR vs IRR for our model portfolio"
+claude -p "/finance what does Reg BI require for fee disclosure?"
+
+# Power user: invoke skills directly
+claude -p "/return-calculations"
+claude -p "/historical-risk"
+claude -p "/suitability-and-best-interest"
+```
+
+### Pulling upstream updates
+
+```bash
+./scripts/sync-finance-skills.sh --diff       # preview only
+./scripts/sync-finance-skills.sh              # interactive — diff + confirm + apply
+./scripts/sync-finance-skills.sh --ref v1.0.0  # pin to a tag
+```
+
+The current vendored version is recorded in `skills/finance/UPSTREAM_VERSION`.
 
 ---
 
