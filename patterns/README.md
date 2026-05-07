@@ -4,9 +4,9 @@
 
 This knowledge base contains production-enforced patterns for DDD/CQRS projects. Each pattern is derived from real implementations (2-3 verified code examples) and includes comprehensive anti-patterns sections.
 
-**Version**: 3.1
-**Last Updated**: 2026-04-03
-**Status**: PRODUCTION (38 core patterns + 29 stack-specific)
+**Version**: 3.3
+**Last Updated**: 2026-05-07
+**Status**: PRODUCTION (38 core patterns + 29 stack-specific + 1 marketing)
 
 ---
 
@@ -21,6 +21,7 @@ patterns/
 ├── testing/            # Testing patterns - 9 patterns
 ├── cross-layer/        # Used everywhere (errors, logging, error handlers) - 4 patterns
 ├── orchestration/      # Project management and team coordination - 1 pattern
+├── marketing/          # Marketing workflow patterns - 1 pattern
 │
 ├── flutter/            # Flutter-specific patterns - 7 patterns (per-project)
 ├── nextjs/             # Next.js-specific patterns - 7 patterns (per-project)
@@ -188,6 +189,24 @@ Patterns for project management and team coordination.
 - Two advisory agents with separate lenses (technical + business)
 - Event-driven triggers (PostToolUse on task file changes)
 - Skills: /pulse, /pm-status, /task-health, /tech-debt, /sprint
+
+---
+
+### Marketing Layer (1 pattern)
+
+Patterns for marketing workflows and shared positioning context.
+
+| Pattern | Lines | Status | Description | Primary Users |
+|---------|-------|--------|-------------|---------------|
+| **[product-marketing-context-pattern.md](marketing/product-marketing-context-pattern.md)** | ~160 | Production | Foundational `.agents/product-marketing-context.md` doc consumed by all 41 marketing skills (positioning, ICP, audience, voice, proof) | marketing-strategist + all skills/marketing/ |
+
+**Marketing Layer Key Principles**:
+- Single source of truth for product positioning — equivalent to `BUSINESS_RULES.yaml` for DDD
+- Every marketing skill reads this file before asking questions (no fabrication)
+- Verbatim customer language beats polished prose
+- Skills: 41 vendored skills in `skills/marketing/` (CRO, copy, SEO, paid, growth, RevOps)
+- Agent: `@marketing-strategist` (universal)
+- Command: `/marketing <task>`
 
 ---
 

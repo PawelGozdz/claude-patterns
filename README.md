@@ -1,9 +1,9 @@
 # Global Claude Code Patterns Repository
 
-**Version**: 3.1.0
+**Version**: 3.3.0
 **Created**: 2026-02-05
-**Updated**: 2026-04-03
-**Purpose**: Reusable patterns, agents, skills, and project management system for Claude Code
+**Updated**: 2026-05-07
+**Purpose**: Reusable patterns, agents, skills, project management system, and marketing skills for Claude Code
 
 ---
 
@@ -34,7 +34,7 @@ A **single source of truth** for production-tested software patterns and agent t
 ├── README.md                    # This file
 ├── METADATA.yml                 # Repository metadata
 ├── .gitignore                   # Git exclusions
-├── patterns/                    # Production patterns (38 core + 29 stack-specific)
+├── patterns/                    # Production patterns (38 core + 29 stack-specific + 1 marketing)
 │   ├── README.md                # Pattern index & usage guide
 │   ├── domain/                  # Domain layer (6 patterns)
 │   ├── application/             # Application layer (4 patterns)
@@ -42,20 +42,22 @@ A **single source of truth** for production-tested software patterns and agent t
 │   ├── architecture/            # Architecture patterns (9 patterns)
 │   ├── testing/                 # Testing patterns (7 patterns)
 │   ├── cross-layer/             # Cross-layer patterns (4 patterns)
-│   └── orchestration/           # Orchestration patterns (1 pattern)
+│   ├── orchestration/           # Orchestration patterns (1 pattern)
+│   └── marketing/               # [NEW] Marketing patterns (1 pattern)
 ├── mcp-server/                  # MCP Server for multi-project use
 │   ├── server.py                # MCP server implementation
 │   ├── requirements.txt         # Python dependencies
 │   ├── settings.json.example    # Example Claude settings
 │   └── README.md                # MCP setup & usage guide
-├── agents/                      # Agent definitions (5 universal + 14 stack-specific)
+├── agents/                      # Agent definitions (9 universal + 14 stack-specific)
 │   ├── README.md                # Agent setup & usage guide
 │   ├── universal/               # Stack-agnostic agents (linked to ~/.claude/agents/)
 │   │   ├── backend-technology-expert.md
 │   │   ├── security-privacy-architect.md
 │   │   ├── technical-architecture-lead.md
-│   │   ├── tech-lead.md         # PM: project health, debt, dependencies
-│   │   └── product-owner.md     # PM: business value, mobile UX, milestones
+│   │   ├── tech-lead.md             # PM: project health, debt, dependencies
+│   │   ├── product-owner.md         # PM: business value, mobile UX, milestones
+│   │   └── marketing-strategist.md  # [NEW] Marketing coordinator (CRO, copy, SEO, growth)
 │   └── stacks/                  # Stack-specific agents (linked per-project)
 │       ├── nestjs-ddd/          # 3 agents (DDD expert, quality, security)
 │       ├── flutter-clean-arch/  # 3 agents (arch, quality, UI)
@@ -64,15 +66,25 @@ A **single source of truth** for production-tested software patterns and agent t
 │       ├── python/              # 2 agents (arch, quality)
 │       └── typescript-library/  # 2 agents (API guardian, quality)
 ├── skills/                      # Skills (slash commands) by category
-│   ├── orchestration/           # [NEW] Project management skills
+│   ├── orchestration/           # Project management skills
 │   │   ├── pulse/SKILL.md       # Full team sync — runs @tech-lead + @product-owner
 │   │   ├── pm-status/SKILL.md   # Quick read of TEAM-STATE.md (no agents, ~$0)
 │   │   ├── task-health/SKILL.md # Deep task audit — broken deps, stale, orphaned
 │   │   ├── tech-debt/SKILL.md   # Debt analysis + TECH-DEBT.md update
 │   │   └── sprint/SKILL.md      # Interactive sprint planning (both agents)
+│   ├── marketing/               # [NEW v3.3] 41 marketing skills (vendored from coreyhaines31/marketingskills, MIT)
+│   │   ├── README.md            # Catalog + attribution + sync docs
+│   │   ├── product-marketing-context/   # Foundation — run first
+│   │   ├── page-cro/, signup-flow-cro/, ...   # 6 CRO skills
+│   │   ├── copywriting/, copy-editing/, ...   # 6 content/copy skills
+│   │   ├── seo-audit/, ai-seo/, ...           # 7 SEO skills
+│   │   ├── paid-ads/, ad-creative/            # 2 paid skills
+│   │   ├── cold-email/, email-sequence/       # 2 email skills
+│   │   ├── ab-test-setup/, analytics-tracking/ # 2 measurement skills
+│   │   └── ... (8 growth + 8 strategy/RevOps skills)
 │   └── ...                      # (other skill categories)
 ├── templates/                   # Project templates
-│   ├── project-orchestration/   # [NEW] Full PM system folder template
+│   ├── project-orchestration/   # Full PM system folder template
 │   │   ├── TEAM-STATE.md        # Shared brain template
 │   │   ├── KANBAN.md            # Board view template
 │   │   ├── TECH-DEBT.md         # Debt register template
@@ -80,7 +92,13 @@ A **single source of truth** for production-tested software patterns and agent t
 │   │   ├── tasks/               # Active tasks folder
 │   │   ├── completed-tasks/     # Completed tasks archive
 │   │   └── _archive/            # Historical docs
+│   ├── product-marketing-context.md  # [NEW v3.3] Marketing positioning template
 │   └── ...                      # (other templates)
+├── tools/                       # [NEW v3.3] External tool reference (vendored)
+│   └── marketing/               # 60 CLI helpers + 75+ integration guides
+│       ├── REGISTRY.md          # Tool index (GA4, Stripe, HubSpot, …)
+│       ├── integrations/        # Per-tool setup + common ops
+│       └── clis/                # Reference CLI scripts (Node.js)
 ├── hooks/                       # PostToolUse/Stop hooks
 │   ├── pm-task-check.js         # [NEW] PM briefing when task files change
 │   └── ...                      # (other hooks)
@@ -101,10 +119,74 @@ A **single source of truth** for production-tested software patterns and agent t
 │   ├── generate-claude-md.sh    # Generate CLAUDE.md from project.yml
 │   ├── migrate-v2.sh            # Migrate existing project to v3 features
 │   ├── migrate-all.sh           # Batch migrate all projects
+│   ├── sync-marketing-skills.sh # [NEW v3.3] Pull updates from coreyhaines31/marketingskills
 │   └── validate-metadata.sh     # Validate METADATA.yml files
 └── docs/                        # Additional documentation
     └── troubleshooting.md       # Common issues & solutions
 ```
+
+---
+
+## 📣 Marketing System (NEW in v3.3)
+
+41 specialized marketing skills (CRO, copy, SEO, paid, growth, RevOps),
+vendored from [coreyhaines31/marketingskills](https://github.com/coreyhaines31/marketingskills)
+(MIT, by Corey Haines), plus a coordinator agent and a shared positioning
+context pattern.
+
+### The Concept
+
+```
+.agents/product-marketing-context.md    ← single source of truth (positioning, ICP, voice)
+        ↑
+        ├─ skills/marketing/page-cro/SKILL.md         ← reads context first
+        ├─ skills/marketing/copywriting/SKILL.md      ← reads context first
+        ├─ skills/marketing/seo-audit/SKILL.md        ← reads context first
+        └─ ... 38 more skills, all consume the same context
+```
+
+The **`product-marketing-context`** doc is the marketing equivalent of
+`BUSINESS_RULES.yaml` for DDD: one shared file that all 41 skills reference,
+so the user never repeats positioning across CRO, SEO, copy, and growth tasks.
+
+### Components
+
+| Component | Path | Purpose |
+|---|---|---|
+| Agent | `agents/universal/marketing-strategist.md` | Routes tasks to the right skill, enforces context gate |
+| Command | `commands/marketing.md` | `/marketing <task>` entry point |
+| Skills (41) | `skills/marketing/` | CRO, copy, SEO, paid, email, growth, RevOps, … |
+| Pattern | `patterns/marketing/product-marketing-context-pattern.md` | Architectural rationale |
+| Template | `templates/product-marketing-context.md` | Copy → `.agents/` per project |
+| Tools | `tools/marketing/` | 60 CLI refs + 75 integration guides (GA4, Stripe, HubSpot…) |
+| Sync | `scripts/sync-marketing-skills.sh` | Pull upstream updates with diff + confirm |
+
+### Usage
+
+```bash
+# 1. (Once per project) Set up positioning context
+claude -p "/marketing"        # strategist will route to product-marketing-context if missing
+
+# 2. Run any marketing task
+claude -p "/marketing optimize the pricing page for conversions"
+claude -p "/marketing draft a 5-email cold sequence for SaaS founders"
+claude -p "/marketing run an SEO audit on /pricing"
+
+# 3. Power-user: invoke skills directly
+claude -p "/page-cro"
+claude -p "/copywriting"
+claude -p "/seo-audit"
+```
+
+### Pulling upstream updates
+
+```bash
+./scripts/sync-marketing-skills.sh --diff    # preview only
+./scripts/sync-marketing-skills.sh           # interactive — diff + confirm + apply
+./scripts/sync-marketing-skills.sh --ref v1.10.0  # pin to a tag
+```
+
+The current vendored version is recorded in `skills/marketing/UPSTREAM_VERSION`.
 
 ---
 

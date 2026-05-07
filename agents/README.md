@@ -1,7 +1,7 @@
 # Global Claude Code Agents
 
 **Purpose**: Reusable specialist and advisory agents for Claude Code projects.
-**Total**: 8 universal + 14 stack-specific = 22 agents
+**Total**: 9 universal + 14 stack-specific = 23 agents
 
 ---
 
@@ -11,6 +11,7 @@
 ~/.claude/agents/              <- universal agents (global, all projects)
     backend-technology-expert.md  -> agents/universal/
     changelog-bot.md              -> agents/universal/
+    marketing-strategist.md       -> agents/universal/
     project-orchestrator.md       -> agents/universal/
     security-privacy-architect.md -> agents/universal/
     state-reader.md               -> agents/universal/
@@ -27,7 +28,7 @@ project/.claude/agents/        <- stack agents (per-project, via setup-project.s
 
 ---
 
-## Universal Agents (8)
+## Universal Agents (9)
 
 Linked globally to `~/.claude/agents/` via `setup-global.sh`.
 
@@ -65,6 +66,14 @@ See `patterns/orchestration/project-management-system.md` for full docs.
 | **backend-technology-expert** | Sync vs async, performance, tech stack decisions | Opus | No |
 | **security-privacy-architect** | OWASP, GDPR, encryption, auth strategies | Opus | No |
 | **technical-architecture-lead** | Infrastructure design, scalability, architecture decisions | Opus | No |
+
+### Marketing (1)
+
+| Agent | Purpose | Model | Writes Code |
+|-------|---------|-------|-------------|
+| **marketing-strategist** | Coordinator for 41 marketing skills (CRO, copy, SEO, paid, growth, RevOps). Enforces `product-marketing-context` before any deep analysis, routes tasks to the right skill in `skills/marketing/`. | Sonnet | No |
+
+Powers the `/marketing` slash command. See `patterns/marketing/product-marketing-context-pattern.md` for the foundational context pattern.
 
 ---
 

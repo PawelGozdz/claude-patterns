@@ -13,19 +13,63 @@ symlinks. Think carefully before removing or renaming anything.
 ## What's In This Repo
 
 ```
-patterns/       67 production patterns (38 core + 29 stack-specific)
-agents/         5 universal + 14 stack-specific agents
-skills/         30 skills across 18 categories (including 5 PM skills)
+patterns/       68 production patterns (38 core + 29 stack-specific + 1 marketing)
+agents/         9 universal + 14 stack-specific agents
+skills/         71 skills across 19 categories (5 PM + 41 marketing + others)
 hooks/          19 hooks + pm-task-check.js (PM, per-project)
-templates/      Stack presets + project-orchestration/ template
-commands/       22 global commands (PM, orchestration, quality, learning)
+templates/      Stack presets + project-orchestration/ + product-marketing-context.md
+commands/       23 global commands (PM, orchestration, quality, learning, marketing)
+tools/          External tool reference (vendored): marketing/ (CLIs + integrations)
 rules/          Language-specific coding rules
-scripts/        Setup and migration scripts
+scripts/        Setup and migration scripts (incl. sync-marketing-skills.sh)
 ```
 
 ---
 
-## Recent Changes (v3.1 — 2026-04-03)
+## Recent Changes (v3.3 — 2026-05-07)
+
+### Marketing System (NEW)
+
+Vendored 41 marketing skills from
+[coreyhaines31/marketingskills](https://github.com/coreyhaines31/marketingskills)
+(MIT) and wrapped them in claude-patterns conventions.
+
+**New skills folder** (`skills/marketing/`):
+- 41 skills across CRO, copy, SEO, paid, email, growth, strategy, RevOps
+- `product-marketing-context` is foundational — runs first per project,
+  creates `.agents/product-marketing-context.md`
+- `UPSTREAM_VERSION` records the synced upstream commit + version
+
+**New agent** (`agents/universal/`):
+- `marketing-strategist.md` — Sonnet coordinator. Enforces context gate,
+  routes to the right skill, never fabricates positioning facts.
+
+**New command** (`commands/`):
+- `marketing.md` — `/marketing <task>` entry point.
+
+**New pattern** (`patterns/marketing/`):
+- `product-marketing-context-pattern.md` — architectural rationale for the
+  shared positioning document (the marketing equivalent of `BUSINESS_RULES.yaml`).
+
+**New template** (`templates/`):
+- `product-marketing-context.md` — copyable scaffold for `.agents/`.
+
+**New tools folder** (`tools/marketing/`):
+- 60 reference CLI scripts + 75+ integration guides + REGISTRY.md
+- For analytics, email, ads, CRM, SEO, payments, referrals
+- Reference materials only — not executed from claude-patterns
+
+**New script** (`scripts/`):
+- `sync-marketing-skills.sh` — pull upstream updates with diff + confirm,
+  records version in `UPSTREAM_VERSION`.
+
+**Design principle**: vendoring (full copy) over submodules — keeps the
+"everything is here" promise of claude-patterns. Updates are explicit and
+auditable via the sync script.
+
+---
+
+## Previous Changes (v3.1 — 2026-04-03)
 
 ### Project Management System (NEW)
 
@@ -75,6 +119,36 @@ tmux sessions (days/weeks) without relying on session-start hooks.
    ```
 3. Update `patterns/README.md` to add it to the index
 4. Add `METADATA.yml` entry if adding to a new category
+
+### Adding / Updating Marketing Skills
+
+The `skills/marketing/` and `tools/marketing/` folders are **vendored** from
+[coreyhaines31/marketingskills](https://github.com/coreyhaines31/marketingskills) (MIT).
+
+**Updating from upstream**:
+```bash
+./scripts/sync-marketing-skills.sh --diff    # preview
+./scripts/sync-marketing-skills.sh           # interactive apply
+./scripts/sync-marketing-skills.sh --ref v1.10.0  # pin to a tag
+```
+
+**Local additions / modifications**:
+- `skills/marketing/README.md`, `skills/marketing/UPSTREAM_VERSION` — ours
+- `tools/marketing/README.md` — ours (sibling of upstream `REGISTRY.md`)
+- Don't modify individual `SKILL.md` files inside `skills/marketing/<name>/`
+  unless absolutely necessary — the next sync will overwrite them. If a
+  modification is needed, fork upstream or submit a PR there instead.
+
+**Adding a brand-new marketing skill that doesn't exist upstream**:
+1. Place it in `skills/marketing/<name>/SKILL.md` and add a marker comment
+   `<!-- LOCAL — not synced from upstream -->` at the top of the file
+2. Update `skills/marketing/README.md` catalog
+3. Add it to the routing table in `agents/universal/marketing-strategist.md`
+4. Make sure `sync-marketing-skills.sh` won't delete it (rsync `--exclude`
+   may be needed — currently it uses `--delete`, so local-only skills get
+   wiped; add an exclusion if you go this route)
+
+---
 
 ### Adding a New Universal Agent
 

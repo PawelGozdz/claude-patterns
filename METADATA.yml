@@ -1,17 +1,30 @@
 # Global Claude Patterns Repository - Metadata
 
-version: "3.1.0"
+version: "3.3.0"
 created: "2026-02-05"
-last_updated: "2026-04-03"
+last_updated: "2026-05-07"
 author: "LocalHero Team"
 source_project: "LocalHero v3"
 license: "MIT"
 
 description: |
-  Production-tested software patterns, universal agents, skills, and a
-  project management system for Claude Code projects.
-  Extracted from LocalHero (1355+ tests, 6 production contexts).
+  Production-tested software patterns, universal agents, skills, a project
+  management system, and a 41-skill marketing toolkit for Claude Code projects.
+  Extracted from LocalHero (1355+ tests, 6 production contexts) and
+  augmented with marketing skills vendored from coreyhaines31/marketingskills (MIT).
   Uses native filesystem symlinks for zero-duplication sharing.
+
+vendored_dependencies:
+  - name: "marketingskills"
+    upstream: "https://github.com/coreyhaines31/marketingskills"
+    author: "Corey Haines"
+    license: "MIT"
+    version_pinned: "1.9.0"  # plugin.json version at last sync
+    location:
+      - "skills/marketing/"
+      - "tools/marketing/"
+    sync_script: "scripts/sync-marketing-skills.sh"
+    upstream_marker: "skills/marketing/UPSTREAM_VERSION"
 
 repository:
   type: "git"
@@ -21,7 +34,8 @@ repository:
 patterns:
   core_count: 38
   stack_specific_count: 29
-  total_count: 67
+  marketing_count: 1
+  total_count: 68
   core_categories:
     domain: 6
     application: 4
@@ -36,15 +50,17 @@ patterns:
     python: 5
     sveltekit: 5
     typescript-library: 5
+  marketing_categories:
+    marketing: 1  # product-marketing-context-pattern
 
   maturity:
-    production: 67
+    production: 68
     stable: 0
     experimental: 0
     deprecated: 0
 
 agents:
-  universal: 5
+  universal: 9
   stack_specific: 14
   categories:
     universal:
@@ -53,6 +69,10 @@ agents:
       - technical-architecture-lead
       - tech-lead
       - product-owner
+      - marketing-strategist        # NEW v3.3
+      - project-orchestrator
+      - state-reader
+      - changelog-bot
     stacks:
       - nestjs-ddd (3)
       - flutter-clean-arch (3)
@@ -61,7 +81,7 @@ agents:
       - typescript-library (2)
 
 commands:
-  total: 22
+  total: 23
   categories:
     orchestration: 5  # pulse, pm-status, sprint, task-health, tech-debt
     quality: 4        # verify, code-review, build-fix, test-coverage
@@ -69,17 +89,69 @@ commands:
     learning: 4       # instinct-status, instinct-export, instinct-import, evolve
     session: 3        # sessions, checkpoint, progress
     infrastructure: 2 # pm2, schedule (if exists)
+    marketing: 1      # /marketing  (NEW v3.3)
     meta: 1           # skill-create
 
 skills:
-  total_categories: 18
-  total_skills: 30
+  total_categories: 19
+  total_skills: 71  # 30 internal + 41 vendored marketing
   orchestration_skills:
     - pulse
     - pm-status
     - task-health
     - tech-debt
     - sprint
+  marketing_skills:
+    foundation:
+      - product-marketing-context
+    cro:
+      - page-cro
+      - signup-flow-cro
+      - onboarding-cro
+      - form-cro
+      - popup-cro
+      - paywall-upgrade-cro
+    content_copy:
+      - copywriting
+      - copy-editing
+      - social-content
+      - content-strategy
+      - image
+      - video
+    seo:
+      - seo-audit
+      - ai-seo
+      - programmatic-seo
+      - site-architecture
+      - schema-markup
+      - competitor-alternatives
+      - aso-audit
+    paid:
+      - paid-ads
+      - ad-creative
+    email:
+      - cold-email
+      - email-sequence
+    measurement:
+      - ab-test-setup
+      - analytics-tracking
+    growth:
+      - churn-prevention
+      - co-marketing
+      - community-marketing
+      - free-tool-strategy
+      - lead-magnets
+      - referral-program
+      - directory-submissions
+      - launch-strategy
+    strategy_revops:
+      - marketing-ideas
+      - marketing-psychology
+      - pricing-strategy
+      - customer-research
+      - competitor-profiling
+      - revops
+      - sales-enablement
 
 hooks:
   total: 19
@@ -90,6 +162,7 @@ templates:
   stack_presets: 9
   settings_presets: 7
   project_orchestration: true
+  product_marketing_context: true  # NEW v3.3 — copy to .agents/product-marketing-context.md
 
 stack_support:
   current:
@@ -119,3 +192,8 @@ notes: |
   - v3.0.0: Native .claude/rules/, @import, .mcp.json, stack-specific hooks
   - v3.1.0: Project Management System (tech-lead + product-owner agents,
     5 PM skills, pm-task-check hook, project-orchestration template)
+  - v3.3.0: Marketing system — 41 marketing skills vendored from
+    coreyhaines31/marketingskills (MIT), marketing-strategist agent,
+    /marketing command, product-marketing-context pattern + template,
+    tools/marketing/ (60 CLI refs + 75 integration guides),
+    sync-marketing-skills.sh script.

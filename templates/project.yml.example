@@ -56,7 +56,12 @@ skills:
   - meta
   # Available: security, testing, database, quality, optimization,
   # decision-frameworks, orchestration, architecture, learning, meta,
-  # backend, frontend, infrastructure
+  # backend, frontend, infrastructure, marketing
+  #
+  # marketing — adds the 41 vendored marketing skills (CRO, copy, SEO,
+  # paid, email, growth, RevOps). Opt-in: only enable for projects that
+  # actually do marketing work. Requires .agents/product-marketing-context.md
+  # for best results — set it up via `/marketing` or `/product-marketing-context`.
 
 contexts:
   - name: auth

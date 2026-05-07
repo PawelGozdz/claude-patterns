@@ -1,0 +1,8 @@
+upstream: https://github.com/coreyhaines31/marketingskills.git
+ref: main
+commit: 906c2fb28e471c5b1d149d4159ec5ddb40b7c364
+plugin_version: 1.9.0
+marketplace_version: 1.10.0
+synced_at: 2026-05-07T00:00:00Z
+synced_by: initial-vendoring (manual)
+license: MIT
