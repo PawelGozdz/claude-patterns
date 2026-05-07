@@ -1,6 +1,6 @@
 # Global Claude Patterns Repository - Metadata
 
-version: "3.4.0"
+version: "3.5.0"
 created: "2026-02-05"
 last_updated: "2026-05-07"
 author: "LocalHero Team"
@@ -9,11 +9,13 @@ license: "MIT"
 
 description: |
   Production-tested software patterns, universal agents, skills, a project
-  management system, a 41-skill marketing toolkit, and an 84-skill finance
-  toolkit for Claude Code projects.
+  management system, and three vendored skill toolkits (marketing 41,
+  finance 84, legal 12) for Claude Code projects.
   Extracted from LocalHero (1355+ tests, 6 production contexts) and
-  augmented with vendored marketing skills (coreyhaines31/marketingskills)
-  and finance skills (JoelLewis/finance_skills), both MIT-licensed.
+  augmented with vendored marketing (coreyhaines31), finance (JoelLewis,
+  MIT), and legal (evolsb MIT + 11 Apache 2.0 from lawvable per-skill).
+  Legal ecosystem is license-fragmented — 30 AGPL skills cataloged in
+  EXTERNAL.md, never vendored (AGPL contamination protection).
   Uses native filesystem symlinks for zero-duplication sharing.
 
 vendored_dependencies:
@@ -40,6 +42,30 @@ vendored_dependencies:
     upstream_marker: "skills/finance/UPSTREAM_VERSION"
     structure: "plugin-aware"  # 7 plugins with dependency graph (see skills/finance/PLUGINS.md)
 
+  - name: "claude-legal-skill"  # vendored as one of the legal sources
+    upstream: "https://github.com/evolsb/claude-legal-skill"
+    author: "Christopher Sheehan (evolsb)"
+    license: "MIT"
+    version_pinned: "3.0.0"
+    location:
+      - "skills/legal/contract-review/"
+    sync_script: "scripts/sync-legal-skills.sh"
+    upstream_marker: "skills/legal/UPSTREAM_VERSION"
+
+  - name: "awesome-legal-skills (filtered)"
+    upstream: "https://github.com/lawvable/awesome-legal-skills"
+    repo_license: "CC BY-NC-ND 4.0"  # per-repo, NOT applied to vendored skills
+    author: "Various — see per-skill metadata.author"
+    license: "Apache-2.0"  # only Apache-2.0 / MIT skills vendored from this source
+    vendored_skills_count: 11
+    cataloged_external_count: 30  # AGPL-3.0 + proprietary, see skills/legal/EXTERNAL.md
+    location:
+      - "skills/legal/<skill>/"  # 11 skills, see skills/legal/UPSTREAM_VERSION
+    sync_script: "scripts/sync-legal-skills.sh"
+    upstream_marker: "skills/legal/UPSTREAM_VERSION"
+    license_drift_protection: "scripts/sync-legal-skills.sh --verify-licenses"
+    structure: "license-fragmented"  # see patterns/legal/external-skills-catalog-pattern.md
+
 repository:
   type: "git"
   location: "~/projects/claude-patterns/"
@@ -50,7 +76,8 @@ patterns:
   stack_specific_count: 29
   marketing_count: 1
   finance_count: 2
-  total_count: 70
+  legal_count: 2
+  total_count: 72
   core_categories:
     domain: 6
     application: 4
@@ -69,15 +96,17 @@ patterns:
     marketing: 1  # product-marketing-context-pattern
   finance_categories:
     finance: 2    # layered-knowledge-pattern, regulatory-disclaimer-pattern
+  legal_categories:
+    legal: 2      # jurisdiction-aware-disclaimer-pattern, external-skills-catalog-pattern
 
   maturity:
-    production: 70
+    production: 72
     stable: 0
     experimental: 0
     deprecated: 0
 
 agents:
-  universal: 10
+  universal: 11
   stack_specific: 14
   categories:
     universal:
@@ -87,7 +116,8 @@ agents:
       - tech-lead
       - product-owner
       - marketing-strategist        # v3.3
-      - finance-strategist          # NEW v3.4
+      - finance-strategist          # v3.4
+      - legal-strategist            # NEW v3.5
       - project-orchestrator
       - state-reader
       - changelog-bot
@@ -99,7 +129,7 @@ agents:
       - typescript-library (2)
 
 commands:
-  total: 24
+  total: 25
   categories:
     orchestration: 5  # pulse, pm-status, sprint, task-health, tech-debt
     quality: 4        # verify, code-review, build-fix, test-coverage
@@ -108,12 +138,13 @@ commands:
     session: 3        # sessions, checkpoint, progress
     infrastructure: 2 # pm2, schedule (if exists)
     marketing: 1      # /marketing  (v3.3)
-    finance: 1        # /finance    (NEW v3.4)
+    finance: 1        # /finance    (v3.4)
+    legal: 1          # /legal      (NEW v3.5)
     meta: 1           # skill-create
 
 skills:
-  total_categories: 20
-  total_skills: 155  # 30 internal + 41 vendored marketing + 84 vendored finance
+  total_categories: 21
+  total_skills: 167  # 30 internal + 41 vendored marketing + 84 vendored finance + 12 vendored legal
   orchestration_skills:
     - pulse
     - pm-status
@@ -192,6 +223,29 @@ skills:
       "6":  "Personal finance"
       "7":  "Behavioral, reporting, communication"
 
+  legal_skills:                  # NEW v3.5 — license-fragmented vendoring
+    structure: "skills/legal/<skill>/"  # flat (only 12 skills, no plugins needed)
+    vendored_count: 12
+    cataloged_external_count: 30
+    license_breakdown:
+      vendored:
+        MIT: 1                   # contract-review (evolsb)
+        Apache-2.0: 11           # 7 legal-domain + 4 office-tools (Anthropic, OpenAI authors)
+      external_not_vendored:
+        AGPL-3.0: 25             # copyleft, install per project per license
+        Anthropic-proprietary: 5
+        Manus-proprietary: 1
+    domains:
+      contract_review: ["contract-review", "contract-review-anthropic"]
+      nda: ["nda-triage-anthropic"]
+      gdpr_compliance: ["compliance-anthropic"]
+      risk: ["legal-risk-assessment-anthropic"]
+      templates: ["canned-responses-anthropic", "meeting-briefing-anthropic"]
+      document_tools: ["docx-processing-openai", "pdf-processing-openai", "xlsx-processing-openai", "security-review-openai"]
+      meta: ["skill-creator-openai"]
+    disclaimer_categories: 4    # educational | GDPR/privacy | contract-drafting | litigation/dispute
+    jurisdictions_supported: ["PL", "EU general", "US", "UK", "FR (limited)"]
+
 hooks:
   total: 19
   global: 18  # registered in hooks.json or available as stack hooks
@@ -255,3 +309,15 @@ notes: |
     @product-owner now consults marketing + finance strategists during
     strategic work (roadmaps, sprints, milestones) — not during code
     implementation.
+  - v3.5.0: Legal system — 12 legal skills vendored (1 MIT from
+    evolsb/claude-legal-skill + 11 Apache 2.0 filtered from
+    lawvable/awesome-legal-skills per individual licenses). 30 external
+    skills (mostly AGPL-3.0) cataloged in skills/legal/EXTERNAL.md but
+    NOT vendored — protects claude-patterns MIT model from copyleft
+    contamination. legal-strategist agent with jurisdiction-aware hedged
+    voice and 4-category contextual disclaimers. /legal command.
+    Patterns: jurisdiction-aware-disclaimer + external-skills-catalog
+    (generalizes to any license-fragmented domain). License-verifying
+    sync script (--verify-licenses mode catches upstream drift).
+    @product-owner now consults all three strategists (marketing +
+    finance + legal) during strategic work.

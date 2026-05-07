@@ -26,13 +26,16 @@ Use `/plan` when:
 
 `/plan` produces **technical implementation plans** — file lists, phase
 breakdowns, risk surfaces. It does NOT produce strategic/business plans
-(roadmaps, GTM, pricing strategy, sprint scope). For those:
+(roadmaps, GTM, pricing strategy, sprint scope, regulatory analysis).
+For those:
 - Roadmap & sprint scope → `/sprint`, `/reprioritize`, `@product-owner`
 - Marketing & GTM strategy → `/marketing`
 - Finance & unit economics → `/finance`
+- Legal / GDPR / contracts / regulatory → `/legal`
 
-Do not invoke `@marketing-strategist` or `@finance-strategist` from this
-command. The planner stays focused on code-level concerns.
+Do not invoke `@marketing-strategist`, `@finance-strategist`, or
+`@legal-strategist` from this command. The planner stays focused on
+code-level concerns.
 
 ## How It Works
 

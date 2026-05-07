@@ -13,23 +13,86 @@ symlinks. Think carefully before removing or renaming anything.
 ## What's In This Repo
 
 ```
-patterns/       70 production patterns (38 core + 29 stack-specific + 1 marketing + 2 finance)
-agents/         10 universal + 14 stack-specific agents
-skills/         155 skills across 20 categories (5 PM + 41 marketing + 84 finance + others)
+patterns/       72 production patterns (38 core + 29 stack-specific + 1 marketing + 2 finance + 2 legal)
+agents/         11 universal + 14 stack-specific agents
+skills/         167 skills across 21 categories (5 PM + 41 marketing + 84 finance + 12 legal + others)
 hooks/          19 hooks + pm-task-check.js (PM, per-project)
 templates/      Stack presets + project-orchestration/ + product-marketing-context.md
-commands/       24 global commands (PM, orchestration, quality, learning, marketing, finance)
+commands/       25 global commands (PM, orchestration, quality, learning, marketing, finance, legal)
 tools/          External tool reference (vendored): marketing/ (CLIs + integrations)
 tests/          Eval frameworks (vendored): finance-evals/ (grade_responses.py + iterations)
 rules/          Language-specific coding rules
-scripts/        Setup and migration scripts (incl. sync-{marketing,finance}-skills.sh)
+scripts/        Setup and migration scripts (incl. sync-{marketing,finance,legal}-skills.sh)
 ```
 
 ---
 
-## Recent Changes (v3.4 — 2026-05-07)
+## Recent Changes (v3.5 — 2026-05-07)
 
-### Finance System (NEW)
+### Legal System (NEW) — license-fragmented vendoring
+
+Vendored **12 legal skills** from two upstream sources, applying per-skill
+license verification because the legal skill ecosystem is heavily AGPL-3.0
+(copyleft, would contaminate claude-patterns' MIT model).
+
+**Sources**:
+- [evolsb/claude-legal-skill](https://github.com/evolsb/claude-legal-skill) — 1 skill, MIT (contract-review CUAD)
+- [lawvable/awesome-legal-skills](https://github.com/lawvable/awesome-legal-skills) — 11 skills filtered to Apache 2.0 (Anthropic + OpenAI authors)
+
+**Not vendored**: 30 skills (25 AGPL-3.0 + 5 Anthropic-proprietary + 1
+Manus-proprietary) — cataloged in `skills/legal/EXTERNAL.md` with
+per-license install warnings and commercial-use guidance. Users install
+these in their own project per their own license decisions.
+
+**New skills folder** (`skills/legal/<skill>/` flat):
+- 7 legal-domain skills: `contract-review`, `contract-review-anthropic`,
+  `nda-triage-anthropic`, `compliance-anthropic` (GDPR/CCPA),
+  `legal-risk-assessment-anthropic`, `canned-responses-anthropic`,
+  `meeting-briefing-anthropic`
+- 4 office tools (Apache 2.0): `docx/pdf/xlsx-processing-openai`,
+  `security-review-openai`
+- 1 meta-skill: `skill-creator-openai` (for authoring custom legal skills,
+  e.g., Polish KSH or Kodeks Pracy specializations)
+
+**New agent** (`agents/universal/`):
+- `legal-strategist.md` — Sonnet coordinator with **jurisdiction-aware
+  hedged voice** ("Under [GDPR Art. 6(1)(b)] and recent CNIL guidance,
+  the most defensible position appears to be X. Confidence: medium.
+  Jurisdiction: EU general; PL-specific UODO interpretation may differ.")
+  Refuses to silently fabricate jurisdiction-specific content. Surfaces
+  external skills from EXTERNAL.md when vendored coverage is missing.
+
+**New command**: `commands/legal.md` — `/legal <task>`.
+
+**New patterns** (`patterns/legal/`):
+- `jurisdiction-aware-disclaimer-pattern.md` — 4-category disclaimer
+  system (educational, GDPR/privacy, contract drafting, litigation/dispute)
+  with jurisdiction layer. Sister to finance's regulatory-disclaimer.
+- `external-skills-catalog-pattern.md` — how to manage license-fragmented
+  skill ecosystems: vendor what's compatible, catalog the rest, sync
+  script with `--verify-licenses` mode to catch upstream drift.
+  Generalizable beyond legal.
+
+**New script**: `scripts/sync-legal-skills.sh` — license-verifying sync.
+The `--verify-licenses` flag is **load-bearing** — catches the case
+where an upstream skill relicensed from MIT to AGPL (would require
+removal from `skills/legal/`).
+
+### Strategic Consultation Update
+
+`@product-owner` now consults `@legal-strategist` (in addition to
+`@marketing-strategist` + `@finance-strategist`) during strategic work
+that touches: GDPR, privacy, contracts, NDAs, ToS, IP, employment law,
+or compliance. Trigger keywords expanded.
+
+`/pulse`, `/sprint`, `/reprioritize` skills include the legal lens in
+their multi-perspective synthesis.
+
+---
+
+## Previous Changes (v3.4 — 2026-05-07)
+
+### Finance System
 
 Vendored 84 finance skills from
 [JoelLewis/finance_skills](https://github.com/JoelLewis/finance_skills) (MIT)
@@ -186,6 +249,45 @@ tmux sessions (days/weeks) without relying on session-start hooks.
    ```
 3. Update `patterns/README.md` to add it to the index
 4. Add `METADATA.yml` entry if adding to a new category
+
+### Adding / Updating Legal Skills
+
+The `skills/legal/` folder is **vendored from two upstream sources** with
+**license verification per skill**:
+- [evolsb/claude-legal-skill](https://github.com/evolsb/claude-legal-skill) (1 skill, MIT)
+- [lawvable/awesome-legal-skills](https://github.com/lawvable/awesome-legal-skills) (11 skills filtered to Apache 2.0)
+
+**Updating from upstream**:
+```bash
+./scripts/sync-legal-skills.sh --verify-licenses   # check for upstream license drift
+./scripts/sync-legal-skills.sh --diff              # preview changes
+./scripts/sync-legal-skills.sh                     # interactive — diff + verify + apply
+```
+
+**Critical**: the sync script verifies each upstream skill's
+`metadata.license` field before vendoring. If a skill relicensed from
+MIT/Apache to AGPL (or proprietary), the sync **aborts with explicit
+drift report** — the operator must remove from `skills/legal/` or
+update `VENDORABLE_LICENSES` in the script.
+
+**Local additions / modifications**:
+- `skills/legal/README.md`, `EXTERNAL.md`, `UPSTREAM_VERSION` — ours
+- `skills/legal/contract-review/UPSTREAM_VERSION` and `LICENSE.upstream` — ours
+- Don't modify individual skill files — the next sync will overwrite
+
+**External skills** (in EXTERNAL.md) are **never vendored**, only cataloged.
+If a project wants to use an AGPL skill (e.g., `gdpr-privacy-notice-eu-...`),
+it must install in its own `.claude/skills/` per its own project license.
+
+**Adding a brand-new legal skill that doesn't exist upstream**:
+1. Place in `skills/legal/<name>/SKILL.md` with marker
+   `<!-- LOCAL — not synced from upstream -->`
+2. Update `skills/legal/README.md` Vendored Skills table
+3. Add to routing table in `agents/universal/legal-strategist.md`
+4. Use `LOCAL-` prefix or add explicit exclude to sync script
+   (currently uses `--exclude='LOCAL-*'`)
+
+---
 
 ### Adding / Updating Finance Skills
 

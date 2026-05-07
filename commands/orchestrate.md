@@ -35,14 +35,15 @@ own — the orchestrator hands them the exact file list.
 ## Boundary: code work, not strategy
 
 This skill is for **code implementation**, **validation**, **review**, and
-**stack-specific analysis**. Do NOT invoke `@marketing-strategist` or
-`@finance-strategist` from `/orchestrate` — they are summoned by
-`@product-owner`, `/sprint`, `/pulse`, `/reprioritize`, or directly via
-`/marketing` and `/finance`.
+**stack-specific analysis**. Do NOT invoke `@marketing-strategist`,
+`@finance-strategist`, or `@legal-strategist` from `/orchestrate` —
+they are summoned by `@product-owner`, `/sprint`, `/pulse`,
+`/reprioritize`, or directly via `/marketing`, `/finance`, `/legal`.
 
 If the user invokes `/orchestrate` for a request that's actually strategic
-(e.g., *"orchestrate our Q3 GTM"*), redirect them to `/sprint` or `/finance`
-or `/marketing` rather than coordinating code agents on a non-code question.
+(e.g., *"orchestrate our Q3 GTM"* or *"orchestrate GDPR audit of our data
+flows"*), redirect them to `/sprint`, `/finance`, `/marketing`, or `/legal`
+rather than coordinating code agents on a non-code question.
 
 ---
 

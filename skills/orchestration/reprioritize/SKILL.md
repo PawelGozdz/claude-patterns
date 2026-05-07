@@ -33,11 +33,13 @@ Interactive — confirms before modifying any task files.
    - Analyze: customer value, segment gaps, milestone alignment, validation status
    - **Consult @marketing-strategist** for GTM/CRO/audience lens on candidate items
    - **Consult @finance-strategist** for unit economics, pricing, regulatory lens
+   - **Consult @legal-strategist** for items touching law/regulation
+     (GDPR, contracts, NDA, ToS, IP, employment, compliance, jurisdiction)
    - Output: promote/demote/cut/add with task IDs, reasons, and strategist input
 
 5. **Synthesize**
-   - Merge perspectives across tech-lead + product-owner + marketing + finance
-   - Mark agreements as strong signal: [tech+biz], [tech+biz+mkt+fin], etc.
+   - Merge perspectives: tech-lead + product-owner + marketing + finance + legal
+   - Mark agreements as strong signal: [tech+biz], [tech+biz+mkt+fin], [all-5], etc.
    - Surface disagreements with all viewpoints — never silently pick one
    - Present structured recommendation table with confidence levels
 

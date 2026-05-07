@@ -1,0 +1,33 @@
+vendored_skills:
+  - skill: contract-review
+    upstream: https://github.com/evolsb/claude-legal-skill
+    commit: e6c63c630ce63024fdbff6a1c7e4276b43bfe07b
+    license: MIT
+    author: Christopher Sheehan (evolsb)
+    skill_version: 3.0.0
+
+  - skills:
+      - canned-responses-anthropic
+      - compliance-anthropic
+      - contract-review-anthropic
+      - legal-risk-assessment-anthropic
+      - meeting-briefing-anthropic
+      - nda-triage-anthropic
+      - skill-creator-openai
+      - docx-processing-openai
+      - pdf-processing-openai
+      - xlsx-processing-openai
+      - security-review-openai
+    upstream: https://github.com/lawvable/awesome-legal-skills
+    commit: 3faf7161ea4dbe55bb93e86ec4aa4e2703d4746b
+    license: Apache-2.0  # per metadata.license in each SKILL.md
+    note: |
+      Repo-level license is CC BY-NC-ND 4.0 BUT individual skills retain
+      their own licenses. We vendor only Apache 2.0 / MIT skills (verified
+      per skill's metadata.license field). All 25 AGPL-3.0 skills and 6
+      proprietary skills are NOT vendored — they're cataloged in EXTERNAL.md
+      with per-project install instructions.
+
+synced_at: 2026-05-07T00:00:00Z
+synced_by: initial-vendoring (manual)
+sync_script: scripts/sync-legal-skills.sh

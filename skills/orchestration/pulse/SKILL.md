@@ -1,6 +1,6 @@
 ---
 name: pulse
-description: "Team standup: run @tech-lead + @product-owner (which auto-consults @marketing-strategist + @finance-strategist), update TEAM-STATE.md and KANBAN.md"
+description: "Team standup: run @tech-lead + @product-owner (which auto-consults @marketing-strategist + @finance-strategist + @legal-strategist when relevant), update TEAM-STATE.md and KANBAN.md"
 origin: LocalHero
 allowed-tools: Read, Write, Edit, Glob, Grep, Agent
 effort: medium
@@ -9,12 +9,13 @@ effort: medium
 # /pulse — Team Standup
 
 Run a full team sync. Two primary advisory agents analyze the current project
-state. `@product-owner` automatically consults `@marketing-strategist` and
-`@finance-strategist` in parallel for marketing + finance lenses on strategic
-items. All output flows into the shared brain (`TEAM-STATE.md`).
+state. `@product-owner` automatically consults up to three specialist
+strategists (`@marketing-strategist`, `@finance-strategist`,
+`@legal-strategist`) in parallel for relevant lenses on strategic items.
+All output flows into the shared brain (`TEAM-STATE.md`).
 
-**Cost**: ~$0.20–0.40 (tech-lead + product-owner; product-owner spawns
-marketing + finance strategists internally for ~$0.05–0.10 extra)
+**Cost**: ~$0.20–0.50 (tech-lead + product-owner; product-owner spawns up to
+3 strategists internally based on trigger keywords for ~$0.05–0.15 extra)
 **When**: Start of each working day, or before planning a sprint
 
 ## Steps
@@ -28,8 +29,8 @@ marketing + finance strategists internally for ~$0.05–0.10 extra)
    - Collect output
 
 3. **Run @product-owner with strategic consultation**
-   - Ask: "Analyze project-orchestration/tasks/ and business docs. Provide your Business Pulse update for TEAM-STATE.md. **For strategic items (roadmap, milestone, pricing, growth, GTM, ICP, segments)**, consult @marketing-strategist and @finance-strategist in parallel and synthesize their input. Include: milestone gap, unvalidated features, mobile UX risks, segment gaps, marketing lens (from @marketing-strategist), finance lens (from @finance-strategist), and one synthesized recommendation."
-   - Product-owner internally spawns the two strategists when its own keyword detection triggers — see `agents/universal/product-owner.md` "Strategic Consultation" section
+   - Ask: "Analyze project-orchestration/tasks/ and business docs. Provide your Business Pulse update for TEAM-STATE.md. **For strategic items (roadmap, milestone, pricing, growth, GTM, ICP, segments)**, consult @marketing-strategist and @finance-strategist in parallel. **For items touching law/regulation (GDPR, contracts, NDA, ToS, IP, employment, compliance)**, also consult @legal-strategist. Synthesize their input. Include: milestone gap, unvalidated features, mobile UX risks, segment gaps, marketing lens (from @marketing-strategist), finance lens (from @finance-strategist), legal lens with jurisdiction (from @legal-strategist when triggered), and one synthesized recommendation."
+   - Product-owner internally spawns relevant strategists based on trigger keywords — see `agents/universal/product-owner.md` "Strategic Consultation" section
    - Collect output
 
 4. **Update TEAM-STATE.md**

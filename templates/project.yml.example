@@ -73,6 +73,16 @@ skills:
   #   - finance/client-operations  (8 skills, account lifecycle)
   #   - finance/data-integration   (4 skills, reference + market data)
   # See skills/finance/PLUGINS.md for the dependency graph.
+  #
+  # legal — adds 12 vendored legal skills (1 MIT + 11 Apache 2.0) for
+  # contract review, NDA triage, GDPR/CCPA compliance, risk assessment.
+  # Strongly recommended: create .agents/legal-context.md declaring your
+  # jurisdiction (PL/EU/US/...), business form, regulated industry, and
+  # whether you have internal counsel — without it, legal-strategist
+  # will ask before non-conceptual analysis.
+  # 30 additional legal skills exist upstream (mostly AGPL) — see
+  # skills/legal/EXTERNAL.md for catalog with per-project install
+  # instructions (NOT auto-installed because of license fragmentation).
 
 contexts:
   - name: auth

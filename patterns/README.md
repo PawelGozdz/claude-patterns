@@ -4,9 +4,9 @@
 
 This knowledge base contains production-enforced patterns for DDD/CQRS projects. Each pattern is derived from real implementations (2-3 verified code examples) and includes comprehensive anti-patterns sections.
 
-**Version**: 3.4
+**Version**: 3.5
 **Last Updated**: 2026-05-07
-**Status**: PRODUCTION (38 core patterns + 29 stack-specific + 1 marketing + 2 finance)
+**Status**: PRODUCTION (38 core patterns + 29 stack-specific + 1 marketing + 2 finance + 2 legal)
 
 ---
 
@@ -23,6 +23,7 @@ patterns/
 ├── orchestration/      # Project management and team coordination - 1 pattern
 ├── marketing/          # Marketing workflow patterns - 1 pattern
 ├── finance/            # Finance workflow patterns - 2 patterns
+├── legal/              # Legal workflow patterns - 2 patterns
 │
 ├── flutter/            # Flutter-specific patterns - 7 patterns (per-project)
 ├── nextjs/             # Next.js-specific patterns - 7 patterns (per-project)
@@ -232,6 +233,32 @@ with knowledge layering and regulatory exposure.
 - Agent: `@finance-strategist` (universal, consulted by `@product-owner`)
 - Command: `/finance <task>`
 - Tests: `tests/finance-evals/` — vendored eval framework
+
+---
+
+### Legal Layer (2 patterns)
+
+Architectural patterns for legal workflows — license-fragmented skill
+ecosystems, jurisdiction-bound disclaimers, AGPL contamination prevention.
+
+| Pattern | Lines | Status | Description | Primary Users |
+|---------|-------|--------|-------------|---------------|
+| **[jurisdiction-aware-disclaimer-pattern.md](legal/jurisdiction-aware-disclaimer-pattern.md)** | ~210 | Production | 4-category disclaimer system (educational, GDPR/privacy, contract drafting, litigation/dispute) calibrated to jurisdiction. Adds jurisdiction layer on top of finance's regulatory-disclaimer pattern. | legal-strategist (primary), finance-strategist (jurisdiction layer borrows) |
+| **[external-skills-catalog-pattern.md](legal/external-skills-catalog-pattern.md)** | ~225 | Production | License-aware skill catalog: vendor compatible (MIT/Apache), catalog the rest (AGPL/proprietary) with install-yourself instructions. Sync script with `--verify-licenses` to detect upstream license drift. Generalizable to any license-fragmented ecosystem. | legal-strategist + sync-legal-skills.sh |
+
+**Legal Layer Key Principles**:
+- License-fragmented vendoring: only MIT/Apache-2.0 skills vendored;
+  AGPL-3.0 skills cataloged in `EXTERNAL.md` with copyleft warnings
+- Jurisdiction-aware analysis: PL/EU/US/FR/UK have meaningfully different
+  rules; agent reads `.agents/legal-context.md` to know which apply
+- Contextual disclaimers (4 categories) — only when category warrants,
+  jurisdiction layer on top
+- Refuses silent fabrication for non-vendored skill domains — surfaces
+  upstream catalog entry instead
+- Skills: 12 vendored skills in `skills/legal/` (1 MIT + 11 Apache 2.0)
+- External: 30 cataloged in `skills/legal/EXTERNAL.md`
+- Agent: `@legal-strategist` (universal, consulted by `@product-owner`)
+- Command: `/legal <task>`
 
 ---
 

@@ -1,0 +1,12 @@
+upstream: https://github.com/evolsb/claude-legal-skill
+ref: main
+commit: e6c63c630ce63024fdbff6a1c7e4276b43bfe07b
+skill_version: 3.0.0
+synced_at: 2026-05-07T00:00:00Z
+synced_by: initial-vendoring (manual)
+license: MIT
+author: Christopher Sheehan (evolsb)
+notes: |
+  Single-skill vendor. The 41 lawvable/awesome-legal-skills are NOT vendored
+  (mostly AGPL-3.0 — copyleft, incompatible with MIT claude-patterns) — see
+  skills/legal/EXTERNAL.md for catalog and per-project install instructions.

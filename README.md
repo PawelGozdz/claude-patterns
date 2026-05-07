@@ -1,9 +1,9 @@
 # Global Claude Code Patterns Repository
 
-**Version**: 3.4.0
+**Version**: 3.5.0
 **Created**: 2026-02-05
 **Updated**: 2026-05-07
-**Purpose**: Reusable patterns, agents, skills, project management, marketing skills, and finance skills for Claude Code
+**Purpose**: Reusable patterns, agents, skills, project management, marketing skills, finance skills, and legal skills for Claude Code
 
 ---
 
@@ -34,7 +34,7 @@ A **single source of truth** for production-tested software patterns and agent t
 ├── README.md                    # This file
 ├── METADATA.yml                 # Repository metadata
 ├── .gitignore                   # Git exclusions
-├── patterns/                    # Production patterns (38 core + 29 stack-specific + 1 marketing + 2 finance)
+├── patterns/                    # Production patterns (38 core + 29 stack-specific + 1 marketing + 2 finance + 2 legal)
 │   ├── README.md                # Pattern index & usage guide
 │   ├── domain/                  # Domain layer (6 patterns)
 │   ├── application/             # Application layer (4 patterns)
@@ -44,13 +44,14 @@ A **single source of truth** for production-tested software patterns and agent t
 │   ├── cross-layer/             # Cross-layer patterns (4 patterns)
 │   ├── orchestration/           # Orchestration patterns (1 pattern)
 │   ├── marketing/               # Marketing patterns (1 pattern)
-│   └── finance/                 # [NEW v3.4] Finance patterns (2 patterns: layered-knowledge, regulatory-disclaimer)
+│   ├── finance/                 # Finance patterns (2 patterns: layered-knowledge, regulatory-disclaimer)
+│   └── legal/                   # [NEW v3.5] Legal patterns (2 patterns: jurisdiction-aware-disclaimer, external-skills-catalog)
 ├── mcp-server/                  # MCP Server for multi-project use
 │   ├── server.py                # MCP server implementation
 │   ├── requirements.txt         # Python dependencies
 │   ├── settings.json.example    # Example Claude settings
 │   └── README.md                # MCP setup & usage guide
-├── agents/                      # Agent definitions (10 universal + 14 stack-specific)
+├── agents/                      # Agent definitions (11 universal + 14 stack-specific)
 │   ├── README.md                # Agent setup & usage guide
 │   ├── universal/               # Stack-agnostic agents (linked to ~/.claude/agents/)
 │   │   ├── backend-technology-expert.md
@@ -59,7 +60,8 @@ A **single source of truth** for production-tested software patterns and agent t
 │   │   ├── tech-lead.md              # PM: project health, debt, dependencies
 │   │   ├── product-owner.md          # PM: business value, mobile UX, milestones
 │   │   ├── marketing-strategist.md   # Marketing coordinator (CRO, copy, SEO, growth)
-│   │   └── finance-strategist.md     # [NEW v3.4] Finance coordinator (investment, compliance, advisory)
+│   │   ├── finance-strategist.md     # Finance coordinator (investment, compliance, advisory)
+│   │   └── legal-strategist.md       # [NEW v3.5] Legal coordinator (contracts, GDPR, NDA, jurisdiction-aware)
 │   └── stacks/                  # Stack-specific agents (linked per-project)
 │       ├── nestjs-ddd/          # 3 agents (DDD expert, quality, security)
 │       ├── flutter-clean-arch/  # 3 agents (arch, quality, UI)
@@ -84,7 +86,7 @@ A **single source of truth** for production-tested software patterns and agent t
 │   │   ├── cold-email/, email-sequence/       # 2 email skills
 │   │   ├── ab-test-setup/, analytics-tracking/ # 2 measurement skills
 │   │   └── ... (8 growth + 8 strategy/RevOps skills)
-│   ├── finance/                 # [NEW v3.4] 84 finance skills (vendored from JoelLewis/finance_skills, MIT)
+│   ├── finance/                 # 84 finance skills (vendored from JoelLewis/finance_skills, MIT)
 │   │   ├── README.md            # Catalog + attribution + sync docs
 │   │   ├── PLUGINS.md           # Plugin map + dependency graph
 │   │   ├── core/                # 3 skills — math/stats foundations (REQUIRED by all)
@@ -94,6 +96,15 @@ A **single source of truth** for production-tested software patterns and agent t
 │   │   ├── trading-operations/  # 9 skills — order lifecycle, execution, settlement
 │   │   ├── client-operations/   # 8 skills — account lifecycle, transfers, reconciliation
 │   │   └── data-integration/    # 4 skills — reference data, market data, integration
+│   ├── legal/                   # [NEW v3.5] 12 legal skills (1 MIT evolsb + 11 Apache 2.0 vendored from lawvable per individual licenses)
+│   │   ├── README.md            # Catalog + attribution + license-fragmented system explanation
+│   │   ├── EXTERNAL.md          # Catalog of 30 NON-vendored skills (mostly AGPL — install per project)
+│   │   ├── UPSTREAM_VERSION     # Per-skill license tracking
+│   │   ├── contract-review/     # MIT, evolsb — CUAD-based contract review
+│   │   ├── contract-review-anthropic/  # Apache 2.0
+│   │   ├── nda-triage-anthropic/       # Apache 2.0 — RED/YELLOW/GREEN
+│   │   ├── compliance-anthropic/       # Apache 2.0 — GDPR/CCPA/DPA/DSAR
+│   │   └── ...                  # (canned-responses, legal-risk-assessment, meeting-briefing, document tools)
 │   └── ...                      # (other skill categories)
 ├── templates/                   # Project templates
 │   ├── project-orchestration/   # Full PM system folder template
@@ -134,11 +145,114 @@ A **single source of truth** for production-tested software patterns and agent t
 │   ├── migrate-v2.sh            # Migrate existing project to v3 features
 │   ├── migrate-all.sh           # Batch migrate all projects
 │   ├── sync-marketing-skills.sh # Pull updates from coreyhaines31/marketingskills
-│   ├── sync-finance-skills.sh   # [NEW v3.4] Pull updates from JoelLewis/finance_skills
+│   ├── sync-finance-skills.sh   # Pull updates from JoelLewis/finance_skills
+│   ├── sync-legal-skills.sh     # [NEW v3.5] Pull updates from evolsb + lawvable (license-aware!)
 │   └── validate-metadata.sh     # Validate METADATA.yml files
 └── docs/                        # Additional documentation
     └── troubleshooting.md       # Common issues & solutions
 ```
+
+---
+
+## ⚖️ Legal System (NEW in v3.5)
+
+12 legal skills (1 MIT + 11 Apache 2.0) vendored from `evolsb/claude-legal-skill`
++ `lawvable/awesome-legal-skills` (filtered by per-skill license), plus
+catalog of 30 external skills (mostly AGPL-3.0 — install per project).
+
+### Why a smaller catalog than marketing/finance
+
+Legal skill ecosystem is **license-fragmented**. Most specialized prawniczych
+skills (NDA-jamie-tso, GDPR-EU, French legal, mediation) are **AGPL-3.0** —
+copyleft, would contaminate claude-patterns' MIT model. Only Apache 2.0 + MIT
+vendored. The rest is cataloged in `skills/legal/EXTERNAL.md` with per-skill
+install instructions and license warnings.
+
+### The Concept
+
+```
+.agents/legal-context.md  → jurisdiction (PL/EU/US/FR), business form, regulated industry
+        ↓
+   ┌────┴─────────────────────────────────┐
+   ↓                                      ↓
+12 vendored skills (MIT/Apache)   30 external skills (AGPL/proprietary)
+   skills/legal/                        cataloged in EXTERNAL.md
+        ↓
+@legal-strategist routes:
+  - Vendored skill exists? → use it
+  - Only external skill? → surface with license warning
+  - No skill at all? → flag escalation to qualified counsel
+```
+
+### Three Access Modes (same as marketing/finance)
+
+| Mode | When | How |
+|---|---|---|
+| **Strategic consultation** | Roadmap, sprint, milestone, regulatory exposure of features | `@product-owner` automatically consults `@legal-strategist` for jurisdiction lens |
+| **Standalone** | Focused legal analysis | `@legal-strategist` invoked directly |
+| **On demand** | Ad-hoc legal task | `/legal <task>` |
+
+### Communication Style (jurisdiction-aware hedged)
+
+`@legal-strategist` produces **principle-cited hedged recommendations**
+with explicit jurisdiction context:
+
+> *"Under [GDPR Art. 6(1)(b)] and recent CNIL guidance, the most
+> defensible position appears to be **A**. Trade-offs: B has slightly
+> better user experience but weaker lawful-basis grounding. Confidence:
+> medium — rule is clear, application to your specific data flow less
+> settled. Jurisdiction: EU general; PL-specific UODO interpretation
+> may differ."*
+
+Not: *"I cannot give legal advice; consult a lawyer."*
+
+Disclaimers are **contextual** (4 categories: educational, GDPR/privacy,
+contract drafting, litigation/dispute) **with jurisdiction layer** —
+never boilerplate.
+
+### Components
+
+| Component | Path | Purpose |
+|---|---|---|
+| Agent | `agents/universal/legal-strategist.md` | Jurisdiction-aware coordinator with hedged voice |
+| Command | `commands/legal.md` | `/legal <task>` entry point |
+| Vendored skills (12) | `skills/legal/<skill>/` | MIT/Apache 2.0 only |
+| External catalog | `skills/legal/EXTERNAL.md` | 30 non-vendored skills with license-aware install |
+| Patterns | `patterns/legal/` | jurisdiction-aware-disclaimer + external-skills-catalog |
+| Sync | `scripts/sync-legal-skills.sh` | License-verifying sync (--verify-licenses mode catches drift) |
+
+### Usage
+
+```bash
+# Through @product-owner (automatic during strategic work touching law)
+claude -p "/sprint"             # consults marketing + finance + legal strategists
+claude -p "/pulse"              # team sync includes legal lens
+
+# Standalone
+claude -p "@legal-strategist analyze regulatory exposure of feature X in EU"
+
+# On demand
+claude -p "/legal review this SaaS agreement for unfavorable terms"
+claude -p "/legal GDPR audit our data flows"
+claude -p "/legal triage NDA — RED/YELLOW/GREEN classification"
+
+# Power user: invoke skills directly
+claude -p "/contract-review"
+claude -p "/nda-triage-anthropic"
+claude -p "/compliance-anthropic"
+```
+
+### License-aware sync
+
+```bash
+./scripts/sync-legal-skills.sh --verify-licenses   # check for upstream license drift
+./scripts/sync-legal-skills.sh --diff              # preview changes
+./scripts/sync-legal-skills.sh                     # interactive — diff + confirm
+```
+
+The `--verify-licenses` flag is **load-bearing** — it catches the case
+where an upstream skill relicensed from MIT to AGPL (which would
+require us to remove from `skills/legal/` and move to `EXTERNAL.md`).
 
 ---
 

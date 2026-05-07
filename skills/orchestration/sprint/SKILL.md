@@ -1,6 +1,6 @@
 ---
 name: sprint
-description: "Sprint planning: @tech-lead + @product-owner (which auto-consults @marketing-strategist + @finance-strategist for strategic items) propose sprint scope"
+description: "Sprint planning: @tech-lead + @product-owner (which auto-consults @marketing-strategist + @finance-strategist + @legal-strategist when relevant) propose sprint scope"
 origin: LocalHero
 allowed-tools: Read, Glob, Grep, Write, Agent
 effort: high
@@ -10,13 +10,14 @@ effort: high
 
 Interactive sprint planning session with two primary advisory agents.
 Combines technical capacity (what's feasible) with business priority
-(what's most valuable). `@product-owner` automatically consults
-`@marketing-strategist` and `@finance-strategist` in parallel for marketing
-+ finance lenses on each candidate item — so the sprint scope reflects
-GTM, CRO, unit-economics, and regulatory exposure considerations,
-not just feature delivery.
+(what's most valuable). `@product-owner` automatically consults up to
+three specialist strategists (`@marketing-strategist`,
+`@finance-strategist`, `@legal-strategist`) in parallel for relevant
+lenses on each candidate item — so the sprint scope reflects GTM, CRO,
+unit-economics, regulatory exposure, AND legal/jurisdiction
+considerations, not just feature delivery.
 
-**Cost**: ~$0.30–0.50 (tech-lead + product-owner + 2 strategist sub-calls + iteration)
+**Cost**: ~$0.30–0.60 (tech-lead + product-owner + up to 3 strategist sub-calls + iteration)
 **When**: Start of each 1-2 week sprint
 
 ## Steps
@@ -46,8 +47,10 @@ not just feature delivery.
    high-priority item.
    **Consult @finance-strategist** for unit economics, pricing,
    regulatory exposure lens on each high-priority item.
-   Synthesize all three lenses (business + marketing + finance) in your
-   recommendation. Flag any items where the three lenses disagree."
+   **Consult @legal-strategist** for any item touching law/regulation
+   (GDPR, contracts, NDA, ToS, IP, employment, compliance, jurisdiction).
+   Synthesize all four lenses (business + marketing + finance + legal)
+   in your recommendation. Flag any items where the lenses disagree."
 
 5. **Synthesize and present**:
    - Proposed sprint scope (task list with effort estimates)
