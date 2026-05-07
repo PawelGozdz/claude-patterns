@@ -29,15 +29,17 @@ Interactive — confirms before modifying any task files.
    - Analyze: unblocking leverage, staleness, debt, dependency chains
    - Output: promote/demote/cut/add with task IDs and reasons
 
-4. **Run @product-owner**
+4. **Run @product-owner with strategic consultation**
    - Analyze: customer value, segment gaps, milestone alignment, validation status
-   - Output: promote/demote/cut/add with task IDs and reasons
+   - **Consult @marketing-strategist** for GTM/CRO/audience lens on candidate items
+   - **Consult @finance-strategist** for unit economics, pricing, regulatory lens
+   - Output: promote/demote/cut/add with task IDs, reasons, and strategist input
 
 5. **Synthesize**
-   - Merge both perspectives
-   - Mark agreements as strong signal [tech+biz]
-   - Surface disagreements with both viewpoints
-   - Present structured recommendation table
+   - Merge perspectives across tech-lead + product-owner + marketing + finance
+   - Mark agreements as strong signal: [tech+biz], [tech+biz+mkt+fin], etc.
+   - Surface disagreements with all viewpoints — never silently pick one
+   - Present structured recommendation table with confidence levels
 
 6. **Confirm and apply**
    - User picks: all, skip X, only X, or none

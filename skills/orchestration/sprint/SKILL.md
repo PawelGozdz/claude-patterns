@@ -1,6 +1,6 @@
 ---
 name: sprint
-description: "Sprint planning: both agents review backlog, propose sprint scope, align tech + business"
+description: "Sprint planning: @tech-lead + @product-owner (which auto-consults @marketing-strategist + @finance-strategist for strategic items) propose sprint scope"
 origin: LocalHero
 allowed-tools: Read, Glob, Grep, Write, Agent
 effort: high
@@ -8,11 +8,15 @@ effort: high
 
 # /sprint — Sprint Planning
 
-Interactive sprint planning session with both advisory agents.
+Interactive sprint planning session with two primary advisory agents.
 Combines technical capacity (what's feasible) with business priority
-(what's most valuable) to propose a sprint scope.
+(what's most valuable). `@product-owner` automatically consults
+`@marketing-strategist` and `@finance-strategist` in parallel for marketing
++ finance lenses on each candidate item — so the sprint scope reflects
+GTM, CRO, unit-economics, and regulatory exposure considerations,
+not just feature delivery.
 
-**Cost**: ~$0.20–0.30 (two agent calls + iteration)
+**Cost**: ~$0.30–0.50 (tech-lead + product-owner + 2 strategist sub-calls + iteration)
 **When**: Start of each 1-2 week sprint
 
 ## Steps
@@ -33,11 +37,17 @@ Combines technical capacity (what's feasible) with business priority
    other work, critical path items. Estimate effort in hours, not SP.
    Flag: tasks that look small but have hidden complexity."
 
-4. **Run @product-owner** (or project override):
+4. **Run @product-owner** with strategic consultation:
    "Review the proposed sprint backlog from @tech-lead. From business
    perspective: does the sprint move us toward {next_milestone}?
    What's missing that would deliver customer value? What could be cut?
-   Flag: tasks with no validated customer need."
+   Flag: tasks with no validated customer need.
+   **Consult @marketing-strategist** for GTM/CRO/audience lens on each
+   high-priority item.
+   **Consult @finance-strategist** for unit economics, pricing,
+   regulatory exposure lens on each high-priority item.
+   Synthesize all three lenses (business + marketing + finance) in your
+   recommendation. Flag any items where the three lenses disagree."
 
 5. **Synthesize and present**:
    - Proposed sprint scope (task list with effort estimates)

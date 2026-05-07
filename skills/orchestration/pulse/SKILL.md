@@ -1,6 +1,6 @@
 ---
 name: pulse
-description: "Team standup: run @tech-lead + @product-owner, update TEAM-STATE.md and KANBAN.md"
+description: "Team standup: run @tech-lead + @product-owner (which auto-consults @marketing-strategist + @finance-strategist), update TEAM-STATE.md and KANBAN.md"
 origin: LocalHero
 allowed-tools: Read, Write, Edit, Glob, Grep, Agent
 effort: medium
@@ -8,10 +8,13 @@ effort: medium
 
 # /pulse — Team Standup
 
-Run a full team sync. Both advisory agents analyze the current project state
-and update the shared brain (`TEAM-STATE.md`).
+Run a full team sync. Two primary advisory agents analyze the current project
+state. `@product-owner` automatically consults `@marketing-strategist` and
+`@finance-strategist` in parallel for marketing + finance lenses on strategic
+items. All output flows into the shared brain (`TEAM-STATE.md`).
 
-**Cost**: ~$0.10–0.20 (two Sonnet agent calls)
+**Cost**: ~$0.20–0.40 (tech-lead + product-owner; product-owner spawns
+marketing + finance strategists internally for ~$0.05–0.10 extra)
 **When**: Start of each working day, or before planning a sprint
 
 ## Steps
@@ -20,17 +23,19 @@ and update the shared brain (`TEAM-STATE.md`).
    - Read `project-orchestration/TEAM-STATE.md` (shared brain)
    - Note what changed since last pulse (Team Notes section)
 
-2. **Run @tech-lead**
+2. **Run @tech-lead** (technical lens — no strategist consultation)
    - Ask: "Analyze project-orchestration/tasks/ and provide your Technical Pulse update for TEAM-STATE.md. Include: blocked tasks, stale tasks (>14d), debt score, critical path, and one key insight."
    - Collect output
 
-3. **Run @product-owner** (or project-specific override)
-   - Ask: "Analyze project-orchestration/tasks/ and business docs. Provide your Business Pulse update for TEAM-STATE.md. Include: milestone gap, unvalidated features, mobile UX risks, segment gaps, and one key recommendation."
+3. **Run @product-owner with strategic consultation**
+   - Ask: "Analyze project-orchestration/tasks/ and business docs. Provide your Business Pulse update for TEAM-STATE.md. **For strategic items (roadmap, milestone, pricing, growth, GTM, ICP, segments)**, consult @marketing-strategist and @finance-strategist in parallel and synthesize their input. Include: milestone gap, unvalidated features, mobile UX risks, segment gaps, marketing lens (from @marketing-strategist), finance lens (from @finance-strategist), and one synthesized recommendation."
+   - Product-owner internally spawns the two strategists when its own keyword detection triggers — see `agents/universal/product-owner.md` "Strategic Consultation" section
    - Collect output
 
 4. **Update TEAM-STATE.md**
    - Replace "Technical Pulse" section with @tech-lead output
    - Replace "Business Pulse" section with @product-owner output
+     (which already includes marketing + finance lenses synthesized in)
    - Add a Team Note for each key insight from agents
    - Update `Last sync` date at the top
 

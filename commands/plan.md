@@ -22,6 +22,18 @@ Use `/plan` when:
 - Multiple files/components will be affected
 - Requirements are unclear or ambiguous
 
+## Boundary: implementation plans, not strategic plans
+
+`/plan` produces **technical implementation plans** — file lists, phase
+breakdowns, risk surfaces. It does NOT produce strategic/business plans
+(roadmaps, GTM, pricing strategy, sprint scope). For those:
+- Roadmap & sprint scope → `/sprint`, `/reprioritize`, `@product-owner`
+- Marketing & GTM strategy → `/marketing`
+- Finance & unit economics → `/finance`
+
+Do not invoke `@marketing-strategist` or `@finance-strategist` from this
+command. The planner stays focused on code-level concerns.
+
 ## How It Works
 
 The planner agent will:

@@ -32,6 +32,18 @@ All implementer and verifier prompts MUST include explicit pattern paths from
 `.claude/knowledge/patterns/`. Agents are not trusted to find patterns on their
 own — the orchestrator hands them the exact file list.
 
+## Boundary: code work, not strategy
+
+This skill is for **code implementation**, **validation**, **review**, and
+**stack-specific analysis**. Do NOT invoke `@marketing-strategist` or
+`@finance-strategist` from `/orchestrate` — they are summoned by
+`@product-owner`, `/sprint`, `/pulse`, `/reprioritize`, or directly via
+`/marketing` and `/finance`.
+
+If the user invokes `/orchestrate` for a request that's actually strategic
+(e.g., *"orchestrate our Q3 GTM"*), redirect them to `/sprint` or `/finance`
+or `/marketing` rather than coordinating code agents on a non-code question.
+
 ---
 
 ## Step 0: MANDATORY — Detect Stack Profile
