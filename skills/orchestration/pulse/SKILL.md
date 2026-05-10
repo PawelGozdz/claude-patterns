@@ -60,9 +60,25 @@ shared briefing, so they don't need to re-Glob/grep the same data.
    - Group by priority (P0/P1/P2/P3) and status
    - Write updated KANBAN.md
 
+5b. **Security gap audit across all active tasks**
+    - For each task in `project-orchestration/tasks/`, read frontmatter
+    - Match labels + title against `claude-patterns/templates/canonical-labels.yml`
+    - Check `## 🔒 Security Pre-Analysis` section status (missing/empty/placeholder vs filled)
+    - Aggregate counts:
+      * Total active security-relevant tasks
+      * Of those: pre-analyzed vs not pre-analyzed
+      * Of in-progress security-relevant tasks: how many would be hook-blocked
+    - Add a "🔒 Security posture" entry to Team Notes section in TEAM-STATE.md:
+      ```
+      🔒 Security posture (auto): 12 security-relevant active tasks |
+        pre-analyzed: 7 (58%) | gap: 5 tasks need /threat-model |
+        of those, 2 are status: in-progress (hook-blocking unless Pre-Analysis filled)
+      ```
+
 6. **Output briefing to user**
    - 10–15 line summary: critical items, key risks, one recommended action
    - Format: concise, actionable, no fluff
+   - Include security posture line if gaps detected (>20% gap rate)
 
 ## Output Example
 

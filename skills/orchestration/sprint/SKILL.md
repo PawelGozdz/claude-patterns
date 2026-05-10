@@ -63,6 +63,24 @@ considerations, not just feature delivery.
    - Expected outcomes (what ships by sprint end)
    - Risks and dependencies to watch
    - One thing to validate with a real user this sprint
+   - **🔒 Security gaps in proposed scope** (see step 5b)
+
+5b. **Security gap analysis** (for every candidate task in proposed scope):
+    - Read task labels + title
+    - Match against `claude-patterns/templates/canonical-labels.yml` security groups
+    - Check `## 🔒 Security Pre-Analysis` section — missing/empty/placeholder vs filled
+    - Aggregate findings:
+
+    Output section:
+    ```
+    🔒 SECURITY GAPS in proposed scope:
+      • TS-AUTH-003: matched [auth] — Pre-Analysis missing — needs /threat-model
+      • TS-GEO-013: matched [pii, geo] — Pre-Analysis empty — needs /threat-model
+      • TS-INFRA-003: matched [public_api] — Pre-Analysis OK ✓
+    Total security-relevant: 3 / 5 tasks. Pre-analyzed: 1 / 3.
+    Recommendation: complete pre-analysis for blocked tasks BEFORE sprint starts —
+    in-progress will be hook-blocked otherwise.
+    ```
 
 6. **Confirm with user**: adjust scope, then write sprint plan to
    `project-orchestration/sprints/SPRINT-{name}-{date}.md`

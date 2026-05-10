@@ -15,6 +15,31 @@ temperature: 0.3
 
 ---
 
+## Step 0: Security pre-flight (lightweight)
+
+Before generating boilerplate for security-sensitive types
+(`handler`, `query-handler`, `dto` for endpoints), do a quick check:
+
+1. If user provided a task ID (e.g. `/scaffold handler TS-AUTH-003`),
+   read the task file and check `## 🔒 Security Pre-Analysis`.
+
+2. If section is missing/empty/placeholder AND task labels match
+   security groups (auth, pii, cross-context, public-api, b2g) per
+   `claude-patterns/templates/canonical-labels.yml`:
+
+   Print: `💡 Task TS-XXX is security-relevant (matched: {groups}).`
+   `Recommend running /threat-model TS-XXX before scaffolding to avoid`
+   `generating code that misses security invariants.`
+
+3. Don't block — let user proceed (scaffolding is cheap to redo). This is
+   a softer prompt than `/orchestrate` Step 0a.
+
+The goal: surface security-relevance early. If user runs `/threat-model`
+first, they'll know which fields/decorators/patterns to apply during
+scaffolding (e.g., add `@RequirePermissions` from start, not retrofit).
+
+---
+
 ## Pattern Routing (Single-Source-of-Truth)
 
 | Type | Pattern File |

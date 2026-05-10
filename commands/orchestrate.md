@@ -62,6 +62,54 @@ If no `project.yml` exists, ask the user which stack they're using.
 
 ---
 
+## Step 0a: MANDATORY — Security pre-flight check
+
+Before any implementation work, verify the task's security posture:
+
+1. **Identify the task file** — if user invoked `/orchestrate implement TS-XXX`,
+   read `project-orchestration/tasks/TS-XXX*.md`. If no task ID provided, ask
+   user which task is being implemented.
+
+2. **Read the task's labels and title** from frontmatter.
+
+3. **Check for security-relevant signals** by matching against
+   `claude-patterns/templates/canonical-labels.yml` security groups:
+   - `auth`, `pii`, `cross_context`, `public_api`, `accessibility`, `b2g`
+   - Match: direct label / substring in label / title keyword
+
+4. **Inspect `## 🔒 Security Pre-Analysis`** section in task file:
+   - Missing → recommend `/threat-model {TASK-ID}` first
+   - Empty / placeholder → same recommendation
+   - Filled with TM ref or STRIDE table → proceed
+
+5. **Decision tree:**
+
+   | Security-relevant? | Pre-analysis status | Action |
+   |---|---|---|
+   | No | any | Proceed to Step 0.5 (pattern discovery) |
+   | Yes | OK / filled | Proceed to Step 0.5 |
+   | Yes | missing / empty / placeholder | **PAUSE**. Ask user: "This task is security-relevant ({matched groups}). Recommend running `/threat-model {TASK-ID}` first. Continue anyway?" |
+
+6. **If user confirms continue without threat-model**, log the decision in
+   `## 🔒 Security Pre-Analysis` section as a comment:
+   ```
+   <!-- Security pre-flight skipped by user at {timestamp}. Justification: {user input} -->
+   ```
+   Then proceed.
+
+7. **If user opts to run threat-model first**, exit `/orchestrate` and recommend:
+   ```
+   /threat-model {TASK-ID}
+   ```
+   User invokes that, fills section, returns to `/orchestrate implement {TASK-ID}`.
+
+The PostToolUse hook `check-security-considerations.js` will already have
+warned at task creation. This Step 0a is the second checkpoint specifically
+for orchestrated implementation flows. Together they prevent security work
+slipping through the cracks.
+
+---
+
 ## Step 0.5: MANDATORY — Pattern Discovery
 
 **BEFORE Phase 1 (implement mode) or any verification call**, discover the
