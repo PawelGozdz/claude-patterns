@@ -55,6 +55,16 @@
           }
         ],
         "description": "Domain/application layer purity (no infra imports)"
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$HOME/.claude/hooks/check-security-considerations.js\""
+          }
+        ],
+        "description": "Warn when task files are missing ## Security Considerations section"
       }
     ],
     "Stop": [
