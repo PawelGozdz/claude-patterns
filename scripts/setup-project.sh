@@ -363,6 +363,57 @@ done
 
 echo ""
 
+# --- 4b. Native skills discovery (.claude/skills/<name>/) ---
+# Claude Code natively reads .claude/skills/<name>/SKILL.md (flat structure).
+# Our knowledge/skills/<category>/<name>/SKILL.md layout is for organization;
+# we need a per-skill symlink at the top level for Claude Code to pick them up.
+echo -e "${BLUE}[4b/8] Native skills discovery${NC} (flat .claude/skills/<name>/)"
+NATIVE_SKILLS_DIR="$PROJECT_DIR/.claude/skills"
+mkdir -p "$NATIVE_SKILLS_DIR"
+
+# Collect every skill name we expose, for stale cleanup at the end
+EXPOSED_SKILL_NAMES=()
+
+for category in "${CONFIGURED_SKILLS[@]}"; do
+  CATEGORY_DIR="$PATTERNS_REPO/skills/$category"
+  [[ -d "$CATEGORY_DIR" ]] || continue
+
+  # Skip vendored multi-plugin layouts (e.g., skills/finance/<plugin>/<skill>/SKILL.md)
+  # — we expose only direct <category>/<skill>/SKILL.md files.
+  for skill_dir in "$CATEGORY_DIR"/*/; do
+    [[ -d "$skill_dir" ]] || continue
+    skill_name=$(basename "${skill_dir%/}")
+    # Must contain SKILL.md to be exposable
+    [[ -f "$skill_dir/SKILL.md" ]] || continue
+
+    EXPOSED_SKILL_NAMES+=("$skill_name")
+    ensure_symlink "$NATIVE_SKILLS_DIR/$skill_name" "${skill_dir%/}" ".claude/skills/$skill_name" || true
+  done
+done
+
+# Clean up stale per-skill symlinks (skills no longer in any configured category)
+for link in "$NATIVE_SKILLS_DIR"/*/; do
+  [[ -L "${link%/}" ]] || continue
+  link_name=$(basename "${link%/}")
+  found=false
+  for exposed in "${EXPOSED_SKILL_NAMES[@]}"; do
+    if [[ "$exposed" == "$link_name" ]]; then
+      found=true
+      break
+    fi
+  done
+  if [[ "$found" == "false" ]]; then
+    echo -e "  ${YELLOW}Removing stale:${NC} .claude/skills/$link_name"
+    rm "${link%/}"
+  fi
+done
+
+if [[ ${#EXPOSED_SKILL_NAMES[@]} -eq 0 ]]; then
+  echo -e "  ${YELLOW}Skipped:${NC} no skills exposed (no skills configured in project.yml)"
+fi
+
+echo ""
+
 # --- 5. Stack profile configs (ddd-hooks.json, etc.) ---
 echo -e "${BLUE}[5/8] Stack profile configs${NC}"
 STACK_PROFILE=$(yml_get "project.stack_profile")
