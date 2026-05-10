@@ -249,27 +249,39 @@ if [[ -d "$STACK_AGENTS_DIR" ]]; then
     fi
   done
 
-  # Symlink implementers/ subdirectory if present in the preset
+  # Flatten implementers/ subdirectory to top-level .claude/agents/<name>.md
+  # Claude Code natively reads .claude/agents/<name>.md (flat) — nested
+  # subdirs like implementers/ are NOT discovered. We symlink each
+  # implementer file directly to the top level.
   STACK_IMPL_DIR="$STACK_AGENTS_DIR/implementers"
   if [[ -d "$STACK_IMPL_DIR" ]]; then
-    PROJECT_IMPL_DIR="$PROJECT_AGENTS_DIR/implementers"
-    mkdir -p "$PROJECT_IMPL_DIR"
     for impl_file in "$STACK_IMPL_DIR"/*.md; do
       [[ -f "$impl_file" ]] || continue
       impl_name=$(basename "$impl_file")
-      impl_target="$PROJECT_IMPL_DIR/$impl_name"
+      impl_target="$PROJECT_AGENTS_DIR/$impl_name"
       if [[ -L "$impl_target" ]]; then
-        echo -e "  ${YELLOW}Already linked:${NC} implementers/$impl_name"
+        echo -e "  ${YELLOW}Already linked:${NC} $impl_name (implementer)"
       elif [[ -f "$impl_target" ]]; then
-        # Local copy exists — back up and replace with symlink
         mv "$impl_target" "$impl_target.bak.$(date +%Y%m%d%H%M%S)"
         ln -sf "$impl_file" "$impl_target"
-        echo -e "  ${GREEN}Replaced local copy:${NC} implementers/$impl_name (backed up)"
+        echo -e "  ${GREEN}Replaced local copy:${NC} $impl_name (backed up)"
       else
         ln -sf "$impl_file" "$impl_target"
-        echo -e "  ${GREEN}Linked:${NC} implementers/$impl_name (${STACK_PROFILE})"
+        echo -e "  ${GREEN}Linked:${NC} $impl_name (implementer, ${STACK_PROFILE})"
       fi
     done
+
+    # Cleanup legacy implementers/ subdirectory if it has only symlinks
+    LEGACY_IMPL_DIR="$PROJECT_AGENTS_DIR/implementers"
+    if [[ -d "$LEGACY_IMPL_DIR" ]]; then
+      # Remove symlinks inside (we just flattened them)
+      for legacy_link in "$LEGACY_IMPL_DIR"/*.md; do
+        [[ -L "$legacy_link" ]] && rm "$legacy_link"
+      done
+      # Remove dir if empty
+      rmdir "$LEGACY_IMPL_DIR" 2>/dev/null && \
+        echo -e "  ${YELLOW}Removed:${NC} legacy implementers/ subdir (flattened to top-level)" || true
+    fi
   fi
 else
   echo -e "  ${YELLOW}Skipped:${NC} No stack agents for '$STACK_PROFILE'"
