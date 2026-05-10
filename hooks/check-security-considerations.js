@@ -1,28 +1,34 @@
 #!/usr/bin/env node
 
 /**
- * PostToolUse Hook: Check task files for ## Security Considerations section
+ * PostToolUse Hook: Security-aware task file analysis
  *
  * Cross-platform (Windows, macOS, Linux)
  *
- * Triggers when a task file (project-orchestration/tasks/*.md or tasks/*.md)
- * is written or edited. Reports if the file is missing the ## Security
- * Considerations section, if the section is empty, or if it contains only
- * placeholder text (TODO, FIXME, XXX, tbd, "fill in", etc.).
+ * Two triggers in one hook:
  *
- * Modes (controlled by env var CHECK_SECURITY_MODE):
- *   warn  (default) — print warning to stderr, exit 0 (does not block)
- *   block           — print warning, exit 2 (Claude Code surfaces as block)
+ * Trigger 1 — Task creation/edit (always):
+ *   Suggests checklists and /threat-model when task labels/title indicate
+ *   security-relevant work (auth, pii, cross-context, b2g, etc.).
+ *
+ * Trigger 2 — Status changed to in-progress (conditional block):
+ *   When task is security-relevant AND Security Pre-Analysis section is
+ *   missing/empty/placeholder, exits 2 (BLOCK) regardless of MODE.
+ *   Non-security tasks fall back to MODE-controlled warn/block.
+ *
+ * Modes (env var CHECK_SECURITY_MODE):
+ *   warn  (default) — print to stderr, exit 0 (does not block non-security tasks)
+ *   block           — exit 2 even for non-security mismatches
  *   off             — silent, exit 0
  *
- * On non-OK status, the hook suggests running /threat-model to populate
- * the section systematically (rather than ad-hoc filling).
+ * Opt-out marker: file containing `# security: skip` makes the hook exit 0.
  */
 
+const fs = require('fs');
+const path = require('path');
 const { readStdinJson, readFile, log } = require('./lib/utils');
 
 const MODE = (process.env.CHECK_SECURITY_MODE || 'warn').toLowerCase();
-const LOOKBACK_LINES = 50;
 
 const TASK_FILE_PATTERNS = [
   /project-orchestration[/\\]tasks[/\\][^/\\]+\.md$/,
@@ -43,138 +49,264 @@ const PLACEHOLDER_PATTERNS = [
 
 function isTaskFile(filePath) {
   if (!filePath || typeof filePath !== 'string') return false;
-  return TASK_FILE_PATTERNS.some(pattern => pattern.test(filePath));
+  return TASK_FILE_PATTERNS.some(p => p.test(filePath));
 }
 
-/**
- * Inspect ## Security Considerations section.
- *
- * Returns:
- *   { status: 'missing' }
- *   { status: 'empty' }
- *   { status: 'placeholder', triggered: ['TODO', ...] }
- *   { status: 'ok' }
- */
+// --- Frontmatter parsing (subset of YAML for our needs) ---
+function parseFrontmatter(content) {
+  const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+  if (!match) return null;
+  const result = {};
+  const fmText = match[1];
+  const lines = fmText.split('\n');
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const kv = line.match(/^(\w[\w_-]*):\s*(.*)$/);
+    if (!kv) continue;
+    const key = kv[1];
+    let value = kv[2].trim();
+
+    // Strip surrounding quotes
+    if ((value.startsWith("'") && value.endsWith("'")) ||
+        (value.startsWith('"') && value.endsWith('"'))) {
+      value = value.slice(1, -1);
+    }
+
+    // Inline array: labels: [a, b, c]
+    if (value.startsWith('[') && value.endsWith(']')) {
+      result[key] = value.slice(1, -1).split(',').map(s => s.trim().replace(/^['"]|['"]$/g, '')).filter(Boolean);
+      continue;
+    }
+
+    // Multi-line YAML array (next lines start with "  - ")
+    if (value === '' && i + 1 < lines.length && /^\s*-\s/.test(lines[i + 1])) {
+      const arr = [];
+      let j = i + 1;
+      while (j < lines.length && /^\s*-\s/.test(lines[j])) {
+        arr.push(lines[j].replace(/^\s*-\s*/, '').trim().replace(/^['"]|['"]$/g, ''));
+        j++;
+      }
+      result[key] = arr;
+      i = j - 1;
+      continue;
+    }
+
+    result[key] = value;
+  }
+  return result;
+}
+
+// --- Mini YAML parser for canonical-labels.yml (security_groups section) ---
+function loadCanonicalLabels() {
+  try {
+    const realDir = fs.realpathSync(__dirname);
+    const yamlPath = path.join(realDir, '..', 'templates', 'canonical-labels.yml');
+    if (!fs.existsSync(yamlPath)) return null;
+    const text = fs.readFileSync(yamlPath, 'utf8');
+
+    const groups = {};
+    const lines = text.split('\n');
+    let inSection = false;
+    let currentGroup = null;
+
+    for (const line of lines) {
+      // Enter security_groups: section
+      if (/^security_groups:/.test(line)) {
+        inSection = true;
+        continue;
+      }
+      // Leaving (top-level key starts at column 0, not a comment)
+      if (inSection && /^[a-z_]+:/.test(line) && !/^\s/.test(line) && !/^security_groups:/.test(line)) {
+        inSection = false;
+      }
+      if (!inSection) continue;
+
+      // Group: "  <name>:"
+      const gm = line.match(/^  (\w+):\s*$/);
+      if (gm) {
+        currentGroup = gm[1];
+        groups[currentGroup] = { aliases: [], checklist: '' };
+        continue;
+      }
+
+      if (currentGroup) {
+        const am = line.match(/^    aliases:\s*\[([^\]]+)\]/);
+        if (am) {
+          groups[currentGroup].aliases = am[1].split(',').map(s => s.trim().replace(/^['"]|['"]$/g, ''));
+        }
+        const cm = line.match(/^    checklist:\s*(.+?)$/);
+        if (cm) groups[currentGroup].checklist = cm[1].trim();
+      }
+    }
+    return groups;
+  } catch (err) {
+    return null;
+  }
+}
+
+// --- Match labels + title against canonical groups ---
+function matchSecurityGroups(taskLabels, taskTitle, groups) {
+  const matched = [];
+  const titleLower = String(taskTitle || '').toLowerCase();
+  const labels = (Array.isArray(taskLabels) ? taskLabels : []).map(l => String(l).toLowerCase());
+
+  for (const [name, group] of Object.entries(groups)) {
+    for (const alias of group.aliases) {
+      // 1. Direct label match
+      if (labels.includes(alias)) { matched.push({ name, checklist: group.checklist, via: `label:${alias}` }); break; }
+      // 2. Substring match in labels
+      if (labels.some(l => l.includes(alias))) { matched.push({ name, checklist: group.checklist, via: `label-contains:${alias}` }); break; }
+      // 3. Title keyword match
+      if (titleLower.includes(alias)) { matched.push({ name, checklist: group.checklist, via: `title:${alias}` }); break; }
+    }
+  }
+  return matched;
+}
+
+// --- Inspect security pre-analysis section ---
+// Looks for either "## 🔒 Security Pre-Analysis" (new) or "## Security Considerations" (legacy)
 function inspectSecuritySection(content) {
   const lines = content.split('\n');
-  const sectionIndex = lines.findIndex(line =>
-    /^##\s+Security Considerations\s*$/i.test(line.trim())
-  );
+  const sectionIndex = lines.findIndex(line => {
+    const t = line.trim();
+    return /^##\s+(?:🔒\s+)?Security\s+(Pre-Analysis|Considerations)\s*$/i.test(t);
+  });
 
-  if (sectionIndex === -1) {
-    return { status: 'missing' };
-  }
+  if (sectionIndex === -1) return { status: 'missing' };
 
-  // Collect content lines until next ## heading
   const contentLines = [];
   for (let i = sectionIndex + 1; i < lines.length; i++) {
-    const line = lines[i];
-    if (/^##\s/.test(line.trim())) break;
-    contentLines.push(line);
+    if (/^##\s/.test(lines[i].trim())) break;
+    contentLines.push(lines[i]);
   }
 
-  // Filter out empty lines and HTML comments
-  const meaningful = contentLines.filter(line => {
-    const t = line.trim();
+  const meaningful = contentLines.filter(l => {
+    const t = l.trim();
     return t.length > 0 && !t.startsWith('<!--');
   });
 
-  if (meaningful.length === 0) {
-    return { status: 'empty' };
-  }
+  if (meaningful.length === 0) return { status: 'empty' };
 
-  // Check for placeholder patterns in collected content
   const sectionText = meaningful.join('\n');
-  const triggered = [];
-  for (const pattern of PLACEHOLDER_PATTERNS) {
-    const m = sectionText.match(pattern);
-    if (m) {
-      triggered.push(m[0]);
-    }
-  }
 
-  if (triggered.length > 0) {
-    return { status: 'placeholder', triggered };
+  // Also accept the section as "completed" if it has positive markers
+  const hasThreatModelRef = /TM-[A-Z][A-Z0-9-]+\.md/.test(sectionText) || /\[x\]\s+\/?\s*threat-model/i.test(sectionText);
+  const hasFilledTable = /\|\s+(yes|no|n\/a|tak|nie)\s+\|/i.test(sectionText);
+  const hasFilledFields = /(?:lawful basis|PII categories|rate limit tier).*?:.*?\S{3,}/im.test(sectionText);
+
+  const triggered = [];
+  for (const p of PLACEHOLDER_PATTERNS) {
+    const m = sectionText.match(p);
+    if (m && !hasThreatModelRef && !hasFilledTable && !hasFilledFields) triggered.push(m[0]);
   }
+  if (triggered.length > 0) return { status: 'placeholder', triggered };
 
   return { status: 'ok' };
 }
 
-function buildMessage(filePath, result) {
-  const isBlock = MODE === 'block';
-  const verb = isBlock ? '🛑 BLOCKED' : '⚠️  WARN';
-
-  let body;
-  switch (result.status) {
-    case 'missing':
-      body =
-        `Task file lacks ## Security Considerations section.\n` +
-        `    File: ${filePath}\n\n` +
-        `    Action: Add the section, then run /threat-model to populate it:\n` +
-        `      ## Security Considerations\n` +
-        `      <!-- Run /threat-model for systematic STRIDE-based analysis -->\n\n` +
-        `    Or fill in manually following templates/THREAT_MODEL_TEMPLATE.md`;
-      break;
-    case 'empty':
-      body =
-        `## Security Considerations section exists but is empty.\n` +
-        `    File: ${filePath}\n\n` +
-        `    Action: Run /threat-model to populate it systematically,\n` +
-        `    or fill in manually using STRIDE categories.\n` +
-        `    Template: templates/THREAT_MODEL_TEMPLATE.md`;
-      break;
-    case 'placeholder':
-      body =
-        `## Security Considerations contains placeholder text: ${result.triggered.join(', ')}\n` +
-        `    File: ${filePath}\n\n` +
-        `    Placeholder content (TODO/FIXME/TBD/etc.) is not a security analysis.\n` +
-        `    Action: Run /threat-model to replace placeholders with actual\n` +
-        `    threat assessment, OR remove placeholder text and write the analysis manually.`;
-      break;
-    default:
-      return '';
-  }
-
+// --- Build messages ---
+function suggestMessage(filePath, matched) {
+  const checklists = matched.map(m => `      - ${m.checklist}  (matched ${m.via})`).join('\n');
+  const groups = matched.map(m => m.name).join(', ');
   return (
-    `\n${verb}: SECURITY-CONSIDERATIONS check\n` +
-    `    ${body}\n\n` +
-    `    Mode: ${MODE.toUpperCase()}` +
-    (isBlock
-      ? ` (hard gate — set CHECK_SECURITY_MODE=warn to soft-warn, or =off to disable)\n`
-      : ` (soft warning — set CHECK_SECURITY_MODE=block to enforce)\n`)
+    `\n💡 [security-suggest] Task is security-relevant\n` +
+    `    File: ${filePath}\n` +
+    `    Matched groups: ${groups}\n` +
+    `    Recommended checklists:\n${checklists}\n` +
+    `    Suggested action: /threat-model {TASK-ID}\n` +
+    `    (Hook will block status: in-progress until Security Pre-Analysis is filled.)\n`
   );
 }
 
+function blockMessage(filePath, matched, preStatus) {
+  const groups = matched.map(m => m.name).join(', ');
+  const reason = {
+    missing: 'Security Pre-Analysis section is missing.',
+    empty: 'Security Pre-Analysis section is empty.',
+    placeholder: `Security Pre-Analysis contains placeholder text: ${(preStatus.triggered || []).join(', ')}.`,
+  }[preStatus.status] || 'Security Pre-Analysis is incomplete.';
+
+  return (
+    `\n🛑 BLOCKED: cannot move security-relevant task to in-progress\n` +
+    `    File: ${filePath}\n` +
+    `    Matched security groups: ${groups}\n` +
+    `    Reason: ${reason}\n\n` +
+    `    Action:\n` +
+    `      1. Run /threat-model {TASK-ID} to populate the section, OR\n` +
+    `      2. Fill ## 🔒 Security Pre-Analysis manually using\n` +
+    `         claude-patterns/templates/task-security-first.md as guide\n\n` +
+    `    Override (only if intentional):\n` +
+    `      Add line "# security: skip" at top of task file (rare, document why)\n`
+  );
+}
+
+function genericWarn(filePath, preStatus) {
+  const reason = {
+    missing: 'Security Considerations section is missing.',
+    empty: 'Security Considerations section is empty.',
+    placeholder: `Section contains placeholder text: ${(preStatus.triggered || []).join(', ')}.`,
+  }[preStatus.status] || '';
+  return (
+    `\n⚠️  [security] ${reason}\n` +
+    `    File: ${filePath}\n` +
+    `    Consider adding ## 🔒 Security Pre-Analysis (see task-security-first template).\n`
+  );
+}
+
+// --- Main ---
 async function main() {
-  if (MODE === 'off') {
-    process.exit(0);
-  }
+  if (MODE === 'off') process.exit(0);
 
   const input = await readStdinJson();
 
   try {
     const toolInput = input.tool_input || {};
     const filePath = toolInput.file_path || toolInput.path || '';
-
-    if (!isTaskFile(filePath)) {
-      process.exit(0);
-    }
+    if (!isTaskFile(filePath)) process.exit(0);
 
     const content = readFile(filePath);
-    if (!content) {
-      process.exit(0);
+    if (!content) process.exit(0);
+
+    // Opt-out marker
+    if (/^#\s*security:\s*skip\b/im.test(content)) process.exit(0);
+
+    const fm = parseFrontmatter(content) || {};
+    const taskLabels = fm.labels || [];
+    const taskTitle = fm.title || '';
+    const taskStatus = String(fm.status || '').toLowerCase();
+
+    const groups = loadCanonicalLabels() || {};
+    const matched = matchSecurityGroups(taskLabels, taskTitle, groups);
+    const securityRelevant = matched.length > 0;
+
+    const preStatus = inspectSecuritySection(content);
+
+    // Trigger 2: hard conditional block — security-relevant + in-progress + pre-analysis incomplete
+    if (taskStatus === 'in-progress' && securityRelevant && preStatus.status !== 'ok') {
+      process.stderr.write(blockMessage(filePath, matched, preStatus));
+      process.exit(2);
     }
 
-    const result = inspectSecuritySection(content);
-    if (result.status === 'ok') {
-      process.exit(0);
+    // Trigger 1: suggestion when security-relevant (regardless of section state)
+    //   - If pre-analysis OK: no message (security work is documented)
+    //   - If pre-analysis missing/empty/placeholder: suggest checklists + threat-model
+    if (securityRelevant && preStatus.status !== 'ok') {
+      process.stderr.write(suggestMessage(filePath, matched));
+      // Also fall through to a soft warning unless block mode
+      process.exit(MODE === 'block' ? 2 : 0);
     }
 
-    const msg = buildMessage(filePath, result);
-    process.stderr.write(msg);
+    // Non-security task with incomplete section: existing legacy warn behaviour
+    if (!securityRelevant && preStatus.status !== 'ok') {
+      // Don't bother for tasks without ## Security Considerations at all if they're clearly non-security
+      // (typo fix, docs-only). Only warn if section EXISTS but is empty/placeholder.
+      if (preStatus.status === 'missing') process.exit(0);
+      process.stderr.write(genericWarn(filePath, preStatus));
+      process.exit(MODE === 'block' ? 2 : 0);
+    }
 
-    const isBlock = MODE === 'block';
-    process.exit(isBlock ? 2 : 0);
+    process.exit(0);
   } catch (err) {
     log(`[Security] check-security-considerations error: ${err.message}`);
     process.exit(0);
