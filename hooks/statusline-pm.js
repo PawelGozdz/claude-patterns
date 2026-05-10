@@ -145,14 +145,15 @@ function main() {
 
   const parts = [`⚡ ${model}`, `📁 ${projectName}`];
 
+  // Git branch (always show when in a git repo, regardless of PM-system presence)
+  const branch = gitBranch(cwd);
+  if (branch) parts.push(`🌿 ${branch}`);
+
   if (project.hasPM) {
     const activeTask = readActiveTask(project.root);
     const { blocked } = countActiveBlocked(project.root);
     if (activeTask) parts.push(`🎯 ${activeTask}`);
     if (blocked > 0) parts.push(`🚫 ${blocked}`);
-  } else {
-    const branch = gitBranch(cwd);
-    if (branch) parts.push(`🌿 ${branch}`);
   }
 
   if (cost) parts.push(`💰 ${cost}`);
