@@ -9,6 +9,11 @@ effort: high
 
 # /sprint — Sprint Planning
 
+> ultrathink — sprint planning weighs technical feasibility, business
+> priority, mobile UX, customer value, and capacity all at once. Use
+> extended thinking to surface trade-offs across these dimensions before
+> committing to scope.
+
 Interactive sprint planning session with two primary advisory agents.
 Combines technical capacity (what's feasible) with business priority
 (what's most valuable). `@product-owner` automatically consults up to

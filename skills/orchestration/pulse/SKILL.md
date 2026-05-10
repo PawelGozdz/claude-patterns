@@ -19,6 +19,20 @@ All output flows into the shared brain (`TEAM-STATE.md`).
 3 strategists internally based on trigger keywords for ~$0.05–0.15 extra)
 **When**: Start of each working day, or before planning a sprint
 
+## Pre-loaded context (auto-injected, no subagent calls)
+
+Recent commits (last 7 days):
+!`git log --oneline --since="7 days ago" | head -30 2>/dev/null || echo "(no recent git history)"`
+
+Blocked task count:
+!`grep -l "^status: blocked" project-orchestration/tasks/*.md 2>/dev/null | wc -l`
+
+Recently modified task files (last 7 days):
+!`find project-orchestration/tasks -name "*.md" -newermt "7 days ago" 2>/dev/null | head -15`
+
+This context is preprocessed for you — agents below get it as part of the
+shared briefing, so they don't need to re-Glob/grep the same data.
+
 ## Steps
 
 1. **Read current state**

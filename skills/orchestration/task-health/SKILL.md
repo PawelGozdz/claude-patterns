@@ -15,6 +15,22 @@ accumulate silently over weeks of development.
 **Cost**: ~$0.02 (1 Haiku extraction + 1 Sonnet analysis — was $0.05 with Sonnet-only)
 **When**: Weekly, or before sprint planning
 
+## Pre-loaded context (auto-injected, no subagent calls)
+
+Total active tasks:
+!`find project-orchestration/tasks -name "*.md" 2>/dev/null | wc -l`
+
+Status distribution:
+!`grep -h "^status:" project-orchestration/tasks/*.md 2>/dev/null | sort | uniq -c | sort -rn`
+
+Stale tasks (untouched >14d):
+!`find project-orchestration/tasks -name "*.md" -mtime +14 2>/dev/null | head -20`
+
+Tasks with no priority field:
+!`grep -L "^priority:" project-orchestration/tasks/*.md 2>/dev/null | head -10`
+
+state-reader agent below receives this as preprocessed input.
+
 ---
 
 ## Architecture (cost-optimized — 2 phases)

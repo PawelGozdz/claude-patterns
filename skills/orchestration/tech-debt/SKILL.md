@@ -9,11 +9,33 @@ effort: high
 
 # /tech-debt — Technical Debt Report
 
+> ultrathink — tech debt prioritization balances current velocity drag,
+> compounding risk, dependency unlock value, and effort. Apply extended
+> thinking to identify which item, if resolved first, unblocks the most
+> downstream work — often counter-intuitive (high-effort items with high
+> leverage beat low-effort items with no dependencies).
+
 Focused debt analysis. Aggregates `tech_debt` fields across all tasks,
 checks for debt without resolution tasks, shows trend, and updates TECH-DEBT.md.
 
 **Cost**: ~$0.05 (one @tech-lead call)
 **When**: Monthly, or when debt feels like it's slowing you down
+
+## Pre-loaded context (auto-injected, no subagent calls)
+
+Tasks with tech_debt: major:
+!`grep -l "^tech_debt:\s*major" project-orchestration/tasks/*.md 2>/dev/null | head -20`
+
+Tasks with tech_debt: minor:
+!`grep -l "^tech_debt:\s*minor" project-orchestration/tasks/*.md 2>/dev/null | wc -l`
+
+TECH-DEBT.md size + last update:
+!`wc -l project-orchestration/TECH-DEBT.md 2>/dev/null && stat -c '%y' project-orchestration/TECH-DEBT.md 2>/dev/null || echo "(TECH-DEBT.md missing)"`
+
+Recent debt-tagged commits (last 30 days):
+!`git log --oneline --since="30 days ago" --grep="debt\|refactor" 2>/dev/null | head -15`
+
+@tech-lead agent below receives this preprocessed view.
 
 ## Steps
 

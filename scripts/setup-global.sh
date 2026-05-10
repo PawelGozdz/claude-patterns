@@ -85,8 +85,16 @@ echo -e "${BLUE}[2/3] Commands${NC} (slash commands: /plan, /tdd, /scaffold, etc
 setup_symlink "commands" "$REPO_DIR/commands"
 echo ""
 
-echo -e "${BLUE}[3/3] Hooks${NC} (universal only — stack hooks are per-project)"
+echo -e "${BLUE}[3/4] Hooks${NC} (universal only — stack hooks are per-project)"
 setup_symlink "hooks" "$REPO_DIR/hooks"
+echo ""
+
+echo -e "${BLUE}[4/4] Output Styles${NC} (strategist voice presets)"
+if [ -d "$REPO_DIR/output-styles" ]; then
+  setup_symlink "output-styles" "$REPO_DIR/output-styles"
+else
+  echo -e "  ${YELLOW}Skipped:${NC} output-styles directory missing"
+fi
 echo ""
 
 # --- Cleanup: remove global skills (per-project only) ---

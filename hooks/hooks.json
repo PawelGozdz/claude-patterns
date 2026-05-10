@@ -43,6 +43,16 @@
           }
         ],
         "description": "Save state before context compaction"
+      },
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$HOME/.claude/hooks/pre-compact-pm-snapshot.js\""
+          }
+        ],
+        "description": "Snapshot TEAM-STATE.md before compaction (silent if no PM-system)"
       }
     ],
     "SessionStart": [
@@ -145,6 +155,17 @@
           }
         ],
         "description": "Log subagent stop for cost monitoring"
+      },
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$HOME/.claude/hooks/subagent-stop-cost-log.js\"",
+            "async": true
+          }
+        ],
+        "description": "Append per-agent token usage to ~/.claude/logs/agent-usage.jsonl. Disable with AGENT_USAGE_LOG=off."
       }
     ],
     "WorktreeCreate": [

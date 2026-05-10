@@ -102,30 +102,26 @@ Cheap wins on cost (model overrides) + PM-system automation via hooks.
 
 Visual polish and developer ergonomics.
 
-- [ ] **3.1 Statusline PM script** (`hooks/statusline-pm.sh`)
-  - Reads `project-orchestration/TEAM-STATE.md` if present, fallback git status
-  - Shows: active task / blocked count / sprint week / context %
-  - Investment: ~2h
-  - Verified in docs: ⚠️ feature exists, payload schema needs experimental confirmation
+- [x] **3.1 Statusline PM script** (`hooks/statusline-pm.js`)
+  - Reads stdin payload + walks up cwd to find `project-orchestration/TEAM-STATE.md`
+  - PM mode: `⚡ model | 📁 project | 🎯 active-task | 🚫 blocked | 💰 cost | 📊 ctx%`
+  - Fallback (no PM): shows git branch instead
+  - Smoke-tested: PM mode + no-PM mode both work
+  - Activate per-project via `settings.json` → `statusLine` key
 
-- [ ] **3.2 `!` injection in analytical skills**
-  - Add live data to `/pulse`, `/task-health`, `/tech-debt`:
-    ```markdown
-    Last week activity:
-    !`git log --oneline --since="7 days" | head -20`
+- [x] **3.2 `!` injection in analytical skills**
+  - `/pulse`: recent commits + blocked count + recent task changes
+  - `/task-health`: total active, status distribution, stale tasks, missing priority
+  - `/tech-debt`: major/minor counts, TECH-DEBT.md size + age, debt-tagged commits
+  - Pre-loaded context section sits before agent invocations — agents inherit
+    the data without re-Globbing
 
-    Blocked tasks:
-    !`grep -l "status: blocked" project-orchestration/tasks/*.md | wc -l`
-    ```
-  - Investment: ~1h
-  - Verified in docs: ✅ syntax confirmed
-
-- [ ] **3.3 Output styles for strategists**
-  - `output-styles/marketing-strategist.md`, `legal-strategist.md`, `finance-strategist.md`
-  - Hedged voice extracted from agent prompts to reusable styles
-  - Strategist agents activate via output style instead of inline prompt
-  - Investment: ~2h
-  - Verified in docs: ⚠️ supported, frontmatter details thin in fetched docs
+- [x] **3.3 Output styles for strategists** (`output-styles/`)
+  - `marketing-strategist.md` — hedged data-driven voice for CRO/copy/SEO/paid/growth
+  - `finance-strategist.md` — confidence-signalled with calibrated regulatory disclaimers
+  - `legal-strategist.md` — jurisdiction-tagged with 4-category contextual disclaimers
+  - `output-styles/README.md` documents activation (per-session, per-project, per-user)
+  - `setup-global.sh` symlinks output-styles/ to `~/.claude/output-styles/`
 
 ---
 
@@ -174,14 +170,32 @@ the abstractions hold up under pressure.
 
 ---
 
-## Sprint 5+ — Tier 2 optional
+## Sprint 5 — Tier 2
 
-Lower priority, implement based on observed need.
+- [x] **5.1 `PreCompact` hook** — `hooks/pre-compact-pm-snapshot.js` saves
+  `project-orchestration/TEAM-STATE.md` to `_archive/snapshots/{ISO-timestamp}.md`
+  before context compaction. Silent for projects without PM-system.
+  Registered as second PreCompact entry alongside existing `pre-compact.js`.
 
-- [ ] **5.1 `PreCompact` hook** — snapshot `TEAM-STATE.md` before compaction (history of pulse)
-- [ ] **5.2 `SubagentStop` hook** — log per-agent token usage to `~/.claude/logs/agent-usage.jsonl`
-- [ ] **5.3 `ultrathink` keyword** in `/sprint`, `/reprioritize`, `/tech-debt` content
-- [ ] **5.4 `rules/` subfolder** for complex skills (`tdd`, `code-review`, `sprint`) — progressive disclosure pattern
+- [x] **5.2 `SubagentStop` cost log** — `hooks/subagent-stop-cost-log.js`
+  appends per-agent token usage (input/output/cache) + estimated cost
+  (Opus/Sonnet/Haiku 2026-05 pricing) + duration + project to
+  `~/.claude/logs/agent-usage.jsonl`. Disable via `AGENT_USAGE_LOG=off`.
+  Used by `/cost-report` for accurate per-agent breakdown.
+
+- [x] **5.3 `ultrathink` keyword** — added to `/sprint`, `/reprioritize`,
+  `/tech-debt` skill bodies. Triggers extended thinking during
+  multi-perspective analysis where the genuine cost-benefit is non-trivial
+  (sprint scope trade-offs, priority dependency unlocks, debt leverage
+  ranking).
+
+- [-] **5.4 `rules/` subfolder for complex skills** — DEFERRED with
+  rationale: of the proposed candidates, only `tdd-workflow` (412 lines)
+  qualifies as complex enough; `code-review` (44 lines) and `sprint`
+  (99 lines) are short. Rules/ subfolder pattern in Claude Code is
+  soft-supported (works but not first-class). Without a concrete pain
+  point, refactor would be cosmetic. Revisit if a skill grows past
+  600 lines or a real discovery problem emerges.
 
 ---
 

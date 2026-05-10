@@ -9,6 +9,11 @@ effort: high
 
 # /reprioritize — Priority Advisor
 
+> ultrathink — reprioritization is genuinely multi-criteria: customer
+> value × technical leverage × dependency depth × capacity. Apply
+> extended thinking to surface non-obvious trade-offs (e.g., "promoting
+> X requires demoting Y because they share the auth subsystem").
+
 Analyze full backlog with dual agent perspective and recommend priority changes.
 Interactive — confirms before modifying any task files.
 
