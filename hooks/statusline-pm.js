@@ -221,10 +221,75 @@ function formatCost(meta) {
   return cost < 0.01 ? `$${cost.toFixed(4)}` : `$${cost.toFixed(2)}`;
 }
 
+// Detect context window size from model id/name. Opus 4.7 has a 1M variant
+// surfaced as `claude-opus-4-7[1m]` or `(1M context)` in display names.
+function detectContextWindow(meta) {
+  const id = (meta?.model?.id || meta?.model_id || '').toLowerCase();
+  const display = (meta?.model?.display_name || meta?.model || '').toLowerCase();
+  if (id.includes('[1m]') || display.includes('1m')) return 1_000_000;
+  return 200_000;
+}
+
+// Tail last ~64KB of a file (cheap for large JSONL transcripts).
+function tailFile(filePath, maxBytes = 65536) {
+  try {
+    const fd = fs.openSync(filePath, 'r');
+    try {
+      const stat = fs.fstatSync(fd);
+      const size = stat.size;
+      const readSize = Math.min(size, maxBytes);
+      const buf = Buffer.alloc(readSize);
+      fs.readSync(fd, buf, 0, readSize, size - readSize);
+      return buf.toString('utf8');
+    } finally {
+      fs.closeSync(fd);
+    }
+  } catch {
+    return '';
+  }
+}
+
+// Parse JSONL tail, iterate lines from newest to oldest, return usage from
+// last assistant message that has one.
+function findLastAssistantUsage(tail) {
+  if (!tail) return null;
+  const lines = tail.split('\n');
+  // If we tail-ed mid-line, the first line is likely partial — skip it.
+  for (let i = lines.length - 1; i >= 1; i--) {
+    const line = lines[i].trim();
+    if (!line) continue;
+    let obj;
+    try { obj = JSON.parse(line); } catch { continue; }
+    const usage = obj?.message?.usage || obj?.usage;
+    if (usage && (obj?.type === 'assistant' || obj?.message?.role === 'assistant' || typeof usage.input_tokens === 'number')) {
+      return usage;
+    }
+  }
+  return null;
+}
+
 function formatContext(meta) {
-  const used = meta?.context?.used_tokens ?? meta?.context_used;
-  const total = meta?.context?.total_tokens ?? meta?.context_max ?? 200000;
-  if (typeof used !== 'number') return null;
+  // 1) Honor explicit fields if the harness ever provides them (forward-compat)
+  let used = meta?.context?.used_tokens ?? meta?.context_used;
+  let total = meta?.context?.total_tokens ?? meta?.context_max;
+
+  // 2) Fall back to reading the transcript and computing from last usage
+  if (typeof used !== 'number') {
+    const transcriptPath = meta?.transcript_path;
+    if (transcriptPath) {
+      const tail = tailFile(transcriptPath);
+      const usage = findLastAssistantUsage(tail);
+      if (usage) {
+        used =
+          (usage.input_tokens || 0) +
+          (usage.cache_read_input_tokens || 0) +
+          (usage.cache_creation_input_tokens || 0);
+      }
+    }
+  }
+  if (typeof total !== 'number') total = detectContextWindow(meta);
+
+  if (typeof used !== 'number' || used <= 0) return null;
   const pct = Math.round((used / total) * 100);
   return `${pct}%`;
 }
