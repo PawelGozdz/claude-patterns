@@ -1,0 +1,58 @@
+# {PROJECT_NAME} Tech Blog — Index
+
+> **Status**: 🚧 Blog in preparation
+> **Approach**: Weekly Development Log (week-by-week snapshots)
+> **Last update**: {YYYY-MM-DD}
+
+---
+
+## 📋 Workflow Status
+
+### ✅ Completed
+
+- [ ] Blog structure created
+- [ ] Template prepared
+- [ ] Voice reference calibrated
+- [ ] `WEEKLY_TIMELINE.md` generated
+- [ ] `INTERESTING_WEEKS.md` curated
+- [ ] First post drafted
+
+### 🚧 In Progress
+
+- [ ] _Add current focus here_
+
+### 📅 Planned
+
+- [ ] Publish first batch (2–3 posts)
+- [ ] Establish publication cadence (1–2 posts/week)
+- [ ] Set up blog website (or use Medium / Dev.to / Substack)
+
+---
+
+## 📚 Published Posts
+
+<!--
+Add an entry per published post. Format:
+
+### Week NN: <topic> ({YYYY-MM-DD} to {YYYY-MM-DD}) ✅
+
+**Title**: "<title>"
+
+**Story**: <1–2 sentence summary>
+
+**File**: [`posts/week-NN-topic/YYYY-MM-DD-slug.md`](./posts/week-NN-topic/YYYY-MM-DD-slug.md)
+
+---
+-->
+
+_No posts published yet._
+
+---
+
+## 🔗 Related
+
+- [README.md](./README.md) — workflow and philosophy
+- [BLOG_POST_TEMPLATE.md](./BLOG_POST_TEMPLATE.md) — template for new posts
+- [VOICE_REFERENCE.md](./VOICE_REFERENCE.md) — tone calibration
+- [WEEKLY_TIMELINE.md](./WEEKLY_TIMELINE.md) — all weeks from git history
+- [INTERESTING_WEEKS.md](./INTERESTING_WEEKS.md) — blog-worthy weeks

@@ -143,6 +143,7 @@ clarifying question rather than guessing.
 | "Marketing psychology", "persuasion", "behavioral" | `marketing-psychology` | Cialdini-style levers |
 | "Customer research", "interviews", "surveys" | `customer-research` | Qualitative + quant |
 | "Content strategy", "editorial calendar" | `content-strategy` | Content roadmap |
+| "Dev blog", "build in public", "weekly log", "blog from git" | `dev-blog-generator` | Local skill — generates research scaffolding from git+KANBAN, NOT prose |
 | "RevOps", "lead routing", "SLA", "lead scoring" | `revops` | Sales/marketing ops |
 | "Sales enablement", "battlecards", "one-pager" | `sales-enablement` | Sales collateral |
 

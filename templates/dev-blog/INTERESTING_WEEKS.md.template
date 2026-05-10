@@ -1,0 +1,55 @@
+# {PROJECT_NAME} — Blog-Worthy Weeks
+
+> **Filtered from `WEEKLY_TIMELINE.md`** — only HIGH and MEDIUM activity
+> weeks with substantive content.
+> Last regenerated: {YYYY-MM-DD HH:MM}
+
+---
+
+## How to Use
+
+1. Browse the auto-generated entries below
+2. Pick a week that resonates (architectural decision, business pivot,
+   significant bug with a learning)
+3. Run `/blog research week-NN` to get a research scaffolding for it
+4. Write from `BLOG_POST_TEMPLATE.md` (read `VOICE_REFERENCE.md` first)
+
+**Each week has two sections**:
+- Auto-generated content (above the marker)
+- Your manual notes (below the marker — preserved on re-run)
+
+---
+
+## Week NN — {YYYY-MM-DD} to {YYYY-MM-DD}: {short-topic}
+
+**Activity**: 🔥 HIGH ({N} commits)
+
+**Why blog-worthy**: {1 sentence — architectural decision / pivot / major feature / etc.}
+
+**Suggested topics** (1–3 narrative angles):
+
+1. **{topic title}** — {why this story matters, business framing}
+2. **{topic title}** — {alternative angle}
+3. **{topic title}** — {if relevant}
+
+**Key commits**:
+- `{hash}` — {subject}
+- `{hash}` — {subject}
+
+**Completed tasks**:
+- {TASK-ID} — {goal}
+
+**Decisions**:
+- {description}
+
+<!-- USER NOTES BELOW — preserved on re-run of /blog timeline -->
+
+_Add your own notes here. Reactions, candidate titles, dilemmas you remember
+from that week, references to external events (conferences, customer
+conversations) not visible in git._
+
+<!-- END USER NOTES -->
+
+---
+
+<!-- ... repeated per blog-worthy week ... -->

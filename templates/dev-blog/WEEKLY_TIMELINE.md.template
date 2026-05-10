@@ -1,0 +1,58 @@
+# {PROJECT_NAME} — Weekly Timeline
+
+> **Generated from git history**
+> Total weeks: {N}
+> Date range: {YYYY-MM-DD} to {YYYY-MM-DD}
+> Last regenerated: {YYYY-MM-DD HH:MM}
+
+---
+
+## How to Read This Timeline
+
+**Activity Levels**:
+
+- 🔥 **HIGH**: Major features, multiple contexts, significant milestones
+  (≥20 commits or ≥3 major features)
+- 📊 **MEDIUM**: Steady development, feature implementation (5–20 commits)
+- 📝 **LOW**: Maintenance, small fixes, documentation (1–5 commits)
+- ⏭ **SKIP**: Boring weeks (routine, formatting, deps) — listed in
+  `BORING_WEEKS.md`
+
+**Classification heuristic**:
+- Activity = (commit count × weight) where:
+  - `feat:` / `feature:` commits = ×2
+  - `fix:` commits = ×1.2
+  - `refactor:` / `chore:` / `docs:` commits = ×1
+  - Architectural decision references (ADR-*, decision: keywords) = +5
+
+**Purpose**: This timeline identifies blog-worthy weeks for detailed posts.
+
+---
+
+<!-- AUTO-GENERATED SECTIONS BELOW — re-running /blog timeline updates these.
+     Do NOT add manual notes here; add them to INTERESTING_WEEKS.md instead. -->
+
+## Week {YYYY-MM-DD} to {YYYY-MM-DD}
+
+**Activity**: {ACTIVITY_LEVEL} ({N} commits)
+
+**Summary**: {one-line summary derived from commit subjects}
+
+**Topics**: {tag, tag, tag}
+
+**Notable commits**:
+
+- `{hash}` — {subject}
+- `{hash}` — {subject}
+
+**Completed tasks** (from `project-orchestration/`):
+
+- {TASK-ID} — {one-line goal}
+
+**Decisions** (if any in commits or task files):
+
+- {description}
+
+---
+
+<!-- ... repeated per week ... -->

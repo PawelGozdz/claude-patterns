@@ -1,0 +1,34 @@
+# {PROJECT_NAME} — Skipped Weeks
+
+> **Weeks classified as LOW/SKIP** — routine work, dependency updates,
+> formatting, type fixes. Listed here for completeness; not blog-worthy.
+> Last regenerated: {YYYY-MM-DD HH:MM}
+
+---
+
+## How a week ends up here
+
+- Only `chore:` / `style:` / `refactor:` (no logic) commits
+- Fewer than 3 commits and none of them are `feat:` / architectural
+- Only dependency bumps
+- Documentation-only weeks
+
+If you disagree with a classification (e.g., a "boring" week actually had
+an important pivot that didn't show in commit messages), move the entry
+manually to `INTERESTING_WEEKS.md` and add notes there. The next
+`/blog timeline` run will respect your manual placement.
+
+---
+
+## Week {YYYY-MM-DD} to {YYYY-MM-DD}
+
+**Activity**: ⏭ SKIP ({N} commits)
+
+**Reason**: {dependency updates / formatting only / no substantive changes}
+
+**Commits**:
+- `{hash}` — {subject}
+
+---
+
+<!-- ... repeated per skipped week ... -->
