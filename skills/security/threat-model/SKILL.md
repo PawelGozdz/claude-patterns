@@ -30,6 +30,62 @@ If required, continue with the steps below before writing any code.
 
 ---
 
+## Level Detection (gradient by task complexity)
+
+Three levels of analysis depth — pick based on task scope. The hook
+`check-security-considerations.js` computes level automatically from
+`canonical-labels.yml`; you can override via `# security-level:` in task file.
+
+| Level | When | Output |
+|-------|------|--------|
+| **1 — minimal** | Typo, doc-only, comment fix, label `[typo]` etc. | Skill SHOULD NOT be invoked. If user runs `/threat-model` on minimal-level task, respond: "This task is classified as minimal (no security analysis needed). If you believe analysis is required, add `# security-level: standard` or `full` to task file and re-run." |
+| **2 — standard** | Single security group match (only `auth` OR only `pii` OR only `public_api` OR only `accessibility`), single bounded context, 1-2 endpoints | Embedded section in task file ONLY (no separate TM file). Skip Steps 3 (DFD) and 6 (LINDDUN unless PII heavy). Use compressed STRIDE table with mitigations inline. |
+| **3 — full** | 2+ security groups match, OR cross-context, OR b2g, OR new bounded context, OR title contains payment/financial/sso/civic/ksc/eidas/sensitive | Full workflow (Steps 1-7 below) + separate TM file in `docs/security/threat-models/TM-{TASK-ID}.md` + canonical section in task file with reference. This is the TS-SUBSCRIPTION-001 pattern. |
+
+### Mode flags (override auto-detection)
+
+```
+/threat-model TS-XXX                 ← auto-detect level from labels
+/threat-model TS-XXX --embedded      ← force level 2 (in-task, no separate file)
+/threat-model TS-XXX --full          ← force level 3 (separate TM file)
+/threat-model TS-XXX --minimal       ← refuse (skill not needed for minimal)
+```
+
+### Standard (level 2) abbreviated workflow
+
+For standard tasks, follow this compact flow instead of full Steps 1-7:
+
+1. **Read task file** — frontmatter (labels, title, story_points)
+2. **Read existing implementation** if relevant context (1-2 file lookups, not full code research)
+3. **Generate embedded section** in task file directly (do NOT create `docs/security/threat-models/TM-*.md`):
+
+```markdown
+## 🔒 Security Pre-Analysis (embedded — Level 2)
+
+**Scope:** {1-2 sentences — what's touched, single context}
+**Lawful basis:** {RODO Art. 6 ground or N/A}
+
+**STRIDE quick check:**
+| | Concern | Mitigation |
+|---|---|---|
+| S | {short} | {short} |
+| T | {short} | {short} |
+| R | {short — audit Tier-1 event?} | {short} |
+| I | {short — error mapper?} | {short} |
+| D | {short — rate limit?} | {short} |
+| E | {short — permissions} | {short} |
+
+**Universal invariants:** {✅/⚠/❌ × 5} — see cross-layer/security-invariants-pattern.md
+
+**Findings:** {0-2 sentence summary, no separate file}
+```
+
+4. **Output to user** — confirm section added, suggest `status: in-progress` is now unblocked.
+
+For full (level 3) tasks, continue with Steps 1-7 below — same as before.
+
+---
+
 ## Step 1: Setup
 
 1. Check whether `docs/security/threat-models/` exists in the project. If not, create the directory.

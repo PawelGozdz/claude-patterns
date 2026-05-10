@@ -86,3 +86,32 @@ suggest_threat_model_when:
   - any_security_group_matches: [auth, pii, cross_context, b2g]
   - new_context: true   # always suggest Domain TM for new bounded contexts
   - never_for: [typo, docs-only, test-fixture-only]
+
+# Level detection — gradient of security analysis depth per task complexity.
+# Hook computes level from task labels + title. Manual override via
+# `# security-level: minimal|standard|full` on first line of task file.
+level_detection:
+  full:                                  # Level 3 — TS-SUBSCRIPTION-001 style
+    description: "Full Feature TM file in docs/security/threat-models/ + canonical task section + multi-agent analysis"
+    triggers:
+      matched_groups_min: 2              # 2+ security groups → escalate to full
+      groups_force_full: [cross_context, b2g, new_context]   # any of these → always full
+      title_keywords: [payment, financial, sso, eidas, ksc, civic, sensitive]
+
+  standard:                              # Level 2 — embedded in task only
+    description: "Embedded ## 🔒 Security Pre-Analysis (~15 lines, mini-STRIDE) inline in task — no separate TM file"
+    triggers:
+      matched_groups_min: 1              # exactly 1 security group
+      # excludes the groups_force_full above (those escalate to full)
+      groups_eligible: [auth, pii, public_api, accessibility]
+
+  minimal:                               # Level 1 — silent
+    description: "No security overhead. Task has standard sections (Goal, Acceptance) only."
+    triggers:
+      matched_groups: 0                  # no security group match
+      labels_force_minimal: [typo, docs-only, copy-only, fix-typo, doc-update, comment]
+
+# Manual override (first line of task file)
+manual_override:
+  pattern: "^#\\s*security-level:\\s*(minimal|standard|full)\\s*"
+  description: "Forces specific level regardless of auto-detection"

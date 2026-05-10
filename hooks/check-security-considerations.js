@@ -164,6 +164,37 @@ function matchSecurityGroups(taskLabels, taskTitle, groups) {
   return matched;
 }
 
+// --- Compute level (minimal | standard | full) ---
+// Heuristics encoded inline (mirror canonical-labels.yml level_detection).
+// If user adds # security-level: <level> as first content line, override applies.
+const FORCE_FULL_GROUPS = ['cross_context', 'b2g', 'new_context'];
+const FULL_TITLE_KEYWORDS = ['payment', 'financial', 'sso', 'eidas', 'ksc', 'civic', 'sensitive'];
+const FORCE_MINIMAL_LABELS = ['typo', 'docs-only', 'copy-only', 'fix-typo', 'doc-update', 'comment'];
+
+function detectManualLevel(content) {
+  const m = content.match(/^#\s*security-level:\s*(minimal|standard|full)\s*$/im);
+  return m ? m[1].toLowerCase() : null;
+}
+
+function computeLevel(taskLabels, taskTitle, matchedGroups) {
+  const labels = (Array.isArray(taskLabels) ? taskLabels : []).map(l => String(l).toLowerCase());
+  const title = String(taskTitle || '').toLowerCase();
+
+  // Force-minimal labels override even matched groups (typo task with `auth` keyword in title)
+  if (labels.some(l => FORCE_MINIMAL_LABELS.includes(l))) return 'minimal';
+
+  // No security match → minimal
+  if (matchedGroups.length === 0) return 'minimal';
+
+  // Force-full conditions
+  if (matchedGroups.some(g => FORCE_FULL_GROUPS.includes(g.name))) return 'full';
+  if (FULL_TITLE_KEYWORDS.some(kw => title.includes(kw))) return 'full';
+  if (matchedGroups.length >= 2) return 'full';
+
+  // Single matched group from auth/pii/public_api/accessibility → standard
+  return 'standard';
+}
+
 // --- Inspect security pre-analysis section ---
 // Looks for either "## 🔒 Security Pre-Analysis" (new) or "## Security Considerations" (legacy)
 function inspectSecuritySection(content) {
@@ -206,20 +237,23 @@ function inspectSecuritySection(content) {
 }
 
 // --- Build messages ---
-function suggestMessage(filePath, matched) {
+function suggestMessage(filePath, matched, level) {
   const checklists = matched.map(m => `      - ${m.checklist}  (matched ${m.via})`).join('\n');
   const groups = matched.map(m => m.name).join(', ');
+  const action = level === 'full'
+    ? '/threat-model {TASK-ID}  (full Feature TM file in docs/security/threat-models/)'
+    : '/threat-model {TASK-ID} --embedded  (embedded section in task file, no separate TM file)';
   return (
-    `\n💡 [security-suggest] Task is security-relevant\n` +
+    `\n💡 [security-suggest] Task is security-relevant — Level ${level.toUpperCase()}\n` +
     `    File: ${filePath}\n` +
-    `    Matched groups: ${groups}\n` +
+    `    Matched groups: ${groups || '(none — title keyword match)'}\n` +
     `    Recommended checklists:\n${checklists}\n` +
-    `    Suggested action: /threat-model {TASK-ID}\n` +
+    `    Suggested action: ${action}\n` +
     `    (Hook will block status: in-progress until Security Pre-Analysis is filled.)\n`
   );
 }
 
-function blockMessage(filePath, matched, preStatus) {
+function blockMessage(filePath, matched, preStatus, level) {
   const groups = matched.map(m => m.name).join(', ');
   const reason = {
     missing: 'Security Pre-Analysis section is missing.',
@@ -227,17 +261,22 @@ function blockMessage(filePath, matched, preStatus) {
     placeholder: `Security Pre-Analysis contains placeholder text: ${(preStatus.triggered || []).join(', ')}.`,
   }[preStatus.status] || 'Security Pre-Analysis is incomplete.';
 
+  const guide = level === 'full'
+    ? 'task-security-first.md (full template — Feature TM in docs/security/threat-models/)'
+    : 'task-standard.md (standard template — embedded section in task file)';
+
   return (
-    `\n🛑 BLOCKED: cannot move security-relevant task to in-progress\n` +
+    `\n🛑 BLOCKED: cannot move security-relevant task (Level ${level.toUpperCase()}) to in-progress\n` +
     `    File: ${filePath}\n` +
-    `    Matched security groups: ${groups}\n` +
+    `    Matched security groups: ${groups || '(title keyword)'}\n` +
     `    Reason: ${reason}\n\n` +
     `    Action:\n` +
-    `      1. Run /threat-model {TASK-ID} to populate the section, OR\n` +
+    `      1. Run /threat-model {TASK-ID}${level === 'standard' ? ' --embedded' : ''} to populate the section, OR\n` +
     `      2. Fill ## 🔒 Security Pre-Analysis manually using\n` +
-    `         claude-patterns/templates/task-security-first.md as guide\n\n` +
+    `         claude-patterns/templates/${guide}\n\n` +
     `    Override (only if intentional):\n` +
-    `      Add line "# security: skip" at top of task file (rare, document why)\n`
+    `      Add line "# security: skip" at top of task file (rare, document why)\n` +
+    `      Or "# security-level: minimal" to downgrade level\n`
   );
 }
 
@@ -278,13 +317,17 @@ async function main() {
 
     const groups = loadCanonicalLabels() || {};
     const matched = matchSecurityGroups(taskLabels, taskTitle, groups);
-    const securityRelevant = matched.length > 0;
+
+    // Compute level: manual override > auto-detect
+    const manualLevel = detectManualLevel(content);
+    const level = manualLevel || computeLevel(taskLabels, taskTitle, matched);
+    const securityRelevant = level !== 'minimal';
 
     const preStatus = inspectSecuritySection(content);
 
     // Trigger 2: hard conditional block — security-relevant + in-progress + pre-analysis incomplete
     if (taskStatus === 'in-progress' && securityRelevant && preStatus.status !== 'ok') {
-      process.stderr.write(blockMessage(filePath, matched, preStatus));
+      process.stderr.write(blockMessage(filePath, matched, preStatus, level));
       process.exit(2);
     }
 
@@ -292,7 +335,7 @@ async function main() {
     //   - If pre-analysis OK: no message (security work is documented)
     //   - If pre-analysis missing/empty/placeholder: suggest checklists + threat-model
     if (securityRelevant && preStatus.status !== 'ok') {
-      process.stderr.write(suggestMessage(filePath, matched));
+      process.stderr.write(suggestMessage(filePath, matched, level));
       // Also fall through to a soft warning unless block mode
       process.exit(MODE === 'block' ? 2 : 0);
     }

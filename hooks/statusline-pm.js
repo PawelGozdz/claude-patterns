@@ -137,8 +137,37 @@ function readActiveTask(projectRoot) {
   return null;
 }
 
+// Detect security level from manual override or first label heuristic.
+// Returns 'L1' | 'L2' | 'L3' | null (no labels match)
+function detectLevel(content, fmText) {
+  // Manual override: # security-level: minimal|standard|full anywhere in content
+  const m = content.match(/^#\s*security-level:\s*(minimal|standard|full)\s*$/im);
+  if (m) {
+    return { minimal: 'L1', standard: 'L2', full: 'L3' }[m[1].toLowerCase()];
+  }
+  // Lightweight heuristic from labels (mirror hook logic but cheap)
+  const labelsMatch = fmText && fmText.match(/^labels:\s*\[([^\]]+)\]/m);
+  const labels = labelsMatch
+    ? labelsMatch[1].split(',').map(s => s.trim().toLowerCase().replace(/^['"]|['"]$/g, ''))
+    : [];
+  const titleMatch = fmText && fmText.match(/^title:\s*(.+)$/m);
+  const title = titleMatch ? titleMatch[1].toLowerCase() : '';
+
+  const FORCE_MINIMAL = ['typo', 'docs-only', 'copy-only', 'fix-typo', 'doc-update', 'comment'];
+  if (labels.some(l => FORCE_MINIMAL.includes(l))) return 'L1';
+
+  const FULL_KEYWORDS = ['payment', 'financial', 'sso', 'eidas', 'ksc', 'civic', 'sensitive', 'cross-context', 'b2g', 'new-context'];
+  const SECURITY_KEYWORDS = ['auth', 'login', 'session', 'jwt', 'pii', 'gdpr', 'rodo', 'permission', 'public', 'endpoint', 'api', 'a11y', 'wcag'];
+
+  if (FULL_KEYWORDS.some(kw => title.includes(kw) || labels.some(l => l.includes(kw)))) return 'L3';
+  const securityHits = SECURITY_KEYWORDS.filter(kw => labels.some(l => l.includes(kw)) || title.includes(kw)).length;
+  if (securityHits >= 2) return 'L3';
+  if (securityHits === 1) return 'L2';
+  return null;
+}
+
 // Count [x] and [ ] items in implementation checklist sections.
-// Returns { checked, total, status }
+// Returns { checked, total, status, level }
 //   status: 'missing'      — no checklist or pre-analysis section
 //           'no-pre-analysis' — checklist present but Pre-Analysis missing
 //           'in-progress'  — has items, partial
@@ -148,33 +177,42 @@ function readSecurityProgress(filePath) {
   let content;
   try { content = fs.readFileSync(filePath, 'utf8'); } catch { return null; }
 
+  const fmMatch = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+  const fmText = fmMatch ? fmMatch[1] : '';
+  const level = detectLevel(content, fmText);
+
   // Detect pre-analysis section
-  const hasPreAnalysis = /^##\s+(?:🔒\s+)?Security\s+(Pre-Analysis|Considerations)\s*$/im.test(content);
+  const hasPreAnalysis = /^##\s+(?:🔒\s+)?Security\s+(Pre-Analysis|Considerations)/im.test(content);
 
-  // Detect implementation checklist section
-  const checklistHeader = content.match(/^##\s+(?:📋\s+)?Implementation\s+Checklist\s*$/im);
-  if (!checklistHeader) {
-    return { checked: 0, total: 0, status: hasPreAnalysis ? 'no-checklist' : 'missing' };
-  }
-
-  // Extract section content until next ## heading
+  // Detect implementation checklist section (L3) OR universal-invariants checklist (L2 embedded)
   const lines = content.split('\n');
-  const startIdx = lines.findIndex(l => /^##\s+(?:📋\s+)?Implementation\s+Checklist/im.test(l));
+  const checklistIdx = lines.findIndex(l => /^##\s+(?:📋\s+)?Implementation\s+Checklist/im.test(l));
+  // For L2 embedded: count items inside Security Pre-Analysis section
+  const preAnalysisIdx = lines.findIndex(l => /^##\s+(?:🔒\s+)?Security\s+(Pre-Analysis|Considerations)/im.test(l));
+
   let checked = 0;
   let total = 0;
-  for (let i = startIdx + 1; i < lines.length; i++) {
-    if (/^##\s/.test(lines[i].trim())) break;
-    const m = lines[i].match(/^\s*-\s+\[([ xX])\]/);
-    if (m) {
-      total++;
-      if (m[1].toLowerCase() === 'x') checked++;
+  let countSection = (startIdx) => {
+    for (let i = startIdx + 1; i < lines.length; i++) {
+      if (/^##\s/.test(lines[i].trim())) break;
+      const m = lines[i].match(/^\s*-\s+\[([ xX])\]/);
+      if (m) {
+        total++;
+        if (m[1].toLowerCase() === 'x') checked++;
+      }
     }
+  };
+
+  if (checklistIdx !== -1) {
+    countSection(checklistIdx);  // L3: full Implementation Checklist
+  } else if (preAnalysisIdx !== -1) {
+    countSection(preAnalysisIdx);  // L2: items inside Pre-Analysis section
   }
 
-  if (total === 0) return { checked: 0, total: 0, status: hasPreAnalysis ? 'no-checklist' : 'missing' };
-  if (!hasPreAnalysis) return { checked, total, status: 'no-pre-analysis' };
-  if (checked === total) return { checked, total, status: 'complete' };
-  return { checked, total, status: 'in-progress' };
+  if (total === 0) return { checked: 0, total: 0, status: hasPreAnalysis ? 'no-checklist' : 'missing', level };
+  if (!hasPreAnalysis) return { checked, total, status: 'no-pre-analysis', level };
+  if (checked === total) return { checked, total, status: 'complete', level };
+  return { checked, total, status: 'in-progress', level };
 }
 
 function formatCost(meta) {
@@ -214,16 +252,20 @@ function main() {
     if (activeTask) {
       parts.push(`🎯 ${activeTask.id}`);
 
-      // Security progress 🛡 N/M (only when active task has known file path)
+      // Security progress 🛡 (with level) N/M (only when active task has known file path)
       if (activeTask.filePath) {
         const sec = readSecurityProgress(activeTask.filePath);
         if (sec) {
-          if (sec.status === 'no-pre-analysis' || sec.status === 'missing') {
-            parts.push(`🛡⚠`);
+          const lvl = sec.level || '';  // 'L1' | 'L2' | 'L3' | ''
+          // L1 (minimal) — never show shield (no security work expected)
+          if (lvl === 'L1') {
+            // silent — no shield indicator
+          } else if (sec.status === 'no-pre-analysis' || sec.status === 'missing') {
+            parts.push(`🛡${lvl}⚠`);
           } else if (sec.status === 'complete') {
-            parts.push(`🛡✓`);
+            parts.push(`🛡${lvl}✓`);
           } else if (sec.status === 'in-progress' && sec.total > 0) {
-            parts.push(`🛡 ${sec.checked}/${sec.total}`);
+            parts.push(`🛡${lvl} ${sec.checked}/${sec.total}`);
           }
           // 'no-checklist' — silent (task has no security checklist)
         }
