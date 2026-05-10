@@ -3,6 +3,7 @@ name: threat-model
 description: Interactive threat modeling workflow using STRIDE + DREAD + LINDDUN. Creates TM-{TASK-ID}.md in docs/security/threat-models/. Use before implementing any new bounded context, feature with PII processing, authentication flow, or cross-context integration.
 origin: LocalHero-patterns
 allowed-tools: Read, Write, Glob, Grep
+model: opus
 effort: high
 ---
 

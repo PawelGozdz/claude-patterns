@@ -69,24 +69,32 @@ designed so that:
 
 Cheap wins on cost (model overrides) + PM-system automation via hooks.
 
-- [ ] **2.1 Skill `model:` / `effort:` overrides**
-  - Read-only / simple (`/pm-status`, `/cost-report`, `/progress`, `/checkpoint`) → `haiku` + `low`
-  - Multi-perspective (`/sprint`, `/reprioritize`, `/tech-debt`, `/pulse`) → `opus` + `max`
-  - Rest → `sonnet`
-  - Investment: ~1h (~25 SKILL.md edits)
-  - Verified in docs: ✅ exists per-turn override
+- [x] **2.1 Skill `model:` / `effort:` overrides** (12 skills updated)
+  - Haiku + low: `pm-status`, `task-tidy`, `claude-updates-watcher` (read-only / deterministic)
+  - Opus + high: `pulse`, `sprint`, `reprioritize`, `tech-debt`, `task-health`,
+    `threat-model`, `security-review`, `cost-aware-llm-pipeline`, `api-design`
+    (multi-perspective / deep analysis)
+  - Rest stays at default (Sonnet) — no need to declare explicitly
 
-- [ ] **2.2 `SessionStart` hook — auto-load TEAM-STATE.md**
-  - In projects with `project-orchestration/`: auto-inject `TEAM-STATE.md` at session start
-  - Eliminates "Claude forgot where we were" on long tmux sessions
-  - Investment: ~1h
-  - Verified in docs: ✅ event exists
+- [x] **2.2 `SessionStart` hook — auto-load TEAM-STATE.md**
+  - New hook `hooks/session-start-pm.js` walks up from cwd looking for
+    `project-orchestration/TEAM-STATE.md`
+  - If found: injects content into Claude context at session start with
+    staleness note (>7d old)
+  - If absent: silent
+  - Registered as second SessionStart entry in `hooks.json` (alongside
+    existing `session-start.js` for session continuity)
 
-- [ ] **2.3 `TaskCompleted` hook — PM auto-housekeeping**
-  - When task file marked done: move to `done/`, update `KANBAN.md`, refresh `TEAM-STATE.md` "Last Completed"
-  - Eliminates manual `/task-tidy`
-  - Investment: ~2h
-  - Verified in docs: ✅ event exists
+- [x] **2.3 PostToolUse hook — PM auto-housekeeping**
+  - New hook `hooks/pm-task-housekeeping.js` fires after Edit/Write/MultiEdit
+  - Detects task file in `project-orchestration/tasks/` with `status: done`
+  - Moves to `completed-tasks/`, appends entry to KANBAN.md "Recently
+    Completed" section
+  - Disable via `PM_NO_AUTO_HOUSEKEEPING=true` (logs warning instead)
+  - Silent on non-task files; never blocks
+  - Used PostToolUse (not the proposed `TaskCompleted` event) because
+    PostToolUse is well-tested, deterministic, and triggers on the actual
+    file mutation that signals "done"
 
 ---
 

@@ -3,7 +3,8 @@ name: reprioritize
 description: "Priority advisor: suggest what to promote, demote, or cut from backlog"
 origin: LocalHero
 allowed-tools: Read, Edit, Glob, Grep, Agent
-effort: medium
+model: opus
+effort: high
 ---
 
 # /reprioritize — Priority Advisor

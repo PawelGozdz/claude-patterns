@@ -55,6 +55,16 @@
           }
         ],
         "description": "Load previous context and detect package manager"
+      },
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$HOME/.claude/hooks/session-start-pm.js\""
+          }
+        ],
+        "description": "Auto-load TEAM-STATE.md for projects with PM-system (silent if absent)"
       }
     ],
     "PostToolUse": [
@@ -87,6 +97,16 @@
           }
         ],
         "description": "Warn about console.log after edits"
+      },
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$HOME/.claude/hooks/pm-task-housekeeping.js\""
+          }
+        ],
+        "description": "Auto-move task files to completed-tasks/ when status: done. Disable via PM_NO_AUTO_HOUSEKEEPING=true. Silent on non-task files."
       }
     ],
     "Stop": [

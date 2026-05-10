@@ -3,7 +3,8 @@ name: task-health
 description: "Deep task audit: blocked, stale, missing deps, format issues, orphaned tasks"
 origin: LocalHero
 allowed-tools: Read, Glob, Grep, Agent
-effort: medium
+model: opus
+effort: high
 ---
 
 # /task-health — Task Audit

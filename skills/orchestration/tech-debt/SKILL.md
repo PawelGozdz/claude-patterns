@@ -3,7 +3,8 @@ name: tech-debt
 description: "Technical debt report: aggregate, trend, prioritize, link to resolution tasks"
 origin: LocalHero
 allowed-tools: Read, Glob, Grep, Write, Agent
-effort: medium
+model: opus
+effort: high
 ---
 
 # /tech-debt — Technical Debt Report

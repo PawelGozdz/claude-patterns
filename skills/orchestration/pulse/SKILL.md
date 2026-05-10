@@ -3,7 +3,8 @@ name: pulse
 description: "Team standup: run @tech-lead + @product-owner (which auto-consults @marketing-strategist + @finance-strategist + @legal-strategist when relevant), update TEAM-STATE.md and KANBAN.md"
 origin: LocalHero
 allowed-tools: Read, Write, Edit, Glob, Grep, Agent
-effort: medium
+model: opus
+effort: high
 ---
 
 # /pulse — Team Standup

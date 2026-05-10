@@ -3,6 +3,7 @@ name: claude-updates-watcher
 description: Fetches Claude Platform release notes, diffs them against the last scan, and reports new features/models/betas/deprecations with a relevance filter for the claude-patterns repo.
 origin: claude-patterns
 allowed-tools: Read, Write, Edit, WebFetch
+model: haiku
 effort: low
 user-invocable: true
 ---

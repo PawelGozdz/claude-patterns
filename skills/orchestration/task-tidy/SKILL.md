@@ -3,6 +3,7 @@ name: task-tidy
 description: "Automated task housekeeping: move done tasks, fix missing fields, validate YAML frontmatter"
 origin: claude-patterns
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Agent
+model: haiku
 effort: low
 ---
 

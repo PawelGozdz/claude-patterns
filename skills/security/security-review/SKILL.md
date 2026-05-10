@@ -3,7 +3,8 @@ name: security-review
 description: Complete security review for NestJS/DDD applications. Covers STRIDE threat analysis, DREAD risk scoring, LINDDUN privacy threats, and code-level security patterns. Use before PR merge or when implementing auth, PII handling, cross-context integration, or new API endpoints.
 origin: LocalHero-patterns
 allowed-tools: Read, Glob, Grep, Bash
-effort: medium
+model: opus
+effort: high
 paths:
   - "**/auth/**"
   - "**/guards/**"

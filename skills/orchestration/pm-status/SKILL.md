@@ -3,6 +3,7 @@ name: pm-status
 description: "Quick PM briefing — reads TEAM-STATE.md only, no agent spawn, instant"
 origin: LocalHero
 allowed-tools: Read
+model: haiku
 effort: low
 ---
 

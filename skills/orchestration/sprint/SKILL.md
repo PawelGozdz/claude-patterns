@@ -3,6 +3,7 @@ name: sprint
 description: "Sprint planning: @tech-lead + @product-owner (which auto-consults @marketing-strategist + @finance-strategist + @legal-strategist when relevant) propose sprint scope"
 origin: LocalHero
 allowed-tools: Read, Glob, Grep, Write, Agent
+model: opus
 effort: high
 ---
 

@@ -2,6 +2,8 @@
 name: api-design
 description: REST API design patterns including resource naming, status codes, pagination, filtering, error responses, versioning, and rate limiting for production APIs.
 origin: ECC
+model: opus
+effort: high
 paths:
   - "**/controllers/**"
   - "**/routes/**"
