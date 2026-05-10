@@ -31,6 +31,34 @@ sprints because it defines where things live.
   - `/orchestrate` Phase 0.5 reads this in addition to project-level patterns
   - Investment: ~1h
 
+- [ ] **1.4 Migration helper script** (`scripts/migrate-project.sh`)
+  - Detects projects with old layout (global-only symlinks, missing `.claude/config/project.yml`, etc.)
+  - Per project: shows diff of what would change, asks confirm, applies upgrade
+  - Modes: `--detect` (read-only audit), `--upgrade <project>` (interactive single project), `--upgrade-all` (batch with per-project confirm)
+  - Idempotent — safe to run multiple times
+  - Old projects keep working without migration (lazy upgrade when user actively touches them)
+  - Investment: ~1h
+
+---
+
+## Backward compatibility
+
+Existing projects keep working without re-configuration. The architecture is
+designed so that:
+
+- Old global symlinks in `~/.claude/agents/` remain functional after Sprint 1
+- New hooks (Sprint 2.2, 2.3, 5.1, 5.2) are no-op when project lacks PM-system
+  or relevant patterns
+- Skill `model:`/`effort:` overrides (Sprint 2.1) propagate via existing
+  symlinks — instant for all projects
+- Selective per-project symlinks (Sprint 1.1) require opt-in re-run of
+  `setup-project.sh` per project
+
+**Required after rollout**:
+1. Run `setup-global.sh` once after Sprint 2 to register new hooks globally
+2. Run `setup-project.sh` (or `migrate-project.sh`) per project lazily —
+   only when actively working on that project
+
 ---
 
 ## Sprint 2 — Cost optimization + PM automation
