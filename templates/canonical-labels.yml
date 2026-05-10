@@ -1,0 +1,88 @@
+# Canonical labels for security-aware task analysis
+#
+# Read by:
+#   - hooks/check-security-considerations.js (suggest checklists + /threat-model)
+#   - skills/orchestration/{sprint,pulse}/SKILL.md (aggregate security gaps)
+#   - skills/orchestration/orchestrate Step 0a (security pre-flight)
+#
+# Match algorithm (in order):
+#   1. Direct match: task label === canonical alias (e.g., `auth` → group `auth`)
+#   2. Substring fallback: task label CONTAINS canonical alias (e.g., `auth-flow` matches `auth`)
+#   3. Title keyword fallback: task title (lowercased) contains canonical alias
+#   4. No match: silent (non-security task — no augment)
+#
+# Each matched group adds the corresponding checklist file to the task's
+# augmented checklist section (security-checklists/<group>.md).
+#
+# Order matters: groups higher in the list have priority for granularity
+# recommendations (e.g., new-context wins over auth alone).
+---
+
+# Granularity hints — how thorough should the threat-model be?
+threat_model_granularity:
+  domain_tm:
+    description: "Full Domain TM file (TM-CONTEXT-{name}.md). Long-lived, evolves with bounded context."
+    triggers:
+      - new-context
+      - new-bc
+      - bounded-context
+      - new-domain
+  feature_tm:
+    description: "Per-task TM file (TM-{TASK-ID}.md), references existing Domain TM."
+    triggers:
+      - cross-context
+      - integration
+      - multi-context
+      - acl
+      - acl-registry
+  embedded:
+    description: "Inline ## 🔒 Security Pre-Analysis in task file. Default for single-context features."
+    triggers: []  # default when other groups match but not the above
+
+# Security groups — each maps to a checklist file
+security_groups:
+  auth:
+    aliases: [auth, authentication, authorization, login, session, jwt, sso, oauth, mfa, 2fa, password, signup, signin, logout]
+    checklist: security-checklists/auth.md
+    description: "Authentication, authorization, session management"
+
+  pii:
+    aliases: [pii, personal-data, gdpr, rodo, geo, location, address, phone, email, payment, card, ssn, pesel, nip, regon, dpia]
+    checklist: security-checklists/pii.md
+    description: "PII processing, GDPR/RODO compliance, sensitive data handling"
+
+  cross_context:
+    aliases: [cross-context, integration, multi-context, acl, acl-registry, bounded-context-integration]
+    checklist: security-checklists/cross-context.md
+    description: "Cross-bounded-context integration, ACL Registry, event flows"
+
+  public_api:
+    aliases: [api, endpoint, public, public-api, b2c, public-facing]
+    checklist: security-checklists/public-api.md
+    description: "Public-facing endpoints, rate limiting, anti-abuse"
+
+  accessibility:
+    aliases: [ui, frontend, accessibility, a11y, wcag, b2c-ui, b2g-ui, public-ui, civic-ui]
+    checklist: security-checklists/accessibility.md
+    description: "WCAG 2.1 AA, keyboard navigation, screen reader support — required for B2G"
+
+  b2g:
+    aliases: [b2g, government, civic, public-service, ministry, urzad, samorzad, gmina, kbnr, ksc]
+    checklist: security-checklists/b2g.md
+    description: "B2G/government surface — Polish regulatory + accessibility + audit trail mandatory"
+
+# Universal — always included regardless of labels
+universal:
+  checklist: security-checklists/universal.md
+  description: "5 invariants every NestJS-DDD task must respect, plus B2G-readiness items (audit trail, data sovereignty)"
+
+# Project-specific augments — loaded from project's .claude/knowledge/patterns/security/
+# These are NOT in claude-patterns; setup-project.sh links them per project
+project_augments:
+  description: "Project-specific items appended after universal+groups. Path: .claude/knowledge/patterns/security/lh-checklist.md (or equivalent)"
+
+# When to suggest /threat-model
+suggest_threat_model_when:
+  - any_security_group_matches: [auth, pii, cross_context, b2g]
+  - new_context: true   # always suggest Domain TM for new bounded contexts
+  - never_for: [typo, docs-only, test-fixture-only]
