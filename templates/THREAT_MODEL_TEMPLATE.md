@@ -1,4 +1,9 @@
 # Threat Model Template
+> **Generic English version.** Projects may localize and customize this template
+> (e.g., translate, add project-specific bounded contexts, reference internal
+> ADRs/strategies). When customizing, keep this version as the upstream
+> reference and add a project-side note pointing back here.
+>
 > Copy this file to `docs/security/threat-models/TM-{TASK-ID}.md` and fill it in.
 > Trigger: see decision tree in the `/threat-model` skill.
 > Skill: `/threat-model` guides you through this file interactively.

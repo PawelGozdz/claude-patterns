@@ -36,6 +36,25 @@ function isoTimestamp() {
   return new Date().toISOString().replace(/[:.]/g, '-').replace(/T/, '_').replace(/Z$/, '');
 }
 
+const KEEP_SNAPSHOTS = parseInt(process.env.PM_SNAPSHOT_KEEP || '30', 10);
+
+function rotateSnapshots(snapshotsDir, keep) {
+  try {
+    const files = fs.readdirSync(snapshotsDir)
+      .filter(f => f.startsWith('team-state_') && f.endsWith('.md'))
+      .map(f => ({ name: f, path: path.join(snapshotsDir, f) }))
+      .sort((a, b) => a.name.localeCompare(b.name)); // ISO names sort chronologically
+    if (files.length <= keep) return 0;
+    const toDelete = files.slice(0, files.length - keep);
+    for (const f of toDelete) {
+      try { fs.unlinkSync(f.path); } catch {}
+    }
+    return toDelete.length;
+  } catch {
+    return 0;
+  }
+}
+
 function main() {
   const projectRoot = findProjectRoot(process.cwd());
   if (!projectRoot) {
@@ -57,7 +76,14 @@ function main() {
       `<!-- Source: project-orchestration/TEAM-STATE.md -->\n\n`;
 
     fs.writeFileSync(targetPath, header + content, 'utf8');
-    console.error(`[pre-compact-pm] Snapshot saved: ${path.relative(projectRoot, targetPath)}`);
+
+    // Rotate: keep newest N (default 30, override via PM_SNAPSHOT_KEEP env var)
+    const removed = rotateSnapshots(snapshotsDir, KEEP_SNAPSHOTS);
+    const rotateNote = removed > 0 ? `, rotated ${removed} old` : '';
+
+    console.error(
+      `[pre-compact-pm] Snapshot saved: ${path.relative(projectRoot, targetPath)}${rotateNote}`
+    );
   } catch (err) {
     console.error(`[pre-compact-pm] Failed to snapshot: ${err.message}`);
   }
