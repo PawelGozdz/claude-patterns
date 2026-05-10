@@ -209,11 +209,58 @@ GDPR obligations triggered by LINDDUN findings:
 
 ---
 
-## Step 7: Output
+## Step 7: Output — TM file + task file update
+
+### 7a. Save the TM file
 
 Save the completed threat model file as `docs/security/threat-models/TM-{TASK-ID}.md`.
 
-Provide a summary with three sections:
+### 7b. Update the task file with a canonical reference section (MANDATORY)
+
+Find the related task file in `project-orchestration/tasks/` (matching `{TASK-ID}` prefix). Insert this section at the top of the task body — after the frontmatter and the immediate header lines (Status/Priority/SP/Sprint/Related), before the first content `## ` heading:
+
+```markdown
+---
+
+## 🔒 Security Pre-Analysis
+
+**Granularity:** {Domain TM | Feature TM | Embedded}
+**TM file:** [`docs/security/threat-models/TM-{TASK-ID}.md`](../../docs/security/threat-models/TM-{TASK-ID}.md)
+**Status:** DRAFT — pending Tech Lead sign-off
+**Date:** {YYYY-MM-DD}
+
+**Findings summary** (z TM file):
+- {N} CRITICAL threats (DREAD ≥ 12) — see TM Sekcja 5
+- {M} HIGH threats (DREAD 9–11)
+- Mitigations integrated into scope: {list components added/modified}
+- Story points adjustment: {+X SP for security components, if any}
+
+**PII categories:** {list — e.g., email, payment_method_id, location} or "none"
+**Lawful basis (RODO Art. 6):** {contract / consent / legal obligation / legitimate interest / public task / vital interest / N/A}
+**DPIA required:** {YES (Art. 35 grounds: ...) | NO (rationale)}
+
+**Audit trail:** {Tier-1 events emitted per project's audit ADR — list events}
+**Data residency:** {PL / EU / outside (with rationale)}
+
+**Universal invariants reflected in scope:**
+- {✅/⚠/❌} No `userId` in Zod schemas
+- {✅/⚠/❌} `@Auth()` + permissions on every endpoint
+- {✅/⚠/❌} Rate limit fail-closed
+- {✅/⚠/❌} No `error.message` in HTTP responses
+- {✅/⚠/❌} No PII in logger calls
+
+---
+```
+
+The exact heading `## 🔒 Security Pre-Analysis` is **load-bearing**: hook `check-security-considerations.js` searches for this (or legacy `## Security Considerations`) to permit `status: in-progress`. Do NOT use translated headings (e.g., `## Wyniki Threat Model` in PL) — those work as a Polish-language summary section but the canonical security gate must be present too.
+
+### 7c. Output to user
+
+Provide a summary with four sections:
+
+**Files updated**
+- `docs/security/threat-models/TM-{TASK-ID}.md` (created/overwritten)
+- `project-orchestration/tasks/{matching-task-file}.md` (added `## 🔒 Security Pre-Analysis` section)
 
 **Critical Threats** — list all findings with DREAD score ≥ 12. Each must have an assigned task and deadline before the threat model is approved.
 
@@ -222,3 +269,9 @@ Provide a summary with three sections:
 **Recommended Mitigations** — for all High and Critical findings, propose a concrete implementation approach referencing patterns from `.claude/knowledge/patterns/` where applicable.
 
 The threat model status must remain DRAFT until all Critical findings have an assigned task. Status transitions to APPROVED after Tech Lead sign-off.
+
+**Next steps for user:**
+- Review the TM file and `## 🔒 Security Pre-Analysis` section in task
+- Confirm Granularity and findings with Tech Lead
+- After sign-off: status DRAFT → APPROVED in TM file frontmatter
+- Task is now ready for `status: in-progress` (hook will pass)
