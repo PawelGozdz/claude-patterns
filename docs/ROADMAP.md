@@ -10,34 +10,38 @@ Implementation plan for the architecture documented in
 
 ## Sprint 1 — Foundation
 
-Selective per-project content + per-stack defaults. Required before subsequent
-sprints because it defines where things live.
+> **Reality check (2026-05-10):** Research showed Sprint 1.1 and 1.4 are
+> ~75% already implemented in current `setup-project.sh` / `setup-global.sh` /
+> `migrate-v2.sh`. The actual gap is **1.3** (`_stack-defaults` + orchestrator
+> update) — that's what unblocks declarative "always-include patterns per
+> stack" and security integration.
 
-- [ ] **1.1 Selective per-project symlinks in `setup-project.sh`**
-  - Today: all stack agents leak globally (NestJS project sees flutter agents in picker)
-  - Target: globals only for universal (tech-lead, product-owner, Explore, claude-code-guide)
-  - Stack-specific symlinks go to per-project `.claude/agents/`, `.claude/skills/`, `.claude/commands/`
-  - Investment: ~3-4h
+- [x] **1.1 Selective per-project symlinks in `setup-project.sh`** (already done)
+  - Universal agents → globally via `setup-global.sh`
+  - Stack agents → per-project `.claude/agents/` via `setup-project.sh`
+  - Patterns → per-project selective (per stack_profile in project.yml)
+  - Skills → per-project (per skills list in project.yml)
+  - Stale symlink cleanup when stack changes
+  - **Outstanding (optional, low priority):** per-project `.claude/commands/` and
+    `.claude/output-styles/` are not auto-symlinked but Claude Code reads them
+    natively — projects can opt-in by placing files
 
-- [ ] **1.2 Stack-presets as declarative YAML**
-  - Location: `templates/stack-presets/<stack>.yml`
-  - Each preset declares: which `claude-patterns/agents/stacks/<x>/`, `skills/`, `commands/` to symlink per-project
-  - Replaces ad-hoc copy logic in `setup-project.sh`
+- [-] **1.2 Stack-presets as declarative YAML** (deferred — refactor only)
+  - Logic exists today but hard-coded as bash `case` in `setup-project.sh`
+  - Refactor to `templates/stack-presets/<stack>.yml` would clean it up
+  - **Defer until adding a 7th stack profile** — current 6 work fine in bash
+
+- [ ] **1.3 Create `patterns/_stack-defaults/<stack>.yml` + orchestrator integration** ← **PRIORITY**
+  - Schema: `always_include: [list of pattern paths relative to claude-patterns/patterns/]`
+  - One YAML per stack (start with nestjs-ddd, others get stub)
+  - Update `/orchestrate` Phase 0.5 to read stack-defaults YAML and merge into `{PATTERNS}` list
+  - Unblocks security integration (Sprint 4) and declarative per-stack defaults
   - Investment: ~2h
 
-- [ ] **1.3 Create `patterns/_stack-defaults/<stack>.yml` for each stack**
-  - One YAML per stack (nestjs-ddd, sveltekit, flutter, nextjs, python)
-  - Lists always-include patterns from `claude-patterns/patterns/`
-  - `/orchestrate` Phase 0.5 reads this in addition to project-level patterns
-  - Investment: ~1h
-
-- [ ] **1.4 Migration helper script** (`scripts/migrate-project.sh`)
-  - Detects projects with old layout (global-only symlinks, missing `.claude/config/project.yml`, etc.)
-  - Per project: shows diff of what would change, asks confirm, applies upgrade
-  - Modes: `--detect` (read-only audit), `--upgrade <project>` (interactive single project), `--upgrade-all` (batch with per-project confirm)
-  - Idempotent — safe to run multiple times
-  - Old projects keep working without migration (lazy upgrade when user actively touches them)
-  - Investment: ~1h
+- [x] **1.4 Migration helper script** (already done as `migrate-v2.sh` + `migrate-all.sh`)
+  - 238-line `migrate-v2.sh` handles `.claude/rules/`, `.mcp.json`, `.worktreeinclude`, CLAUDE.md regen
+  - `migrate-all.sh` for batch
+  - **Outstanding:** verify idempotency with newest layout, document modes in README — defer to follow-up
 
 ---
 

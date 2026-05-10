@@ -76,7 +76,58 @@ Read(".claude/knowledge/patterns/README.md")
 This is the index of ~68 patterns grouped by layer (domain, application,
 infrastructure, architecture, testing, cross-layer, orchestration).
 
-### Step 0.5b — Build a scoped pattern list
+### Step 0.5a' — Read stack defaults (`_stack-defaults/<stack>.yml`)
+
+```
+Read(".claude/knowledge/patterns/_stack-defaults/{stack_profile}.yml")
+```
+
+This file declares **always-include patterns** for the stack (e.g.,
+`security-invariants-pattern.md`, `safe-error-propagation-pattern.md`) plus
+**trigger-based includes** (extra patterns when task keywords match).
+
+If the file does not exist for the current `stack_profile`, skip this step
+and rely on Step 0.5b/0.5c heuristics. Stacks without `_stack-defaults`
+yaml are valid — only `nestjs-ddd` ships one today; others may follow.
+
+**Schema** (verify by reading the file):
+```yaml
+stack_profile: nestjs-ddd
+always_include:
+  - cross-layer/conventions-pattern.md
+  - cross-layer/security-invariants-pattern.md
+  # ...
+trigger_includes:
+  - keywords: [auth, permission, login]
+    include: [cross-layer/security-invariants-pattern.md]
+  - keywords: [aggregate, entity, value object]
+    include: [domain/aggregate-pattern.md, domain/value-object-pattern.md]
+```
+
+**How to use the parsed file**:
+
+1. **Always-include**: every path in `always_include` goes into `{PATTERNS}`
+   regardless of task description. Translate paths:
+   `cross-layer/foo.md` → `.claude/knowledge/patterns/cross-layer/foo.md`.
+
+2. **Trigger-include**: lowercase the user's request. For each entry in
+   `trigger_includes`, if any keyword in `keywords` is a substring of the
+   request, add every path in `include` to `{PATTERNS}`.
+
+3. **Deduplicate**: a pattern appearing in both `always_include` and a
+   matched trigger should appear once in the final `{PATTERNS}` list.
+
+**Why this exists**: declaring per-stack defaults in a YAML file (instead
+of hard-coding them in this skill) lets each stack evolve independently
+and lets project-specific security/compliance patterns become first-class
+without modifying the orchestrator. See `docs/ARCHITECTURE.md` for the
+extension model.
+
+### Step 0.5b — Build a scoped pattern list (augment with keyword heuristics)
+
+The stack-defaults YAML covers the common cases. Step 0.5b adds **task-scoped**
+patterns based on keyword analysis — these complement (do not replace) the
+always-include list.
 
 From the user's request, identify which **layers** are touched:
 
@@ -116,20 +167,29 @@ list **explicit, file-by-file, with full paths**:
 ```
 📚 Pattern Discovery — stack: {stack_profile}, layers touched: {layers}
 
+Sources combined:
+  • _stack-defaults/{stack_profile}.yml: N always-include + M trigger-matched
+  • keyword heuristics (Step 0.5b): K layer-scoped
+  • project-local patterns scan: P project-specific
+
 Canonical patterns I will pass to every sub-agent:
-  1. .claude/knowledge/patterns/cross-layer/conventions-pattern.md  (always)
-  2. .claude/knowledge/patterns/cross-layer/domain-errors-pattern.md
-  3. .claude/knowledge/patterns/cross-layer/safe-error-propagation-pattern.md
-  4. .claude/knowledge/patterns/domain/aggregate-pattern.md
-  5. .claude/knowledge/patterns/domain/value-object-pattern.md
-  6. .claude/knowledge/patterns/application/command-handler-pattern.md
-  7. .claude/knowledge/patterns/testing/testing-pyramid-pattern.md
+  1. .claude/knowledge/patterns/cross-layer/conventions-pattern.md           [stack-default: always]
+  2. .claude/knowledge/patterns/cross-layer/security-invariants-pattern.md   [stack-default: always]
+  3. .claude/knowledge/patterns/cross-layer/safe-error-propagation-pattern.md [stack-default: always]
+  4. .claude/knowledge/patterns/cross-layer/domain-errors-pattern.md         [stack-default: always]
+  5. .claude/knowledge/patterns/cross-layer/logger-pattern.md                [stack-default: always]
+  6. .claude/knowledge/patterns/domain/aggregate-pattern.md                  [trigger: aggregate]
+  7. .claude/knowledge/patterns/testing/testing-pyramid-pattern.md           [keyword: test]
   ...
 Total: N patterns
 
 ➡️ Each agent prompt below will include the **literal list above** (full
    paths). I will NOT use abstract references like "the patterns".
 ```
+
+The `[source]` annotation in brackets is informational only — it helps the
+user understand *why* a pattern is in scope. The agent prompts get only
+the bare path list.
 
 **Reasons this output is mandatory**:
 - User sees what patterns are in scope before any code is written.

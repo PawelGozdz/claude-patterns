@@ -1,0 +1,65 @@
+# Stack defaults for nestjs-ddd
+#
+# Read by /orchestrate Phase 0.5 — patterns listed in `always_include` are
+# merged into every {PATTERNS} block regardless of task scope. Use sparingly:
+# only patterns that apply to EVERY implementation/verification task for this
+# stack. Task-scoped patterns are still discovered via Phase 0.5b layer keywords.
+#
+# Schema:
+#   stack_profile: <profile name, must match project.yml stack_profile>
+#   always_include:
+#     - <path relative to claude-patterns/patterns/>
+#   trigger_includes:
+#     - keywords: [<word>, <word>]
+#       include: [<pattern path>]
+#
+# Path conventions:
+#   - Paths are relative to claude-patterns/patterns/ (NOT .claude/knowledge/patterns/)
+#   - Orchestrator translates them to .claude/knowledge/patterns/<path> for the agent prompt
+#   - Use forward slashes
+#
+---
+stack_profile: nestjs-ddd
+
+always_include:
+  # Naming, file conventions, layer separation rules
+  - cross-layer/conventions-pattern.md
+
+  # Security invariants every controller/handler/service must respect
+  - cross-layer/security-invariants-pattern.md
+
+  # Error propagation discipline (no leaking, no swallowing)
+  - cross-layer/safe-error-propagation-pattern.md
+  - cross-layer/domain-errors-pattern.md
+
+  # Logger usage (PII filtering, structured logging)
+  - cross-layer/logger-pattern.md
+
+trigger_includes:
+  # When task mentions auth/permission/PII keywords, also include these
+  - keywords: [auth, authentication, authorization, permission, login]
+    include:
+      - cross-layer/security-invariants-pattern.md
+
+  # Domain modeling tasks
+  - keywords: [aggregate, entity, value object, domain event, specification, policy]
+    include:
+      - domain/aggregate-pattern.md
+      - domain/value-object-pattern.md
+
+  # CQRS tasks
+  - keywords: [handler, command, query, saga, cqrs]
+    include:
+      - application/command-handler-pattern.md
+      - application/query-handler-pattern.md
+
+  # Persistence tasks
+  - keywords: [repository, migration, schema, transaction]
+    include:
+      - infrastructure/repository-pattern.md
+      - architecture/transactional-outbox-pattern.md
+
+  # Testing tasks
+  - keywords: [test, fixture, mock, coverage, e2e]
+    include:
+      - testing/testing-pyramid-pattern.md

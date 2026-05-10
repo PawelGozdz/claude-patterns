@@ -112,7 +112,9 @@ PROJECT_LANGUAGE=$(yml_get "project.language")
 STACK_PROFILE=$(yml_get "project.stack_profile")
 
 # Core pattern directories shared across all stacks (stack-agnostic)
-CORE_PATTERN_DIRS=(architecture testing cross-layer orchestration)
+# _stack-defaults is also shared — orchestrator reads it to discover
+# always-include patterns per stack profile.
+CORE_PATTERN_DIRS=(architecture testing cross-layer orchestration _stack-defaults)
 
 # DDD-specific pattern directories (nestjs-ddd only)
 DDD_PATTERN_DIRS=(domain application infrastructure)
