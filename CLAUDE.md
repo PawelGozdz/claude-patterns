@@ -410,6 +410,10 @@ The `skills/marketing/` and `tools/marketing/` folders are **vendored** from
 
 ## Architecture Decisions
 
+> **Full architecture reference**: see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
+> **Decision records**: see [`docs/adr/`](docs/adr/)
+> **Implementation roadmap**: see [`docs/ROADMAP.md`](docs/ROADMAP.md)
+
 ### Why symlinks, not npm packages?
 
 Symlinks give instant propagation: edit once, all projects see it immediately.
@@ -453,6 +457,9 @@ produces mediocre analysis in both dimensions.
 |------|---------|
 | `README.md` | Main documentation + setup guide |
 | `METADATA.yml` | Repository version + metadata |
+| `docs/ARCHITECTURE.md` | Full architecture reference (3-layer model, override matrix, examples) |
+| `docs/adr/` | Architecture Decision Records (rationale + alternatives rejected) |
+| `docs/ROADMAP.md` | Implementation plan (sprintwise, status-tracked) |
 | `agents/README.md` | Agent catalog + setup guide |
 | `patterns/README.md` | Pattern index (67 patterns) |
 | `patterns/orchestration/project-management-system.md` | PM system full docs |
