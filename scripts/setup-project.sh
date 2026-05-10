@@ -333,45 +333,42 @@ else
 fi
 echo ""
 
-# --- 4. Skills symlinks (based on skills list) ---
-echo -e "${BLUE}[4/8] Skills${NC}"
-SKILLS_DIR="$KNOWLEDGE_DIR/skills"
-mkdir -p "$SKILLS_DIR"
+# --- 4. Skills configuration (collect categories from project.yml) ---
+echo -e "${BLUE}[4/8] Skills configuration${NC}"
+# Note: skills are exposed natively in [4b/8] via flat .claude/skills/<name>/.
+# We keep this step only to (a) collect the configured category list and (b)
+# remove the legacy .claude/knowledge/skills/ directory if it still exists,
+# since the nested layout was duplicating discovery (Claude Code recursively
+# scanned both locations, listing each skill twice).
 
-# Collect configured skill categories
 CONFIGURED_SKILLS=()
 while IFS= read -r category; do
   [[ -z "$category" ]] && continue
   CONFIGURED_SKILLS+=("$category")
-
-  SKILL_SOURCE="$PATTERNS_REPO/skills/$category"
-  if [[ -d "$SKILL_SOURCE" ]]; then
-    ensure_symlink "$SKILLS_DIR/$category" "$SKILL_SOURCE" "skills/$category"
-  else
-    echo -e "  ${YELLOW}Warning:${NC} Skill category '$category' not found in repo"
-  fi
 done < <(yml_list "skills")
 
 if [[ ${#CONFIGURED_SKILLS[@]} -eq 0 ]]; then
-  echo -e "  ${YELLOW}Skipped:${NC} No skills configured in project.yml"
+  echo -e "  ${YELLOW}No skills configured in project.yml${NC}"
 fi
 
-# Clean up stale skill symlinks (categories removed from project.yml)
-for link in "$SKILLS_DIR"/*/; do
-  [[ -L "${link%/}" ]] || continue
-  link_name=$(basename "${link%/}")
-  found=false
-  for cat in "${CONFIGURED_SKILLS[@]}"; do
-    if [[ "$cat" == "$link_name" ]]; then
-      found=true
-      break
+# Cleanup: remove legacy .claude/knowledge/skills/ (replaced by flat .claude/skills/)
+LEGACY_KNOWLEDGE_SKILLS="$KNOWLEDGE_DIR/skills"
+if [[ -d "$LEGACY_KNOWLEDGE_SKILLS" ]]; then
+  # Remove all symlinks inside (categories pointing to claude-patterns/skills/<cat>/)
+  removed=0
+  for link in "$LEGACY_KNOWLEDGE_SKILLS"/*/; do
+    if [[ -L "${link%/}" ]]; then
+      rm "${link%/}"
+      removed=$((removed + 1))
     fi
   done
-  if [[ "$found" == "false" ]]; then
-    echo -e "  ${YELLOW}Removing stale:${NC} skills/$link_name"
-    rm "${link%/}"
+  # Remove dir if empty (it should be after symlink cleanup)
+  if rmdir "$LEGACY_KNOWLEDGE_SKILLS" 2>/dev/null; then
+    echo -e "  ${YELLOW}Removed:${NC} legacy knowledge/skills/ ($removed symlinks; replaced by flat .claude/skills/)"
+  else
+    echo -e "  ${YELLOW}Cleaned:${NC} $removed legacy knowledge/skills/ symlinks (dir kept — has non-symlink content)"
   fi
-done
+fi
 
 echo ""
 
