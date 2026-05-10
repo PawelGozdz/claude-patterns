@@ -30,10 +30,17 @@ Implements DOMAIN & APPLICATION layers following DDD and CQRS patterns.
 
 **Before your FIRST Write/Edit/MultiEdit call in this task, you MUST:**
 
+0. **If invoked WITHOUT orchestrator context** (fast-path / direct invocation):
+   read `.claude/knowledge/patterns/README.md` to discover what categories of
+   patterns exist in THIS project, **including any project-specific rules**
+   under `security/`, `conventions/`, etc. The orchestrator-supplied
+   `{PATTERNS}` list is canonical when present, but in fast-path you must
+   discover patterns yourself.
+
 1. **Read patterns from your KB list (below) that apply to the layer you're touching.**
    Domain work → `domain/*-pattern.md`. Application work → `application/*-pattern.md`.
    Cross-cutting → `cross-layer/conventions-pattern.md`, `cross-layer/domain-errors-pattern.md`,
-   `cross-layer/safe-error-propagation-pattern.md` ALWAYS.
+   `cross-layer/safe-error-propagation-pattern.md`, `cross-layer/security-invariants-pattern.md` ALWAYS.
 
 2. **Print to your output: `📚 Patterns read: [list of file paths]`** before any Write.
 

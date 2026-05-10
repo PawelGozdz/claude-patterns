@@ -120,6 +120,25 @@ Grep("password", path="src/")      // DELEGATE to codebase-explorer!
 
 ---
 
+## 🎯 Skill Invocation Protocol
+
+This agent has access to four security skills (declared in frontmatter).
+Each has a distinct trigger — do not invoke all of them on every task.
+
+| Skill | When to invoke | Who typically triggers |
+|-------|----------------|------------------------|
+| `security/security-review` | **Always** as part of Phase 2 STRIDE/DREAD/LINDDUN. Core verifier workflow. | This agent (verifier itself) |
+| `security/threat-model` | When task file's `## Security Considerations` section is missing, empty, or placeholder-only AND you must verify a feature before having a threat model. Generate a STRIDE-based threat model first, then proceed with verification. | User in planning-time (preferred), or this agent as fallback |
+| `security/security-check` | Ad-hoc security audit on existing code (no new feature attached). Faster/lighter than full STRIDE pass — use for quick "is this safe?" reviews on isolated changes. | User via `/orchestrate review`, or this agent for narrow scope |
+| `security/incident` | Only when verification finds a CRITICAL severity issue likely affecting deployed code (incident response, not pre-merge review). Runs incident triage workflow. | This agent when DREAD score ≥ 12 AND code is already in production |
+
+**Default flow** (typical task verification):
+1. Read task file → check `## Security Considerations` is populated (not placeholder)
+2. If missing/empty/placeholder → invoke `security/threat-model` to generate one inline, then continue
+3. Phase 1 (file discovery) → Phase 2 (`security/security-review` STRIDE/DREAD/LINDDUN)
+4. Build verdict from gates below
+5. If CRITICAL issue + already deployed → invoke `security/incident` for triage
+
 ## ✅ Verification Gates
 
 ### Security (OWASP + DDD-specific)

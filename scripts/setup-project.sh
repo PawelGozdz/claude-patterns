@@ -197,6 +197,20 @@ case "$STACK_PROFILE" in
     fi
     ;;
 esac
+
+# Patterns README — discovery hub read by orchestrator Phase 0.5a and
+# direct-invoked implementers. Copy from template if absent; preserve
+# project-edited version if present.
+PATTERNS_README="$KNOWLEDGE_DIR/patterns/README.md"
+PATTERNS_README_TEMPLATE="$PATTERNS_REPO/templates/knowledge-patterns-readme-template.md"
+if [[ -f "$PATTERNS_README" ]]; then
+  echo -e "  ${YELLOW}Already exists:${NC} patterns/README.md (preserved)"
+elif [[ -f "$PATTERNS_README_TEMPLATE" ]]; then
+  cp "$PATTERNS_README_TEMPLATE" "$PATTERNS_README"
+  echo -e "  ${GREEN}Created:${NC} patterns/README.md (from template — discovery hub for agents)"
+else
+  echo -e "  ${YELLOW}Skipped:${NC} patterns/README.md template missing"
+fi
 echo ""
 
 # --- 2. Patterns-local directory ---

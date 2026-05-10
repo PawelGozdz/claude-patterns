@@ -1,0 +1,24 @@
+# Stack defaults for typescript-library (public API focused)
+#
+# See _stack-defaults/README.md for schema details.
+# Read by /orchestrate Phase 0.5a' for projects with stack_profile: typescript-library
+#
+---
+stack_profile: typescript-library
+
+always_include:
+  # Universal conventions — always
+  - cross-layer/conventions-pattern.md
+  # Public API stability is non-negotiable for libraries
+  - typescript-library/backward-compatibility-pattern.md
+  # Build/publish flow affects every release
+  - typescript-library/build-publish-pattern.md
+
+trigger_includes:
+  - keywords: [test, vitest, jest, mock]
+    include:
+      - testing/testing-pyramid-pattern.md
+
+  - keywords: [export, public api, surface, types, generics]
+    include:
+      - typescript-library/backward-compatibility-pattern.md

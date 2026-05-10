@@ -34,6 +34,13 @@ ADR-0035 testing pyramid.
 
 **Before your FIRST Write/Edit/MultiEdit call in this task, you MUST:**
 
+0. **If invoked WITHOUT orchestrator context** (fast-path / direct invocation):
+   read `.claude/knowledge/patterns/README.md` to discover what categories of
+   patterns exist in THIS project, **including any project-specific rules**
+   under `security/`, `conventions/`, etc. The orchestrator-supplied
+   `{PATTERNS}` list is canonical when present, but in fast-path you must
+   discover patterns yourself.
+
 1. **Read patterns from your KB** that apply to the layer you're touching.
    Repository → `infrastructure/repository-pattern.md`. Controller/schema →
    `infrastructure/controller-schema-pattern.md`. Mapper →
@@ -45,6 +52,7 @@ ADR-0035 testing pyramid.
    - `cross-layer/conventions-pattern.md` (file naming, CQRS folder layout)
    - `cross-layer/domain-errors-pattern.md` (Result API)
    - `cross-layer/safe-error-propagation-pattern.md` (CRITICAL: error leakage to HTTP)
+   - `cross-layer/security-invariants-pattern.md` (CRITICAL: 5 invariants every NestJS-DDD project must respect)
 
 3. **Print: `📚 Patterns read: [list]`** before any Write.
 

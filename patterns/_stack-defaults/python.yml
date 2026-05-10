@@ -1,0 +1,29 @@
+# Stack defaults for python (FastAPI / modular monolith)
+#
+# See _stack-defaults/README.md for schema details.
+# Read by /orchestrate Phase 0.5a' for projects with stack_profile: python or python-*
+#
+---
+stack_profile: python
+
+always_include:
+  # Universal conventions — always
+  - cross-layer/conventions-pattern.md
+  # Layered architecture is foundational
+  - python/layered-architecture-pattern.md
+  # Typing discipline (mypy/pyright) — applies to every Python file
+  - python/typing-patterns.md
+
+trigger_includes:
+  - keywords: [endpoint, fastapi, route, controller, request]
+    include:
+      - python/fastapi-patterns.md
+
+  - keywords: [async, await, asyncio, coroutine]
+    include:
+      - python/async-patterns.md
+
+  - keywords: [test, pytest, mock, fixture]
+    include:
+      - python/testing-pattern.md
+      - testing/testing-pyramid-pattern.md

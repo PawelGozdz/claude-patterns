@@ -1,0 +1,28 @@
+# Stack defaults for sveltekit
+#
+# See _stack-defaults/README.md for schema details.
+# Read by /orchestrate Phase 0.5a' for projects with stack_profile: sveltekit
+#
+---
+stack_profile: sveltekit
+
+always_include:
+  # Universal conventions — always
+  - cross-layer/conventions-pattern.md
+  # Component lifecycle, routing, data flow basics
+  - sveltekit/component-pattern.md
+  - sveltekit/routing-loading-pattern.md
+
+trigger_includes:
+  - keywords: [rune, $state, $derived, $effect, reactivity]
+    include:
+      - sveltekit/svelte5-runes-pattern.md
+
+  - keywords: [load, fetch, server data, +page.server]
+    include:
+      - sveltekit/data-fetching-pattern.md
+
+  - keywords: [test, vitest, playwright, e2e]
+    include:
+      - sveltekit/testing-pattern.md
+      - testing/testing-pyramid-pattern.md

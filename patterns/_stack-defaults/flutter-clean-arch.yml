@@ -1,0 +1,37 @@
+# Stack defaults for flutter-clean-arch
+#
+# See _stack-defaults/README.md for schema details.
+# Read by /orchestrate Phase 0.5a' for projects with stack_profile: flutter-clean-arch
+#
+---
+stack_profile: flutter-clean-arch
+
+always_include:
+  # Universal conventions — always
+  - cross-layer/conventions-pattern.md
+  # Clean architecture layer separation is foundational
+  - flutter/clean-architecture-pattern.md
+  # Either-based error handling instead of throws
+  - flutter/either-error-pattern.md
+
+trigger_includes:
+  - keywords: [state, riverpod, provider, notifier]
+    include:
+      - flutter/riverpod-state-pattern.md
+
+  - keywords: [api, dio, http, network, request]
+    include:
+      - flutter/dio-networking-pattern.md
+
+  - keywords: [navigation, route, screen, push, pop]
+    include:
+      - flutter/navigation-pattern.md
+
+  - keywords: [model, entity, dto, freezed, immutable]
+    include:
+      - flutter/freezed-immutability-pattern.md
+
+  - keywords: [test, mockito, golden]
+    include:
+      - flutter/testing-pattern.md
+      - testing/testing-pyramid-pattern.md

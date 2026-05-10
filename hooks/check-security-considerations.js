@@ -6,17 +6,39 @@
  * Cross-platform (Windows, macOS, Linux)
  *
  * Triggers when a task file (project-orchestration/tasks/*.md or tasks/*.md)
- * is written or edited. Warns if the file is missing the ## Security Considerations
- * section or if the section exists but is empty.
+ * is written or edited. Reports if the file is missing the ## Security
+ * Considerations section, if the section is empty, or if it contains only
+ * placeholder text (TODO, FIXME, XXX, tbd, "fill in", etc.).
  *
- * This is a warning-only hook — it never blocks the tool call.
+ * Modes (controlled by env var CHECK_SECURITY_MODE):
+ *   warn  (default) — print warning to stderr, exit 0 (does not block)
+ *   block           — print warning, exit 2 (Claude Code surfaces as block)
+ *   off             — silent, exit 0
+ *
+ * On non-OK status, the hook suggests running /threat-model to populate
+ * the section systematically (rather than ad-hoc filling).
  */
 
-const { readStdinJson, readFile, log } = require('../lib/utils');
+const { readStdinJson, readFile, log } = require('./lib/utils');
+
+const MODE = (process.env.CHECK_SECURITY_MODE || 'warn').toLowerCase();
+const LOOKBACK_LINES = 50;
 
 const TASK_FILE_PATTERNS = [
   /project-orchestration[/\\]tasks[/\\][^/\\]+\.md$/,
   /(?:^|[/\\])tasks[/\\][^/\\]+\.md$/,
+];
+
+const PLACEHOLDER_PATTERNS = [
+  /\bTODO\b/i,
+  /\bFIXME\b/i,
+  /\bXXX\b/,
+  /\bTBD\b/i,
+  /\bN\/A\b/i,
+  /\bplaceholder\b/i,
+  /\bfill\s+(this\s+)?in\b/i,
+  /\bto\s+be\s+(determined|defined|filled)\b/i,
+  /\b\?\?\?+\b/,
 ];
 
 function isTaskFile(filePath) {
@@ -25,48 +47,112 @@ function isTaskFile(filePath) {
 }
 
 /**
- * Check whether the file content has a ## Security Considerations section
- * and whether it contains meaningful content (not just the heading).
+ * Inspect ## Security Considerations section.
  *
  * Returns:
- *   'missing'  — section heading not found
- *   'empty'    — section heading found but no content before next ## heading
- *   'ok'       — section found and has content
+ *   { status: 'missing' }
+ *   { status: 'empty' }
+ *   { status: 'placeholder', triggered: ['TODO', ...] }
+ *   { status: 'ok' }
  */
-function checkSecurityConsiderations(content) {
+function inspectSecuritySection(content) {
   const lines = content.split('\n');
   const sectionIndex = lines.findIndex(line =>
     /^##\s+Security Considerations\s*$/i.test(line.trim())
   );
 
   if (sectionIndex === -1) {
-    return 'missing';
+    return { status: 'missing' };
   }
 
-  // Look for non-empty, non-heading lines between this section and the next ## heading
+  // Collect content lines until next ## heading
+  const contentLines = [];
   for (let i = sectionIndex + 1; i < lines.length; i++) {
-    const line = lines[i].trim();
+    const line = lines[i];
+    if (/^##\s/.test(line.trim())) break;
+    contentLines.push(line);
+  }
 
-    // Stop at next ## heading
-    if (/^##\s/.test(line)) {
-      break;
-    }
+  // Filter out empty lines and HTML comments
+  const meaningful = contentLines.filter(line => {
+    const t = line.trim();
+    return t.length > 0 && !t.startsWith('<!--');
+  });
 
-    // Found a non-empty, non-comment line — section has content
-    if (line.length > 0 && !line.startsWith('<!--')) {
-      return 'ok';
+  if (meaningful.length === 0) {
+    return { status: 'empty' };
+  }
+
+  // Check for placeholder patterns in collected content
+  const sectionText = meaningful.join('\n');
+  const triggered = [];
+  for (const pattern of PLACEHOLDER_PATTERNS) {
+    const m = sectionText.match(pattern);
+    if (m) {
+      triggered.push(m[0]);
     }
   }
 
-  return 'empty';
+  if (triggered.length > 0) {
+    return { status: 'placeholder', triggered };
+  }
+
+  return { status: 'ok' };
+}
+
+function buildMessage(filePath, result) {
+  const isBlock = MODE === 'block';
+  const verb = isBlock ? '🛑 BLOCKED' : '⚠️  WARN';
+
+  let body;
+  switch (result.status) {
+    case 'missing':
+      body =
+        `Task file lacks ## Security Considerations section.\n` +
+        `    File: ${filePath}\n\n` +
+        `    Action: Add the section, then run /threat-model to populate it:\n` +
+        `      ## Security Considerations\n` +
+        `      <!-- Run /threat-model for systematic STRIDE-based analysis -->\n\n` +
+        `    Or fill in manually following templates/THREAT_MODEL_TEMPLATE.md`;
+      break;
+    case 'empty':
+      body =
+        `## Security Considerations section exists but is empty.\n` +
+        `    File: ${filePath}\n\n` +
+        `    Action: Run /threat-model to populate it systematically,\n` +
+        `    or fill in manually using STRIDE categories.\n` +
+        `    Template: templates/THREAT_MODEL_TEMPLATE.md`;
+      break;
+    case 'placeholder':
+      body =
+        `## Security Considerations contains placeholder text: ${result.triggered.join(', ')}\n` +
+        `    File: ${filePath}\n\n` +
+        `    Placeholder content (TODO/FIXME/TBD/etc.) is not a security analysis.\n` +
+        `    Action: Run /threat-model to replace placeholders with actual\n` +
+        `    threat assessment, OR remove placeholder text and write the analysis manually.`;
+      break;
+    default:
+      return '';
+  }
+
+  return (
+    `\n${verb}: SECURITY-CONSIDERATIONS check\n` +
+    `    ${body}\n\n` +
+    `    Mode: ${MODE.toUpperCase()}` +
+    (isBlock
+      ? ` (hard gate — set CHECK_SECURITY_MODE=warn to soft-warn, or =off to disable)\n`
+      : ` (soft warning — set CHECK_SECURITY_MODE=block to enforce)\n`)
+  );
 }
 
 async function main() {
+  if (MODE === 'off') {
+    process.exit(0);
+  }
+
   const input = await readStdinJson();
 
   try {
-    // The hook receives the tool call result; the file path is in tool_input.file_path
-    // for Write calls, or tool_input.file_path for Edit calls.
     const toolInput = input.tool_input || {};
     const filePath = toolInput.file_path || toolInput.path || '';
 
@@ -76,29 +162,23 @@ async function main() {
 
     const content = readFile(filePath);
     if (!content) {
-      // File unreadable — do not warn, just exit
       process.exit(0);
     }
 
-    const result = checkSecurityConsiderations(content);
-
-    if (result === 'missing') {
-      log(
-        '[Security] Task file missing ## Security Considerations section. ' +
-        'Add it before implementation. See docs/security/SECURITY_STRATEGY.md'
-      );
-    } else if (result === 'empty') {
-      log(
-        '[Security] ## Security Considerations section is empty. ' +
-        'Fill it in before implementation.'
-      );
+    const result = inspectSecuritySection(content);
+    if (result.status === 'ok') {
+      process.exit(0);
     }
-    // 'ok' — silent
+
+    const msg = buildMessage(filePath, result);
+    process.stderr.write(msg);
+
+    const isBlock = MODE === 'block';
+    process.exit(isBlock ? 2 : 0);
   } catch (err) {
     log(`[Security] check-security-considerations error: ${err.message}`);
+    process.exit(0);
   }
-
-  process.exit(0);
 }
 
 main();

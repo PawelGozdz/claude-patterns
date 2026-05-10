@@ -66,15 +66,19 @@ trigger_includes:
 
 ## Current stacks
 
-| Stack | File | always_include count |
-|-------|------|---------------------|
-| nestjs-ddd | `nestjs-ddd.yml` | 5 |
-| sveltekit | (not yet created) | — |
-| flutter-clean-arch | (not yet created) | — |
-| nextjs-app | (not yet created) | — |
-| python | (not yet created) | — |
-| typescript-library | (not yet created) | — |
+| Stack | File | always_include | trigger_includes |
+|-------|------|----------------|------------------|
+| nestjs-ddd | `nestjs-ddd.yml` | 5 | 5 |
+| sveltekit | `sveltekit.yml` | 3 | 3 |
+| flutter-clean-arch | `flutter-clean-arch.yml` | 3 | 5 |
+| nextjs-app | `nextjs-app.yml` | 3 | 5 |
+| python | `python.yml` | 3 | 3 |
+| typescript-library | `typescript-library.yml` | 3 | 2 |
 
-The orchestrator gracefully skips Step 0.5a' when the YAML for the current
-stack doesn't exist — only `nestjs-ddd` ships with stack-defaults today.
-Add YAMLs for other stacks as their always-include lists become clear.
+All 6 stack profiles ship with stack-defaults. `nestjs-ddd` is the most
+complete (5 always-include patterns including security-invariants);
+others are stubs covering the foundational patterns and can be expanded
+as recurring patterns become clear.
+
+The orchestrator gracefully skips Step 0.5a' if a YAML doesn't exist for
+the current `stack_profile` (e.g., custom or unrecognized stacks).
