@@ -5,6 +5,7 @@ origin: LocalHero
 allowed-tools: Read, Edit, Glob, Grep, Agent
 model: opus
 effort: high
+disable-model-invocation: true
 ---
 
 # /reprioritize — Priority Advisor

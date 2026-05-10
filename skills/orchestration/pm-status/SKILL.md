@@ -5,6 +5,7 @@ origin: LocalHero
 allowed-tools: Read
 model: haiku
 effort: low
+disable-model-invocation: true
 ---
 
 # /pm-status — Quick Status

@@ -5,6 +5,7 @@ origin: claude-patterns
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Agent
 model: haiku
 effort: low
+disable-model-invocation: true
 ---
 
 # /task-tidy — Task Housekeeping

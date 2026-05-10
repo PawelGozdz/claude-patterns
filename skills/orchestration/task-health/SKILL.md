@@ -5,6 +5,7 @@ origin: LocalHero
 allowed-tools: Read, Glob, Grep, Agent
 model: opus
 effort: high
+disable-model-invocation: true
 ---
 
 # /task-health — Task Audit

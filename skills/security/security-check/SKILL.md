@@ -4,6 +4,7 @@ description: Quick pre-commit security checklist for NestJS/DDD projects. Scans 
 origin: LocalHero-patterns
 allowed-tools: Read, Glob, Grep, Bash
 effort: low
+disable-model-invocation: true
 ---
 
 # Security Check — Pre-Commit

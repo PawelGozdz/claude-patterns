@@ -5,6 +5,7 @@ origin: LocalHero
 allowed-tools: Read, Glob, Grep, Write, Agent
 model: opus
 effort: high
+disable-model-invocation: true
 ---
 
 # /tech-debt — Technical Debt Report

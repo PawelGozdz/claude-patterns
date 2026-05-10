@@ -5,6 +5,7 @@ origin: LocalHero-patterns
 allowed-tools: Read, Write, Glob, Grep
 model: opus
 effort: high
+disable-model-invocation: true
 ---
 
 # Threat Modeling Workflow — STRIDE + DREAD + LINDDUN

@@ -13,6 +13,7 @@ paths:
   - "**/*.controller.ts"
   - "**/*.handler.ts"
   - "**/*.guard.ts"
+disable-model-invocation: true
 ---
 
 # Security Review — NestJS/DDD

@@ -4,6 +4,7 @@ description: Incident response classifier and playbook navigator. Classifies sec
 origin: LocalHero-patterns
 allowed-tools: Read, Write
 effort: low
+disable-model-invocation: true
 ---
 
 # Incident Response — Classifier and Playbook

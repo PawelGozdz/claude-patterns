@@ -5,6 +5,7 @@ origin: LocalHero
 allowed-tools: Read, Write, Edit, Glob, Grep, Agent
 model: opus
 effort: high
+disable-model-invocation: true
 ---
 
 # /pulse — Team Standup
