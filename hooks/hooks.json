@@ -117,6 +117,16 @@
           }
         ],
         "description": "Auto-move task files to completed-tasks/ when status: done. Disable via PM_NO_AUTO_HOUSEKEEPING=true. Silent on non-task files."
+      },
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$HOME/.claude/hooks/security-impl-feedback.js\""
+          }
+        ],
+        "description": "Show security checklist progress when editing .ts source files. Disable via AGENT_SECURITY_IMPL_FEEDBACK=off. Silent for non-source or no-active-task."
       }
     ],
     "Stop": [

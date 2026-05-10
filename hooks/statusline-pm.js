@@ -89,33 +89,92 @@ function countActiveBlocked(projectRoot) {
 }
 
 function readActiveTask(projectRoot) {
-  // Look for "## Active Task" or "## Current" or first in-progress task
+  // Returns { id, filePath } for the active in-progress task, or { id } if
+  // only a TEAM-STATE reference is found, or null.
+  const tasksDir = path.join(projectRoot, 'project-orchestration', 'tasks');
   const teamStatePath = path.join(projectRoot, 'project-orchestration', 'TEAM-STATE.md');
+
+  // 1. Look up id from TEAM-STATE first
+  let foundId = null;
   try {
     const content = fs.readFileSync(teamStatePath, 'utf8');
-    // Try to extract "Active Task: TS-XXX" or similar pattern
     const m =
       content.match(/Active\s+Task[:\s]+\*?\*?([A-Z]+-[A-Z0-9]+-?\d*)\*?\*?/i) ||
       content.match(/Current\s+(?:Sprint|Task)[:\s]+([A-Z]+-[A-Z0-9]+-?\d*)/i);
-    if (m) return m[1];
+    if (m) foundId = m[1];
   } catch {}
-  // Fallback: first in-progress task in tasks/
-  const tasksDir = path.join(projectRoot, 'project-orchestration', 'tasks');
-  if (!fs.existsSync(tasksDir)) return null;
-  try {
-    for (const entry of fs.readdirSync(tasksDir)) {
-      if (!entry.endsWith('.md')) continue;
-      const content = fs.readFileSync(path.join(tasksDir, entry), 'utf8');
-      const fmMatch = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
-      if (!fmMatch) continue;
-      const status = (fmMatch[1].match(/^status:\s*(.+)$/m) || [])[1] || '';
-      if (/in-progress|in_progress|active/i.test(status)) {
-        const id = (fmMatch[1].match(/^id:\s*(.+)$/m) || [])[1] || entry.replace(/\.md$/, '');
-        return id.trim().replace(/['"]/g, '');
+
+  // 2. Fallback: first in-progress task in tasks/
+  if (!foundId && fs.existsSync(tasksDir)) {
+    try {
+      for (const entry of fs.readdirSync(tasksDir)) {
+        if (!entry.endsWith('.md')) continue;
+        const fp = path.join(tasksDir, entry);
+        const content = fs.readFileSync(fp, 'utf8');
+        const fmMatch = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+        if (!fmMatch) continue;
+        const status = (fmMatch[1].match(/^status:\s*(.+)$/m) || [])[1] || '';
+        if (/in-progress|in_progress|active/i.test(status)) {
+          const id = (fmMatch[1].match(/^id:\s*(.+)$/m) || [])[1] || entry.replace(/\.md$/, '');
+          return { id: id.trim().replace(/['"]/g, ''), filePath: fp };
+        }
       }
-    }
-  } catch {}
+    } catch {}
+  }
+
+  // 3. Resolve filePath for foundId by scanning tasks dir
+  if (foundId && fs.existsSync(tasksDir)) {
+    try {
+      for (const entry of fs.readdirSync(tasksDir)) {
+        if (entry.startsWith(foundId) && entry.endsWith('.md')) {
+          return { id: foundId, filePath: path.join(tasksDir, entry) };
+        }
+      }
+    } catch {}
+    return { id: foundId, filePath: null };
+  }
+
   return null;
+}
+
+// Count [x] and [ ] items in implementation checklist sections.
+// Returns { checked, total, status }
+//   status: 'missing'      — no checklist or pre-analysis section
+//           'no-pre-analysis' — checklist present but Pre-Analysis missing
+//           'in-progress'  — has items, partial
+//           'complete'     — all items checked
+function readSecurityProgress(filePath) {
+  if (!filePath) return null;
+  let content;
+  try { content = fs.readFileSync(filePath, 'utf8'); } catch { return null; }
+
+  // Detect pre-analysis section
+  const hasPreAnalysis = /^##\s+(?:🔒\s+)?Security\s+(Pre-Analysis|Considerations)\s*$/im.test(content);
+
+  // Detect implementation checklist section
+  const checklistHeader = content.match(/^##\s+(?:📋\s+)?Implementation\s+Checklist\s*$/im);
+  if (!checklistHeader) {
+    return { checked: 0, total: 0, status: hasPreAnalysis ? 'no-checklist' : 'missing' };
+  }
+
+  // Extract section content until next ## heading
+  const lines = content.split('\n');
+  const startIdx = lines.findIndex(l => /^##\s+(?:📋\s+)?Implementation\s+Checklist/im.test(l));
+  let checked = 0;
+  let total = 0;
+  for (let i = startIdx + 1; i < lines.length; i++) {
+    if (/^##\s/.test(lines[i].trim())) break;
+    const m = lines[i].match(/^\s*-\s+\[([ xX])\]/);
+    if (m) {
+      total++;
+      if (m[1].toLowerCase() === 'x') checked++;
+    }
+  }
+
+  if (total === 0) return { checked: 0, total: 0, status: hasPreAnalysis ? 'no-checklist' : 'missing' };
+  if (!hasPreAnalysis) return { checked, total, status: 'no-pre-analysis' };
+  if (checked === total) return { checked, total, status: 'complete' };
+  return { checked, total, status: 'in-progress' };
 }
 
 function formatCost(meta) {
@@ -152,7 +211,24 @@ function main() {
   if (project.hasPM) {
     const activeTask = readActiveTask(project.root);
     const { blocked } = countActiveBlocked(project.root);
-    if (activeTask) parts.push(`🎯 ${activeTask}`);
+    if (activeTask) {
+      parts.push(`🎯 ${activeTask.id}`);
+
+      // Security progress 🛡 N/M (only when active task has known file path)
+      if (activeTask.filePath) {
+        const sec = readSecurityProgress(activeTask.filePath);
+        if (sec) {
+          if (sec.status === 'no-pre-analysis' || sec.status === 'missing') {
+            parts.push(`🛡⚠`);
+          } else if (sec.status === 'complete') {
+            parts.push(`🛡✓`);
+          } else if (sec.status === 'in-progress' && sec.total > 0) {
+            parts.push(`🛡 ${sec.checked}/${sec.total}`);
+          }
+          // 'no-checklist' — silent (task has no security checklist)
+        }
+      }
+    }
     if (blocked > 0) parts.push(`🚫 ${blocked}`);
   }
 
