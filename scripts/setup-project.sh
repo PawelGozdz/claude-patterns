@@ -376,6 +376,13 @@ echo ""
 # Claude Code natively reads .claude/skills/<name>/SKILL.md (flat structure).
 # Our knowledge/skills/<category>/<name>/SKILL.md layout is for organization;
 # we need a per-skill symlink at the top level for Claude Code to pick them up.
+#
+# IMPORTANT: skip skills with `disable-model-invocation: true` in frontmatter.
+# These skills have a slash command counterpart (in commands/<name>.md) that
+# is the public entry point. Exposing them here would create a duplicate
+# entry in Claude Code's tool registry (visible to the user as the same name
+# appearing twice). The skill remains usable by agents via Skill tool /
+# agent frontmatter — just not auto-discovered as a slash skill.
 echo -e "${BLUE}[4b/8] Native skills discovery${NC} (flat .claude/skills/<name>/)"
 NATIVE_SKILLS_DIR="$PROJECT_DIR/.claude/skills"
 mkdir -p "$NATIVE_SKILLS_DIR"
@@ -394,6 +401,11 @@ for category in "${CONFIGURED_SKILLS[@]}"; do
     skill_name=$(basename "${skill_dir%/}")
     # Must contain SKILL.md to be exposable
     [[ -f "$skill_dir/SKILL.md" ]] || continue
+
+    # Skip skills that explicitly opt-out of auto-discovery (have command counterpart)
+    if grep -q "^disable-model-invocation:\s*true" "$skill_dir/SKILL.md" 2>/dev/null; then
+      continue
+    fi
 
     EXPOSED_SKILL_NAMES+=("$skill_name")
     ensure_symlink "$NATIVE_SKILLS_DIR/$skill_name" "${skill_dir%/}" ".claude/skills/$skill_name" || true
