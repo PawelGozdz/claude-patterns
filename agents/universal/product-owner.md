@@ -35,7 +35,7 @@ tools: Read, Glob, Grep, WebSearch, Task
 disallowedTools: Write, Edit, MultiEdit, Bash
 # Task allowed so this agent can spawn @marketing-strategist + @finance-strategist
 # in parallel during strategic work (see "Strategic Consultation" section).
-model: sonnet
+model: haiku
 effort: medium
 memory: project
 maxTurns: 15

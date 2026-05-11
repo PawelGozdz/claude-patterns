@@ -33,7 +33,7 @@ description: |
 
 tools: Read, Glob, Grep
 disallowedTools: Write, Edit, MultiEdit, Bash, Task, WebSearch, WebFetch
-model: sonnet
+model: haiku
 effort: medium
 memory: project
 maxTurns: 15

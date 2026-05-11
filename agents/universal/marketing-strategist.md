@@ -45,7 +45,7 @@ description: |
 
 tools: Read, Glob, Grep, WebSearch
 disallowedTools: Write, Edit, MultiEdit, Bash, Task, NotebookEdit
-model: sonnet
+model: haiku
 effort: medium
 memory: project
 maxTurns: 20

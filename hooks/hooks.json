@@ -13,16 +13,6 @@
         "description": "Doc file warning: warn about non-standard documentation files"
       },
       {
-        "matcher": "Edit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"$HOME/.claude/hooks/suggest-compact.js\""
-          }
-        ],
-        "description": "Suggest manual compaction at logical intervals"
-      },
-      {
         "matcher": "Bash",
         "hooks": [
           {
@@ -43,16 +33,6 @@
           }
         ],
         "description": "Save state before context compaction"
-      },
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"$HOME/.claude/hooks/pre-compact-pm-snapshot.js\""
-          }
-        ],
-        "description": "Snapshot TEAM-STATE.md before compaction (silent if no PM-system)"
       }
     ],
     "SessionStart": [
@@ -127,18 +107,6 @@
           }
         ],
         "description": "Show security checklist progress when editing .ts source files. Disable via AGENT_SECURITY_IMPL_FEEDBACK=off. Silent for non-source or no-active-task."
-      }
-    ],
-    "Stop": [
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"$HOME/.claude/hooks/check-console-log.js\""
-          }
-        ],
-        "description": "Check for console.log in modified files"
       }
     ],
     "SubagentStart": [
