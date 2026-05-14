@@ -169,7 +169,10 @@ import { LOGGER_SERVICE, type ILoggerService } from '@shared/infrastructure/logg
 export class ContentModerationConsumer extends BaseQueueProcessor<ContentModerationJobData> {
   constructor(
     @Inject(MODERATION_SERVICE) private readonly moderationService: IModerationService,
-    @Inject(LOGGER_SERVICE) protected override readonly logger: ILoggerService
+    // ✅ CORRECT: plain parameter — NOT "protected override readonly logger"
+    // "override readonly" would re-assign after super(), destroying the child logger
+    // set by BaseQueueProcessor
+    @Inject(LOGGER_SERVICE) logger: ILoggerService
   ) {
     super(logger, QueueName.CONTENT_MODERATION);
   }
@@ -339,6 +342,7 @@ export class EngagementModule {}
 4. **NEVER return from processor errors** - Must throw to trigger BullMQ retry mechanism
 5. **NEVER skip BaseJobData** - All job data must extend BaseJobData
 6. **NEVER use plain objects** - Always define typed interfaces for job data
+7. **NEVER wrap `commandBus.execute()` in `safeRun()`** — `safeRun` only catches thrown exceptions. `BaseCommandHandler.execute()` returns `Result.fail()` on error (does NOT throw). Using `safeRun` means a DB failure returns `Result.fail` silently — BullMQ never retries → silent GDPR Art.17 erasure failure (confirmed bug TS-GDPR-004). Always check `result.isFailure` explicitly.
 
 ## ⚠️ Anti-Patterns
 
@@ -409,6 +413,29 @@ protected async processJob(job: Job<T>): Promise<void> {
 }
 ```
 
+### ❌ WRONG: safeRun wrapping commandBus.execute() — silent GDPR failure
+
+```typescript
+// safeRun only catches THROWN exceptions.
+// BaseCommandHandler.execute() returns Result.fail() — it does NOT throw.
+// error is always undefined → BullMQ never retries → Art.17 erasure silently fails.
+const [error] = await safeRun(() => this.commandBus.execute(command));
+if (error) {
+  throw error; // ← never reached on Result.fail
+}
+```
+
+### ✅ CORRECT: Check result.isFailure after commandBus.execute()
+
+```typescript
+// ICommandBus.execute() returns Result<void> by default → specify generic explicitly.
+const result = await this.commandBus.execute<MyCommand, Result<void>>(command);
+if (result.isFailure) {
+  this.logger.error('Handler failed', { userId, error: result.error.message });
+  throw result.error; // BullMQ retry
+}
+```
+
 ### ❌ WRONG: Module Registration with String
 
 ```typescript
@@ -430,6 +457,34 @@ export class EngagementModule {}
 })
 export class EngagementModule {}
 ```
+
+### ❌ WRONG: Local `registerQueue()` for a globally-registered queue
+
+```typescript
+// WRONG — queue is already in BullQueueModule with registerQueueAsync + Redis connection
+@Module({
+  imports: [
+    BullModule.registerQueue({ name: QueueName.DISCORD_NOTIFICATIONS }),  // ❌ No connection!
+  ],
+})
+export class DiscordModule {}
+```
+
+**Why this crashes**: `BullModule.registerQueueAsync()` in `BullQueueModule` registers the queue with a Redis connection. When a module later calls `BullModule.registerQueue()` for the same name without connection options, NestJS's `BullExplorer.getQueueOptions()` uses `moduleRef.get(token, { strict: false })` globally — **last registration wins**. The local registration without a connection overrides the global one. Result: BullMQ Worker starts with `opts.connection = undefined` → throws `"Worker requires a connection"` on startup.
+
+### ✅ CORRECT: Bare `BullModule` import for globally-registered queues
+
+```typescript
+// CORRECT — bare import lets @InjectQueue() work without re-registering
+@Module({
+  imports: [
+    BullModule,  // ✅ Just bare BullModule — no registerQueue()
+  ],
+})
+export class DiscordModule {}
+```
+
+**Rule**: If the queue is registered in the global `BullQueueModule` (via `registerQueueAsync`), consuming modules MUST import bare `BullModule` only. Never call `registerQueue()` or `registerQueueAsync()` for that queue again.
 
 ## 📚 References
 
