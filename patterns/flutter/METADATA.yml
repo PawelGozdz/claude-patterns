@@ -1,8 +1,11 @@
 category: flutter
-version: 1.0.0
+version: 1.1.0
 maturity: production
-last_verified: 2026-03-30
-stack: Flutter, Dart, Riverpod, Freezed, GoRouter, Dio
+last_verified: 2026-05-20
+stack: Flutter, Dart, Riverpod, Freezed, GoRouter, Dio, google_fonts, material_symbols_icons
 source_project: juz-ide-mobile-app
-patterns_count: 7
-description: Production-tested Flutter Clean Architecture patterns
+patterns_count: 8
+description: Production-tested Flutter Clean Architecture patterns + DS-007 design system
+changelog:
+  - "1.1.0 (2026-05-20): added component-creation-pattern.md (DS-007 V1 component gates)"
+  - "1.0.0 (2026-03-30): initial production patterns"
