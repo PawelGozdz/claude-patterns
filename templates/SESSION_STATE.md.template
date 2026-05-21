@@ -1,0 +1,39 @@
+# Session State — {PROJECT_NAME}
+
+> Handoff document. Update at end of each session with `/checkpoint handoff`.
+> Read at start of next session before doing anything.
+
+---
+
+## Last Updated
+
+{TIMESTAMP} | {GIT_SHA}
+
+## Current Phase
+
+{CURRENT_PHASE}
+
+## Completed This Session
+
+-
+
+## Remaining Work
+
+- [ ]
+- [ ]
+
+## Environment State
+
+- Migrations: {pending/applied}
+- Services: {anything that needs to be running}
+- Notes: {anything non-obvious}
+
+## Resume Command
+
+```bash
+{RESUME_COMMAND}
+```
+
+## Notes for Next Claude
+
+{NOTES}

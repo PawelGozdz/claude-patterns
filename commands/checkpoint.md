@@ -69,10 +69,74 @@ Typical checkpoint flow:
 [PR] --> /checkpoint verify "feature-start"
 ```
 
+## Handoff Mode
+
+`/checkpoint handoff` creates or updates `.claude/SESSION_STATE.md` — a human-readable
+document for cross-session continuity. Different from `create`: no git stash, just a
+prose snapshot of where you are so the next session can pick up without reconstructing
+context from git log.
+
+When running handoff mode:
+
+1. Run `git rev-parse --short HEAD` to get current SHA
+2. Ask the user (or infer from conversation):
+   - **Current phase** — what task/wave/epic are we in?
+   - **Completed this session** — concrete items done (commits, decisions)
+   - **Remaining work** — ordered list, top = next thing to do
+   - **Environment state** — pending migrations, services that need to be running
+   - **Resume command** — exact command(s) for next session start
+   - **Notes for next Claude** — gotchas, in-progress decisions, what NOT to touch
+3. Write `.claude/SESSION_STATE.md` using `templates/SESSION_STATE.md.template` format:
+
+```markdown
+# Session State — {project name}
+
+> Handoff document. Update at end of each session with `/checkpoint handoff`.
+> Read at start of next session before doing anything.
+
+---
+
+## Last Updated
+
+{YYYY-MM-DD HH:MM} | {git SHA}
+
+## Current Phase
+
+{current phase}
+
+## Completed This Session
+
+- {item}
+
+## Remaining Work
+
+- [ ] {next}
+- [ ] {after that}
+
+## Environment State
+
+- Migrations: {pending/applied}
+- Services: {anything that needs to be running}
+- Notes: {anything non-obvious}
+
+## Resume Command
+
+```bash
+{command}
+```
+
+## Notes for Next Claude
+
+{notes}
+```
+
+4. Report: `SESSION_STATE.md updated — {N} remaining items, resume with: {command}`
+
 ## Arguments
 
 $ARGUMENTS:
-- `create <name>` - Create named checkpoint
+- `create <name>` - Create named git checkpoint
 - `verify <name>` - Verify against named checkpoint
 - `list` - Show all checkpoints
 - `clear` - Remove old checkpoints (keeps last 5)
+- `handoff` - Write/update `.claude/SESSION_STATE.md` for cross-session continuity
