@@ -71,6 +71,11 @@ security_groups:
     checklist: security-checklists/b2g.md
     description: "B2G/government surface — Polish regulatory + accessibility + audit trail mandatory"
 
+  new_context:
+    aliases: [new-context, new-bc, new-bounded-context, new-domain, bounded-context]
+    checklist: security-checklists/cross-context.md
+    description: "New bounded context — Domain TM required; references cross-context checklist since new BCs always have integration implications"
+
 # Universal — always included regardless of labels
 universal:
   checklist: security-checklists/universal.md
