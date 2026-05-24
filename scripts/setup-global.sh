@@ -79,6 +79,21 @@ for agent_file in "$REPO_DIR/agents/universal/"*.md; do
     echo -e "  ${GREEN}Linked:${NC} $agent_name"
   fi
 done
+
+# Link integration agents (globally available — e.g. grant-flow-time-logger)
+if [[ -d "$REPO_DIR/agents/integrations" ]]; then
+  for agent_file in "$REPO_DIR/agents/integrations/"*.md; do
+    [ -f "$agent_file" ] || continue
+    agent_name=$(basename "$agent_file")
+    target="$USER_CLAUDE_DIR/agents/$agent_name"
+    if [ -L "$target" ]; then
+      echo -e "  ${YELLOW}Already linked:${NC} $agent_name (integration)"
+    else
+      ln -sf "$agent_file" "$target"
+      echo -e "  ${GREEN}Linked:${NC} $agent_name (integration)"
+    fi
+  done
+fi
 echo ""
 
 echo -e "${BLUE}[2/3] Commands${NC} (slash commands: /plan, /tdd, /scaffold, etc.)"

@@ -183,37 +183,20 @@ while IFS= read -r doc; do
 done < <(yml_list "docs")
 
 # --- Generate rules reference ---
+#
+# IMPORTANT: We intentionally do NOT @import rules into CLAUDE.md.
+# @imports load on every prompt (also propagate to every subagent),
+# costing ~3-4k tokens per turn even for questions that never touch code.
+# Instead, agents (especially implementers/verifiers) Read the specific
+# rule file on demand before editing code.
 
 PROJECT_LANGUAGE=$(yml_get "project.language")
-# --- Generate rules @import directives ---
-# Uses .claude/rules/ (native auto-discovery path) with @import syntax
 
 RULES_IMPORTS=""
 
 if [[ -n "$PROJECT_LANGUAGE" ]]; then
-  # Scan LOCAL project rules (respects selective symlinks)
-  COMMON_RULES_DIR="$PROJECT_DIR/.claude/rules/common"
-  LANG_RULES_DIR="$PROJECT_DIR/.claude/rules/$PROJECT_LANGUAGE"
-
   RULES_IMPORTS="## Coding Standards & Rules\n\n"
-
-  # Import common rules (apply to all stacks)
-  if [[ -d "$COMMON_RULES_DIR" ]]; then
-    for f in "$COMMON_RULES_DIR"/*.md; do
-      [[ -f "$f" ]] || continue
-      name=$(basename "$f")
-      RULES_IMPORTS="${RULES_IMPORTS}@.claude/rules/common/${name}\n"
-    done
-  fi
-
-  # Import language-specific rules (stack-filtered)
-  if [[ -d "$LANG_RULES_DIR" ]]; then
-    for f in "$LANG_RULES_DIR"/*.md; do
-      [[ -f "$f" ]] || continue
-      name=$(basename "$f")
-      RULES_IMPORTS="${RULES_IMPORTS}@.claude/rules/${PROJECT_LANGUAGE}/${name}\n"
-    done
-  fi
+  RULES_IMPORTS="${RULES_IMPORTS}Rules live under \`.claude/rules/{common,${PROJECT_LANGUAGE}}/\`. Implementers/verifiers Read the relevant file BEFORE editing code — do NOT inline-import all rules (wastes context on every prompt and every subagent spawn).\n"
 fi
 
 # --- Generate skills reference ---

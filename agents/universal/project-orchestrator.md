@@ -19,9 +19,9 @@ description: |
   Mirror of the /orchestrate skill, usable from Task() calls.
 tools: Task, Read
 disallowedTools: Write, Edit, MultiEdit, NotebookEdit, Bash, Grep, Glob
-model: opus
+model: sonnet
 permissionMode: dontAsk
-effort: max
+effort: medium
 memory: project
 maxTurns: 30
 ---

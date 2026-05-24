@@ -188,6 +188,18 @@ case "$STACK_PROFILE" in
     # TypeScript library + shared core patterns
     link_pattern_dirs typescript-library "${CORE_PATTERN_DIRS[@]}"
     ;;
+  node-ts-claude-api)
+    # Node.js + Anthropic SDK — core patterns only (no DDD/flutter/etc.)
+    link_pattern_dirs "${CORE_PATTERN_DIRS[@]}"
+    ;;
+  astro-static)
+    # Astro SSG — core patterns only (architecture + testing essentials)
+    link_pattern_dirs "${CORE_PATTERN_DIRS[@]}"
+    ;;
+  docs-only)
+    # Pure markdown/YAML repo — no code patterns needed
+    echo -e "  ${YELLOW}Skipped:${NC} docs-only stack has no code patterns"
+    ;;
   *)
     # Unknown stack — link all patterns
     if [[ "$PROJECT_LANGUAGE" == "typescript" ]]; then
@@ -203,7 +215,9 @@ esac
 # project-edited version if present.
 PATTERNS_README="$KNOWLEDGE_DIR/patterns/README.md"
 PATTERNS_README_TEMPLATE="$PATTERNS_REPO/templates/knowledge-patterns-readme-template.md"
-if [[ -f "$PATTERNS_README" ]]; then
+if [[ ! -d "$KNOWLEDGE_DIR/patterns" ]]; then
+  echo -e "  ${YELLOW}Skipped:${NC} patterns/README.md (no patterns directory for this stack)"
+elif [[ -f "$PATTERNS_README" ]]; then
   echo -e "  ${YELLOW}Already exists:${NC} patterns/README.md (preserved)"
 elif [[ -f "$PATTERNS_README_TEMPLATE" ]]; then
   cp "$PATTERNS_README_TEMPLATE" "$PATTERNS_README"
@@ -389,6 +403,9 @@ mkdir -p "$NATIVE_SKILLS_DIR"
 
 # Collect every skill name we expose, for stale cleanup at the end
 EXPOSED_SKILL_NAMES=()
+
+# Always include integrations skills (grant-flow, etc.) — available in every project
+CONFIGURED_SKILLS+=("integrations")
 
 for category in "${CONFIGURED_SKILLS[@]}"; do
   CATEGORY_DIR="$PATTERNS_REPO/skills/$category"

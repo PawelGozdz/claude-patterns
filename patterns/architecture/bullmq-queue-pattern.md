@@ -325,6 +325,60 @@ export class EngagementModule {}
 13. **Throw for retry** - Throw errors from `processJob()` to trigger automatic retry
 14. **Job data typing** - Use typed `Job<ContentModerationJobData>` parameter
 
+### MUST (Consumer-Helper Handler — called from Processor)
+
+> **Definition**: A handler class called from within `processor.process()` (not a processor itself,
+> not a domain event producer). Examples: `UserDisplayNameUpdatedHandler`, `UserRegisteredHandler`
+> invoked from `EngagementIntegrationProcessor.process()`.
+
+15. **ALWAYS throw on `result.isFailure`** — the processor wraps every handler call in
+    `try/catch` + `throw error` (see `engagement-integration.processor.ts:182`). If the handler
+    swallows `Result.fail()` with `return`, the processor sees a resolved Promise → BullMQ marks
+    the job as **completed** → **no retry**. The user sees stale data with no explanation.
+
+16. **ALWAYS throw on infrastructure errors** — wrap `commandBus.execute()` in `try/catch` and
+    re-throw. Infrastructure errors (DB timeout, connection lost) are transient; retry WILL help.
+
+17. **ONLY return (no throw) for explicitly expected absence** — the one valid exception is when
+    a `Result.fail()` error code signals an intentional no-op (e.g.
+    `D_ORG_USER_READ_MODEL_NOT_FOUND` = user is not an org member, not an error). This MUST be
+    documented inline.
+
+**Correct pattern for Consumer-Helper Handler:**
+
+```typescript
+async handle(event: SomeIntegrationEvent): Promise<void> {
+  const command = new SomeCommand(event.userId, ...);
+
+  let result: Result<void>;
+  try {
+    result = await this.commandBus.execute<SomeCommand, Result<void>>(command);
+  } catch (err) {
+    // Infrastructure error (DB, network) — processor will re-throw → BullMQ retry
+    this.logger.error('Infrastructure error syncing projection', {
+      userId: event.userId,
+      errorMessage: err instanceof Error ? err.message : String(err),
+    });
+    throw err;
+  }
+
+  if (result.isFailure) {
+    // OPTIONAL EXCEPTION: explicitly expected absence (document inline)
+    // if ((result.error as any)?.code === 'D_CONTEXT_NOT_FOUND') { return; }
+
+    this.logger.error('Projection sync failed', {
+      userId: event.userId,
+      errorCode: (result.error as any)?.code ?? result.error.constructor.name,
+    });
+    throw result.error; // processor re-throws → BullMQ retry
+  }
+}
+```
+
+**Why this matters**: a Producer handler (rule 4 above) is called in-process during a user
+request — throwing crashes the user's operation. A Consumer-Helper is called from a BullMQ
+worker process — throwing is the *only* signal BullMQ has that the job failed.
+
 ### MUST (Module Registration)
 
 15. **Define JobData interface** - Extend `BaseJobData` for all job data types in `queue.types.ts`
