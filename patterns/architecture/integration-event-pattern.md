@@ -855,20 +855,23 @@ export class IntegrationEventFanOutService {
       removeOnFail: 200,
     };
 
+    // ⚠️ KRYTYCZNE: klucze MUSZĄ używać ClassName.EVENT_NAME (dot-notation)
+    // NIE 'ClassName' jako string — to powoduje routingTable[undefined] = [] (cicha utrata eventu)
+    // Patrz incydent 2026-06-04 + TS-INFRA-EVENT-NAMES-001
     const routingTable: Record<string, Queue[]> = {
-      UserRegisteredIntegrationEvent: [this.trustQueue, this.userProfileQueue, this.ccQueue, this.neQueue, this.engQueue, this.geoQueue],
-      EmailVerifiedIntegrationEvent: [this.authQueue],
-      UserDisplayNameUpdatedIntegrationEvent: [this.ccQueue, this.neQueue, this.engQueue, this.geoQueue],
-      UserProfileUpdatedIntegrationEvent: [this.ccQueue, this.neQueue, this.engQueue, this.geoQueue],
-      UserRoleChangedIntegrationEvent: [this.ccQueue, this.neQueue, this.engQueue, this.geoQueue],
-      UserTrustScoreUpdatedIntegrationEvent: [this.authQueue, this.userProfileQueue],
-      TrustScoreUpdateRequestedIntegrationEvent: [this.trustQueue],
-      ModerationSuspensionRequestedIntegrationEvent: [this.trustQueue],
-      PaymentCompletedIntegrationEvent: [this.ccQueue, this.neQueue, this.engQueue],
-      ClubSubscriptionActivatedIntegrationEvent: [this.ccQueue, this.neQueue],
-      ClubSubscriptionExpiredIntegrationEvent: [this.ccQueue],
-      ClubSubscriptionFinallyExpiredIntegrationEvent: [this.ccQueue],
-    };
+      [UserRegisteredIntegrationEvent.EVENT_NAME]: [this.trustQueue, this.userProfileQueue, this.ccQueue, this.neQueue, this.engQueue, this.geoQueue],
+      [EmailVerifiedIntegrationEvent.EVENT_NAME]: [this.authQueue],
+      [UserDisplayNameUpdatedIntegrationEvent.EVENT_NAME]: [this.ccQueue, this.neQueue, this.engQueue, this.geoQueue],
+      [UserProfileUpdatedIntegrationEvent.EVENT_NAME]: [this.ccQueue, this.neQueue, this.engQueue, this.geoQueue],
+      [UserRoleChangedIntegrationEvent.EVENT_NAME]: [this.ccQueue, this.neQueue, this.engQueue, this.geoQueue],
+      [UserTrustScoreUpdatedIntegrationEvent.EVENT_NAME]: [this.authQueue, this.userProfileQueue],
+      [TrustScoreUpdateRequestedIntegrationEvent.EVENT_NAME]: [this.trustQueue],
+      [ModerationSuspensionRequestedIntegrationEvent.EVENT_NAME]: [this.trustQueue],
+      [PaymentCompletedIntegrationEvent.EVENT_NAME]: [this.ccQueue, this.neQueue, this.engQueue],
+      [ClubSubscriptionActivatedIntegrationEvent.EVENT_NAME]: [this.ccQueue, this.neQueue],
+      [ClubSubscriptionExpiredIntegrationEvent.EVENT_NAME]: [this.ccQueue],
+      [ClubSubscriptionFinallyExpiredIntegrationEvent.EVENT_NAME]: [this.ccQueue],
+    } satisfies Partial<Record<IntegrationEventRoutingKey, Queue[]>>;
 
     const targetQueues = routingTable[eventName] ?? [];
     for (const queue of targetQueues) {
@@ -893,22 +896,23 @@ export class GeoAuthIntegrationProcessor extends WorkerHost {
 
   async process(job: Job<IntegrationEventJobData>): Promise<void> {
     const { eventName, payload } = job.data;
+    // ⚠️ KRYTYCZNE: case musi używać ClassName.EVENT_NAME, nigdy 'ClassName' jako string
     switch (eventName) {
-      case 'UserRegisteredIntegrationEvent':
+      case UserRegisteredIntegrationEvent.EVENT_NAME:
         await this.commandBus.execute(new CreateUserReadModelCommand(
           payload.userId as string, payload.displayName as string | undefined,
           payload.email as string, payload.registrationMethod as string,
         ));
         break;
-      case 'UserDisplayNameUpdatedIntegrationEvent':
+      case UserDisplayNameUpdatedIntegrationEvent.EVENT_NAME:
         await this.commandBus.execute(new UpdateUserDisplayNameCommand(
           payload.userId as string, payload.displayName as string, payload.avatarUrl as string | null,
         ));
         break;
-      case 'UserProfileUpdatedIntegrationEvent':
+      case UserProfileUpdatedIntegrationEvent.EVENT_NAME:
         await this.commandBus.execute(new SyncUserProfileCommand(payload.userId as string, payload.profileChanges));
         break;
-      case 'UserRoleChangedIntegrationEvent':
+      case UserRoleChangedIntegrationEvent.EVENT_NAME:
         await this.commandBus.execute(new SyncUserRoleCommand(payload.userId as string, payload.newRole as string));
         break;
       default:
@@ -985,6 +989,76 @@ Is this event for cross-bounded-context communication?
          │         - See domain-event-pattern.md
          │
          └─ NO → System Event (technical, not business)
+```
+
+---
+
+## ⚠️ Critical: dot-notation as single source of truth (TS-INFRA-EVENT-NAMES-001)
+
+**Incydent produkcyjny 2026-06-04**: `routingTable['UserRegisteredIntegrationEvent']` zwracało
+`undefined` gdy emitter wysyłał `eventName: 'integration.auth.user.registered'` (dot-notation).
+Wynik: `routingTable[undefined] = []` → event trafiał do 0 kolejek. Cicha utrata zdarzenia.
+
+### Zasada: zawsze `ClassName.EVENT_NAME`, nigdy string literal
+
+Każda klasa integracyjna MUSI mieć:
+```typescript
+export class UserRegisteredIntegrationEvent extends ProjectIntegrationEvent {
+  public static readonly EVENT_NAME = 'integration.auth.user.registered';
+  public override readonly eventName = UserRegisteredIntegrationEvent.EVENT_NAME;
+}
+```
+
+Używaj `ClassName.EVENT_NAME` wszędzie — routing table, switch case, emitter, priority sets:
+
+```typescript
+// ✅ ROUTING TABLE — klucz musi być wartością EVENT_NAME
+const routingTable = {
+  [UserRegisteredIntegrationEvent.EVENT_NAME]: [this.trustQueue, this.userProfileQueue],
+  [EmailVerifiedIntegrationEvent.EVENT_NAME]: [this.authQueue],
+} satisfies Partial<Record<IntegrationEventRoutingKey, Queue[]>>;
+
+// ✅ PROCESSOR switch case
+switch (eventName) {
+  case UserRegisteredIntegrationEvent.EVENT_NAME: { /* ... */ break; }
+  case EmailVerifiedIntegrationEvent.EVENT_NAME: { /* ... */ break; }
+}
+
+// ✅ EMITTER handler
+await this.fanOutService.fanOut({
+  eventName: UserRegisteredIntegrationEvent.EVENT_NAME,
+  // ...
+});
+
+// ✅ PRIORITY SETS
+export const CRITICAL_PRIORITY_EVENTS = new Set([
+  UserDeletedIntegrationEvent.EVENT_NAME,
+  PaymentCompletedIntegrationEvent.EVENT_NAME,
+]);
+```
+
+### Dla eventów bez klasy (cross-context)
+
+Jeśli event pochodzi z kontekstu, którego nie możesz importować do `@shared/infrastructure`
+(naruszenie izolacji), utwórz enum-style constants w `@shared/domain/integration-events/`:
+
+```typescript
+// src/shared/domain/integration-events/geo-auth-integration-event-names.enum.ts
+export const GeoAuthIntegrationEventNames = {
+  USER_RESIDENCE_VERIFIED: 'integration.geo.user-residence-verified',
+  CITY_MILESTONE_REACHED: 'geographic-auth.geo.city-milestone-reached',
+} as const;
+
+// Użycie w routing table:
+[GeoAuthIntegrationEventNames.USER_RESIDENCE_VERIFIED]: [this.userProfileQueue],
+```
+
+### CI grep gate — zero tolerancji dla class-name literals
+
+Dodaj do CI/pre-commit:
+```bash
+grep -rn "case '[A-Z].*IntegrationEvent'" src/ | grep -v spec | grep -v '\.yaml'
+# Musi zwrócić 0 wyników — każdy match to regresja
 ```
 
 ---
@@ -1130,6 +1204,43 @@ if (event.meetsPointThreshold() || event.meetsTimeThreshold(lastEmit)) {
 }
 ```
 
+### ❌ Class-name string jako klucz routingu lub switch case (INCYDENT PRODUKCYJNY)
+
+```typescript
+// ❌ WRONG: string literal class name — nie pasuje do eventName (dot-notation)
+// routingTable['UserRegisteredIntegrationEvent'] = undefined gdy event ma eventName = 'integration.auth.user.registered'
+const routingTable = {
+  'UserRegisteredIntegrationEvent': [this.trustQueue],  // ❌ routing table key
+};
+
+switch (eventName) {
+  case 'UserRegisteredIntegrationEvent': { break; }     // ❌ switch case
+}
+
+await this.fanOutService.fanOut({
+  eventName: 'UserRegisteredIntegrationEvent',          // ❌ emitter
+});
+
+// ✅ CORRECT: używaj ClassName.EVENT_NAME wszędzie
+const routingTable = {
+  [UserRegisteredIntegrationEvent.EVENT_NAME]: [this.trustQueue],
+};
+
+switch (eventName) {
+  case UserRegisteredIntegrationEvent.EVENT_NAME: { break; }
+}
+
+await this.fanOutService.fanOut({
+  eventName: UserRegisteredIntegrationEvent.EVENT_NAME,
+});
+```
+
+**Dlaczego to krytyczne**: event klasy ma `eventName = 'integration.auth.user.registered'`
+(dot-notation). Routing table z kluczem `'UserRegisteredIntegrationEvent'` zwróci `undefined`,
+więc `targetQueues = []` — event znika bez śladu, bez błędu. Incydent 2026-06-04.
+
+---
+
 ### ❌ Missing Factory Method
 
 ```typescript
@@ -1165,7 +1276,8 @@ const event = MyIntegrationEvent.fromPayload(
 
 - [ ] Event extends `ProjectIntegrationEvent`
 - [ ] Payload uses PRIMITIVE TYPES only (no complex domain objects)
-- [ ] Static `eventName` field (routing key)
+- [ ] `public static readonly EVENT_NAME = 'integration.<context>.<verb>'` (dot-notation)
+- [ ] `public override readonly eventName = ClassName.EVENT_NAME` (not a string literal)
 - [ ] Static `VERSION` field (schema evolution)
 - [ ] GDPR context defined with all 4 fields
 - [ ] Security context defined with all 4 fields
@@ -1175,6 +1287,9 @@ const event = MyIntegrationEvent.fromPayload(
 - [ ] correlationId and causationId support
 - [ ] Event registered in handler with @EventsHandler decorator
 - [ ] GDPR compliance validated (containsPII vs encryptionRequired)
+- [ ] Routing table key = `[ClassName.EVENT_NAME]` (NOT `'ClassName'`)
+- [ ] Switch case = `case ClassName.EVENT_NAME:` (NOT `case 'ClassName':`)
+- [ ] `IntegrationEventRoutingKey` union type updated if new event added to routing table
 
 ---
 
