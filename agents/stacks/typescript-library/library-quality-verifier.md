@@ -6,7 +6,6 @@ model: sonnet
 permissionMode: dontAsk
 effort: medium
 memory: project
-isolation: worktree
 maxTurns: 15
 skills:
   - typescript-library/ts-library-patterns

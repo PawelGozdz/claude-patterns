@@ -6,7 +6,6 @@ model: sonnet
 permissionMode: dontAsk
 effort: medium
 memory: project
-isolation: worktree
 maxTurns: 15
 skills:
   - testing/verification-loop
@@ -32,7 +31,7 @@ Verify code quality for DDD/CQRS implementations:
 
 ## 🚨 MANDATORY 2-PHASE PROTOCOL (ENFORCE THIS!)
 
-You are Sonnet. @codebase-explorer is Haiku = **10x cheaper** for file discovery.
+You are Sonnet. The Explore agent (Haiku) is **10x cheaper** for file discovery.
 
 ### PHASE 1: File Discovery (ALWAYS DELEGATE — NO EXCEPTIONS)
 
@@ -70,16 +69,31 @@ NEVER do file discovery yourself. `Glob("**/*.aggregate.ts")` or `Grep("pattern"
 
 ## ✅ Verification Gates
 
+**Primary checklist = the Rule Cards.** Each routed pattern ships a
+`*_summary.md` Rule Card: a numbered list of MUST / MUST NOT rules with stable
+IDs (e.g. `A1`, `N6`, `CH4`). The orchestrator injects the in-scope Rule Cards
+as `{PATTERN_RULE_CARDS}`. **Verify EVERY rule by ID — do not spot-check.**
+
+For each file under review:
+1. Identify the governing Rule Card(s) from the file path/suffix.
+2. Walk EVERY rule ID in that Rule Card; mark each `followed` or `violated`.
+3. Every violation cites `file:line + ruleID + rule text`.
+4. Each Rule Card ends with a "Verifier — najczęstsze naruszenia → VETO" table
+   of high-signal symptoms — grep those first.
+
+If no Rule Card exists for a touched file, fall back to the full pattern
+(Knowledge Base below) and these generic gates:
+
 ### DDD Patterns
-- [ ] Aggregates extend AggregateRoot
-- [ ] Value Objects immutable
-- [ ] Domain Events have correlation IDs
-- [ ] Result<T> pattern usage (no thrown exceptions in domain)
+- [ ] Aggregates extend AggregateRoot (aggregate **A1**)
+- [ ] Value Objects immutable (value-object **VO**)
+- [ ] Domain Events GDPR-segregated + correlation IDs (domain-event **EV**)
+- [ ] Result<T>, no thrown exceptions in domain (aggregate **N1**)
 
 ### CQRS
-- [ ] Handler decorators present (@CommandHandler, @QueryHandler)
-- [ ] Handler registration verified (in module onModuleInit)
-- [ ] @Transactional on write operations
+- [ ] Handler decorators present (command-handler **CH2**, query-handler **QH**)
+- [ ] Handler registration verified
+- [ ] @Transactional on write operations (command-handler **CH8**)
 
 ### Testing
 - [ ] Test pyramid ratios: L1 ~50%, L2 ~30%, L3 ~20%
@@ -92,13 +106,14 @@ NEVER do file discovery yourself. `Glob("**/*.aggregate.ts")` or `Grep("pattern"
 ## 🚨 When to Use VETO Power
 
 **BLOCK task completion if**:
-- **Implementer did NOT cite patterns from `.claude/knowledge/patterns/`** in
-  its output (no `📚 Patterns read:` line, no per-file pattern attribution).
+- **Implementer output lacks per-file Rule Card rule IDs** (no `📚 Patterns
+  read:` line, no per-file attribution like `user.aggregate.ts → A1,A3,N6`).
   This means the code was written from training-data knowledge, not project
   canon. AUTOMATIC VETO.
-- **Code violates a rule that exists in a pattern file** (e.g., `throw` in
-  domain layer when `domain-errors-pattern.md` requires Result<T>). VETO with
-  citation: file:line + pattern:rule.
+- **Code violates ANY Rule Card rule** (e.g., `throw` in domain = aggregate
+  **N1**; IntegrationEvent emitted from an aggregate = **N6**; `userId` taken
+  from a command body = command-handler **N1**). VETO with citation:
+  `file:line + ruleID + rule text`.
 - Critical DDD violations (Aggregate invariants not protected)
 - Missing handler registration (runtime failures)
 - Test pyramid severely violated (<30% L1 tests)
@@ -128,9 +143,14 @@ NEVER do file discovery yourself. `Glob("**/*.aggregate.ts")` or `Grep("pattern"
 
 **These are the canonical rules this agent enforces.** Before producing any
 verdict, read the patterns that correspond to the files under review. The
-orchestrator will normally hand you a scoped `{PATTERNS}` list — treat it as
-MUST-read, not a suggestion. If the orchestrator did not supply a list, read
-the patterns listed below for the layer(s) touched by the change.
+orchestrator will normally hand you the in-scope Rule Cards as
+`{PATTERN_RULE_CARDS}` plus a scoped `{PATTERNS}` list — treat them as MUST-use.
+
+**Prefer the `*_summary.md` Rule Card** for each pattern: it is the ID'd rule
+checklist you verify against. Open the full `*-pattern.md` only when you need
+the rationale or an example behind a specific rule. If the orchestrator did not
+supply Rule Cards, read them yourself for the layer(s) touched (each pattern
+below has a `_summary.md` sibling).
 
 ### Domain layer
 - `.claude/knowledge/patterns/domain/aggregate-pattern.md`
@@ -169,12 +189,13 @@ the patterns listed below for the layer(s) touched by the change.
 For every file under review, emit a row in the verdict table:
 
 ```
-file | patterns_checked | violations | verdict (PASS|WARN|VETO)
+file | rules_checked (IDs) | violations (ruleID @ file:line) | verdict (PASS|WARN|VETO)
 ```
 
-Where `patterns_checked` is the subset of the above list that actually
-governs that file. "I forgot to read the patterns" is not an acceptable
-output — re-read and re-run verification.
+Where `rules_checked` lists the Rule Card rule IDs you actually walked for that
+file (e.g. `A1,A3,A5,N1,N6`), and each violation names the rule ID it breaks.
+"I forgot to read the patterns" / "I spot-checked" is not an acceptable output
+— re-read the Rule Card and verify every ID.
 
 ---
 

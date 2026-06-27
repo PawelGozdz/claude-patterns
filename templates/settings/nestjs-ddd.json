@@ -25,6 +25,18 @@
     ]
   },
   "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$HOME/.claude/hooks/check-delegation.js\""
+          }
+        ],
+        "description": "Force delegation: block the MAIN agent from implementing pattern files directly (must delegate to a subagent / /orchestrate). Subagents pass through (detected via PreToolUse agent_id). Threshold = pattern files only (lib/pattern-routing.js). Soften via DELEGATION_MODE=warn, disable via DELEGATION_MODE=off, one-off bypass via .delegation-ok-sentinel."
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "Edit",
@@ -77,6 +89,18 @@
           }
         ],
         "description": "Detect cross-context imports in modified files"
+      }
+    ],
+    "SubagentStop": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$HOME/.claude/hooks/check-subagent-pattern-reads.js\""
+          }
+        ],
+        "description": "Pattern-grounding gate: block a subagent from finishing if it edited a pattern file (aggregate/handler/repo/…) without reading that pattern in its OWN transcript. Closes the gap PreToolUse can't see. Soften via PATTERN_READS_MODE=warn, disable via off."
       }
     ]
   }

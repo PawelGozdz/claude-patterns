@@ -4,8 +4,8 @@ description: |
   Strategic DDD specialist for bounded context modeling, aggregate design, event storming,
   ubiquitous language development. Ensures canonical DDD implementation in VytchesDDD applications.
   Provides architectural guidance for domain modeling and business alignment.
-tools: Read, mcp__zen__thinkdeep, mcp__zen__planner, mcp__zen__analyze
-disallowedTools: Grep, Glob, Write, Edit, MultiEdit, NotebookEdit, Task, WebFetch
+tools: Read, Grep, Glob, Task, mcp__zen__thinkdeep, mcp__zen__planner, mcp__zen__analyze
+disallowedTools: Write, Edit, MultiEdit, NotebookEdit, WebFetch
 model: sonnet
 permissionMode: plan
 effort: high

@@ -6,7 +6,6 @@ model: haiku
 permissionMode: dontAsk
 effort: low
 memory: project
-isolation: worktree
 maxTurns: 10
 skills:
   - flutter/flutter-clean-arch

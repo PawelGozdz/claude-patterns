@@ -25,6 +25,9 @@ User request → Claude picks a tool → PreToolUse hook runs → Tool executes 
 | **Git push reminder** | `Bash` | Reminds to review changes before `git push` | 0 (warns) |
 | **Doc file warning** | `Write` | Warns about non-standard `.md`/`.txt` files (allows README, CLAUDE, CONTRIBUTING, CHANGELOG, LICENSE, SKILL, docs/, skills/); cross-platform path handling | 0 (warns) |
 | **Strategic compact** | `Edit\|Write` | Suggests manual `/compact` at logical intervals (every ~50 tool calls) | 0 (warns) |
+| **Delegation gate** _(per-stack)_ | `Write\|Edit\|MultiEdit` | Blocks the **main agent** from implementing pattern files directly — forces delegation to a subagent / `/orchestrate`. Subagents pass through (detected via `agent_id`). Pattern files only (`lib/pattern-routing.js`). Wired in via `templates/settings/<stack>.json`, not global `hooks.json`. `DELEGATION_MODE=warn\|off`. | 2 (blocks) |
+
+> **Per-stack enforcement** (`check-delegation.js`, `check-patterns-read.js`, `check-ddd-patterns.js`, `check-domain-purity.js`, …) lives in the hooks dir but is **not** registered in global `hooks.json`. It is injected per project via `templates/settings/<stack>.json` because the routing rules are stack-specific. `check-delegation.js` and `check-patterns-read.js` share their file→pattern routing through `lib/pattern-routing.js` (single source of truth).
 
 ### PostToolUse Hooks
 

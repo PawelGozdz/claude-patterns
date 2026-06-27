@@ -266,6 +266,35 @@ prompt='... apply these patterns:
 
 **No abstract references.** "Use the relevant patterns" → ❌. Full paths → ✅.
 
+### Step 0.5f — Load Rule Cards (inject CONTENT, not just paths)
+
+Passing file paths is **not enough** — implementers have historically ignored
+patterns they were merely *pointed at* (the #1 cause of pattern drift). For
+every pattern in `{PATTERNS}` that has a `*_summary.md` sibling — a **Rule
+Card**: the enforceable MUST / MUST NOT rules with stable IDs — **Read that Rule
+Card and concatenate its full content** into `{PATTERN_RULE_CARDS}`.
+
+```
+Read(".claude/knowledge/patterns/domain/aggregate-pattern_summary.md")
+Read(".claude/knowledge/patterns/application/command-handler-pattern_summary.md")
+# … one Read per in-scope pattern that has a _summary sibling
+```
+
+Rules:
+- A Rule Card is ~80-120 lines of hard, ID'd rules — cheap to inject, and it
+  puts the rules in the agent's context from its **first token** instead of
+  hoping it clicks Read. This is the single highest-leverage fix for drift.
+- 14 patterns currently ship Rule Cards (all routed DDD patterns: aggregate,
+  value-object, entity, domain-event, domain-service, specification-policy,
+  command-handler, query-handler, audit-handler, application-service,
+  repository, mapper, acl-registry, controller-schema).
+- If a pattern has **no** `_summary.md` sibling, keep only its full path in
+  `{PATTERNS}` — the agent must Read the full pattern.
+- Format `{PATTERN_RULE_CARDS}` as each Rule Card under a heading like
+  `===== RULE CARD: domain/aggregate-pattern (BINDING) =====`.
+- Rule IDs (e.g. `A3`, `N6`, `CH4`) are the **shared vocabulary** the verifier
+  cites when it VETOes — keep them intact end-to-end.
+
 ---
 
 ## Agent Mapping per Stack Profile
@@ -304,14 +333,20 @@ Use this table to resolve agent names. `—` means role not available for that s
 
 ### Implementers
 
-Implementers are **project-local** — they live in `{project}/.claude/agents/implementers/`.
+Implementers live in `{project}/.claude/agents/` (flat — no `implementers/` subdirectory).
 
-```
-Read(".claude/agents/implementers/")
-```
+| Stack Profile | Layer 1 (domain/app — run first) | Layer 2 (infra/testing — run second) |
+|---|---|---|
+| nestjs-ddd | `domain-application-implementer` | `infrastructure-testing-implementer` |
+| flutter* | `flutter-implementer` | — |
+| python* | `python-implementer` | — |
+| sveltekit* | `sveltekit-implementer` | — |
+| nextjs* | `nextjs-implementer` | — |
+| typescript-library | `library-implementer` | — |
+| node-ts-claude-api | `ts-implementer` | — |
+| astro-static | `astro-implementer` | — |
 
-If the directory exists, list files and use those agent names.
-If it doesn't exist, use `general-purpose` agent (Sonnet) for implementation.
+If no match in the table: check if a file named `*-implementer.md` exists in `.claude/agents/`, then fall back to `general-purpose`.
 
 ### Universal Agents (all stacks)
 
@@ -350,17 +385,25 @@ Full delegation workflow. Sequential, never parallel.
 - Step 0 — Detect stack profile ✓
 - Step 0.5 — Pattern Discovery ✓ (output list `{PATTERNS}`)
 
-### Phase 1: Context Discovery
+### Phase 1: Read the Task File
+
+**ONLY read the task file** — do NOT explore the codebase yourself. The
+implementer has its own 2-phase discovery protocol and will explore the
+codebase in its own context. Orchestrator exploration is wasted work.
 
 ```
-Agent(subagent_type='Explore',
-      prompt='Find existing implementations in src/ related to [scope].
-              Return file paths, class names, and which patterns the existing
-              code follows (cross-reference against these canonical patterns:
-              {PATTERNS}). Flag any existing code that contradicts the
-              canonical patterns.',
-      description='Context discovery')
+Read("project-orchestration/tasks/{TASK-ID}*.md")
 ```
+
+Extract from the task file:
+- Feature summary (1-2 sentences)
+- Acceptance criteria / scope
+- Any context or constraints already documented
+
+Pass this summary (not the raw file) as `{TASK_SUMMARY}` to Phase 3.
+
+**If no task file exists**: ask the user to describe the feature in 2-3
+sentences, use that as `{TASK_SUMMARY}`.
 
 ### Phase 2: Analysis & Modeling
 
@@ -397,52 +440,89 @@ Agent(subagent_type='backend-technology-expert',
 
 ### Phase 3: Implementation
 
-Check for project-local implementers first:
-```
-Read(".claude/agents/implementers/")
-```
+Use the Implementers table from the Agent Mapping section above to resolve agent names for the detected `stack_profile`.
 
-**If implementers exist** — delegate to them in the order that makes sense:
-- Domain/core layer first, infrastructure/UI second
-- Each implementer gets the context from Phase 1-2
-
-Implementer prompt template:
+**Implementer prompt template** (use for every implementer call, substituting layer-specific scope):
 ```
-Implement [feature] following these canonical patterns verbatim:
+Implement [feature / layer scope] following these canonical patterns verbatim.
+
+BINDING RULE CARDS — the enforceable MUST / MUST NOT rules, already in your
+context. Apply EVERY rule by ID; they are cited by ID when your code is VETOed:
+{PATTERN_RULE_CARDS}
+
+Full patterns (read for deeper context/examples, and for any pattern below that
+has only a path and no Rule Card above):
 {PATTERNS}
 
-Context from Phase 1 (existing code):
-{PHASE_1_FINDINGS}
+Task summary:
+{TASK_SUMMARY}
 
 Decisions from Phase 2 (architecture):
 {PHASE_2_DECISIONS}
 
 Rules:
-1. Before writing ANY file, read every pattern listed above.
-2. If a rule in a pattern conflicts with the existing code from Phase 1,
-   follow the pattern (existing code may be legacy).
-3. When finished, list each file you created/modified and name the
-   pattern(s) that governed it.
+1. The Rule Cards above are ALREADY in your context — apply every MUST / MUST NOT
+   rule. For any pattern that has only a path (no Rule Card), Read the full
+   pattern BEFORE writing the file it governs.
+2. Use your own 2-phase discovery (Explore agent) to find existing code
+   — DO NOT wait for the orchestrator to provide file paths.
+3. If a rule conflicts with existing code, follow the pattern
+   (existing code may be legacy).
+4. Enforcement is real: a SubagentStop hook blocks you from finishing if you
+   edited a pattern file without reading its pattern, and the quality verifier
+   checks every Rule Card rule by ID. Code written from training data instead
+   of these rules WILL be VETOed — there is no benefit to skipping them.
+5. When finished, list each file you created/modified and name the Rule Card
+   rule IDs that governed it (e.g. "user.aggregate.ts → A1,A3,A5,N1,N6").
 ```
 
-**If no implementers** — use general-purpose agent with the template above.
+**For nestjs-ddd — MANDATORY two-step sequence:**
+
+**Step 3A — Domain/Application layer** (`domain-application-implementer`):
+```
+Agent(subagent_type='domain-application-implementer',
+      prompt='Implement domain + application layer for [feature].\n' + TEMPLATE,
+      description='Domain/app implementation')
+```
+Capture output as `{DOMAIN_LAYER_OUTPUT}`.
+
+**Step 3B — Infrastructure/Testing layer** (`infrastructure-testing-implementer`):
+```
+Agent(subagent_type='infrastructure-testing-implementer',
+      prompt='Implement infrastructure + tests for [feature].\n' + TEMPLATE +
+             '\nDomain layer already implemented:\n{DOMAIN_LAYER_OUTPUT}',
+      description='Infra/testing implementation')
+```
+
+Do NOT run 3B before 3A completes — infra depends on domain interfaces.
+
+**For other stacks** — single implementer call using the agent from the table.
+
+**If no stack-specific implementer exists** — use `general-purpose` with the template above.
 
 ### Phase 4: Verification (MANDATORY — NEVER SKIP)
 
 **4A. Quality Verification (VETO GATE)**:
 ```
 Agent(subagent_type='{QUALITY_VERIFIER}',
-      prompt='Verify code quality for [scope]. You MUST read and apply the
-              following canonical patterns as your verification checklist:
+      prompt='Verify code quality for [scope]. Your verification checklist is
+              the Rule Cards below — check EVERY rule by its ID, do not
+              spot-check:
+              {PATTERN_RULE_CARDS}
+
+              Full patterns (consult when a Rule Card is insufficient):
               {PATTERNS}
 
-              For each file changed, check:
-              - Which patterns govern this file
-              - Whether every MUST/MUST NOT rule in those patterns is followed
-              - Whether any anti-pattern from those patterns is present
+              For each file changed, go rule-by-rule through the governing Rule
+              Card:
+              - List which Rule Card(s) govern this file.
+              - For EACH rule ID (A1, N6, CH4, …): mark followed / violated.
+              - A violation MUST cite file:line + the rule ID + the rule text.
+              - Auto-VETO if the implementer output lacks per-file Rule Card rule
+                IDs (means code came from training data, not the rules).
 
-              Produce a per-file report: { file, patterns_checked, violations,
-              verdict: PASS | WARN | VETO }.',
+              Produce a per-file report: { file, rules_checked: [IDs],
+              violations: [{ id, file_line, detail }], verdict: PASS|WARN|VETO }.',
       description='Quality verification')
 ```
 
@@ -483,7 +563,7 @@ Completion Gate
 ───────────────
 [ ] Step 0    — Stack profile detected: {profile}
 [ ] Step 0.5  — Patterns discovered and listed: {count} patterns
-[ ] Phase 1   — Context discovery complete (files, existing patterns in code)
+[ ] Phase 1   — Task file read, {TASK_SUMMARY} extracted
 [ ] Phase 2B  — Architecture expert consulted OR explicitly N/A (why?)
 [ ] Phase 3   — Implementation done by {implementer_name}
 [ ] Phase 3*  — Implementer cited the patterns it applied per file

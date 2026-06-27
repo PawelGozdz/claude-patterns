@@ -12,6 +12,7 @@ tools: Read, Write, Edit, MultiEdit, Bash, Glob, Grep
 model: sonnet
 temperature: 0.3
 color: purple
+maxTurns: 30
 ---
 
 # astro-implementer

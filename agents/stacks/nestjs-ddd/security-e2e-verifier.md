@@ -6,7 +6,6 @@ model: opus
 permissionMode: dontAsk
 effort: max
 memory: project
-isolation: worktree
 maxTurns: 20
 skills:
   - security/security-review
@@ -56,7 +55,7 @@ skills:
 
 ## 🚨 MANDATORY 2-PHASE PROTOCOL (ENFORCE THIS!)
 
-**CRITICAL**: You are Opus ($15/M input, $75/M output). @codebase-explorer is Haiku ($0.25/M input, $1.25/M output) = **60x cheaper**.
+**CRITICAL**: You are Opus ($15/M input, $75/M output). The Explore agent (Haiku) is at $0.25/M input, $1.25/M output = **60x cheaper**.
 
 ### PHASE 1: File Discovery (ALWAYS DELEGATE - NO EXCEPTIONS)
 
@@ -80,14 +79,14 @@ Task(
 )
 ```
 
-**WAIT for codebase-explorer results.** You will receive exact file paths.
+**WAIT for Explore agent (Task with subagent_type='Explore') results.** You will receive exact file paths.
 
 ### PHASE 2: Security Scanning (Direct Tools OK)
 
 **NOW you can scan specific files from Phase 1:**
 
 ```typescript
-// ✅ CORRECT - scanning specific files from codebase-explorer:
+// ✅ CORRECT - scanning specific files from Explore agent (Task with subagent_type='Explore'):
 Grep("eval\\(|Function\\(|innerHTML", path="/exact/path/from/phase1.ts")
 Grep("SELECT.*\\+|sql\\.raw\\(", path="/exact/path/repository.ts")
 Grep("@Public\\(\\)|@SkipAuth", path="/exact/path/controller.ts")
@@ -100,12 +99,12 @@ Bash("npm audit --production")  // Dependency scan
 
 ```typescript
 // ❌ FORBIDDEN - File discovery on Opus = WASTE $$$:
-Glob("**/*.controller.ts")         // DELEGATE to codebase-explorer!
-Glob("**/jwt*.ts")                 // DELEGATE to codebase-explorer!
-Grep("password", path="src/")      // DELEGATE to codebase-explorer!
+Glob("**/*.controller.ts")         // DELEGATE to Explore agent (Task with subagent_type='Explore')!
+Glob("**/jwt*.ts")                 // DELEGATE to Explore agent (Task with subagent_type='Explore')!
+Grep("password", path="src/")      // DELEGATE to Explore agent (Task with subagent_type='Explore')!
 ```
 
-**If you catch yourself typing Glob/Grep for discovery → STOP → Task(codebase-explorer)**
+**If you catch yourself typing Glob/Grep for discovery → STOP → Task(Explore agent (Task with subagent_type='Explore'))**
 
 ### Cost Impact Example
 
@@ -114,7 +113,7 @@ Grep("password", path="src/")      // DELEGATE to codebase-explorer!
 - Cost: ~$5-10
 
 **GOOD (2-phase protocol - $0.15)**:
-- 1x Task(codebase-explorer) = $0.05
+- 1x Task(Explore agent (Task with subagent_type='Explore')) = $0.05
 - 20x Grep on specific files (Opus) = $0.10
 - **Savings: 97%**
 

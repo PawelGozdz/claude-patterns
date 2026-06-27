@@ -18,6 +18,7 @@ model: sonnet
 temperature: 0.3
 color: blue
 priority: high
+maxTurns: 30
 ---
 
 # ts-implementer
