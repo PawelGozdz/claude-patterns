@@ -38,3 +38,4 @@ local-config.yml
 # Tooling dependencies
 tooling/node_modules/
 tooling/package-lock.json
+.grantflow
