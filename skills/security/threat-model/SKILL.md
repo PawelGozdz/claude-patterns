@@ -197,6 +197,36 @@ For each component, fill in a table:
 
 Write concrete attack scenarios, not generic descriptions. Example for I (Information Disclosure): "Attacker triggers a validation error that causes the error handler to include the Zod parse result with all submitted field values in the HTTP response body."
 
+**MITRE ATT&CK mapping (full tier):** For each non-N/A threat, map it to the most relevant MITRE
+ATT&CK technique ID and add an `ATT&CK` column to the table. Examples: Spoofing → T1078 (Valid
+Accounts), Tampering → T1565 (Data Manipulation), Info Disclosure → T1213 (Data from Information
+Repositories), EoP → T1068 (Exploitation for Privilege Escalation). This grounds threats in real
+adversary techniques and gives detection engineering a concrete hook — each T-ID has documented
+detections and data sources. Leave blank only for threats with no meaningful ATT&CK analogue.
+
+---
+
+## Step 4b: Attack Trees (full tier — high-risk threats only)
+
+For every threat scoring Critical (DREAD ≥ 12 or CVSS ≥ 7.0), decompose the attack into a tree:
+root = attacker goal, branches = sub-goals (OR = alternatives, AND = required together), leaves =
+concrete methods. This reveals the **cheapest attack path** and the **single highest-leverage
+mitigation** (the node that cuts the most leaves).
+
+```mermaid
+flowchart TD
+    GOAL[Goal: forge verified residence]
+    GOAL --> A[OR: bypass PRG check]
+    GOAL --> B[OR: spoof GPS]
+    A --> A1[Submit fuzzy-matching street name]
+    A --> A2[Exploit nullable-coordinates fallback]
+    B --> B1[Replay captured GPS payload]
+    B --> B2[Emulator with mock location]
+```
+
+Annotate each leaf with: feasibility, the mitigation that blocks it, and residual risk. Link each
+leaf back to its STRIDE threat ID and (if present) ATT&CK technique.
+
 ---
 
 ## Step 5: DREAD Risk Register
@@ -214,6 +244,14 @@ For every threat identified in Step 4, calculate a DREAD score and add it to the
 | **D** Discoverability | Requires source code | Requires active scanning | Publicly visible via recon |
 
 Score range: 5–15. Thresholds: **≥ 12 = Critical**, **9–11 = High**, **6–8 = Medium**, **5 = Low**.
+
+**CVSS option (full tier — for concrete vulnerabilities):** DREAD is a fast, subjective design-time
+triage. For findings that map to a concrete, exploitable vulnerability (CVE-like, or anything that
+will be reported/tracked externally), score with **CVSS v3.1** instead of/alongside DREAD: produce
+the vector string (e.g. `CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:N`) and base score (0–10). CVSS
+is reproducible and industry-standard — use it when severity must be defensible and comparable across
+systems. Severity map: **≥ 9.0 Critical · 7.0–8.9 High · 4.0–6.9 Medium · < 4.0 Low**. Record which
+system (DREAD or CVSS) produced each row's score, so priorities stay comparable.
 
 Risk register table (sorted Critical → High → Medium → Low):
 
