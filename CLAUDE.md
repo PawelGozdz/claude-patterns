@@ -8,6 +8,17 @@ across multiple claude-code projects.
 projects depend on. Changes here propagate instantly to all projects via
 symlinks. Think carefully before removing or renaming anything.
 
+> **🔌 CURRENT DIRECTION (2026-06): claude-patterns = opinionated DDD/domain OVERLAY on ECC.**
+> We do **not** reinvent generic tooling — the [ECC plugin](https://github.com/affaan-m/ECC)
+> (installed globally: `ecc@ecc`) is the BASE (agents, skills, loops, MCP); claude-patterns adds the
+> domain layer ON TOP (DDD patterns/rules, VETO verifiers, grounding/delegation hooks, `/analyze-ddd`
+> + `/orchestrate-ddd`). When building/extending here, prefer **consuming ECC** over rebuilding, and
+> make any ECC dependency **explicit** (e.g. preset `requires_ecc:`, `ecc:*` agent refs) — never leave
+> the integration to guesswork.
+> **Why & how:** [`docs/REFACTOR-ANALYSIS.md`](docs/REFACTOR-ANALYSIS.md) ·
+> [`docs/ECC-USAGE.md`](docs/ECC-USAGE.md) · [`docs/DECISIONS-LOG.md`](docs/DECISIONS-LOG.md) (running rationale) ·
+> ADRs in [`docs/adr/`](docs/adr/).
+
 ---
 
 ## What's In This Repo
