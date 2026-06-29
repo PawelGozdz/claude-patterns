@@ -5,10 +5,10 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { retrieve, reload } from "./retrieve.js";
-import { buildIndex } from "./indexer.js";
+import { retrieve, retrieveCode, reload } from "./retrieve.js";
+import { buildIndex, buildCodeIndex } from "./indexer.js";
 
-const server = new McpServer({ name: "knowledge-retriever", version: "0.1.0" });
+const server = new McpServer({ name: "knowledge-retriever", version: "0.2.0" });
 
 server.tool(
   "retrieve_patterns",
@@ -22,17 +22,33 @@ server.tool(
 );
 
 server.tool(
-  "knowledge_reindex",
-  "Rebuild the retrieval index from corpus directories (patterns/rules). Run after pattern changes.",
-  { dirs: z.array(z.string()).describe("absolute or cwd-relative dirs to index") },
-  async ({ dirs }) => {
-    const n = await buildIndex(dirs);
-    reload();
-    return { content: [{ type: "text", text: `reindexed ${n} chunks` }] };
+  "retrieve_code",
+  "Semantic top-K retrieval of EXISTING project code (per-symbol: methods/functions/types) most " +
+    "relevant to a task. Killer use-case: find similar existing implementations before writing new code " +
+    "(avoids 'it doesn't exist' hallucinations + wrong signatures). Returns file + symbol + line range.",
+  { query: z.string().describe("what to find in the codebase (capability/identifier/intent)"), k: z.number().int().positive().optional() },
+  async ({ query, k }) => {
+    const hits = await retrieveCode(query, k ?? 8);
+    return { content: [{ type: "text", text: JSON.stringify(hits, null, 2) }] };
   }
 );
 
-// TODO (Phase 2): retrieve_code (AST chunking + sqlite-vec), retrieve_decisions, hybrid+rerank.
+server.tool(
+  "knowledge_reindex",
+  "Rebuild a retrieval index. mode 'patterns' → flat store (md); mode 'code' → sqlite-vec (ts/tsx).",
+  {
+    mode: z.enum(["patterns", "code"]).describe("which index to rebuild"),
+    dirs: z.array(z.string()).describe("absolute or cwd-relative dirs to index"),
+  },
+  async ({ mode, dirs }) => {
+    const n = mode === "code" ? await buildCodeIndex(dirs) : await buildIndex(dirs);
+    reload();
+    return { content: [{ type: "text", text: `reindexed ${mode}: ${n} chunks` }] };
+  }
+);
+
+// TODO (Phase 3): retrieve_decisions (ADR/threat-model/BUSINESS_RULES), hybrid (BM25) + rerank,
+// incremental reindex via PostToolUse hook, eval harness (precision/recall@K).
 
 await server.connect(new StdioServerTransport());
 console.error("[knowledge-retriever] MCP server ready (stdio)");
