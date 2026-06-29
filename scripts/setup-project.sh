@@ -333,11 +333,17 @@ if [[ -n "$PROJECT_LANGUAGE" ]]; then
     ensure_symlink "$NATIVE_RULES_DIR/$PROJECT_LANGUAGE" "$LANG_RULES_SOURCE" ".claude/rules/$PROJECT_LANGUAGE" || true
   fi
 
-  # Clean up stale language rule symlinks
+  # Stack-specific rules (e.g., rules/nestjs-ddd/) — overlay for DDD/stack invariants
+  STACK_RULES_SOURCE="$PATTERNS_REPO/rules/$STACK_PROFILE"
+  if [[ -n "$STACK_PROFILE" && -d "$STACK_RULES_SOURCE" ]]; then
+    ensure_symlink "$NATIVE_RULES_DIR/$STACK_PROFILE" "$STACK_RULES_SOURCE" ".claude/rules/$STACK_PROFILE" || true
+  fi
+
+  # Clean up stale language rule symlinks (preserve common, language, and stack rules)
   for link in "$NATIVE_RULES_DIR"/*/; do
     [[ -L "${link%/}" ]] || continue
     link_name=$(basename "${link%/}")
-    if [[ "$link_name" != "common" && "$link_name" != "$PROJECT_LANGUAGE" ]]; then
+    if [[ "$link_name" != "common" && "$link_name" != "$PROJECT_LANGUAGE" && "$link_name" != "$STACK_PROFILE" ]]; then
       echo -e "  ${YELLOW}Removing stale:${NC} .claude/rules/$link_name"
       rm "${link%/}"
     fi
@@ -457,6 +463,31 @@ echo -e "${BLUE}[5/8] Stack profile configs${NC}"
 STACK_PROFILE=$(yml_get "project.stack_profile")
 
 if [[ -n "$STACK_PROFILE" ]]; then
+  # Materialize preset (presets/<stack>.yml → .claude/config/preset.yml) so
+  # /analyze-ddd and /orchestrate-ddd can resolve the active preset in-project.
+  PRESET_SOURCE="$PATTERNS_REPO/presets/$STACK_PROFILE.yml"
+  if [[ -f "$PRESET_SOURCE" ]]; then
+    mkdir -p "$PROJECT_DIR/.claude/config"
+    ensure_symlink "$PROJECT_DIR/.claude/config/preset.yml" "$PRESET_SOURCE" ".claude/config/preset.yml" || true
+  fi
+
+  # Canonical threat-model template — SYNC from claude-patterns (SSoT) so enhancements
+  # (Attack Trees, CVSS, MITRE ATT&CK, ...) propagate. COPY not symlink: docs/ is tracked,
+  # portable project content. Opt out of auto-sync by adding "<!-- LOCAL-CUSTOMIZED -->" to it.
+  TM_TEMPLATE_SRC="$PATTERNS_REPO/templates/THREAT_MODEL_TEMPLATE.md"
+  TM_TEMPLATE_DST="$PROJECT_DIR/docs/security/THREAT_MODEL_TEMPLATE.md"
+  if [[ -f "$TM_TEMPLATE_SRC" ]]; then
+    mkdir -p "$PROJECT_DIR/docs/security"
+    if [[ -f "$TM_TEMPLATE_DST" ]] && grep -q "LOCAL-CUSTOMIZED" "$TM_TEMPLATE_DST"; then
+      echo -e "  ${YELLOW}Preserved:${NC} docs/security/THREAT_MODEL_TEMPLATE.md (LOCAL-CUSTOMIZED)"
+    elif [[ -f "$TM_TEMPLATE_DST" ]] && diff -q "$TM_TEMPLATE_SRC" "$TM_TEMPLATE_DST" >/dev/null 2>&1; then
+      echo -e "  ${YELLOW}Up to date:${NC} docs/security/THREAT_MODEL_TEMPLATE.md"
+    else
+      cp "$TM_TEMPLATE_SRC" "$TM_TEMPLATE_DST"
+      echo -e "  ${GREEN}Synced:${NC} docs/security/THREAT_MODEL_TEMPLATE.md (canonical)"
+    fi
+  fi
+
   # Hook config filenames are defined by the hook scripts themselves:
   #   ddd-config.js    → looks for "ddd-hooks.json"
   #   flutter-config.js → looks for "flutter-hooks.json"
