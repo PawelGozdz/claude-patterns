@@ -11,6 +11,9 @@
 
 A **single source of truth** for production-tested software patterns and agent templates that can be shared across multiple Claude Code projects.
 
+> **🔌 Używasz ECC (plugin) + nasz overlay?** Przewodnik: [`docs/ECC-USAGE.md`](docs/ECC-USAGE.md).
+> Kierunek refaktoru: [`docs/REFACTOR-ANALYSIS.md`](docs/REFACTOR-ANALYSIS.md) · plan: [`docs/faza-1-plan.md`](docs/faza-1-plan.md) · dyrygent: [`docs/orchestrate-ddd-design.md`](docs/orchestrate-ddd-design.md).
+
 **Three Distribution Systems**:
 1. **MCP Server** (`.mcp.json` per project) - Pattern delivery to Claude Code
 2. **Filesystem Symlinks** (Global agents/commands/hooks) - Universal resources
