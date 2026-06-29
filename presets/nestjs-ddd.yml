@@ -1,0 +1,67 @@
+# Preset: nestjs-ddd — deklaracja overlayu + faz /analyze-ddd i /orchestrate-ddd.
+# Czytany przez setup-project.sh v2 (materializacja) oraz przez komendy (stage'e/bramki).
+# UWAGA: preset = SZABLON, nie wyrocznia. /analyze-ddd proponuje plan; człowiek edytuje
+# {TASK-ID}.analysis.md; /orchestrate-ddd czyta ZATWIERDZONY artefakt (nie ten preset) jako plan.
+
+name: nestjs-ddd
+
+# Czego oczekujemy od bazy ECC (plugin, globalnie)
+requires_ecc:
+  profile: developer
+  modules: [lang:typescript, capability:orchestration]
+
+# Co materializujemy do <repo>/.claude/ (setup-project.sh v2)
+overlay:
+  agents:   [stacks/nestjs-ddd/]            # → .claude/agents/ddd/ (implementery + VETO verifiers)
+  patterns: [domain/, application/, infrastructure/, architecture/]   # → .claude/knowledge/patterns/
+  rules:    [nestjs-ddd/]                    # → .claude/rules/nestjs-ddd/
+  hooks:    [check-delegation, check-patterns-read, check-subagent-pattern-reads, check-approval-before-impl]
+
+# Środowisko per-projekt DDD (rozbrojenie kolizji z ECC — patrz spike S3)
+env:
+  ECC_GATEGUARD: "off"
+  ECC_DISABLED_HOOKS: "pre:edit-write:gateguard-fact-force,pre:bash:gateguard-fact-force"
+  DELEGATION_MODE: "block"
+
+# FAZA RESEARCH (/analyze-ddd) — panel → artefakt → STOP1
+phase_research:
+  pattern_discovery: true                   # Step 0.5: czytaj knowledge/patterns + _stack-defaults
+  security_preflight: true                  # Step 0a: labels auth/pii/cross_context → threat-model
+  panel:                                    # stage'e advisory (kolejność = porządek raportu)
+    # threat-model: pisze TM do docs/security/threat-models/; SKIP jeśli TM już istnieje
+    - { stage: threat-model,      agent: "/threat-model", when: "auth|pii|cross_context|public_api",
+        output: "docs/security/threat-models/TM-{TASK_ID}.md", skip_if_exists: true }
+    - { stage: tech-analysis,     agent: "ecc:architect" }          # lub backend-technology-expert
+    - { stage: ddd-modeling,      agent: "ddd-application-expert" }
+    - { stage: impl-analysis,     agent: "infrastructure-testing-implementer", advisory: true }
+    - { stage: pattern-fit,       agent: "code-quality-verifier", advisory: true }
+    - { stage: synthesis,         agent: "tech-lead" }              # pisze artefakt + OTWARTE PYTANIA
+  output: "project-orchestration/analysis/{TASK_ID}.analysis.md"   # NIE tasks/ — tasks tylko na taski
+  links: { threat_model: "docs/security/threat-models/TM-{TASK_ID}.md" }  # analiza referuje TM, nie scala
+  exit: PAUSE                               # STOP1 — blokuj impl aż status: approved
+
+# FAZA IMPLEMENTACJI (/orchestrate-ddd) — pętla aż VETO GO → STOP2
+phase_implementation:
+  engine: workflow                          # Workflow tool (deterministyczny), nie /goal
+  prerequisite: "{TASK_ID}.analysis.md::status == approved && no open_questions.answer == null"
+  layers:                                   # OUTER: sekwencja (zależności DDD)
+    - { id: domain-application, dirs: [domain/, application/] }
+    - { id: infrastructure,     dirs: [infrastructure/], tests: true }
+  inner_loop:                               # per warstwa
+    steps: [implement, verify, fix]
+    implement: { agent: "domain-application-implementer | infrastructure-testing-implementer",
+                 inject: [decisions, patterns, rule_cards], gate: check-delegation }
+    verify:    { agent: "code-quality-verifier", returns: "{verdict, violations[]}" }
+    stop_when: "verdict == GO"
+    max_attempts: 3                         # stall-guard; loop-operator ECC jako backstop
+    on_max: ESCALATE_AND_HALT
+  final_gate: { agent: "security-e2e-verifier", returns: "{verdict}", on_fail: ESCALATE_AND_HALT }
+  exit: STAGE_NOT_COMMIT                    # STOP2 — git add + raport + HALT (commit = człowiek)
+
+# Seam'y Ralphinho — w MVP no-op/jednoelementowe (patrz ADR 0002)
+ralphinho:
+  units: single                            # single = [task]; later: decompose(task) z analysis.md units:
+  worktree: shared                          # shared = jeden; later: per-unit (scripts ECC)
+  fan_out: sequential                       # sequential; later: parallel (cap 16)
+  merge_stage: noop                         # noop; later: merge-queue + re-run security-e2e
+  guardrails: { push_only: "claude/*", max_attempts_per_layer: 3 }
