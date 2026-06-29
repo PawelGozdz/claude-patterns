@@ -73,6 +73,8 @@ wg `templates/task-analysis-template.md`:
   lub null), `open_questions[]` (każde `answer: null`), `decisions[]` (propozycje z rationale),
   `patterns[]` (lista z 0.5), opcjonalnie `units:` (Ralphinho).
 - body: synteza tech-lead, sekcje „Otwarte pytania" i „Decyzje (proponowane)".
+  W body **NIE powtarzaj `answer: null`** jako podpowiedzi (myli — wygląda na niezatwierdzone);
+  odpowiedzi żyją WYŁĄCZNIE we frontmatter. W body co najwyżej odsyłaj: „_(odpowiedź w frontmatter)_".
 - Security (STRIDE/DREAD/LINDDUN) NIE tutaj — żyje w `docs/security/threat-models/TM-{TASK-ID}.md`; tu tylko link + krótkie „Ryzyka".
 
 ### 3. STOP1

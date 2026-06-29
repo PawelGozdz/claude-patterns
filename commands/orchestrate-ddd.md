@@ -67,6 +67,24 @@ Po wszystkich GO:
 Na porażce (max-attempts lub security NO-GO): eskaluj z konkretami (co blokuje, które rule-ID),
 zostaw staged co przeszło, HALT — bez spinning.
 
+## Obserwowalność (logi na żywo — NIE czarna skrzynka)
+
+Workflow MUSI być gadatliwy, żeby `/workflows` pokazywał czytelny postęp:
+- `phase('Research' | 'Domain' | 'Application' | 'Infra' | 'Final gate')` — grupuj kroki w fazy.
+- `log(...)` na KAŻDYM przejściu: start warstwy, każda próba (`attempt N/3`), werdykt verifiera
+  (`GO` / `NO-GO + violations`), eskalacja, staging. Przykład:
+  `log('[domain] attempt 1 → verify: NO-GO (3 violations: AGG-001, VO-002...) → fixing')`.
+- Każdy `agent()` ma czytelny `label` (np. `verify:domain`, `impl:infra`) → widoczny w drzewie.
+
+Jak monitorować w trakcie:
+```
+/workflows                          # żywe drzewo: fazy, agenci, status, równoległość
+/ecc:loop-status --watch            # wykrywanie zawieszeń: stale Bash >30min, overdue wakeup, parse errors
+```
+Jeśli `loop-status` zgłosi `attention` → otwórz transkrypt lub przerwij. Per-agent koszt:
+`~/.claude/logs/agent-usage.jsonl` (hook subagent-stop-cost-log). Twarde limity (max_attempts=3,
+budżet) chronią przed nieskończoną pętlą — przy przekroczeniu Workflow eskaluje i HALT, nie wisi.
+
 ## Uwaga o starym /orchestrate
 `/orchestrate` (jeden przebieg, bez bramki research) zostaje jako fallback dla lekkich/nie-DDD
 zadań. `/orchestrate-ddd` = pełny flow z twardą bramką analizy i pętlą aż GO.
