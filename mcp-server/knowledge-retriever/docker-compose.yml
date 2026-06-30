@@ -10,7 +10,4 @@ services:
       - "6401:6333"   # REST
       - "6402:6334"   # gRPC
     volumes:
-      - cp_qdrant_data:/qdrant/storage
-
-volumes:
-  cp_qdrant_data:
+      - ./volumes/qdrant:/qdrant/storage   # bind-mount IN the repo (portable, visible)
