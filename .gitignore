@@ -39,3 +39,9 @@ local-config.yml
 tooling/node_modules/
 tooling/package-lock.json
 .grantflow
+
+# knowledge-retriever (RAG) runtime artifacts — NEVER commit (186MB+ Qdrant storage, deps, builds)
+mcp-server/knowledge-retriever/node_modules/
+mcp-server/knowledge-retriever/dist/
+mcp-server/knowledge-retriever/volumes/qdrant/
+mcp-server/knowledge-retriever/.knowledge/
