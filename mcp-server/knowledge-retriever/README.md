@@ -19,7 +19,7 @@ Ten serwer jest częścią modelu **claude-patterns = overlay na ECC** (patrz
 
 ## Setup
 ```bash
-cd mcp-servers/knowledge-retriever
+cd mcp-server/knowledge-retriever
 npm install                 # pobiera SDK + transformers.js
 npm run build
 npm run index -- --patterns ../../patterns --rules ../../rules   # zbuduj indeks (1. raz pobiera model embeddingów)
@@ -33,7 +33,7 @@ Rejestracja w projekcie (`.mcp.json`):
 ```json
 { "mcpServers": { "knowledge-retriever": {
   "type": "stdio", "command": "node",
-  "args": ["<abs>/mcp-servers/knowledge-retriever/dist/index.js"],
+  "args": ["<abs>/mcp-server/knowledge-retriever/dist/index.js"],
   "env": {
     "KR_INDEX": "<abs>/.knowledge/index.json",
     "KR_CODE_INDEX": "<abs>/.knowledge/code.db"
