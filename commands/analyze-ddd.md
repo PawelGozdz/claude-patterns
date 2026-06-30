@@ -66,6 +66,16 @@ Zamiast grepować/czytać kod na ślepo (główny pożeracz tokenów), **retriev
 
 Wyniki `retrieve_code` wstrzyknij do stage'a impl-analysis; `retrieve_patterns` do groundingu panelu.
 
+### 0.7. Decision cards — WYBÓR wzorca z wymagań (rdzeń ddd-modeling)
+Dla decyzji projektowych (agregat vs encja, VO vs encja, ACL vs events, policy vs specification,
+domain-service vs metoda, granica agregatu) NIE polegaj na osądzie agenta — użyj kart decyzyjnych:
+1. Wczytaj trafne karty z `.claude/knowledge/decisions/` (symlink; fallback: `decisions/README.md` indeks).
+   Dobór wg tego, czego dotyka task (np. „cross-context" → acl-vs-domain-events; „nowy obiekt z tożsamością" → aggregate-vs-entity).
+2. **Konsultuj PRECEDENS projektu:** `docs/adr/` + `BUSINESS_RULES.yaml`. Jeśli decyzja już zapadła →
+   **zastosuj i cytuj ADR**, NIE re-decyduj. Jeśli nie → rekomenduj wg kryteriów karty + **zaproponuj nowy ADR**.
+3. Wstrzyknij wybrane karty + znalezione ADR-y do stage'a **ddd-modeling**.
+Każda decyzja → wpis w `decisions[]` artefaktu z: wybór, **uzasadnienie wg karty**, cytat ADR lub `propose_adr: true`.
+
 ### 1. Panel advisory — agenci LIŚCIE (bez narzędzia Task!)
 **KRYTYCZNE (bug-fix):** wołaj agentów panelu jako **LIŚCIE — BEZ narzędzia Task**. Nie pozwól im
 delegować dalej — inaczej zapętlają się, próbując wołać nieistniejące agenty (np. `Explore`). Każdy

@@ -225,6 +225,12 @@ elif [[ -f "$PATTERNS_README_TEMPLATE" ]]; then
 else
   echo -e "  ${YELLOW}Skipped:${NC} patterns/README.md template missing"
 fi
+
+# Decision cards (central framework for pattern selection) → .claude/knowledge/decisions/
+DECISIONS_SOURCE="$PATTERNS_REPO/decisions"
+if [[ -d "$DECISIONS_SOURCE" ]]; then
+  ensure_symlink "$KNOWLEDGE_DIR/decisions" "$DECISIONS_SOURCE" ".claude/knowledge/decisions" || true
+fi
 echo ""
 
 # --- 2. Patterns-local directory ---
