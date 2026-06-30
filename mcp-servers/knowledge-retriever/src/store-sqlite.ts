@@ -43,13 +43,18 @@ export class SqliteVecStore {
     if (!withVec.length) return;
     this.ensureVec(withVec[0].vector!.length);
     const insMeta = this.db.prepare(
-      `INSERT OR REPLACE INTO chunks (id, source, section, text, start_line, end_line) VALUES (?,?,?,?,?,?)`
+      `INSERT OR REPLACE INTO chunks (rowid, id, source, section, text, start_line, end_line) VALUES (?,?,?,?,?,?,?)`
     );
     const insVec = this.db.prepare(`INSERT INTO vec_chunks (rowid, embedding) VALUES (?, ?)`);
+    // Use our own integer rowid counter — sqlite-vec vec0 requires a plain INTEGER primary key
+    // (better-sqlite3 lastInsertRowid can surface as BigInt → "Only integers allowed" on vec0).
+    let rowid = ((this.db.prepare(`SELECT COALESCE(MAX(rowid),0) AS m FROM chunks`).get() as { m: number }).m) || 0;
     const tx = this.db.transaction((cs: Chunk[]) => {
       for (const c of cs) {
-        const info = insMeta.run(c.id, c.source, c.section, c.text, c.startLine ?? null, c.endLine ?? null);
-        insVec.run(info.lastInsertRowid as number, JSON.stringify(c.vector));
+        rowid += 1;
+        insMeta.run(rowid, c.id, c.source, c.section, c.text, c.startLine ?? null, c.endLine ?? null);
+        // sqlite-vec vec0 needs rowid as BigInt and the vector as a Float32Array (not JS number / JSON).
+        insVec.run(BigInt(rowid), new Float32Array(c.vector!));
       }
     });
     tx(withVec);
@@ -63,7 +68,7 @@ export class SqliteVecStore {
          JOIN chunks c ON c.rowid = m.rowid
          ORDER BY m.distance`
       )
-      .all(JSON.stringify(queryVec), k) as any[];
+      .all(new Float32Array(queryVec), k) as any[];
     return rows.map((r) => ({
       source: r.source,
       section: r.section,
