@@ -1,38 +1,32 @@
-// Local embeddings via Transformers.js (ONNX in-process) — code/PII never leaves the machine (GDPR).
-// Default model: multilingual-e5-small (handles Polish docs + code identifiers).
-// e5 convention: prefix passages with "passage: " and queries with "query: ".
-import { pipeline, type FeatureExtractionPipeline } from "@xenova/transformers";
+// Embeddings via the shared inference server (CT 301, GPU e5-large 1024-dim).
+// No local model download — code/PII stays on the LAN (GDPR). e5 prefix convention:
+// "passage: " for indexed text, "query: " for search (server prepends it).
+const URL = process.env.KR_EMBED_URL ?? "http://192.168.0.150:8301/v1/embeddings/generate";
+const MODEL = process.env.KR_EMBED_MODEL ?? "multilingual-e5-large";
 
 export interface Embedder {
   embedPassages(texts: string[]): Promise<number[][]>;
   embedQuery(text: string): Promise<number[]>;
 }
 
-const MODEL = process.env.KR_EMBED_MODEL ?? "Xenova/multilingual-e5-small";
-
-export class TransformersEmbedder implements Embedder {
-  private extractor: FeatureExtractionPipeline | null = null;
-
-  private async pipe(): Promise<FeatureExtractionPipeline> {
-    if (!this.extractor) {
-      this.extractor = await pipeline("feature-extraction", MODEL);
-    }
-    return this.extractor;
+export class HttpEmbedder implements Embedder {
+  private async call(texts: string[], prefix: string): Promise<number[][]> {
+    const res = await fetch(URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ texts, model: MODEL, prefix }),
+    });
+    if (!res.ok) throw new Error(`embed endpoint ${res.status} ${res.statusText}`);
+    const json = (await res.json()) as { embeddings: number[][] };
+    return json.embeddings;
   }
 
-  private async embed(inputs: string[]): Promise<number[][]> {
-    const extractor = await this.pipe();
-    const out = await extractor(inputs, { pooling: "mean", normalize: true });
-    // out.tolist() → number[][] (one normalized vector per input)
-    return out.tolist() as number[][];
-  }
-
-  async embedPassages(texts: string[]): Promise<number[][]> {
-    return this.embed(texts.map((t) => `passage: ${t}`));
+  embedPassages(texts: string[]): Promise<number[][]> {
+    return this.call(texts, "passage: ");
   }
 
   async embedQuery(text: string): Promise<number[]> {
-    const [v] = await this.embed([`query: ${text}`]);
+    const [v] = await this.call([text], "query: ");
     return v;
   }
 }

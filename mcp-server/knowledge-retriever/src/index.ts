@@ -35,13 +35,16 @@ server.tool(
 
 server.tool(
   "knowledge_reindex",
-  "Rebuild a retrieval index. mode 'patterns' → flat store (md); mode 'code' → sqlite-vec (ts/tsx).",
+  "Rebuild a Qdrant index. mode 'patterns' → cp_patterns + git-mirror (md); mode 'code' → code_<project> (ts/tsx).",
   {
     mode: z.enum(["patterns", "code"]).describe("which index to rebuild"),
     dirs: z.array(z.string()).describe("absolute or cwd-relative dirs to index"),
+    collection: z.string().optional().describe("Qdrant collection (code mode: e.g. code_juzide1)"),
   },
-  async ({ mode, dirs }) => {
-    const n = mode === "code" ? await buildCodeIndex(dirs) : await buildIndex(dirs);
+  async ({ mode, dirs, collection }) => {
+    const n = mode === "code"
+      ? await buildCodeIndex(dirs, collection ?? "code_default")
+      : await buildIndex(dirs, collection);
     reload();
     return { content: [{ type: "text", text: `reindexed ${mode}: ${n} chunks` }] };
   }

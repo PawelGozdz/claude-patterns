@@ -1,39 +1,35 @@
-// Retrieval — embed query, KNN over the relevant store.
-//   patterns → FlatStore (JSON+cosine)
-//   code     → SqliteVecStore (sqlite-vec)
+// Retrieval — embed query (CT 301), KNN in Qdrant. Store resolver:
+//   patterns → Qdrant primary, FALLBACK to git-mirror FlatStore (offline resilience)
+//   code     → Qdrant only (rebuild from source if unavailable)
 import { FlatStore } from "./store.js";
-import { SqliteVecStore } from "./store-sqlite.js";
-import { TransformersEmbedder, type Embedder } from "./embedder.js";
+import { QdrantStore } from "./store-qdrant.js";
+import { HttpEmbedder, type Embedder } from "./embedder.js";
 import type { Hit } from "./types.js";
 
-const INDEX = process.env.KR_INDEX ?? "./.knowledge/index.json";
-const CODE_INDEX = process.env.KR_CODE_INDEX ?? "./.knowledge/code.db";
+const PATTERNS_COLLECTION = process.env.KR_PATTERNS_COLLECTION ?? "cp_patterns";
+const PATTERNS_MIRROR = process.env.KR_PATTERNS_MIRROR ?? "./mirror/cp_patterns.json";
+const CODE_COLLECTION = process.env.KR_CODE_COLLECTION ?? "code_default";
 
-let patternStore: FlatStore | null = null;
-let codeStore: SqliteVecStore | null = null;
 let embedder: Embedder | null = null;
-
-function emb(): Embedder {
-  if (!embedder) embedder = new TransformersEmbedder();
-  return embedder;
-}
+const emb = (): Embedder => (embedder ??= new HttpEmbedder());
 
 export function reload(): void {
-  patternStore = new FlatStore(INDEX);
-  if (codeStore) {
-    codeStore.close();
-    codeStore = null;
+  embedder = null;
+}
+
+/** patterns: Qdrant → git-mirror fallback. */
+export async function retrieve(query: string, k = 5): Promise<Hit[]> {
+  const qv = await emb().embedQuery(query);
+  try {
+    return await new QdrantStore(PATTERNS_COLLECTION).search(qv, k);
+  } catch (e) {
+    console.error(`[knowledge-retriever] Qdrant unavailable, using git-mirror: ${(e as Error).message}`);
+    return new FlatStore(PATTERNS_MIRROR).search(qv, k); // offline fallback
   }
 }
 
-export async function retrieve(query: string, k = 5): Promise<Hit[]> {
-  if (!patternStore) patternStore = new FlatStore(INDEX);
-  const qv = await emb().embedQuery(query);
-  return patternStore.search(qv, k);
-}
-
+/** code: Qdrant only. */
 export async function retrieveCode(query: string, k = 8): Promise<Hit[]> {
-  if (!codeStore) codeStore = new SqliteVecStore(CODE_INDEX);
   const qv = await emb().embedQuery(query);
-  return codeStore.search(qv, k);
+  return new QdrantStore(CODE_COLLECTION).search(qv, k);
 }
