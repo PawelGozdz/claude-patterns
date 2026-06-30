@@ -32,14 +32,18 @@ ujawnia rzeczy do przedyskutowania, zanim warto pisać kod.
 
 ## Kroki
 
-### 0. Setup
-- Wczytaj `.claude/config/project.yml` → `stack_profile` (oczekiwane: nestjs-ddd) i preset
-  `presets/{stack_profile}.yml` → `phase_research`.
-- Ustal `{TASK-ID}` z argumentu. Znajdź plik zadania (`project-orchestration/tasks/{TASK-ID}.md`)
-  jeśli istnieje — to spec wejściowy.
+### 0. Setup (samowystarczalny — działa w KAŻDYM projekcie, nie tylko nestjs-ddd)
+- Wczytaj `.claude/config/project.yml` → `stack_profile`. **NIE zakładaj nestjs-ddd.**
+- Preset jest **OPCJONALNY**: jeśli istnieje `.claude/config/preset.yml` (in-project, materializowany
+  przez setup-project.sh) → użyj jego `phase_research`. **Jeśli BRAK → użyj wbudowanych domyślnych
+  z tej komendy** (panel w kroku 1, dobrany wg `stack_profile`).
+- **NIE odwołuj się do `presets/…` ani `templates/…`** — to ścieżki w repo claude-patterns, NIE
+  rozwiązują się z cwd projektu. Struktura artefaktu jest zdefiniowana INLINE (krok 2) — nie zależy od pliku template.
+- Ustal `{TASK-ID}` z argumentu. Plik `project-orchestration/tasks/{TASK-ID}.md` jeśli istnieje = spec.
 
-### 0a. Security pre-flight
-- Sprawdź etykiety zadania (auth, pii, cross_context, public_api — patrz `templates/canonical-labels.yml`).
+### 0a. Security pre-flight (jeśli dotyczy)
+- Oceń etykiety/treść zadania (auth, pii, cross_context, public_api). Jeśli istnieje
+  `.claude/config/canonical-labels.yml` — użyj go; jeśli nie — oceń z treści zadania (graceful, nie blokuj).
 - Jeśli istnieje `docs/security/threat-models/TM-{TASK-ID}.md` → **użyj go** (link w artefakcie), NIE uruchamiaj ponownie.
 - Jeśli pasują etykiety i NIE ma TM → uruchom stage `threat-model`, który zapisuje pełny TM do
   **`docs/security/threat-models/TM-{TASK-ID}.md`** (STRIDE/DREAD/LINDDUN — NIE wkomponowuj security w .analysis.md;
@@ -53,18 +57,43 @@ ujawnia rzeczy do przedyskutowania, zanim warto pisać kod.
   bez wstrzykniętej treści wzorca ich rekomendacje będą generyczne. To ten sam grounding, który
   check-patterns-read / check-subagent-pattern-reads egzekwują w fazie implementacji.
 
-### 1. Panel advisory (Task → agenci, kolejność z presetu)
-Dla każdego stage z `phase_research.panel` odpal agenta przez `Task`, wstrzykując: spec zadania,
-**treść Rule Cards** (z 0.5 — nie tylko ścieżki), kontekst poprzednich stage'ów. Domyślny panel (nestjs-ddd):
-1. `threat-model` (warunkowo, gdy brak TM) — deleguj przez `Task` do subagenta security, który
-   wykonuje pełną metodologię (STRIDE/DREAD/LINDDUN wg `skills/security/threat-model` +
-   `docs/security/THREAT_MODEL_TEMPLATE.md`) i **ZAPISUJE `docs/security/threat-models/TM-{TASK}.md`**.
-   Synteza (stage 6) wciąga z TM krótkie podsumowanie + ustawia `threat_model:` link (NIE kopiuje STRIDE).
-2. tech-analysis — `ecc:architect` (lub `@backend-technology-expert`)
-3. ddd-modeling — `@ddd-application-expert`
-4. impl-analysis — `@infrastructure-testing-implementer` (advisory: jak to zaimplementować)
-5. pattern-fit — `@code-quality-verifier` (advisory: które wzorce stosujemy, gdzie ryzyko)
-6. synthesis — `@tech-lead` (zbiera wszystko, wskazuje co robić, wypisuje OTWARTE PYTANIA)
+### 0.6. RAG retrieval (jeśli MCP `knowledge-retriever` dostępny — graceful)
+Zamiast grepować/czytać kod na ślepo (główny pożeracz tokenów), **retrievuj trafny kontekst semantycznie**:
+- `retrieve_code(<intencja taska>)` → **Codebase Facts**: istniejące symbole (plik+symbol+linie) podobne do
+  tego, co task ma zrobić. Eliminuje halucynacje „to nie istnieje" + złe sygnatury (bug z ANTI-SPOOF).
+- `retrieve_patterns(<task>)` → trafne sekcje wzorców/reguł do groundingu (uzupełnia 0.5 — zwraca tylko istotne, nie wszystko).
+- **Fallback (MCP niedostępny):** klasyczny grep/glob + statyczna lista z 0.5. Działanie się nie zmienia, tylko droższe.
+
+Wyniki `retrieve_code` wstrzyknij do stage'a impl-analysis; `retrieve_patterns` do groundingu panelu.
+
+### 0.7. Decision cards — WYBÓR wzorca z wymagań (rdzeń ddd-modeling)
+Dla decyzji projektowych (agregat vs encja, VO vs encja, ACL vs events, policy vs specification,
+domain-service vs metoda, granica agregatu) NIE polegaj na osądzie agenta — użyj kart decyzyjnych:
+1. Wczytaj trafne karty z `.claude/knowledge/decisions/` (symlink; fallback: `decisions/README.md` indeks).
+   Dobór wg tego, czego dotyka task (np. „cross-context" → acl-vs-domain-events; „nowy obiekt z tożsamością" → aggregate-vs-entity).
+2. **Konsultuj PRECEDENS projektu:** `docs/adr/` + `BUSINESS_RULES.yaml`. Jeśli decyzja już zapadła →
+   **zastosuj i cytuj ADR**, NIE re-decyduj. Jeśli nie → rekomenduj wg kryteriów karty + **zaproponuj nowy ADR**.
+3. Wstrzyknij wybrane karty + znalezione ADR-y do stage'a **ddd-modeling**.
+Każda decyzja → wpis w `decisions[]` artefaktu z: wybór, **uzasadnienie wg karty**, cytat ADR lub `propose_adr: true`.
+
+### 1. Panel advisory — agenci LIŚCIE (bez narzędzia Task!)
+**KRYTYCZNE (bug-fix):** wołaj agentów panelu jako **LIŚCIE — BEZ narzędzia Task**. Nie pozwól im
+delegować dalej — inaczej zapętlają się, próbując wołać nieistniejące agenty (np. `Explore`). Każdy
+stage = JEDNO wywołanie agenta. Wstrzykuj: spec zadania + **treść Rule Cards** (z 0.5) + kontekst poprzednich stage'ów.
+
+**Dobór agentów wg `stack_profile`** — jeśli stack-specific agent nie istnieje w projekcie, użyj generycznego
+(nie hardcoduj agentów, których może nie być):
+- **nestjs-ddd:** threat-model(warunkowo) → architekt → `@ddd-application-expert` →
+  `@infrastructure-testing-implementer` → `@code-quality-verifier` → `@tech-lead` (synteza)
+- **typescript-library:** threat-model(warunkowo) → architekt → `@library-quality-verifier` (lub `@library-api-guardian`) → `@tech-lead`
+- **flutter / nextjs / python / inne:** analogicznie stack-specific verifier → `@tech-lead`
+- **fallback (brak stack-agentów):** architekt (generyczny) → ogólny reviewer → `@tech-lead`
+
+`threat-model` (gdy security-relevant i brak TM): wykonuje STRIDE/DREAD/LINDDUN (metodologia z
+`skills/security/threat-model` + `docs/security/THREAT_MODEL_TEMPLATE.md` jeśli obecny) i **ZAPISUJE
+`docs/security/threat-models/TM-{TASK}.md`**. Synteza wciąga podsumowanie + ustawia `threat_model:` link (NIE kopiuje STRIDE).
+
+`synthesis` (ostatni, `@tech-lead`): zbiera wszystko, wskazuje co robić, wypisuje **OTWARTE PYTANIA**.
 
 ### 2. Zapis artefaktu (jedyny Write)
 Zapisz **`project-orchestration/analysis/{TASK-ID}.analysis.md`** (NIE w tasks/ — tam tylko taski)
