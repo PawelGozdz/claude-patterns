@@ -1,0 +1,13 @@
+# Dedicated Qdrant for claude-patterns code retrieval — ISOLATED from any shared/prod Qdrant.
+# Host port 6401 (not the shared 6333) → set KR_QDRANT_URL=http://localhost:6401.
+# Persistent named volume so the index survives restarts; reseed only on pattern/code change.
+services:
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: cp-knowledge-qdrant
+    restart: unless-stopped
+    ports:
+      - "6401:6333"   # REST
+      - "6402:6334"   # gRPC
+    volumes:
+      - ./volumes/qdrant:/qdrant/storage   # bind-mount IN the repo (portable, visible)

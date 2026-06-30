@@ -45,7 +45,10 @@ for unit of units:                          # MVP: units = [task]  (seam Ralphin
   for layer of [domain-application, infrastructure]:   # OUTER: sekwencja (zależności DDD)
     attempt = 0
     loop:
-      implement(layer, {decisions, patterns, rule_cards}, worktree)   # Agent implementer; gate: check-delegation
+      # PRZED pisaniem: retrieve_code(intencja) z MCP knowledge-retriever → istniejące symbole
+      # (plik+symbol+linie). Eliminuje „to nie istnieje" + złe sygnatury (bug z ANTI-SPOOF).
+      # Graceful: jeśli MCP/Qdrant niedostępny → implementer szuka klasycznie (grep).
+      implement(layer, {decisions, patterns, rule_cards, existing_code: retrieve_code(layer_intent)}, worktree)   # gate: check-delegation
       v = verify(layer)        # @code-quality-verifier → {verdict, violations:[rule_ids]}
       if v.verdict == GO: break
       if ++attempt >= 3: ESCALATE(layer, v.violations); HALT

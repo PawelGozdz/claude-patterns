@@ -1,0 +1,23 @@
+{
+  "name": "knowledge-retriever",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "MCP server for semantic retrieval of internal knowledge (patterns, rules, code) — claude-patterns overlay-on-ECC",
+  "bin": { "knowledge-retriever": "dist/index.js" },
+  "scripts": {
+    "build": "tsc",
+    "index": "node dist/indexer.js",
+    "index:code": "node dist/indexer.js --mode code",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "@qdrant/js-client-rest": "^1.11.0",
+    "typescript": "^5.4.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0"
+  }
+}

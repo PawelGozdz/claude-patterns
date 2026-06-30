@@ -1,0 +1,6 @@
+{
+  "code_juzide1": {
+    "model": "ct301:multilingual-e5-large",
+    "dim": 1024
+  }
+}

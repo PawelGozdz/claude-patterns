@@ -15,6 +15,46 @@
 
 ---
 
+## 2026-06-30 — RAG: code-only + dedykowany Qdrant + swappable embedder (drop pattern-embedding)
+
+**Zmiana:** knowledge-retriever zawężony do **code retrieval** (find existing impl). Pattern-embedding
+USUNIĘTY. Store = **dedykowany** Qdrant (docker-compose, :6401, izolowany od prod). Embedder **pluggable**
+(env: ct301 e5-large / openai-compat). `reseed.sh` = lekki (docker up→build→reindex z configu); swap modelu
+= zmień env + rerun (recreate z nowym dim). Wpięte w /analyze-ddd (0.6) i /orchestrate-ddd (implement).
+
+**Dlaczego:** embedding ⟺ vector store ⟺ code retrieval — stoją albo padają razem. Embedding *wzorców*
+(72 pliki) = koszt bez wartości (decision cards + README wskazują wzorzec bez semantyki). Embedding *kodu*
+(6800 plików) = realna wartość (dowód: bug ANTI-SPOOF — zła sygnatura, „to nie istnieje" — kosztował dzień).
+Współdzielony prod-Qdrant „do czego innego" → izolacja (kolizja kolekcji, sprzężenie niezawodności).
+
+**Odrzucone:** embedding wzorców do FlatStore (koszt bez zysku); współdzielony prod-Qdrant (kolizja/sprzężenie);
+lokalny transformers.js/sqlite-vec (gorszy model + bałagan w node_modules).
+
+**Status:** done + zwalidowane e2e na `mentions` (dedykowany Qdrant :6401, CT 301 embed, retrieve 0.84-0.88).
+Patterns/decisions → markdown (decision cards). Faza 3 (hybrid+rerank+evals) = pending.
+
+---
+
+## 2026-06-29 — Right-size default: aparat multi-agentowy za ciężki dla małych tasków
+
+**Zmiana:** domyślny flow dla małych/znanych tasków = **bezpośrednia implementacja + JEDNA
+kompletna weryfikacja (find-all-once)**, BEZ pętli/panelu/re-spawnu. Multi-agent (`/orchestrate-ddd`,
+panel) tylko dla dużych/nieznanych/równoległych. To czyni „loops-performance-lesson" **defaultem**, nie wyjątkiem.
+
+**Dlaczego:** cały dzień + mnóstwo tokenów na 1 mały task (TS-SEC-ANTI-SPOOF-002). Z logów marnotrawstwo:
+(1) **re-weryfikacja tego samego** (te same 2 agenty, te same 3 blokery, 2×), (2) **odkrywanie blokerów
+falami** (verify→fix→verify→nowy bloker), (3) **ciężki kontekst per-agent** (ECC 33k always-on + czytanie
+6800 plików od zera, brak RAG), (4) **lęk weryfikacyjny → ręczne re-spawny** („na pewno? upewnijcie się").
+
+**Fix (kolejność dźwigni):** right-size default · find-all-once verify (jedna, znajdź WSZYSTKO) ·
+RAG (cięcie re-readingu — największy lever na tokeny) · `ECC_HOOK_PROFILE=minimal` dla subagentów ·
+ufać jednej weryfikacji (po to jest VETO gate).
+
+**Odrzucone:** „dorzucić więcej agentów/weryfikacji" — to powiększa problem. Kierunek = **upraszczać**.
+**Status:** decyzja done; egzekwowanie w komendach (find-all-once verifier, right-size routing) = pending.
+
+---
+
 ## 2026-06-29 — Advanced RAG jako knowledge-retriever MCP (embedded, local-first)
 
 **Zmiana:** zaprojektowany Advanced RAG jako **MCP server w TS** (`knowledge-retriever`) z magazynem

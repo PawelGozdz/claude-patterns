@@ -1,0 +1,6 @@
+{
+  "_comment": "collection -> source dirs. Reseed embeds (KR_EMBED_*) + recreates each Qdrant collection.",
+  "collections": {
+    "code_juzide1": ["../../../juz-ide-api-1/src"]
+  }
+}
