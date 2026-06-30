@@ -57,6 +57,15 @@ ujawnia rzeczy do przedyskutowania, zanim warto pisać kod.
   bez wstrzykniętej treści wzorca ich rekomendacje będą generyczne. To ten sam grounding, który
   check-patterns-read / check-subagent-pattern-reads egzekwują w fazie implementacji.
 
+### 0.6. RAG retrieval (jeśli MCP `knowledge-retriever` dostępny — graceful)
+Zamiast grepować/czytać kod na ślepo (główny pożeracz tokenów), **retrievuj trafny kontekst semantycznie**:
+- `retrieve_code(<intencja taska>)` → **Codebase Facts**: istniejące symbole (plik+symbol+linie) podobne do
+  tego, co task ma zrobić. Eliminuje halucynacje „to nie istnieje" + złe sygnatury (bug z ANTI-SPOOF).
+- `retrieve_patterns(<task>)` → trafne sekcje wzorców/reguł do groundingu (uzupełnia 0.5 — zwraca tylko istotne, nie wszystko).
+- **Fallback (MCP niedostępny):** klasyczny grep/glob + statyczna lista z 0.5. Działanie się nie zmienia, tylko droższe.
+
+Wyniki `retrieve_code` wstrzyknij do stage'a impl-analysis; `retrieve_patterns` do groundingu panelu.
+
 ### 1. Panel advisory — agenci LIŚCIE (bez narzędzia Task!)
 **KRYTYCZNE (bug-fix):** wołaj agentów panelu jako **LIŚCIE — BEZ narzędzia Task**. Nie pozwól im
 delegować dalej — inaczej zapętlają się, próbując wołać nieistniejące agenty (np. `Explore`). Każdy
