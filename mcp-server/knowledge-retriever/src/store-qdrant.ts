@@ -3,7 +3,8 @@
 import { QdrantClient } from "@qdrant/js-client-rest";
 import type { Chunk, Hit } from "./types.js";
 
-const URL = process.env.KR_QDRANT_URL ?? "http://192.168.0.150:6333";
+// Dedicated, isolated Qdrant (docker-compose) — NOT the shared prod :6333.
+const URL = process.env.KR_QDRANT_URL ?? "http://localhost:6401";
 
 export class QdrantStore {
   private client: QdrantClient;
