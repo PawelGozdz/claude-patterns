@@ -1,0 +1,14 @@
+{
+  "_comment": "Default DDD conformance rules (from rules/nestjs-ddd + decision cards). Project overrides via .claude/conformance.json (kind merge).",
+  "kinds": [
+    { "kind": "aggregate",         "match": "\\.aggregate\\.ts$",          "expectExtends": "AggregateRoot" },
+    { "kind": "id-vo",             "match": "-id\\.vo\\.ts$",              "expectExtends": "BaseEntityId" },
+    { "kind": "value-object",      "match": "\\.vo\\.ts$",                  "_note": "majority-only (no expectExtends) — plain VOs vs legit specialized bases like PolishIdentifier" },
+    { "kind": "entity",            "match": "\\.entity\\.ts$",             "expectExtends": "BaseEntity" },
+    { "kind": "command-handler",   "match": "/commands/.*handler\\.ts$",    "expectExtends": "BaseCommandHandler" },
+    { "kind": "query-handler",     "match": "/queries/.*handler\\.ts$",     "expectExtends": "BaseQueryHandler" },
+    { "kind": "specification",     "match": "\\.specification\\.ts$",       "expectExtends": "CompositeSpecification" },
+    { "kind": "domain-service",    "match": "\\.domain-service\\.ts$",      "expectDecorator": "Injectable" },
+    { "kind": "kysely-repository", "match": "kysely.*repository\\.ts$",     "expectExtends": "BaseKyselyRepository" }
+  ]
+}

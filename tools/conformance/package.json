@@ -1,0 +1,13 @@
+{
+  "name": "conformance-check",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "AST conformance audit — intra-codebase pattern consistency (hard-rule + majority-outlier). No infra.",
+  "scripts": {
+    "check": "node check.mjs"
+  },
+  "dependencies": {
+    "typescript": "^5.4.0"
+  }
+}
