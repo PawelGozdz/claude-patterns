@@ -15,6 +15,44 @@
 
 ---
 
+## 2026-07-02 — Restrukturyzacja RAG w 4 filary: observability → regresja → eval+wpięcie → wersjonowanie
+
+**Zmiana:** pełna analiza przez /analyze-ddd (`docs/tasks/TASK-RAG-002.analysis.md`, approved) →
+split na 4 taski i wykonanie Filarów 0–2 w jednej sesji:
+- **Filar 0 (TASK-OBS-001, commit 8d5c700):** zewnętrzny watcher transkryptów
+  (`scripts/workflow-watcher.js` → RUN-STATE.md na żywo) + watchdog produktywności per-kontrakt-etapu
+  (`hooks/productivity-watchdog.js`, PreToolUse deny + kill-switch) + reguła no-rerun
+  (`resumeFromRunId`). → **ADR 0003**.
+- **Filar 1 (TASK-AGENT-CONFORMANCE-001, commit 51ef956):** bramka „kod istnieje" (pusty git diff
+  → ESCALATE), verify() sekwencyjnie, werdykty przez `schema` (null → natychmiastowy ESCALATE),
+  maxTurns weryfikatora 15→30, usunięte martwe `mcp__zen__*`, reguła całych plików; Rule Card
+  spec-policy: **SP3 → SP3a/SP3b** (Business Rule vs Calculation Policy) + **N4** (`@BusinessRule`
+  bez realnej delegacji = VETO; dekorator PROJEKTOWY juz-ide-api-1, nie @vytches/ddd).
+- **Filar 2 (TASK-RAG-002 zwężony, commit 51ef956):** reseed globalnych kolekcji → **eval OFFLINE
+  PRZED wpięciem** na golden-secie 20 zapytań: hit@1=0.55 · **hit@5=0.85** · MRR=0.66 → próg 0.6
+  przekroczony → wpięcie `retrieve_patterns`/`retrieve_examples` do `tools:` obu implementerów.
+  Harness: `tests/flow-evals/` (hooki 10/10 + retrieval). → **ADR 0004**.
+- **Filar 3 (TASK-RAG-003, projekt):** wersjonowanie (pin `.claude/config/knowledge-pins.json`
+  W REPO projektu), best_practices przez deterministyczną bramkę AST+git+proweniencja. → **ADR 0005**.
+
+**Dlaczego:** regresja 15min→4h i $120-bez-wartości NIE była problemem RAG (niewpięty) — to
+maszyneria egzekwowania + ciche padanie Workflow (TS-SEC-VERIFICATION-LEVELS-002: 4 przebiegi,
+~5.2M tokenów, 0 ukończeń). Kolejność wg malejącego bólu. Dowód działania watchdoga: smoke-test
+na transkryptach tej awarii pokazał weryfikatory 60k–279k burn bez jednego zdarzenia postępu.
+
+**Odrzucone:** twardy cap tokenów (duży kontekst bywa legalny — metryka relatywna per kontrakt
+etapu); Redis (wąskie gardło to pętle, nie latencja); Postgres od startu (pin JSON wystarcza);
+LLM-judge jako scorer evalów (deterministyczne fixtures/AST); wpięcie RAG przed pomiarem (§9
+rag-design); wiring technical-architecture-lead do panelu (ma tool Task → ryzyko zapętlenia;
+COFNIĘTY do czasu naprawy — Q8).
+
+**Status:** Filary 0–2 done; **niezweryfikowane na żywo end-to-end** — pierwszy przebieg
+walidacyjny `/orchestrate-ddd` w juz-ide-api-1 (z watcherem + hookiem) jest twardym punktem
+kontrolnym przed ogłoszeniem regresji naprawioną. Filar 3 pending.
+**Ref:** ADR 0003/0004/0005 · `docs/tasks/TASK-{OBS-001,AGENT-CONFORMANCE-001,RAG-002,RAG-003}.md` · commity 9ef460c → 7a19b23 → 8d5c700 → 51ef956.
+
+---
+
 ## 2026-06-30 — RAG: code-only + dedykowany Qdrant + swappable embedder (drop pattern-embedding)
 
 **Zmiana:** knowledge-retriever zawężony do **code retrieval** (find existing impl). Pattern-embedding
