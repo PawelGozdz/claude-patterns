@@ -1,0 +1,27 @@
+{
+  "vytchesLevels": {
+    "quickstart/create-order.command.ts": "simple",
+    "quickstart/get-order.query.ts": "simple",
+    "quickstart/place-order.command.ts": "simple",
+    "quickstart/events.ts": "simple",
+    "quickstart/money.value-object.ts": "simple",
+    "quickstart/order.aggregate.ts": "simple",
+    "quickstart/order.specs.ts": "simple",
+    "quickstart/in-memory-order.repository.ts": "simple",
+    "domain-services/01-order-processing.ts": "simple",
+    "domain-services/02-payment-orchestration.ts": "simple",
+    "domain-services/03-inventory-management.ts": "medium",
+    "domain-services/04-user-registration.ts": "medium",
+    "domain-services/05-service-composition.ts": "complex",
+    "domain-services/06-transaction-rollback.ts": "medium",
+    "domain-services/07-testing-domain-services.ts": "medium",
+    "policies/01-basic-specification.ts": "simple",
+    "policies/02-reusable-specification.ts": "simple",
+    "policies/03-policy-group-and-or.ts": "medium",
+    "policies/04-conditional-policy.ts": "medium",
+    "policies/05-event-driven-policy.ts": "medium",
+    "policies/06-retry-policy.ts": "medium",
+    "policies/07-cached-policy.ts": "complex",
+    "policies/08-temporal-policy.ts": "complex"
+  }
+}

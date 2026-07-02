@@ -1,6 +1,24 @@
 {
-  "code_juzide1": {
+  "code_grant_flow": {
     "model": "ct301:multilingual-e5-large",
     "dim": 1024
+  },
+  "code_universal_learning_system": {
+    "model": "ct301:multilingual-e5-large",
+    "dim": 1024
+  },
+  "code_juz_ide_api": {
+    "model": "ct301:multilingual-e5-large",
+    "dim": 1024
+  },
+  "patterns_global": {
+    "model": "ct301:multilingual-e5-large",
+    "dim": 1024,
+    "indexedAt": "2026-07-01T18:47:04Z"
+  },
+  "library_reference_global": {
+    "model": "ct301:multilingual-e5-large",
+    "dim": 1024,
+    "indexedAt": "2026-07-01T18:47:04Z"
   }
 }

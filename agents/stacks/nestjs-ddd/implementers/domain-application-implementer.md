@@ -5,7 +5,7 @@ description: |
   domain service, specification, command handler, query handler, CQRS, DTO, business logic.
   Implements DDD business logic (Aggregates, VOs, Events, Services) and CQRS orchestration
   (Command/Query Handlers, DTOs, Application Services).
-tools: Read, Write, Edit, MultiEdit, Glob, Grep, LS, Task
+tools: Read, Write, Edit, MultiEdit, Glob, Grep, LS, Task, mcp__knowledge-retriever__retrieve_code
 disallowedTools: Bash
 model: sonnet
 temperature: 0.3
@@ -81,6 +81,14 @@ Implements DOMAIN & APPLICATION layers following DDD and CQRS patterns.
 Haiku ($0.25/M input, $1.25/M output) = **60x cheaper**.
 
 ### PHASE 1: File Discovery & Examples (ALWAYS DELEGATE)
+
+**Decision rule — `retrieve_code` (MCP tool) vs Explore/Grep/Read:**
+- **Unknown exact symbol/file name** (you know the CAPABILITY you need — e.g. "how do we handle
+  optimistic locking in another aggregate" — but not where it lives) → call `retrieve_code` first.
+  It's a semantic search over the project's existing code, always pass `collection` explicitly.
+- **Known exact name to copy verbatim** (the task/prompt already told you exactly which file/symbol
+  to look at) → go straight to Read/Grep. `retrieve_code` adds a network roundtrip with no benefit
+  when you already know the target.
 
 **BEFORE implementing, you MUST find reference examples:**
 

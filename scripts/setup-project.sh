@@ -605,19 +605,58 @@ else
 fi
 echo ""
 
-# --- 6. .mcp.json (project-scope MCP server) ---
-echo -e "${BLUE}[6/8] MCP configuration (.mcp.json)${NC}"
+# --- 6. .mcp.json (project-scope MCP servers — merged, idempotent) ---
+# Two servers are ensured (merge, not clobber — preserves any project-local entries):
+#   • claude-patterns      — pattern-delivery (python server.py)
+#   • knowledge-retriever  — code retrieval, SHARED HTTP daemon (docker-compose, :6403) — same URL
+#     for every project. Per-project isolation = Qdrant collection, NOT a separate process anymore;
+#     the daemon has no way to know which project is calling, so collection must be passed explicitly
+#     on every retrieve_code call. We write it to .claude/config/knowledge.json for commands to read.
+echo -e "${BLUE}[6/8] MCP configuration (.mcp.json — merge)${NC}"
 MCP_JSON="$PROJECT_DIR/.mcp.json"
-MCP_TEMPLATE="$PATTERNS_REPO/templates/mcp.json.template"
 
-if [[ -f "$MCP_JSON" ]]; then
-  echo -e "  ${YELLOW}Already exists:${NC} .mcp.json (preserved)"
-elif [[ -f "$MCP_TEMPLATE" ]]; then
-  # Expand ${HOME} in template
-  sed "s|%%PATTERNS_REPO%%|$PATTERNS_REPO|g" "$MCP_TEMPLATE" > "$MCP_JSON"
-  echo -e "  ${GREEN}Created:${NC} .mcp.json (claude-patterns MCP server)"
+# Qdrant collection: explicit override (project.yml::knowledge_collection) wins — for twin
+# projects sharing one repo (e.g. juz-ide-api-1..4) that should share ONE collection, not be
+# split per instance. Falls back to deriving from the dir basename: juz-ide-api-1 → code_juz_ide_api_1.
+KR_COLLECTION_OVERRIDE=$(yml_get "project.knowledge_collection")
+if [[ -n "$KR_COLLECTION_OVERRIDE" ]]; then
+  KR_COLLECTION="$KR_COLLECTION_OVERRIDE"
 else
-  echo -e "  ${YELLOW}Skipped:${NC} MCP template not found"
+  PROJ_BASENAME=$(basename "$PROJECT_DIR")
+  KR_COLLECTION="code_$(echo "$PROJ_BASENAME" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]\+/_/g' | sed 's/^_//; s/_$//')"
+fi
+PATTERNS_SERVER="$PATTERNS_REPO/mcp-server/server.py"
+
+# Record the collection name where /analyze-ddd, /orchestrate-ddd, and implementers read it
+# (the HTTP daemon is shared — every retrieve_code call must pass `collection` explicitly).
+mkdir -p "$PROJECT_DIR/.claude/config"
+KNOWLEDGE_CFG="$PROJECT_DIR/.claude/config/knowledge.json"
+printf '{\n  "collection": "%s"\n}\n' "$KR_COLLECTION" > "$KNOWLEDGE_CFG"
+echo -e "  ${GREEN}Wrote:${NC} .claude/config/knowledge.json (collection: $KR_COLLECTION)"
+
+if command -v node >/dev/null 2>&1; then
+  MCP_JSON="$MCP_JSON" PATTERNS_SERVER="$PATTERNS_SERVER" \
+  node -e '
+    const fs = require("fs");
+    const p = process.env.MCP_JSON;
+    let cfg = { mcpServers: {} };
+    if (fs.existsSync(p)) { try { cfg = JSON.parse(fs.readFileSync(p, "utf8")); } catch {} }
+    cfg.mcpServers ??= {};
+    let changed = false;
+    // claude-patterns (pattern delivery) — ensure present, do not overwrite if customized
+    if (!cfg.mcpServers["claude-patterns"]) {
+      cfg.mcpServers["claude-patterns"] = { type: "stdio", command: "python3", args: [process.env.PATTERNS_SERVER] };
+      changed = true;
+    }
+    // knowledge-retriever (code retrieval) — shared HTTP daemon, same URL for every project
+    const want = { type: "http", url: "http://localhost:6403/mcp" };
+    const cur = cfg.mcpServers["knowledge-retriever"];
+    if (JSON.stringify(cur) !== JSON.stringify(want)) { cfg.mcpServers["knowledge-retriever"] = want; changed = true; }
+    if (changed || !fs.existsSync(p)) fs.writeFileSync(p, JSON.stringify(cfg, null, 2) + "\n");
+    console.log(changed ? "  \x1b[0;32mMerged:\x1b[0m knowledge-retriever (http daemon) + claude-patterns" : "  \x1b[1;33mUp to date:\x1b[0m .mcp.json");
+  '
+else
+  echo -e "  ${YELLOW}Skipped:${NC} node not found — cannot merge .mcp.json"
 fi
 echo ""
 

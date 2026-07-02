@@ -28,17 +28,24 @@ KORPUS → CHUNK → EMBED (lokalnie) → STORE (sqlite-vec, plik) → RETRIEVE 
 | BUSINESS_RULES.yaml | per wpis reguły |
 | ADRs + threat-models | per sekcja |
 
-## 4. MCP server `knowledge-retriever` (TypeScript) — narzędzia
+## 4. MCP server `knowledge-retriever` (TypeScript) — narzędzia (stan po TASK-RAG-002, Qdrant nie sqlite-vec)
 ```ts
-retrieve_patterns(task: string, k=5)
-  → { chunks: [{ pattern, section, text, score }] }
-retrieve_code(query: string, scope?: string, k=8)
-  → { chunks: [{ file, symbol, lines, text, score }] }
-retrieve_decisions(task: string, k=5)
-  → { chunks: [{ source, type: 'adr'|'threat-model'|'business-rule', text, score }] }
-knowledge_reindex(scope?: 'patterns'|'code'|'all')
-  → { indexed: number, durationMs: number }
+retrieve_code(query: string, k=8, collection: string)
+  → Hit[]   // per-project, SHARED daemon — collection zawsze jawny
+retrieve_patterns(query: string, k=5, kind?: 'rule_card'|'anti_pattern', tags?: string[])
+  → Hit[]   // global, collection='patterns_global' (patterns/**, rules/**)
+retrieve_examples(query: string, k=5, level?: 'simple'|'medium'|'complex', kind?: 'example'|'anti_pattern')
+  → Hit[]   // global, collection='library_reference_global' (@vytches/ddd examples)
+knowledge_reindex(dirs: string[], collection: string)
+  → { indexed: number }
 ```
+`query` (nie `task`) — spójne z `retrieve_code` we wszystkich trzech toolach. `retrieve_decisions`
+pozostaje TODO (poza zakresem TASK-RAG-002). Diversity-aware search (Qdrant `searchPointGroups`,
+`group_by:'source'`) domyślnie włączona we wszystkich kolekcjach. Freshness: `POST /reindex-file
+{file, collection}` (REST, NIE MCP tool) — opt-in per projekt, hook
+`hooks/knowledge-freshness-postwrite.js`. Magazyn: dedykowany Qdrant (docker-compose), NIE
+sqlite-vec jak sekcja 2 pierwotnie zakładała — zmiana decyzji udokumentowana w DECISIONS-LOG.
+
 Rejestracja: `.mcp.json` (project-scope) → Claude Code wystawia narzędzia agentom (consumer).
 Server = provider. Cały w TS.
 

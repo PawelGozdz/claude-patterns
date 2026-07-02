@@ -9,12 +9,15 @@
     "build": "tsc",
     "index": "node dist/indexer.js",
     "index:code": "node dist/indexer.js --mode code",
+    "migrate": "node dist/migrate.js",
+    "seed:global": "node dist/global-indexer.js --all",
     "start": "node dist/index.js"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
     "@qdrant/js-client-rest": "^1.11.0",
     "typescript": "^5.4.0",
+    "uuid": "^11.0.0",
     "zod": "^3.23.0"
   },
   "devDependencies": {

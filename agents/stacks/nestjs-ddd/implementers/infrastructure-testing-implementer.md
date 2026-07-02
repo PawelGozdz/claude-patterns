@@ -6,7 +6,7 @@ description: |
   Implements Infrastructure/API layer (Controllers, Schemas, Repos, External Services) and
   comprehensive test suites (L1 Unit, L2 Integration, L3 E2E setup).
 tools:
-  Read, Write, Edit, MultiEdit, Bash, Glob, Grep, LS, Task
+  Read, Write, Edit, MultiEdit, Bash, Glob, Grep, LS, Task, mcp__knowledge-retriever__retrieve_code
 model: sonnet
 temperature: 0.3
 color: orange
@@ -80,6 +80,14 @@ cannot see your transcript — so this stop-gate is what binds.)
 ## 🚨 MANDATORY 2-PHASE PROTOCOL (ENFORCE THIS!)
 
 ### PHASE 1: File Discovery & Examples (ALWAYS DELEGATE to Explore)
+
+**Decision rule — `retrieve_code` (MCP tool) vs Explore/Grep/Read:**
+- **Unknown exact symbol/file name** (you know the CAPABILITY you need but not where it lives) →
+  call `retrieve_code` first — semantic search over the project's existing code, always pass
+  `collection` explicitly.
+- **Known exact name to copy verbatim** (the task/prompt already told you exactly which file/symbol
+  to look at) → go straight to Read/Grep. `retrieve_code` adds a roundtrip with no benefit when you
+  already know the target.
 
 **BEFORE implementing, find reference examples via the built-in Explore agent (Haiku — cheaper for searches):**
 

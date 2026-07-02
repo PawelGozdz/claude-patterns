@@ -38,6 +38,11 @@ Z artefaktu czytaj: `decisions[]` (wstrzykiwane do KAŻDEGO promptu implementera
 (grounding), opcjonalnie `units[]` (Ralphinho — w MVP brak = jeden unit). Preset
 `presets/{stack}.yml::phase_implementation` daje strukturę warstw i bramek.
 
+Wczytaj też `collection` z `.claude/config/knowledge.json` (zapisane przez `setup-project.sh`) —
+`knowledge-retriever` to **jeden współdzielony HTTP daemon** (wszystkie projekty), więc bez jawnego
+`collection` przy każdym `retrieve_code` trafisz w `code_default` zamiast w kod tego projektu.
+Brak pliku → graceful (implementer spada na grep, jak przy niedostępnym MCP).
+
 ## Krok 3 — Uruchom Workflow implementacji (w tle)
 Zbuduj/uruchom Workflow o strukturze (MVP = liniowy, seam'y Ralphinho jako no-op):
 ```
@@ -45,10 +50,11 @@ for unit of units:                          # MVP: units = [task]  (seam Ralphin
   for layer of [domain-application, infrastructure]:   # OUTER: sekwencja (zależności DDD)
     attempt = 0
     loop:
-      # PRZED pisaniem: retrieve_code(intencja) z MCP knowledge-retriever → istniejące symbole
-      # (plik+symbol+linie). Eliminuje „to nie istnieje" + złe sygnatury (bug z ANTI-SPOOF).
-      # Graceful: jeśli MCP/Qdrant niedostępny → implementer szuka klasycznie (grep).
-      implement(layer, {decisions, patterns, rule_cards, existing_code: retrieve_code(layer_intent)}, worktree)   # gate: check-delegation
+      # PRZED pisaniem: retrieve_code(intencja, collection) z MCP knowledge-retriever → istniejące
+      # symbole (plik+symbol+linie). collection = z .claude/config/knowledge.json (Krok 2).
+      # Eliminuje „to nie istnieje" + złe sygnatury (bug z ANTI-SPOOF).
+      # Graceful: jeśli MCP/Qdrant niedostępny lub collection nieznany → implementer szuka klasycznie (grep).
+      implement(layer, {decisions, patterns, rule_cards, existing_code: retrieve_code(layer_intent, collection)}, worktree)   # gate: check-delegation
       v = verify(layer)        # @code-quality-verifier → {verdict, violations:[rule_ids]}
       if v.verdict == GO: break
       if ++attempt >= 3: ESCALATE(layer, v.violations); HALT

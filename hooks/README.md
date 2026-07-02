@@ -39,6 +39,29 @@ User request → Claude picks a tool → PreToolUse hook runs → Tool executes 
 | **TypeScript check** | `Edit` | Runs `tsc --noEmit` after editing `.ts`/`.tsx` files |
 | **console.log warning** | `Edit` | Warns about `console.log` statements in edited files |
 
+> **Knowledge freshness** (`knowledge-freshness-postwrite.js`) lives in the hooks dir but is **not**
+> registered in global `hooks.json` — it's OPT-IN per project, since it only makes sense for
+> projects that use the `knowledge-retriever` MCP server (`mcp-server/knowledge-retriever/`). A
+> project that wants incremental re-embed on save adds it to its own `.claude/settings.json`:
+> ```json
+> {
+>   "hooks": {
+>     "PostToolUse": [
+>       {
+>         "matcher": "Edit|Write|MultiEdit",
+>         "hooks": [{ "type": "command", "command": "node \"$HOME/.claude/hooks/knowledge-freshness-postwrite.js\"" }]
+>       }
+>     ]
+>   }
+> }
+> ```
+> It also needs `.claude/config/knowledge.json` in the project root:
+> `{ "collection": "code_myproject", "watchDirs": ["src"] }`. On every `.ts`/`.tsx` edit under a
+> watched dir, it fires a fire-and-forget `POST http://localhost:${KR_HTTP_PORT:-6403}/reindex-file`
+> (bounded ~3s timeout, all errors swallowed — daemon-down/network issues never block the edit).
+> Follows the exact stdin/stdout contract of `post-edit-typecheck.js` (always passes stdin through
+> and exits 0, even on failure).
+
 ### Lifecycle Hooks
 
 | Hook | Event | What It Does |

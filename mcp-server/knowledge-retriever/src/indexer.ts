@@ -2,7 +2,7 @@
 // dedicated Qdrant. Patterns/decisions are NOT embedded (served as markdown — see DECISIONS-LOG).
 // Usage: node dist/indexer.js --collection code_juzide1 --dir ../../../juz-ide-api-1/src
 import { readdirSync, readFileSync, statSync, mkdirSync, writeFileSync } from "node:fs";
-import { join, relative } from "node:path";
+import { join, resolve } from "node:path";
 import { chunkCode } from "./code-chunker.js";
 import { QdrantStore } from "./store-qdrant.js";
 import { HttpEmbedder } from "./embedder.js";
@@ -13,12 +13,15 @@ const MANIFEST = process.env.KR_MANIFEST ?? "./mirror/collections.json"; // tiny
 const SKIP_DIR = (n: string) => n === "node_modules" || n === "dist" || n === "__tests__" || n.startsWith(".");
 const isCode = (n: string) => (n.endsWith(".ts") || n.endsWith(".tsx")) && !n.endsWith(".spec.ts") && !n.endsWith(".d.ts");
 
-function walk(dir: string, root: string, acc: Chunk[]): void {
+// `dir` must already be absolute (callers resolve() before the first call) — `source` is stored
+// as an absolute path so retrieve_code results are Read-able regardless of the caller's cwd
+// (the daemon is a shared process; callers' cwd varies per project/session).
+function walk(dir: string, acc: Chunk[]): void {
   for (const name of readdirSync(dir)) {
     const full = join(dir, name);
     const st = statSync(full);
-    if (st.isDirectory()) { if (!SKIP_DIR(name)) walk(full, root, acc); }
-    else if (isCode(name)) acc.push(...chunkCode(readFileSync(full, "utf8"), relative(root, full)));
+    if (st.isDirectory()) { if (!SKIP_DIR(name)) walk(full, acc); }
+    else if (isCode(name)) acc.push(...chunkCode(readFileSync(full, "utf8"), full));
   }
 }
 
@@ -33,9 +36,8 @@ function recordManifest(collection: string, model: string, dim: number): void {
 /** code → dedicated Qdrant (full rebuild). Recreates collection with the model's detected dim,
  *  so swapping the embed model + reseeding "just works". */
 export async function buildCodeIndex(dirs: string[], collection: string): Promise<number> {
-  const root = process.cwd();
   const chunks: Chunk[] = [];
-  for (const d of dirs) walk(d, root, chunks);
+  for (const d of dirs) walk(resolve(d), chunks);
   if (!chunks.length) return 0;
 
   const embedder = new HttpEmbedder();
@@ -51,6 +53,29 @@ export async function buildCodeIndex(dirs: string[], collection: string): Promis
   await store.recreate(dim);
   await store.add(chunks);
   recordManifest(collection, embedder.describe(), dim);
+  return chunks.length;
+}
+
+/** Incremental freshness — reindex ONE file (not a whole directory). deleteBySource() first drops
+ *  this file's stale chunks (chunk count may have shrunk), then add() upserts the fresh ones —
+ *  safe/idempotent thanks to the UUID v5 id scheme in store-qdrant.ts, unlike recreate() which
+ *  would wipe the rest of the collection. Called from index.ts's POST /reindex-file (hook-driven). */
+export async function reindexFile(absPath: string, collection: string): Promise<number> {
+  const store = new QdrantStore(collection);
+  await store.deleteBySource(absPath);
+
+  const chunks = chunkCode(readFileSync(absPath, "utf8"), absPath);
+  if (!chunks.length) return 0;
+
+  const embedder = new HttpEmbedder();
+  const now = new Date().toISOString();
+  for (let i = 0; i < chunks.length; i += BATCH) {
+    const slice = chunks.slice(i, i + BATCH);
+    const vecs = await embedder.embedPassages(slice.map((c) => `${c.section}\n${c.text}`));
+    slice.forEach((c, j) => { c.vector = vecs[j]; c.indexedAt = now; });
+  }
+
+  await store.add(chunks);
   return chunks.length;
 }
 

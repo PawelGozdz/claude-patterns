@@ -40,14 +40,14 @@ Changing platform = rewrite `src/clients/<old>/` → `src/clients/<new>/` only.
 ```typescript
 // ✅ CORRECT: streaming with cost tracking
 const stream = await anthropic.messages.stream({
-  model: 'claude-sonnet-4-6',
+  model: 'claude-sonnet-5',
   max_tokens: 1024,
   messages: [{ role: 'user', content: sanitizedInput }], // after pii-filter
 });
 
 // ✅ CORRECT: prompt caching for persona system prompts
 const response = await anthropic.messages.create({
-  model: 'claude-sonnet-4-6',
+  model: 'claude-sonnet-5',
   system: [{ type: 'text', text: personaPrompt, cache_control: { type: 'ephemeral' } }],
   messages,
 });
