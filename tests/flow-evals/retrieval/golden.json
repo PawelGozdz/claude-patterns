@@ -1,0 +1,26 @@
+{
+  "comment": "Golden-set eval retrievalu (TASK-RAG-002, D7 L1). expect = substringi pola hit.source; trafienie = KTÓRYKOLWIEK substring w source hita. Rozbudowa: dokładaj wpisy z realnych przebiegów /analyze-ddd (zapytanie panelu → wzorzec, który faktycznie był potrzebny).",
+  "threshold_hit_at_5": 0.6,
+  "queries": [
+    { "id": "P01", "query": "agregat rzuca wyjątki zamiast zwracać Result", "collection": "patterns_global", "expect": ["aggregate"] },
+    { "id": "P02", "query": "policy builder wymagane metadane withId withDomain withName", "collection": "patterns_global", "expect": ["specification-policy"] },
+    { "id": "P03", "query": "specyfikacja robi zapytanie do bazy danych w isSatisfiedBy", "collection": "patterns_global", "expect": ["specification-policy"] },
+    { "id": "P04", "query": "rejestracja command handlera w module onModuleInit", "collection": "patterns_global", "expect": ["command-handler"] },
+    { "id": "P05", "query": "userId pobierany z body komendy zamiast z kontekstu uwierzytelnienia", "collection": "patterns_global", "expect": ["command-handler"] },
+    { "id": "P06", "query": "komunikacja między bounded contextami przez zdarzenia integracyjne", "collection": "patterns_global", "expect": ["cross-context", "integration-event"] },
+    { "id": "P07", "query": "wyciek error.message do odpowiedzi HTTP z mappera błędów", "collection": "patterns_global", "expect": ["safe-error-propagation"] },
+    { "id": "P08", "query": "proporcje piramidy testów L1 L2 L3", "collection": "patterns_global", "expect": ["testing-pyramid"] },
+    { "id": "P09", "query": "createMock z golevelup zamiast ręcznej fabryki mocków", "collection": "patterns_global", "expect": ["golevelup-mock"] },
+    { "id": "P10", "query": "niemutowalny value object porównywany przez wartość", "collection": "patterns_global", "expect": ["value-object"] },
+    { "id": "P11", "query": "repozytorium zwraca encje domenowe przez mapper", "collection": "patterns_global", "expect": ["repository", "mapper"] },
+    { "id": "P12", "query": "adnotacja @Transactional na operacjach zapisu w handlerze", "collection": "patterns_global", "expect": ["transactional"] },
+    { "id": "P13", "query": "zdarzenia domenowe z danymi osobowymi GDPR segregacja", "collection": "patterns_global", "expect": ["domain-event"] },
+    { "id": "P14", "query": "emisja zdarzeń domenowych z encji podrzędnej agregatu", "collection": "patterns_global", "expect": ["entity-event-emission"] },
+    { "id": "P15", "query": "konwencje nazewnictwa plików CQRS i struktura folderów", "collection": "patterns_global", "expect": ["conventions"] },
+    { "id": "E01", "query": "prosty przykład agregatu zamówienia", "collection": "library_reference_global", "expect": ["order.aggregate"] },
+    { "id": "E02", "query": "łączenie wielu polityk operatorami AND OR", "collection": "library_reference_global", "expect": ["policy-group-and-or"] },
+    { "id": "E03", "query": "polityka z ponawianiem retry", "collection": "library_reference_global", "expect": ["retry-policy"] },
+    { "id": "E04", "query": "jak testować domain service", "collection": "library_reference_global", "expect": ["testing-domain-services"] },
+    { "id": "E05", "query": "cachowanie wyniku polityki", "collection": "library_reference_global", "expect": ["cached-policy"] }
+  ]
+}

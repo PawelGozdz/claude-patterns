@@ -40,14 +40,21 @@ przy NOWYM Write/Edit w danej sesji — nie weryfikuje retroaktywnie istniejące
 ile z 35 plików to świeża regresja vs. dług sprzed wprowadzenia Rule Cards. **Zrobić `git blame`
 na najgorszych plikach przed decyzją co naprawiać najpierw.**
 
-### Rekomendowane naprawy (nieprzeprowadzone)
-- [ ] Rozdzielić w Rule Cardzie **Business Rule Policy** vs **Calculation Policy** jako dwa różne
-      zestawy reguł SP3/SP4 — usunie ~6 fałszywych trafień, uczciwie pokaże realne 2 przypadki.
-- [ ] Dodać jawną regułę: "`@BusinessRule` dekorator BEZ realnego wywołania specyfikacji w ciele
-      metody = VETO" + wpisać do "Verifier — najczęstsze naruszenia" jako grep-owalny symptom
-      (dziś nic explicite tego nie łapie).
-- [ ] `git blame` na: 2 policy bez PolicyBuildera, `social-login.specifications.ts` (N3, żywy bug
-      runtime, priorytet nad kosmetyką SP2).
+### Rekomendowane naprawy
+- [x] (2026-07-02) Rozdzielono w Rule Cardzie SP3 → **SP3a Business Rule Policy** (PolicyBuilder,
+      factory function) vs **SP3b Calculation Policy** (ADR-0035, zwraca wartość, klasa OK) +
+      reguła domknięcia: `*.policy.ts` musi być jednym z dwóch. Tabela symptomów zaktualizowana
+      („NAJPIERW sprawdź, czy to nie Calculation Policy"). To odblokowuje prerequisite D5(a) dla
+      TASK-RAG-003.
+- [x] (2026-07-02) N4 rozszerzone: „dekorator `@BusinessRule` NIE jest dowodem delegacji — ciało
+      metody bez `isSatisfiedBy(`/`policy.check(` = VETO" + grep-owalny symptom w tabeli
+      („czytaj ciało, nie sam dekorator"). Follow-up (nieblokujący): dopisać sekcję Calculation
+      Policy także w pełnym `specification-policy-pattern.md` (Rule Card jest wiążący).
+- [x] (2026-07-02) `git blame` wykonane — **wszystkie 3 najgorsze pliki to dług sprzed Rule Cards,
+      nie świeża regresja maszynerii**: `verification-capabilities.policy.ts` ostatnio 2025-10-17;
+      `capability-threshold.policy.ts` 2026-04-13 (TS-DDD-001 F2); `social-login.specifications.ts`
+      2026-04-21. Naprawa żywego buga N3 (social-login) = osobny task W `juz-ide-api-1`
+      (kod produkcyjny innego repo, flow /analyze-ddd tam).
 
 ## 2. Luki w niezawodności `code-quality-verifier` (poza samą zgodnością kodu)
 
@@ -69,14 +76,16 @@ Z pamięci agenta `.claude/agent-memory/code-quality-verifier/` w `juz-ide-api-1
   globalnie `~/.claude.json`/`~/.claude/settings.json`) — martwa, prawdopodobnie skopiowana z
   innego szablonu konfiguracja.
 
-### Rekomendowane naprawy (nieprzeprowadzone)
-- [ ] Dopisać `feedback_verify_implementation_exists_first.md` do `MEMORY.md` (indeks) w
-      `juz-ide-api-1` — mały, ale realny bug systemu pamięci.
-- [ ] Usunąć martwe `mcp__zen__codereview`/`mcp__zen__analyze` z `tools:` w
-      `agents/stacks/nestjs-ddd/code-quality-verifier.md` (albo faktycznie podłączyć zen MCP,
-      jeśli to było zamierzone).
-- [ ] Rozważyć drugi, niezależny pass weryfikacji dla krytycznych zmian (nie tylko jeden
-      self-reportujący agent) — do przemyślenia, nie ustalone w tej sesji.
+### Rekomendowane naprawy
+- [x] (2026-07-02) Dopisano `feedback_verify_implementation_exists_first.md` do `MEMORY.md`
+      w `juz-ide-api-1` + treść feedbacku wcielona do protokołu weryfikatora (krok 0 Workflow:
+      „verify the implementation EXISTS first — pusta delta = ESCALATE, nie werdykt").
+- [x] (2026-07-02) Usunięto martwe `mcp__zen__codereview`/`mcp__zen__analyze` z `tools:`
+      w `code-quality-verifier.md`. Dodano też regułę całych plików (krok 1 Workflow:
+      „never verdict on a partial read" — incydent 120/443 linii).
+- [ ] Drugi, niezależny pass weryfikacji dla krytycznych zmian — częściowo pokryje deterministyczny
+      `/conformance-check` (AST, offline) jako drugi tor; pełna decyzja przy TASK-RAG-002/003
+      (eval modularny D7 da seeded-bugs do zmierzenia skuteczności verifiera).
 
 ## 3. Awaria `/orchestrate-ddd` Workflow — token/czas (NAJPILNIEJSZE, ale świadomie odłożone)
 
@@ -104,29 +113,28 @@ zakresu ("mechanism"/"wire-up"/"docs").
   stąd komunikat orchestratora "verifier agent ... nie zwrocil wyniku") — poza zasięgiem
   diagnostycznym z poziomu repo/hooków `claude-patterns`.
 
-### Mitygacje do rozważenia (bez potwierdzonej przyczyny źródłowej — tanie, nie szkodzą)
-- [ ] Zmienić `verify()` w `orchestrate-ddd.md` Workflow z `parallel()` na sekwencyjne wywołania
-      dla wycinków (mechanism/wire-up/docs) — usuwa czynnik równoczesnego obciążenia jako
-      potencjalny wyzwalacz.
-- [ ] Podnieść `maxTurns` dla `code-quality-verifier` z 15 na ~30 (hedge, nie potwierdzona
-      przyczyna, ale mandat "walk EVERY rule ID" jest ciężki i +15 nie zaszkodzi).
-- [ ] Wyegzekwować Phase-1-delegację-do-Explore twardziej (dziś to tylko instrukcja w promptcie,
-      nic jej nie wymusza — w przeciwieństwie do implementerów, którzy mają `check-delegation.js`).
-      Rozważyć analogiczny gate dla weryfikatorów.
-- [ ] Dla utkniętego taska w `juz-ide-api-1` — NIE ponawiać automatycznego Workflow piąty raz;
-      ręczna weryfikacja (foreground, pojedyncze wywołania) jest bezpieczniejsza, dopóki przyczyna
-      nie jest jasna.
+### Mitygacje (tanie, bez potwierdzonej przyczyny źródłowej)
+- [x] (2026-07-02) `verify()` sekwencyjnie, NIGDY `parallel()` — twarda reguła w
+      `orchestrate-ddd.md` („Reguły verify()"), także dla wycinków mechanism/wire-up/docs.
+- [x] (2026-07-02) `maxTurns` `code-quality-verifier` 15 → 30.
+- [ ] Gate delegacji-do-Explore dla weryfikatorów — **ŚWIADOMIE ODŁOŻONE**: PreToolUse nie zna
+      `agentType` (tylko `agent_id`), więc selektywny gate byłby kruchy. SKUTEK złamania protokołu
+      (budżet palony bez postępu) łapie teraz watchdog produktywności (TASK-OBS-001: burn bez
+      zdarzenia postępu → SPINNING → HALT) + maxTurns. Wrócić, jeśli watchdog pokaże, że to nie
+      wystarcza.
+- [x] (2026-07-02) Reguła no-rerun w `orchestrate-ddd.md`: nigdy od zera, `resumeFromRunId`,
+      po 2 nieudanych wznowieniach → STOP i eskalacja (commit 8d5c700, TASK-OBS-001).
 
-Dopisane 2026-07-02 (z `TASK-RAG-002.analysis.md` rewizja 2, status: approved):
-- [ ] **Bramka „kod istnieje"**: w skrypcie Workflow przed `verify()` — `git diff --stat` puste →
-      ESCALATE, nie weryfikuj (eliminuje „weryfikację kodu, który nigdy nie powstał", §2).
-- [ ] **Werdykty przez `schema` w `agent()`**: null (agent umarł) → natychmiastowy ESCALATE
-      zamiast ślepych retry (dziś: 3 warstwy × 3 próby = 9 martwych wywołań). Prerequisite
-      evalu modularnego (D7 — kontrakty etapów).
-- [ ] **Reguła całych plików**: weryfikator czyta CAŁE pliki albo deleguje — patrz §2
-      (przeoczenie naruszenia przez przeczytanie 120/443 linii).
-- Uwaga sekwencjonowania: **Rule Card fix (SP3 split + N4) jest twardym PREREQUISITE bramki
-  best_practices w `TASK-RAG-003.md`** (D5a) — nie tylko porządkiem lokalnym.
+Dopisane i WYKONANE 2026-07-02 (z `TASK-RAG-002.analysis.md` rewizja 2, status: approved):
+- [x] **Bramka „kod istnieje"** — w pseudokodzie pętli `orchestrate-ddd.md`: `git diff --stat`
+      puste po implement() → ESCALATE, nie weryfikuj. Lustrzany krok 0 w protokole weryfikatora.
+- [x] **Werdykty przez `schema` w `agent()`** — reguła w `orchestrate-ddd.md`: `{verdict,
+      violations[]}` przez StructuredOutput; `null` = agent umarł → natychmiastowy ESCALATE
+      (w pseudokodzie). Werdykt = zdarzenie postępu dla watchdoga (kontrakt verify, D6).
+- [x] **Reguła całych plików** — w protokole weryfikatora (krok 1: „never verdict on a partial
+      read", czytaj do EOF).
+- Uwaga sekwencjonowania: **Rule Card fix (SP3 split + N4) — WYKONANY — był twardym PREREQUISITE
+  bramki best_practices w `TASK-RAG-003.md`** (D5a); RAG-003 ma odblokowany warunek 2.
 
 ## Priorytet na następną sesję
 1. Mitygacje z sekcji 3 (najdroższy problem — godziny + miliony tokenów bez rezultatu).

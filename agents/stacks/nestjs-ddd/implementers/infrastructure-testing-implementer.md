@@ -6,7 +6,7 @@ description: |
   Implements Infrastructure/API layer (Controllers, Schemas, Repos, External Services) and
   comprehensive test suites (L1 Unit, L2 Integration, L3 E2E setup).
 tools:
-  Read, Write, Edit, MultiEdit, Bash, Glob, Grep, LS, Task, mcp__knowledge-retriever__retrieve_code
+  Read, Write, Edit, MultiEdit, Bash, Glob, Grep, LS, Task, mcp__knowledge-retriever__retrieve_code, mcp__knowledge-retriever__retrieve_patterns, mcp__knowledge-retriever__retrieve_examples
 model: sonnet
 temperature: 0.3
 color: orange
@@ -88,6 +88,11 @@ cannot see your transcript — so this stop-gate is what binds.)
 - **Known exact name to copy verbatim** (the task/prompt already told you exactly which file/symbol
   to look at) → go straight to Read/Grep. `retrieve_code` adds a roundtrip with no benefit when you
   already know the target.
+- **`retrieve_patterns(query)`** (global, no collection needed) — when the injected Rule Cards
+  don't cover your question about OUR conventions. Injected Rule Cards remain BINDING —
+  retrieval supplements, never overrides them.
+- **`retrieve_examples(query, level?, kind?)`** (global) — canonical `@vytches/ddd` usage examples
+  (simple|medium|complex) incl. anti-patterns. Use for library constructs with no project example yet.
 
 **BEFORE implementing, find reference examples via the built-in Explore agent (Haiku — cheaper for searches):**
 

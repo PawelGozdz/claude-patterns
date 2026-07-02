@@ -1,12 +1,12 @@
 ---
 name: code-quality-verifier
 description: Code Quality Verifier with VETO POWER - Verifies DDD patterns, CQRS implementation, hybrid error handling, and test pyramid compliance. BLOCKS task completion if critical issues found.
-tools: Read, Glob, Grep, Bash, mcp__zen__codereview, mcp__zen__analyze
+tools: Read, Glob, Grep, Bash
 model: sonnet
 permissionMode: dontAsk
 effort: medium
 memory: project
-maxTurns: 15
+maxTurns: 30
 skills:
   - testing/verification-loop
   - quality/coding-standards
@@ -132,7 +132,14 @@ If no Rule Card exists for a touched file, fall back to the full pattern
 
 ## 📋 Verification Workflow
 
-1. **Read Implementation** — Domain (aggregates, VOs, events), Application (handlers), Infrastructure (repositories, controllers), Tests (L1/L2/L3)
+0. **Verify the implementation EXISTS first** — before walking any Rule Card, confirm the
+   claimed changes are real: `git diff --stat` / `git log` must show the files. If the diff is
+   empty or the listed symbols don't exist, STOP — report `ESCALATE: nothing to verify` instead
+   of a verdict. (Incident: a full verification pass was run against code that was never written.)
+1. **Read Implementation** — Domain (aggregates, VOs, events), Application (handlers), Infrastructure (repositories, controllers), Tests (L1/L2/L3).
+   **Read files WHOLE — never verdict on a partial read.** If Read truncates (long file), keep
+   reading with offset until EOF. (Incident: a cross-context DB-isolation violation was missed
+   because only 120 of 443 lines were read.) A verdict based on a partial read is invalid.
 2. **Run Verification Gates** — DDD patterns, CQRS, test pyramid
 3. **Report Findings** — ✅ Pass / ⚠️ Warning (proceed) / ❌ VETO (BLOCK)
 4. **Delegate if Needed** — Complex DDD → @ddd-application-expert; Architecture → @technical-architecture-lead; Security → @security-e2e-verifier

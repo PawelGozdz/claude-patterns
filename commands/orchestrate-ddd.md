@@ -53,9 +53,16 @@ for unit of units:                          # MVP: units = [task]  (seam Ralphin
       # PRZED pisaniem: retrieve_code(intencja, collection) z MCP knowledge-retriever → istniejące
       # symbole (plik+symbol+linie). collection = z .claude/config/knowledge.json (Krok 2).
       # Eliminuje „to nie istnieje" + złe sygnatury (bug z ANTI-SPOOF).
+      # Uzupełniająco (eval 2026-07-02: hit@5=0.85 ≥ próg 0.6): retrieve_patterns — globalne Rule
+      # Cards/wzorce, gdy wstrzyknięte karty nie pokrywają pytania (karty pozostają WIĄŻĄCE);
+      # retrieve_examples — kanoniczne przykłady @vytches/ddd (level, antywzorce).
       # Graceful: jeśli MCP/Qdrant niedostępny lub collection nieznany → implementer szuka klasycznie (grep).
       implement(layer, {decisions, patterns, rule_cards, existing_code: retrieve_code(layer_intent, collection)}, worktree)   # gate: check-delegation
+      # BRAMKA „kod istnieje" (CONFORMANCE §2): git diff --stat puste → ESCALATE, NIE weryfikuj —
+      # weryfikacja kodu, który nigdy nie powstał, to spalony przebieg.
+      if git_diff_empty(layer_dirs): ESCALATE(layer, "implementer nie zmienił żadnych plików"); HALT
       v = verify(layer)        # @code-quality-verifier → {verdict, violations:[rule_ids]}
+      if v == null: ESCALATE(layer, "verifier padł (null z agent())"); HALT   # NIE retry w ciemno
       if v.verdict == GO: break
       if ++attempt >= 3: ESCALATE(layer, v.violations); HALT
       fix(layer, v.violations) # re-dispatch implementera z konkretnymi rule-ID
@@ -65,6 +72,16 @@ if final.verdict != GO: ESCALATE; HALT
 ```
 Guardrails: `max_attempts=3` per warstwa (stall-guard; loop-operator ECC jako backstop),
 push tylko branche `claude/*`, limity budżetu/tur z presetu.
+
+**Reguły verify() (mitygacje CONFORMANCE §3 — obowiązkowe w skrypcie Workflow):**
+- **Sekwencyjnie, NIGDY `parallel()`** na wywołaniach weryfikatora (także przy dzieleniu zakresu
+  na wycinki mechanism/wire-up/docs) — równoczesne obciążenie to podejrzany wyzwalacz cichego
+  milknięcia (9/9 padniętych wywołań szło przez `parallel()`).
+- **Werdykt przez `opts.schema`** w `agent()` (StructuredOutput): `{verdict: GO|NO-GO,
+  violations: [{ruleId, file, line}]}`. Dzięki temu `null` = „agent umarł" → natychmiastowy
+  ESCALATE (patrz pseudokod), a nie 3 warstwy × 3 ślepe retry.
+- Werdykt liczy się też jako zdarzenie POSTĘPU dla watchdoga produktywności (kontrakt etapu
+  verify — TASK-OBS-001/D6).
 
 ## Krok 4 — STOP2 (staged, not committed)
 Po wszystkich GO:

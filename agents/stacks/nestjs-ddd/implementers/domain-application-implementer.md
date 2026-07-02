@@ -5,7 +5,7 @@ description: |
   domain service, specification, command handler, query handler, CQRS, DTO, business logic.
   Implements DDD business logic (Aggregates, VOs, Events, Services) and CQRS orchestration
   (Command/Query Handlers, DTOs, Application Services).
-tools: Read, Write, Edit, MultiEdit, Glob, Grep, LS, Task, mcp__knowledge-retriever__retrieve_code
+tools: Read, Write, Edit, MultiEdit, Glob, Grep, LS, Task, mcp__knowledge-retriever__retrieve_code, mcp__knowledge-retriever__retrieve_patterns, mcp__knowledge-retriever__retrieve_examples
 disallowedTools: Bash
 model: sonnet
 temperature: 0.3
@@ -89,6 +89,13 @@ Haiku ($0.25/M input, $1.25/M output) = **60x cheaper**.
 - **Known exact name to copy verbatim** (the task/prompt already told you exactly which file/symbol
   to look at) → go straight to Read/Grep. `retrieve_code` adds a network roundtrip with no benefit
   when you already know the target.
+- **`retrieve_patterns(query)`** (global, no collection needed) — when the injected Rule Cards
+  don't cover your question about OUR conventions (e.g. an edge case of a rule, a pattern for a
+  file type outside the injected set). Returns matching Rule Card / pattern sections. Injected
+  Rule Cards remain BINDING — retrieval supplements, never overrides them.
+- **`retrieve_examples(query, level?, kind?)`** (global) — canonical `@vytches/ddd` usage examples
+  (simple|medium|complex) incl. anti-patterns (`kind:'anti_pattern'` = what NOT to do). Use when
+  you need a reference implementation of a library construct and the project has no example yet.
 
 **BEFORE implementing, you MUST find reference examples:**
 

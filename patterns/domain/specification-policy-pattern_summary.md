@@ -9,7 +9,13 @@
 ## MUST
 - **SP1** — Specification extends `CompositeSpecification<ContextInterface>` (sync) lub `AsyncCompositeSpecification<ContextInterface>` (async).
 - **SP2** — Kontekst to osobny interfejs (np. `SessionContext`) — NIGDY surowy agregat przekazywany do specyfikacji.
-- **SP3** — Policy tworzona przez `function createXxxPolicy()` — factory function, NIGDY klasa z konstruktorem.
+- **SP3** — Rozróżniaj DWA rodzaje policy (audyt 2026-07: brak tego rozróżnienia = 6/8 fałszywych trafień):
+  - **SP3a — Business Rule Policy** (blokująca, werdykt allow/block): tworzona przez
+    `function createXxxPolicy()` zwracającą `PolicyBuilder...build()` — NIGDY klasa z konstruktorem.
+  - **SP3b — Calculation Policy** (ADR-0035: zwraca WARTOŚĆ — wycena, próg, scoring — nie werdykt):
+    dopuszczalna klasa LUB funkcja; NIE używa PolicyBuildera; nazwa/JSDoc jasno wskazuje kalkulację.
+  - Plik `*.policy.ts` MUSI być jednym z dwóch. Ani PolicyBuilder, ani rozpoznawalna kalkulacja
+    zwracająca wartość → naruszenie SP3.
 - **SP4** — PolicyBuilder ZAWSZE z obligatoryjnymi metadanymi: `.withId()`, `.withDomain()`, `.withName()` przed `.build()`.
 - **SP5** — Reguły blokujące: `.must(spec)` z `.withSeverity('ERROR')`; ostrzeżenia nieblokujące: `.should(spec)` z `.withSeverity('WARNING')`.
 - **SP6** — `policy.check()` zwraca `Result<void, E>` — wywołujący sprawdza `result.isFailure` i mapuje `result.error`.
@@ -23,6 +29,13 @@
 - **N2** — ❌ `@Injectable()` + `@Inject(REPO_TOKEN)` w specyfikacji — repozytoria należą do handlera.
 - **N3** — ❌ `async isSatisfiedBy()` z zapytaniem DB — wyciągnij wynik w handlerze, wywołaj sync spec.
 - **N4** — ❌ logika biznesowa inline w agregacie zamiast delegacji do specyfikacji.
+  **Dekorator `@BusinessRule(RULES.xxx)` NIE jest dowodem delegacji** — jeśli ciało metody pod
+  dekoratorem zawiera warunki biznesowe inline (a nie wywołanie `*.isSatisfiedBy(...)` /
+  `policy.check(...)`), to jest naruszenie N4 = VETO. (Audyt 2026-07: 5/8 agregatów miało dekorator
+  bez realnej delegacji — grep po samym `@BusinessRule` to przepuszczał; trzeba czytać ciało metody.)
+  Uwaga: `@BusinessRule` to dekorator PROJEKTOWY (konwencja np. juz-ide-api-1), NIE część
+  `@vytches/ddd` — reguła obowiązuje w każdym projekcie, który taki dekorator wprowadził;
+  w projektach bez niego N4 sprawdzaj po samej treści metod agregatu.
 - **N5** — ❌ `throw` — policy zwraca `Result.fail(...)`, spec zwraca `boolean`.
 - **N6** — ❌ pominięcie `.withId()` / `.withDomain()` / `.withName()` w PolicyBuilder.
 
@@ -85,10 +98,12 @@ class OrderAggregate {
 | `@Injectable()` lub `@Inject(` w specyfikacji | N2 |
 | `async isSatisfiedBy(` z `await this.repo.` | N3 |
 | Logika biznesowa (`if / daysSince >=`) bezpośrednio w metodzie agregatu | N4 |
+| `@BusinessRule(` nad metodą, której CIAŁO nie woła `isSatisfiedBy(`/`policy.check(` (czytaj ciało, nie sam dekorator!) | N4 |
 | `throw new` w specyfikacji lub policy | N5 |
 | `PolicyBuilder.create(` bez `.withId()` / `.withDomain()` / `.withName()` | N6 / SP4 |
 | Agregat przyjmuje agregat jako arg specyfikacji zamiast context interface | SP2 |
-| `class XxxPolicy` z konstruktorem zamiast `function createXxxPolicy()` | SP3 |
+| `class XxxPolicy` egzekwująca reguły (werdykt) zamiast `function createXxxPolicy()` — NAJPIERW sprawdź, czy to nie Calculation Policy (SP3b: zwraca wartość → OK) | SP3a |
+| `*.policy.ts` bez PolicyBuildera I bez rozpoznawalnej kalkulacji zwracającej wartość | SP3 |
 | Brak unit testu specyfikacji | SP10 |
 
 **Pełny wzorzec**: [`specification-policy-pattern.md`](./specification-policy-pattern.md)

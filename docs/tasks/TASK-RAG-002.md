@@ -93,14 +93,23 @@ tool, bo to odpowiada temu, jak agent faktycznie formułuje zapytanie.
 
 Zakres tego taska ZWĘŻONY do „udowodnić wartość" — kolejność **eval PRZED wpięciem**
 (rag-design §9: zły retrieval gorszy niż statyczny):
-- [ ] **Seed**: `npm install` (uuid) + build + `migrate.ts` na żywym Qdrancie +
-      `buildPatternsIndex`/`buildExamplesIndex` + smoke-test realnych trafień.
-- [ ] **Eval OFFLINE**: golden-set 15-20 par wygenerowany półautomatycznie z historii git
-      `juz-ide-api-1` (zamknięte taski → pliki z ich commitów = ground truth; człowiek tylko
-      przegląda) + precision/recall@K + MRR + **delta kosztu tokenów** vs statyczna injekcja.
-      Próg wpięcia: precision@5 ≥ 0.6 (parametr).
-- [ ] **Wpięcie** `retrieve_patterns` w `/analyze-ddd` (0.5/0.6) **DOPIERO po przekroczeniu progu**.
-- [ ] Harness `tests/flow-evals/` (D7, eval modularny) — tu startuje część L1-retrieval.
+- [x] **Seed** (2026-07-02): install/build/migrate DONE (payload indexes `kind,tags,level,source`);
+      RESEED po zmianach Rule Carda (SP3a/SP3b, N4) wykonany po włączeniu GPU-serwera:
+      patterns_global=880 chunków, library_reference_global=129, dim 1024 (e5-large/ct301).
+- [x] **Eval OFFLINE** (2026-07-02): `tests/flow-evals/retrieval/run.js` + `golden.json` (20 par).
+      **Wynik: hit@1=0.55 · hit@5=0.85 · MRR=0.66 → PRÓG WPIĘCIA (0.6) PRZEKROCZONY.**
+      Analiza 3 missów: P06 top1=`rules/nestjs-ddd/acl-registry.md` (merytorycznie trafne dla
+      cross-context — kandydat na rozszerzenie `expect` w golden), P14 top1=integration-event
+      (bliski sąsiad entity-event-emission), P15 (conventions) — realny miss, obserwować.
+      Golden-set z historii git juz-ide-api-1 (dla retrieve_code per-projekt) — osobny krok.
+      Delta kosztu tokenów vs statyczna injekcja — zmierzyć na pierwszych realnych przebiegach.
+- [x] **Wpięcie** (2026-07-02, po przekroczeniu progu): `/analyze-ddd` 0.6 już wołał
+      `retrieve_patterns` (grounding panelu); dołożone: `retrieve_patterns` + `retrieve_examples`
+      w `tools:` OBU implementerów (ta sama luka, która dała zerową adopcję w Fazie A) + reguły
+      użycia w ich sekcji decyzyjnej (karty wstrzyknięte pozostają WIĄŻĄCE; retrieval uzupełnia)
+      + notka w pseudokodzie `orchestrate-ddd.md`.
+- [x] Harness `tests/flow-evals/` (D7, eval modularny) — działa: `hooks/` (10/10) +
+      `retrieval/` (20 zapytań, bramka progowa).
 
 Wersjonowanie / per-project `best_practices` / multi-stack → **`TASK-RAG-003.md`**.
 Kolejność ogólna: `TASK-OBS-001` → `TASK-AGENT-CONFORMANCE-001` → ten task → `TASK-RAG-003`.
