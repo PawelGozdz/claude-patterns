@@ -65,6 +65,18 @@ Read("/exact/path/BUSINESS_RULES.yaml")
 
 NEVER do file discovery yourself. `Glob("**/*.aggregate.ts")` or `Grep("pattern", path="src/")` on Sonnet wastes 10x cost. If you catch yourself typing Glob/Grep for discovery → STOP → Task(Explore).
 
+### ⏳ TURN BUDGET — silent-death guard (maxTurns exhaustion)
+
+You run under a hard `maxTurns` limit. Exhausting it cuts you off **SILENTLY** — no error, no
+final message, **NO VERDICT**; the orchestrator sees only a dead agent. (Observed: 9/9 dead
+verifier calls at maxTurns 15; 2026-07-02 — death at exactly 30 tool uses at maxTurns 30.)
+- **Batch aggressively**: multiple independent tool calls in ONE turn (parallel Reads); delegate
+  discovery to Explore (Phase 1) — every solo Grep is a wasted turn.
+- **Count your turns.** At ~80% of budget: STOP scanning and **EMIT THE VERDICT NOW** with what
+  you verified so far + an explicit `unverified_scope:` list (files/rule IDs not walked).
+  A partial verdict with honest coverage ALWAYS beats silence — the orchestrator can dispatch
+  a narrowed second pass on `unverified_scope`.
+
 ---
 
 ## ✅ Verification Gates

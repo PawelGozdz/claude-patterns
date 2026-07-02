@@ -46,6 +46,19 @@ weryfikatorach — `tools: Read, Glob, Grep, Bash`, legalnie zero Write.)
 **Parametry do strojenia w praktyce:** `--spin-tokens` (domyślnie 60k; HALT przy 2×),
 `--silence-sec` (300), `--stale-sec` (3600), TTL flag w hooku (15 min).
 
+**Tuning po pierwszej walidacji live (2026-07-02, /analyze-ddd TS-EVENTS-CLOSED-001 w juz-ide-api-1):**
+- FALSE POSITIVE: watchdog przerwał 4/4 agentów researchowych panelu (~130-260k burn) — kontrakt
+  `other` z progiem 120k nie pasuje do legalnego researchu (artefakt dopiero NA KOŃCU, zgodnie
+  z D6). Fix: rola `research` (wszystko poza *-implementer/*-verifier) z mnożnikiem progu ×4
+  (SPINNING 240k / HALT 480k). Degradacja była JAKOŚCIOWO poprawna: żaden agent nie umarł cicho —
+  każdy oddał częściowe ustalenia z jawnym niezweryfikowanym zakresem (→ open_questions).
+- FALSE POSITIVE #2: poza Workflow werdykt pada jako CZYSTY TEKST (brak StructuredOutput
+  i journal.jsonl) — tekst-finalny liczy się teraz jako postęp dla verify/research.
+- TRUE POSITIVE: watchdog poprawnie oflagował implementera 332k burn / 9 tur / zero Write/Edit /
+  750s ciszy (sygnatura cichej śmierci) w żywej sesji.
+- Odkrycie przyczyny cichej śmierci: wyczerpanie maxTurns (szczegóły: CONFORMANCE-001 §3 UPDATE).
+  Watcher liczy tury (`⚠️klif-maxTurns` ≥25) i skanuje też `subagents/` root (zwykłe Agent()).
+
 ## Kryteria sukcesu (z analysis, success_criteria filar 0)
 - Każdy run widoczny na żywo w RUN-STATE.md.
 - Spinning wykryty ≤ ustalony próg tokenów od wystąpienia (próg = parametr do strojenia).

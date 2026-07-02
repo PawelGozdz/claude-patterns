@@ -65,10 +65,13 @@ const VERIFY_TOOLS = new Set(['StructuredOutput']);
 
 function contractFor(agentType) {
   const t = agentType || '';
-  if (/implementer/i.test(t)) return { role: 'implement', progress: IMPLEMENT_TOOLS };
-  if (/verifier/i.test(t)) return { role: 'verify', progress: VERIFY_TOOLS };
-  // analysis/synteza/nieznane: każdy artefakt strukturalny liczy się jako postęp
-  return { role: 'other', progress: new Set([...IMPLEMENT_TOOLS, ...VERIFY_TOOLS]) };
+  if (/implementer/i.test(t)) return { role: 'implement', progress: IMPLEMENT_TOOLS, spinMult: 1 };
+  if (/verifier/i.test(t)) return { role: 'verify', progress: VERIFY_TOOLS, spinMult: 1 };
+  // research/analysis/synteza (architect, *-expert, Explore…): legalnie czytają setki tysięcy
+  // tokenów i produkują artefakt DOPIERO NA KOŃCU (D6: „analysis → artefakt końcowy + limit
+  // czasu") — próg spinningu ×4, inaczej watchdog strzela do własnych (pierwsza walidacja live
+  // 2026-07-02: HALT 4/4 agentów panelu /analyze-ddd po 130-260k, wszystkie pracowały uczciwie).
+  return { role: 'research', progress: new Set([...IMPLEMENT_TOOLS, ...VERIFY_TOOLS]), spinMult: 4 };
 }
 
 // ---------- Stan per plik transkryptu (offsety + liczniki) ----------
@@ -83,7 +86,13 @@ function findTranscriptDirs(projectsRoot, slug) {
   try { sessions = fs.readdirSync(base, { withFileTypes: true }); } catch { return dirs; }
   for (const s of sessions) {
     if (!s.isDirectory()) continue;
-    const wfRoot = path.join(base, s.name, 'subagents', 'workflows');
+    const subRoot = path.join(base, s.name, 'subagents');
+    // Zwykłe wywołania Agent() lądują bezpośrednio w subagents/ (bez workflows/) —
+    // ciche milknięcie występuje TAKŻE tam (dowód 2026-07-02), więc skanujemy oba poziomy.
+    try {
+      if (fs.readdirSync(subRoot).some((f) => f.startsWith('agent-') && f.endsWith('.jsonl'))) dirs.push(subRoot);
+    } catch { continue; }
+    const wfRoot = path.join(subRoot, 'workflows');
     let wfs = [];
     try { wfs = fs.readdirSync(wfRoot, { withFileTypes: true }); } catch { continue; }
     for (const wf of wfs) {
@@ -124,7 +133,7 @@ function ingest(jsonlPath) {
   if (!st) {
     st = state[jsonlPath] = {
       offset: 0, remainder: '', agentId: path.basename(jsonlPath, '.jsonl').replace(/^agent-/, ''),
-      agentType: readMetaType(jsonlPath), burn: 0, burnAtProgress: 0,
+      agentType: readMetaType(jsonlPath), burn: 0, burnAtProgress: 0, turns: 0,
       lastTs: null, lastTool: null, lastProgressTool: null, done: false,
     };
   }
@@ -151,13 +160,26 @@ function ingest(jsonlPath) {
     if (e.type !== 'assistant' || !e.message) continue;
     st.burn += tokensOf(e.message.usage);
     const content = Array.isArray(e.message.content) ? e.message.content : [];
+    let usedToolThisMsg = false;
     for (const block of content) {
       if (block.type !== 'tool_use') continue;
+      // tury ≈ liczba wiadomości z tool-callem: maxTurns ucina agenta PO CICHU (bez
+      // błędu/werdyktu) — licznik pokazuje zbliżanie się do klifu (dowód: śmierć przy równo 30).
+      if (!usedToolThisMsg) { st.turns++; usedToolThisMsg = true; }
       st.lastTool = block.name;
       if (contract.progress.has(block.name)) {
         st.burnAtProgress = st.burn;
         st.lastProgressTool = block.name;
       }
+    }
+    // Poza Workflow werdykt/wynik pada jako CZYSTY TEKST (nie StructuredOutput) i nie ma
+    // journal.jsonl — wiadomość tekstowa bez tool_use liczy się jako postęp dla verify/other
+    // (dla implement postępem pozostaje wyłącznie Write/Edit). Bez tego skończony weryfikator
+    // wygląda jak spinning → fałszywy HALT (zaobserwowane 2026-07-02).
+    if (!usedToolThisMsg && contract.role !== 'implement'
+        && content.some((b) => b.type === 'text' && (b.text || '').trim())) {
+      st.burnAtProgress = st.burn;
+      st.lastProgressTool = 'text-final';
     }
   }
   return st;
@@ -191,8 +213,9 @@ function statusOf(st, doneSet, args, now) {
   // Martwy/historyczny przebieg: raportuj STALE, NIE flaguj do HALT —
   // egzekwowanie ma sens tylko na żywym agencie (dowód awarii i tak zostaje w RUN-STATE).
   if (silence !== null && silence > args.staleSec) return 'STALE';
-  if (sinceProgress > 2 * args.spinTokens) return 'HALT';
-  if (sinceProgress > args.spinTokens) return 'SPINNING';
+  const spinAt = args.spinTokens * (contractFor(st.agentType).spinMult || 1);
+  if (sinceProgress > 2 * spinAt) return 'HALT';
+  if (sinceProgress > spinAt) return 'SPINNING';
   if (silence !== null && silence > args.silenceSec) return 'SILENT';
   return 'OK';
 }
@@ -205,7 +228,7 @@ function renderRunState(project, groups, args, killOn) {
   out.push('# RUN-STATE — live workflow observability (workflow-watcher.js, TASK-OBS-001)');
   out.push('');
   out.push(`Updated: ${now} · project: ${project}`);
-  out.push(`Thresholds: SPINNING > ${fmtK(args.spinTokens)} burn-tokens od postępu · HALT > ${fmtK(2 * args.spinTokens)} · SILENT > ${args.silenceSec}s`);
+  out.push(`Thresholds: SPINNING > ${fmtK(args.spinTokens)} burn-tokens od postępu (research ×4 = ${fmtK(4 * args.spinTokens)}) · HALT > 2× progu roli · SILENT > ${args.silenceSec}s`);
   out.push(`Kill-switch (.claude/run-state/KILL): ${killOn ? '🔴 AKTYWNY — hook blokuje wszystkie tool-calle subagentów' : 'nieaktywny'}`);
   out.push('');
   out.push('Statusy: OK · SPINNING (tokeny rosną bez postępu wg kontraktu etapu) · HALT (flaga w halt.json — hook blokuje) · SILENT (brak linii w transkrypcie) · STALE (przebieg nieaktywny — tylko raport, bez flag) · DONE');
@@ -215,8 +238,8 @@ function renderRunState(project, groups, args, killOn) {
   for (const wfId of wfIds) {
     out.push(`## ${wfId}`);
     out.push('');
-    out.push('| agent | typ (kontrakt) | status | burn | od postępu | ostatni tool | ostatni postęp | cisza |');
-    out.push('|---|---|---|---|---|---|---|---|');
+    out.push('| agent | typ (kontrakt) | status | burn | od postępu | tury | ostatni tool | ostatni postęp | cisza |');
+    out.push('|---|---|---|---|---|---|---|---|---|');
     for (const row of groups[wfId]) out.push(row);
     out.push('');
   }
@@ -254,9 +277,11 @@ function tick(args, projectsRoot) {
       const silence = st.lastTs ? Math.round((now - Date.parse(st.lastTs)) / 1000) : null;
       const icon = { OK: '🟢', SPINNING: '🟡', HALT: '🔴', SILENT: '⚪', STALE: '⏸', DONE: '✅' }[status];
       if (!groups[wfId]) groups[wfId] = [];
+      const turnsCell = st.turns >= 25 && status !== 'DONE' && status !== 'STALE'
+        ? `${st.turns} ⚠️klif-maxTurns` : String(st.turns);
       groups[wfId].push(
         `| ${st.agentId.slice(0, 8)} | ${st.agentType || '?'} (${contractFor(st.agentType).role}) | ${icon} ${status} ` +
-        `| ${fmtK(st.burn)} | ${fmtK(st.burn - st.burnAtProgress)} | ${st.lastTool || '—'} | ${st.lastProgressTool || '—'} ` +
+        `| ${fmtK(st.burn)} | ${fmtK(st.burn - st.burnAtProgress)} | ${turnsCell} | ${st.lastTool || '—'} | ${st.lastProgressTool || '—'} ` +
         `| ${silence === null ? '—' : silence + 's'} |`
       );
     }

@@ -113,6 +113,22 @@ zakresu ("mechanism"/"wire-up"/"docs").
   stąd komunikat orchestratora "verifier agent ... nie zwrocil wyniku") — poza zasięgiem
   diagnostycznym z poziomu repo/hooków `claude-patterns`.
 
+**UPDATE 2026-07-02 — przyczyna najpewniej ZIDENTYFIKOWANA: wyczerpanie `maxTurns`.**
+Dowód z interaktywnej sesji użytkownika (zwykły `Agent()`, BEZ Workflow): `code-quality-verifier`
+urwał się w połowie analizy przy **DOKŁADNIE 30 tool uses** (`maxTurns: 30` aktywne przez symlink
+po dzisiejszym bumpie), sygnatura identyczna jak w Workflow — koniec tuż po udanym `tool_result`,
+bez błędu, bez tekstu końcowego. Stare 9/9 padało przy `maxTurns: 15`. Wniosek: **maxTurns ucina
+PO CICHU, bez werdyktu i bez śladu**. Konsekwencje:
+1. Hipoteza `parallel()` jako wyzwalacza OSŁABIONA — awaria występuje też poza Workflow
+   (mitygacja sequential zostaje jako tani hedge).
+2. Sam bump limitu tylko przesuwa klif (15→30 nadal padło) — verifier dostał regułę
+   **TURN BUDGET**: batchowanie wywołań + przy ~80% budżetu natychmiastowy werdykt częściowy
+   z jawnym `unverified_scope:` (uczciwy partial > cisza; orchestrator dosyła zawężony pass).
+3. Watcher (TASK-OBS-001) liczy tury per agent i ostrzega `⚠️klif-maxTurns` przy ≥25; skanuje
+   też `subagents/` root (zwykłe wywołania `Agent()` — wcześniej martwe pole).
+4. Recovery potwierdzone: resume-from-transcript dokończył werdykt (GO) w 1m39s — zgodne
+   z doktryną no-rerun/resume.
+
 ### Mitygacje (tanie, bez potwierdzonej przyczyny źródłowej)
 - [x] (2026-07-02) `verify()` sekwencyjnie, NIGDY `parallel()` — twarda reguła w
       `orchestrate-ddd.md` („Reguły verify()"), także dla wycinków mechanism/wire-up/docs.

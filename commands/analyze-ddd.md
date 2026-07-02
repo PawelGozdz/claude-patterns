@@ -57,6 +57,14 @@ ujawnia rzeczy do przedyskutowania, zanim warto pisać kod.
 - Jeśli pasują etykiety i NIE ma TM → uruchom stage `threat-model`, który zapisuje pełny TM do
   **`docs/security/threat-models/TM-{TASK-ID}.md`** (STRIDE/DREAD/LINDDUN — NIE wkomponowuj security w .analysis.md;
   artefakt analizy tylko LINKUJE do TM).
+- **TRZECIA ŚCIEŻKA — TM istnieje, ale NIE pokrywa zakresu taska** (task każe go rozszerzyć albo
+  analiza ujawnia nowe wektory): uruchom stage `threat-model` w trybie **ADDENDUM** — dopisuje
+  datowaną sekcję `## Addendum {TASK-ID} (YYYY-MM-DD)` do ISTNIEJĄCEGO pliku TM (nie nowy plik).
+  Jeśli addendum nie powstaje w tym przebiegu, artefakt MUSI zawierać **BLOKUJĄCE open_question**
+  („TM addendum: <lista wektorów>", `answer: null`) — bramka `/orchestrate-ddd` (`no answer==null`)
+  fizycznie zatrzyma implementację, dopóki człowiek nie potwierdzi addendum. Sama rekomendacja
+  w body NIE wystarcza (pierwszy realny przebieg 2026-07-02: 3 nowe wektory RSVP tylko
+  zarekomendowane prozą — nic nie wymuszało addendum przed implementacją).
 
 ### 0.5. Pattern discovery (grounding)
 - Wczytaj `.claude/knowledge/patterns/README.md` + `_stack-defaults/{stack}.yml`.
@@ -83,6 +91,12 @@ w każdym wywołaniu `retrieve_code` — bez tego trafisz w pusty `code_default`
 
 Wyniki `retrieve_code` wstrzyknij do stage'a impl-analysis; `retrieve_patterns` do groundingu panelu.
 
+**DOWÓD UŻYCIA (obowiązkowy — anty-drift adopcji):** artefakt (krok 2) MUSI mieć pole frontmatter
+`rag:` — albo lista wykonanych zapytań z liczbą trafień (`- {tool: retrieve_code, query: "...", hits: N}`),
+albo jawne `rag: skipped (powód)` (np. MCP niedostępny, kolekcja pusta). Pierwszy realny przebieg
+po wpięciu (2026-07-02) pominął krok 0.6 W CAŁOŚCI mimo dostępnego MCP i configu — instrukcja
+bez śladu wykonania w artefakcie nie jest egzekwowalna (ta sama lekcja co Faza A w TASK-RAG-002).
+
 ### 0.7. Decision cards — WYBÓR wzorca z wymagań (rdzeń ddd-modeling)
 Dla decyzji projektowych (agregat vs encja, VO vs encja, ACL vs events, policy vs specification,
 domain-service vs metoda, granica agregatu) NIE polegaj na osądzie agenta — użyj kart decyzyjnych:
@@ -97,6 +111,15 @@ Każda decyzja → wpis w `decisions[]` artefaktu z: wybór, **uzasadnienie wg k
 **KRYTYCZNE (bug-fix):** wołaj agentów panelu jako **LIŚCIE — BEZ narzędzia Task**. Nie pozwól im
 delegować dalej — inaczej zapętlają się, próbując wołać nieistniejące agenty (np. `Explore`). Każdy
 stage = JEDNO wywołanie agenta. Wstrzykuj: spec zadania + **treść Rule Cards** (z 0.5) + kontekst poprzednich stage'ów.
+
+**Hardening (obserwacje z realnych przebiegów 2026-07-02):**
+- Wołaj agentów panelu **BEZ parametru `name`** — tryb mailbox potrafi nie dowieźć treści wyniku;
+  bezimienny background + task-notification działa niezawodnie.
+- **Fallback syntezy:** jeśli środowisko przerywa leaf-agentów (watchdog/limity), syntezę MOŻE
+  wykonać główny agent bezpośrednio — ma pełen kontekst wszystkich stage'ów; dodatkowy leaf niesie
+  wtedy tylko ryzyko kolejnego przerwania bez nowej wartości. Odnotuj to w artefakcie (uwaga proceduralna).
+- Przerwane stage'e: niezweryfikowane fakty ZAWSZE jako `open_questions` (nigdy jako ustalenia) —
+  pytania czysto mechaniczne (grep-owalne) można potem dograć tanim Explore zamiast re-runu panelu.
 
 **Dobór agentów wg `stack_profile`** — jeśli stack-specific agent nie istnieje w projekcie, użyj generycznego
 (nie hardcoduj agentów, których może nie być):
