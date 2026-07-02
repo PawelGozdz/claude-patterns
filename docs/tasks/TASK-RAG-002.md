@@ -1,5 +1,11 @@
 # TASK-RAG-002 — knowledge-retriever: adopcja + dywersyfikacja + wielo-kolekcyjny model treści
 
+> **✅ STATUS: DONE (2026-07-02, commit 51ef956).** Zakres zwężony (sekcja „Restrukturyzacja"
+> niżej) wykonany w całości: seed+migracja, eval hit@5=0.85 ≥ próg 0.6, wpięcie
+> retrieve_patterns/examples do implementerów, harness tests/flow-evals/. Follow-up: adopcja
+> w praktyce (pole `rag:` w /analyze-ddd — commit efb01af) i delta tokenów do zmierzenia na
+> realnych przebiegach. Kontynuacja infra: TASK-RAG-003 (odblokowany), evale: TASK-EVAL-001.
+
 **Branch:** TBD · **Poprzednik:** `docs/tasks/TASK-RAG-001.md` (MVP: `retrieve_code` + `knowledge_reindex`, DONE) · **Kontekst:** wynik sesji 2026-07-01 (feedback z realnego użycia w `juz-ide-api-1`, patrz `docs/DECISIONS-LOG.md`)
 
 ## Cel

@@ -1,5 +1,12 @@
 # TASK-AGENT-CONFORMANCE-001 — agenci DDD: zgodność implementacji, luki w weryfikacji, awaria Workflow
 
+> **✅ STATUS: DONE (2026-07-02, commity 51ef956 → 25d6769)** — wszystkie naprawy §1-§3 wykonane
+> (checkboxy niżej) + PRZYCZYNA ŹRÓDŁOWA cichej śmierci zidentyfikowana: **wyczerpanie maxTurns**
+> (UPDATE w §3). Ponadto, spoza pierwotnego zakresu: StructuredOutput na whitelist tools
+> (5540474 — root-cause padu wf_8f8aeeb3), split 3-warstwowy + continuation pass + workflow-lint
+> (25d6769). Otwarte: „drugi niezależny pass weryfikacji" (świadomie — decyzja po seeded-bugs
+> z TASK-EVAL-001 Faza 2) + potwierdzenie benchmarkiem (run usera w toku).
+
 **Kontekst:** sesja 2026-07-01, feedback z realnego użycia `/analyze-ddd` + `/orchestrate-ddd` w
 `juz-ide-api-1` (task TS-SEC-VERIFICATION-LEVELS-002 i inne, przez `code-quality-verifier`
 agent-memory). Zebrane tu problemy są NIEZALEŻNE od `docs/tasks/TASK-RAG-002.md` (to o

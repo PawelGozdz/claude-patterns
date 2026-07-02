@@ -1,5 +1,9 @@
 # TASK-RAG-003 — wersjonowanie patternów + per-project best_practices + multi-stack infra (Filar 3)
 
+> **🔓 STATUS: READY (2026-07-02)** — wszystkie 3 twarde prerequisites ODBLOKOWANE:
+> (1) TASK-OBS-001 done, (2) Rule Card fix SP3a/SP3b+N4 done (51ef956), (3) eval RAG-002
+> przeszedł próg (hit@5=0.85). Projekt szczegółowy: ADR 0005. Nierozpoczęty.
+
 **Źródło:** `docs/tasks/TASK-RAG-002.analysis.md` (status: approved, 2026-07-02) — Filar 3, decyzje D3/D4/D5, odpowiedzi Q5/Q6.
 **Prerequisite (twarde):**
 1. TASK-OBS-001 done (bez observability żaden dłuższy przebieg nie jest bezpieczny).

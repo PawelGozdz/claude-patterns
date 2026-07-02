@@ -1,5 +1,11 @@
 # TASK-OBS-001 — Performance & Observability: watchdog produktywności + zewnętrzny watcher (Filar 0)
 
+> **✅ STATUS: DONE (2026-07-02, commity 8d5c700 → e5691c4).** Rdzeń + 3 rundy tuningu na
+> żywych przebiegach (sekcja „Tuning" niżej) + eval L1 7/7 (`tests/flow-evals/watcher/`,
+> commit 5b8e287) kodujący wszystkie regresje. Zwalidowane na żywo: true-positive HALT
+> (implementer 332k/0 Write), fail-fast, RUN-STATE na żywo. Hook zarejestrowany w juz-ide-api-1.
+> Otwarte pozostaje tylko: pełny happy-path benchmarku /orchestrate-ddd (w toku u usera).
+
 **Źródło:** `docs/tasks/TASK-RAG-002.analysis.md` (status: approved, 2026-07-02) — Filar 0, decyzja D6, odpowiedzi Q3/Q4.
 **Priorytet:** NAJWYŻSZY — wykonać PRZED mitygacjami z TASK-AGENT-CONFORMANCE-001 §3 (Filar 1) i przed dalszym RAG (TASK-RAG-002/003).
 
