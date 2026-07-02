@@ -70,6 +70,20 @@ weryfikatorach — `tools: Read, Glob, Grep, Bash`, legalnie zero Write.)
 - Spinning wykryty ≤ ustalony próg tokenów od wystąpienia (próg = parametr do strojenia).
 - ZERO przebiegów „odkrytych po 3h".
 
+## Follow-up (zgłoszone 2026-07-02 po benchmarku)
+- [ ] **`scripts/workflow-tail.js` — żywy strumień logów do terminala** (feedback usera: „fajnie
+      byłoby widzieć logi zamiast zamaskowanego działania w tle"). Silnik Workflow działa
+      wyłącznie w tle (brak trybu foreground/streaming), a `/workflows` to UI na żądanie —
+      tailer domyka lukę: czyta `journal.jsonl` (started/result per agent) + `wf_*.json.logs`
+      (linie `log()` ze skryptu) + delty RUN-STATE (zmiany statusów/postępu per agent)
+      i drukuje jednoliniowe zdarzenia na stdout w czasie rzeczywistym:
+      `21:58:04 ▶ impl:domain-step-2 started · 21:58:41 ✍ a62e0f42 Edit (postęp) ·
+      21:59:10 ✅ verify:domain GO (0 violations)`. Przeznaczenie: drugi pane tmux obok sesji
+      (user pracuje w tmux). Dane już istnieją — watcher je parsuje; to tylko drugi renderer
+      (stdout zamiast RUN-STATE.md), więc nakład mały.
+- [ ] Do rozważenia przy okazji: `--bell` (dzwonek terminala przy SPINNING/HALT/ESCALATE)
+      — reakcja bez patrzenia w ekran.
+
 ## Poza zakresem
 - Naprawa przyczyny źródłowej milknięcia weryfikatora (poziom silnika, poza repo) — watcher
   tylko wykrywa i dokumentuje.
