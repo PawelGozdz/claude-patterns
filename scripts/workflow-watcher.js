@@ -213,7 +213,13 @@ function statusOf(st, doneSet, args, now) {
   // Martwy/historyczny przebieg: raportuj STALE, NIE flaguj do HALT —
   // egzekwowanie ma sens tylko na żywym agencie (dowód awarii i tak zostaje w RUN-STATE).
   if (silence !== null && silence > args.staleSec) return 'STALE';
-  const spinAt = args.spinTokens * (contractFor(st.agentType).spinMult || 1);
+  // KARENCJA STARTOWA: przed PIERWSZYM zdarzeniem postępu próg ×4 także dla implement/verify —
+  // implementer MUSI najpierw wczytać analysis+Rule Cards+patterny (wymusza to check-patterns-read),
+  // a cache_creation wlicza się do burn ⇒ legalna faza czytania to często >120k zanim padnie
+  // pierwszy Write. Incydent 2026-07-02: watchdog zablokował implementera W TRAKCIE czytania
+  // wzorców → git-diff-gate eskalował pusty przebieg. Po pierwszym postępie — normalny próg roli.
+  const mult = st.lastProgressTool === null ? 4 : (contractFor(st.agentType).spinMult || 1);
+  const spinAt = args.spinTokens * mult;
   if (sinceProgress > 2 * spinAt) return 'HALT';
   if (sinceProgress > spinAt) return 'SPINNING';
   if (silence !== null && silence > args.silenceSec) return 'SILENT';
