@@ -1,0 +1,54 @@
+[
+  {
+    "name": "delegation-main-blocked-on-pattern-file",
+    "hook": "check-delegation.js",
+    "payload": { "tool_name": "Write", "tool_input": { "file_path": "src/contexts/auth/domain/aggregates/user.aggregate.ts" } },
+    "setup": {},
+    "expect": "deny"
+  },
+  {
+    "name": "delegation-subagent-passes",
+    "hook": "check-delegation.js",
+    "payload": { "agent_id": "a1", "tool_name": "Write", "tool_input": { "file_path": "src/contexts/auth/domain/aggregates/user.aggregate.ts" } },
+    "setup": {},
+    "expect": "pass"
+  },
+  {
+    "name": "delegation-non-pattern-file-passes",
+    "hook": "check-delegation.js",
+    "payload": { "tool_name": "Write", "tool_input": { "file_path": "README.md" } },
+    "setup": {},
+    "expect": "pass"
+  },
+  {
+    "name": "delegation-mode-off-passes",
+    "hook": "check-delegation.js",
+    "env": { "DELEGATION_MODE": "off" },
+    "payload": { "tool_name": "Write", "tool_input": { "file_path": "src/contexts/auth/domain/aggregates/user.aggregate.ts" } },
+    "setup": {},
+    "expect": "pass"
+  },
+  {
+    "name": "approval-draft-analysis-block-denies-source-edit",
+    "hook": "check-approval-before-impl.js",
+    "env": { "ORCHESTRATE_DDD_GATE": "block" },
+    "payload": { "tool_name": "Write", "tool_input": { "file_path": "src/contexts/a/domain/aggregates/x.aggregate.ts" } },
+    "setup": { "files": { "project-orchestration/analysis/T1.analysis.md": "---\ntask: T1\nstatus: awaiting-human\nopen_questions:\n  - id: Q1\n    answer: null\n---\n" } },
+    "expect": "deny"
+  },
+  {
+    "name": "approval-draft-default-warn-passes",
+    "hook": "check-approval-before-impl.js",
+    "payload": { "tool_name": "Write", "tool_input": { "file_path": "src/contexts/a/domain/aggregates/x.aggregate.ts" } },
+    "setup": { "files": { "project-orchestration/analysis/T1.analysis.md": "---\ntask: T1\nstatus: awaiting-human\nopen_questions:\n  - id: Q1\n    answer: null\n---\n" } },
+    "expect": "pass"
+  },
+  {
+    "name": "approval-approved-block-passes",
+    "hook": "check-approval-before-impl.js",
+    "env": { "ORCHESTRATE_DDD_GATE": "block" },
+    "payload": { "tool_name": "Write", "tool_input": { "file_path": "src/contexts/a/domain/aggregates/x.aggregate.ts" } },
+    "setup": { "files": { "project-orchestration/analysis/T1.analysis.md": "---\ntask: T1\nstatus: approved\nopen_questions:\n  - id: Q1\n    answer: \"tak\"\n---\n" } },
+    "expect": "pass"
+  }
+]

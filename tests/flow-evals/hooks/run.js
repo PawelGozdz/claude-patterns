@@ -77,10 +77,10 @@ function loadExternalFixtures() {
   const dir = path.join(__dirname, 'fixtures');
   let files = [];
   try { files = fs.readdirSync(dir).filter(f => f.endsWith('.json')); } catch { return []; }
-  return files.map(f => {
-    const fx = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8'));
-    fx.hook = path.join(REPO, 'hooks', fx.hook); // w plikach: nazwa pliku hooka
-    return fx;
+  return files.flatMap(f => {
+    const parsed = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8'));
+    const list = Array.isArray(parsed) ? parsed : [parsed]; // plik = fixture LUB tablica fixtures
+    return list.map(fx => ({ ...fx, hook: path.join(REPO, 'hooks', fx.hook) })); // w plikach: nazwa pliku hooka
   });
 }
 
@@ -91,6 +91,15 @@ function runFixture(fx) {
     if (fx.setup && (fx.setup.kill || fx.setup.halt)) fs.mkdirSync(rsDir, { recursive: true });
     if (fx.setup && fx.setup.kill) fs.writeFileSync(path.join(rsDir, 'KILL'), '');
     if (fx.setup && fx.setup.halt) fs.writeFileSync(path.join(rsDir, 'halt.json'), JSON.stringify(fx.setup.halt));
+    // setup.files: { "rel/sciezka": "treść" } — pliki tworzone w tymczasowym cwd (np. artefakt
+    // analizy dla check-approval-before-impl)
+    if (fx.setup && fx.setup.files) {
+      for (const [rel, content] of Object.entries(fx.setup.files)) {
+        const p = path.join(tmp, rel);
+        fs.mkdirSync(path.dirname(p), { recursive: true });
+        fs.writeFileSync(p, content);
+      }
+    }
 
     const input = fx.raw !== undefined ? fx.raw : JSON.stringify({ ...fx.payload, cwd: tmp });
     const res = spawnSync('node', [fx.hook], {

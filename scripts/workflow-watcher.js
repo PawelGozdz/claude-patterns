@@ -37,7 +37,7 @@ const os = require('os');
 
 // ---------- CLI ----------
 function parseArgs(argv) {
-  const args = { interval: 5, spinTokens: 60000, silenceSec: 300, staleSec: 3600, once: false, project: null };
+  const args = { interval: 5, spinTokens: 60000, silenceSec: 300, staleSec: 3600, once: false, project: null, projectsRoot: null };
   for (let i = 2; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--project') args.project = path.resolve(argv[++i]);
@@ -45,6 +45,7 @@ function parseArgs(argv) {
     else if (a === '--spin-tokens') args.spinTokens = Number(argv[++i]);
     else if (a === '--silence-sec') args.silenceSec = Number(argv[++i]);
     else if (a === '--stale-sec') args.staleSec = Number(argv[++i]);
+    else if (a === '--projects-root') args.projectsRoot = path.resolve(argv[++i]); // testy/fixtures — zamiast ~/.claude/projects
     else if (a === '--once') args.once = true;
   }
   if (!args.project) {
@@ -304,7 +305,7 @@ function tick(args, projectsRoot) {
 
 function main() {
   const args = parseArgs(process.argv);
-  const projectsRoot = path.join(os.homedir(), '.claude', 'projects');
+  const projectsRoot = args.projectsRoot || path.join(os.homedir(), '.claude', 'projects');
   process.stderr.write(`[watcher] project=${args.project} slug=${slugFor(args.project)} interval=${args.interval}s spin=${fmtK(args.spinTokens)} silence=${args.silenceSec}s\n`);
   const target = tick(args, projectsRoot);
   process.stderr.write(`[watcher] RUN-STATE → ${target}\n`);
