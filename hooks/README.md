@@ -62,6 +62,32 @@ User request → Claude picks a tool → PreToolUse hook runs → Tool executes 
 > Follows the exact stdin/stdout contract of `post-edit-typecheck.js` (always passes stdin through
 > and exits 0, even on failure).
 
+> **Productivity watchdog** (`productivity-watchdog.js`, PreToolUse) — TASK-OBS-001. Also **not**
+> in global `hooks.json` — OPT-IN per project. Enforcement arm of `scripts/workflow-watcher.js`
+> (the external transcript watcher): the hook measures nothing itself, it reads flags written by
+> the watcher and **denies further tool calls** (exit 2) for subagents flagged as spinning
+> (tokens growing with NO progress event for their stage contract — D6), plus a kill-switch.
+> Main agent is NEVER blocked (subagent detection via `agent_id`, same as `check-delegation.js`;
+> no transcript scanning). Flags: `.claude/run-state/halt.json` (15-min TTL) and
+> `.claude/run-state/KILL` (touch = stop all subagents). `WATCHDOG_MODE=block|warn|off`.
+> Register in the project's `.claude/settings.json`:
+> ```json
+> {
+>   "hooks": {
+>     "PreToolUse": [
+>       {
+>         "matcher": "*",
+>         "hooks": [{ "type": "command", "command": "node \"$HOME/.claude/hooks/productivity-watchdog.js\"" }]
+>       }
+>     ]
+>   }
+> }
+> ```
+> Run the watcher alongside long `/orchestrate-ddd` runs:
+> `node scripts/workflow-watcher.js --project /path/to/project` → live `RUN-STATE.md`
+> (per-agent burn tokens, tokens-since-progress, silence) + HALT flags at 2× the spin threshold.
+> L1 eval (run on every hook change): `node tests/flow-evals/hooks/run.js`.
+
 ### Lifecycle Hooks
 
 | Hook | Event | What It Does |

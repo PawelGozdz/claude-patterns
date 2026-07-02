@@ -89,10 +89,23 @@ Jak monitorować w trakcie:
 ```
 /workflows                          # żywe drzewo: fazy, agenci, status, równoległość
 /ecc:loop-status --watch            # wykrywanie zawieszeń: stale Bash >30min, overdue wakeup, parse errors
+node scripts/workflow-watcher.js --project <repo>   # (claude-patterns) ZEWNĘTRZNY watcher → RUN-STATE.md
 ```
 Jeśli `loop-status` zgłosi `attention` → otwórz transkrypt lub przerwij. Per-agent koszt:
 `~/.claude/logs/agent-usage.jsonl` (hook subagent-stop-cost-log). Twarde limity (max_attempts=3,
 budżet) chronią przed nieskończoną pętlą — przy przekroczeniu Workflow eskaluje i HALT, nie wisi.
+
+**Watchdog produktywności (TASK-OBS-001, D6):** dla długich przebiegów odpal równolegle
+`workflow-watcher.js` — pisze `project-orchestration/RUN-STATE.md` na żywo (burn tokenów,
+tokeny-od-postępu wg kontraktu etapu, cisza per agent) i flaguje spinning do
+`.claude/run-state/halt.json`; hook `productivity-watchdog.js` (opt-in per projekt) DENY-uje
+kolejne tool-calle oflagowanych subagentów. Kill-switch: `touch .claude/run-state/KILL`.
+
+**Reguła no-rerun (twarda):** NIGDY nie ponawiaj padniętego Workflow od zera N-ty raz
+(anty-wzorzec: 4 przebiegi × ~5.2M tokenów, zero ukończeń — CONFORMANCE §3). Zamiast tego:
+przeczytaj RUN-STATE.md / `journal.jsonl`, usuń przyczynę, wznow przez
+`Workflow({scriptPath, resumeFromRunId})` — ukończone kroki wrócą z cache. Po DWÓCH nieudanych
+próbach wznowienia → STOP i eskalacja do człowieka (ręczna weryfikacja foreground).
 
 ## Uwaga o starym /orchestrate
 `/orchestrate` (jeden przebieg, bez bramki research) zostaje jako fallback dla lekkich/nie-DDD

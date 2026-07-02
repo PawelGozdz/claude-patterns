@@ -20,18 +20,31 @@ realnym postępie = OK. (Globalne „tokeny bez Write/Edit" dawałoby fałszywe 
 weryfikatorach — `tools: Read, Glob, Grep, Bash`, legalnie zero Write.)
 
 ## Zakres
-- [ ] **Zewnętrzny watcher transkryptów (rdzeń)** — proces tail-ujący
-      `~/.claude/projects/**/subagents/workflows/**/agent-*.jsonl`; liczy tokeny vs zdarzenia
-      postępu per agent; pisze **`RUN-STATE.md`** na żywo (bieżąca faza, ostatni artefakt,
-      tokeny-od-postępu, status agentów). Niezależny od silnika; przy okazji zbiera dane
-      diagnostyczne do niewyjaśnionej przyczyny milknięcia.
-- [ ] **HALT przez PreToolUse deny** — po fladze „spinning" hook blokuje dalsze tool-calle
-      (nie da się zabić wiszącego agenta z hooka; deny jest realnym punktem egzekucji).
-- [ ] **Heartbeat podstawowy** — `log()` co krok fazy w skrypcie Workflow + `/workflows`
-      progress + task-notifications.
-- [ ] **Kill-switch** + reguła „nie ponawiaj Workflow N-ty raz" (resume `resumeFromRunId`
-      zamiast re-run — 4 ślepe przebiegi TS-SEC-VERIFICATION-LEVELS-002 to anty-wzorzec).
-- [ ] **Wykrywanie ciszy** — brak tool_use/tekstu przez X → watcher flaguje w RUN-STATE.md.
+- [x] **Zewnętrzny watcher transkryptów (rdzeń)** — `scripts/workflow-watcher.js`: tail
+      inkrementalny (offsety) `~/.claude/projects/<slug>/*/subagents/workflows/wf_*/agent-*.jsonl`;
+      kontrakt etapu z `agent-*.meta.json::agentType` (implementer→Write/Edit/MultiEdit/NotebookEdit,
+      verifier→StructuredOutput, inne→oba; DONE z `journal.jsonl`); pisze `RUN-STATE.md`
+      (project-orchestration/ jeśli istnieje, inaczej root). Statusy: OK/SPINNING/HALT/SILENT/STALE/DONE.
+      SMOKE-TEST na realnych transkryptach juz-ide-api-1 (wf_1d72895a-716): weryfikatory z awarii
+      CONFORMANCE §3 pokazane jako 60k–279k burn bez JEDNEGO zdarzenia postępu — metryka D6 łapie
+      dokładnie udokumentowany incydent. STALE (cisza > --stale-sec, domyślnie 1h) = tylko raport,
+      bez flagowania martwych przebiegów.
+- [x] **HALT przez PreToolUse deny** — `hooks/productivity-watchdog.js` (opt-in per projekt, NIE w
+      globalnym hooks.json): czyta `.claude/run-state/halt.json` (TTL 15 min) + `KILL`; deny=exit 2;
+      main agent NIGDY nie blokowany (detekcja subagenta przez `agent_id`, bez skanowania
+      transkryptów). `WATCHDOG_MODE=block|warn|off`. Eval L1 (D7): `tests/flow-evals/hooks/run.js`
+      — 10/10 fixtures (main-pass, flagged-deny, TTL-expiry, kill-switch, halt-all, warn/off, garbage).
+- [x] **Heartbeat podstawowy** — sekcja „Obserwowalność" w `commands/orchestrate-ddd.md` już wymaga
+      `phase()`/`log()`/labeli; dopisano wskazanie watchera do bloku monitorowania.
+- [x] **Kill-switch** (`touch .claude/run-state/KILL` — hook zatrzymuje wszystkich subagentów)
+      + **reguła no-rerun** dopisana do `orchestrate-ddd.md`: nigdy od zera, `resumeFromRunId`,
+      po 2 nieudanych wznowieniach → STOP i eskalacja.
+- [x] **Wykrywanie ciszy** — status SILENT (brak linii > --silence-sec) w RUN-STATE.md.
+- [x] gitignore runtime-stanu: `templates/gitignore-claude.template` (+`.claude/run-state/`,
+      `RUN-STATE.md`); dokumentacja: `hooks/README.md` (blok opt-in z przykładem settings.json).
+
+**Parametry do strojenia w praktyce:** `--spin-tokens` (domyślnie 60k; HALT przy 2×),
+`--silence-sec` (300), `--stale-sec` (3600), TTL flag w hooku (15 min).
 
 ## Kryteria sukcesu (z analysis, success_criteria filar 0)
 - Każdy run widoczny na żywo w RUN-STATE.md.
