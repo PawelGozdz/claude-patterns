@@ -21,9 +21,18 @@ disallowedTools: Edit, MultiEdit, Bash, Grep, Glob, NotebookEdit
 
 # /analyze-ddd — Research & Technical Analysis (STOP1)
 
-**ZERO IMPLEMENTACJI.** Jedyny zapis jaki ta komenda robi to artefakt analizy
-(`project-orchestration/tasks/{TASK-ID}.analysis.md`). Bez Edit, bez Bash, bez implementerów —
-strukturalnie nie może dotknąć kodu produkcyjnego. To jest lewa strona twardej bramki (ADR 0002).
+**ZERO IMPLEMENTACJI.** Jedyny zapis, jaki komenda robi **swoim własnym `Write`**, to artefakt analizy
+(`project-orchestration/analysis/{TASK-ID}.analysis.md` — patrz krok 2; NIE w `tasks/`) — plus, warunkowo, threat-model (krok 0a) zapisany
+przez stage `threat-model`. Bez Edit, bez Bash, bez implementerów — strukturalnie nie może dotknąć
+kodu produkcyjnego. To jest lewa strona twardej bramki (ADR 0002).
+
+**Osobny kanał: pamięć agentów panelu.** Agenci-liście wołani w kroku 1 (np. `ddd-application-expert`,
+`code-quality-verifier`) mają we własnym frontmatterze `memory: project` — to jest mechanizm frameworku
+(persystencja "czego się agent nauczył" do `.claude/agent-memory/{agent}/`), **niezależny od `disallowedTools`
+tej komendy i od `Write` tych agentów samych** (część z nich ma nawet `disallowedTools: Write` — memory pisze
+framework, nie sam agent narzędziem). Efekt: pojedyncze uruchomienie `/analyze-ddd` może zostawić kilka
+dodatkowych plików w `.claude/agent-memory/**` poza artefaktem analizy i TM — to zamierzone (agent uczy się
+między zadaniami), nie bug ani rozrost tej komendy.
 
 ## Po co
 Odwzorowuje ręczny flow: `/threat-model` → panel agentów → synteza → otwarte pytania → STOP.
@@ -58,11 +67,19 @@ ujawnia rzeczy do przedyskutowania, zanim warto pisać kod.
   check-patterns-read / check-subagent-pattern-reads egzekwują w fazie implementacji.
 
 ### 0.6. RAG retrieval (jeśli MCP `knowledge-retriever` dostępny — graceful)
-Zamiast grepować/czytać kod na ślepo (główny pożeracz tokenów), **retrievuj trafny kontekst semantycznie**:
-- `retrieve_code(<intencja taska>)` → **Codebase Facts**: istniejące symbole (plik+symbol+linie) podobne do
-  tego, co task ma zrobić. Eliminuje halucynacje „to nie istnieje" + złe sygnatury (bug z ANTI-SPOOF).
-- `retrieve_patterns(<task>)` → trafne sekcje wzorców/reguł do groundingu (uzupełnia 0.5 — zwraca tylko istotne, nie wszystko).
-- **Fallback (MCP niedostępny):** klasyczny grep/glob + statyczna lista z 0.5. Działanie się nie zmienia, tylko droższe.
+`knowledge-retriever` to **jeden współdzielony HTTP daemon** (wszystkie projekty, `docker-compose`
+w claude-patterns) — Qdrant *za* nim, nie obok. Bo jest dzielony, **musisz jawnie podać `collection`**
+w każdym wywołaniu `retrieve_code` — bez tego trafisz w pusty `code_default` innego projektu.
+
+1. Wczytaj `collection` z `.claude/config/knowledge.json` (pole `collection`, np. `code_juz_ide_api_1`;
+   zapisane przez `setup-project.sh`). Brak pliku → **graceful fallback** (krok 3).
+2. Zamiast grepować/czytać kod na ślepo (główny pożeracz tokenów), **retrievuj trafny kontekst semantycznie**:
+   - `retrieve_code(<intencja taska>, collection=<z knowledge.json>)` → **Codebase Facts**: istniejące symbole
+     (plik+symbol+linie) podobne do tego, co task ma zrobić. Eliminuje halucynacje „to nie istnieje" + złe
+     sygnatury (bug z ANTI-SPOOF).
+   - `retrieve_patterns(<task>)` → trafne sekcje wzorców/reguł do groundingu (uzupełnia 0.5).
+3. **Fallback (MCP niedostępny / `knowledge.json` brak / kolekcja pusta):** klasyczny grep/glob + statyczna
+   lista z 0.5. Działanie się nie zmienia, tylko droższe.
 
 Wyniki `retrieve_code` wstrzyknij do stage'a impl-analysis; `retrieve_patterns` do groundingu panelu.
 
