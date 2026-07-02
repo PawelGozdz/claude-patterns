@@ -44,10 +44,20 @@ Wczytaj też `collection` z `.claude/config/knowledge.json` (zapisane przez `set
 Brak pliku → graceful (implementer spada na grep, jak przy niedostępnym MCP).
 
 ## Krok 3 — Uruchom Workflow implementacji (w tle)
+
+**LINT PRZED STARTEM (obowiązkowy):** zapisz skrypt Workflow do pliku (np.
+`project-orchestration/.workflow/{TASK-ID}.workflow.js` — gitignored — albo scratchpad) i uruchom
+`node "$HOME/.claude/hooks/workflow-lint.js" <plik>`. Lint MUSI dać exit 0 (reguły WL1-WL5:
+schema tylko na verify/final-gate, verify nigdy w parallel(), bramka git-diff obecna). Dopiero
+wtedy `Workflow({scriptPath: <plik>})`. To zamienia poniższe reguły-prozę w twardą bramkę.
+
 Zbuduj/uruchom Workflow o strukturze (MVP = liniowy, seam'y Ralphinho jako no-op):
 ```
 for unit of units:                          # MVP: units = [task]  (seam Ralphinho)
-  for layer of [domain-application, infrastructure]:   # OUTER: sekwencja (zależności DDD)
+  for layer of [domain, application, infrastructure]:  # OUTER: sekwencja (zależności DDD); split 3-warstwowy
+    # (2026-07-02) domain-application ROZDZIELONE: mniejszy zakres = mieści się w budżecie tur,
+    # fail dotyka jednej warstwy. Do warstwy N wstrzyknij git diff warstwy N-1 + decisions[] —
+    # application czyta świeży kod domeny Z REPO, nie z pamięci agenta.
     attempt = 0
     loop:
       # PRZED pisaniem: retrieve_code(intencja, collection) z MCP knowledge-retriever → istniejące
@@ -61,6 +71,11 @@ for unit of units:                          # MVP: units = [task]  (seam Ralphin
       # BRAMKA „kod istnieje" (CONFORMANCE §2): git diff --stat puste → ESCALATE, NIE weryfikuj —
       # weryfikacja kodu, który nigdy nie powstał, to spalony przebieg.
       if git_diff_empty(layer_dirs): ESCALATE(layer, "implementer nie zmienił żadnych plików"); HALT
+      # KONTYNUACJA (klif maxTurns — odzyskiwalny, nie śmiertelny): implementer skończył BEZ
+      # tekstu finalnego, a diff NIEPUSTY → JEDNO wywołanie kontynuacyjne ("dokończ wg
+      # DONE/REMAINING manifestu lub git diff") PRZED verify — nie wysyłaj połowicznego kodu
+      # do weryfikacji (nie pal próby fix-loopa na przewidywalnych brakach).
+      if impl == null && !git_diff_empty(layer_dirs): implement_continuation(layer)  # max 1×
       v = verify(layer)        # @code-quality-verifier → {verdict, violations:[rule_ids]}
       if v == null: ESCALATE(layer, "verifier padł (null z agent())"); HALT   # NIE retry w ciemno
       if v.verdict == GO: break

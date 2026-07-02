@@ -11,7 +11,7 @@ model: sonnet
 temperature: 0.3
 color: teal
 priority: high
-maxTurns: 30
+maxTurns: 40
 ---
 
 # domain-application-implementer
@@ -96,6 +96,17 @@ Haiku ($0.25/M input, $1.25/M output) = **60x cheaper**.
 - **`retrieve_examples(query, level?, kind?)`** (global) — canonical `@vytches/ddd` usage examples
   (simple|medium|complex) incl. anti-patterns (`kind:'anti_pattern'` = what NOT to do). Use when
   you need a reference implementation of a library construct and the project has no example yet.
+
+### ⏳ TURN BUDGET — silent-death guard (maxTurns exhaustion)
+
+You run under a hard `maxTurns` limit. Exhausting it cuts you off **SILENTLY, mid-file** — no
+error, no summary, and the orchestrator sees a half-written layer.
+- **Batch aggressively**: multiple independent tool calls in ONE turn (parallel Reads; group
+  small related Writes).
+- **Count your turns.** At ~80% of budget: STOP and emit a handoff manifest:
+  `DONE: [files written]` / `REMAINING: [files left + one line what goes in each]`.
+  The orchestrator dispatches a continuation pass from your manifest — a clean handoff ALWAYS
+  beats being cut mid-file (the continuation agent otherwise reverse-engineers your intent).
 
 **BEFORE implementing, you MUST find reference examples:**
 

@@ -44,9 +44,14 @@ phase_research:
 phase_implementation:
   engine: workflow                          # Workflow tool (deterministyczny), nie /goal
   prerequisite: "{TASK_ID}.analysis.md::status == approved && no open_questions.answer == null"
-  layers:                                   # OUTER: sekwencja (zależności DDD)
-    - { id: domain-application, dirs: [domain/, application/] }
-    - { id: infrastructure,     dirs: [infrastructure/], tests: true }
+  layers:                                   # OUTER: sekwencja (zależności DDD); split 3-warstwowy
+    # 2026-07-02: domain-application ROZDZIELONE — podwójna warstwa (15-25 plików) strukturalnie
+    # nie mieściła się w budżecie tur implementera (klif maxTurns), a fail handlera oznaczał
+    # re-implementację OBU warstw ×3. Application czyta świeży kod domeny z repo + dostaje
+    # decisions[] i git diff poprzedniej warstwy — interfejs nie może się rozjechać.
+    - { id: domain,         dirs: [domain/],         agent: "domain-application-implementer" }
+    - { id: application,    dirs: [application/],    agent: "domain-application-implementer" }
+    - { id: infrastructure, dirs: [infrastructure/], agent: "infrastructure-testing-implementer", tests: true }
   inner_loop:                               # per warstwa
     steps: [implement, verify, fix]
     implement: { agent: "domain-application-implementer | infrastructure-testing-implementer",
