@@ -74,6 +74,14 @@ Guardrails: `max_attempts=3` per warstwa (stall-guard; loop-operator ECC jako ba
 push tylko branche `claude/*`, limity budżetu/tur z presetu.
 
 **Reguły verify() (mitygacje CONFORMANCE §3 — obowiązkowe w skrypcie Workflow):**
+- **`schema` TYLKO na verify() i final gate — NIGDY na implement()**. Sukces implementacji mierzy
+  deterministyczna bramka git-diff (wyżej), nie self-report; wymuszanie StructuredOutput na
+  implementerze dodaje punkt awarii bez wartości (incydent 2026-07-02: wf padł w 2 min na
+  implement({schema}) — agent nie miał narzędzia).
+- **Agent wołany ze `schema` MUSI mieć `StructuredOutput` na jawnej liście `tools:`** swojego
+  frontmatteru — whitelist bez niego = subagent fizycznie nie może odpowiedzieć schematem
+  i `agent()` pada mimo nudge (ta sama pułapka co brak retrieve_code w tools — Faza A RAG-002).
+  Nasze verifiery i implementery mają to już dodane.
 - **Sekwencyjnie, NIGDY `parallel()`** na wywołaniach weryfikatora (także przy dzieleniu zakresu
   na wycinki mechanism/wire-up/docs) — równoczesne obciążenie to podejrzany wyzwalacz cichego
   milknięcia (9/9 padniętych wywołań szło przez `parallel()`).

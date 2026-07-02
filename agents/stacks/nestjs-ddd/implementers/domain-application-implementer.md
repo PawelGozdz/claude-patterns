@@ -5,7 +5,7 @@ description: |
   domain service, specification, command handler, query handler, CQRS, DTO, business logic.
   Implements DDD business logic (Aggregates, VOs, Events, Services) and CQRS orchestration
   (Command/Query Handlers, DTOs, Application Services).
-tools: Read, Write, Edit, MultiEdit, Glob, Grep, LS, Task, mcp__knowledge-retriever__retrieve_code, mcp__knowledge-retriever__retrieve_patterns, mcp__knowledge-retriever__retrieve_examples
+tools: Read, Write, Edit, MultiEdit, Glob, Grep, LS, Task, StructuredOutput, mcp__knowledge-retriever__retrieve_code, mcp__knowledge-retriever__retrieve_patterns, mcp__knowledge-retriever__retrieve_examples
 disallowedTools: Bash
 model: sonnet
 temperature: 0.3

@@ -6,7 +6,7 @@ description: |
   Implements Infrastructure/API layer (Controllers, Schemas, Repos, External Services) and
   comprehensive test suites (L1 Unit, L2 Integration, L3 E2E setup).
 tools:
-  Read, Write, Edit, MultiEdit, Bash, Glob, Grep, LS, Task, mcp__knowledge-retriever__retrieve_code, mcp__knowledge-retriever__retrieve_patterns, mcp__knowledge-retriever__retrieve_examples
+  Read, Write, Edit, MultiEdit, Bash, Glob, Grep, LS, Task, StructuredOutput, mcp__knowledge-retriever__retrieve_code, mcp__knowledge-retriever__retrieve_patterns, mcp__knowledge-retriever__retrieve_examples
 model: sonnet
 temperature: 0.3
 color: orange
