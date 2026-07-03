@@ -1,0 +1,353 @@
+[
+  {
+    "section": "Overview",
+    "text": "## Purpose\n\nThe convenience meta-package: re-exports the curated public surface of 16 of the\nmonorepo's sub-packages under a single import (verified against\n`packages/enterprise/package.json` dependencies and\n`packages/enterprise/src/index.ts`). Use this when you want one entry point; use\nsub-packages directly when you care about tree-shaking the parts you don't need.\n\n`@vytches/ddd-nestjs` and `@vytches/ddd-testing` exist in the monorepo but are\n**not** re-exported here — see \"What's Included\" below for why.\n`@vytches/ddd-logging` was removed from the monorepo entirely (VS-010); it no\nlonger exists as a package.\n\n```bash\nnpm install @vytches/ddd                  # this package — gets everything\n# or\nnpm install @vytches/ddd-aggregates @vytches/ddd-events @vytches/ddd-cqrs\n```\n\nThe meta-package handles **conflict resolution** when two sub-packages expose\nsymbols with the same name — see \"Naming Conflict Resolution\" below.\n\n## Quick Start\n\n```typescript\nimport {\n  AggregateRoot,\n  EntityId,\n  DomainEvent,\n  BaseValueObject,\n  Specification,\n  Result,\n} from '@vytches/ddd';\n\nclass Order extends AggregateRoot<string> {\n  private items: Array<{ sku: string; qty: number }> = [];\n\n  constructor() {\n    super({ id: EntityId.create(), version: 0 });\n\n    this.registerEventHandler('ItemAdded', payload => {\n      this.items = [...this.items, payload];\n    });\n  }\n\n  addItem(sku: string, qty: number): Result<void, Error> {\n    if (qty <= 0) return Result.fail(new Error('qty must be positive'));\n    this.apply(new ItemAddedEvent({ sku, qty }));\n    return Result.empty();\n  }\n}\n```",
+    "kind": "concept",
+    "feature": "enterprise",
+    "combines": [],
+    "tags": ["vytches-ddd", "enterprise"],
+    "level": "quickstart"
+  },
+  {
+    "section": "What's Included (overview)",
+    "text": "## What's Included\n\nFor the full API of any row below — every exported class, type, and function —\nread that package's own guide at `packages/<sub-package>/LLMGUIDE.md`. This\ntable only gives a curated taste; it is not row-by-row parity with those files.",
+    "kind": "concept",
+    "feature": "enterprise",
+    "combines": [],
+    "tags": ["vytches-ddd", "enterprise"],
+    "level": "advanced"
+  },
+  {
+    "section": "See also: contracts",
+    "text": "| Sub-package             | What it brings                                              | Full API                                     |\n| ----------------------- | ----------------------------------------------------------- | --------------------------------------------- |\n| `ddd-contracts`         | Foundation types: `Result`, `EntityId`, `IDomainEvent`, ... | See `packages/contracts/LLMGUIDE.md`         |",
+    "kind": "concept",
+    "feature": "enterprise",
+    "combines": ["contracts"],
+    "tags": ["vytches-ddd", "enterprise", "contracts"],
+    "level": "core"
+  },
+  {
+    "section": "See also: domain-primitives",
+    "text": "| Sub-package             | What it brings                                              | Full API                                     |\n| ----------------------- | ----------------------------------------------------------- | --------------------------------------------- |\n| `ddd-domain-primitives` | Errors (`NotFoundError`, ...), `IActor`                     | See `packages/domain-primitives/LLMGUIDE.md` |",
+    "kind": "concept",
+    "feature": "enterprise",
+    "combines": ["domain-primitives"],
+    "tags": ["vytches-ddd", "enterprise", "domain-primitives"],
+    "level": "core"
+  },
+  {
+    "section": "See also: value-objects",
+    "text": "| Sub-package             | What it brings                                              | Full API                                     |\n| ----------------------- | ----------------------------------------------------------- | --------------------------------------------- |\n| `ddd-value-objects`     | `BaseValueObject`, `EntityId` impl                          | See `packages/value-objects/LLMGUIDE.md`     |",
+    "kind": "concept",
+    "feature": "enterprise",
+    "combines": ["value-objects"],
+    "tags": ["vytches-ddd", "enterprise", "value-objects"],
+    "level": "core"
+  },
+  {
+    "section": "See also: aggregates",
+    "text": "| Sub-package             | What it brings                                              | Full API                                     |\n| ----------------------- | ----------------------------------------------------------- | --------------------------------------------- |\n| `ddd-aggregates`        | `AggregateRoot`, capabilities (snapshot, audit, versioning) | See `packages/aggregates/LLMGUIDE.md`        |",
+    "kind": "concept",
+    "feature": "enterprise",
+    "combines": ["aggregates"],
+    "tags": ["vytches-ddd", "enterprise", "aggregates"],
+    "level": "core"
+  },
+  {
+    "section": "See also: events",
+    "text": "| Sub-package             | What it brings                                              | Full API                                     |\n| ----------------------- | ----------------------------------------------------------- | --------------------------------------------- |\n| `ddd-events`            | `DomainEvent`, `IntegrationEvent`, `UnifiedEventBus`        | See `packages/events/LLMGUIDE.md`            |",
+    "kind": "concept",
+    "feature": "enterprise",
+    "combines": ["events"],
+    "tags": ["vytches-ddd", "enterprise", "events"],
+    "level": "core"
+  },
+  {
+    "section": "See also: cqrs",
+    "text": "| Sub-package             | What it brings                                              | Full API                                     |\n| ----------------------- | ----------------------------------------------------------- | --------------------------------------------- |\n| `ddd-cqrs`              | `CommandBus`, `QueryBus`, decorators                        | See `packages/cqrs/LLMGUIDE.md`              |",
+    "kind": "concept",
+    "feature": "enterprise",
+    "combines": ["cqrs"],
+    "tags": ["vytches-ddd", "enterprise", "cqrs"],
+    "level": "core"
+  },
+  {
+    "section": "See also: policies",
+    "text": "| Sub-package             | What it brings                                              | Full API                                     |\n| ----------------------- | ----------------------------------------------------------- | --------------------------------------------- |\n| `ddd-policies`          | `Specification`, `BaseBusinessPolicy`, composition          | See `packages/policies/LLMGUIDE.md`          |",
+    "kind": "concept",
+    "feature": "enterprise",
+    "combines": ["policies"],
+    "tags": ["vytches-ddd", "enterprise", "policies"],
+    "level": "core"
+  },
+  {
+    "section": "See also: validation",
+    "text": "| Sub-package             | What it brings                                              | Full API                                     |\n| ----------------------- | ----------------------------------------------------------- | --------------------------------------------- |\n| `ddd-validation`        | Schema/rule-based validators, `ValidationError`             | See `packages/validation/LLMGUIDE.md`        |",
+    "kind": "concept",
+    "feature": "enterprise",
+    "combines": ["validation"],
+    "tags": ["vytches-ddd", "enterprise", "validation"],
+    "level": "core"
+  },
+  {
+    "section": "See also: repositories",
+    "text": "| Sub-package             | What it brings                                              | Full API                                     |\n| ----------------------- | ----------------------------------------------------------- | --------------------------------------------- |\n| `ddd-repositories`      | `IBaseRepository`, `IRepository`, `IUnitOfWork`             | See `packages/repositories/LLMGUIDE.md`      |",
+    "kind": "concept",
+    "feature": "enterprise",
+    "combines": ["repositories"],
+    "tags": ["vytches-ddd", "enterprise", "repositories"],
+    "level": "core"
+  },
+  {
+    "section": "See also: projections",
+    "text": "| Sub-package             | What it brings                                              | Full API                                     |\n| ----------------------- | ----------------------------------------------------------- | --------------------------------------------- |\n| `ddd-projections`       | `BaseProjection`, `ProjectionEngine`                        | See `packages/projections/LLMGUIDE.md`       |",
+    "kind": "concept",
+    "feature": "enterprise",
+    "combines": ["projections"],
+    "tags": ["vytches-ddd", "enterprise", "projections"],
+    "level": "core"
+  },
+  {
+    "section": "See also: acl",
+    "text": "| Sub-package             | What it brings                                              | Full API                                     |\n| ----------------------- | ----------------------------------------------------------- | --------------------------------------------- |\n| `ddd-acl`               | Anti-corruption layer + context routing                     | See `packages/acl/LLMGUIDE.md`               |",
+    "kind": "concept",
+    "feature": "enterprise",
+    "combines": ["acl"],
+    "tags": ["vytches-ddd", "enterprise", "acl"],
+    "level": "core"
+  },
+  {
+    "section": "See also: domain-services",
+    "text": "| Sub-package             | What it brings                                              | Full API                                     |\n| ----------------------- | ----------------------------------------------------------- | --------------------------------------------- |\n| `ddd-domain-services`   | `AsyncDomainService`, `@DomainService()`                    | See `packages/domain-services/LLMGUIDE.md`   |",
+    "kind": "concept",
+    "feature": "enterprise",
+    "combines": ["domain-services"],
+    "tags": ["vytches-ddd", "enterprise", "domain-services"],
+    "level": "core"
+  },
+  {
+    "section": "See also: resilience",
+    "text": "| Sub-package             | What it brings                                              | Full API                                     |\n| ----------------------- | ----------------------------------------------------------- | --------------------------------------------- |\n| `ddd-resilience`        | Circuit breaker, retry, bulkhead, timeout                   | See `packages/resilience/LLMGUIDE.md`        |",
+    "kind": "concept",
+    "feature": "enterprise",
+    "combines": ["resilience"],
+    "tags": ["vytches-ddd", "enterprise", "resilience"],
+    "level": "core"
+  },
+  {
+    "section": "See also: messaging",
+    "text": "| Sub-package             | What it brings                                              | Full API                                     |\n| ----------------------- | ----------------------------------------------------------- | --------------------------------------------- |\n| `ddd-messaging`         | Outbox pattern (storage-agnostic)                           | See `packages/messaging/LLMGUIDE.md`         |",
+    "kind": "concept",
+    "feature": "enterprise",
+    "combines": ["messaging"],
+    "tags": ["vytches-ddd", "enterprise", "messaging"],
+    "level": "core"
+  },
+  {
+    "section": "See also: utils",
+    "text": "| Sub-package             | What it brings                                              | Full API                                     |\n| ----------------------- | ----------------------------------------------------------- | --------------------------------------------- |\n| `ddd-utils`             | `LibUtils`, `safeRun`, middleware pipeline                  | See `packages/utils/LLMGUIDE.md`             |",
+    "kind": "concept",
+    "feature": "enterprise",
+    "combines": ["utils"],
+    "tags": ["vytches-ddd", "enterprise", "utils"],
+    "level": "core"
+  },
+  {
+    "section": "See also: di",
+    "text": "| Sub-package             | What it brings                                              | Full API                                     |\n| ----------------------- | ----------------------------------------------------------- | --------------------------------------------- |\n| `ddd-di`                | Service locator, container builder                          | See `packages/di/LLMGUIDE.md`                |",
+    "kind": "concept",
+    "feature": "enterprise",
+    "combines": ["di"],
+    "tags": ["vytches-ddd", "enterprise", "di"],
+    "level": "core"
+  },
+  {
+    "section": "Not Re-exported (ddd-testing / ddd-nestjs / ddd-logging)",
+    "text": "**Not re-exported here** (confirmed against `packages/enterprise/package.json` —\nneither is a dependency of this package):\n\n| Package       | Status                                                                                                                                                                                                                                                                                  | Full API                           |\n| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------- |\n| `ddd-testing` | Exists in the monorepo as dev/test-only tooling; not pulled into the production meta-package. Install it directly if you need it.                                                                                                                                                       | See `packages/testing/LLMGUIDE.md` |\n| `ddd-nestjs`  | Shipped separately (peer dep on `@nestjs/common`), not pulled in by default.                                                                                                                                                                                                            | See `packages/nestjs/LLMGUIDE.md`  |\n| `ddd-logging` | Removed from the monorepo entirely (VS-010). The library now only logs its own internal diagnostics (`configureDiagnostics`/`DiagnosticsSink`, re-exported here from `ddd-contracts`) — it does not ship an application logging layer. No package or LLMGUIDE.md exists for it anymore. | N/A — package removed              |",
+    "kind": "concept",
+    "feature": "enterprise",
+    "combines": [],
+    "tags": ["vytches-ddd", "enterprise"],
+    "level": "advanced"
+  },
+  {
+    "section": "Naming Conflict Resolution: Methodology",
+    "text": "## Naming Conflict Resolution\n\nThis section was re-derived by diffing every exported symbol name across the 16\nre-exported packages' `src/index.ts` barrels (script-assisted, not manual\nskimming) and then reading `packages/enterprise/src/index.ts` to see, for each\ncollision, which package's version actually reaches a consumer of\n`@vytches/ddd`. \"Re-exported from\" below is the package whose declaration wins —\ni.e. what `import { X } from '@vytches/ddd'` actually resolves to.\n\n**Real conflicts** — two packages export a _different_ declaration under the\nsame name, and the meta-package must pick a winner:",
+    "kind": "concept",
+    "feature": "enterprise",
+    "combines": [],
+    "tags": ["vytches-ddd", "enterprise"],
+    "level": "advanced"
+  },
+  {
+    "section": "Naming Conflict: EntityId",
+    "text": "| Symbol                  | Re-exported from      | Reason                                                                                                                                                                                                                                                                                                                                                                                                                |\n| ----------------------- | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |\n| `EntityId`              | `ddd-value-objects`   | The concrete class (preferred for consumers). `ddd-contracts`' own `EntityId` is aliased to `BaseEntityId` instead of being dropped.                                                                                                                                                                                                                                                                                  |",
+    "kind": "concept",
+    "feature": "enterprise",
+    "combines": ["value-objects", "contracts"],
+    "tags": ["vytches-ddd", "enterprise", "value-objects", "contracts"],
+    "level": "core"
+  },
+  {
+    "section": "Naming Conflict: BaseEntityId",
+    "text": "| Symbol                  | Re-exported from      | Reason                                                                                                                                                                                                                                                                                                                                                                                                                |\n| ----------------------- | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |\n| `BaseEntityId`          | `ddd-contracts`       | `ddd-contracts`' `EntityId` renamed on import (`export { EntityId as BaseEntityId } from '@vytches/ddd-contracts'`) specifically to avoid clashing with the `ddd-value-objects` version.                                                                                                                                                                                                                              |",
+    "kind": "concept",
+    "feature": "enterprise",
+    "combines": ["contracts", "value-objects"],
+    "tags": ["vytches-ddd", "enterprise", "contracts", "value-objects"],
+    "level": "core"
+  },
+  {
+    "section": "Naming Conflict: IAggregateCapability",
+    "text": "| Symbol                  | Re-exported from      | Reason                                                                                                                                                                                                                                                                                                                                                                                                                |\n| ----------------------- | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |\n| `IAggregateCapability`  | `ddd-contracts`       | Documented in source: \"`IAggregateCapability`: Primary: `IAggregateCapability` (from `@vytches/ddd-contracts`) — Foundation interface\" (comment block, `packages/enterprise/src/index.ts`). `ddd-aggregates` also declares its own `IAggregateCapability`, which loses.                                                                                                                                               |",
+    "kind": "concept",
+    "feature": "enterprise",
+    "combines": ["contracts", "aggregates"],
+    "tags": ["vytches-ddd", "enterprise", "contracts", "aggregates"],
+    "level": "core"
+  },
+  {
+    "section": "Naming Conflict: ServiceNotFoundError",
+    "text": "| Symbol                  | Re-exported from      | Reason                                                                                                                                                                                                                                                                                                                                                                                                                |\n| ----------------------- | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |\n| `ServiceNotFoundError`  | `ddd-domain-services` | Documented in source: \"DI exports (`ServiceNotFoundError` conflict resolved - domain-services version takes precedence)\" (`packages/enterprise/src/index.ts`, above the `ddd-di` export block). `ddd-di`'s own `ServiceNotFoundError` class is deliberately left out of the curated `ddd-di` export list.                                                                                                             |",
+    "kind": "concept",
+    "feature": "enterprise",
+    "combines": ["domain-services", "di"],
+    "tags": ["vytches-ddd", "enterprise", "domain-services", "di"],
+    "level": "core"
+  },
+  {
+    "section": "Naming Conflict: IProjectionCapability",
+    "text": "| Symbol                  | Re-exported from      | Reason                                                                                                                                                                                                                                                                                                                                                                                                                |\n| ----------------------- | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |\n| `IProjectionCapability` | `ddd-contracts`       | `ddd-contracts` explicitly names `IProjectionCapability` in its curated type export list; `ddd-projections`' own type of the same name loses per standard ES-module rule (an explicit named export beats an ambiguous `export *`). No comment in source explains _why_ contracts should win here — no documented rationale found in source, but the outcome is consistent with the `IAggregateCapability` case above. |",
+    "kind": "concept",
+    "feature": "enterprise",
+    "combines": ["contracts", "projections", "aggregates"],
+    "tags": ["vytches-ddd", "enterprise", "contracts", "projections", "aggregates"],
+    "level": "core"
+  },
+  {
+    "section": "Naming Conflict: IRepository",
+    "text": "| Symbol                  | Re-exported from      | Reason                                                                                                                                                                                                                                                                                                                                                                                                                |\n| ----------------------- | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |\n| `IRepository`           | `ddd-repositories`    | `ddd-contracts` also declares a type `IRepository`, but `packages/enterprise/src/index.ts` deliberately omits it from the curated `ddd-contracts` type-export list (verified by reading the full list at lines 12–72), while `export * from '@vytches/ddd-repositories'` supplies it. No comment explains the omission — no documented rationale found in source.                                                     |",
+    "kind": "concept",
+    "feature": "enterprise",
+    "combines": ["repositories", "contracts"],
+    "tags": ["vytches-ddd", "enterprise", "repositories", "contracts"],
+    "level": "core"
+  },
+  {
+    "section": "Naming Conflict: IRepositoryProvider",
+    "text": "| Symbol                  | Re-exported from      | Reason                                                                                                                                                                                                                                                                                                                                                                                                                |\n| ----------------------- | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |\n| `IRepositoryProvider`   | `ddd-repositories`    | Same pattern as `IRepository` — declared in both `ddd-contracts` and `ddd-repositories`; the contracts version is omitted from the curated export list. No documented rationale found in source.                                                                                                                                                                                                                    |",
+    "kind": "concept",
+    "feature": "enterprise",
+    "combines": ["repositories", "contracts"],
+    "tags": ["vytches-ddd", "enterprise", "repositories", "contracts"],
+    "level": "core"
+  },
+  {
+    "section": "Naming Conflict: IExtendedRepository",
+    "text": "| Symbol                  | Re-exported from      | Reason                                                                                                                                                                                                                                                                                                                                                                                                                |\n| ----------------------- | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |\n| `IExtendedRepository`   | `ddd-repositories`    | Same pattern as `IRepository` — no documented rationale found in source.                                                                                                                                                                                                                                                                                                                                              |",
+    "kind": "concept",
+    "feature": "enterprise",
+    "combines": ["repositories"],
+    "tags": ["vytches-ddd", "enterprise", "repositories"],
+    "level": "core"
+  },
+  {
+    "section": "Naming Conflict: IUnitOfWork",
+    "text": "| Symbol                  | Re-exported from      | Reason                                                                                                                                                                                                                                                                                                                                                                                                                |\n| ----------------------- | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |\n| `IUnitOfWork`           | `ddd-repositories`    | Same pattern as `IRepository` — no documented rationale found in source.                                                                                                                                                                                                                                                                                                                                              |",
+    "kind": "concept",
+    "feature": "enterprise",
+    "combines": ["repositories"],
+    "tags": ["vytches-ddd", "enterprise", "repositories"],
+    "level": "core"
+  },
+  {
+    "section": "Naming Conflict Resolution: Pass-throughs (intro)",
+    "text": "**Pass-throughs** — the symbol appears in two packages' barrels, but the second\npackage literally re-exports the first package's identical declaration (not a\ncompeting implementation), so there is no real ambiguity:",
+    "kind": "concept",
+    "feature": "enterprise",
+    "combines": [],
+    "tags": ["vytches-ddd", "enterprise"],
+    "level": "advanced"
+  },
+  {
+    "section": "Naming Conflict (Pass-through): Result",
+    "text": "| Symbol                                    | Canonical source | Notes                                                                                                                                                                                                                                                                                                                                       |\n| ------------------------------------------ | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |\n| `Result`                                  | `ddd-contracts`  | Moved to `ddd-contracts` in REL-008. `ddd-utils` re-exports it via a zero-cost shim (`packages/utils/src/result.ts`) for backward compatibility, and `ddd-policies` re-exports the type from `ddd-utils`. `@vytches/ddd` re-exports the `ddd-utils` path (`export { Result } from '@vytches/ddd-utils'`) — it is the same class either way. |",
+    "kind": "concept",
+    "feature": "enterprise",
+    "combines": ["contracts", "utils", "policies"],
+    "tags": ["vytches-ddd", "enterprise", "contracts", "utils", "policies"],
+    "level": "core"
+  },
+  {
+    "section": "Naming Conflict (Pass-through): ISpecification, IAsyncSpecification",
+    "text": "| Symbol                                    | Canonical source | Notes                                                                                                                                                                                                                                                                                                                                       |\n| ------------------------------------------ | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |\n| `ISpecification`, `IAsyncSpecification`   | `ddd-contracts`  | `ddd-policies` re-exports these two types verbatim (`export type { IAsyncSpecification, ISpecification } from '@vytches/ddd-contracts'`).                                                                                                                                                                                                   |",
+    "kind": "concept",
+    "feature": "enterprise",
+    "combines": ["contracts", "policies"],
+    "tags": ["vytches-ddd", "enterprise", "contracts", "policies"],
+    "level": "core"
+  },
+  {
+    "section": "Naming Conflict (Pass-through): IEntityId, IEntityIdFactory, IdType",
+    "text": "| Symbol                                    | Canonical source | Notes                                                                                                                                                                                                                                                                                                                                       |\n| ------------------------------------------ | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |\n| `IEntityId`, `IEntityIdFactory`, `IdType` | `ddd-contracts`  | `ddd-value-objects` re-exports these three types verbatim from `ddd-contracts` for convenience.                                                                                                                                                                                                                                             |",
+    "kind": "concept",
+    "feature": "enterprise",
+    "combines": ["contracts", "value-objects"],
+    "tags": ["vytches-ddd", "enterprise", "contracts", "value-objects"],
+    "level": "core"
+  },
+  {
+    "section": "Naming Conflict Resolution: Discrepancies (intro)",
+    "text": "**Discrepancies found in the source's own conflict-resolution comment** (the\n`NAMING CONFLICT RESOLUTION` block at the bottom of\n`packages/enterprise/src/index.ts`) that this diff pass could not corroborate\nagainst current exports — flagged here rather than silently dropped:",
+    "kind": "concept",
+    "feature": "enterprise",
+    "combines": [],
+    "tags": ["vytches-ddd", "enterprise"],
+    "level": "advanced"
+  },
+  {
+    "section": "Naming Conflict Discrepancy: ValidationError",
+    "text": "- The comment lists `ValidationError` as resolved in favor of\n  `ddd-domain-primitives`. As of this check, `ddd-domain-primitives` does\n  **not** export a symbol named `ValidationError` (verified by reading\n  `packages/domain-primitives/src/index.ts` in full) — only `ddd-validation`\n  does\n  (`export { ValidationError, ValidationErrors } from './validation-error'`).\n  There is currently no cross-package `ValidationError` collision; the comment\n  appears stale.",
+    "kind": "concept",
+    "feature": "enterprise",
+    "combines": ["domain-primitives", "validation"],
+    "tags": ["vytches-ddd", "enterprise", "domain-primitives", "validation"],
+    "level": "core"
+  },
+  {
+    "section": "Naming Conflict Discrepancy: ExecutionContext",
+    "text": "- The comment lists `ExecutionContext` as resolved in favor of `ddd-cqrs` \"most\n  commonly used.\" No other re-exported package declares a symbol named\n  `ExecutionContext` (verified across all 16 packages' barrels) — the comment\n  may be describing the intra-package distinction between `ddd-cqrs`'s\n  `CQRSExecutionContext` class and its `ExecutionContext` type rather than a\n  true cross-package conflict.",
+    "kind": "concept",
+    "feature": "enterprise",
+    "combines": ["cqrs"],
+    "tags": ["vytches-ddd", "enterprise", "cqrs"],
+    "level": "core"
+  },
+  {
+    "section": "Naming Conflict Resolution: Consistency Note",
+    "text": "If you import from a sub-package directly, you get that package's view — which\nmay differ from what `@vytches/ddd` re-exports. Stick to one source per consumer\ncodebase.",
+    "kind": "concept",
+    "feature": "enterprise",
+    "combines": [],
+    "tags": ["vytches-ddd", "enterprise"],
+    "level": "advanced"
+  },
+  {
+    "section": "When to use sub-packages instead",
+    "text": "## When to use sub-packages instead\n\n- **You need tighter bundle size** — only import what you use, no barrel\n  re-exports.\n- **You only need primitives** —\n  `npm install @vytches/ddd-aggregates @vytches/ddd-events` pulls ~30% the\n  surface of the meta-package.\n- **You want explicit dependency boundaries** — sub-packages document what layer\n  each piece belongs to.",
+    "kind": "concept",
+    "feature": "enterprise",
+    "combines": [],
+    "tags": ["vytches-ddd", "enterprise"],
+    "level": "advanced"
+  },
+  {
+    "section": "Anti-Patterns",
+    "text": "## Anti-Patterns\n\n- **Do not mix imports from `@vytches/ddd` and `@vytches/ddd-*` in the same\n  consumer** — class identity may differ between them after Vite bundling. Pick\n  one strategy per project.\n- **Do not import the entire library inside an aggregate file** — aggregates\n  should depend only on `@vytches/ddd-aggregates` (or sub-packages a notch\n  below). Avoid pulling in CQRS, messaging, etc. from the domain layer.\n- **Do not assume every sub-package's public API is re-exported here** — the\n  meta-package curates. Some experimental APIs are sub-package-only on purpose.",
+    "kind": "anti_pattern",
+    "feature": "enterprise",
+    "combines": [],
+    "tags": ["vytches-ddd", "enterprise"],
+    "level": "advanced"
+  }
+]

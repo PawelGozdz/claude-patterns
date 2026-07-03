@@ -1,0 +1,254 @@
+[
+  {
+    "section": "Overview",
+    "text": "## Purpose\n\nRead-model projections for CQRS architectures: take a stream of domain events,\nfold them into denormalized read models, support replay/rebuild, and expose\nhooks for capabilities (checkpointing, dead-letter, error handling).\n\nStorage-agnostic — implement `IProjectionStore` for your read database.\n\n## Quick Start\n\n```typescript\nimport {\n  BaseProjection,\n  ProjectionEngine,\n  type IProjectionStore,\n} from '@vytches/ddd-projections';\nimport type { IDomainEvent } from '@vytches/ddd-events';\n\n// 1. Define a read model\ninterface OrderSummary {\n  id: string;\n  customerId: string;\n  total: number;\n  itemCount: number;\n}\n\n// 2. Define the projection\nclass OrderSummaryProjection extends BaseProjection<OrderSummary> {\n  readonly name = 'OrderSummary';\n\n  async handle(event: IDomainEvent): Promise<void> {\n    if (event.eventName === 'OrderCreated') {\n      await this.store.upsert(event.payload.orderId, {\n        id: event.payload.orderId,\n        customerId: event.payload.customerId,\n        total: 0,\n        itemCount: 0,\n      });\n    }\n\n    if (event.eventName === 'ItemAdded') {\n      const current = await this.store.get(event.payload.orderId);\n      if (!current) return;\n      await this.store.upsert(event.payload.orderId, {\n        ...current,\n        total: current.total + event.payload.price * event.payload.qty,\n        itemCount: current.itemCount + event.payload.qty,\n      });\n    }\n  }\n}\n\n// 3. Wire it up\nconst engine = new ProjectionEngine({ store: myStore });\nengine.register(new OrderSummaryProjection(myStore));\nawait engine.start();\n```",
+    "kind": "concept",
+    "feature": "projections",
+    "combines": ["events"],
+    "tags": ["vytches-ddd", "projections"],
+    "level": "quickstart"
+  },
+  {
+    "section": "BaseProjection<TReadModel>",
+    "text": "| `BaseProjection<TReadModel>`  | abstract  | Extend to write a projection. Implements `name` + `handle()`   |",
+    "kind": "api",
+    "feature": "projections",
+    "combines": [],
+    "tags": ["vytches-ddd", "projections"],
+    "level": "core"
+  },
+  {
+    "section": "ProjectionEngine",
+    "text": "| `ProjectionEngine`            | class     | Routes events to registered projections                        |",
+    "kind": "api",
+    "feature": "projections",
+    "combines": [],
+    "tags": ["vytches-ddd", "projections"],
+    "level": "core"
+  },
+  {
+    "section": "ProjectionBuilder",
+    "text": "| `ProjectionBuilder`           | class     | Fluent builder for assembling a projection without subclassing |",
+    "kind": "api",
+    "feature": "projections",
+    "combines": [],
+    "tags": ["vytches-ddd", "projections"],
+    "level": "core"
+  },
+  {
+    "section": "ProjectionRebuilder",
+    "text": "| `ProjectionRebuilder`         | class     | Replays a stream from t=0 to rebuild a read model               |",
+    "kind": "api",
+    "feature": "projections",
+    "combines": [],
+    "tags": ["vytches-ddd", "projections"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "createProjectionRebuilder()",
+    "text": "| `createProjectionRebuilder()` | factory   | Creates a configured `ProjectionRebuilder`                     |",
+    "kind": "api",
+    "feature": "projections",
+    "combines": [],
+    "tags": ["vytches-ddd", "projections"],
+    "level": "core"
+  },
+  {
+    "section": "IProjectionRebuildConfig",
+    "text": "| `IProjectionRebuildConfig`    | type      | `{ batchSize, fromCheckpoint, projectionName }`                |",
+    "kind": "api",
+    "feature": "projections",
+    "combines": [],
+    "tags": ["vytches-ddd", "projections"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IProjectionRebuilder",
+    "text": "| `IProjectionRebuilder`        | interface | Public contract for replay machinery                           |",
+    "kind": "api",
+    "feature": "projections",
+    "combines": [],
+    "tags": ["vytches-ddd", "projections"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IProjection",
+    "text": "| `IProjection`                 | interface | A projection's public shape                                    |",
+    "kind": "api",
+    "feature": "projections",
+    "combines": [],
+    "tags": ["vytches-ddd", "projections"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IProjectionEngine",
+    "text": "| `IProjectionEngine`           | interface | Engine's public shape                                          |",
+    "kind": "api",
+    "feature": "projections",
+    "combines": [],
+    "tags": ["vytches-ddd", "projections"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IProjectionStore",
+    "text": "| `IProjectionStore`            | interface | **You implement this**: persistence for read models            |",
+    "kind": "api",
+    "feature": "projections",
+    "combines": [],
+    "tags": ["vytches-ddd", "projections"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IProjectionCapability",
+    "text": "| `IProjectionCapability`       | interface | Hook contract for cross-cutting concerns                       |",
+    "kind": "api",
+    "feature": "projections",
+    "combines": [],
+    "tags": ["vytches-ddd", "projections"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "ICapabilityContext",
+    "text": "| `ICapabilityContext`          | type      | Passed to capability hooks                                     |",
+    "kind": "api",
+    "feature": "projections",
+    "combines": [],
+    "tags": ["vytches-ddd", "projections"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "ErrorProjectionState",
+    "text": "| `ErrorProjectionState`        | type      | State a projection enters on unrecoverable error               |",
+    "kind": "api",
+    "feature": "projections",
+    "combines": [],
+    "tags": ["vytches-ddd", "projections"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "ProjectionError",
+    "text": "| `ProjectionError`             | error     | Base error for projection failures                             |",
+    "kind": "api",
+    "feature": "projections",
+    "combines": [],
+    "tags": ["vytches-ddd", "projections"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "BaseIntervalCapability",
+    "text": "| `BaseIntervalCapability`       | abstract | Base for any time-windowed capability (checkpoints, snapshots)   |",
+    "kind": "api",
+    "feature": "projections",
+    "combines": [],
+    "tags": ["vytches-ddd", "projections"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "CheckpointCapability",
+    "text": "| `CheckpointCapability`         | class    | Persists last-processed event offset; restart resumes from there |",
+    "kind": "api",
+    "feature": "projections",
+    "combines": [],
+    "tags": ["vytches-ddd", "projections"],
+    "level": "core"
+  },
+  {
+    "section": "SnapshotProjectionCapability",
+    "text": "| `SnapshotProjectionCapability` | class    | Periodically snapshots projection state for fast warm-up         |",
+    "kind": "api",
+    "feature": "projections",
+    "combines": [],
+    "tags": ["vytches-ddd", "projections"],
+    "level": "core"
+  },
+  {
+    "section": "CircuitBreakerCapability",
+    "text": "| `CircuitBreakerCapability`     | class    | Stops projection after N consecutive errors; auto-resumes         |",
+    "kind": "api",
+    "feature": "projections",
+    "combines": [],
+    "tags": ["vytches-ddd", "projections"],
+    "level": "core"
+  },
+  {
+    "section": "DeadLetterCapability",
+    "text": "| `DeadLetterCapability`         | class    | Routes failing events to a dead-letter store                     |",
+    "kind": "api",
+    "feature": "projections",
+    "combines": [],
+    "tags": ["vytches-ddd", "projections"],
+    "level": "core"
+  },
+  {
+    "section": "Builder API for simple projections",
+    "text": "### Builder API for simple projections\n\n```typescript\nimport { ProjectionBuilder } from '@vytches/ddd-projections';\n\nconst projection = new ProjectionBuilder<UserSummary>('UserSummary')\n  .on('UserRegistered', async (e, store) => {\n    await store.upsert(e.payload.userId, {\n      id: e.payload.userId,\n      name: e.payload.name,\n    });\n  })\n  .on('UserRenamed', async (e, store) => {\n    const cur = await store.get(e.payload.userId);\n    if (cur)\n      await store.upsert(e.payload.userId, { ...cur, name: e.payload.newName });\n  })\n  .build(store);\n```",
+    "kind": "concept",
+    "feature": "projections",
+    "combines": [],
+    "tags": ["vytches-ddd", "projections"],
+    "level": "core"
+  },
+  {
+    "section": "Rebuild after schema change",
+    "text": "### Rebuild after schema change\n\n```typescript\nconst rebuilder = createProjectionRebuilder({\n  projectionName: 'OrderSummary',\n  batchSize: 1000,\n  fromCheckpoint: 0,\n});\nawait rebuilder.rebuild(eventStore, projection);\n```",
+    "kind": "concept",
+    "feature": "projections",
+    "combines": [],
+    "tags": ["vytches-ddd", "projections"],
+    "level": "advanced"
+  },
+  {
+    "section": "Production-ready engine with checkpoints + dead-letter",
+    "text": "### Production-ready engine with checkpoints + dead-letter\n\n```typescript\nimport {\n  ProjectionEngine,\n  CheckpointCapability,\n  DeadLetterCapability,\n  CircuitBreakerCapability,\n} from '@vytches/ddd-projections';\n\nconst engine = new ProjectionEngine({ store: readModelStore });\n\n// Persist offset every 5 seconds → restart resumes seamlessly\nengine.use(new CheckpointCapability(checkpointStore, { intervalMs: 5000 }));\n\n// Route failing events to dead-letter store after 3 retries\nengine.use(new DeadLetterCapability(deadLetterStore, { maxRetries: 3 }));\n\n// Auto-pause projection after 10 consecutive errors\nengine.use(new CircuitBreakerCapability({ failureThreshold: 10 }));\n\nengine.register(new OrderSummaryProjection(readModelStore));\nawait engine.start();\n```",
+    "kind": "concept",
+    "feature": "projections",
+    "combines": [],
+    "tags": ["vytches-ddd", "projections"],
+    "level": "advanced"
+  },
+  {
+    "section": "Anti-pattern: Do not mutate aggregates inside a projection handler",
+    "text": "**Do not mutate aggregates inside a projection handler** — projections are\n  read-only consumers. Mutations belong in command handlers.",
+    "kind": "anti_pattern",
+    "feature": "projections",
+    "combines": [],
+    "tags": ["vytches-ddd", "projections"],
+    "level": "core"
+  },
+  {
+    "section": "Anti-pattern: Do not throw from handle()",
+    "text": "**Do not throw from `handle()`** — rely on the engine's error capability\n  (dead-letter or retry). Throwing kills the engine loop.",
+    "kind": "anti_pattern",
+    "feature": "projections",
+    "combines": [],
+    "tags": ["vytches-ddd", "projections"],
+    "level": "core"
+  },
+  {
+    "section": "Anti-pattern: Do not couple a projection to multiple bounded contexts",
+    "text": "**Do not couple a projection to multiple bounded contexts** — one projection\n  serves one read use case. Cross-context joins happen in the query handler, not\n  the projection.",
+    "kind": "anti_pattern",
+    "feature": "projections",
+    "combines": [],
+    "tags": ["vytches-ddd", "projections"],
+    "level": "core"
+  },
+  {
+    "section": "Anti-pattern: Do not skip checkpointing",
+    "text": "**Do not skip checkpointing** — without it, restarts replay from t=0 every\n  time. Use the shipped `CheckpointCapability`:\n  ```typescript\n  import { CheckpointCapability } from '@vytches/ddd-projections';\n  engine.use(new CheckpointCapability(checkpointStore, { intervalMs: 5000 }));\n  ```",
+    "kind": "anti_pattern",
+    "feature": "projections",
+    "combines": [],
+    "tags": ["vytches-ddd", "projections"],
+    "level": "core"
+  },
+  {
+    "section": "Anti-pattern: Do not run a projection without a DeadLetterCapability",
+    "text": "**Do not run a projection without a `DeadLetterCapability`** for events that\n  may legitimately fail (e.g. unknown event names after a deploy) — otherwise\n  one bad event blocks the whole projection forever.",
+    "kind": "anti_pattern",
+    "feature": "projections",
+    "combines": [],
+    "tags": ["vytches-ddd", "projections"],
+    "level": "core"
+  }
+]

@@ -17,11 +17,24 @@ import { retrieveCode, retrieveFromCollection, reload } from "./retrieve.js";
 import { buildCodeIndex, reindexFile } from "./indexer.js";
 
 // Qdrant filter builder — {key,value} pairs with undefined values dropped; arrays use `any` (OR match).
-function buildFilter(conditions: { key: string; value: unknown }[]): Record<string, unknown> | undefined {
-  const must = conditions
+// `must` conditions ALL have to hold; `should` conditions are an OR group — AT LEAST ONE has to hold,
+// combined via AND with the `must` group (Qdrant semantics). Used by retrieve_examples's `feature`
+// param to match a chunk whose `feature` field EQUALS the query OR whose `combines` array CONTAINS it
+// — the caller shouldn't have to know which side of a combination a feature landed on (see types.ts).
+function buildFilter(
+  must: { key: string; value: unknown }[],
+  should?: { key: string; value: unknown }[]
+): Record<string, unknown> | undefined {
+  const mustClauses = must
     .filter((c) => c.value !== undefined)
     .map((c) => ({ key: c.key, match: Array.isArray(c.value) ? { any: c.value } : { value: c.value } }));
-  return must.length ? { must } : undefined;
+  const shouldClauses = (should ?? [])
+    .filter((c) => c.value !== undefined)
+    .map((c) => ({ key: c.key, match: { value: c.value } }));
+  const filter: Record<string, unknown> = {};
+  if (mustClauses.length) filter.must = mustClauses;
+  if (shouldClauses.length) filter.should = shouldClauses;
+  return mustClauses.length || shouldClauses.length ? filter : undefined;
 }
 
 function buildServer(): McpServer {
@@ -66,17 +79,29 @@ function buildServer(): McpServer {
 
   server.tool(
     "retrieve_examples",
-    "Semantic retrieval of @vytches/ddd library reference examples (simple/medium/complex complexity " +
-      "tiers) — GLOBAL collection. Use to see canonical usage of a library feature (specifications, " +
-      "policies, domain services) at a chosen complexity level.",
+    "Semantic retrieval of @vytches/ddd library reference material — GLOBAL collection. Covers " +
+      "runnable code examples (kind=example/anti_pattern), curated concept prose from LLMGUIDE.md " +
+      "patterns/hidden-features (kind=concept), and single-symbol API reference rows from LLMGUIDE.md " +
+      "Key API tables (kind=api). Use to see canonical usage, read the conceptual rationale, or look up " +
+      "one symbol's current signature (prefer this over recalling a signature from training data).",
     {
-      query: z.string().describe("what library capability/usage to find"),
+      query: z.string().describe("what library capability/usage/symbol to find"),
       k: z.number().int().positive().optional(),
-      level: z.enum(["simple", "medium", "complex"]).optional(),
-      kind: z.enum(["example", "anti_pattern"]).optional().describe("default 'example' — vytches-ddd examples have no anti-patterns today, forward-compatible if that changes"),
+      level: z.enum(["quickstart", "core", "advanced", "exhaustive"]).optional()
+        .describe("quickstart=package overview, core=primary/common usage, advanced=less common patterns, exhaustive=full per-symbol API enumeration"),
+      kind: z.enum(["example", "anti_pattern", "concept", "api"]).optional().describe("omit to search across all kinds"),
+      feature: z.string().optional().describe(
+        "a vytches-ddd package name, e.g. 'policies'. Matches chunks where this is the PRIMARY feature " +
+          "OR a SECONDARY one they combine with (e.g. querying 'events' also returns a policies example " +
+          "that reacts to a domain event) — you don't need to know which side of a combination it's on."
+      ),
+      lib_version: z.string().optional().describe("filter to chunks extracted from this exact @vytches/ddd version, e.g. '0.30.0'"),
     },
-    async ({ query, k, level, kind }) => {
-      const filter = buildFilter([{ key: "level", value: level }, { key: "kind", value: kind ?? "example" }]);
+    async ({ query, k, level, kind, feature, lib_version }) => {
+      const filter = buildFilter(
+        [{ key: "level", value: level }, { key: "kind", value: kind }, { key: "lib_version", value: lib_version }],
+        feature ? [{ key: "feature", value: feature }, { key: "combines", value: feature }] : undefined
+      );
       const hits = await retrieveFromCollection(query, k ?? 5, "library_reference_global", { filter });
       return { content: [{ type: "text", text: JSON.stringify(hits, null, 2) }] };
     }

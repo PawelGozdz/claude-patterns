@@ -1,0 +1,200 @@
+[
+  {
+    "section": "Overview",
+    "text": "## Purpose\n\nFoundational types every domain layer needs: typed error hierarchy (`BaseError`,\n`DomainErrorCode`, `NotFoundError`, `DuplicateError`, `InvalidParameterError`,\n`MissingValueError`) and the `IActor` contract for audit/security context.\n\nPure domain concerns — zero infrastructure dependencies, no logging, no DI.\n\n## Quick Start\n\n```typescript\nimport {\n  NotFoundError,\n  InvalidParameterError,\n  DomainErrorCode,\n  type IActor,\n} from '@vytches/ddd-domain-primitives';\n\n// Throw a typed domain error\nfunction findUser(id: string): User {\n  const user = users.find(u => u.id === id);\n  if (!user) throw new NotFoundError(`User ${id} not found`);\n  return user;\n}\n\n// Validate a parameter\nfunction place(amount: number): void {\n  if (amount <= 0) {\n    throw new InvalidParameterError('amount', 'must be positive', { amount });\n  }\n}\n\n// Capture who initiated an action\nconst actor: IActor = { id: 'user-42', type: 'user', name: 'Alice' };\naudit.record({ event: 'OrderPlaced', actor, timestamp: new Date() });\n```",
+    "kind": "concept",
+    "feature": "domain-primitives",
+    "combines": [],
+    "tags": ["vytches-ddd", "domain-primitives"],
+    "level": "quickstart"
+  },
+  {
+    "section": "BaseError",
+    "text": "| `BaseError`             | abstract class | Root of all DDD-typed errors; carries `code`, `message`, `cause`, `context` |",
+    "kind": "api",
+    "feature": "domain-primitives",
+    "combines": [],
+    "tags": ["vytches-ddd", "domain-primitives"],
+    "level": "core"
+  },
+  {
+    "section": "IDomainError",
+    "text": "| `IDomainError`          | interface      | Marker contract for domain-thrown errors                                    |",
+    "kind": "api",
+    "feature": "domain-primitives",
+    "combines": [],
+    "tags": ["vytches-ddd", "domain-primitives"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "NotFoundError",
+    "text": "| `NotFoundError`         | class          | Aggregate/entity lookup failed                                              |",
+    "kind": "api",
+    "feature": "domain-primitives",
+    "combines": [],
+    "tags": ["vytches-ddd", "domain-primitives"],
+    "level": "core"
+  },
+  {
+    "section": "DuplicateError",
+    "text": "| `DuplicateError`        | class          | Unique-constraint violation                                                 |",
+    "kind": "api",
+    "feature": "domain-primitives",
+    "combines": [],
+    "tags": ["vytches-ddd", "domain-primitives"],
+    "level": "core"
+  },
+  {
+    "section": "InvalidParameterError",
+    "text": "| `InvalidParameterError` | class          | Bad argument passed to a domain operation                                   |",
+    "kind": "api",
+    "feature": "domain-primitives",
+    "combines": [],
+    "tags": ["vytches-ddd", "domain-primitives"],
+    "level": "core"
+  },
+  {
+    "section": "MissingValueError",
+    "text": "| `MissingValueError`     | class          | Required value was null/undefined                                           |",
+    "kind": "api",
+    "feature": "domain-primitives",
+    "combines": [],
+    "tags": ["vytches-ddd", "domain-primitives"],
+    "level": "core"
+  },
+  {
+    "section": "DomainErrorCode",
+    "text": "| `DomainErrorCode`       | enum           | `NotFound`, `Duplicate`, `InvalidParameter`, `MissingValue`, ...            |",
+    "kind": "api",
+    "feature": "domain-primitives",
+    "combines": [],
+    "tags": ["vytches-ddd", "domain-primitives"],
+    "level": "core"
+  },
+  {
+    "section": "ApplicationErrorCode",
+    "text": "| `ApplicationErrorCode`  | enum           | Codes for application-layer errors (e.g. `Unauthorized`)                    |",
+    "kind": "api",
+    "feature": "domain-primitives",
+    "combines": [],
+    "tags": ["vytches-ddd", "domain-primitives"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "FrameworkErrorCode",
+    "text": "| `FrameworkErrorCode`    | enum           | Codes for framework/library errors                                          |",
+    "kind": "api",
+    "feature": "domain-primitives",
+    "combines": [],
+    "tags": ["vytches-ddd", "domain-primitives"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "ErrorCode",
+    "text": "| `ErrorCode`             | union          | All three code enums combined                                               |",
+    "kind": "api",
+    "feature": "domain-primitives",
+    "combines": [],
+    "tags": ["vytches-ddd", "domain-primitives"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "ErrorOptions",
+    "text": "| `ErrorOptions`          | type           | `{ cause?, context? }` constructor opts                                     |",
+    "kind": "api",
+    "feature": "domain-primitives",
+    "combines": [],
+    "tags": ["vytches-ddd", "domain-primitives"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "DomainErrorOptions",
+    "text": "| `DomainErrorOptions`    | type           | `ErrorOptions & { code?: DomainErrorCode }`                                 |",
+    "kind": "api",
+    "feature": "domain-primitives",
+    "combines": [],
+    "tags": ["vytches-ddd", "domain-primitives"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IActor",
+    "text": "| `IActor`                | interface      | `{ id, type, name?, metadata? }` — who triggered an action                  |",
+    "kind": "api",
+    "feature": "domain-primitives",
+    "combines": [],
+    "tags": ["vytches-ddd", "domain-primitives"],
+    "level": "core"
+  },
+  {
+    "section": "DefaultActorType",
+    "text": "| `DefaultActorType`      | enum           | `'user' \\| 'system' \\| 'service' \\| 'agent'`                                |",
+    "kind": "api",
+    "feature": "domain-primitives",
+    "combines": [],
+    "tags": ["vytches-ddd", "domain-primitives"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "ActorError",
+    "text": "| `ActorError`            | class          | Thrown for invalid actor configurations                                     |",
+    "kind": "api",
+    "feature": "domain-primitives",
+    "combines": [],
+    "tags": ["vytches-ddd", "domain-primitives"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "Pattern: Custom domain error",
+    "text": "### Custom domain error\n\n```typescript\nimport { BaseError, DomainErrorCode } from '@vytches/ddd-domain-primitives';\n\nclass InsufficientStockError extends BaseError {\n  constructor(sku: string, requested: number, available: number) {\n    super(`Insufficient stock for ${sku}`, {\n      code: DomainErrorCode.InvalidParameter,\n      context: { sku, requested, available },\n    });\n  }\n}\n```",
+    "kind": "concept",
+    "feature": "domain-primitives",
+    "combines": [],
+    "tags": ["vytches-ddd", "domain-primitives"],
+    "level": "core"
+  },
+  {
+    "section": "Pattern: Composable error context",
+    "text": "### Composable error context\n\n```typescript\ntry {\n  await placeOrder(orderId);\n} catch (cause) {\n  throw new InvalidParameterError('order', 'failed to place', {\n    cause,\n    context: { orderId },\n  });\n}\n```",
+    "kind": "concept",
+    "feature": "domain-primitives",
+    "combines": [],
+    "tags": ["vytches-ddd", "domain-primitives"],
+    "level": "advanced"
+  },
+  {
+    "section": "Anti-pattern: Do not throw generic Error",
+    "text": "**Do not throw generic `Error`** in the domain layer — use one of the typed\n  errors so handlers can switch on `instanceof` or `error.code`.",
+    "kind": "anti_pattern",
+    "feature": "domain-primitives",
+    "combines": [],
+    "tags": ["vytches-ddd", "domain-primitives"],
+    "level": "core"
+  },
+  {
+    "section": "Anti-pattern: Do not put HTTP/transport context into domain errors",
+    "text": "**Do not put HTTP/transport context** (status codes, response bodies) into\n  domain errors. Map them at the application boundary.",
+    "kind": "anti_pattern",
+    "feature": "domain-primitives",
+    "combines": [],
+    "tags": ["vytches-ddd", "domain-primitives"],
+    "level": "core"
+  },
+  {
+    "section": "Anti-pattern: Do not catch and swallow BaseError silently",
+    "text": "**Do not catch and swallow `BaseError`** silently — log + re-throw or convert\n  to a `Result.fail()` at the boundary.",
+    "kind": "anti_pattern",
+    "feature": "domain-primitives",
+    "combines": [],
+    "tags": ["vytches-ddd", "domain-primitives"],
+    "level": "core"
+  },
+  {
+    "section": "Anti-pattern: Do not use IActor as a security principal",
+    "text": "**Do not use `IActor` as a security principal** — it is metadata for audit\n  trails, not authentication. Authorization happens before the domain runs.",
+    "kind": "anti_pattern",
+    "feature": "domain-primitives",
+    "combines": [],
+    "tags": ["vytches-ddd", "domain-primitives"],
+    "level": "core"
+  }
+]

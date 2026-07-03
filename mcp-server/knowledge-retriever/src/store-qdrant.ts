@@ -30,6 +30,9 @@ function toHit(p: { score: number; payload?: Record<string, unknown> | null }): 
     kind: (payload.kind as ChunkKind) ?? undefined,
     tags: (payload.tags as string[]) ?? undefined,
     level: (payload.level as Hit["level"]) ?? undefined,
+    feature: (payload.feature as string) ?? undefined,
+    combines: (payload.combines as string[]) ?? undefined,
+    lib_version: (payload.lib_version as string) ?? undefined,
     indexedAt: (payload.indexedAt as string) ?? undefined,
     score: p.score,
   };
@@ -56,6 +59,7 @@ export class QdrantStore {
         source: c.source, section: c.section, text: c.text,
         startLine: c.startLine ?? null, endLine: c.endLine ?? null,
         kind: c.kind ?? null, tags: c.tags ?? null, level: c.level ?? null, indexedAt: c.indexedAt ?? null,
+        feature: c.feature ?? null, combines: c.combines ?? null, lib_version: c.lib_version ?? null,
       },
     }));
     for (let i = 0; i < points.length; i += 256) {

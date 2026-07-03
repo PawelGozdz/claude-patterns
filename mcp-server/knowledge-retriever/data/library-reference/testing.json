@@ -1,0 +1,665 @@
+[
+  {
+    "section": "Overview",
+    "text": "## Purpose\n\nTest utilities for DDD applications: GWT (Given-When-Then) aggregate testing,\nsafe execution helpers, time control, and domain-aware test data seeders.\n\n## Quick Start\n\n```typescript\nimport { Test, matching } from '@vytches/ddd-testing';\n\n// Given-When-Then aggregate testing\nTest(() => new Order({ id: EntityId.create(), version: 0 }))\n  .given(new OrderCreated({ customerId: 'c1' }))\n  .when(order => order.place({ items }))\n  .then(new OrderPlaced({ itemCount: 2 }));\n```",
+    "kind": "concept",
+    "feature": "testing",
+    "combines": [
+      "value-objects"
+    ],
+    "tags": [
+      "vytches-ddd",
+      "testing"
+    ],
+    "level": "quickstart"
+  },
+  {
+    "section": "Test",
+    "text": "`Test` | function | GWT entry point — `Test(factory).given().when().then()`",
+    "kind": "api",
+    "feature": "testing",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "testing"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "matching",
+    "text": "`matching` | function | Partial event matcher for `.then()`",
+    "kind": "api",
+    "feature": "testing",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "testing"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "GWTAssertionError",
+    "text": "`GWTAssertionError` | class | Error with formatted GWT context",
+    "kind": "api",
+    "feature": "testing",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "testing"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "safeRun",
+    "text": "`safeRun` | function | Execute function, return `[error, result]` tuple",
+    "kind": "api",
+    "feature": "testing",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "testing"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "expectError",
+    "text": "`expectError` | function | Assert function throws specific error",
+    "kind": "api",
+    "feature": "testing",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "testing"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "expectSuccess",
+    "text": "`expectSuccess` | function | Assert function succeeds",
+    "kind": "api",
+    "feature": "testing",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "testing"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "TestClock",
+    "text": "`TestClock` | class | Freeze and advance time in tests",
+    "kind": "api",
+    "feature": "testing",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "testing"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "SimpleTestHarness",
+    "text": "`SimpleTestHarness` | class | Test lifecycle: setup/teardown",
+    "kind": "api",
+    "feature": "testing",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "testing"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "TestResourceBuilder",
+    "text": "`TestResourceBuilder` | class | Fluent builder for test resources",
+    "kind": "api",
+    "feature": "testing",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "testing"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "AggregateSeeder",
+    "text": "`AggregateSeeder` | class | Generate test aggregates with seeders",
+    "kind": "api",
+    "feature": "testing",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "testing"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "GivenStep",
+    "text": "`GivenStep` | interface | Return type of `Test()` — start of the GWT chain (see Patterns → GWT)",
+    "kind": "api",
+    "feature": "testing",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "testing"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "WhenStep",
+    "text": "`WhenStep` | interface | Return type of `.given()` / `.givenNothing()`",
+    "kind": "api",
+    "feature": "testing",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "testing"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "ThenStep",
+    "text": "`ThenStep` | interface | Return type of `.when()`",
+    "kind": "api",
+    "feature": "testing",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "testing"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "AsyncThenStep",
+    "text": "`AsyncThenStep` | interface | Return type of `.whenAsync()`",
+    "kind": "api",
+    "feature": "testing",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "testing"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "eventsMatch",
+    "text": "`eventsMatch` | function | Structural event comparison (eventName + deep-equal payload, ignores metadata) — what `.then()` uses internally; exported for custom matchers/reporters",
+    "kind": "api",
+    "feature": "testing",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "testing"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "eventArraysMatch",
+    "text": "`eventArraysMatch` | function | Structural comparison of two event arrays (order matters)",
+    "kind": "api",
+    "feature": "testing",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "testing"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "safeRunTest",
+    "text": "`safeRunTest` | function | Like `safeRun`, but tags caught errors with a `testContext` string for debugging",
+    "kind": "api",
+    "feature": "testing",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "testing"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "safeRunWithTimeout",
+    "text": "`safeRunWithTimeout` | function | Async `safeRun` variant that races the function against a timeout",
+    "kind": "api",
+    "feature": "testing",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "testing"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "SafeRunResult",
+    "text": "`SafeRunResult` | type | `[error, result]` tuple type returned by `safeRun` / `safeRunTest` / `safeRunWithTimeout`",
+    "kind": "api",
+    "feature": "testing",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "testing"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "TimeScenarioBuilder",
+    "text": "`TimeScenarioBuilder` | class | Fluent builder for multi-step time scenarios — created via `TestClock.createTimeScenario()`",
+    "kind": "api",
+    "feature": "testing",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "testing"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "withTestClock",
+    "text": "`withTestClock` | function | Method decorator that freezes/restores a `TestClock` around a test method",
+    "kind": "api",
+    "feature": "testing",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "testing"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "TestClockState",
+    "text": "`TestClockState` | type | Return type of `TestClock.getState()`",
+    "kind": "api",
+    "feature": "testing",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "testing"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "TimeAdvanceOptions",
+    "text": "`TimeAdvanceOptions` | interface | Options object for `TestClock.advance()` / `TimeScenarioBuilder.advanceBy()`",
+    "kind": "api",
+    "feature": "testing",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "testing"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "TestHarness",
+    "text": "`TestHarness` | abstract class | Base class for custom test harnesses — subclass and implement the `perform*` lifecycle hooks",
+    "kind": "api",
+    "feature": "testing",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "testing"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "TestHarnessOptions",
+    "text": "`TestHarnessOptions` | interface | Constructor options for `TestHarness` / `SimpleTestHarness`",
+    "kind": "api",
+    "feature": "testing",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "testing"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "TestHarnessState",
+    "text": "`TestHarnessState` | interface | Return type of `TestHarness.getState()`",
+    "kind": "api",
+    "feature": "testing",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "testing"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "TestResource",
+    "text": "`TestResource` | interface | Disposable resource tracked by `TestHarness`, built by `TestResourceBuilder`",
+    "kind": "api",
+    "feature": "testing",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "testing"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "InMemoryOutboxRepository",
+    "text": "`InMemoryOutboxRepository` | class | In-memory `IOutboxRepository` for driving a real `OutboxProcessor` in tests, no database needed",
+    "kind": "api",
+    "feature": "testing",
+    "combines": [
+      "messaging"
+    ],
+    "tags": [
+      "vytches-ddd",
+      "testing"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "InMemoryOutboxRepositoryOptions",
+    "text": "`InMemoryOutboxRepositoryOptions` | interface | Constructor options for `InMemoryOutboxRepository` (injectable `clock` for deterministic aging checks)",
+    "kind": "api",
+    "feature": "testing",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "testing"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "DomainSeeder",
+    "text": "`DomainSeeder` | class | Central seeding orchestrator — `forAggregate()`, `eventSourcedScenario()`, `scenario()`, `geographicScenario()`, `aiEnhancedScenario()`",
+    "kind": "api",
+    "feature": "testing",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "testing"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "AggregateFactory",
+    "text": "`AggregateFactory` | class | Lower-level factory that `AggregateSeeder` wraps internally — defaults, sequences, value objects, templates",
+    "kind": "api",
+    "feature": "testing",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "testing"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "EntityIdGenerator",
+    "text": "`EntityIdGenerator` | class | Generates `EntityId`s: uuid, text, sequential, pattern-based, plus domain presets (`users`, `orders`, `products`, `events`)",
+    "kind": "api",
+    "feature": "testing",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "testing"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "ValueObjectBuilder",
+    "text": "`ValueObjectBuilder` | class | Builds DDD value objects with constraints, business-rule validation, and templates",
+    "kind": "api",
+    "feature": "testing",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "testing"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "ScenarioSeeder",
+    "text": "`ScenarioSeeder` | class | Multi-aggregate scenario seeder (crisis / multi-tenant / saga modes), returned by `DomainSeeder.scenario()` and friends. Current implementation is a scaffold — chain methods return `this`, `seed()` resolves to an empty result",
+    "kind": "api",
+    "feature": "testing",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "testing"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "EventSourcedSeeder",
+    "text": "`EventSourcedSeeder` | class | Event-stream / history seeder for event-sourced aggregates, returned by `DomainSeeder.eventSourcedScenario()`. Current implementation is a scaffold — `generateWithHistory()` resolves to an empty result",
+    "kind": "api",
+    "feature": "testing",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "testing"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "AIEnhancedSeeder",
+    "text": "`AIEnhancedSeeder` | class | AI-assisted realistic data generation seeder. **API may change before v1.0.**\n\nNote: this API may change before v1.0.",
+    "kind": "api",
+    "feature": "testing",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "testing"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "StreamingSeeder",
+    "text": "`StreamingSeeder` | class | High-throughput streaming seeder for millions of aggregates (batching, backpressure, metrics). **API may change before v1.0.**\n\nNote: this API may change before v1.0.",
+    "kind": "api",
+    "feature": "testing",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "testing"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "GeographicSeeder",
+    "text": "`GeographicSeeder` | class | Location-aware seeder for geographic scenarios. **API may change before v1.0.**\n\nNote: this API may change before v1.0.",
+    "kind": "api",
+    "feature": "testing",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "testing"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "GWT Aggregate Testing (Preferred)",
+    "text": "### GWT Aggregate Testing (Preferred)\n\n```typescript\nimport { Test, matching, GWTAssertionError } from '@vytches/ddd-testing';\n\n// Test event production\nTest(() => new Order({ id: EntityId.create(), version: 0 }))\n  .given(new OrderCreated({ customerId: 'c1' }))\n  .when(order => order.addItem('SKU-1', 2))\n  .then(new ItemAdded({ sku: 'SKU-1', qty: 2 }));\n\n// Test domain errors\nTest(() => new Order({ id: EntityId.create(), version: 0 }))\n  .given(new OrderCreated({ customerId: 'c1' }))\n  .when(order => order.place())\n  .thenError('ORDER_EMPTY');\n\n// Test no events produced\nTest(() => new Order({ id: EntityId.create(), version: 0 }))\n  .given(new OrderCreated({ customerId: 'c1' }))\n  .when(() => {\n    /* no-op */\n  })\n  .thenNothing();\n\n// Partial payload matching (check only some fields)\nTest(() => new Order({ id: EntityId.create(), version: 0 }))\n  .given(new OrderCreated({ customerId: 'c1' }))\n  .when(order => order.addItem('SKU-1', 5))\n  .then(matching(ItemAdded, { sku: 'SKU-1' })); // ignores qty\n\n// Async commands\nawait Test(() => new Order({ id: EntityId.create(), version: 0 }))\n  .given(new OrderCreated({ customerId: 'c1' }))\n  .whenAsync(async order => await order.validateAndPlace(items))\n  .then(new OrderPlaced({ itemCount: 2 }));\n```\n\nEach fluent step is a documented interface you can reuse in helper types:\n`Test()` returns `GivenStep`, `.given()`/`.givenNothing()` return `WhenStep`,\n`.when()` returns `ThenStep`, and `.whenAsync()` returns `AsyncThenStep`.\n`eventsMatch`/`eventArraysMatch` are the same structural comparators `.then()`\nuses internally — reuse them if you write a custom reporter or a non-Vitest\nassertion helper.",
+    "kind": "concept",
+    "feature": "testing",
+    "combines": [
+      "value-objects"
+    ],
+    "tags": [
+      "vytches-ddd",
+      "testing"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "Safe Execution",
+    "text": "### Safe Execution\n\n```typescript\nimport {\n  safeRun,\n  safeRunTest,\n  safeRunWithTimeout,\n  expectError,\n} from '@vytches/ddd-testing';\n\n// safeRun returns [error, result] tuple — never throws\nconst [error, result] = safeRun(() => riskyOperation());\nif (error) {\n  /* handle */\n}\n\n// expectError asserts a specific error type\nconst err = expectError(\n  () => EntityId.fromUUID('invalid'),\n  InvalidParameterError\n);\n\n// safeRunTest tags the caught error with a testContext label (useful when\n// you re-run the same helper across many test cases and want to know which\n// one failed from the error alone)\nconst [taggedError] = safeRunTest(\n  () => riskyOperation(),\n  'creating-order-with-invalid-sku'\n);\n\n// safeRunWithTimeout races the function against a timeout and returns the\n// same [error, result] tuple shape — no unhandled rejection on timeout\nconst [timeoutError, value] = await safeRunWithTimeout(\n  () => slowExternalCall(),\n  5000,\n  'external-call'\n);\n```",
+    "kind": "concept",
+    "feature": "testing",
+    "combines": [
+      "value-objects",
+      "domain-primitives"
+    ],
+    "tags": [
+      "vytches-ddd",
+      "testing"
+    ],
+    "level": "advanced"
+  },
+  {
+    "section": "Time Control",
+    "text": "### Time Control\n\n```typescript\nimport {\n  TestClock,\n  TimeScenarioBuilder,\n  withTestClock,\n} from '@vytches/ddd-testing';\n\nconst clock = new TestClock();\nclock.freeze(new Date('2026-01-01'));\n// Date.now() returns frozen time\nclock.advance({ hours: 2 });\n// Date.now() returns 2026-01-01T02:00:00\nclock.unfreeze();\n```\n\n`TestClock.createTimeScenario()` returns a `TimeScenarioBuilder` for multi-step\ntime-dependent flows — freeze, execute, advance, execute again, then run and\ncollect every step's result:\n\n```typescript\nconst results = await TestClock.createTimeScenario()\n  .freezeAt(new Date('2026-01-01'))\n  .execute(() => orderService.createOrder())\n  .advanceBy({ hours: 2 })\n  .execute(() => orderService.checkExpiry())\n  .run();\n// results[0] is the createOrder() return value, results[1] is checkExpiry()'s\n```\n\n`withTestClock` is a method decorator that freezes/restores a `TestClock` around\na single test method:\n\n```typescript\nclass OrderServiceTest {\n  @withTestClock({ freezeAt: new Date('2026-01-01') })\n  async testExpiryLogic() {\n    // Date.now() is frozen at 2026-01-01 for the duration of this method\n  }\n}\n```",
+    "kind": "concept",
+    "feature": "testing",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "testing"
+    ],
+    "level": "advanced"
+  },
+  {
+    "section": "Domain-Aware Seeding",
+    "text": "### Domain-Aware Seeding\n\n`DomainSeeder` is the entry point for the seeder framework — it exposes factory\nmethods that return specialized seeders sharing the same global configuration\n(`DomainSeeder.configure()`).\n\n```typescript\nimport {\n  DomainSeeder,\n  EntityIdGenerator,\n  ValueObjectBuilder,\n} from '@vytches/ddd-testing';\n\n// DomainSeeder.forAggregate() returns an AggregateSeeder — combine it with\n// EntityIdGenerator and ValueObjectBuilder for realistic, valid test data\nconst emailBuilder = new ValueObjectBuilder(EmailVO).withConstraints({\n  pattern: /^[^@]+@example\\.com$/,\n});\n\nconst userSeeder = DomainSeeder.forAggregate(UserAggregate)\n  .withDefaults({ status: 'active' })\n  .withSequence('id', () => EntityIdGenerator.sequential('user'))\n  .withValueObject('email', () => emailBuilder.build().then(r => r.value))\n  .withCapabilities(['audit', 'events']);\n\nconst usersResult = await userSeeder.buildMany(10);\nif (usersResult.isSuccess) {\n  const users = usersResult.value; // UserAggregate[]\n}\n```\n\n`EntityIdGenerator` on its own, for consistent `EntityId`s outside a seeder:\n\n```typescript\nconst userId = EntityIdGenerator.uuid();\nconst orderId = EntityIdGenerator.sequential('order'); // \"order-001\"\nconst auditId = EntityIdGenerator.pattern(\n  'AUDIT-{{year}}{{month}}-{{sequence:5}}'\n);\n\n// Built-in domain presets\nconst standardUserId = EntityIdGenerator.presets.users.standard(); // \"USER-001\"\n```\n\n`ValueObjectBuilder` on its own, when you need one valid value object rather\nthan a whole aggregate:\n\n```typescript\nconst ageBuilder = new ValueObjectBuilder(AgeVO).withConstraints({\n  min: 18,\n  max: 120,\n});\nconst ageResult = await ageBuilder.build(); // Result<AgeVO, Error>\n```\n\nAdvanced: `AggregateFactory` is the lower-level engine `AggregateSeeder` wraps.\nUse it directly only if you need defaults/sequences/templates without\n`AggregateSeeder`'s capability and domain-event layer:\n\n```typescript\nimport { AggregateFactory } from '@vytches/ddd-testing';\n\nconst factory = new AggregateFactory(UserAggregate)\n  .withDefaults({ status: 'active' })\n  .withSequence('email', n => `user${n}@example.com`);\n\nconst userResult = await factory.create({ name: 'John Doe' });\n```\n\n`ScenarioSeeder` (`DomainSeeder.scenario()`, `.crisisScenario()`,\n`.multiTenantScenario()`, `.sagaScenario()`) and `EventSourcedSeeder`\n(`DomainSeeder.eventSourcedScenario()`) exist as documented entry points, but\ntheir current implementation is a scaffold: chain methods (`withBaseline`,\n`injectCrisis`, `withEventStream`, `withSnapshots`, ...) return `this` without\nside effects, and the terminal `seed()` / `generateWithHistory()` resolve to an\nempty stub result. Prefer `DomainSeeder.forAggregate()` (`AggregateSeeder`) for\nanything you depend on today.\n\n`AIEnhancedSeeder`, `StreamingSeeder`, and `GeographicSeeder` are pre-1.0 /\nexperimental — see the Key API table above for their surface. API may change\nbefore v1.0.",
+    "kind": "concept",
+    "feature": "testing",
+    "combines": [
+      "utils"
+    ],
+    "tags": [
+      "vytches-ddd",
+      "testing"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "Outbox Testing",
+    "text": "### Outbox Testing\n\n`InMemoryOutboxRepository` implements `IOutboxRepository` in memory so a real\n`OutboxProcessor` (from `@vytches/ddd-messaging`) can run end-to-end in tests\nwithout a database. Combine it with `TestClock` for deterministic aging checks\n(`processAfter`, stale-processing resets):\n\n```typescript\nimport { InMemoryOutboxRepository, TestClock } from '@vytches/ddd-testing';\n\nconst clock = TestClock.create();\nclock.freeze(new Date('2026-01-01'));\n\nconst outbox = new InMemoryOutboxRepository({\n  clock: () => clock.now().getTime(),\n});\n\nawait outbox.saveMessage({\n  id: '',\n  messageType: 'OrderPlaced',\n  payload: { orderId: 'order-1' },\n  // ...remaining IOutboxMessage fields (see @vytches/ddd-messaging)\n});\n\n// Advance frozen time, then resolve anything stuck in PROCESSING past the threshold\nclock.advance({ minutes: 10 });\nconst resetCount = await outbox.resetStaleProcessing(\n  new Date(clock.now().getTime() - 5 * 60_000)\n);\n\nexpect(outbox.size()).toBe(1);\noutbox.clear(); // isolate the next test\n```",
+    "kind": "concept",
+    "feature": "testing",
+    "combines": [
+      "messaging"
+    ],
+    "tags": [
+      "vytches-ddd",
+      "testing"
+    ],
+    "level": "advanced"
+  },
+  {
+    "section": "Custom Test Harness",
+    "text": "### Custom Test Harness\n\n`TestHarness` is an abstract base class — subclass it and implement the\n`perform*` lifecycle hooks. Use `registerResource()` with a\n`TestResourceBuilder`-built `TestResource` for automatic cleanup on teardown:\n\n```typescript\nimport { TestHarness, TestResourceBuilder } from '@vytches/ddd-testing';\n\nclass DatabaseTestHarness extends TestHarness {\n  private db?: Database;\n\n  protected async performInitialization(): Promise<void> {\n    this.db = await Database.connect(TEST_DB_URL);\n  }\n\n  protected async performSetup(): Promise<void> {\n    await this.db!.migrate();\n    this.registerResource(\n      TestResourceBuilder.create('db-transaction')\n        .withDisposal(() => this.db!.rollback())\n        .build()\n    );\n  }\n\n  protected async performTeardown(): Promise<void> {\n    await this.db!.rollback();\n  }\n\n  protected async performReset(): Promise<void> {\n    await this.db!.truncateAll();\n  }\n\n  protected async performDisposal(): Promise<void> {\n    await this.db!.disconnect();\n  }\n}\n\nconst harness = await new DatabaseTestHarness({\n  autoCleanup: true,\n}).initialize();\nawait harness.setup();\n// ... run the test using harness ...\nawait harness.teardown();\n```\n\nFor a single test file that just needs a setup/teardown function without a\nsubclass, use the already-documented `SimpleTestHarness` instead.",
+    "kind": "concept",
+    "feature": "testing",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "testing"
+    ],
+    "level": "advanced"
+  },
+  {
+    "section": "Anti-pattern: Using raw Vitest assertions instead of GWT for aggregate tests",
+    "text": "**Using raw Vitest assertions instead of GWT for aggregate tests.** The GWT API\neliminates boilerplate (create aggregate, load history, extract events, assert)\nand gives contextual error messages.",
+    "kind": "anti_pattern",
+    "feature": "testing",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "testing"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "Anti-pattern: Forgetting to pass a factory function to Test()",
+    "text": "**Forgetting to pass a factory function to Test().** `Test` takes a factory\n`() => T`, not a class. The factory must create a fresh aggregate each time.",
+    "kind": "anti_pattern",
+    "feature": "testing",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "testing"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "Anti-pattern: Testing internal state instead of events",
+    "text": "**Testing internal state instead of events.** GWT tests verify what events the\naggregate produces, not its internal properties. This aligns with event\nsourcing.",
+    "kind": "anti_pattern",
+    "feature": "testing",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "testing"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "Anti-pattern: Not using matching() for large payloads",
+    "text": "**Not using `matching()` for large payloads.** When you only care about a few\nfields, use `matching(EventClass, { relevantField: value })` instead of\nconstructing a full event with all fields.",
+    "kind": "anti_pattern",
+    "feature": "testing",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "testing"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "Anti-pattern: Sharing an InMemoryOutboxRepository instance across tests without clear()",
+    "text": "**Sharing an `InMemoryOutboxRepository` instance across tests without\n`clear()`.** Messages persist across tests using the same instance, causing\nstate leakage; call `.clear()` in `beforeEach`/`afterEach`.",
+    "kind": "anti_pattern",
+    "feature": "testing",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "testing"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "Anti-pattern: Relying on ScenarioSeeder, EventSourcedSeeder, AIEnhancedSeeder, StreamingSeeder, or GeographicSeeder for fixtures you depend on today",
+    "text": "**Relying on `ScenarioSeeder`, `EventSourcedSeeder`, `AIEnhancedSeeder`,\n`StreamingSeeder`, or `GeographicSeeder` for fixtures you depend on today.**\n`ScenarioSeeder`/`EventSourcedSeeder` currently resolve to stub/empty results;\nthe other three are pre-1.0 and may change API before v1.0. Prefer\n`DomainSeeder.forAggregate()` (`AggregateSeeder`) for production test suites.",
+    "kind": "anti_pattern",
+    "feature": "testing",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "testing"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "Hidden feature: GWTAssertionError contains structured data",
+    "text": "`GWTAssertionError` contains structured data (`givenEvents`, `expectedEvents`,\n`actualEvents`) — useful for custom test reporters.",
+    "kind": "concept",
+    "feature": "testing",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "testing"
+    ],
+    "level": "advanced"
+  },
+  {
+    "section": "Hidden feature: Test() works with any object implementing IAggregateRoot",
+    "text": "`Test()` works with any object implementing `IAggregateRoot` — not just\n`AggregateRoot` subclasses.",
+    "kind": "concept",
+    "feature": "testing",
+    "combines": [
+      "aggregates"
+    ],
+    "tags": [
+      "vytches-ddd",
+      "testing"
+    ],
+    "level": "advanced"
+  },
+  {
+    "section": "Hidden feature: whenAsync() supports Promise-returning commands",
+    "text": "The `whenAsync()` variant supports `Promise`-returning commands for aggregates\nthat do async validation.",
+    "kind": "concept",
+    "feature": "testing",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "testing"
+    ],
+    "level": "advanced"
+  }
+]

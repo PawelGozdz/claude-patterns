@@ -1,0 +1,1137 @@
+[
+  {
+    "section": "Overview",
+    "text": "## Purpose\n\nBusiness policy engine with a fluent `PolicyBuilder` DSL, composable\n`BaseBusinessPolicy` classes, a `PolicyRegistry`, event-driven observability via\n`PolicyEventBus`, and cross-cutting behaviors (caching, retry, temporal).\nPolicies wrap domain rules that require context (user, tenant, environment)\nbeyond what a pure specification can express.\n\n## Quick Start\n\n```typescript\nimport {\n  PolicyBuilder,\n  PolicyRequestFactory,\n  PolicyViolation,\n} from '@vytches/ddd-policies';\nimport { Specification } from '@vytches/ddd-validation';\n\ninterface Order {\n  total: number;\n  customerId: string;\n  status: string;\n}\n\n// Build a policy using fluent DSL\nconst orderPolicy = PolicyBuilder.create<Order>()\n  .withId('order-placement')\n  .withDomain('ordering')\n  .withName('Order Placement Policy')\n  .must(Specification.create<Order>(o => o.total > 0))\n  .withErrorCode('INVALID_TOTAL')\n  .withMessage('Order total must be positive')\n  .must(Specification.create<Order>(o => o.status === 'draft'))\n  .withErrorCode('WRONG_STATUS')\n  .withMessage('Only draft orders can be placed')\n  .build();\n\n// Create a request with context\nconst request = PolicyRequestFactory.minimal(order, userId);\n\n// Evaluate\nconst result = await orderPolicy.check(request);\nif (result.isFailure) {\n  const violation: PolicyViolation = result.error;\n  console.error(violation.code, violation.message, violation.severity);\n}\n```",
+    "kind": "concept",
+    "feature": "policies",
+    "combines": [
+      "validation"
+    ],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "quickstart"
+  },
+  {
+    "section": "PolicyBuilder.create<T>(config?)",
+    "text": "| Export | Description |\n| --- | --- |\n| `PolicyBuilder.create<T>(config?)` | Start a new fluent policy builder |",
+    "kind": "api",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "PolicyBuilder.forDomain<T>(domain, config?)",
+    "text": "| Export | Description |\n| --- | --- |\n| `PolicyBuilder.forDomain<T>(domain, config?)` | Builder pre-configured with a domain |",
+    "kind": "api",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "PolicyBuilder.must(spec)",
+    "text": "| Export | Description |\n| --- | --- |\n| `PolicyBuilder.must(spec)` | Add required sync spec step |",
+    "kind": "api",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "PolicyBuilder.mustAsync(spec)",
+    "text": "| Export | Description |\n| --- | --- |\n| `PolicyBuilder.mustAsync(spec)` | Add required async spec step |",
+    "kind": "api",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "PolicyBuilder.should(spec)",
+    "text": "| Export | Description |\n| --- | --- |\n| `PolicyBuilder.should(spec)` | Add optional (WARNING) sync spec step |",
+    "kind": "api",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "PolicyBuilder.mustSatisfy(predicate, code, message)",
+    "text": "| Export | Description |\n| --- | --- |\n| `PolicyBuilder.mustSatisfy(predicate, code, message)` | Add raw predicate step |",
+    "kind": "api",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "PolicyBuilder.when(condition)",
+    "text": "| Export | Description |\n| --- | --- |\n| `PolicyBuilder.when(condition)` | Conditional branch entry point |",
+    "kind": "api",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "PolicyBuilder.build()",
+    "text": "| Export | Description |\n| --- | --- |\n| `PolicyBuilder.build()` | Compile to `IBusinessPolicy<T>` |",
+    "kind": "api",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "BaseBusinessPolicy<T>",
+    "text": "| Export | Description |\n| --- | --- |\n| `BaseBusinessPolicy<T>` | Abstract base class; implement `check(request)` |",
+    "kind": "api",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "SpecificationPolicy<T>",
+    "text": "| Export | Description |\n| --- | --- |\n| `SpecificationPolicy<T>` | Wraps a sync spec as a policy |",
+    "kind": "api",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "AsyncSpecificationPolicy<T>",
+    "text": "| Export | Description |\n| --- | --- |\n| `AsyncSpecificationPolicy<T>` | Wraps an async spec as a policy |",
+    "kind": "api",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "BaseCompositePolicy<T>",
+    "text": "| Export | Description |\n| --- | --- |\n| `BaseCompositePolicy<T>` | Base for multi-policy composites |",
+    "kind": "api",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "PolicyViolation",
+    "text": "| Export | Description |\n| --- | --- |\n| `PolicyViolation` | Single violation with `code`, `message`, `severity`, `policyId`, `domain` |",
+    "kind": "api",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "PolicyViolationCollection",
+    "text": "| Export | Description |\n| --- | --- |\n| `PolicyViolationCollection` | Multiple violations from composite evaluations |",
+    "kind": "api",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "PolicyRegistry",
+    "text": "| Export | Description |\n| --- | --- |\n| `PolicyRegistry` | In-memory registry; `register`, `resolve`, `tryResolve`, `findByTags` |",
+    "kind": "api",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "PolicyRequestBuilder.forEntity<T>(entity)",
+    "text": "| Export | Description |\n| --- | --- |\n| `PolicyRequestBuilder.forEntity<T>(entity)` | Start building a `PolicyRequest` |",
+    "kind": "api",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "PolicyRequestFactory.minimal<T>(entity, userId)",
+    "text": "| Export | Description |\n| --- | --- |\n| `PolicyRequestFactory.minimal<T>(entity, userId)` | Quick request creation |",
+    "kind": "api",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "PolicyRequestFactory.webRequest(opts)",
+    "text": "| Export | Description |\n| --- | --- |\n| `PolicyRequestFactory.webRequest(opts)` | Web-context request with IP, session, etc. |",
+    "kind": "api",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "PolicyEventBus",
+    "text": "| Export | Description |\n| --- | --- |\n| `PolicyEventBus` | Pub/sub bus for `PolicyEvaluationEvent`; `subscribe`, `publish` |",
+    "kind": "api",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "PolicyCachingBehavior",
+    "text": "| Export | Description |\n| --- | --- |\n| `PolicyCachingBehavior` | Cache policy results by entity key |",
+    "kind": "api",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "PolicyRetryBehavior",
+    "text": "| Export | Description |\n| --- | --- |\n| `PolicyRetryBehavior` | Retry on transient failure |",
+    "kind": "api",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "PolicyTemporalBehavior",
+    "text": "| Export | Description |\n| --- | --- |\n| `PolicyTemporalBehavior` | Time-window and business-calendar enforcement |",
+    "kind": "api",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "PolicyMetadata",
+    "text": "| Export | Description |\n| --- | --- |\n| `PolicyMetadata` | Optional context metadata on `PolicyRequest` (correlationId, source, operation, ipAddress, userAgent, custom) |",
+    "kind": "api",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "PolicyMetadataBuilder.create()",
+    "text": "| Export | Description |\n| --- | --- |\n| `PolicyMetadataBuilder.create()` | Fluent builder for `PolicyMetadata` |",
+    "kind": "api",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "PolicyDefinition<T>",
+    "text": "| Export | Description |\n| --- | --- |\n| `PolicyDefinition<T>` | Shape stored by `PolicyRegistry.register()` (id, domain, name, policy, version, tags, isActive, priority) |",
+    "kind": "api",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "PolicyDefinitionBuilder<T>",
+    "text": "| Export | Description |\n| --- | --- |\n| `PolicyDefinitionBuilder<T>` | Fluent builder for `PolicyDefinition`; `.create()`, `.withId()`, `.withDomain()`, `.withName()`, `.withPolicy()`, `.withVersion()`, `.withTags()`, `.withPriority()`, `.build()` — throws if id/domain/name/policy missing; see Pattern 3 |",
+    "kind": "api",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "PolicyQuery",
+    "text": "| Export | Description |\n| --- | --- |\n| `PolicyQuery` | Query passed to `PolicyRegistry.resolve`/`tryResolve` (domain, policyId, version?, tags?) |",
+    "kind": "api",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "PolicyCondition<T>",
+    "text": "| Export | Description |\n| --- | --- |\n| `PolicyCondition<T>` | Predicate type accepted by `IBusinessPolicy.when(condition)` |",
+    "kind": "api",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "PolicyViolationSeverity",
+    "text": "| Export | Description |\n| --- | --- |\n| `PolicyViolationSeverity` | `'ERROR' \\| 'WARNING' \\| 'INFO'` union used by violations and step builders |",
+    "kind": "api",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "PolicyViolationOptions",
+    "text": "| Export | Description |\n| --- | --- |\n| `PolicyViolationOptions` | Constructor options for `new PolicyViolation(options)` |",
+    "kind": "api",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "PolicyViolationData",
+    "text": "| Export | Description |\n| --- | --- |\n| `PolicyViolationData` | Plain-object shape from `PolicyViolation.toJSON()` / static `.fromJSON()` |",
+    "kind": "api",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IPolicyComposer<T>",
+    "text": "| Export | Description |\n| --- | --- |\n| `IPolicyComposer<T>` | Returned by `.and()`/`.or()`; adds `.group()` for precedence control |",
+    "kind": "api",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IGroupedPolicyComposer<T>",
+    "text": "| Export | Description |\n| --- | --- |\n| `IGroupedPolicyComposer<T>` | Returned by `IPolicyComposer.group()`; adds `.endGroup()` |",
+    "kind": "api",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IPolicyRegistry",
+    "text": "| Export | Description |\n| --- | --- |\n| `IPolicyRegistry` | Interface implemented by `PolicyRegistry` |",
+    "kind": "api",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IUnifiedRegistry",
+    "text": "| Export | Description |\n| --- | --- |\n| `IUnifiedRegistry` | `{ policies: IPolicyRegistry }` wrapper for future multi-registry composition |",
+    "kind": "api",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "PolicyRegistryStatistics",
+    "text": "| Export | Description |\n| --- | --- |\n| `PolicyRegistryStatistics` | Shape returned by `PolicyRegistry.getStatistics()` (totalPolicies, activePolicies, domainStats, ...) |",
+    "kind": "api",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "PolicyContextBuilder",
+    "text": "| Export | Description |\n| --- | --- |\n| `PolicyContextBuilder` | Fluent builder for `PolicyContext`; static helpers `.forUser`, `.forUserAndTenant`, `.development`, `.production`, `.test`, `.from` |",
+    "kind": "api",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "PolicyContextFactory",
+    "text": "| Export | Description |\n| --- | --- |\n| `PolicyContextFactory` | Static one-liners: `.minimal`, `.withTenant`, `.webRequest`, `.apiRequest`, `.backgroundJob` (used by `PolicyRequestFactory` internally) |",
+    "kind": "api",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IPolicyBuilder<T>",
+    "text": "| Export | Description |\n| --- | --- |\n| `IPolicyBuilder<T>` | Interface implemented by `PolicyBuilder` |",
+    "kind": "api",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IPolicyStepBuilder<T> / PolicyStepBuilder<T>",
+    "text": "| Export | Description |\n| --- | --- |\n| `IPolicyStepBuilder<T>` / `PolicyStepBuilder<T>` | Returned by `.must()`/`.should()`/etc.; chain `.withCode()`, `.withMessage()`, `.withSeverity()`, `.and()`, `.or()`, `.build()` |",
+    "kind": "api",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "PolicyBuilderConfig<T>",
+    "text": "| Export | Description |\n| --- | --- |\n| `PolicyBuilderConfig<T>` | Optional config for `PolicyBuilder.create`/`.forDomain` (defaultDomain, defaultSeverity, defaultErrorCodePrefix, enableCaching, enableEvents) |",
+    "kind": "api",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "PolicyBuildStep<T>",
+    "text": "| Export | Description |\n| --- | --- |\n| `PolicyBuildStep<T>` | Internal step record type used by `PolicyBuilder`, exported for advanced composition |",
+    "kind": "api",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IConditionalPolicyBuilder<T> / ConditionalPolicyBuilder<T>",
+    "text": "| Export | Description |\n| --- | --- |\n| `IConditionalPolicyBuilder<T>` / `ConditionalPolicyBuilder<T>` | Returned by `PolicyBuilder.when(condition)`; see Pattern 4 |",
+    "kind": "api",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IConditionalPolicyThenStepBuilder<T> / ConditionalPolicyThenStepBuilder<T>",
+    "text": "| Export | Description |\n| --- | --- |\n| `IConditionalPolicyThenStepBuilder<T>` / `ConditionalPolicyThenStepBuilder<T>` | Returned by `.thenMust()`/`.thenMustAsync()`; chain `.withCode()`, `.withMessage()`, `.otherwise*()` |",
+    "kind": "api",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IConditionalPolicyElseStepBuilder<T> / ConditionalPolicyElseStepBuilder<T>",
+    "text": "| Export | Description |\n| --- | --- |\n| `IConditionalPolicyElseStepBuilder<T>` / `ConditionalPolicyElseStepBuilder<T>` | Returned by `.otherwiseMust()`; chain `.withCode()`, `.withMessage()`, `.build()` |",
+    "kind": "api",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IConditionalPolicyElse<T> / ConditionalPolicyElse<T>",
+    "text": "| Export | Description |\n| --- | --- |\n| `IConditionalPolicyElse<T>` / `ConditionalPolicyElse<T>` | Returned by `.then()`/`.otherwise()`/`.otherwisePass()`/`.otherwiseWarn()`; exposes `.build()` |",
+    "kind": "api",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IPolicyGroup<T> / PolicyGroup<T>",
+    "text": "| Export | Description |\n| --- | --- |\n| `IPolicyGroup<T>` / `PolicyGroup<T>` | Standalone OR-group; `PolicyGroup.create<T>(groupName?)`; combine with `PolicyBuilder.shouldSatisfyAny(...)`; see Pattern 5 |",
+    "kind": "api",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "IPolicyGroupStepBuilder<T> / PolicyGroupStepBuilder<T>",
+    "text": "| Export | Description |\n| --- | --- |\n| `IPolicyGroupStepBuilder<T>` / `PolicyGroupStepBuilder<T>` | Returned by `PolicyGroup.must()`/`.mustAsync()`/`.mustSatisfy()` |",
+    "kind": "api",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "PolicyGroupStep<T>",
+    "text": "| Export | Description |\n| --- | --- |\n| `PolicyGroupStep<T>` | Internal step record type for `PolicyGroup`, exported for advanced composition |",
+    "kind": "api",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "BusinessRuleValidatorAdapter<T>",
+    "text": "| Export | Description |\n| --- | --- |\n| `BusinessRuleValidatorAdapter<T>` | Wraps a `BusinessRuleValidator` as `ISpecification<T>`; static `.create()` |",
+    "kind": "api",
+    "feature": "policies",
+    "combines": [
+      "validation",
+      "contracts"
+    ],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "BusinessRuleValidatorPolicy<T>",
+    "text": "| Export | Description |\n| --- | --- |\n| `BusinessRuleValidatorPolicy<T>` | Wraps a `BusinessRuleValidator` directly as `IBusinessPolicy<T>`; static `.fromValidator()` |",
+    "kind": "api",
+    "feature": "policies",
+    "combines": [
+      "validation"
+    ],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "PolicySpecificationFactory",
+    "text": "| Export | Description |\n| --- | --- |\n| `PolicySpecificationFactory` | Static hub: `.fromSpecification`, `.fromAsyncSpecification`, `.fromBusinessRuleValidator`, `.businessRuleValidatorToSpecification` |",
+    "kind": "api",
+    "feature": "policies",
+    "combines": [
+      "validation"
+    ],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "PolicyCacheConfig",
+    "text": "| Export | Description |\n| --- | --- |\n| `PolicyCacheConfig` | Config for `PolicyCachingBehavior` (ttl, keyGenerator, namespace, maxSize, cacheFailures, enableMetrics) |",
+    "kind": "api",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "PolicyRetryBehaviorFactory",
+    "text": "| Export | Description |\n| --- | --- |\n| `PolicyRetryBehaviorFactory` | Presets over `PolicyRetryBehavior`: `.forTransientFailures()`, `.forExternalServices()`, `.withCustomLogic()` |",
+    "kind": "api",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "PolicyRetryConfig",
+    "text": "| Export | Description |\n| --- | --- |\n| `PolicyRetryConfig` | Config for `PolicyRetryBehavior` (maxAttempts, baseDelay, backoff, shouldRetry, shouldRetryOnException) |",
+    "kind": "api",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "RetryAttempt / RetryMetrics",
+    "text": "| Export | Description |\n| --- | --- |\n| `RetryAttempt` / `RetryMetrics` | Per-attempt record / aggregate metrics from `PolicyRetryBehavior.getRetryMetrics()` |",
+    "kind": "api",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "PolicyTemporalBehaviorBuilder<T>",
+    "text": "| Export | Description |\n| --- | --- |\n| `PolicyTemporalBehaviorBuilder<T>` | Fluent builder producing `PolicyTemporalBehavior`; `.withBusinessCalendar()`, `.duringBusinessHours()`, `.duringWeekends()`, `.otherwise()`, `.build()` |",
+    "kind": "api",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "PolicyTemporalBehaviorFactory",
+    "text": "| Export | Description |\n| --- | --- |\n| `PolicyTemporalBehaviorFactory` | Presets: `.businessHours()`, `.weekendAware()`, `.holidayAware()` |",
+    "kind": "api",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "BusinessCalendar",
+    "text": "| Export | Description |\n| --- | --- |\n| `BusinessCalendar` | Business hours / working days / holidays / timezone input to temporal config |",
+    "kind": "api",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "TemporalCondition<T>",
+    "text": "| Export | Description |\n| --- | --- |\n| `TemporalCondition<T>` | Custom predicate `(entity, context, temporal) => boolean` for `PolicyTemporalBehaviorBuilder.when()` |",
+    "kind": "api",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "TemporalInfo",
+    "text": "| Export | Description |\n| --- | --- |\n| `TemporalInfo` | Computed time context (isBusinessHours, isWeekend, isHoliday, dayOfWeek, timeOfDay) passed to conditions |",
+    "kind": "api",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "TemporalPolicyConfig",
+    "text": "| Export | Description |\n| --- | --- |\n| `TemporalPolicyConfig` | Full config accepted by `PolicyTemporalBehavior.create()` |",
+    "kind": "api",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "PolicyEvent<T>",
+    "text": "| Export | Description |\n| --- | --- |\n| `PolicyEvent<T>` | Union of `PolicyEvaluationStartedEvent \\| PolicyEvaluationEvent \\| PolicyEvaluationErrorEvent` |",
+    "kind": "api",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "PolicyEvaluationStartedEvent<T>",
+    "text": "| Export | Description |\n| --- | --- |\n| `PolicyEvaluationStartedEvent<T>` | Emitted before evaluation when `emitStartEvents` is enabled on `EventDrivenPolicy` |",
+    "kind": "api",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "PolicyEvaluationErrorEvent<T>",
+    "text": "| Export | Description |\n| --- | --- |\n| `PolicyEvaluationErrorEvent<T>` | Emitted when the wrapped policy's `check()` throws |",
+    "kind": "api",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "PolicyEventBuilder<T>",
+    "text": "| Export | Description |\n| --- | --- |\n| `PolicyEventBuilder<T>` | Builds event payloads; `.evaluationStarted()`, `.evaluationCompleted()`, `.evaluationError()` (used internally by `EventDrivenPolicy`) |",
+    "kind": "api",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "PolicyEventHandler<T>",
+    "text": "| Export | Description |\n| --- | --- |\n| `PolicyEventHandler<T>` | Handler function type: `(event) => void \\| Promise<void>` |",
+    "kind": "api",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "PolicyEventSubscription",
+    "text": "| Export | Description |\n| --- | --- |\n| `PolicyEventSubscription` | Shape `PolicyEventBus.subscribe()` accepts (minus `id`, which is generated and returned) |",
+    "kind": "api",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "PolicyEventBusConfig",
+    "text": "| Export | Description |\n| --- | --- |\n| `PolicyEventBusConfig` | Constructor config for `PolicyEventBus` (maxHandlers, enableMetrics, parallelExecution, errorStrategy, timeout) |",
+    "kind": "api",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "PolicyEventBusMetrics",
+    "text": "| Export | Description |\n| --- | --- |\n| `PolicyEventBusMetrics` | Shape returned by `PolicyEventBus.getMetrics()` |",
+    "kind": "api",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "PolicyExecutionMetrics",
+    "text": "| Export | Description |\n| --- | --- |\n| `PolicyExecutionMetrics` | Per-policy metrics shape tracked by `PolicyMetricsAggregator` |",
+    "kind": "api",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "PolicyMetricsAggregator",
+    "text": "| Export | Description |\n| --- | --- |\n| `PolicyMetricsAggregator` | Aggregates `PolicyEvent`s into per-policy execution metrics; `.processEvent()`, `.getMetrics()`; see Pattern 6 |",
+    "kind": "api",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "EventDrivenPolicy<T>",
+    "text": "| Export | Description |\n| --- | --- |\n| `EventDrivenPolicy<T>` | `IBusinessPolicy` decorator that emits `PolicyEvent`s around `check()`; created via `withEvents()` or `EventDrivenPolicy.wrap()`; see Pattern 6 |",
+    "kind": "api",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "EventDrivenPolicyConfig",
+    "text": "| Export | Description |\n| --- | --- |\n| `EventDrivenPolicyConfig` | Config for `EventDrivenPolicy`/`withEvents` (eventBus, emitStartEvents, emitCompletionEvents, emitErrorEvents, includeEntityInEvents, includeContextInEvents) |",
+    "kind": "api",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "EventDrivenPolicyFactory",
+    "text": "| Export | Description |\n| --- | --- |\n| `EventDrivenPolicyFactory` | Factory with shared defaults: `.create()`, `.createWithAudit()`, `.createWithPerformanceMonitoring()` |",
+    "kind": "api",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "PolicyEventHandlers",
+    "text": "| Export | Description |\n| --- | --- |\n| `PolicyEventHandlers` | Static handler factories: `.createLoggingHandler()`, `.createMetricsHandler()`, `.createFilteringHandler()` |",
+    "kind": "api",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "Pattern 1: Custom policy class",
+    "text": "Extend `BaseBusinessPolicy` when the evaluation logic is too complex for the\nbuilder or when the policy needs injected dependencies.\n\n```typescript\nimport {\n  BaseBusinessPolicy,\n  PolicyViolation,\n  PolicyRequestBuilder,\n} from '@vytches/ddd-policies';\nimport type { PolicyRequest } from '@vytches/ddd-policies';\nimport { Result } from '@vytches/ddd-utils';\n\nclass CreditLimitPolicy extends BaseBusinessPolicy<Order> {\n  constructor(private readonly creditService: CreditService) {\n    super('credit-limit', 'ordering', 'Credit Limit Policy');\n  }\n\n  async check(\n    request: PolicyRequest<Order>\n  ): Promise<Result<Order, PolicyViolation>> {\n    const limit = await this.creditService.getLimit(request.context.userId);\n    if (request.entity.total > limit) {\n      return this.failure(\n        this.createViolation(\n          'CREDIT_EXCEEDED',\n          `Order exceeds credit limit of ${limit}`,\n          'ERROR'\n        )\n      );\n    }\n    return this.success(request.entity);\n  }\n}\n```",
+    "kind": "concept",
+    "feature": "policies",
+    "combines": [
+      "utils"
+    ],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "Pattern 2: Policy composition",
+    "text": "Combine policies using `.and()`, `.or()`, `.not()` on any `BaseBusinessPolicy`.\n\n```typescript\nconst fullPolicy = new CreditLimitPolicy(creditService)\n  .and(orderPolicy) // both must pass\n  .and(new FraudCheckPolicy());\n\nconst request = PolicyRequestFactory.webRequest({\n  entity: order,\n  userId: 'user-1',\n  tenantId: 'tenant-a',\n  operation: 'place-order',\n  correlationId: req.headers['x-correlation-id'],\n});\n\nconst result = await fullPolicy.check(request);\n```",
+    "kind": "concept",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "advanced"
+  },
+  {
+    "section": "Pattern 3: Registry + event-driven observability",
+    "text": "```typescript\nimport {\n  PolicyRegistry,\n  PolicyEventBus,\n  withEvents,\n  PolicyDefinitionBuilder,\n} from '@vytches/ddd-policies';\n\nconst bus = new PolicyEventBus({ enableMetrics: true, errorStrategy: 'log' });\nconst registry = new PolicyRegistry();\n\n// Register with definition metadata, built via PolicyDefinitionBuilder\nconst definition = PolicyDefinitionBuilder.create<Order>()\n  .withId('credit-limit')\n  .withDomain('ordering')\n  .withName('Credit Limit Policy')\n  .withPolicy(new CreditLimitPolicy(creditService))\n  .withVersion('1.0.0')\n  .withTags('financial', 'compliance')\n  .withPriority(100)\n  .build();\nregistry.register(definition);\n\n// Wrap with event emission. withEvents is curried: withEvents(config)(policy).\nconst trackedPolicy = withEvents<Order>({ eventBus: bus })(\n  registry.resolve<Order>({ domain: 'ordering', policyId: 'credit-limit' })\n);\n\n// Subscribe to evaluation outcomes. subscribe() generates and returns the id\n// (do not pass one in — PolicyEventSubscription minus 'id' is what it accepts).\nconst subscriptionId = bus.subscribe({\n  eventTypes: ['POLICY_EVALUATED'],\n  handler: async event => auditLog.write(event),\n  domains: ['ordering'],\n});\n\nconst result = await trackedPolicy.check(request);\n```",
+    "kind": "concept",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "advanced"
+  },
+  {
+    "section": "Pattern 4: Conditional policy branch (`when`/`thenMust`/`otherwise*`)",
+    "text": "`PolicyBuilder.when(condition)` returns a standalone conditional policy builder\n(`IConditionalPolicyBuilder`) — it does not merge back into the parent builder's\nown steps. `.thenMust()`/`.thenMustAsync()` define the \"if condition met\"\nbranch; `.otherwise()`, `.otherwiseMust()`, `.otherwisePass()`, or\n`.otherwiseWarn()` define the \"else\" branch. Call `.build()` on the resulting\nelse-step to get an `IBusinessPolicy<T>`.\n\n```typescript\nimport { PolicyBuilder } from '@vytches/ddd-policies';\nimport { Specification } from '@vytches/ddd-validation';\n\ninterface Order {\n  total: number;\n  isApproved: boolean;\n}\n\nconst approvalPolicy = PolicyBuilder.create<Order>()\n  .when((order: Order) => order.total > 10_000)\n  .thenMust(Specification.create<Order>(o => o.isApproved))\n  .withCode('APPROVAL_REQUIRED')\n  .withMessage('Orders over 10,000 require manager approval')\n  .otherwiseWarn('Order below approval threshold - no approval needed')\n  .build();\n\nconst result = await approvalPolicy.check(request);\n```",
+    "kind": "concept",
+    "feature": "policies",
+    "combines": [
+      "validation"
+    ],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "advanced"
+  },
+  {
+    "section": "Pattern 5: OR-groups with `PolicyGroup` + `shouldSatisfyAny`",
+    "text": "`PolicyGroup.create<T>(name?)` builds a standalone group of AND-ed steps. Pass\none or more groups to `PolicyBuilder.shouldSatisfyAny(...)` so that the overall\npolicy step passes when **at least one** group fully passes.\n\n```typescript\nimport { PolicyBuilder, PolicyGroup } from '@vytches/ddd-policies';\nimport { Specification } from '@vytches/ddd-validation';\n\ninterface Order {\n  hasVipTag: boolean;\n  loyaltyPoints: number;\n}\n\nconst vipGroup = PolicyGroup.create<Order>('vip-customer')\n  .must(Specification.create<Order>(o => o.hasVipTag))\n  .withCode('NOT_VIP')\n  .withMessage('Customer is not VIP');\n\nconst loyaltyGroup = PolicyGroup.create<Order>('loyalty-points')\n  .must(Specification.create<Order>(o => o.loyaltyPoints >= 1000))\n  .withCode('INSUFFICIENT_POINTS')\n  .withMessage('Not enough loyalty points');\n\nconst freeShippingPolicy = PolicyBuilder.create<Order>()\n  .withId('free-shipping-eligibility')\n  .withDomain('ordering')\n  .withName('Free Shipping Eligibility')\n  .shouldSatisfyAny(vipGroup, loyaltyGroup)\n  .build();\n\nconst result = await freeShippingPolicy.check(request);\n```",
+    "kind": "concept",
+    "feature": "policies",
+    "combines": [
+      "validation"
+    ],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "advanced"
+  },
+  {
+    "section": "Pattern 6: Combined group + conditional policy with event observability",
+    "text": "Full-feature example: a composite fraud-check policy built from OR-groups, an\nescalation layer built with the conditional builder, wrapped in\n`EventDrivenPolicy` (via `withEvents`) for observability, and fed into\n`PolicyMetricsAggregator` through a `PolicyEventBus` subscription. This is the\ncombined workflow the conditional/group builder subsystem and the policy event\nsystem are designed to support together.\n\n```typescript\nimport {\n  PolicyBuilder,\n  PolicyGroup,\n  PolicyEventBus,\n  PolicyEventHandlers,\n  PolicyMetricsAggregator,\n  withEvents,\n} from '@vytches/ddd-policies';\nimport { Specification } from '@vytches/ddd-validation';\n\ninterface Order {\n  riskScore: number;\n  countryAllowed: boolean;\n  requiresManualReview: boolean;\n}\n\n// 1. Composite policy from OR-groups: at least one group must pass.\nconst lowRiskGroup = PolicyGroup.create<Order>('low-risk')\n  .must(Specification.create<Order>(o => o.riskScore < 30))\n  .withCode('RISK_TOO_HIGH')\n  .withMessage('Risk score too high for auto-approval');\n\nconst trustedCountryGroup = PolicyGroup.create<Order>('trusted-country')\n  .must(Specification.create<Order>(o => o.countryAllowed))\n  .withCode('COUNTRY_NOT_ALLOWED')\n  .withMessage('Shipping country requires manual review');\n\nconst fraudCheckPolicy = PolicyBuilder.create<Order>()\n  .withId('fraud-check')\n  .withDomain('ordering')\n  .withName('Fraud Check Policy')\n  .shouldSatisfyAny(lowRiskGroup, trustedCountryGroup)\n  .build();\n\n// 2. Conditional escalation layer on top: manual-review orders always fail\n// until cleared, everything else falls through to the composite fraud check.\nconst escalationPolicy = PolicyBuilder.create<Order>()\n  .when((order: Order) => order.requiresManualReview)\n  .thenMust(Specification.create<Order>(() => false))\n  .withCode('MANUAL_REVIEW_PENDING')\n  .withMessage('Order flagged for manual review')\n  .otherwise(fraudCheckPolicy)\n  .build();\n// Note: build() on a conditional branch always produces a policy with\n// id/domain hardcoded to \"conditional\" (see ConditionalPolicyElse.build) -\n// group by that, not by 'fraud-check', when reading escalation-layer metrics.\n\n// 3. Wrap with event emission. withEvents is curried: withEvents(config)(policy).\nconst bus = new PolicyEventBus({ enableMetrics: true, errorStrategy: 'log' });\nconst trackedPolicy = withEvents<Order>({\n  eventBus: bus,\n  emitCompletionEvents: true,\n  emitErrorEvents: true,\n})(escalationPolicy);\n\n// 4. Feed every evaluation into a metrics aggregator via the event bus.\n// subscribe() generates and returns the subscription id.\nconst aggregator = new PolicyMetricsAggregator();\nconst subscriptionId = bus.subscribe({\n  eventTypes: ['POLICY_EVALUATED', 'POLICY_EVALUATION_ERROR'],\n  handler: PolicyEventHandlers.createMetricsHandler(event =>\n    aggregator.processEvent(event)\n  ),\n});\n\nconst result = await trackedPolicy.check(request);\nconsole.log(aggregator.getMetrics('conditional', 'conditional'));\n```",
+    "kind": "concept",
+    "feature": "policies",
+    "combines": [
+      "validation"
+    ],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "advanced"
+  },
+  {
+    "section": "Anti-pattern: Using policies for simple field validation",
+    "text": "**Using policies for simple field validation.** Policies require a\n`PolicyRequest` with context (userId, tenantId, environment). For pure domain\ninvariants that need no context, use `Specification` or `BusinessRuleValidator`\nfrom `@vytches/ddd-validation` instead.",
+    "kind": "anti_pattern",
+    "feature": "policies",
+    "combines": [
+      "validation"
+    ],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "Anti-pattern: Not checking result.isFailure after policy.check()",
+    "text": "**Not checking `result.isFailure` after `policy.check()`.** The `check()` method\nreturns `Result<T, PolicyViolation>`, not a thrown exception. Ignoring the\nresult silently allows invalid operations to proceed.\n\n```typescript\n// Wrong: result ignored\nawait policy.check(request);\nawait orderService.place(order);\n\n// Correct: check before proceeding\nconst result = await policy.check(request);\nif (result.isFailure) throw new DomainException(result.error.message);\nawait orderService.place(order);\n```",
+    "kind": "anti_pattern",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "Anti-pattern: Policies without context",
+    "text": "**Policies without context.** `PolicyRequest` requires a `PolicyContext` (userId\nat minimum). Passing a raw entity object directly to `check` does not work —\nalways construct a request via `PolicyRequestBuilder` or `PolicyRequestFactory`.",
+    "kind": "anti_pattern",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "Anti-pattern: Calling PolicyBuilder.build() without .withId(), .withDomain(), and .withName()",
+    "text": "**Calling `PolicyBuilder.build()` without `.withId()`, `.withDomain()`, and\n`.withName()`.** All three are required; `build()` throws synchronously if any\nare missing.",
+    "kind": "anti_pattern",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "Anti-pattern: Registering the same policyId twice in PolicyRegistry",
+    "text": "**Registering the same `policyId` twice in `PolicyRegistry`.** `register()`\nthrows on duplicate `domain:policyId` keys. Call `unregister(domain, id)` first\nif replacing a policy.",
+    "kind": "anti_pattern",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "Hidden feature: PolicyBuilder.should(spec) produces WARNING-severity violations",
+    "text": "**`PolicyBuilder.should(spec)` produces WARNING-severity violations**, not\nerrors. A should-step failure does not stop the policy evaluation chain, and the\nresult is `isSuccess` if only should-steps failed.",
+    "kind": "concept",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "advanced"
+  },
+  {
+    "section": "Hidden feature: PolicyRequestFactory has environment-specific factories",
+    "text": "**`PolicyRequestFactory` has environment-specific factories.** `webRequest`,\n`apiRequest`, `backgroundJob`, and `test` pre-populate environment metadata so\npolicy logic can branch on `request.context.environment`.",
+    "kind": "concept",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "advanced"
+  },
+  {
+    "section": "Hidden feature: PolicyCachingBehavior wraps any IBusinessPolicy",
+    "text": "**`PolicyCachingBehavior` wraps any `IBusinessPolicy`.** Pass a policy and a\ncache config (ttl, key extractor) to `PolicyCachingBehaviorFactory.create()` to\nget a caching policy decorator without subclassing.",
+    "kind": "concept",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "advanced"
+  },
+  {
+    "section": "Hidden feature: globalPolicyEventBus is a pre-built singleton",
+    "text": "**`globalPolicyEventBus` is a pre-built singleton.** Import it for quick setup\nin tests or small applications instead of constructing a new `PolicyEventBus`.",
+    "kind": "concept",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "advanced"
+  },
+  {
+    "section": "Hidden feature: SpecificationPolicy.fromSpecification and AsyncSpecificationPolicy.fromAsyncSpecification",
+    "text": "**`SpecificationPolicy.fromSpecification` and\n`AsyncSpecificationPolicy.fromAsyncSpecification`** are static factories for\nwrapping a spec as a named, domain-tagged policy in one line — useful when you\nalready have a spec and want to register it in the `PolicyRegistry`.",
+    "kind": "concept",
+    "feature": "policies",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "policies"
+    ],
+    "level": "advanced"
+  }
+]

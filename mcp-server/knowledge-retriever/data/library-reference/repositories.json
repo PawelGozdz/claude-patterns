@@ -1,0 +1,191 @@
+[
+  {
+    "section": "Overview",
+    "text": "## Purpose\n\nBase repository infrastructure with built-in optimistic locking, domain event\ndispatching, and unit-of-work coordination. Provides `IBaseRepository` as the\nabstract persistence layer that saves aggregates by persisting their domain\nevents.\n\n## Quick Start\n\n```typescript\nimport {\n  IBaseRepository,\n  VersionError,\n  type IRepositoryAggregate,\n} from '@vytches/ddd-repositories';\nimport type {\n  IEnhancedEventDispatcher,\n  IEventPersistenceHandler,\n} from '@vytches/ddd-contracts';\n\n// Extend IBaseRepository and implement findById\nclass OrderRepository extends IBaseRepository {\n  constructor(\n    dispatcher: IEnhancedEventDispatcher,\n    persistenceHandler: IEventPersistenceHandler,\n    private readonly db: Db\n  ) {\n    super(dispatcher, persistenceHandler);\n  }\n\n  async findById(id: string): Promise<Order | null> {\n    const row = await this.db.orders.findOne({ id });\n    return row ? Order.reconstitute(row) : null;\n  }\n}\n\n// Save an aggregate (dispatches events, checks version)\nconst repo = new OrderRepository(dispatcher, handler, db);\ntry {\n  await repo.save(order); // throws VersionError on conflict\n} catch (err) {\n  if (err instanceof VersionError) {\n    // reload the aggregate and retry\n  }\n}\n```",
+    "kind": "concept",
+    "feature": "repositories",
+    "combines": ["contracts"],
+    "tags": ["vytches-ddd", "repositories"],
+    "level": "quickstart"
+  },
+  {
+    "section": "IBaseRepository",
+    "text": "| Export | Description |\n| --- | --- |\n| `IBaseRepository` | Abstract class — extend this, implement `findById` |",
+    "kind": "api",
+    "feature": "repositories",
+    "combines": [],
+    "tags": ["vytches-ddd", "repositories"],
+    "level": "core"
+  },
+  {
+    "section": "IBaseRepository.save(aggregate)",
+    "text": "| Export | Description |\n| --- | --- |\n| `IBaseRepository.save(aggregate)` | Persist events, dispatch them, enforce optimistic lock |",
+    "kind": "api",
+    "feature": "repositories",
+    "combines": [],
+    "tags": ["vytches-ddd", "repositories"],
+    "level": "core"
+  },
+  {
+    "section": "VersionError",
+    "text": "| Export | Description |\n| --- | --- |\n| `VersionError` | Thrown on version mismatch; factory: `VersionError.withEntityIdAndVersions(id, dbVersion, newVersion)` |",
+    "kind": "api",
+    "feature": "repositories",
+    "combines": [],
+    "tags": ["vytches-ddd", "repositories"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IRepositoryAggregate",
+    "text": "| Export | Description |\n| --- | --- |\n| `IRepositoryAggregate` | Interface aggregates must satisfy: `getId()`, `getInitialVersion()`, `getDomainEvents()` |",
+    "kind": "api",
+    "feature": "repositories",
+    "combines": [],
+    "tags": ["vytches-ddd", "repositories"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IRepository<T>",
+    "text": "| Export | Description |\n| --- | --- |\n| `IRepository<T>` | Generic CRUD interface from `@vytches/ddd-contracts` (re-exported) |",
+    "kind": "api",
+    "feature": "repositories",
+    "combines": ["contracts"],
+    "tags": ["vytches-ddd", "repositories"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IExtendedRepository<T>",
+    "text": "| Export | Description |\n| --- | --- |\n| `IExtendedRepository<T>` | Extended CRUD interface with additional query methods (re-exported) |",
+    "kind": "api",
+    "feature": "repositories",
+    "combines": [],
+    "tags": ["vytches-ddd", "repositories"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IRepositoryProvider",
+    "text": "| Export | Description |\n| --- | --- |\n| `IRepositoryProvider` | Factory interface for creating repository instances (re-exported) |",
+    "kind": "api",
+    "feature": "repositories",
+    "combines": [],
+    "tags": ["vytches-ddd", "repositories"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IUnitOfWork",
+    "text": "| Export | Description |\n| --- | --- |\n| `IUnitOfWork` | Transaction coordination interface (re-exported from `@vytches/ddd-contracts`) |",
+    "kind": "api",
+    "feature": "repositories",
+    "combines": ["contracts"],
+    "tags": ["vytches-ddd", "repositories"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "Pattern 1: Standard aggregate repository",
+    "text": "### Pattern 1: Standard aggregate repository\n\n```typescript\nimport {\n  IBaseRepository,\n  VersionError,\n  type IRepositoryAggregate,\n} from '@vytches/ddd-repositories';\n\nclass InvoiceRepository extends IBaseRepository {\n  constructor(\n    dispatcher: IEnhancedEventDispatcher,\n    handler: IEventPersistenceHandler,\n    private readonly store: InvoiceStore\n  ) {\n    super(dispatcher, handler);\n  }\n\n  async findById(id: string): Promise<Invoice | null> {\n    const data = await this.store.get(id);\n    return data ? Invoice.reconstitute(data) : null;\n  }\n}\n\n// Usage in application layer\nconst invoice = await repo.findById(invoiceId);\nif (!invoice) throw new Error('Invoice not found');\n\ninvoice.approve(); // raises InvoiceApprovedEvent internally\nawait repo.save(invoice); // persists event, dispatches, bumps version\n```",
+    "kind": "concept",
+    "feature": "repositories",
+    "combines": [],
+    "tags": ["vytches-ddd", "repositories"],
+    "level": "core"
+  },
+  {
+    "section": "Pattern 2: Optimistic locking with retry",
+    "text": "### Pattern 2: Optimistic locking with retry\n\n`save()` compares the aggregate's `getInitialVersion()` against the stored\nversion. If they differ, it throws `VersionError`. Handle conflicts by reloading\nand retrying.\n\n```typescript\nasync function approveWithRetry(id: string, maxAttempts = 3): Promise<void> {\n  for (let attempt = 0; attempt < maxAttempts; attempt++) {\n    const invoice = await repo.findById(id);\n    if (!invoice) throw new Error('Not found');\n\n    invoice.approve();\n\n    try {\n      await repo.save(invoice);\n      return;\n    } catch (err) {\n      if (err instanceof VersionError && attempt < maxAttempts - 1) continue;\n      throw err;\n    }\n  }\n}\n```",
+    "kind": "concept",
+    "feature": "repositories",
+    "combines": [],
+    "tags": ["vytches-ddd", "repositories"],
+    "level": "advanced"
+  },
+  {
+    "section": "Pattern 3: Unit of work coordination",
+    "text": "### Pattern 3: Unit of work coordination\n\n`IUnitOfWork` (re-exported from `@vytches/ddd-contracts`) provides a transaction\nboundary across multiple repositories.\n\n```typescript\nimport type { IUnitOfWork } from '@vytches/ddd-repositories';\n\nclass PlaceOrderHandler {\n  constructor(\n    private readonly uow: IUnitOfWork,\n    private readonly orders: OrderRepository,\n    private readonly inventory: InventoryRepository,\n  ) {}\n\n  async handle(cmd: PlaceOrderCommand): Promise<void> {\n    await this.uow.begin();\n    try {\n      const order = Order.place(cmd);\n      const item  = await this.inventory.findById(cmd.itemId);\n      item.reserve(cmd.quantity);\n\n      await this.orders.save(order);\n      await this.inventory.save(item);\n      await this.uow.commit();\n    } catch {\n      await this.uow.rollback();\n      throw;\n    }\n  }\n}\n```",
+    "kind": "concept",
+    "feature": "repositories",
+    "combines": ["contracts"],
+    "tags": ["vytches-ddd", "repositories"],
+    "level": "advanced"
+  },
+  {
+    "section": "Anti-pattern: Not catching VersionError on save()",
+    "text": "**Not catching `VersionError` on `save()`.** Concurrent modifications will\nthrow; silently ignoring the exception corrupts the event stream.",
+    "kind": "anti_pattern",
+    "feature": "repositories",
+    "combines": [],
+    "tags": ["vytches-ddd", "repositories"],
+    "level": "core"
+  },
+  {
+    "section": "Anti-pattern: Calling save() on an aggregate with no domain events",
+    "text": "**Calling `save()` on an aggregate with no domain events.**\n`IBaseRepository.save()` is a no-op when `getDomainEvents()` is empty — it logs\nand returns. If your aggregate raised no events, nothing is persisted. Always\ncheck whether the operation actually raised events.",
+    "kind": "anti_pattern",
+    "feature": "repositories",
+    "combines": [],
+    "tags": ["vytches-ddd", "repositories"],
+    "level": "core"
+  },
+  {
+    "section": "Anti-pattern: Querying data inside a write repository",
+    "text": "**Querying data inside a write repository.** `IBaseRepository.findById` should\nonly be used to load the aggregate for mutation. For read models and\nprojections, use separate query-side repositories or dedicated read models.",
+    "kind": "anti_pattern",
+    "feature": "repositories",
+    "combines": [],
+    "tags": ["vytches-ddd", "repositories"],
+    "level": "core"
+  },
+  {
+    "section": "Anti-pattern: Passing a plain object as IRepositoryAggregate",
+    "text": "**Passing a plain object as `IRepositoryAggregate`.** The aggregate must\nimplement `getId()`, `getInitialVersion()`, and `getDomainEvents()` — typically\nby extending the `AggregateRoot` from `@vytches/ddd-aggregates`.",
+    "kind": "anti_pattern",
+    "feature": "repositories",
+    "combines": ["aggregates"],
+    "tags": ["vytches-ddd", "repositories"],
+    "level": "core"
+  },
+  {
+    "section": "Anti-pattern: Sharing a single IBaseRepository instance across unbounded contexts",
+    "text": "**Sharing a single `IBaseRepository` instance across unbounded contexts.** Each\nbounded context should have its own repository with its own event dispatcher and\npersistence handler.",
+    "kind": "anti_pattern",
+    "feature": "repositories",
+    "combines": [],
+    "tags": ["vytches-ddd", "repositories"],
+    "level": "core"
+  },
+  {
+    "section": "Hidden feature: IBaseRepository exposes this.logger",
+    "text": "**`IBaseRepository` exposes `this.logger`.** The protected `logger` field (from\n`@vytches/ddd-logging`) is already wired up with the constructor name.\nSubclasses can use `this.logger.debug(...)` directly without additional setup.",
+    "kind": "concept",
+    "feature": "repositories",
+    "combines": [],
+    "tags": ["vytches-ddd", "repositories"],
+    "level": "advanced"
+  },
+  {
+    "section": "Hidden feature: save() skips persistence when no events are pending",
+    "text": "**`save()` skips persistence when no events are pending.** Calling `save()` on\nan unchanged aggregate is safe — it returns early after logging a debug message.",
+    "kind": "concept",
+    "feature": "repositories",
+    "combines": [],
+    "tags": ["vytches-ddd", "repositories"],
+    "level": "advanced"
+  },
+  {
+    "section": "Hidden feature: VersionError.withEntityIdAndVersions is a static factory",
+    "text": "**`VersionError.withEntityIdAndVersions` is a static factory.** Use it to\nconstruct contextual version errors in custom subclass logic without reaching\ninto the error internals.",
+    "kind": "concept",
+    "feature": "repositories",
+    "combines": [],
+    "tags": ["vytches-ddd", "repositories"],
+    "level": "advanced"
+  },
+  {
+    "section": "Hidden feature: IUnitOfWork, IRepository, and IExtendedRepository are re-exported",
+    "text": "**`IUnitOfWork`, `IRepository`, and `IExtendedRepository` are re-exported** from\n`@vytches/ddd-contracts`. Importing them from `@vytches/ddd-repositories` is the\ncanonical import path for consumers — this avoids them depending on\n`@vytches/ddd-contracts` directly.",
+    "kind": "concept",
+    "feature": "repositories",
+    "combines": ["contracts"],
+    "tags": ["vytches-ddd", "repositories"],
+    "level": "advanced"
+  }
+]

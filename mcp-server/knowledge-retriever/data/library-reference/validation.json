@@ -1,0 +1,389 @@
+[
+  {
+    "section": "Overview",
+    "text": "## Purpose\n\nSpecification pattern for domain validation with composable sync and async\npredicates. Provides `BusinessRuleValidator` for fluent rule chains and the\n`Specification` factory for inline lambda specs without class boilerplate.\n\n## Quick Start\n\n```typescript\nimport { Specification, BusinessRuleValidator } from '@vytches/ddd-validation';\n\ninterface Order {\n  total: number;\n  status: 'pending' | 'paid' | 'cancelled';\n}\n\n// Inline spec — the primary pattern, no class needed\nconst isPositive = Specification.create<Order>(o => o.total > 0);\nconst isPending = Specification.create<Order>(o => o.status === 'pending');\n\n// Compose specs\nconst isPayable = isPositive.and(isPending);\n\n// Validate\nconst order: Order = { total: 100, status: 'pending' };\nconst ok = isPayable.isSatisfiedBy(order); // true\n\n// Fluent validator (returns Result<T, ValidationErrors>)\nconst validator = BusinessRuleValidator.create<Order>()\n  .addRule('total', o => o.total > 0, 'Total must be positive')\n  .addRule(\n    'status',\n    o => o.status !== 'cancelled',\n    'Cannot process cancelled order'\n  );\n\nconst result = validator.validate(order);\nif (result.isFailure) {\n  result.error.errors.forEach(e => console.error(e.property, e.message));\n}\n```",
+    "kind": "concept",
+    "feature": "validation",
+    "combines": [],
+    "tags": ["vytches-ddd", "validation"],
+    "level": "quickstart"
+  },
+  {
+    "section": "Specification.create<T>(predicate)",
+    "text": "`Specification.create<T>(predicate)` — Create inline spec from lambda — primary pattern",
+    "kind": "api",
+    "feature": "validation",
+    "combines": [],
+    "tags": ["vytches-ddd", "validation"],
+    "level": "core"
+  },
+  {
+    "section": "Specification.and<T>(...specs)",
+    "text": "`Specification.and<T>(...specs)` — Combine multiple specs with AND (static, variadic)",
+    "kind": "api",
+    "feature": "validation",
+    "combines": [],
+    "tags": ["vytches-ddd", "validation"],
+    "level": "core"
+  },
+  {
+    "section": "Specification.or<T>(...specs)",
+    "text": "`Specification.or<T>(...specs)` — Combine multiple specs with OR (static, variadic)",
+    "kind": "api",
+    "feature": "validation",
+    "combines": [],
+    "tags": ["vytches-ddd", "validation"],
+    "level": "core"
+  },
+  {
+    "section": "Specification.not<T>(spec)",
+    "text": "`Specification.not<T>(spec)` — Negate a spec",
+    "kind": "api",
+    "feature": "validation",
+    "combines": [],
+    "tags": ["vytches-ddd", "validation"],
+    "level": "core"
+  },
+  {
+    "section": "Specification.propertyEquals<T>(key, value)",
+    "text": "`Specification.propertyEquals<T>(key, value)` — Property equality spec",
+    "kind": "api",
+    "feature": "validation",
+    "combines": [],
+    "tags": ["vytches-ddd", "validation"],
+    "level": "core"
+  },
+  {
+    "section": "Specification.propertyIn<T>(key, values[])",
+    "text": "`Specification.propertyIn<T>(key, values[])` — Property membership spec",
+    "kind": "api",
+    "feature": "validation",
+    "combines": [],
+    "tags": ["vytches-ddd", "validation"],
+    "level": "core"
+  },
+  {
+    "section": "Specification.propertyBetween<T>(key, min, max)",
+    "text": "`Specification.propertyBetween<T>(key, min, max)` — Numeric range spec",
+    "kind": "api",
+    "feature": "validation",
+    "combines": [],
+    "tags": ["vytches-ddd", "validation"],
+    "level": "core"
+  },
+  {
+    "section": "Specification.alwaysTrue<T>()",
+    "text": "`Specification.alwaysTrue<T>()` — Unconditionally satisfied",
+    "kind": "api",
+    "feature": "validation",
+    "combines": [],
+    "tags": ["vytches-ddd", "validation"],
+    "level": "core"
+  },
+  {
+    "section": "Specification.alwaysFalse<T>()",
+    "text": "`Specification.alwaysFalse<T>()` — Never satisfied",
+    "kind": "api",
+    "feature": "validation",
+    "combines": [],
+    "tags": ["vytches-ddd", "validation"],
+    "level": "core"
+  },
+  {
+    "section": "CompositeSpecification<T>",
+    "text": "`CompositeSpecification<T>` — Base class for class-based specs; exposes `.and()`, `.or()`, `.not()`",
+    "kind": "api",
+    "feature": "validation",
+    "combines": [],
+    "tags": ["vytches-ddd", "validation"],
+    "level": "core"
+  },
+  {
+    "section": "MemoizedSpecification<T>",
+    "text": "`MemoizedSpecification<T>` — **Per-candidate caching** (VP-002) — wrap any spec; `WeakMap<T, boolean>` cache means repeated `isSatisfiedBy(sameCandidate)` runs the inner spec exactly once. `invalidate(c)` evicts manually. Use only for pure specs (no external state)",
+    "kind": "api",
+    "feature": "validation",
+    "combines": [],
+    "tags": ["vytches-ddd", "validation"],
+    "level": "core"
+  },
+  {
+    "section": "AsyncCompositeSpecification<T>",
+    "text": "`AsyncCompositeSpecification<T>` — Async base class with optional `name`, `description`, and `explainFailureAsync`",
+    "kind": "api",
+    "feature": "validation",
+    "combines": [],
+    "tags": ["vytches-ddd", "validation"],
+    "level": "core"
+  },
+  {
+    "section": "AsyncCompositeSpecification.create<T>(predicate, name?, desc?)",
+    "text": "`AsyncCompositeSpecification.create<T>(predicate, name?, desc?)` — Inline async spec",
+    "kind": "api",
+    "feature": "validation",
+    "combines": [],
+    "tags": ["vytches-ddd", "validation"],
+    "level": "core"
+  },
+  {
+    "section": "BusinessRuleValidator<T>",
+    "text": "`BusinessRuleValidator<T>` — Fluent validator; returns `Result<T, ValidationErrors>`",
+    "kind": "api",
+    "feature": "validation",
+    "combines": [],
+    "tags": ["vytches-ddd", "validation"],
+    "level": "core"
+  },
+  {
+    "section": "BusinessRuleValidator.fromSpecification<T>(spec, message)",
+    "text": "`BusinessRuleValidator.fromSpecification<T>(spec, message)` — Validator from a single spec",
+    "kind": "api",
+    "feature": "validation",
+    "combines": [],
+    "tags": ["vytches-ddd", "validation"],
+    "level": "core"
+  },
+  {
+    "section": "ValidationError / ValidationErrors",
+    "text": "`ValidationError` / `ValidationErrors` — Error types with `property`, `message`, `context`",
+    "kind": "api",
+    "feature": "validation",
+    "combines": [],
+    "tags": ["vytches-ddd", "validation"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "AndSpecification<T> / OrSpecification<T> / NotSpecification<T>",
+    "text": "`AndSpecification<T>` / `OrSpecification<T>` / `NotSpecification<T>` — Classes backing `.and()` / `.or()` / `.not()` on `CompositeSpecification` and the static `Specification.and()` / `.or()` / `.not()` — not usually constructed directly",
+    "kind": "api",
+    "feature": "validation",
+    "combines": [],
+    "tags": ["vytches-ddd", "validation"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "AndAsyncSpecification<T> / OrAsyncSpecification<T> / NotAsyncSpecification<T>",
+    "text": "`AndAsyncSpecification<T>` / `OrAsyncSpecification<T>` / `NotAsyncSpecification<T>` — Async counterparts backing `.and()` / `.or()` / `.not()` on `AsyncCompositeSpecification` (see Hidden Features for `AndAsyncSpecification`'s parallel `Promise.all` behavior) — not usually constructed directly",
+    "kind": "api",
+    "feature": "validation",
+    "combines": [],
+    "tags": ["vytches-ddd", "validation"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "AlwaysTrueSpecification<T> / AlwaysFalseSpecification<T>",
+    "text": "`AlwaysTrueSpecification<T>` / `AlwaysFalseSpecification<T>` — Classes backing `Specification.alwaysTrue()` / `Specification.alwaysFalse()`",
+    "kind": "api",
+    "feature": "validation",
+    "combines": [],
+    "tags": ["vytches-ddd", "validation"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "PredicateSpecification<T>",
+    "text": "`PredicateSpecification<T>` — Class backing `Specification.create()` (the inline lambda spec, see Quick Start)",
+    "kind": "api",
+    "feature": "validation",
+    "combines": [],
+    "tags": ["vytches-ddd", "validation"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "PropertyEqualsSpecification<T> / PropertyInSpecification<T> / PropertyBetweenSpecification<T>",
+    "text": "`PropertyEqualsSpecification<T>` / `PropertyInSpecification<T>` / `PropertyBetweenSpecification<T>` — Classes backing `Specification.propertyEquals()` / `.propertyIn()` / `.propertyBetween()`",
+    "kind": "api",
+    "feature": "validation",
+    "combines": [],
+    "tags": ["vytches-ddd", "validation"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "SpecificationValidator<T>",
+    "text": "`SpecificationValidator<T>` — Lower-level validator built purely from specs; `addRule(spec, message, property?)` attaches a spec, `addPropertyRule(property, spec, message, getValue)` validates a projected sub-value. See Pattern 4",
+    "kind": "api",
+    "feature": "validation",
+    "combines": [],
+    "tags": ["vytches-ddd", "validation"],
+    "level": "core"
+  },
+  {
+    "section": "ValidationFacade",
+    "text": "`ValidationFacade` — Utility object (`Validation` internally) with validator/spec conversion helpers: `combine()`, `validateWithSpecification()`, `validateWithRules()`, `forNestedPath()`, `validatePath()`, `useExternal()`. See Pattern 5",
+    "kind": "api",
+    "feature": "validation",
+    "combines": [],
+    "tags": ["vytches-ddd", "validation"],
+    "level": "core"
+  },
+  {
+    "section": "RulesRegistry",
+    "text": "`RulesRegistry` — Static registry of reusable named rule functions — built-in `Rules` (required, minLength, maxLength, pattern, range, email, satisfies, ...) plus `register()` / `forDomain()` for custom rule providers. See Pattern 6",
+    "kind": "api",
+    "feature": "validation",
+    "combines": [],
+    "tags": ["vytches-ddd", "validation"],
+    "level": "core"
+  },
+  {
+    "section": "BaseValidationAdapter<T, TSchema>",
+    "text": "`BaseValidationAdapter<T, TSchema>` — Abstract base class for wrapping external validation libraries (zod, class-validator, etc.) as `IValidator<T>`. See Pattern 7",
+    "kind": "api",
+    "feature": "validation",
+    "combines": [],
+    "tags": ["vytches-ddd", "validation"],
+    "level": "core"
+  },
+  {
+    "section": "AdapterUtils",
+    "text": "`AdapterUtils` — Static helpers to build adapters without a class: `create()`, `combine()`, `withErrorMapping()`. See Pattern 7",
+    "kind": "api",
+    "feature": "validation",
+    "combines": [],
+    "tags": ["vytches-ddd", "validation"],
+    "level": "core"
+  },
+  {
+    "section": "Pattern 1: Inline specs (preferred)",
+    "text": "### Pattern 1: Inline specs (preferred)\n\nUse `Specification.create` instead of classes for one-off or module-local specs.\nThis covers the vast majority of real-world cases.\n\n```typescript\nimport { Specification } from '@vytches/ddd-validation';\n\ninterface Product {\n  price: number;\n  stock: number;\n  active: boolean;\n}\n\nconst canPurchase = Specification.and(\n  Specification.create<Product>(p => p.active),\n  Specification.create<Product>(p => p.stock > 0),\n  Specification.create<Product>(p => p.price > 0)\n);\n\ncanPurchase.isSatisfiedBy(product); // boolean\n```",
+    "kind": "concept",
+    "feature": "validation",
+    "combines": [],
+    "tags": ["vytches-ddd", "validation"],
+    "level": "core"
+  },
+  {
+    "section": "Pattern 2: Class-based specs (reusable, named)",
+    "text": "### Pattern 2: Class-based specs (reusable, named)\n\nUse `CompositeSpecification` only when the spec is complex, reused across\nmultiple places, or needs an explicit name for error messages.\n\n```typescript\nimport { CompositeSpecification } from '@vytches/ddd-validation';\n\nclass MinimumOrderSpec extends CompositeSpecification<Order> {\n  constructor(private readonly minimum: number) {\n    super();\n  }\n\n  isSatisfiedBy(order: Order): boolean {\n    return order.total >= this.minimum;\n  }\n}\n\n// Composition still works on class instances\nconst policy = new MinimumOrderSpec(50).and(isPending);\n```",
+    "kind": "concept",
+    "feature": "validation",
+    "combines": [],
+    "tags": ["vytches-ddd", "validation"],
+    "level": "advanced"
+  },
+  {
+    "section": "Pattern 3: Async specs for I/O-dependent rules",
+    "text": "### Pattern 3: Async specs for I/O-dependent rules\n\n```typescript\nimport { AsyncCompositeSpecification } from '@vytches/ddd-validation';\n\nconst isUniqueEmail = AsyncCompositeSpecification.create<User>(\n  async (user, ctx) => {\n    const exists = await (ctx?.db as Db).users.findOne({ email: user.email });\n    return exists === null;\n  },\n  'UniqueEmailSpec',\n  'Email must be unique in the system'\n);\n\nconst combined = isUniqueEmail.and(anotherAsyncSpec);\nconst ok = await combined.isSatisfiedByAsync(user, { db });\n```",
+    "kind": "concept",
+    "feature": "validation",
+    "combines": [],
+    "tags": ["vytches-ddd", "validation"],
+    "level": "advanced"
+  },
+  {
+    "section": "Pattern 4: SpecificationValidator for property-projected specs",
+    "text": "### Pattern 4: `SpecificationValidator` for property-projected specs\n\nUse `SpecificationValidator` (instead of `BusinessRuleValidator`) when a rule is\nreally \"run this spec against a _projected_ value\" — `addPropertyRule` takes a\n`getValue` extractor and validates the projection, tagging errors with the\noriginal property name.\n\n```typescript\nimport { SpecificationValidator, Specification } from '@vytches/ddd-validation';\n\ninterface Order {\n  shipping: { country: string };\n}\n\nconst isEuCountry = Specification.create<string>(country =>\n  ['PL', 'DE', 'FR'].includes(country)\n);\n\nconst validator = SpecificationValidator.create<Order>().addPropertyRule(\n  'shipping',\n  isEuCountry,\n  'Shipping country must be in the EU',\n  order => order.shipping.country\n);\n\nconst result = validator.validate(order); // Result<Order, ValidationErrors>\n\n// Shortcut for a single whole-object rule\nconst single = SpecificationValidator.fromSpecification(\n  isEuCountry,\n  'Country must be in the EU'\n);\n```",
+    "kind": "concept",
+    "feature": "validation",
+    "combines": [],
+    "tags": ["vytches-ddd", "validation"],
+    "level": "advanced"
+  },
+  {
+    "section": "Pattern 5: ValidationFacade conversion helpers",
+    "text": "### Pattern 5: `ValidationFacade` conversion helpers\n\n`ValidationFacade` bundles standalone helpers for combining validators and\nconverting between validators and specifications — reach for it instead of\nhand-rolling `combine`/nested-path glue.\n\n```typescript\nimport { ValidationFacade } from '@vytches/ddd-validation';\n\n// Combine several independent validators; errors from all of them are merged\nconst combined = ValidationFacade.combine(\n  nameValidator,\n  ageValidator,\n  emailValidator\n);\nconst result = combined.validate(user);\n\n// Build a validator for a deeply nested path without hand-writing addNested() chains\nconst zipValidator = ValidationFacade.forNestedPath(\n  ['shipping', 'address'],\n  zipCodeValidator\n);\n```\n\nOther helpers on the same object: `validateWithSpecification()` /\n`validateWithRules()` (one-shot validation without pre-building a validator),\n`validatePath()` (validate a value at an arbitrary object path, prefixing error\nproperties with that path), `specificationToValidator()` /\n`validatorToSpecification()` (convert between the two abstractions), and\n`useExternal()` (typed passthrough for a validator that already implements\n`IValidator<T>`, e.g. a hand-written zod/class-validator wrapper).",
+    "kind": "concept",
+    "feature": "validation",
+    "combines": [],
+    "tags": ["vytches-ddd", "validation"],
+    "level": "advanced"
+  },
+  {
+    "section": "Pattern 6: RulesRegistry for reusable named rules",
+    "text": "### Pattern 6: `RulesRegistry` for reusable named rules\n\n`RulesRegistry.Rules` exposes core rule builders (`required`, `minLength`,\n`maxLength`, `pattern`, `range`, `email`, `satisfies`, `propertySatisfies`,\n`when`, `whenSatisfies`, `otherwise`) as `RuleFunction<T>` factories — each\nreturns a function that takes a `BusinessRuleValidator<T>` and returns it with\nthe rule attached.\n\n```typescript\nimport { RulesRegistry, BusinessRuleValidator } from '@vytches/ddd-validation';\n\nconst validator = BusinessRuleValidator.create<User>();\nRulesRegistry.Rules.required<User>('email')(validator);\nRulesRegistry.Rules.email<User>('email')(validator);\n\n// Register a domain-specific rule provider once (throws if the name is\n// already taken), then reuse it anywhere via forDomain()\nconst orderRules = {\n  name: 'order',\n  minTotal:\n    (min: number, message?: string) => (v: BusinessRuleValidator<Order>) =>\n      v.addRule(\n        'total',\n        (o: Order) => o.total >= min,\n        message ?? `Total must be >= ${min}`\n      ),\n};\n\nRulesRegistry.register(orderRules);\nRulesRegistry.forDomain<typeof orderRules>('order').minTotal(100)(\n  validator as never\n);\n```\n\n**Security note:** `Rules.pattern(property, regex, message)` runs `regex`\nagainst input data — never build the `RegExp` from user-controlled strings\n(`new RegExp(userInput)`), that opens a ReDoS vector. Use only literal,\nreview-able patterns.",
+    "kind": "concept",
+    "feature": "validation",
+    "combines": [],
+    "tags": ["vytches-ddd", "validation"],
+    "level": "advanced"
+  },
+  {
+    "section": "Pattern 7: Adapting external validation libraries",
+    "text": "### Pattern 7: Adapting external validation libraries\n\nTwo ways to wrap an external validator (zod, class-validator, ...) as an\n`IValidator<T>`: a reusable class via `BaseValidationAdapter`, or a one-off\nfunction via `AdapterUtils.create`.\n\n```typescript\nimport { BaseValidationAdapter, AdapterUtils } from '@vytches/ddd-validation';\n\n// Class-based: reusable, schema stored on the instance\nclass ZodAdapter<T> extends BaseValidationAdapter<\n  T,\n  { safeParse: (v: T) => any }\n> {\n  validate(value: T) {\n    const parsed = this.schema.safeParse(value);\n    if (!parsed.success) {\n      const errors = parsed.error.issues.map((issue: any) =>\n        this.createValidationError(issue.path.join('.'), issue.message)\n      );\n      return this.failWithErrors(errors);\n    }\n    return this.success(value);\n  }\n}\n\nconst userValidator = new ZodAdapter(userSchema);\n\n// Function-based: no class needed for a one-off adapter\nconst quickValidator = AdapterUtils.create<User>(user => ({\n  success: user.age >= 18,\n  errors: user.age >= 18 ? undefined : ['Must be an adult'],\n}));\n\n// Combine several adapters into one IValidator<T>\nconst combinedValidator = AdapterUtils.combine(userValidator, quickValidator);\n```\n\n`AdapterUtils.withErrorMapping(validateFn, errorMapper)` is a third option when\nthe external library's error shape needs a custom `TError -> ValidationError`\nmapping instead of the plain `string[]` shape `create()` expects.",
+    "kind": "concept",
+    "feature": "validation",
+    "combines": [],
+    "tags": ["vytches-ddd", "validation"],
+    "level": "advanced"
+  },
+  {
+    "section": "Anti-pattern: Creating a class for a one-off validation",
+    "text": "**Creating a class for a one-off validation.** Use `Specification.create`\ninstead. Class-based specs make sense only when the spec is exported and reused\nin several modules.\n\n```typescript\n// Wrong: unnecessary class\nclass IsActiveSpec extends CompositeSpecification<User> {\n  isSatisfiedBy(u: User) {\n    return u.isActive;\n  }\n}\n\n// Correct: inline\nconst isActive = Specification.create<User>(u => u.isActive);\n```",
+    "kind": "anti_pattern",
+    "feature": "validation",
+    "combines": [],
+    "tags": ["vytches-ddd", "validation"],
+    "level": "core"
+  },
+  {
+    "section": "Anti-pattern: Using AsyncCompositeSpecification when no I/O is involved",
+    "text": "**Using `AsyncCompositeSpecification` when no I/O is involved.** Async execution\nis slower and complicates composition. Prefer sync specs and convert to async\nonly at the point that actually needs awaiting.",
+    "kind": "anti_pattern",
+    "feature": "validation",
+    "combines": [],
+    "tags": ["vytches-ddd", "validation"],
+    "level": "core"
+  },
+  {
+    "section": "Anti-pattern: Ignoring BusinessRuleValidator.validate() return value",
+    "text": "**Ignoring `BusinessRuleValidator.validate()` return value.** The method returns\n`Result<T, ValidationErrors>`, not a boolean. Always check `result.isFailure`\nbefore proceeding.",
+    "kind": "anti_pattern",
+    "feature": "validation",
+    "combines": [],
+    "tags": ["vytches-ddd", "validation"],
+    "level": "core"
+  },
+  {
+    "section": "Anti-pattern: Calling Specification.and() or Specification.or() with zero arguments",
+    "text": "**Calling `Specification.and()` or `Specification.or()` with zero arguments.**\nBoth return `AlwaysTrue` and `AlwaysFalse` respectively for the empty case —\nwhich may be surprising.",
+    "kind": "anti_pattern",
+    "feature": "validation",
+    "combines": [],
+    "tags": ["vytches-ddd", "validation"],
+    "level": "core"
+  },
+  {
+    "section": "Anti-pattern: Using when().otherwise() without a preceding when() call",
+    "text": "**Using `when().otherwise()` without a preceding `when()` call.**\n`BusinessRuleValidator.otherwise()` throws at runtime if `when()` was not called\nimmediately before it.",
+    "kind": "anti_pattern",
+    "feature": "validation",
+    "combines": [],
+    "tags": ["vytches-ddd", "validation"],
+    "level": "core"
+  },
+  {
+    "section": "Hidden feature: Specification.and<T>(...specs) accepts variadic arguments",
+    "text": "**`Specification.and<T>(...specs)` accepts variadic arguments.** Unlike the\ninstance `.and()` method (which takes one argument), the static\n`Specification.and` accepts an arbitrary number of specs and chains them all.",
+    "kind": "concept",
+    "feature": "validation",
+    "combines": [],
+    "tags": ["vytches-ddd", "validation"],
+    "level": "advanced"
+  },
+  {
+    "section": "Hidden feature: AsyncCompositeSpecification runs .and() children in parallel",
+    "text": "**`AsyncCompositeSpecification` runs `.and()` children in parallel.**\n`AndAsyncSpecification.isSatisfiedByAsync` uses `Promise.all`, so two async\nspecs are evaluated concurrently, not sequentially.",
+    "kind": "concept",
+    "feature": "validation",
+    "combines": [],
+    "tags": ["vytches-ddd", "validation"],
+    "level": "advanced"
+  },
+  {
+    "section": "Hidden feature: BusinessRuleValidator.when() supports spec-based conditions via whenSatisfies",
+    "text": "**`BusinessRuleValidator.when()` supports spec-based conditions via\n`whenSatisfies`.** You can pass a `ISpecification<T>` directly instead of a\nplain predicate function.\n\n```typescript\nconst validator = BusinessRuleValidator.create<Order>().whenSatisfies(\n  Specification.create<Order>(o => o.type === 'international'),\n  v =>\n    v.addRule(\n      'country',\n      o => !!o.country,\n      'Country required for international orders'\n    )\n);\n```",
+    "kind": "concept",
+    "feature": "validation",
+    "combines": [],
+    "tags": ["vytches-ddd", "validation"],
+    "level": "advanced"
+  },
+  {
+    "section": "Hidden feature: BusinessRuleValidator.addNested() propagates dot-notation paths",
+    "text": "**`BusinessRuleValidator.addNested()` propagates dot-notation paths.** Nested\nvalidators prefix error property paths automatically (e.g., `address.zip`).",
+    "kind": "concept",
+    "feature": "validation",
+    "combines": [],
+    "tags": ["vytches-ddd", "validation"],
+    "level": "advanced"
+  }
+]

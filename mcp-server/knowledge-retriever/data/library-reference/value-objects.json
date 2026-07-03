@@ -1,0 +1,430 @@
+[
+  {
+    "section": "Overview",
+    "text": "## Purpose\n\nProvides `BaseValueObject` for immutable domain values and `EntityId` for\nstrongly-typed aggregate identifiers with built-in validation across four ID\nstrategies (UUID, integer, bigint, text).\n\n## Quick Start\n\n```typescript\nimport { BaseValueObject, EntityId } from '@vytches/ddd-value-objects';\n\n// Create a value object\nclass Money extends BaseValueObject<number> {\n  static create(amount: number): Money {\n    const vo = new Money(amount);\n    if (!vo.validate(amount)) throw new Error('Amount must be non-negative');\n    return vo;\n  }\n  validate(value: unknown): boolean {\n    return typeof value === 'number' && value >= 0;\n  }\n  add(other: Money): Money {\n    return Money.create(this.getValue() + other.getValue());\n  }\n}\n\n// Create entity IDs\nconst id = EntityId.create(); // random UUID\nconst fromDb = EntityId.fromUUID('550e8400-e29b-41d4-a716-446655440000');\nconst intId = EntityId.fromInteger(42);\nconst textId = EntityId.fromText('order-slug');\n```",
+    "kind": "concept",
+    "feature": "value-objects",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "value-objects"
+    ],
+    "level": "quickstart"
+  },
+  {
+    "section": "BaseValueObject<T>",
+    "text": "| `BaseValueObject<T>` | abstract class | Immutable value holder; provides `equals`, `getValue`, `toString`, `toJSON` |",
+    "kind": "api",
+    "feature": "value-objects",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "value-objects"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "EntityId<T>",
+    "text": "| `EntityId<T>` | class | Validated aggregate identifier; extends contracts `EntityId` |",
+    "kind": "api",
+    "feature": "value-objects",
+    "combines": [
+      "contracts"
+    ],
+    "tags": [
+      "vytches-ddd",
+      "value-objects"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "EntityId.create()",
+    "text": "| `EntityId.create()` | static method | Creates a new random-UUID `EntityId<string>` |",
+    "kind": "api",
+    "feature": "value-objects",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "value-objects"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "EntityId.fromUUID(v)",
+    "text": "| `EntityId.fromUUID(v)` | static method | Parses and validates a UUID string |",
+    "kind": "api",
+    "feature": "value-objects",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "value-objects"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "EntityId.fromInteger(v)",
+    "text": "| `EntityId.fromInteger(v)` | static method | Validates non-negative integer, stores as string |",
+    "kind": "api",
+    "feature": "value-objects",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "value-objects"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "EntityId.fromBigInt(v)",
+    "text": "| `EntityId.fromBigInt(v)` | static method | Validates bigint string/bigint, stores as string |",
+    "kind": "api",
+    "feature": "value-objects",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "value-objects"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "EntityId.fromText(v)",
+    "text": "| `EntityId.fromText(v)` | static method | Validates non-empty text with safe characters |",
+    "kind": "api",
+    "feature": "value-objects",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "value-objects"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "EntityId.tryFromUUID(v)",
+    "text": "| `EntityId.tryFromUUID(v)` | static method | Like `fromUUID` but returns `Result<EntityId, Error>` instead of throwing |",
+    "kind": "api",
+    "feature": "value-objects",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "value-objects"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "EntityId.tryFromInteger(v)",
+    "text": "| `EntityId.tryFromInteger(v)` | static method | Like `fromInteger` but returns `Result<EntityId, Error>` |",
+    "kind": "api",
+    "feature": "value-objects",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "value-objects"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "EntityId.tryFromBigInt(v)",
+    "text": "| `EntityId.tryFromBigInt(v)` | static method | Like `fromBigInt` but returns `Result<EntityId, Error>` |",
+    "kind": "api",
+    "feature": "value-objects",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "value-objects"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "EntityId.tryFromText(v)",
+    "text": "| `EntityId.tryFromText(v)` | static method | Like `fromText` but returns `Result<EntityId, Error>` |",
+    "kind": "api",
+    "feature": "value-objects",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "value-objects"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "EntityIdFactory",
+    "text": "| `EntityIdFactory` | class | **Deprecated.** Use `EntityId` static methods instead |",
+    "kind": "api",
+    "feature": "value-objects",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "value-objects"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IEntityId<T>",
+    "text": "| `IEntityId<T>` | re-exported type | From `@vytches/ddd-contracts` — the interface |",
+    "kind": "api",
+    "feature": "value-objects",
+    "combines": [
+      "contracts"
+    ],
+    "tags": [
+      "vytches-ddd",
+      "value-objects"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IEntityIdFactory",
+    "text": "| `IEntityIdFactory` | re-exported type | From `@vytches/ddd-contracts` — the factory interface |",
+    "kind": "api",
+    "feature": "value-objects",
+    "combines": [
+      "contracts"
+    ],
+    "tags": [
+      "vytches-ddd",
+      "value-objects"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IdType",
+    "text": "| `IdType` | re-exported type | `'uuid' | 'integer' | 'text' | 'bigint'` |",
+    "kind": "api",
+    "feature": "value-objects",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "value-objects"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "getValue(): T",
+    "text": "| `getValue(): T` | Returns the raw wrapped value |",
+    "kind": "api",
+    "feature": "value-objects",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "value-objects"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "equals(other): boolean",
+    "text": "| `equals(other): boolean` | Structural equality by raw value (`===`) |",
+    "kind": "api",
+    "feature": "value-objects",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "value-objects"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "toString(): string",
+    "text": "| `toString(): string` | `String(value)` |",
+    "kind": "api",
+    "feature": "value-objects",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "value-objects"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "toJSON(): string",
+    "text": "| `toJSON(): string` | `JSON.stringify(value)` |",
+    "kind": "api",
+    "feature": "value-objects",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "value-objects"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "abstract validate(value): boolean",
+    "text": "| `abstract validate(value): boolean` | Must be implemented; called in subclass `create()` |",
+    "kind": "api",
+    "feature": "value-objects",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "value-objects"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "Pattern: Validated value object with factory",
+    "text": "### Validated value object with factory\n\n```typescript\nimport { BaseValueObject } from '@vytches/ddd-value-objects';\n\nclass EmailAddress extends BaseValueObject<string> {\n  static create(raw: string): EmailAddress {\n    const vo = new EmailAddress(raw.toLowerCase().trim());\n    if (!vo.validate(raw)) {\n      throw new Error(`Invalid email: ${raw}`);\n    }\n    return vo;\n  }\n\n  validate(value: unknown): boolean {\n    return (\n      typeof value === 'string' && /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(value)\n    );\n  }\n}\n\nconst email = EmailAddress.create('Alice@Example.com');\nemail.getValue(); // 'alice@example.com'\nemail.equals(EmailAddress.create('alice@example.com')); // true\n```",
+    "kind": "concept",
+    "feature": "value-objects",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "value-objects"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "Pattern: Using EntityId as aggregate key",
+    "text": "### Using EntityId as aggregate key\n\n```typescript\nimport { EntityId } from '@vytches/ddd-value-objects';\nimport { AggregateRoot } from '@vytches/ddd-aggregates';\nimport type { IAggregateConstructorParams } from '@vytches/ddd-aggregates';\n\nclass Order extends AggregateRoot<string> {\n  constructor(params: IAggregateConstructorParams<string>) {\n    super(params);\n  }\n\n  static create(): Order {\n    return new Order({ id: EntityId.create(), version: 0 });\n  }\n}\n\nconst order = Order.create();\norder.getId().getValue(); // UUID string\norder.getId().getType(); // 'uuid'\norder.getId().toString(); // same UUID string\n```",
+    "kind": "concept",
+    "feature": "value-objects",
+    "combines": [
+      "aggregates"
+    ],
+    "tags": [
+      "vytches-ddd",
+      "value-objects"
+    ],
+    "level": "advanced"
+  },
+  {
+    "section": "Pattern: Comparing two IDs",
+    "text": "### Comparing two IDs\n\n```typescript\nimport { EntityId } from '@vytches/ddd-value-objects';\n\nconst a = EntityId.fromUUID('550e8400-e29b-41d4-a716-446655440000');\nconst b = EntityId.fromUUID('550e8400-e29b-41d4-a716-446655440000');\n\na.equals(b); // true\na.getValue() === b.getValue(); // true — same raw string\n```",
+    "kind": "concept",
+    "feature": "value-objects",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "value-objects"
+    ],
+    "level": "advanced"
+  },
+  {
+    "section": "Anti-pattern: Making value objects mutable",
+    "text": "**Making value objects mutable.** `BaseValueObject.value` is `readonly` — never\nexpose a setter. All transformations must return a new instance (e.g., `add()`\nreturns `Money.create(...)`).",
+    "kind": "anti_pattern",
+    "feature": "value-objects",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "value-objects"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "Anti-pattern: Not implementing validate()",
+    "text": "**Not implementing `validate()`.** The abstract method must be implemented.\nReturning `true` unconditionally defeats the purpose. Call `validate` inside the\nstatic factory and throw or return `Result.fail` there — do not throw inside the\nconstructor.",
+    "kind": "anti_pattern",
+    "feature": "value-objects",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "value-objects"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "Anti-pattern: Using primitive types instead of value objects for domain concepts",
+    "text": "**Using primitive types instead of value objects for domain concepts.** Passing\n`string` for email or `number` for money loses invariant enforcement at compile\ntime. Wrap every domain-meaningful primitive in a `BaseValueObject` subclass.",
+    "kind": "anti_pattern",
+    "feature": "value-objects",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "value-objects"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "Anti-pattern: Using EntityIdFactory in new code",
+    "text": "**Using `EntityIdFactory` in new code.** `EntityIdFactory` is deprecated. Use\n`EntityId.create()`, `EntityId.fromUUID()`, etc. directly. The factory class\nexists only for backward compatibility.",
+    "kind": "anti_pattern",
+    "feature": "value-objects",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "value-objects"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "Anti-pattern: Calling new EntityId(value, type) directly in application code",
+    "text": "**Calling `new EntityId(value, type)` directly in application code.** The\nconstructor does not validate the value in the base class. Always use the static\nfactory methods (`create`, `fromUUID`, etc.) which throw `InvalidParameterError`\nor `MissingValueError` on bad input.",
+    "kind": "anti_pattern",
+    "feature": "value-objects",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "value-objects"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "Hidden feature: EntityId.fromInteger stores the integer as a string",
+    "text": "`EntityId.fromInteger` stores the integer as a string internally (returns\n`EntityId<string>` not `EntityId<number>`) — this is intentional for consistent\nserialization across all ID types.",
+    "kind": "concept",
+    "feature": "value-objects",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "value-objects"
+    ],
+    "level": "advanced"
+  },
+  {
+    "section": "Hidden feature: EntityId.fromBigInt accepts bigint or string",
+    "text": "`EntityId.fromBigInt` accepts both a native `bigint` and a `string`\nrepresentation — useful when reading from databases that return bigints as\nstrings.",
+    "kind": "concept",
+    "feature": "value-objects",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "value-objects"
+    ],
+    "level": "advanced"
+  },
+  {
+    "section": "Hidden feature: BaseValueObject.toJSON() returns a JSON string",
+    "text": "`BaseValueObject.toJSON()` returns a JSON-serialized string of the value, not\nthe value itself — if you assign a value object to a JSON payload, call\n`getValue()` instead of `toJSON()` to avoid double-encoding.",
+    "kind": "concept",
+    "feature": "value-objects",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "value-objects"
+    ],
+    "level": "advanced"
+  },
+  {
+    "section": "Hidden feature: validate() receives unknown, not T",
+    "text": "The `validate()` method on `BaseValueObject` receives `unknown` (not `T`) —\nimplement defensive type checks even though TypeScript narrows the parameter in\npractice.",
+    "kind": "concept",
+    "feature": "value-objects",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "value-objects"
+    ],
+    "level": "advanced"
+  },
+  {
+    "section": "Result-Returning Factories (since 0.24.0)",
+    "text": "Prefer `tryFromX()` over `fromX()` — returns `Result<EntityId, Error>` instead\nof throwing, enabling functional error handling.\n\n```typescript\nimport { EntityId } from '@vytches/ddd-value-objects';\n\n// Returns Result — never throws\nconst result = EntityId.tryFromUUID(userInput);\n\nif (result.isFailure) {\n  console.log('Invalid ID:', result.error.message);\n  return;\n}\n\nconst id = result.value; // EntityId<string>\n\n// Chain with Result.map/flatMap\nconst idString = EntityId.tryFromUUID(userInput).map(id => id.value);\n```\n\nAvailable: `tryFromUUID`, `tryFromInteger`, `tryFromBigInt`, `tryFromText`. The\n`fromX()` throwing variants still work for backward compatibility.",
+    "kind": "concept",
+    "feature": "value-objects",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "value-objects"
+    ],
+    "level": "advanced"
+  },
+  {
+    "section": "Branded ID Types (since 0.24.0)",
+    "text": "Prevent accidentally passing an OrderId where a CustomerId is expected. Zero\nruntime overhead — branding exists only in the type system.\n\n```typescript\nimport {\n  type BrandedId,\n  newBrandedId,\n  brandedIdFromUUID,\n} from '@vytches/ddd-value-objects';\n\n// Define domain-specific ID types\ntype OrderId = BrandedId<'Order'>;\ntype CustomerId = BrandedId<'Customer'>;\n\n// Create branded IDs\nconst orderId: OrderId = newBrandedId<'Order'>();\nconst customerId: CustomerId = brandedIdFromUUID<'Customer'>('550e8400-...');\n\n// Type-safe function — compile error if wrong ID type passed\nfunction cancelOrder(id: OrderId): void {\n  /* ... */\n}\ncancelOrder(orderId); // OK\n// cancelOrder(customerId); // Compile error!\n```\n\nAvailable factories: `createBrandedId<Tag>(entityId)`, `newBrandedId<Tag>()`,\n`brandedIdFromUUID<Tag>(uuid)`, `brandedIdFromText<Tag>(text)`.",
+    "kind": "concept",
+    "feature": "value-objects",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "value-objects"
+    ],
+    "level": "advanced"
+  }
+]

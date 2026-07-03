@@ -1,0 +1,317 @@
+[
+  {
+    "section": "Overview",
+    "text": "## Purpose\n\nFramework-agnostic dependency injection abstraction. Provides a global service\nlocator with optional context isolation, container builder + simple in-memory\ncontainer, and a base adapter for plugging in external DI frameworks (NestJS,\nInversifyJS, tsyringe, etc.).\n\nUse this package when you want to author code that compiles against\n`@vytches/ddd-*` without locking into a specific DI host.\n\n## Quick Start\n\n```typescript\nimport { ContainerBuilder, SimpleContainer } from '@vytches/ddd-di';\n\n// 1. Build a container\nconst container = new ContainerBuilder()\n  .register('Logger', () => new DefaultLogger())\n  .register('UserRepository', c => new UserRepository(c.resolve('Logger')))\n  .build();\n\n// 2. Resolve services\nconst userRepo = container.resolve<UserRepository>('UserRepository');\n```",
+    "kind": "concept",
+    "feature": "di",
+    "combines": [],
+    "tags": ["vytches-ddd", "di"],
+    "level": "quickstart"
+  },
+  {
+    "section": "ContainerBuilder",
+    "text": "`ContainerBuilder` | Fluent builder for assembling a `SimpleContainer`",
+    "kind": "api",
+    "feature": "di",
+    "combines": [],
+    "tags": ["vytches-ddd", "di"],
+    "level": "core"
+  },
+  {
+    "section": "IContainerBuilder",
+    "text": "`IContainerBuilder` | Contract implemented by `ContainerBuilder`: `register`/`registerFactory`/`registerInstance`/`build`",
+    "kind": "api",
+    "feature": "di",
+    "combines": [],
+    "tags": ["vytches-ddd", "di"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "SimpleContainer",
+    "text": "`SimpleContainer` | In-memory container; `register`, `resolve`, `has`",
+    "kind": "api",
+    "feature": "di",
+    "combines": [],
+    "tags": ["vytches-ddd", "di"],
+    "level": "core"
+  },
+  {
+    "section": "BaseContainerAdapter",
+    "text": "`BaseContainerAdapter` | Extend to wrap an external DI framework as a vytches container",
+    "kind": "api",
+    "feature": "di",
+    "combines": [],
+    "tags": ["vytches-ddd", "di"],
+    "level": "core"
+  },
+  {
+    "section": "IDependencyContainer",
+    "text": "`IDependencyContainer` | Container public contract implemented by `SimpleContainer` and adapters",
+    "kind": "api",
+    "feature": "di",
+    "combines": [],
+    "tags": ["vytches-ddd", "di"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IServiceLocator",
+    "text": "`IServiceLocator` | Contract implemented by `ServiceLocator` (see Patterns below)",
+    "kind": "api",
+    "feature": "di",
+    "combines": [],
+    "tags": ["vytches-ddd", "di"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "ServiceLocator",
+    "text": "`ServiceLocator` | Singleton global service locator with optional per-context containers; obtain via `getInstance()`",
+    "kind": "api",
+    "feature": "di",
+    "combines": [],
+    "tags": ["vytches-ddd", "di"],
+    "level": "core"
+  },
+  {
+    "section": "VytchesDDD",
+    "text": "`VytchesDDD` | Static facade over `ServiceLocator.getInstance()` — configure/resolve/discover via static methods",
+    "kind": "api",
+    "feature": "di",
+    "combines": [],
+    "tags": ["vytches-ddd", "di"],
+    "level": "core"
+  },
+  {
+    "section": "ServiceToken<T>",
+    "text": "`ServiceToken<T>` | Symbol/string/`Constructor<T>` identifier for a registration",
+    "kind": "api",
+    "feature": "di",
+    "combines": [],
+    "tags": ["vytches-ddd", "di"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "ServiceFactory<T>",
+    "text": "`ServiceFactory<T>` | `(container) => T` factory function",
+    "kind": "api",
+    "feature": "di",
+    "combines": [],
+    "tags": ["vytches-ddd", "di"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "Constructor<T>",
+    "text": "`Constructor<T>` | `new (...args: unknown[]) => T` — shape used by `ServiceToken`, `HandlerInfo`, `implementation` params",
+    "kind": "api",
+    "feature": "di",
+    "combines": [],
+    "tags": ["vytches-ddd", "di"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "ServiceRegistrationOptions",
+    "text": "`ServiceRegistrationOptions` | `{ lifetime?, context?, tags? }` — options param of `register`/`registerFactory`/`registerInstance`",
+    "kind": "api",
+    "feature": "di",
+    "combines": [],
+    "tags": ["vytches-ddd", "di"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "ServiceDescriptor<T>",
+    "text": "`ServiceDescriptor<T>` | Return type of `IDependencyContainer.getServices()` / `getServicesByTag()`",
+    "kind": "api",
+    "feature": "di",
+    "combines": [],
+    "tags": ["vytches-ddd", "di"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "ResolutionContext",
+    "text": "`ResolutionContext` | Diagnostic record of an in-flight resolution: `token`, `resolutionChain`, `context`, `timestamp`",
+    "kind": "api",
+    "feature": "di",
+    "combines": [],
+    "tags": ["vytches-ddd", "di"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "ServiceLifetime",
+    "text": "`ServiceLifetime` | `Transient`, `Singleton`, `Scoped`",
+    "kind": "api",
+    "feature": "di",
+    "combines": [],
+    "tags": ["vytches-ddd", "di"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "DIError",
+    "text": "`DIError` | Base error for container failures",
+    "kind": "api",
+    "feature": "di",
+    "combines": [],
+    "tags": ["vytches-ddd", "di"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "ServiceNotFoundError",
+    "text": "`ServiceNotFoundError` | Thrown when `resolve(token)` finds no registration",
+    "kind": "api",
+    "feature": "di",
+    "combines": [],
+    "tags": ["vytches-ddd", "di"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "CircularDependencyError",
+    "text": "`CircularDependencyError` | Thrown when factory chain re-enters itself",
+    "kind": "api",
+    "feature": "di",
+    "combines": [],
+    "tags": ["vytches-ddd", "di"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "ServiceAlreadyRegisteredError",
+    "text": "`ServiceAlreadyRegisteredError` | Thrown when registering a token that already exists in a given context",
+    "kind": "api",
+    "feature": "di",
+    "combines": [],
+    "tags": ["vytches-ddd", "di"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "InvalidRegistrationError",
+    "text": "`InvalidRegistrationError` | Thrown when a registration call is malformed (e.g. bad token/implementation combination)",
+    "kind": "api",
+    "feature": "di",
+    "combines": [],
+    "tags": ["vytches-ddd", "di"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "ContainerConfigurationError",
+    "text": "`ContainerConfigurationError` | Thrown by `ServiceLocator`/`VytchesDDD` when `configure()` was never called or given a null container",
+    "kind": "api",
+    "feature": "di",
+    "combines": [],
+    "tags": ["vytches-ddd", "di"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "ContainerDisposedError",
+    "text": "`ContainerDisposedError` | Thrown when a `ServiceLocator`/`VytchesDDD` method is called after `dispose()`",
+    "kind": "api",
+    "feature": "di",
+    "combines": [],
+    "tags": ["vytches-ddd", "di"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "HandlerDiscoveryRegistry",
+    "text": "`HandlerDiscoveryRegistry` | Registry of `IHandlerDiscoveryPlugin`s used to auto-discover command/query/event handlers (see Patterns below)",
+    "kind": "api",
+    "feature": "di",
+    "combines": [],
+    "tags": ["vytches-ddd", "di"],
+    "level": "core"
+  },
+  {
+    "section": "IHandlerDiscoveryRegistry",
+    "text": "`IHandlerDiscoveryRegistry` | Contract implemented by `HandlerDiscoveryRegistry`",
+    "kind": "api",
+    "feature": "di",
+    "combines": [],
+    "tags": ["vytches-ddd", "di"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IHandlerDiscoveryPlugin",
+    "text": "`IHandlerDiscoveryPlugin` | Contract a consumer implements to plug a framework's handler scanning into discovery",
+    "kind": "api",
+    "feature": "di",
+    "combines": [],
+    "tags": ["vytches-ddd", "di"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "HandlerInfo",
+    "text": "`HandlerInfo` | `{ type, messageType, handlerType, metadata }` — element returned by handler discovery",
+    "kind": "api",
+    "feature": "di",
+    "combines": [],
+    "tags": ["vytches-ddd", "di"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "Adapting NestJS DI",
+    "text": "### Adapting NestJS DI\n\n```typescript\nimport { BaseContainerAdapter } from '@vytches/ddd-di';\nimport type { ModuleRef } from '@nestjs/core';\n\nclass NestjsAdapter extends BaseContainerAdapter {\n  constructor(private readonly moduleRef: ModuleRef) {\n    super();\n  }\n\n  resolve<T>(token: string | symbol): T {\n    return this.moduleRef.get<T>(token as never, { strict: false });\n  }\n\n  has(token: string | symbol): boolean {\n    try {\n      this.moduleRef.get(token as never, { strict: false });\n      return true;\n    } catch {\n      return false;\n    }\n  }\n}\n```",
+    "kind": "concept",
+    "feature": "di",
+    "combines": [],
+    "tags": ["vytches-ddd", "di"],
+    "level": "core"
+  },
+  {
+    "section": "Singleton vs scoped lifetime",
+    "text": "### Singleton vs scoped lifetime\n\n```typescript\ncontainer.register(\n  'OrderRepository',\n  c => new OrderRepository(c.resolve('Db')),\n  {\n    lifetime: 'Singleton', // shared instance\n  }\n);\n\ncontainer.register('RequestContext', () => new RequestContext(), {\n  lifetime: 'Scoped', // new per logical scope\n});\n```",
+    "kind": "concept",
+    "feature": "di",
+    "combines": [],
+    "tags": ["vytches-ddd", "di"],
+    "level": "advanced"
+  },
+  {
+    "section": "Global service locator with context isolation",
+    "text": "### Global service locator with context isolation\n\n`VytchesDDD` is a static facade over the `ServiceLocator` singleton\n(`ServiceLocator.getInstance()`); use whichever call style fits — both share the\nsame underlying state.\n\n```typescript\nimport { VytchesDDD, ContainerBuilder } from '@vytches/ddd-di';\n\n// Configure the global (default) container\nVytchesDDD.configure(\n  new ContainerBuilder().register('Logger', () => new DefaultLogger()).build()\n);\n\n// Configure a context-isolated container, e.g. per bounded context\nVytchesDDD.configureContext(\n  'billing',\n  new ContainerBuilder().register('Logger', () => new BillingLogger()).build()\n);\n\n// Context-aware resolution: tries 'billing' first, falls back to global\nconst logger = VytchesDDD.resolve<Logger>('Logger', 'billing');\n\n// Equivalent using the singleton instance directly\nimport { ServiceLocator } from '@vytches/ddd-di';\nconst locator = ServiceLocator.getInstance();\nlocator.isRegistered('Logger', 'billing'); // true\n\n// Reset all state between tests (singleton persists across test files)\nVytchesDDD.reset();\n```",
+    "kind": "concept",
+    "feature": "di",
+    "combines": [],
+    "tags": ["vytches-ddd", "di"],
+    "level": "advanced"
+  },
+  {
+    "section": "Custom handler discovery plugin",
+    "text": "### Custom handler discovery plugin\n\n`HandlerDiscoveryRegistry` (used internally by\n`VytchesDDD.discoverAndRegisterHandlers`) collects `HandlerInfo` entries from\none or more `IHandlerDiscoveryPlugin`s — implement the interface to teach\ndiscovery about a new scanning source (e.g. a decorator-based registry or a\nframework's module graph).\n\n```typescript\nimport type { IHandlerDiscoveryPlugin, HandlerInfo } from '@vytches/ddd-di';\nimport { HandlerDiscoveryRegistry, VytchesDDD } from '@vytches/ddd-di';\n\nclass DecoratorScanPlugin implements IHandlerDiscoveryPlugin {\n  readonly name = 'decorator-scan';\n\n  isAvailable(): boolean {\n    return true;\n  }\n\n  discoverHandlers(): HandlerInfo[] {\n    return [\n      {\n        type: 'command',\n        messageType: CreateOrderCommand,\n        handlerType: CreateOrderHandler,\n        metadata: undefined,\n      },\n    ];\n  }\n}\n\n// Register directly on a registry instance...\nconst registry = new HandlerDiscoveryRegistry();\nregistry.registerPlugin(new DecoratorScanPlugin());\nconst handlers = await registry.discoverAllHandlers();\n\n// ...or through the service locator, which registers discovered\n// handlers into the currently configured global container.\nVytchesDDD.registerDiscoveryPlugin(new DecoratorScanPlugin());\nawait VytchesDDD.discoverAndRegisterHandlers();\n```",
+    "kind": "concept",
+    "feature": "di",
+    "combines": [],
+    "tags": ["vytches-ddd", "di"],
+    "level": "advanced"
+  },
+  {
+    "section": "Anti-pattern: Do not use the global service locator inside aggregates or value objects",
+    "text": "**Do not use the global service locator inside aggregates or value objects** —\npass dependencies through constructor parameters. Service locator is for\napplication/infrastructure layer, not domain.",
+    "kind": "anti_pattern",
+    "feature": "di",
+    "combines": [],
+    "tags": ["vytches-ddd", "di"],
+    "level": "core"
+  },
+  {
+    "section": "Anti-pattern: Do not register infrastructure adapters as Transient",
+    "text": "**Do not register infrastructure adapters as `Transient`** — DB clients,\nloggers, and HTTP clients should be `Singleton`.",
+    "kind": "anti_pattern",
+    "feature": "di",
+    "combines": [],
+    "tags": ["vytches-ddd", "di"],
+    "level": "core"
+  },
+  {
+    "section": "Anti-pattern: Do not import @vytches/ddd-di from a domain layer file",
+    "text": "**Do not import `@vytches/ddd-di` from a domain layer file** — domain packages\nhave no DI dependencies. DI lives at the composition root.",
+    "kind": "anti_pattern",
+    "feature": "di",
+    "combines": [],
+    "tags": ["vytches-ddd", "di"],
+    "level": "core"
+  },
+  {
+    "section": "Anti-pattern: Do not forget VytchesDDD.reset() / ServiceLocator.getInstance().reset() between tests",
+    "text": "**Do not forget `VytchesDDD.reset()` / `ServiceLocator.getInstance().reset()`\nbetween tests** — the service locator is a process-wide singleton, so state\nconfigured in one test file leaks into the next unless explicitly reset.",
+    "kind": "anti_pattern",
+    "feature": "di",
+    "combines": [],
+    "tags": ["vytches-ddd", "di"],
+    "level": "core"
+  }
+]

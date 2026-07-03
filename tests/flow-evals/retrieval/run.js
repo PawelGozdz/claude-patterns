@@ -25,6 +25,17 @@ process.env.KR_QDRANT_URL = process.env.KR_QDRANT_URL || 'http://localhost:6401'
 const REPO = path.resolve(__dirname, '..', '..', '..');
 const RETRIEVE = path.join(REPO, 'mcp-server', 'knowledge-retriever', 'dist', 'retrieve.js');
 
+// q.filter = { kind?, level?, feature?, lib_version? } — plain MUST-only Qdrant filter (mirrors
+// how a caller would normally pin a single dimension; the retrieve_examples tool's feature/combines
+// OR-match is exercised separately by tests/flow-evals/library-reference-schema/, not here).
+function buildMustFilter(spec) {
+  if (!spec) return undefined;
+  const must = Object.entries(spec)
+    .filter(([, v]) => v !== undefined)
+    .map(([key, value]) => ({ key, match: { value } }));
+  return must.length ? { must } : undefined;
+}
+
 async function main() {
   const kArg = process.argv.indexOf('--k');
   const K = kArg > -1 ? Number(process.argv[kArg + 1]) : 5;
@@ -45,12 +56,16 @@ async function main() {
   for (const q of golden.queries) {
     let rank = 0; // 1-based; 0 = brak w top-K
     let top = '';
+    let topSection = '';
     try {
-      const hits = await retrieveFromCollection(q.query, K, q.collection);
+      const filter = buildMustFilter(q.filter);
+      const hits = await retrieveFromCollection(q.query, K, q.collection, filter ? { filter } : undefined);
       top = hits[0]?.source || '';
+      topSection = hits[0]?.section || '';
       for (let i = 0; i < hits.length; i++) {
-        const src = hits[i].source || '';
-        if (q.expect.some((e) => src.includes(e))) { rank = i + 1; break; }
+        const srcOk = !q.expect || q.expect.some((e) => (hits[i].source || '').includes(e));
+        const sectionOk = !q.expect_section || q.expect_section.some((e) => (hits[i].section || '').includes(e));
+        if (srcOk && sectionOk) { rank = i + 1; break; }
       }
     } catch (e) {
       errors++;
@@ -62,7 +77,7 @@ async function main() {
     if (rank >= 1) mrrSum += 1 / rank;
     rows.push(rank
       ? `  ${rank === 1 ? '🎯' : '✅'} ${q.id} rank=${rank}  (${q.query.slice(0, 48)}…)`
-      : `  ❌ ${q.id} MISS — top1: ${top.slice(0, 60)}  (${q.query.slice(0, 40)}…)`);
+      : `  ❌ ${q.id} MISS — top1: ${top.slice(0, 50)}#${topSection.slice(0, 40)}  (${q.query.slice(0, 40)}…)`);
   }
 
   const n = golden.queries.length;

@@ -1,0 +1,292 @@
+[
+  {
+    "section": "Overview",
+    "text": "## Purpose\n\nOutbox pattern implementation for at-least-once delivery of integration events.\nProvides the storage-agnostic interfaces and the orchestration logic (processor,\nfactory, service); consumers plug in their own `IOutboxRepository` (Postgres,\nRedis, in-memory, etc.).\n\nTrue to the library's philosophy: **no database adapter ships with the package**\n— bring your own storage.\n\n## Quick Start\n\n```typescript\nimport {\n  OutboxProcessor,\n  OutboxMessageFactory,\n  EventBusOutboxHandler,\n  MessagePriority,\n  type IOutboxRepository,\n  type IOutboxMessageHandler,\n} from '@vytches/ddd-messaging';\n\n// 1. Implement the repository for your storage\nclass PgOutboxRepository extends IOutboxRepository {\n  async saveMessage(message) {\n    /* INSERT INTO outbox ... */\n  }\n  async saveBatch(messages) {\n    /* INSERT INTO outbox ... */\n  }\n  async getUnprocessedMessages(limit, priorityOrder, messageTypes) {\n    // IMPORTANT: order by priorityOrder array index, NOT alphabetically\n    // See \"Priority ordering in repository implementations\" below\n  }\n  async getById(id) {\n    /* SELECT ... */\n  }\n  async updateStatus(id, status, error?) {\n    /* UPDATE ... */\n  }\n  async updateStatusBatch(ids, status) {\n    /* UPDATE ... */\n  }\n  async incrementAttempt(id) {\n    /* UPDATE ... RETURNING attempts */\n  }\n  async deleteByStatusAndAge(olderThan, status) {\n    /* DELETE ... */\n  }\n  async scheduleMessage(message, processAfter) {\n    /* INSERT ... */\n  }\n}\n\n// 2. Wire up the processor\nconst repo = new PgOutboxRepository(db);\nconst handler = new EventBusOutboxHandler(integrationBus);\n\nconst processor = new OutboxProcessor(repo, {\n  batchSize: 50,\n  processingInterval: 1_000,\n  retryBackoff: { initial: 1_000, multiplier: 2, maxDelay: 300_000 },\n});\nprocessor.registerHandler('order.placed', handler);\nprocessor.start();\n\n// 3. Enqueue in the same transaction as your aggregate save\nconst factory = new OutboxMessageFactory();\nawait db.transaction(async tx => {\n  await orderRepo.save(order, tx);\n  await repo.saveMessage(\n    factory.create(integrationEvent, {\n      priority: MessagePriority.HIGH,\n    })\n  );\n});\n```",
+    "kind": "concept",
+    "feature": "messaging",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "messaging"
+    ],
+    "level": "quickstart"
+  },
+  {
+    "section": "IOutboxMessage",
+    "text": "| `IOutboxMessage`         | interface | The shape of a stored outbox row                                                |",
+    "kind": "api",
+    "feature": "messaging",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "messaging"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IOutboxRepository",
+    "text": "| `IOutboxRepository`      | interface | **You implement this**: persistence for outbox messages                         |",
+    "kind": "api",
+    "feature": "messaging",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "messaging"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IOutboxMessageHandler",
+    "text": "| `IOutboxMessageHandler`  | interface | How to dispatch a stored message (default: publish to event bus)                |",
+    "kind": "api",
+    "feature": "messaging",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "messaging"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "OutboxMessageOptions",
+    "text": "| `OutboxMessageOptions`   | type      | `{ priority, dedupKey, headers }` per-message overrides                         |",
+    "kind": "api",
+    "feature": "messaging",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "messaging"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "OutboxMiddleware",
+    "text": "| `OutboxMiddleware`       | type      | Hook for cross-cutting concerns (tracing, encryption)                           |",
+    "kind": "api",
+    "feature": "messaging",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "messaging"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "OutboxProcessorOptions",
+    "text": "| `OutboxProcessorOptions` | type      | `{ pollIntervalMs, batchSize, maxRetries, ... }`                                |",
+    "kind": "api",
+    "feature": "messaging",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "messaging"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "OutboxServiceOptions",
+    "text": "| `OutboxServiceOptions`   | type      | Top-level config bag                                                            |",
+    "kind": "api",
+    "feature": "messaging",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "messaging"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "MessageStatus",
+    "text": "| `MessageStatus`          | enum      | `Pending`, `Dispatched`, `Failed`, `DeadLettered`                               |",
+    "kind": "api",
+    "feature": "messaging",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "messaging"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "MessagePriority",
+    "text": "| `MessagePriority`        | enum      | `Low`, `Normal`, `High`, `Critical`                                             |",
+    "kind": "api",
+    "feature": "messaging",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "messaging"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "OutboxMessageFactory",
+    "text": "| `OutboxMessageFactory`   | class     | Build `IOutboxMessage` from an integration event                                |",
+    "kind": "api",
+    "feature": "messaging",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "messaging"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "OutboxProcessor",
+    "text": "| `OutboxProcessor`        | class     | Polls repo, dispatches via handler, updates status                              |",
+    "kind": "api",
+    "feature": "messaging",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "messaging"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "EventBusOutboxHandler",
+    "text": "| `EventBusOutboxHandler`  | class     | Default handler — publishes via an `IIntegrationEventBus`                       |",
+    "kind": "api",
+    "feature": "messaging",
+    "combines": [
+      "events"
+    ],
+    "tags": [
+      "vytches-ddd",
+      "messaging"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "OutboxService",
+    "text": "| `OutboxService`          | class     | Facade combining factory + processor for the application                        |",
+    "kind": "api",
+    "feature": "messaging",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "messaging"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "comparePriority",
+    "text": "| `comparePriority`        | function  | Sorts `MessagePriority` values by a given order array (safe for partial arrays) |",
+    "kind": "api",
+    "feature": "messaging",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "messaging"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "Transactional outbox",
+    "text": "### Transactional outbox\n\nAlways enqueue the outbox row in **the same transaction** as the aggregate save.\nThis is the whole point — the outbox row and the state change commit atomically.\nThe processor then picks up pending rows asynchronously.\n\n```typescript\nawait db.transaction(async tx => {\n  await orderRepo.save(order, tx);\n  // critical: same tx\n  await outboxRepo.save(factory.fromEvent(orderPlacedEvent), tx);\n});\n```",
+    "kind": "concept",
+    "feature": "messaging",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "messaging"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "Idempotent consumers",
+    "text": "### Idempotent consumers\n\nSet a deduplication key on each outbox message so consumers can ignore\nre-deliveries (which **will** happen with at-least-once).\n\n```typescript\nawait outbox.enqueue(event, { dedupKey: `order-${orderId}-placed` });\n```",
+    "kind": "concept",
+    "feature": "messaging",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "messaging"
+    ],
+    "level": "advanced"
+  },
+  {
+    "section": "Dispatch model — parallel within batch",
+    "text": "### Dispatch model — parallel within batch\n\n`OutboxProcessor.processBatch()` dispatches all messages in the batch **in\nparallel** via `Promise.allSettled`. This is intentional and contractual:\n\n- A failure in message N does **not** block messages N+1..N+M\n- Each message has independent retry/fail tracking via the repository\n- For 200 messages at 10ms dispatch each: ~10ms parallel vs ~2s sequential\n\nIf you need strict ordering within a stream, set `batchSize: 1` (one message per\nbatch = sequential by definition). Note: parallel dispatch means the **execution\norder** within a batch is not guaranteed, even when messages were selected via\n`priorityOrder`.\n\nFor high-volume use cases where the batch is consistently full, consider\nimplementing the adapter pattern via `IOutboxMessageHandler` to dispatch to your\nexisting message broker (BullMQ, Kafka, RabbitMQ — your code, no library\ndependency added).\n\n```typescript\nclass BullMQOutboxHandler implements IOutboxMessageHandler {\n  constructor(private readonly fanOut: MyFanOutService) {}\n  async handle(message: IOutboxMessage): Promise<void> {\n    await this.fanOut.dispatch(message.payload);\n  }\n}\n\nconst processor = new OutboxProcessor(repo, new BullMQOutboxHandler(fanOut), {\n  pollIntervalMs: 2_000,\n  batchSize: 200,\n});\n```\n\nThe library does **not** ship broker-specific adapters — that would force\nadopters to bring in BullMQ/Kafka/etc. as transitive dependencies. Write the\n~10-line adapter yourself; the library guarantees the interface contract.",
+    "kind": "concept",
+    "feature": "messaging",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "messaging"
+    ],
+    "level": "advanced"
+  },
+  {
+    "section": "Fan-out: one default handler for N event types",
+    "text": "### Fan-out: one default handler for N event types\n\nWhen you want a single handler to process all (or most) outbox message types —\nfor example, routing every integration event to a BullMQ per-context queue — use\n`registerDefaultHandler` instead of registering the same handler 50 times.\n\n```typescript\nclass FanOutHandler implements IOutboxMessageHandler {\n  constructor(private readonly queues: Map<string, Queue>) {}\n\n  async handle(message: IOutboxMessage): Promise<void> {\n    // RECOMMENDED: validate against a known-types set so new event types\n    // added to the domain are caught early rather than silently dispatched.\n    if (!KNOWN_EVENT_TYPES.has(message.messageType)) {\n      throw new Error(`Unknown event type: ${message.messageType}`);\n    }\n    const queue =\n      this.queues.get(message.messageType) ?? this.queues.get('default');\n    await queue?.add(message.messageType, message.payload, {\n      jobId: message.id,\n    });\n  }\n}\n\nconst processor = new OutboxProcessor(repo, { batchSize: 200 });\nprocessor.registerDefaultHandler(new FanOutHandler(queues));\nprocessor.start();\n```\n\n**Security warning:** `registerDefaultHandler` removes the implicit type\nallowlist that exists when only `registerHandler` is used. Before VP-008, an\nunknown `messageType` would always throw — an implicit safety net. After\nregistering a default handler, ALL future message types (including ones added\nlater by mistake or injected via a compromised storage layer) will be dispatched\nautomatically. Always validate `message.messageType` against an explicit\nknown-types set inside the default handler.\n\n**Interaction with `messageTypes` option:** if\n`OutboxProcessorOptions.messageTypes` is set, the default handler will only see\nmessages whose type passes that filter. To catch every type, leave\n`messageTypes` unset.\n\n**PII and new event types:** when a new domain event type carrying PII is added,\nreview access controls on all downstream queues — the default handler will\ndispatch it to all configured destinations without any per-type gating.",
+    "kind": "concept",
+    "feature": "messaging",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "messaging"
+    ],
+    "level": "advanced"
+  },
+  {
+    "section": "Priority ordering in repository implementations",
+    "text": "### Priority ordering in repository implementations\n\n`IOutboxRepository.getUnprocessedMessages` receives a `priorityOrder` array such\nas `[CRITICAL, HIGH, NORMAL, LOW]`. Repository implementations **MUST** order by\nthe array index, not by raw column value. String comparison on the `priority`\ncolumn (`ORDER BY priority DESC`) silently inverts the intent:\n`'normal' > 'low' > 'high' > 'critical'` alphabetically.\n\nCorrect SQL using a `CASE` expression:\n\n```sql\nORDER BY\n  CASE priority\n    WHEN 'critical' THEN 0\n    WHEN 'high'     THEN 1\n    WHEN 'normal'   THEN 2\n    WHEN 'low'      THEN 3\n    ELSE                 4   -- unknown priorities sort last\n  END\n```\n\nOr use the exported `comparePriority` helper in in-process sorting:\n\n```typescript\nimport { comparePriority } from '@vytches/ddd-messaging';\n\n// Sort an in-memory array highest-priority-first:\nmessages.sort((a, b) =>\n  comparePriority(\n    a.priority ?? MessagePriority.NORMAL,\n    b.priority ?? MessagePriority.NORMAL\n  )\n);\n```\n\n`comparePriority` is safe with partial or custom order arrays — values absent\nfrom the array sort last rather than accidentally first.",
+    "kind": "concept",
+    "feature": "messaging",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "messaging"
+    ],
+    "level": "advanced"
+  },
+  {
+    "section": "Anti-pattern: Do not enqueue outbox messages outside the aggregate save transaction",
+    "text": "- **Do not enqueue outbox messages outside the aggregate save transaction** — if\n  the save commits but the outbox enqueue fails, the integration event is lost\n  forever.",
+    "kind": "anti_pattern",
+    "feature": "messaging",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "messaging"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "Anti-pattern: Do not assume exactly-once delivery",
+    "text": "- **Do not assume exactly-once delivery** — outbox is at-least-once. Make\n  consumers idempotent.",
+    "kind": "anti_pattern",
+    "feature": "messaging",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "messaging"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "Anti-pattern: Do not use the outbox for synchronous request/response",
+    "text": "- **Do not use the outbox for synchronous request/response** — it is for\n  fire-and-forget integration events. Use a different abstraction (RPC, query\n  handler) for sync flows.",
+    "kind": "anti_pattern",
+    "feature": "messaging",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "messaging"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "Anti-pattern: Do not skip the dead-letter path",
+    "text": "- **Do not skip the dead-letter path** — messages that exceed retry budget must\n  land somewhere observable, or you'll silently lose data.",
+    "kind": "anti_pattern",
+    "feature": "messaging",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "messaging"
+    ],
+    "level": "core"
+  }
+]

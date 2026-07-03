@@ -1,0 +1,398 @@
+[
+  {
+    "section": "Overview",
+    "text": "## Purpose\n\nAnti-Corruption Layer infrastructure for integrating external systems into a\nbounded context. Provides adapters, translators, and a registry that keep\nexternal concepts from leaking into the domain model.\n\n## Quick Start\n\n```typescript\nimport {\n  SimpleACLAdapter,\n  BaseModelTranslator,\n  ACLRegistry,\n} from '@vytches/ddd-acl';\nimport type { IExternalAPI } from '@vytches/ddd-acl';\n\n// 1. Translator: domain <-> external\nclass UserTranslator extends BaseModelTranslator<DomainUser, ExternalUser> {\n  constructor() {\n    super('UserContext');\n  }\n\n  protected performToExternalTranslation(domain: DomainUser): ExternalUser {\n    return { user_id: domain.id.getValue(), email: domain.email.value };\n  }\n\n  protected performFromExternalTranslation(ext: ExternalUser): DomainUser {\n    return DomainUser.reconstitute(ext.user_id, ext.email);\n  }\n}\n\n// 2. Adapter: wraps the external HTTP/RPC/SDK call\nconst adapter = SimpleACLAdapter.create(\n  'UserContext', // context name\n  'LegacyUserService', // external system name\n  new UserTranslator(),\n  new LegacyUserAPI(), // implements IExternalAPI\n  ['create', 'update']\n);\n\n// 3. Registry: shared lookup\nconst registry = new ACLRegistry();\nregistry.registerDirect('UserContext', adapter);\n\n// 4. Use\nconst result = await registry\n  .getRequired<DomainUser, ExternalUser>('UserContext')\n  .execute('create', domainUser);\n```",
+    "kind": "concept",
+    "feature": "acl",
+    "combines": [],
+    "tags": ["vytches-ddd", "acl"],
+    "level": "quickstart"
+  },
+  {
+    "section": "ACLRegistry",
+    "text": "| `ACLRegistry` | Global registry; `registerDirect`, `registerEnhanced`, `importFromContext` |",
+    "kind": "api",
+    "feature": "acl",
+    "combines": [],
+    "tags": ["vytches-ddd", "acl"],
+    "level": "core"
+  },
+  {
+    "section": "ACLRegistry.registerDirect(name, adapter)",
+    "text": "| `ACLRegistry.registerDirect(name, adapter)` | Register an adapter by context name |",
+    "kind": "api",
+    "feature": "acl",
+    "combines": [],
+    "tags": ["vytches-ddd", "acl"],
+    "level": "core"
+  },
+  {
+    "section": "ACLRegistry.getRequired<D, E>(name)",
+    "text": "| `ACLRegistry.getRequired<D, E>(name)` | Get adapter or throw if absent |",
+    "kind": "api",
+    "feature": "acl",
+    "combines": [],
+    "tags": ["vytches-ddd", "acl"],
+    "level": "core"
+  },
+  {
+    "section": "ACLRegistry.get<D, E>(name)",
+    "text": "| `ACLRegistry.get<D, E>(name)` | Get adapter or `undefined` |",
+    "kind": "api",
+    "feature": "acl",
+    "combines": [],
+    "tags": ["vytches-ddd", "acl"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "ImportOptions",
+    "text": "| `ImportOptions` | Options for `ACLRegistry.importFromContext(ctx, options)`: `overwriteConflicts`, `validateAdapters` |",
+    "kind": "api",
+    "feature": "acl",
+    "combines": [],
+    "tags": ["vytches-ddd", "acl"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "BaseACLRegistry",
+    "text": "| `BaseACLRegistry` | Abstract base extended by `ACLRegistry`, `ContextACLRegistry`, `VersionedACLRegistry`; provides `register`, `get`, `getRequired`, `hasContext`, `getRegisteredContexts`, `exportAdapters` |",
+    "kind": "api",
+    "feature": "acl",
+    "combines": [],
+    "tags": ["vytches-ddd", "acl"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "ACLRegistrationMetadata",
+    "text": "| `ACLRegistrationMetadata` | Metadata recorded per registration (used by `BaseACLRegistry.register`): `contextName`, `registeredAt`, `registeredBy`, optional `description`/`version`/`source` |",
+    "kind": "api",
+    "feature": "acl",
+    "combines": [],
+    "tags": ["vytches-ddd", "acl"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "AdapterDefinition<D, E>",
+    "text": "| `AdapterDefinition<D, E>` | Declarative adapter definition produced by `defineACLAdapter` and consumed by `ACLRegistry.fromDefinitions` — see Declarative Registration below |",
+    "kind": "api",
+    "feature": "acl",
+    "combines": [],
+    "tags": ["vytches-ddd", "acl"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "BaseACLAdapter<D, E, R>",
+    "text": "| `BaseACLAdapter<D, E, R>` | Abstract base; implement `registerSupportedOperations()` |",
+    "kind": "api",
+    "feature": "acl",
+    "combines": [],
+    "tags": ["vytches-ddd", "acl"],
+    "level": "core"
+  },
+  {
+    "section": "SimpleACLAdapter<D, E, R>",
+    "text": "| `SimpleACLAdapter<D, E, R>` | Concrete adapter for simple cases; `SimpleACLAdapter.create(...)` factory |",
+    "kind": "api",
+    "feature": "acl",
+    "combines": [],
+    "tags": ["vytches-ddd", "acl"],
+    "level": "core"
+  },
+  {
+    "section": "EnhancedACLAdapter",
+    "text": "| `EnhancedACLAdapter` | Adds `executeTyped` for operation-level type safety |",
+    "kind": "api",
+    "feature": "acl",
+    "combines": [],
+    "tags": ["vytches-ddd", "acl"],
+    "level": "core"
+  },
+  {
+    "section": "IEnhancedACLAdapter<D, E, R>",
+    "text": "| `IEnhancedACLAdapter<D, E, R>` | Interface implemented by `EnhancedACLAdapter`: extends `IACLAdapter` with `use(middleware)` and `executeTyped(operation, model, opts)` |",
+    "kind": "api",
+    "feature": "acl",
+    "combines": [],
+    "tags": ["vytches-ddd", "acl"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "TypedOperation<TInput, TOutput>",
+    "text": "| `TypedOperation<TInput, TOutput>` | Abstract operation descriptor passed to `executeTyped`; extend it, implement `name`, optionally `validateBusinessRules` — see Pattern 4 |",
+    "kind": "api",
+    "feature": "acl",
+    "combines": [],
+    "tags": ["vytches-ddd", "acl"],
+    "level": "core"
+  },
+  {
+    "section": "BaseModelTranslator<D, E>",
+    "text": "| `BaseModelTranslator<D, E>` | Abstract translator; implement `performToExternalTranslation` and `performFromExternalTranslation` |",
+    "kind": "api",
+    "feature": "acl",
+    "combines": [],
+    "tags": ["vytches-ddd", "acl"],
+    "level": "core"
+  },
+  {
+    "section": "BaseACLMiddleware",
+    "text": "| `BaseACLMiddleware` | Abstract middleware; implement `execute(op, model, opts, next)` |",
+    "kind": "api",
+    "feature": "acl",
+    "combines": [],
+    "tags": ["vytches-ddd", "acl"],
+    "level": "core"
+  },
+  {
+    "section": "ContextACLRegistry",
+    "text": "| `ContextACLRegistry` | Per-bounded-context registry; export to `ACLRegistry` via `importFromContext` |",
+    "kind": "api",
+    "feature": "acl",
+    "combines": [],
+    "tags": ["vytches-ddd", "acl"],
+    "level": "core"
+  },
+  {
+    "section": "VersionedACLRegistry",
+    "text": "| `VersionedACLRegistry` | Registry with versioned adapter support |",
+    "kind": "api",
+    "feature": "acl",
+    "combines": [],
+    "tags": ["vytches-ddd", "acl"],
+    "level": "core"
+  },
+  {
+    "section": "VersionedACLAdapter<D, E, R>",
+    "text": "| `VersionedACLAdapter<D, E, R>` | Thin wrapper around a `VersionedACLRegistry` context; constructor takes `(registry, defaultContextName)`, resolves the right version and forwards `execute` — see Pattern 5 |",
+    "kind": "api",
+    "feature": "acl",
+    "combines": [],
+    "tags": ["vytches-ddd", "acl"],
+    "level": "core"
+  },
+  {
+    "section": "ACLError",
+    "text": "| `ACLError` | Error type for ACL failures; `ACLError.operationFailed(context, op, cause)` |",
+    "kind": "api",
+    "feature": "acl",
+    "combines": [],
+    "tags": ["vytches-ddd", "acl"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "AdapterNotFoundError",
+    "text": "| `AdapterNotFoundError` | `ACLError` subtype thrown when no adapter is registered for a context; `AdapterNotFoundError.forContext(contextName, adapterName)` factory |",
+    "kind": "api",
+    "feature": "acl",
+    "combines": [],
+    "tags": ["vytches-ddd", "acl"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "TranslationError",
+    "text": "| `TranslationError` | `ACLError` subtype for translation failures; carries `sourceModel` and `direction`; factories `TranslationError.forToExternal(...)` / `.forFromExternal(...)` |",
+    "kind": "api",
+    "feature": "acl",
+    "combines": [],
+    "tags": ["vytches-ddd", "acl"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IACLAdapter<D, E, R>",
+    "text": "| `IACLAdapter<D, E, R>` | Core adapter interface: `execute`, `fetch`, `supportsOperation`, `getContextInfo` |",
+    "kind": "api",
+    "feature": "acl",
+    "combines": [],
+    "tags": ["vytches-ddd", "acl"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IModelTranslator<D, E>",
+    "text": "| `IModelTranslator<D, E>` | Translator interface: `toExternal`, `fromExternal`, optional `validateDomain`, `validateExternal` |",
+    "kind": "api",
+    "feature": "acl",
+    "combines": [],
+    "tags": ["vytches-ddd", "acl"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IExternalAPI<E, R>",
+    "text": "| `IExternalAPI<E, R>` | External system interface: `execute`, `fetch`, `healthCheck` |",
+    "kind": "api",
+    "feature": "acl",
+    "combines": [],
+    "tags": ["vytches-ddd", "acl"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "BaseApplicationService",
+    "text": "| `BaseApplicationService` | Abstract base for application-layer services; provides `validateRequest(request, validator)` and `handleDomainError(error)` helpers — see Pattern 6 |",
+    "kind": "api",
+    "feature": "acl",
+    "combines": [],
+    "tags": ["vytches-ddd", "acl"],
+    "level": "core"
+  },
+  {
+    "section": "IApplicationService",
+    "text": "| `IApplicationService` | Interface implemented by `BaseApplicationService`: exposes readonly `serviceName` |",
+    "kind": "api",
+    "feature": "acl",
+    "combines": [],
+    "tags": ["vytches-ddd", "acl"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "ApplicationError",
+    "text": "| `ApplicationError` | Generic application-layer error wrapping an inner/domain error; returned by `BaseApplicationService.handleDomainError` |",
+    "kind": "api",
+    "feature": "acl",
+    "combines": [],
+    "tags": ["vytches-ddd", "acl"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "Pattern 1: Custom adapter with middleware pipeline",
+    "text": "### Pattern 1: Custom adapter with middleware pipeline\n\nExtend `BaseACLAdapter` when you need per-operation logic, circuit breakers, or\nlogging middleware.\n\n```typescript\nimport { BaseACLAdapter, BaseACLMiddleware } from '@vytches/ddd-acl';\nimport type { ExecuteOptions, ACLContextInfo } from '@vytches/ddd-acl';\nimport { Result } from '@vytches/ddd-utils';\n\nclass AuditMiddleware extends BaseACLMiddleware {\n  async execute<T>(\n    op: string,\n    model: unknown,\n    opts: ExecuteOptions,\n    next: () => Promise<Result<T>>\n  ) {\n    const start = Date.now();\n    const result = await next();\n    this.logger.info('ACL operation', {\n      op,\n      ms: Date.now() - start,\n      success: result.isSuccess,\n    });\n    return result;\n  }\n}\n\nclass PaymentAdapter extends BaseACLAdapter<\n  DomainPayment,\n  ExternalPayment,\n  PaymentReceipt\n> {\n  constructor(\n    ctx: ACLContextInfo,\n    translator: PaymentTranslator,\n    api: PaymentGatewayAPI\n  ) {\n    super(ctx, translator, api);\n    this.registerSupportedOperations();\n  }\n\n  protected registerSupportedOperations(): void {\n    this.registerOperation('charge');\n    this.registerOperation('refund');\n  }\n}\n\nconst adapter = new PaymentAdapter(ctx, translator, api);\nadapter.use(new AuditMiddleware());\nconst result = await adapter.execute('charge', domainPayment, {\n  timeout: 5000,\n});\n```",
+    "kind": "concept",
+    "feature": "acl",
+    "combines": ["utils"],
+    "tags": ["vytches-ddd", "acl"],
+    "level": "core"
+  },
+  {
+    "section": "Pattern 2: Context registry per bounded context",
+    "text": "### Pattern 2: Context registry per bounded context\n\nEach bounded context maintains its own `ContextACLRegistry` and exports to the\nglobal `ACLRegistry` at startup.\n\n```typescript\nimport { ContextACLRegistry, ACLRegistry } from '@vytches/ddd-acl';\n\n// payments-context/infrastructure/acl-registrations.ts\nexport function registerPaymentsACL(global: ACLRegistry): void {\n  const ctx = new ContextACLRegistry('payments');\n  ctx.register('StripeContext', stripeAdapter);\n  ctx.register('TaxContext', taxAdapter);\n\n  global.importFromContext(ctx, { overwriteConflicts: false });\n}\n```",
+    "kind": "concept",
+    "feature": "acl",
+    "combines": [],
+    "tags": ["vytches-ddd", "acl"],
+    "level": "advanced"
+  },
+  {
+    "section": "Pattern 3: Fetch and translate from external system",
+    "text": "### Pattern 3: Fetch and translate from external system\n\nUse `adapter.fetch(id)` to pull a record from the external system and get it\nback as a domain model without calling `execute`.\n\n```typescript\nconst adapter = registry.getRequired<DomainProduct, ExternalProduct>(\n  'CatalogContext'\n);\n\nconst result = await adapter.fetch(productId);\nif (result.isSuccess) {\n  const domainProduct = result.value; // already translated via BaseModelTranslator\n  return domainProduct;\n}\n```",
+    "kind": "concept",
+    "feature": "acl",
+    "combines": [],
+    "tags": ["vytches-ddd", "acl"],
+    "level": "advanced"
+  },
+  {
+    "section": "Pattern 4: Typed operations with `executeTyped`",
+    "text": "### Pattern 4: Typed operations with `executeTyped`\n\nExtend `TypedOperation` to describe a single operation (name + optional\nbusiness-rule validation) instead of passing a raw operation string. Pass the\ninstance to `EnhancedACLAdapter.executeTyped`, which runs\n`validateBusinessRules` (if present) before delegating to `execute`.\n\n```typescript\nimport { TypedOperation, EnhancedACLAdapter } from '@vytches/ddd-acl';\nimport { Result } from '@vytches/ddd-utils';\n\nclass ChargeCard extends TypedOperation<DomainPayment, PaymentReceipt> {\n  readonly name = 'charge';\n  readonly description = 'Charge a card via the payment gateway';\n\n  validateBusinessRules(input: DomainPayment) {\n    if (input.amount.isNegative()) {\n      return Result.fail(new Error('Amount must be positive'));\n    }\n    return Result.ok(undefined);\n  }\n}\n\nconst adapter: EnhancedACLAdapter<\n  DomainPayment,\n  ExternalPayment,\n  PaymentReceipt\n> = EnhancedACLAdapter.create(\n  'PaymentsContext',\n  'StripeGateway',\n  translator,\n  externalAPI,\n  ['charge']\n);\n\nconst result = await adapter.executeTyped(new ChargeCard(), domainPayment);\n```",
+    "kind": "concept",
+    "feature": "acl",
+    "combines": ["utils"],
+    "tags": ["vytches-ddd", "acl"],
+    "level": "advanced"
+  },
+  {
+    "section": "Pattern 5: Resolving adapters by version",
+    "text": "### Pattern 5: Resolving adapters by version\n\nUse `VersionedACLRegistry` to register multiple versions of the same context's\nadapter, then wrap it in a `VersionedACLAdapter` so callers don't need to pass a\nversion on every call — it resolves the latest (or an explicitly requested)\nversion internally.\n\n```typescript\nimport { VersionedACLRegistry, VersionedACLAdapter } from '@vytches/ddd-acl';\n\nconst registry = new VersionedACLRegistry();\nregistry.registerVersioned('PaymentsContext', '1.0.0', adapterV1);\nregistry.registerVersioned('PaymentsContext', '2.0.0', adapterV2);\n\nconst payments = new VersionedACLAdapter<DomainPayment, ExternalPayment>(\n  registry,\n  'PaymentsContext'\n);\n\n// Resolves the latest registered version (2.0.0) unless `options.version` is set\nconst result = await payments.execute('charge', domainPayment);\npayments.getAvailableVersions(); // ['1.0.0', '2.0.0']\n```",
+    "kind": "concept",
+    "feature": "acl",
+    "combines": [],
+    "tags": ["vytches-ddd", "acl"],
+    "level": "advanced"
+  },
+  {
+    "section": "Pattern 6: Application service base class",
+    "text": "### Pattern 6: Application service base class\n\n`BaseApplicationService` is a small abstract base for application-layer services\nthat orchestrate calls into ACL adapters/translators. It centralizes request\nvalidation (via a `BusinessRuleValidator`) and converts unexpected errors into a\nconsistent `ApplicationError`.\n\n```typescript\nimport { BaseApplicationService, ApplicationError } from '@vytches/ddd-acl';\n\nclass SyncUserService extends BaseApplicationService {\n  constructor(private readonly registry: ACLRegistry) {\n    super('SyncUserService');\n  }\n\n  async sync(request: SyncUserRequest) {\n    const validation = this.validateRequest(request, syncUserValidator);\n    if (validation.isFailure) {\n      return Result.fail(validation.error);\n    }\n\n    try {\n      const adapter = this.registry.getRequired<DomainUser, ExternalUser>(\n        'UserContext'\n      );\n      return await adapter.execute('sync', request.user);\n    } catch (error) {\n      throw this.handleDomainError(error); // wraps into ApplicationError\n    }\n  }\n}\n```",
+    "kind": "concept",
+    "feature": "acl",
+    "combines": [],
+    "tags": ["vytches-ddd", "acl"],
+    "level": "advanced"
+  },
+  {
+    "section": "Anti-pattern: Leaking external types into domain code",
+    "text": "**Leaking external types into domain code.** External DTOs (`ExternalUser`,\n`StripeCharge`, etc.) must never appear in domain entities, value objects, or\nservices. All translation must happen inside the `BaseModelTranslator`.\n\n```typescript\n// Wrong: domain service accepts external type\nclass OrderService {\n  placeOrder(stripeCharge: StripeCharge) { ... }\n}\n\n// Correct: adapter translates before domain service is called\nconst domainCharge = (await adapter.fetch(chargeId)).value;\norderService.placeOrder(domainCharge);\n```",
+    "kind": "anti_pattern",
+    "feature": "acl",
+    "combines": [],
+    "tags": ["vytches-ddd", "acl"],
+    "level": "core"
+  },
+  {
+    "section": "Anti-pattern: Skipping BaseModelTranslator and doing inline translation",
+    "text": "**Skipping `BaseModelTranslator` and doing inline translation.** Inline\ntranslation in the adapter `executeCore` makes testing and domain isolation\nimpossible. Always implement a named translator class.",
+    "kind": "anti_pattern",
+    "feature": "acl",
+    "combines": [],
+    "tags": ["vytches-ddd", "acl"],
+    "level": "core"
+  },
+  {
+    "section": "Anti-pattern: Registering adapters in application services",
+    "text": "**Registering adapters in application services.** Adapter registration belongs\nin infrastructure setup (e.g., module init, DI container). Application services\nshould only call `registry.getRequired(...)`.",
+    "kind": "anti_pattern",
+    "feature": "acl",
+    "combines": [],
+    "tags": ["vytches-ddd", "acl"],
+    "level": "core"
+  },
+  {
+    "section": "Anti-pattern: Calling execute() with an unsupported operation string",
+    "text": "**Calling `execute()` with an unsupported operation string.** `BaseACLAdapter`\nreturns `Result.fail(ACLError.unsupportedOperation(...))` for unregistered\noperations. Always call `supportsOperation(op)` or rely on a typed wrapper to\navoid runtime failures.",
+    "kind": "anti_pattern",
+    "feature": "acl",
+    "combines": [],
+    "tags": ["vytches-ddd", "acl"],
+    "level": "core"
+  },
+  {
+    "section": "Anti-pattern: Creating a new ACLRegistry per request",
+    "text": "**Creating a new `ACLRegistry` per request.** `ACLRegistry` should be a\nsingleton (application-level). Creating instances per request discards all\nregistrations.",
+    "kind": "anti_pattern",
+    "feature": "acl",
+    "combines": [],
+    "tags": ["vytches-ddd", "acl"],
+    "level": "core"
+  },
+  {
+    "section": "Hidden feature: BaseModelTranslator calls optional validateDomain / validateExternal hooks",
+    "text": "**`BaseModelTranslator` calls optional `validateDomain` / `validateExternal`\nhooks.** Override these to add pre-translation validation without changing the\ntranslation logic itself.",
+    "kind": "concept",
+    "feature": "acl",
+    "combines": [],
+    "tags": ["vytches-ddd", "acl"],
+    "level": "advanced"
+  },
+  {
+    "section": "Hidden feature: ACLRegistry.importFromContext returns a conflict report",
+    "text": "**`ACLRegistry.importFromContext` returns a conflict report.** The\n`ImportResult` object lists `imported`, `skipped`, and `conflicts` arrays —\nuseful for startup diagnostics.",
+    "kind": "concept",
+    "feature": "acl",
+    "combines": [],
+    "tags": ["vytches-ddd", "acl"],
+    "level": "advanced"
+  },
+  {
+    "section": "Hidden feature: VersionedACLRegistry supports adapter versioning",
+    "text": "**`VersionedACLRegistry` supports adapter versioning.** When an external API has\nmultiple versions (v1, v2), use `VersionedACLRegistry` to register\nversion-tagged adapters and resolve them by version at runtime.",
+    "kind": "concept",
+    "feature": "acl",
+    "combines": [],
+    "tags": ["vytches-ddd", "acl"],
+    "level": "advanced"
+  },
+  {
+    "section": "Hidden feature: Middleware is a pipeline, not a list of interceptors",
+    "text": "**Middleware is a pipeline, not a list of interceptors.** Each\n`ACLMiddleware.execute` receives a `next` function; call it to proceed.\nReturning early without calling `next` short-circuits the chain, which is useful\nfor caching or stubbing in tests.",
+    "kind": "concept",
+    "feature": "acl",
+    "combines": [],
+    "tags": ["vytches-ddd", "acl"],
+    "level": "advanced"
+  },
+  {
+    "section": "Declarative Registration (since 0.24.0)",
+    "text": "## Declarative Registration (since 0.24.0)\n\nReplace manual `register()` calls with declarative adapter definitions:\n\n```typescript\nimport { ACLRegistry, defineACLAdapter } from '@vytches/ddd-acl';\n\nconst paymentAdapter = defineACLAdapter({\n  context: 'payments',\n  adapter: new PaymentACLAdapter(translator, api),\n  description: 'Stripe integration',\n});\n\nconst shippingAdapter = defineACLAdapter({\n  context: 'shipping',\n  adapter: new ShippingACLAdapter(translator, api),\n});\n\n// One-liner registry creation instead of manual register() calls\nconst registry = ACLRegistry.fromDefinitions([paymentAdapter, shippingAdapter]);\n```\n\nDefinitions are frozen (immutable) and can be exported from modules for\ncentralized registration.",
+    "kind": "concept",
+    "feature": "acl",
+    "combines": [],
+    "tags": ["vytches-ddd", "acl"],
+    "level": "advanced"
+  }
+]

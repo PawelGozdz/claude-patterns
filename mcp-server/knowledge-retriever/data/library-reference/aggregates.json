@@ -1,0 +1,470 @@
+[
+  {
+    "section": "Overview",
+    "text": "## Purpose\n\nProvides the `AggregateRoot` base class and a capability system for composing\nevent sourcing, snapshots, audit logging, and versioning into aggregates without\ninheritance chains.\n\n## Quick Start\n\n```typescript\nimport { AggregateRoot, AggregateBuilder } from '@vytches/ddd-aggregates';\nimport { EntityId } from '@vytches/ddd-value-objects';\nimport type { IAggregateConstructorParams } from '@vytches/ddd-aggregates';\n\ninterface OrderCreatedPayload {\n  customerId: string;\n  amount: number;\n}\n\nclass Order extends AggregateRoot<string> {\n  private customerId = '';\n  private amount = 0;\n\n  constructor(params: IAggregateConstructorParams<string>) {\n    super(params);\n    this.registerEventHandler<OrderCreatedPayload>('OrderCreated', payload => {\n      this.customerId = payload!.customerId;\n      this.amount = payload!.amount;\n    });\n  }\n\n  static create(customerId: string, amount: number): Order {\n    const id = EntityId.create();\n    const order = new Order({ id, version: 0 });\n    order.apply('OrderCreated', { customerId, amount });\n    return order;\n  }\n}\n\n// Usage\nconst order = Order.create('c-1', 500);\nconst events = order.getDomainEvents(); // [{ eventName: 'OrderCreated', ... }]\norder.commit(); // clear pending events after saving\n```",
+    "kind": "concept",
+    "feature": "aggregates",
+    "combines": ["value-objects"],
+    "tags": ["vytches-ddd", "aggregates"],
+    "level": "quickstart"
+  },
+  {
+    "section": "AggregateRoot<TId>",
+    "text": "| `AggregateRoot<TId>`                        | class          | Base aggregate root; manages version, events, capabilities — the _transactional_ root                                                                                                                         |",
+    "kind": "api",
+    "feature": "aggregates",
+    "combines": [],
+    "tags": ["vytches-ddd", "aggregates"],
+    "level": "core"
+  },
+  {
+    "section": "Entity<TId>",
+    "text": "| `Entity<TId>`                               | abstract class | Base for **non-root** domain entities (VF-CANON-001) — identity-based equality, no version/event machinery. Use for `OrderLine`, inner aggregate entities                                                     |",
+    "kind": "api",
+    "feature": "aggregates",
+    "combines": [],
+    "tags": ["vytches-ddd", "aggregates"],
+    "level": "core"
+  },
+  {
+    "section": "AggregateBuilder<TId>",
+    "text": "| `AggregateBuilder<TId>`                     | class          | Fluent builder for constructing aggregates with capabilities                                                                                                                                                  |",
+    "kind": "api",
+    "feature": "aggregates",
+    "combines": [],
+    "tags": ["vytches-ddd", "aggregates"],
+    "level": "core"
+  },
+  {
+    "section": "aggregateBuilder(params)",
+    "text": "| `aggregateBuilder(params)`                  | function       | Shorthand factory for `AggregateBuilder.create(params)`                                                                                                                                                       |",
+    "kind": "api",
+    "feature": "aggregates",
+    "combines": [],
+    "tags": ["vytches-ddd", "aggregates"],
+    "level": "core"
+  },
+  {
+    "section": "AggregateError",
+    "text": "| `AggregateError`                            | class          | Domain error for aggregate-level failures                                                                                                                                                                     |",
+    "kind": "api",
+    "feature": "aggregates",
+    "combines": [],
+    "tags": ["vytches-ddd", "aggregates"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "SnapshotCapability",
+    "text": "| `SnapshotCapability`                        | class          | Enables snapshot creation and restoration                                                                                                                                                                     |",
+    "kind": "api",
+    "feature": "aggregates",
+    "combines": [],
+    "tags": ["vytches-ddd", "aggregates"],
+    "level": "core"
+  },
+  {
+    "section": "AuditCapability",
+    "text": "| `AuditCapability`                           | class          | Attaches an audit log to every event applied                                                                                                                                                                  |",
+    "kind": "api",
+    "feature": "aggregates",
+    "combines": [],
+    "tags": ["vytches-ddd", "aggregates"],
+    "level": "core"
+  },
+  {
+    "section": "VersioningCapability",
+    "text": "| `VersioningCapability`                      | class          | Registers event upcasters for schema evolution                                                                                                                                                                |",
+    "kind": "api",
+    "feature": "aggregates",
+    "combines": [],
+    "tags": ["vytches-ddd", "aggregates"],
+    "level": "core"
+  },
+  {
+    "section": "EventSourcingCapability",
+    "text": "| `EventSourcingCapability`                   | class          | Integrates with `IEventStore` for persistence                                                                                                                                                                 |",
+    "kind": "api",
+    "feature": "aggregates",
+    "combines": ["contracts"],
+    "tags": ["vytches-ddd", "aggregates"],
+    "level": "core"
+  },
+  {
+    "section": "asSnapshotAggregate(agg)",
+    "text": "| `asSnapshotAggregate(agg)`                  | function       | Casts aggregate, throws if no `SnapshotCapability`                                                                                                                                                            |",
+    "kind": "api",
+    "feature": "aggregates",
+    "combines": [],
+    "tags": ["vytches-ddd", "aggregates"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "asAuditAggregate(agg)",
+    "text": "| `asAuditAggregate(agg)`                     | function       | Casts aggregate, throws if no `AuditCapability`                                                                                                                                                               |",
+    "kind": "api",
+    "feature": "aggregates",
+    "combines": [],
+    "tags": ["vytches-ddd", "aggregates"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "asVersioningAggregate(agg)",
+    "text": "| `asVersioningAggregate(agg)`                | function       | Casts aggregate, throws if no `VersioningCapability`                                                                                                                                                          |",
+    "kind": "api",
+    "feature": "aggregates",
+    "combines": [],
+    "tags": ["vytches-ddd", "aggregates"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "asEventSourcingAggregate(agg)",
+    "text": "| `asEventSourcingAggregate(agg)`             | function       | Casts aggregate, throws if no `EventSourcingCapability`                                                                                                                                                       |",
+    "kind": "api",
+    "feature": "aggregates",
+    "combines": [],
+    "tags": ["vytches-ddd", "aggregates"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "tryAsSnapshotAggregate(agg)",
+    "text": "| `tryAsSnapshotAggregate(agg)`               | function       | Non-throwing sibling of `asSnapshotAggregate`; returns `Result.ok(aggregate)` or `Result.fail(AggregateError)` instead of throwing                                                                            |",
+    "kind": "api",
+    "feature": "aggregates",
+    "combines": [],
+    "tags": ["vytches-ddd", "aggregates"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "tryAsAuditAggregate(agg)",
+    "text": "| `tryAsAuditAggregate(agg)`                  | function       | Non-throwing sibling of `asAuditAggregate`; returns a `Result<AggregateWithAuditCapability<TId>, AggregateError>`                                                                                             |",
+    "kind": "api",
+    "feature": "aggregates",
+    "combines": [],
+    "tags": ["vytches-ddd", "aggregates"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "tryAsVersioningAggregate(agg)",
+    "text": "| `tryAsVersioningAggregate(agg)`             | function       | Non-throwing sibling of `asVersioningAggregate`; returns a `Result<AggregateWithVersioningCapability<TId>, AggregateError>`                                                                                   |",
+    "kind": "api",
+    "feature": "aggregates",
+    "combines": [],
+    "tags": ["vytches-ddd", "aggregates"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "tryAsEventSourcingAggregate(agg)",
+    "text": "| `tryAsEventSourcingAggregate(agg)`          | function       | Non-throwing sibling of `asEventSourcingAggregate`; returns a `Result<AggregateWithEventSourcingCapability<TId>, AggregateError>`                                                                             |",
+    "kind": "api",
+    "feature": "aggregates",
+    "combines": [],
+    "tags": ["vytches-ddd", "aggregates"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "hasAllCapabilities(agg, [...])",
+    "text": "| `hasAllCapabilities(agg, [...])`            | function       | Returns `true` if aggregate has every listed capability                                                                                                                                                       |",
+    "kind": "api",
+    "feature": "aggregates",
+    "combines": [],
+    "tags": ["vytches-ddd", "aggregates"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "getAggregateCapabilities(agg)",
+    "text": "| `getAggregateCapabilities(agg)`             | function       | Returns string array of capability type names                                                                                                                                                                 |",
+    "kind": "api",
+    "feature": "aggregates",
+    "combines": [],
+    "tags": ["vytches-ddd", "aggregates"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "AggregateWithSnapshotCapability<TId>",
+    "text": "| `AggregateWithSnapshotCapability<TId>`      | type           | Type-safe alias for snapshot-capable aggregates; return type of `asSnapshotAggregate`/`tryAsSnapshotAggregate`                                                                                                |",
+    "kind": "api",
+    "feature": "aggregates",
+    "combines": [],
+    "tags": ["vytches-ddd", "aggregates"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "AggregateWithAuditCapability<TId>",
+    "text": "| `AggregateWithAuditCapability<TId>`         | type           | Type-safe alias for audit-capable aggregates; return type of `asAuditAggregate`/`tryAsAuditAggregate`                                                                                                         |",
+    "kind": "api",
+    "feature": "aggregates",
+    "combines": [],
+    "tags": ["vytches-ddd", "aggregates"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "AggregateWithVersioningCapability<TId>",
+    "text": "| `AggregateWithVersioningCapability<TId>`    | type           | Type-safe alias for versioning-capable aggregates; return type of `asVersioningAggregate`/`tryAsVersioningAggregate`                                                                                          |",
+    "kind": "api",
+    "feature": "aggregates",
+    "combines": [],
+    "tags": ["vytches-ddd", "aggregates"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "AggregateWithEventSourcingCapability<TId>",
+    "text": "| `AggregateWithEventSourcingCapability<TId>` | type           | Type-safe alias for event-sourcing-capable aggregates; return type of `asEventSourcingAggregate`/`tryAsEventSourcingAggregate`                                                                                |",
+    "kind": "api",
+    "feature": "aggregates",
+    "combines": [],
+    "tags": ["vytches-ddd", "aggregates"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IAggregateRoot<TId>",
+    "text": "| `IAggregateRoot<TId>`                       | interface      | Full contract for aggregates                                                                                                                                                                                  |",
+    "kind": "api",
+    "feature": "aggregates",
+    "combines": [],
+    "tags": ["vytches-ddd", "aggregates"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IAggregateCapability",
+    "text": "| `IAggregateCapability`                      | interface      | Base contract every capability implements: `attach(aggregate)` (required) + `detach?()` (optional). `SnapshotCapability`, `AuditCapability`, `VersioningCapability`, `EventSourcingCapability` all satisfy it |",
+    "kind": "api",
+    "feature": "aggregates",
+    "combines": [],
+    "tags": ["vytches-ddd", "aggregates"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IAggregateEventHandler<T>",
+    "text": "| `IAggregateEventHandler<T>`                 | interface      | Callable shape `(payload: T, metadata?) => void` — the handler function type registered via `registerEventHandler(type, fn)`                                                                                  |",
+    "kind": "api",
+    "feature": "aggregates",
+    "combines": [],
+    "tags": ["vytches-ddd", "aggregates"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IAggregateBuilder<TId>",
+    "text": "| `IAggregateBuilder<TId>`                    | interface      | Fluent contract implemented by `AggregateBuilder`: `withSnapshots()`, `withVersioning()`, `withEventSourcing()`, `withAudit()`, `withCustomCapability()`, `build()`                                           |",
+    "kind": "api",
+    "feature": "aggregates",
+    "combines": [],
+    "tags": ["vytches-ddd", "aggregates"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "apply(eventType, payload?, metadata?)",
+    "text": "| `apply(eventType, payload?, metadata?)` | Record a domain event, increment version, call handler                    |",
+    "kind": "api",
+    "feature": "aggregates",
+    "combines": [],
+    "tags": ["vytches-ddd", "aggregates"],
+    "level": "core"
+  },
+  {
+    "section": "loadFromHistory(events)",
+    "text": "| `loadFromHistory(events)`               | Replay historical events to restore state without accumulating new events |",
+    "kind": "api",
+    "feature": "aggregates",
+    "combines": [],
+    "tags": ["vytches-ddd", "aggregates"],
+    "level": "core"
+  },
+  {
+    "section": "getDomainEvents()",
+    "text": "| `getDomainEvents()`                     | Return readonly array of uncommitted events since last `commit()`         |",
+    "kind": "api",
+    "feature": "aggregates",
+    "combines": [],
+    "tags": ["vytches-ddd", "aggregates"],
+    "level": "core"
+  },
+  {
+    "section": "commit()",
+    "text": "| `commit()`                              | Clear uncommitted events; call after persisting to storage                |",
+    "kind": "api",
+    "feature": "aggregates",
+    "combines": [],
+    "tags": ["vytches-ddd", "aggregates"],
+    "level": "core"
+  },
+  {
+    "section": "hasChanges()",
+    "text": "| `hasChanges()`                          | `true` if there are uncommitted events                                    |",
+    "kind": "api",
+    "feature": "aggregates",
+    "combines": [],
+    "tags": ["vytches-ddd", "aggregates"],
+    "level": "core"
+  },
+  {
+    "section": "getVersion()",
+    "text": "| `getVersion()`                          | Current version after all applied events                                  |",
+    "kind": "api",
+    "feature": "aggregates",
+    "combines": [],
+    "tags": ["vytches-ddd", "aggregates"],
+    "level": "core"
+  },
+  {
+    "section": "getInitialVersion()",
+    "text": "| `getInitialVersion()`                   | Version when last loaded from storage (for optimistic locking)            |",
+    "kind": "api",
+    "feature": "aggregates",
+    "combines": [],
+    "tags": ["vytches-ddd", "aggregates"],
+    "level": "core"
+  },
+  {
+    "section": "addCapability(cap)",
+    "text": "| `addCapability(cap)`                    | Attach a capability; calls `cap.attach(this)`                             |",
+    "kind": "api",
+    "feature": "aggregates",
+    "combines": [],
+    "tags": ["vytches-ddd", "aggregates"],
+    "level": "core"
+  },
+  {
+    "section": "getCapability(CapClass)",
+    "text": "| `getCapability(CapClass)`               | Retrieve capability by constructor, returns `undefined` if absent         |",
+    "kind": "api",
+    "feature": "aggregates",
+    "combines": [],
+    "tags": ["vytches-ddd", "aggregates"],
+    "level": "core"
+  },
+  {
+    "section": "hasCapability(CapClass)",
+    "text": "| `hasCapability(CapClass)`               | Type-safe capability presence check                                       |",
+    "kind": "api",
+    "feature": "aggregates",
+    "combines": [],
+    "tags": ["vytches-ddd", "aggregates"],
+    "level": "core"
+  },
+  {
+    "section": "registerEventHandler(type, fn)",
+    "text": "| `registerEventHandler(type, fn)`        | Protected; wire event name to state mutation function                     |",
+    "kind": "api",
+    "feature": "aggregates",
+    "combines": [],
+    "tags": ["vytches-ddd", "aggregates"],
+    "level": "core"
+  },
+  {
+    "section": "Event sourcing reconstitution",
+    "text": "### Event sourcing reconstitution\n\n```typescript\n// In your repository, after loading events from the store:\nconst order = new Order({ id: EntityId.fromUUID(rawId), version: 0 });\norder['loadFromHistory'](storedEvents); // protected; call from within the class or a static factory\n// If loadFromHistory must be called externally, expose a static fromEvents():\nclass Order extends AggregateRoot<string> {\n  static fromEvents(id: EntityId<string>, events: IDomainEvent[]): Order {\n    const order = new Order({ id, version: 0 });\n    order.loadFromHistory(events);\n    return order;\n  }\n}\n```",
+    "kind": "concept",
+    "feature": "aggregates",
+    "combines": [],
+    "tags": ["vytches-ddd", "aggregates"],
+    "level": "core"
+  },
+  {
+    "section": "Using the builder with capabilities",
+    "text": "### Using the builder with capabilities\n\n```typescript\nimport {\n  AggregateBuilder,\n  SnapshotCapability,\n  AuditCapability,\n} from '@vytches/ddd-aggregates';\nimport { EntityId } from '@vytches/ddd-value-objects';\n\nconst order = AggregateBuilder.create({ id: EntityId.create() })\n  .withSnapshots()\n  .withAudit()\n  .build(Order);\n\n// Now safe to cast:\nimport { asSnapshotAggregate } from '@vytches/ddd-aggregates';\nconst snapshotOrder = asSnapshotAggregate(order);\nconst snap = snapshotOrder\n  .getCapability(SnapshotCapability)!\n  .createSnapshot(() => ({ amount: order.getAmount() }));\n```",
+    "kind": "concept",
+    "feature": "aggregates",
+    "combines": ["value-objects"],
+    "tags": ["vytches-ddd", "aggregates"],
+    "level": "advanced"
+  },
+  {
+    "section": "Capability type guard before use",
+    "text": "### Capability type guard before use\n\n```typescript\nimport {\n  hasAllCapabilities,\n  asAuditAggregate,\n  AuditCapability,\n} from '@vytches/ddd-aggregates';\n\nif (hasAllCapabilities(order, [AuditCapability])) {\n  const auditable = asAuditAggregate(order);\n  const log = auditable.getCapability(AuditCapability)!.getAuditLog();\n}\n```",
+    "kind": "concept",
+    "feature": "aggregates",
+    "combines": [],
+    "tags": ["vytches-ddd", "aggregates"],
+    "level": "advanced"
+  },
+  {
+    "section": "Composing multiple capabilities and narrowing with `tryAs*` helpers",
+    "text": "### Composing multiple capabilities and narrowing with `tryAs*` helpers\n\nBuild one aggregate with two capabilities (versioning + event sourcing), then\nnarrow it back to each capability-specific type with the non-throwing `tryAs*`\nvariants — useful in application-layer code where a missing capability should be\nhandled as a `Result`, not an exception.\n\n```typescript\nimport {\n  AggregateBuilder,\n  VersioningCapability,\n  EventSourcingCapability,\n  tryAsVersioningAggregate,\n  tryAsEventSourcingAggregate,\n  type AggregateWithVersioningCapability,\n  type AggregateWithEventSourcingCapability,\n} from '@vytches/ddd-aggregates';\nimport { EntityId } from '@vytches/ddd-value-objects';\n\nconst order = AggregateBuilder.create({ id: EntityId.create() })\n  .withVersioning()\n  .withEventSourcing()\n  .build(Order);\n\n// Narrow to versioning-capable: register an upcaster for an old event shape.\nconst versioningResult = tryAsVersioningAggregate(order);\nif (versioningResult.isSuccess) {\n  const versioned: AggregateWithVersioningCapability<string> =\n    versioningResult.value;\n  versioned\n    .getCapability(VersioningCapability)!\n    .registerUpcaster('OrderCreated', 1, {\n      upcast: (payload: { amount: number }) => ({\n        ...payload,\n        currency: 'USD',\n      }),\n    });\n}\n\n// Narrow to event-sourcing-capable: persist to the configured event store.\nconst eventSourcingResult = tryAsEventSourcingAggregate(order);\nif (eventSourcingResult.isSuccess) {\n  const sourced: AggregateWithEventSourcingCapability<string> =\n    eventSourcingResult.value;\n  await sourced.getCapability(EventSourcingCapability)!.saveToEventStore();\n} else {\n  // eventSourcingResult.error is an AggregateError — handle without throwing.\n  console.error(eventSourcingResult.error.message);\n}\n```",
+    "kind": "concept",
+    "feature": "aggregates",
+    "combines": ["value-objects"],
+    "tags": ["vytches-ddd", "aggregates"],
+    "level": "advanced"
+  },
+  {
+    "section": "Anti-pattern: Mutating state directly instead of using apply()",
+    "text": "**Mutating state directly instead of using `apply()`.** Assigning\n`this.status = 'paid'` bypasses event recording and version tracking. All state\nchanges must go through `apply()` so they are captured as events.",
+    "kind": "anti_pattern",
+    "feature": "aggregates",
+    "combines": [],
+    "tags": ["vytches-ddd", "aggregates"],
+    "level": "core"
+  },
+  {
+    "section": "Anti-pattern: Not registering event handlers before calling apply()",
+    "text": "**Not registering event handlers before calling `apply()`.**\n`registerEventHandler` must be called in the constructor before any `apply()`\ncalls. If handlers are missing, events are recorded but state is not updated —\nno error is thrown.",
+    "kind": "anti_pattern",
+    "feature": "aggregates",
+    "combines": [],
+    "tags": ["vytches-ddd", "aggregates"],
+    "level": "core"
+  },
+  {
+    "section": "Anti-pattern: Forgetting to call super(params) in subclass constructor",
+    "text": "**Forgetting to call `super(params)` in subclass constructor.** Without the\nsuper call, `_id`, `_version`, and internal maps are never initialized.\nTypeScript will not always catch this at compile time.",
+    "kind": "anti_pattern",
+    "feature": "aggregates",
+    "combines": [],
+    "tags": ["vytches-ddd", "aggregates"],
+    "level": "core"
+  },
+  {
+    "section": "Anti-pattern: Using loadFromHistory on a live aggregate with uncommitted events",
+    "text": "**Using `loadFromHistory` on a live aggregate that already has uncommitted\nevents.** `loadFromHistory` resets `_domainEvents` to an empty array and replays\nfrom `_initialVersion`. Calling it after `apply()` discards pending events\nsilently.",
+    "kind": "anti_pattern",
+    "feature": "aggregates",
+    "combines": [],
+    "tags": ["vytches-ddd", "aggregates"],
+    "level": "core"
+  },
+  {
+    "section": "Anti-pattern: Adding capabilities after apply() calls",
+    "text": "**Adding capabilities after `apply()` calls.** Capabilities like\n`AuditCapability` only audit events applied after they are attached. Add all\ncapabilities in the constructor or builder before any business methods are\ncalled.",
+    "kind": "anti_pattern",
+    "feature": "aggregates",
+    "combines": [],
+    "tags": ["vytches-ddd", "aggregates"],
+    "level": "core"
+  },
+  {
+    "section": "Hidden feature: apply() accepts a full IDomainEvent object",
+    "text": "`apply()` accepts either a plain string event type or a full `IDomainEvent`\nobject — pass a class-based event instance and the prototype chain is preserved,\nenabling `instanceof` checks on events after enrichment.",
+    "kind": "concept",
+    "feature": "aggregates",
+    "combines": [],
+    "tags": ["vytches-ddd", "aggregates"],
+    "level": "advanced"
+  },
+  {
+    "section": "Hidden feature: getAggregateInfo(aggregate) diagnostic object",
+    "text": "`getAggregateInfo(aggregate)` (from utilities) returns a single diagnostic\nobject with `id`, `type`, `version`, `hasChanges`, `capabilities`, and `events`\ncount — useful for logging without exposing internals.",
+    "kind": "concept",
+    "feature": "aggregates",
+    "combines": [],
+    "tags": ["vytches-ddd", "aggregates"],
+    "level": "advanced"
+  },
+  {
+    "section": "Hidden feature: buildWithAllCapabilities(MyClass)",
+    "text": "`aggregateBuilder(...).buildWithAllCapabilities(MyClass)` attaches all four\nbuilt-in capabilities (snapshot, versioning, audit, event sourcing) in one call.",
+    "kind": "concept",
+    "feature": "aggregates",
+    "combines": [],
+    "tags": ["vytches-ddd", "aggregates"],
+    "level": "advanced"
+  },
+  {
+    "section": "Hidden feature: _internal_setState is for capability implementations only",
+    "text": "`_internal_setState` exists on `AggregateRoot` and is intended only for\ncapability implementations — never call it from domain code.",
+    "kind": "concept",
+    "feature": "aggregates",
+    "combines": [],
+    "tags": ["vytches-ddd", "aggregates"],
+    "level": "advanced"
+  }
+]

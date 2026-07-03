@@ -40,12 +40,14 @@ export const COLLECTION_REGISTRY: CollectionSpec[] = [
     scope: "global",
     dim: 1024,
     seeded: true,
-    description: "@vytches/ddd examples (simple/medium/complex) — global-indexer.ts::buildExamplesIndex",
+    description: "@vytches/ddd TS examples + LLMGUIDE.md concepts/api (quickstart/core/advanced/exhaustive) — global-indexer.ts::buildLibraryReferenceIndex",
   },
 ];
 
 export const GLOBAL_COLLECTIONS = COLLECTION_REGISTRY.filter((c) => c.scope === "global");
 
 // Payload fields needing a keyword index on EVERY collection: kind/tags/level for filtering,
-// source for diversity grouping (store-qdrant.ts::search groups by 'source').
-export const PAYLOAD_INDEX_FIELDS = ["kind", "tags", "level", "source"] as const;
+// source for diversity grouping (store-qdrant.ts::search groups by 'source'). feature/combines
+// back the retrieve_examples OR-match (feature param matches either field, see index.ts::buildFilter);
+// lib_version supports pinning/drift queries against a specific @vytches/ddd release.
+export const PAYLOAD_INDEX_FIELDS = ["kind", "tags", "level", "source", "feature", "combines", "lib_version"] as const;

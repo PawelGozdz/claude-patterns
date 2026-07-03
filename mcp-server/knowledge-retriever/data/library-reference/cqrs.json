@@ -1,0 +1,398 @@
+[
+  {
+    "section": "Overview",
+    "text": "## Purpose\n\nProvides command/query separation with `CommandBus`, `QueryBus`, decorator-based\nhandler registration, middleware pipeline, and an optional\n`EnhancedCommandBus`/`EnhancedQueryBus` with resilience patterns.\n\n## Quick Start\n\n```typescript\nimport {\n  CommandBus,\n  QueryBus,\n  CommandHandler,\n  QueryHandler,\n  CQRSDiscoveryPlugin,\n} from '@vytches/ddd-cqrs';\nimport type {\n  ICommand,\n  IQuery,\n  ICommandHandler,\n  IQueryHandler,\n} from '@vytches/ddd-cqrs';\n\n// 1. Define a command\nclass PlaceOrderCommand implements ICommand {\n  constructor(\n    public readonly customerId: string,\n    public readonly amount: number\n  ) {}\n}\n\n// 2. Implement a handler\n@CommandHandler(PlaceOrderCommand)\nclass PlaceOrderHandler implements ICommandHandler<PlaceOrderCommand, string> {\n  async execute(command: PlaceOrderCommand): Promise<string> {\n    // domain logic here\n    return 'order-id-123';\n  }\n}\n\n// 3. Wire up the bus (using a DI container)\nconst bus = new CommandBus(container);\nbus.register(PlaceOrderCommand, new PlaceOrderHandler());\n\nconst orderId = await bus.execute(new PlaceOrderCommand('c-1', 500));\n```",
+    "kind": "concept",
+    "feature": "cqrs",
+    "combines": [],
+    "tags": ["vytches-ddd", "cqrs"],
+    "level": "quickstart"
+  },
+  {
+    "section": "ICommand",
+    "text": "`ICommand` | interface | Empty marker interface; all commands implement this",
+    "kind": "api",
+    "feature": "cqrs",
+    "combines": [],
+    "tags": ["vytches-ddd", "cqrs"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IQuery<TResult>",
+    "text": "`IQuery<TResult>` | interface | Marker with result type parameter",
+    "kind": "api",
+    "feature": "cqrs",
+    "combines": [],
+    "tags": ["vytches-ddd", "cqrs"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "ICommandHandler<TCmd, TResult>",
+    "text": "`ICommandHandler<TCmd, TResult>` | interface | Contract: `execute(command): Promise<TResult>`",
+    "kind": "api",
+    "feature": "cqrs",
+    "combines": [],
+    "tags": ["vytches-ddd", "cqrs"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IQueryHandler<TQuery, TResult>",
+    "text": "`IQueryHandler<TQuery, TResult>` | interface | Contract: `execute(query): Promise<TResult>`",
+    "kind": "api",
+    "feature": "cqrs",
+    "combines": [],
+    "tags": ["vytches-ddd", "cqrs"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "CommandBus",
+    "text": "`CommandBus` | class | Routes commands to registered handlers with middleware",
+    "kind": "api",
+    "feature": "cqrs",
+    "combines": [],
+    "tags": ["vytches-ddd", "cqrs"],
+    "level": "core"
+  },
+  {
+    "section": "QueryBus",
+    "text": "`QueryBus` | class | Routes queries to registered handlers with middleware",
+    "kind": "api",
+    "feature": "cqrs",
+    "combines": [],
+    "tags": ["vytches-ddd", "cqrs"],
+    "level": "core"
+  },
+  {
+    "section": "ICommandBus",
+    "text": "`ICommandBus` | abstract class | Abstract base / DI token for command bus",
+    "kind": "api",
+    "feature": "cqrs",
+    "combines": [],
+    "tags": ["vytches-ddd", "cqrs"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IQueryBus",
+    "text": "`IQueryBus` | abstract class | Abstract base / DI token for query bus",
+    "kind": "api",
+    "feature": "cqrs",
+    "combines": [],
+    "tags": ["vytches-ddd", "cqrs"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "EnhancedCommandBus",
+    "text": "`EnhancedCommandBus` | class | `CommandBus` + circuit breaker, retry, timeout, bulkhead (requires `@vytches/ddd-resilience`)",
+    "kind": "api",
+    "feature": "cqrs",
+    "combines": ["resilience"],
+    "tags": ["vytches-ddd", "cqrs"],
+    "level": "core"
+  },
+  {
+    "section": "EnhancedQueryBus",
+    "text": "`EnhancedQueryBus` | class | `QueryBus` + resilience patterns",
+    "kind": "api",
+    "feature": "cqrs",
+    "combines": [],
+    "tags": ["vytches-ddd", "cqrs"],
+    "level": "core"
+  },
+  {
+    "section": "CommandHandler(CmdClass)",
+    "text": "`CommandHandler(CmdClass)` | decorator | Marks a class as a command handler and stores metadata",
+    "kind": "api",
+    "feature": "cqrs",
+    "combines": [],
+    "tags": ["vytches-ddd", "cqrs"],
+    "level": "core"
+  },
+  {
+    "section": "QueryHandler(QueryClass)",
+    "text": "`QueryHandler(QueryClass)` | decorator | Marks a class as a query handler and stores metadata",
+    "kind": "api",
+    "feature": "cqrs",
+    "combines": [],
+    "tags": ["vytches-ddd", "cqrs"],
+    "level": "core"
+  },
+  {
+    "section": "CQRSExecutionContext",
+    "text": "`CQRSExecutionContext` | class | Carries command/query, handler, type, and a metadata map through middleware",
+    "kind": "api",
+    "feature": "cqrs",
+    "combines": [],
+    "tags": ["vytches-ddd", "cqrs"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "LoggingMiddleware",
+    "text": "`LoggingMiddleware` | class | Built-in middleware that logs execution time",
+    "kind": "api",
+    "feature": "cqrs",
+    "combines": [],
+    "tags": ["vytches-ddd", "cqrs"],
+    "level": "core"
+  },
+  {
+    "section": "ICQRSMiddleware",
+    "text": "`ICQRSMiddleware` | interface | Contract: `execute(ctx, next): Promise<void>`",
+    "kind": "api",
+    "feature": "cqrs",
+    "combines": [],
+    "tags": ["vytches-ddd", "cqrs"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "CQRSDiscoveryPlugin",
+    "text": "`CQRSDiscoveryPlugin` | class | Auto-discovers and registers decorated handlers from a DI container",
+    "kind": "api",
+    "feature": "cqrs",
+    "combines": [],
+    "tags": ["vytches-ddd", "cqrs"],
+    "level": "core"
+  },
+  {
+    "section": "HandlerNotFoundError",
+    "text": "`HandlerNotFoundError` | error | Thrown when no handler is registered for a command/query",
+    "kind": "api",
+    "feature": "cqrs",
+    "combines": [],
+    "tags": ["vytches-ddd", "cqrs"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "CQRSModule",
+    "text": "`CQRSModule` | class | Optional configuration entry point",
+    "kind": "api",
+    "feature": "cqrs",
+    "combines": [],
+    "tags": ["vytches-ddd", "cqrs"],
+    "level": "core"
+  },
+  {
+    "section": "CQRSConfiguration",
+    "text": "`CQRSConfiguration` | class | One-stop bootstrap that wires `commandBus` + `queryBus` from a single options object; see Patterns",
+    "kind": "api",
+    "feature": "cqrs",
+    "combines": [],
+    "tags": ["vytches-ddd", "cqrs"],
+    "level": "core"
+  },
+  {
+    "section": "COMMAND_BUS_TOKEN",
+    "text": "`COMMAND_BUS_TOKEN` | constant | Stable `Symbol.for('vytches:cqrs:command-bus')` DI token for `ICommandBus`; see Patterns",
+    "kind": "api",
+    "feature": "cqrs",
+    "combines": [],
+    "tags": ["vytches-ddd", "cqrs"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "QUERY_BUS_TOKEN",
+    "text": "`QUERY_BUS_TOKEN` | constant | Stable `Symbol.for('vytches:cqrs:query-bus')` DI token for `IQueryBus`; see Patterns",
+    "kind": "api",
+    "feature": "cqrs",
+    "combines": [],
+    "tags": ["vytches-ddd", "cqrs"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IDisposableBus",
+    "text": "`IDisposableBus` | interface | Optional capability (`dispose(): void`) implemented by `EnhancedCommandBus`/`EnhancedQueryBus` to release background resources (timers, open handles); see Patterns",
+    "kind": "api",
+    "feature": "cqrs",
+    "combines": [],
+    "tags": ["vytches-ddd", "cqrs"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IResettableBus",
+    "text": "`IResettableBus` | interface | Optional capability (`reset(): void`) implemented by `EnhancedCommandBus`/`EnhancedQueryBus`; evicts registered handlers/caches for test isolation between DI modules",
+    "kind": "api",
+    "feature": "cqrs",
+    "combines": [],
+    "tags": ["vytches-ddd", "cqrs"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IMiddlewareLogger",
+    "text": "`IMiddlewareLogger` | interface | Minimal logger contract (`log(message, ...args): void`) accepted by `LoggingMiddleware`'s constructor; any object with a `log` method (console, Pino, Winston) satisfies it",
+    "kind": "api",
+    "feature": "cqrs",
+    "combines": [],
+    "tags": ["vytches-ddd", "cqrs"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "ICqrsValidatable",
+    "text": "`ICqrsValidatable` | interface | Optional contract (`validate?(): Promise<void> | void`) a command/query can implement so `CommandBus`/`QueryBus` run validation before dispatch — see the `CommandBus` \"With middleware and validation\" example",
+    "kind": "api",
+    "feature": "cqrs",
+    "combines": [],
+    "tags": ["vytches-ddd", "cqrs"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "CqrsValidationError",
+    "text": "`CqrsValidationError` | error | Error class for signaling failed business validation; typically thrown from an `ICqrsValidatable.validate()` implementation. Carries an optional `field` property",
+    "kind": "api",
+    "feature": "cqrs",
+    "combines": [],
+    "tags": ["vytches-ddd", "cqrs"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "CQRSConfigurationError",
+    "text": "`CQRSConfigurationError` | error | Thrown by `CommandBus`/`QueryBus` when handler resolution is misconfigured (e.g. decorator/DI metadata missing); carries a `component` property naming the failing part",
+    "kind": "api",
+    "feature": "cqrs",
+    "combines": [],
+    "tags": ["vytches-ddd", "cqrs"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "QueryExecutionError",
+    "text": "`QueryExecutionError` | error | Exported error type for wrapping a failed query execution; carries `queryType` and `originalError` properties",
+    "kind": "api",
+    "feature": "cqrs",
+    "combines": [],
+    "tags": ["vytches-ddd", "cqrs"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "Query with typed result",
+    "text": "### Query with typed result\n\n```typescript\nimport type { IQuery, IQueryHandler } from '@vytches/ddd-cqrs';\nimport { QueryBus, QueryHandler } from '@vytches/ddd-cqrs';\n\ninterface OrderDto {\n  id: string;\n  amount: number;\n}\n\nclass GetOrderQuery implements IQuery<OrderDto> {\n  constructor(public readonly orderId: string) {}\n}\n\n@QueryHandler(GetOrderQuery)\nclass GetOrderHandler implements IQueryHandler<GetOrderQuery, OrderDto> {\n  async execute(query: GetOrderQuery): Promise<OrderDto> {\n    return { id: query.orderId, amount: 100 };\n  }\n}\n\nconst bus = new QueryBus(container);\nbus.register(GetOrderQuery, new GetOrderHandler());\nconst order = await bus.execute(new GetOrderQuery('order-1')); // typed as OrderDto\n```",
+    "kind": "concept",
+    "feature": "cqrs",
+    "combines": [],
+    "tags": ["vytches-ddd", "cqrs"],
+    "level": "core"
+  },
+  {
+    "section": "Custom middleware",
+    "text": "### Custom middleware\n\n```typescript\nimport type { ICQRSMiddleware, ExecutionContext } from '@vytches/ddd-cqrs';\nimport { CommandBus } from '@vytches/ddd-cqrs';\n\nclass ValidationMiddleware implements ICQRSMiddleware {\n  async execute(\n    context: ExecutionContext,\n    next: () => Promise<void>\n  ): Promise<void> {\n    const cmd = context.commandOrQuery;\n    if ('validate' in cmd && typeof (cmd as any).validate === 'function') {\n      (cmd as any).validate();\n    }\n    await next();\n  }\n}\n\nconst bus = new CommandBus(container);\nbus.use(new ValidationMiddleware());\nbus.use(new LoggingMiddleware());\n```",
+    "kind": "concept",
+    "feature": "cqrs",
+    "combines": [],
+    "tags": ["vytches-ddd", "cqrs"],
+    "level": "advanced"
+  },
+  {
+    "section": "EnhancedCommandBus with resilience",
+    "text": "### EnhancedCommandBus with resilience\n\n```typescript\nimport { EnhancedCommandBus } from '@vytches/ddd-cqrs';\n\nconst bus = new EnhancedCommandBus(container, {\n  resilience: {\n    circuitBreaker: { enabled: true, failureThreshold: 5 },\n    retry: { enabled: true, maxAttempts: 3, baseDelay: 200 },\n    timeout: { enabled: true, timeoutMs: 5000 },\n  },\n});\n```",
+    "kind": "concept",
+    "feature": "cqrs",
+    "combines": ["resilience"],
+    "tags": ["vytches-ddd", "cqrs"],
+    "level": "advanced"
+  },
+  {
+    "section": "CQRSConfiguration one-stop bootstrap",
+    "text": "### CQRSConfiguration one-stop bootstrap\n\n```typescript\nimport { CQRSConfiguration } from '@vytches/ddd-cqrs';\n\nconst cqrs = new CQRSConfiguration(container);\ncqrs.commandBus.register(CreateOrder, new CreateOrderHandler());\nawait cqrs.commandBus.execute(new CreateOrder('c-1'));\n```\n\nWith shared middleware and enhanced buses:\n\n```typescript\nimport { CQRSConfiguration, LoggingMiddleware } from '@vytches/ddd-cqrs';\n\nconst cqrs = new CQRSConfiguration(container, {\n  commandBusType: 'enhanced',\n  queryBusType: 'enhanced',\n  middlewares: [new LoggingMiddleware()],\n});\n```\n\n`CQRSConfiguration` picks `'basic'` (light, no metrics) or `'enhanced'`\n(metrics, performance tracking, retry hooks) per bus and attaches shared\nmiddleware to both in one call. Use it directly when you control the DI\ncontainer, or via `CQRSModule` when you want decorator-driven auto-discovery\nwired in as well.",
+    "kind": "concept",
+    "feature": "cqrs",
+    "combines": [],
+    "tags": ["vytches-ddd", "cqrs"],
+    "level": "advanced"
+  },
+  {
+    "section": "DI tokens for NestJS injection",
+    "text": "### DI tokens for NestJS injection\n\n`COMMAND_BUS_TOKEN` and `QUERY_BUS_TOKEN` are stable `Symbol.for(...)` tokens\nthat resolve to the same reference regardless of whether the consumer imports\nfrom the ESM or CJS build (dual-package hazard). Use them together to inject\nboth buses into a NestJS provider without depending on concrete classes:\n\n```typescript\nimport { COMMAND_BUS_TOKEN, QUERY_BUS_TOKEN } from '@vytches/ddd-cqrs';\nimport type { ICommandBus, IQueryBus } from '@vytches/ddd-cqrs';\n\nclass OrderService {\n  constructor(\n    @Inject(COMMAND_BUS_TOKEN) private readonly commandBus: ICommandBus,\n    @Inject(QUERY_BUS_TOKEN) private readonly queryBus: IQueryBus\n  ) {}\n}\n```",
+    "kind": "concept",
+    "feature": "cqrs",
+    "combines": [],
+    "tags": ["vytches-ddd", "cqrs"],
+    "level": "advanced"
+  },
+  {
+    "section": "Disposing enhanced buses on shutdown",
+    "text": "### Disposing enhanced buses on shutdown\n\n`EnhancedCommandBus` and `EnhancedQueryBus` implement `IDisposableBus` for\nreleasing background resources (cache-cleanup intervals, batch timers) that they\nhold. After `dispose()` the bus must not be used — create a new instance\ninstead. Since the capability is optional, duck-type check before calling it:\n\n```typescript\nimport type { IDisposableBus } from '@vytches/ddd-cqrs';\n\nif ('dispose' in bus) (bus as IDisposableBus).dispose();\n```",
+    "kind": "concept",
+    "feature": "cqrs",
+    "combines": [],
+    "tags": ["vytches-ddd", "cqrs"],
+    "level": "advanced"
+  },
+  {
+    "section": "Anti-pattern: Mixing commands and queries",
+    "text": "**Mixing commands and queries.** A command should change state and return\nminimal data (an ID at most). A query must be read-only and free of side\neffects. Returning a full aggregate from a command handler, or modifying state\nin a query handler, defeats the CQRS separation.",
+    "kind": "anti_pattern",
+    "feature": "cqrs",
+    "combines": [],
+    "tags": ["vytches-ddd", "cqrs"],
+    "level": "core"
+  },
+  {
+    "section": "Anti-pattern: Not returning Promise from handlers",
+    "text": "**Not returning `Promise` from handlers.** Both `ICommandHandler.execute` and\n`IQueryHandler.execute` are typed as `Promise<TResult>`. Returning a synchronous\nvalue without wrapping in a Promise breaks the middleware pipeline and error\npropagation.",
+    "kind": "anti_pattern",
+    "feature": "cqrs",
+    "combines": [],
+    "tags": ["vytches-ddd", "cqrs"],
+    "level": "core"
+  },
+  {
+    "section": "Anti-pattern: Registering the same command class under multiple handlers",
+    "text": "**Registering the same command class under multiple handlers.** `CommandBus`\nuses the class name as the key. Registering a second handler silently replaces\nthe first. Use distinct command classes for distinct operations.",
+    "kind": "anti_pattern",
+    "feature": "cqrs",
+    "combines": [],
+    "tags": ["vytches-ddd", "cqrs"],
+    "level": "core"
+  },
+  {
+    "section": "Anti-pattern: Throwing raw Error instead of a domain error",
+    "text": "**Throwing raw `Error` instead of a domain error.** Handlers should throw typed\nerrors or return a `Result` type so that middleware can distinguish business\nfailures from infrastructure failures. Raw `Error` throws propagate as\n`CommandExecutionError` wrapping the original, losing type information.",
+    "kind": "anti_pattern",
+    "feature": "cqrs",
+    "combines": [],
+    "tags": ["vytches-ddd", "cqrs"],
+    "level": "core"
+  },
+  {
+    "section": "Anti-pattern: Expecting CQRSDiscoveryPlugin to work without reflect-metadata imported",
+    "text": "**Expecting `CQRSDiscoveryPlugin` to work without `reflect-metadata` imported.**\nThe decorator-based auto-discovery relies on `Reflect.defineMetadata`. Import\n`reflect-metadata` once at the application entry point before any handler files\nare loaded.",
+    "kind": "anti_pattern",
+    "feature": "cqrs",
+    "combines": [],
+    "tags": ["vytches-ddd", "cqrs"],
+    "level": "core"
+  },
+  {
+    "section": "Hidden feature: CommandBus.registerFactory",
+    "text": "`CommandBus.registerFactory(CmdClass, () => handler)` registers a lazy factory\ninstead of an eager instance — useful for handlers that have heavyweight\ndependencies and should only be instantiated on first use.",
+    "kind": "concept",
+    "feature": "cqrs",
+    "combines": [],
+    "tags": ["vytches-ddd", "cqrs"],
+    "level": "advanced"
+  },
+  {
+    "section": "Hidden feature: CQRSExecutionContext.setMetadata/getMetadata",
+    "text": "`CQRSExecutionContext.setMetadata(key, value)` / `getMetadata<T>(key)` lets\nmiddleware pass typed data to downstream middleware without polluting the\ncommand object itself.",
+    "kind": "concept",
+    "feature": "cqrs",
+    "combines": [],
+    "tags": ["vytches-ddd", "cqrs"],
+    "level": "advanced"
+  },
+  {
+    "section": "Hidden feature: EnhancedCommandBus batching",
+    "text": "`EnhancedCommandBus` supports `enableBatching` and `maxBatchSize` options to\nautomatically group commands into micro-batches for throughput optimization.",
+    "kind": "concept",
+    "feature": "cqrs",
+    "combines": [],
+    "tags": ["vytches-ddd", "cqrs"],
+    "level": "advanced"
+  },
+  {
+    "section": "Hidden feature: CQRSModule.configure static entry point",
+    "text": "`CQRSModule` (from `'./configuration'`) provides a static\n`configure(options: CQRSOptions)` entry point for setting global defaults that\napply to all bus instances.",
+    "kind": "concept",
+    "feature": "cqrs",
+    "combines": [],
+    "tags": ["vytches-ddd", "cqrs"],
+    "level": "advanced"
+  }
+]

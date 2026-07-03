@@ -1,0 +1,353 @@
+[
+  {
+    "section": "Overview",
+    "text": "## Purpose\n\nNestJS integration for @vytches/ddd. Provides automatic handler discovery and\nregistration with CQRS buses via `VytchesDDDModule`. Decorated handlers are\nauto-discovered — no manual bus registration needed. ACL registrations still\nbelong in `onModuleInit()`.\n\n## Quick Start\n\n```typescript\nimport { Module } from '@nestjs/common';\nimport { VytchesDDDModule } from '@vytches/ddd-nestjs';\nimport {\n  EnhancedCommandBus,\n  EnhancedQueryBus,\n  ICommandBus,\n  IQueryBus,\n} from '@vytches/ddd-cqrs';\nimport { IEventBus } from '@vytches/ddd-contracts';\nimport { UnifiedEventBus } from '@vytches/ddd-events';\n\n@Module({\n  imports: [VytchesDDDModule.forRoot()],\n  providers: [\n    { provide: ICommandBus, useValue: new EnhancedCommandBus() },\n    { provide: IQueryBus, useValue: new EnhancedQueryBus() },\n    { provide: IEventBus, useValue: new UnifiedEventBus() },\n    CreateOrderHandler, // @CommandHandler(CreateOrderCommand)\n    GetOrderHandler, // @QueryHandler(GetOrderQuery)\n    OrdersAuditHandler, // methods annotated with @EventHandler(EventClass)\n  ],\n})\nexport class AppModule {}\n```\n\n`VytchesExplorerService` discovers handlers during `onApplicationBootstrap`\n(after all `onModuleInit()` hooks have run).",
+    "kind": "concept",
+    "feature": "nestjs",
+    "combines": ["cqrs", "contracts", "events"],
+    "tags": ["vytches-ddd", "nestjs"],
+    "level": "quickstart"
+  },
+  {
+    "section": "VytchesDDDModule",
+    "text": "| Export | Kind | Purpose |\n| --- | --- | --- |\n| `VytchesDDDModule` | class | Static module with `forRoot()`, `forContext()`, `forTesting()` |",
+    "kind": "api",
+    "feature": "nestjs",
+    "combines": [],
+    "tags": ["vytches-ddd", "nestjs"],
+    "level": "core"
+  },
+  {
+    "section": "VytchesExplorerService",
+    "text": "| Export | Kind | Purpose |\n| --- | --- | --- |\n| `VytchesExplorerService` | class | Auto-discovers decorated handlers in `onApplicationBootstrap` |",
+    "kind": "api",
+    "feature": "nestjs",
+    "combines": [],
+    "tags": ["vytches-ddd", "nestjs"],
+    "level": "core"
+  },
+  {
+    "section": "NestJSContainerAdapter",
+    "text": "| Export | Kind | Purpose |\n| --- | --- | --- |\n| `NestJSContainerAdapter` | class | Bridge between NestJS DI and VytchesDDD container |",
+    "kind": "api",
+    "feature": "nestjs",
+    "combines": [],
+    "tags": ["vytches-ddd", "nestjs"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "ACLAdapterFor",
+    "text": "| Export | Kind | Purpose |\n| --- | --- | --- |\n| `ACLAdapterFor` | decorator | Marks ACL adapter for auto-discovery (since 0.24.0) |",
+    "kind": "api",
+    "feature": "nestjs",
+    "combines": [],
+    "tags": ["vytches-ddd", "nestjs"],
+    "level": "core"
+  },
+  {
+    "section": "ACL_REGISTRY",
+    "text": "| Export | Kind | Purpose |\n| --- | --- | --- |\n| `ACL_REGISTRY` | token | Injection token for ACLRegistry |",
+    "kind": "api",
+    "feature": "nestjs",
+    "combines": [],
+    "tags": ["vytches-ddd", "nestjs"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "VytchesDDDFeatureModule",
+    "text": "| Export | Kind | Purpose |\n| --- | --- | --- |\n| `VytchesDDDFeatureModule` | class | Static module with `forFeature(contextName)` — isolated `ICommandBus`/`IQueryBus`/`LOCAL_EVENT_BUS` per bounded context; see [Feature-Scoped Bounded Context](#feature-scoped-bounded-context-with-forfeature-global-buses--local-event-routing) |",
+    "kind": "api",
+    "feature": "nestjs",
+    "combines": [],
+    "tags": ["vytches-ddd", "nestjs"],
+    "level": "core"
+  },
+  {
+    "section": "ContextAwareEventDispatcher",
+    "text": "| Export | Kind | Purpose |\n| --- | --- | --- |\n| `ContextAwareEventDispatcher` | class | Routes `IntegrationEvent` → global `IEventBus`, other domain events → `LOCAL_EVENT_BUS`; provide in a `forFeature()` module (since 0.28.0) |",
+    "kind": "api",
+    "feature": "nestjs",
+    "combines": [],
+    "tags": ["vytches-ddd", "nestjs"],
+    "level": "core"
+  },
+  {
+    "section": "LOCAL_EVENT_BUS",
+    "text": "| Export | Kind | Purpose |\n| --- | --- | --- |\n| `LOCAL_EVENT_BUS` | token | Injection token for the per-context event bus; provided by `forFeature()`, injected via `@Inject(LOCAL_EVENT_BUS)` |",
+    "kind": "api",
+    "feature": "nestjs",
+    "combines": [],
+    "tags": ["vytches-ddd", "nestjs"],
+    "level": "core"
+  },
+  {
+    "section": "GLOBAL_QUERY_BUS",
+    "text": "| Export | Kind | Purpose |\n| --- | --- | --- |\n| `GLOBAL_QUERY_BUS` | token | Injection token resolving to the root `IQueryBus`, bypassing any `forFeature()` shadowing — for cross-context ACL services |",
+    "kind": "api",
+    "feature": "nestjs",
+    "combines": [],
+    "tags": ["vytches-ddd", "nestjs"],
+    "level": "core"
+  },
+  {
+    "section": "GLOBAL_COMMAND_BUS",
+    "text": "| Export | Kind | Purpose |\n| --- | --- | --- |\n| `GLOBAL_COMMAND_BUS` | token | Injection token resolving to the root `ICommandBus`, bypassing any `forFeature()` shadowing — for cross-context ACL services |",
+    "kind": "api",
+    "feature": "nestjs",
+    "combines": [],
+    "tags": ["vytches-ddd", "nestjs"],
+    "level": "core"
+  },
+  {
+    "section": "OutboxProcessorModule",
+    "text": "| Export | Kind | Purpose |\n| --- | --- | --- |\n| `OutboxProcessorModule` | class | Static module with `forRootAsync()` — wires one or more `OutboxProcessorService` instances from DI-resolved repository/handler tokens |",
+    "kind": "api",
+    "feature": "nestjs",
+    "combines": [],
+    "tags": ["vytches-ddd", "nestjs"],
+    "level": "core"
+  },
+  {
+    "section": "OutboxProcessorService",
+    "text": "| Export | Kind | Purpose |\n| --- | --- | --- |\n| `OutboxProcessorService` | class | NestJS lifecycle wrapper around `OutboxProcessor` (starts/stops on module init/destroy); created internally by `OutboxProcessorModule.forRootAsync()`, not instantiated directly |",
+    "kind": "api",
+    "feature": "nestjs",
+    "combines": [],
+    "tags": ["vytches-ddd", "nestjs"],
+    "level": "core"
+  },
+  {
+    "section": "ACLAdapterMetadata",
+    "text": "| Export | Kind | Purpose |\n| --- | --- | --- |\n| `ACLAdapterMetadata` | type | Metadata shape stored by `@ACLAdapterFor` (see row above) |",
+    "kind": "api",
+    "feature": "nestjs",
+    "combines": [],
+    "tags": ["vytches-ddd", "nestjs"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "HandlerInfo",
+    "text": "| Export | Kind | Purpose |\n| --- | --- | --- |\n| `HandlerInfo` | type | Return type of `VytchesExplorerService.discoverHandlers()` / `getHandlers()` |",
+    "kind": "api",
+    "feature": "nestjs",
+    "combines": [],
+    "tags": ["vytches-ddd", "nestjs"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "VytchesDDDModuleOptions",
+    "text": "| Export | Kind | Purpose |\n| --- | --- | --- |\n| `VytchesDDDModuleOptions` | type | Options parameter for `VytchesDDDModule.forRoot()` / `forContext()` / `forTesting()` |",
+    "kind": "api",
+    "feature": "nestjs",
+    "combines": [],
+    "tags": ["vytches-ddd", "nestjs"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "OutboxProcessorEntry",
+    "text": "| Export | Kind | Purpose |\n| --- | --- | --- |\n| `OutboxProcessorEntry` | type | One processor config entry in `OutboxProcessorModuleAsyncOptions.processors` |",
+    "kind": "api",
+    "feature": "nestjs",
+    "combines": [],
+    "tags": ["vytches-ddd", "nestjs"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "OutboxProcessorModuleAsyncOptions",
+    "text": "| Export | Kind | Purpose |\n| --- | --- | --- |\n| `OutboxProcessorModuleAsyncOptions` | type | Options parameter for `OutboxProcessorModule.forRootAsync()` |",
+    "kind": "api",
+    "feature": "nestjs",
+    "combines": [],
+    "tags": ["vytches-ddd", "nestjs"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "Module Configuration Methods",
+    "text": "## Module Configuration Methods\n\n| Method | Use Case |\n| --- | --- |\n| `forRoot()` | Basic setup — global auto-discovery |\n| `forContext('orders')` | Single bounded context with isolated handlers |\n| `forContexts({ orders: {}, payments: {} })` | Multiple bounded contexts |\n| `forRootAsync({ useFactory })` | Async config (e.g., from ConfigService) |\n| `forTesting()` | Mock buses for unit tests |",
+    "kind": "api",
+    "feature": "nestjs",
+    "combines": [],
+    "tags": ["vytches-ddd", "nestjs"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "Command Handler",
+    "text": "### Command Handler\n\n```typescript\nimport { Injectable, Inject } from '@nestjs/common';\nimport { CommandHandler } from '@vytches/ddd-cqrs';\nimport type { ICommandHandler } from '@vytches/ddd-cqrs';\nimport { Result } from '@vytches/ddd-utils';\n\n@Injectable()\n@CommandHandler(CreateOrderCommand)\nexport class CreateOrderHandler\n  implements ICommandHandler<CreateOrderCommand, Result<string, Error>>\n{\n  constructor(\n    @Inject(ORDER_REPOSITORY) private readonly orders: IOrderRepository\n  ) {}\n\n  async execute(command: CreateOrderCommand): Promise<Result<string, Error>> {\n    const result = Order.create(command.customerId);\n    if (result.isFailure) return Result.fail(result.error);\n    await this.orders.save(result.value);\n    return Result.ok(result.value.id.toString());\n  }\n}\n```",
+    "kind": "concept",
+    "feature": "nestjs",
+    "combines": ["cqrs", "utils"],
+    "tags": ["vytches-ddd", "nestjs"],
+    "level": "core"
+  },
+  {
+    "section": "Query Handler",
+    "text": "### Query Handler\n\n`IQuery<TResult>` requires the result type — **mandatory type parameter**.\n\n```typescript\n// query definition\nexport class GetOrderQuery implements IQuery<OrderDto> {\n  constructor(public readonly orderId: string) {}\n}\n\n// handler\n@Injectable()\n@QueryHandler(GetOrderQuery)\nexport class GetOrderHandler\n  implements IQueryHandler<GetOrderQuery, Result<OrderDto, Error>>\n{\n  async execute(query: GetOrderQuery): Promise<Result<OrderDto, Error>> {\n    const dto = await this.db.orders.findById(query.orderId);\n    if (!dto) return Result.fail(new Error('Order not found'));\n    return Result.ok(dto);\n  }\n}\n```",
+    "kind": "concept",
+    "feature": "nestjs",
+    "combines": [],
+    "tags": ["vytches-ddd", "nestjs"],
+    "level": "advanced"
+  },
+  {
+    "section": "Event Handler — method decorator, one class handles multiple events",
+    "text": "### Event Handler — method decorator, one class handles multiple events\n\n`@EventHandler` is a **method decorator**, not a class decorator. One class can\nhandle many events. Pass the event **class** (not a string).\n\n```typescript\nimport { Injectable } from '@nestjs/common';\nimport { EventHandler } from '@vytches/ddd-events';\nimport { OrderCreated, ItemAdded } from '../domain/order.events';\n\n@Injectable()\nexport class OrdersAuditHandler {\n  @EventHandler(OrderCreated)\n  async onOrderCreated(event: OrderCreated): Promise<void> {\n    // audit log, projections\n  }\n\n  @EventHandler(ItemAdded)\n  async onItemAdded(event: ItemAdded): Promise<void> {\n    // ...\n  }\n}\n```",
+    "kind": "concept",
+    "feature": "nestjs",
+    "combines": ["events"],
+    "tags": ["vytches-ddd", "nestjs"],
+    "level": "advanced"
+  },
+  {
+    "section": "Bounded Context Module with ACL Registration",
+    "text": "### Bounded Context Module with ACL Registration\n\nACL registration belongs in `onModuleInit()` — buses are not yet ready in\n`onModuleInit()`, but DI container is fully resolved.\n\n```typescript\nimport { Module, OnModuleInit, Inject } from '@nestjs/common';\nimport { ACL_REGISTRY } from '@vytches/ddd-nestjs';\nimport type { ACLRegistry } from '@vytches/ddd-acl';\n\n@Module({\n  providers: [\n    CreateOrderHandler,\n    GetOrderHandler,\n    OrdersAuditHandler,\n    { provide: ORDER_REPOSITORY, useClass: OrderKyselyRepository },\n    OrdersContextApi,\n  ],\n})\nexport class OrdersModule implements OnModuleInit {\n  constructor(\n    @Inject(ACL_REGISTRY) private readonly aclRegistry: ACLRegistry,\n    @Inject(OrdersContextApi) private readonly ordersApi: OrdersContextApi\n  ) {}\n\n  onModuleInit(): void {\n    this.aclRegistry.registerGlobal(\n      'orders',\n      this.ordersApi,\n      'Orders context public API'\n    );\n  }\n}\n```",
+    "kind": "concept",
+    "feature": "nestjs",
+    "combines": ["acl"],
+    "tags": ["vytches-ddd", "nestjs"],
+    "level": "advanced"
+  },
+  {
+    "section": "Cross-Context Calls via ACL",
+    "text": "### Cross-Context Calls via ACL\n\n```typescript\n@Injectable()\n@QueryHandler(GetOrderQuery)\nexport class GetOrderHandler ... {\n  constructor(\n    @Inject(ORDER_QUERY_REPOSITORY) private readonly db: IOrderQueryRepository,\n    @Inject(ACL_REGISTRY)           private readonly aclRegistry: ACLRegistry,\n  ) {}\n\n  async execute(query: GetOrderQuery): Promise<Result<OrderDto, Error>> {\n    // Call another bounded context — no direct import\n    const paymentsApi = this.aclRegistry.getGlobalRequired<IPaymentsApi>('payments');\n    const status = await paymentsApi.getStatusForOrder(query.orderId);\n    const dto = await this.db.findById(query.orderId);\n    if (!dto) return Result.fail(new Error('Order not found'));\n    return Result.ok({ ...dto, paymentStatus: status });\n  }\n}\n```",
+    "kind": "concept",
+    "feature": "nestjs",
+    "combines": ["acl"],
+    "tags": ["vytches-ddd", "nestjs"],
+    "level": "advanced"
+  },
+  {
+    "section": "Global DDD Module (full wiring)",
+    "text": "### Global DDD Module (full wiring)\n\n```typescript\nimport { Global, Module, OnApplicationBootstrap, Inject } from '@nestjs/common';\nimport {\n  VytchesDDDModule,\n  VytchesExplorerService,\n  NestJSContainerAdapter,\n} from '@vytches/ddd-nestjs';\nimport {\n  EnhancedCommandBus,\n  EnhancedQueryBus,\n  ICommandBus,\n  IQueryBus,\n} from '@vytches/ddd-cqrs';\nimport { UnifiedEventBus } from '@vytches/ddd-events';\nimport { IEventBus } from '@vytches/ddd-contracts';\nimport { SimpleContainer } from '@vytches/ddd-di';\n\nconst container = new SimpleContainer();\n\n@Global()\n@Module({\n  imports: [VytchesDDDModule.forRoot()],\n  providers: [\n    {\n      provide: ICommandBus,\n      useValue: new EnhancedCommandBus(new NestJSContainerAdapter(container)),\n    },\n    {\n      provide: IQueryBus,\n      useValue: new EnhancedQueryBus(new NestJSContainerAdapter(container)),\n    },\n    { provide: IEventBus, useClass: UnifiedEventBus },\n  ],\n  exports: [VytchesExplorerService, ICommandBus, IQueryBus, IEventBus],\n})\nexport class DDDModule implements OnApplicationBootstrap {\n  constructor(\n    @Inject(VytchesExplorerService)\n    private readonly explorer: VytchesExplorerService\n  ) {}\n\n  // Runs AFTER all onModuleInit() hooks — all providers guaranteed available\n  async onApplicationBootstrap(): Promise<void> {\n    const handlers = await this.explorer.discoverHandlers();\n    for (const handler of handlers) {\n      await this.explorer.registerHandler(handler);\n    }\n  }\n}\n```",
+    "kind": "concept",
+    "feature": "nestjs",
+    "combines": ["cqrs", "events", "contracts", "di"],
+    "tags": ["vytches-ddd", "nestjs"],
+    "level": "advanced"
+  },
+  {
+    "section": "Bounded Context Isolation",
+    "text": "### Bounded Context Isolation\n\n```typescript\n@Module({\n  imports: [VytchesDDDModule.forContext('payments')],\n  providers: [ProcessPaymentHandler, RefundHandler],\n})\nexport class PaymentsModule {}\n// Only handlers in this module are registered for the 'payments' context\n```",
+    "kind": "concept",
+    "feature": "nestjs",
+    "combines": [],
+    "tags": ["vytches-ddd", "nestjs"],
+    "level": "advanced"
+  },
+  {
+    "section": "Feature-Scoped Bounded Context with `forFeature()` (Global Buses + Local Event Routing)",
+    "text": "### Feature-Scoped Bounded Context with `forFeature()` (Global Buses + Local Event Routing)\n\n`VytchesDDDModule.forFeature(contextName)` creates an isolated `ICommandBus` /\n`IQueryBus` / `LOCAL_EVENT_BUS` for one bounded-context module and exports them\nplus `ContextAwareEventDispatcher`. Combine `ContextAwareEventDispatcher` to\nroute domain events locally and integration events globally, and\n`GLOBAL_QUERY_BUS` / `GLOBAL_COMMAND_BUS` when an ACL service in this context\nmust reach the **root** buses instead of the feature-scoped ones that\n`forFeature()` shadows `ICommandBus`/`IQueryBus` with.\n\n```typescript\nimport { Module, Injectable, Inject, OnModuleInit } from '@nestjs/common';\nimport {\n  VytchesDDDModule,\n  ContextAwareEventDispatcher,\n  GLOBAL_QUERY_BUS,\n  GLOBAL_COMMAND_BUS,\n  ACL_REGISTRY,\n} from '@vytches/ddd-nestjs';\nimport type { IQueryBus, ICommandBus } from '@vytches/ddd-cqrs';\nimport type { ACLRegistry } from '@vytches/ddd-acl';\n\n// Repository dispatches domain events to the *local* bus, integration events globally\n@Injectable()\nclass OrderRepository {\n  constructor(private readonly dispatcher: ContextAwareEventDispatcher) {}\n\n  async save(order: Order): Promise<void> {\n    await this.db.save(order);\n    await this.dispatcher.dispatchEventsForAggregate(order);\n    // DomainEvents      → LOCAL_EVENT_BUS (this context only)\n    // IntegrationEvents → IEventBus       (global, outbox-compatible)\n  }\n}\n\n// ACL service in this context must query the ROOT bus, not the feature-scoped\n// one forFeature() shadows ICommandBus/IQueryBus with for this module\n@Injectable()\nclass OrdersAclService implements OnModuleInit {\n  constructor(\n    @Inject(GLOBAL_QUERY_BUS) private readonly rootQuery: IQueryBus,\n    @Inject(GLOBAL_COMMAND_BUS) private readonly rootCommand: ICommandBus,\n    @Inject(ACL_REGISTRY) private readonly aclRegistry: ACLRegistry\n  ) {}\n\n  onModuleInit(): void {\n    this.aclRegistry.registerGlobal('orders', this);\n  }\n}\n\n@Module({\n  imports: [VytchesDDDModule.forFeature('orders')],\n  providers: [\n    CreateOrderHandler,\n    GetOrderQueryHandler,\n    OrderRepository,\n    OrdersAclService,\n  ],\n})\nexport class OrdersModule {}\n```\n\n`forFeature('orders')` exports `ICommandBus`, `IQueryBus`, `LOCAL_EVENT_BUS`,\nand `ContextAwareEventDispatcher` — all scoped to this module only.\n`GLOBAL_QUERY_BUS` / `GLOBAL_COMMAND_BUS` are provided separately by\n`VytchesDDDModule.forRoot()` at the application root and always resolve to the\nroot buses, regardless of any `forFeature()` shadowing in the importing module.",
+    "kind": "concept",
+    "feature": "nestjs",
+    "combines": ["cqrs", "acl"],
+    "tags": ["vytches-ddd", "nestjs"],
+    "level": "core"
+  },
+  {
+    "section": "Outbox Processor Module",
+    "text": "### Outbox Processor Module\n\n```typescript\nimport { OutboxProcessorModule } from '@vytches/ddd-nestjs';\n\n@Module({\n  imports: [\n    OutboxProcessorModule.forRootAsync({\n      processors: [\n        {\n          repositoryToken: OUTBOX_REPOSITORY,\n          options: { batchSize: 200, adaptiveRepoll: true },\n        },\n        {\n          repositoryToken: OUTBOX_REPOSITORY,\n          options: { messageTypes: ['GdprAuditChainAppend'], batchSize: 50 },\n          handlerToken: GDPR_OUTBOX_HANDLERS,\n          processorToken: GDPR_OUTBOX_PROCESSOR,\n        },\n      ],\n    }),\n  ],\n})\nexport class AppModule {}\n```\n\nEach entry in `processors` yields its own `OutboxProcessorService` instance\n(started on `onModuleInit`, stopped on `onModuleDestroy`) — run a broad\nprocessor alongside specialized ones, e.g. a GDPR-only processor filtered via\n`options.messageTypes`. `OutboxProcessorService` is a thin lifecycle wrapper; it\nis not registered as a provider directly, only created internally by\n`forRootAsync()`'s per-entry factory.",
+    "kind": "concept",
+    "feature": "nestjs",
+    "combines": [],
+    "tags": ["vytches-ddd", "nestjs"],
+    "level": "core"
+  },
+  {
+    "section": "Testing with Mock Buses",
+    "text": "### Testing with Mock Buses\n\n```typescript\nconst module = await Test.createTestingModule({\n  imports: [VytchesDDDModule.forTesting()],\n  providers: [\n    CreateOrderHandler,\n    { provide: ORDER_REPOSITORY, useValue: { save: jest.fn() } },\n  ],\n}).compile();\n\nconst handler = module.get(CreateOrderHandler);\nconst result = await handler.execute(new CreateOrderCommand('c-1'));\nexpect(result.isSuccess).toBe(true);\n```",
+    "kind": "concept",
+    "feature": "nestjs",
+    "combines": [],
+    "tags": ["vytches-ddd", "nestjs"],
+    "level": "advanced"
+  },
+  {
+    "section": "Anti-pattern: Using a string in @EventHandler",
+    "text": "**Using a string in `@EventHandler`.** The decorator accepts an event **class**,\nnot a string event name.\n\n```typescript\n// WRONG: string reference\n@EventHandler('OrderPlaced')\nasync onOrderPlaced(event: OrderPlaced): Promise<void> { ... }\n\n// CORRECT: class reference\n@EventHandler(OrderPlaced)\nasync onOrderPlaced(event: OrderPlaced): Promise<void> { ... }\n```",
+    "kind": "anti_pattern",
+    "feature": "nestjs",
+    "combines": [],
+    "tags": ["vytches-ddd", "nestjs"],
+    "level": "core"
+  },
+  {
+    "section": "Anti-pattern: Applying @EventHandler at class level",
+    "text": "**Applying `@EventHandler` at class level.** It is a method decorator only.\n\n```typescript\n// WRONG: class-level\n@EventHandler(OrderPlaced)\n@Injectable()\nclass OrderPlacedHandler { ... }\n\n// CORRECT: method-level, one class for multiple events\n@Injectable()\nclass OrdersAuditHandler {\n  @EventHandler(OrderPlaced)\n  async onOrderPlaced(event: OrderPlaced): Promise<void> { ... }\n}\n```",
+    "kind": "anti_pattern",
+    "feature": "nestjs",
+    "combines": [],
+    "tags": ["vytches-ddd", "nestjs"],
+    "level": "core"
+  },
+  {
+    "section": "Anti-pattern: Manually registering handlers with buses in onModuleInit()",
+    "text": "**Manually registering handlers with buses in `onModuleInit()`.** Handler\nregistration with command/query buses is handled by `VytchesExplorerService` in\n`onApplicationBootstrap()`. Do not duplicate this.\n\n```typescript\n// WRONG: manual bus registration\nasync onModuleInit() {\n  this.commandBus.register(CreateOrderCommand, this.createOrderHandler);\n}\n\n// CORRECT: just list handler in providers — auto-discovered\n@Module({ providers: [CreateOrderHandler] })\nexport class OrdersModule {}\n```",
+    "kind": "anti_pattern",
+    "feature": "nestjs",
+    "combines": [],
+    "tags": ["vytches-ddd", "nestjs"],
+    "level": "core"
+  },
+  {
+    "section": "Anti-pattern: Removing onModuleInit() from bounded context modules entirely",
+    "text": "**Removing `onModuleInit()` from bounded context modules entirely.** ACL\nregistration must still happen in `onModuleInit()`.\n\n```typescript\n// WRONG: skipping ACL registration\nexport class OrdersModule {} // nothing — ACL context unreachable\n\n// CORRECT: register ACL in onModuleInit, handler registration is automatic\nexport class OrdersModule implements OnModuleInit {\n  onModuleInit(): void {\n    this.aclRegistry.registerGlobal('orders', this.ordersApi);\n  }\n}\n```",
+    "kind": "anti_pattern",
+    "feature": "nestjs",
+    "combines": [],
+    "tags": ["vytches-ddd", "nestjs"],
+    "level": "core"
+  },
+  {
+    "section": "Anti-pattern: Forgetting @Injectable() on handlers",
+    "text": "**Forgetting `@Injectable()` on handlers.** NestJS requires `@Injectable()`\nalongside `@CommandHandler`/`@QueryHandler` for DI to work.",
+    "kind": "anti_pattern",
+    "feature": "nestjs",
+    "combines": [],
+    "tags": ["vytches-ddd", "nestjs"],
+    "level": "core"
+  },
+  {
+    "section": "Anti-pattern: Creating separate VytchesDDDModule.forRoot() per bounded context",
+    "text": "**Creating separate `VytchesDDDModule.forRoot()` per bounded context.** Use\n`forContext('name')` instead — it provides handler isolation without multiple\nglobal modules.",
+    "kind": "anti_pattern",
+    "feature": "nestjs",
+    "combines": [],
+    "tags": ["vytches-ddd", "nestjs"],
+    "level": "core"
+  },
+  {
+    "section": "Anti-pattern: Not providing bus instances",
+    "text": "**Not providing bus instances.** `VytchesDDDModule` does not create bus\ninstances. You must provide `ICommandBus`, `IQueryBus`, `IEventBus`.",
+    "kind": "anti_pattern",
+    "feature": "nestjs",
+    "combines": [],
+    "tags": ["vytches-ddd", "nestjs"],
+    "level": "core"
+  },
+  {
+    "section": "Anti-pattern: Omitting the type parameter from IQuery<TResult>",
+    "text": "**Omitting the type parameter from `IQuery<TResult>`.** Every query class must\ndeclare its result type.\n\n```typescript\n// WRONG: missing type param\nclass GetOrderQuery implements IQuery { ... }\n\n// CORRECT: result type is mandatory\nclass GetOrderQuery implements IQuery<OrderDto> { ... }\n```",
+    "kind": "anti_pattern",
+    "feature": "nestjs",
+    "combines": [],
+    "tags": ["vytches-ddd", "nestjs"],
+    "level": "core"
+  },
+  {
+    "section": "Discovery Timing",
+    "text": "## Discovery Timing\n\n```\nNestJS lifecycle order:\n  1. onModuleInit()         — All modules init (ACL registration happens here)\n  2. onApplicationBootstrap() — VytchesExplorerService discovers + registers handlers\n```\n\nHandlers must be in `providers` of their module to be injectable and\ndiscoverable. They are auto-registered with the appropriate bus (command, query,\nevent) based on their decorator.",
+    "kind": "concept",
+    "feature": "nestjs",
+    "combines": [],
+    "tags": ["vytches-ddd", "nestjs"],
+    "level": "core"
+  },
+  {
+    "section": "Known Caveats: ERR_UNSUPPORTED_DIR_IMPORT / vite-node resolver in Vitest",
+    "text": "### ERR_UNSUPPORTED_DIR_IMPORT / vite-node resolver in Vitest\n\n**Symptom:** Tests fail with `ERR_UNSUPPORTED_DIR_IMPORT` or\n`Cannot find module '@nestjs/core/injector/...'` when running Vitest with\n`pool: 'forks'` or `pool: 'threads'`.\n\n**Root cause:** `@nestjs/core` has no `exports` field, so Node.js native ESM\nfalls back to CJS-style `LOAD_AS_FILE` resolution (auto-appends `.js`). Vitest\nuses vite-node as its module resolver, which applies a stricter ESM resolution\nalgorithm that does **not** perform this fallback. The library code is correct\nfor native Node.js ESM — the mismatch is in vite-node.\n\n**Workaround (consumer side):** Add a resolve alias in your Vitest integration\nconfig to force the CJS build of this package:\n\n```typescript\n// vitest-integration.config.ts\nimport { resolve } from 'path';\n\nexport default {\n  resolve: {\n    alias: [\n      {\n        find: '@vytches/ddd-nestjs',\n        replacement: resolve(\n          __dirname,\n          'node_modules/@vytches/ddd-nestjs/dist/index.cjs'\n        ),\n      },\n    ],\n  },\n};\n```\n\nThe CJS build uses `require()` which handles directory resolution correctly.\nThis alias is only needed for the Vitest test environment — production runtime\n(native Node.js ESM) works without it.",
+    "kind": "concept",
+    "feature": "nestjs",
+    "combines": [],
+    "tags": ["vytches-ddd", "nestjs"],
+    "level": "advanced"
+  }
+]

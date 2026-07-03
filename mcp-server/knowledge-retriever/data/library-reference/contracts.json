@@ -1,0 +1,1330 @@
+[
+  {
+    "section": "Overview",
+    "text": "## Purpose\n\nFoundation package that defines all shared interfaces and contracts for the DDD\nlibrary. Every other package depends on this — it has zero dependencies itself.\n\n## Quick Start\n\n```typescript\nimport type {\n  IDomainEvent,\n  IEventMetadata,\n  IRepository,\n  ISpecification,\n  IEntityId,\n} from '@vytches/ddd-contracts';\nimport {\n  EntityId,\n  IEventBus,\n  Capability,\n  CapabilityRegistry,\n} from '@vytches/ddd-contracts';\n\n// Create a typed entity ID\nconst orderId: IEntityId<string> = new EntityId('abc-123', 'text');\n\n// Define a domain event\ninterface OrderPlacedPayload {\n  amount: number;\n  customerId: string;\n}\nconst event: IDomainEvent<OrderPlacedPayload> = {\n  eventName: 'OrderPlaced',\n  payload: { amount: 100, customerId: 'c-1' },\n  metadata: { correlationId: 'req-1' },\n};\n```",
+    "kind": "concept",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "quickstart"
+  },
+  {
+    "section": "IDomainEvent<P>",
+    "text": "`IDomainEvent<P>` | interface | Base contract for all domain events; has `eventName`, `payload?`, `metadata?`",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "IEventMetadata",
+    "text": "`IEventMetadata` | interface | Tracing fields: `eventId`, `correlationId`, `causationId`, `aggregateId`, `aggregateVersion`",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IEventBus<TEvent>",
+    "text": "`IEventBus<TEvent>` | abstract class | Publish/subscribe contract; `publish`, `subscribe`, `registerHandler`, `publishMany`",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "IEntityId<T>",
+    "text": "`IEntityId<T>` | interface | Typed aggregate identifier; `getValue()`, `equals()`, `toString()`, `isType()`",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "EntityId<T>",
+    "text": "`EntityId<T>` | class | Base implementation of `IEntityId`; constructor takes `(value, type)`",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "IEntityIdFactory",
+    "text": "`IEntityIdFactory` | interface | Factory contract: `createWithRandomUUID`, `fromUUID`, `fromInteger`, `fromBigInt`, `fromText`",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IdType",
+    "text": "`IdType` | type | `'uuid' | 'integer' | 'text' | 'bigint'`",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IRepository<T>",
+    "text": "`IRepository<T>` | interface | Base persistence contract: `save`, `findById?`, `delete?`",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "IExtendedRepository<T>",
+    "text": "`IExtendedRepository<T>` | interface | Adds `exists`, `findBySpecification?`, `findOneBySpecification?`",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IBatchRepository<T>",
+    "text": "`IBatchRepository<T>` | interface | **N+1 prevention** (VP-002) — extends `IRepository` with `findByIds(ids): Promise<Array<T | null>>`. Order-preserving result; type-narrow at call site to pick batched fetch",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IUnitOfWork",
+    "text": "`IUnitOfWork` | interface | Transaction management: `begin`, `commit`, `rollback`, `getRepository`, `getEventBus`",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "IDomainFactory<TAgg, TProps>",
+    "text": "`IDomainFactory<TAgg, TProps>` | interface | **Factory pattern contract** (VF-CANON-001) — `create(props): Result<TAgg, Error>`. Sibling to `IRepository` for complex aggregate creation",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "IAsyncDomainFactory<TAgg, TProps>",
+    "text": "`IAsyncDomainFactory<TAgg, TProps>` | interface | Async variant of `IDomainFactory`; `create` returns `Promise<Result<...>>` for factories that need DB lookups during creation",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "ISpecification<T>",
+    "text": "`ISpecification<T>` | interface | Domain rule: `isSatisfiedBy`, `and`, `or`, `not`, `explainFailure?`",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "IAsyncSpecification<T>",
+    "text": "`IAsyncSpecification<T>` | interface | Async version with `isSatisfiedByAsync` and context parameter",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "Capability",
+    "text": "`Capability` | class | Base for all aggregate capabilities",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "CapabilityRegistry",
+    "text": "`CapabilityRegistry` | class | Manages capability instances keyed by constructor",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "IAggregateCapability",
+    "text": "`IAggregateCapability` | interface | Marks a class as an aggregate-attachable capability",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "EventBusMiddleware",
+    "text": "`EventBusMiddleware` | type | `(next) => (event) => Promise<void>` — intercepts/transforms events inside `IEventBus`'s pipeline; wired via `BaseEventBusOptions.middlewares`",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IEventDispatcher",
+    "text": "`IEventDispatcher` | abstract class | Dispatches events from aggregates: `dispatchEventsForAggregate(aggregate)`, `dispatchEvent(event)`, `dispatchEvents(...events)`",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "IEnhancedEventDispatcher",
+    "text": "`IEnhancedEventDispatcher` | abstract class | Extends `IEventDispatcher` with `use(middleware)` and `registerProcessor(processor)`",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "EventMiddleware",
+    "text": "`EventMiddleware` | type | `(event, next) => Promise<void>` — pipeline middleware registered via `IEnhancedEventDispatcher.use()`",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IEventProcessor",
+    "text": "`IEventProcessor` | interface | `process(event)`, `canProcess(event)` — pluggable processor registered via `IEnhancedEventDispatcher.registerProcessor`",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IEventPersistenceHandler",
+    "text": "`IEventPersistenceHandler` | abstract class | `handleEvent(event): Promise<number>`, `getCurrentVersion(aggregateId)` — persists one event, returns the new aggregate version",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IEventHandler<T>",
+    "text": "`IEventHandler<T>` | interface | Class-based handler contract: `handle(event: T): Promise<void> | void`; pass an instance to `IEventBus.registerHandler`",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "EventHandlerFn<T>",
+    "text": "`EventHandlerFn<T>` | type | `(event: T) => Promise<void> | void` — function-handler signature used by `IEventBus.subscribe`",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "EventHandlerMetadata",
+    "text": "`EventHandlerMetadata` | interface | `{ eventType: Constructor }` — metadata shape stored by the `@EventHandler` decorator (in `@vytches/ddd-events`)",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [
+      "events"
+    ],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "isEventHandler(obj)",
+    "text": "`isEventHandler(obj)` | function | Type guard: `obj is IEventHandler<IDomainEvent>`; true when `obj` has a callable `handle` method",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "EVENT_HANDLER_METADATA` / `EVENT_HANDLER_OPTIONS",
+    "text": "`EVENT_HANDLER_METADATA` / `EVENT_HANDLER_OPTIONS` | symbol | `@internal` — decorator metadata keys re-exported only so sibling `@vytches/ddd-*` packages can resolve them; not part of the consumer contract",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IAggregateWithEvents",
+    "text": "`IAggregateWithEvents` | interface | `getDomainEvents()`, `commit()`, `hasChanges()` — parameter type of `IEventDispatcher.dispatchEventsForAggregate`",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IEventStore",
+    "text": "`IEventStore` | interface | Minimal event store: `getEvents(aggregateId)`, `saveEvents(aggregateId, events, expectedVersion)`, `getEventsAfterVersion(aggregateId, version)`",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "IAdvancedEventStore",
+    "text": "`IAdvancedEventStore` | interface | Full-featured store — stream append/read, global log read, snapshots, stream metadata, optional subscriptions. Entry point for the combo pattern below",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "IAuditEvent",
+    "text": "`IAuditEvent` | interface | Auditable event record: `eventId`, `timestamp`, `aggregateId`, `aggregateType`, `aggregateVersion`, `eventName`, `payload?`, `actor?`, `previousState?`",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IEventUpcaster<TIn,TOut>",
+    "text": "`IEventUpcaster<TIn,TOut>` | interface | `upcast(payload, metadata?): TOut` — transforms an event payload across schema versions; registered via `IVersioningCapability.registerUpcaster`",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IStoredDomainEvent<P>",
+    "text": "`IStoredDomainEvent<P>` | interface | `IDomainEvent<P>` persisted with `eventId`, `aggregateId`, `aggregateType`, `aggregateVersion`, `timestamp` — input type for `appendToStream`",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IAppendResult",
+    "text": "`IAppendResult` | interface | `{ streamId, fromVersion, toVersion, events, position }` — return value of `appendToStream`",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IStoredEvent<T>",
+    "text": "`IStoredEvent<T>` | interface | `IStoredDomainEvent<T>` plus `position`, `streamId`, `streamVersion`, `globalVersion`, `checksum?` — shape read back from a stream",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IReadStreamOptions",
+    "text": "`IReadStreamOptions` | interface | `{ fromVersion?, maxCount?, direction?, resolveLinkTos? }` — options for `readStream`",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IReadAllOptions",
+    "text": "`IReadAllOptions` | interface | `{ fromPosition?, maxCount?, direction?, filterByEventType?, filterByStreamPrefix? }` — options for `readAll`",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IEventStream<T>",
+    "text": "`IEventStream<T>` | interface | A page of events from `readStream`: `{ streamId, events, fromVersion, lastVersion, isEndOfStream, nextVersion }`",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IGlobalEventStream<T>",
+    "text": "`IGlobalEventStream<T>` | interface | A page of events from `readAll`: `{ events, fromPosition, nextPosition, isEndOfStream }`",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IStreamMetadata",
+    "text": "`IStreamMetadata` | interface | `{ streamId, created, updated, version, eventCount, firstEventPosition?, lastEventPosition?, deleted?, customMetadata? }` — return type of `getStreamMetadata`",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IEventSerializer",
+    "text": "`IEventSerializer` | interface | `serialize(event)`, `deserialize(data)`, `getContentType()` — plugged into `IEventStoreConfig.serializer`",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IEventStoreConfig",
+    "text": "`IEventStoreConfig` | interface | Advanced-store configuration: `serializer?`, `enableSnapshots?`, `snapshotFrequency?`, `enableOptimisticConcurrency?`, `enableChecksums?`, `maxEventsPerStream?`, `eventRetentionDays?`",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IEventStoreAdapter",
+    "text": "`IEventStoreAdapter` | interface | Connection lifecycle for a store implementation: `connect()`, `disconnect()`, `isConnected()`, `clear?()`",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IEventReplay",
+    "text": "`IEventReplay` | interface | Replays stored events through a handler: `replayFromStream`, `replayAll`, `replayWithFilter`, `getEventsAsIterable`, `countEvents`, `estimateReplayDuration`. Entry point for the combo pattern below",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "IAdvancedEventReplay",
+    "text": "`IAdvancedEventReplay` | interface | Extends `IEventReplay` with `startReplaySession()` for pausable/resumable/cancellable replay",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IReplaySession",
+    "text": "`IReplaySession` | interface | Controllable session from `startReplaySession`: `sessionId`, `progress`, `status`, `pause()`, `resume()`, `cancel()`, `waitForCompletion()`, `onProgress()`, `onError()`",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IEventReplayFactory",
+    "text": "`IEventReplayFactory` | interface | `createBasicReplay()`, `createAdvancedReplay()`, `createCustomReplay(strategy)` — factory for replay strategy instances",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IReplayFilter",
+    "text": "`IReplayFilter` | interface | Filter criteria: timestamp/version/position ranges, `eventTypes`, `aggregateTypes`, `aggregateIds`, `streamPrefix`, `maxEvents`, `direction`",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IReplayConfig",
+    "text": "`IReplayConfig` | interface | Execution tuning: `batchSize?`, `batchDelay?`, `parallel?`, `maxWorkers?`, `skipErrors?`, `eventTimeout?`, `reportProgress?`, `progressInterval?`",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IReplayProgress",
+    "text": "`IReplayProgress` | interface | Progress snapshot: `totalEvents`, `processedEvents`, `failedEvents`, `skippedEvents`, `currentPosition`, `percentComplete`, `eventsPerSecond`, `startTime`, `lastUpdate`",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IReplayResult",
+    "text": "`IReplayResult` | interface | Outcome of a replay run: `eventsReplayed`, `eventsFailed`, `eventsSkipped`, `duration`, `averageSpeed`, `errors`, `finalProgress`, `success`",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "ReplayEventHandler",
+    "text": "`ReplayEventHandler` | type | `(event: IStoredEvent) => Promise<void>` — per-event callback passed to `replayFromStream`/`replayAll`",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "ReplayProgressHandler",
+    "text": "`ReplayProgressHandler` | type | `(progress: IReplayProgress) => void` — subscribed via `IReplaySession.onProgress`",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "ReplayErrorHandler",
+    "text": "`ReplayErrorHandler` | type | `(error, event) => Promise<boolean>` — return `true` to continue past an error; subscribed via `IReplaySession.onError`",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IValidator<T>",
+    "text": "`IValidator<T>` | interface | `validate(value: T): Result<T, IValidationErrors>` — validation contract sibling to `ISpecification`, returns `Result` instead of throwing",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "IValidationRule<T>",
+    "text": "`IValidationRule<T>` | interface | `{ property, validate: (value) => Result<true, IValidationError>, condition? }` — a single composable rule",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IValidationErrors",
+    "text": "`IValidationErrors` | interface | `{ errors: IValidationError[], length }` — the failure branch of `IValidator.validate`",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IValidationError",
+    "text": "`IValidationError` | interface | `{ property, message, context? }` — a single validation failure",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "createCapabilityRegistry<T>()",
+    "text": "`createCapabilityRegistry<T>()` | function | Factory returning `new CapabilityRegistry<T>()` — convenience constructor for typed registries",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "CapabilityConstructor<T>",
+    "text": "`CapabilityConstructor<T>` | type | `(new (...args) => T) & { capabilityType: string }` — constructor shape required by `CapabilityRegistry.get/has/remove`",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "CapabilityMap",
+    "text": "`CapabilityMap` | type | `Map<string, Capability>` — internal shape of a capability collection",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "CapabilityType<T>",
+    "text": "`CapabilityType<T>` | type | Extracts the string discriminant `U` from `Capability<U>`",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IAuditCapability",
+    "text": "`IAuditCapability` | interface | `getAuditLog()`, `clearAuditLog()`, `getAuditStatistics?()` — aggregate capability for change history",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "ICheckpointCapability<TReadModel>",
+    "text": "`ICheckpointCapability<TReadModel>` | interface | `saveCheckpoint`, `loadCheckpoint`, `getInterval()` — projection capability for resumable read-model rebuilds",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "ICircuitBreakerCapability<TReadModel>",
+    "text": "`ICircuitBreakerCapability<TReadModel>` | interface | `recordSuccess`, `recordFailure`, `isOpen()`, `getState()`, `reset()` — projection capability for failure isolation",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IDeadLetterCapability<TReadModel>",
+    "text": "`IDeadLetterCapability<TReadModel>` | interface | `sendToDeadLetter`, `getDeadLetterEvents`, `retryDeadLetterEvent`, `clearDeadLetterQueue` — projection capability for poison events",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IEventSourcingCapability",
+    "text": "`IEventSourcingCapability` | interface | `loadFromEventStore`, `saveToEventStore`, `setEventStore`, `getEventStore` — aggregate capability wiring an `IEventStore`",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IProjectionCapability<T,TReadModel>",
+    "text": "`IProjectionCapability<T,TReadModel>` | interface | Sibling of `IAggregateCapability` for projection engines: `attach`, `detach?`, `initialize?`, `cleanup?`",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "ISnapshotCapability<TState,TMeta>",
+    "text": "`ISnapshotCapability<TState,TMeta>` | interface | `createSnapshot`, `restoreFromSnapshot`, `saveTemporaryState?`, `getLastSnapshotTimestamp?` — produces/consumes `IAggregateSnapshot`",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IVersioningCapability",
+    "text": "`IVersioningCapability` | interface | `registerUpcaster`, `handleVersionedEvent`, `getRegisteredEventTypes`, `hasUpcaster` — aggregate capability for schema evolution",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IEntityIdConstructorParams<T>",
+    "text": "`IEntityIdConstructorParams<T>` | interface | `{ value: T, type: IdType }` — constructor parameter shape for `IEntityId` implementations",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "ITestClock",
+    "text": "`ITestClock` | interface | `now()`, `advance(ms)`, `setTime(date)`, `reset()` — controllable clock for deterministic time-based tests",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "ITestHarness<T>",
+    "text": "`ITestHarness<T>` | interface | `setup()`, `teardown()`, `execute(scenario)`, `getContext()` — wraps a test environment's lifecycle",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "ISafeRunResult<T,E>",
+    "text": "`ISafeRunResult<T,E>` | interface | `{ error?, result?, isSuccess(), isFailure() }` — outcome of a guarded test execution",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "ITestDataBuilder<T>",
+    "text": "`ITestDataBuilder<T>` | interface | `build()`, `reset()`, `clone()` — fluent test-data builder contract",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "ITestScenario",
+    "text": "`ITestScenario` | interface | `{ name, description?, setup?, execute, cleanup?, expectedOutcome? }` — a named, runnable test scenario",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "ITestFixture<T>",
+    "text": "`ITestFixture<T>` | interface | `create()`, `createMany(count)`, `createWith(overrides)`, `getDefaults()` — fixture factory contract",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "TestClockOptions",
+    "text": "`TestClockOptions` | interface | `{ initialTime?, frozen?, timezone?, autoAdvance? }` — configuration for `ITestClock` implementations",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "TestHarnessOptions",
+    "text": "`TestHarnessOptions` | interface | `{ timeout?, captureErrors?, restoreState?, context?, hooks? }` — configuration for `ITestHarness` implementations",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "TestScenarioOptions",
+    "text": "`TestScenarioOptions` | interface | `{ tags?, priority?, skip?, only?, retry?, timeout?, requiredEnv?, metadata? }` — configuration for `ITestScenario`",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IRepositoryProvider",
+    "text": "`IRepositoryProvider` | interface | `getRepository<T>(name): T | undefined` — registry/factory lookup contract, simpler than `IUnitOfWork.getRepository` (no throw on miss)",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "IQueryRepository<T>",
+    "text": "`IQueryRepository<T>` | interface | Read-side of CQRS: `findAll()`, `findWithPagination(limit, offset)`, `count()`",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "IWriteRepository<T>",
+    "text": "`IWriteRepository<T>` | interface | Write-side of CQRS: `create(entity)`, `update(entity)`, `deleteById(id)`",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "IAggregateSnapshot<TState,TMeta>",
+    "text": "`IAggregateSnapshot<TState,TMeta>` | interface | `{ aggregateId, version, aggregateType, state, timestamp, metadata?, lastEventId?, checksum? }` — used by `ISnapshotCapability` and `IAdvancedEventStore.getSnapshot`/`saveSnapshot`",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "DiagnosticsSink",
+    "text": "`DiagnosticsSink` | interface | Consumer-implemented sink: `warn(message, context?)`, `error(message, error?, context?)` — passed to `configureDiagnostics({ sink })`",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "DiagnosticsLevel",
+    "text": "`DiagnosticsLevel` | type | `'silent' | 'error' | 'warn'` — verbosity passed to `configureDiagnostics({ level })`",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "DiagnosticsOptions",
+    "text": "`DiagnosticsOptions` | interface | `{ sink?, level? }` — argument shape for `configureDiagnostics`",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "configureDiagnostics(options)",
+    "text": "`configureDiagnostics(options)` | function | Configures the library's internal diagnostics channel (sink + level). See pattern below",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "internalLogger",
+    "text": "`internalLogger` | const | `@internal` — library-internal diagnostics shim (`warn`/`error`) delegating to the configured `DiagnosticsSink`; not an application logging layer, do not import in consumer code",
+    "kind": "api",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "exhaustive"
+  },
+  {
+    "section": "Implementing a repository",
+    "text": "```typescript\nimport type {\n  IExtendedRepository,\n  IRepositoryEntity,\n} from '@vytches/ddd-contracts';\n\ninterface Order extends IRepositoryEntity {\n  getId(): string;\n}\n\nclass InMemoryOrderRepository implements IExtendedRepository<Order> {\n  private store = new Map<string, Order>();\n\n  async save(entity: Order): Promise<void> {\n    this.store.set(entity.getId() as string, entity);\n  }\n\n  async exists(id: unknown): Promise<boolean> {\n    return this.store.has(id as string);\n  }\n}\n```",
+    "kind": "concept",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "Implementing a specification",
+    "text": "```typescript\nimport type { ISpecification } from '@vytches/ddd-contracts';\n\nclass ActiveOrderSpec implements ISpecification<Order> {\n  isSatisfiedBy(candidate: Order): boolean {\n    return candidate.status === 'active';\n  }\n  and(other: ISpecification<Order>): ISpecification<Order> {\n    return {\n      isSatisfiedBy: c => this.isSatisfiedBy(c) && other.isSatisfiedBy(c),\n      and: () => {\n        throw new Error();\n      },\n      or: () => {\n        throw new Error();\n      },\n      not: () => {\n        throw new Error();\n      },\n    };\n  }\n  or(other: ISpecification<Order>): ISpecification<Order> {\n    /* ... */ return this;\n  }\n  not(): ISpecification<Order> {\n    /* ... */ return this;\n  }\n}\n```",
+    "kind": "concept",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "advanced"
+  },
+  {
+    "section": "Using IEventBus with generics",
+    "text": "```typescript\nimport { IEventBus } from '@vytches/ddd-contracts';\nimport type { IDomainEvent } from '@vytches/ddd-contracts';\n\n// IEventBus is an abstract class used as both type and DI token\nclass MyEventBus extends IEventBus<IDomainEvent> {\n  async publish(event: IDomainEvent): Promise<void> {\n    /* ... */\n  }\n  subscribe<T extends IDomainEvent>(\n    eventType: string | (new (...args: any[]) => T),\n    handler: (event: T) => Promise<void> | void\n  ): void {\n    /* ... */\n  }\n  registerHandler<T extends IDomainEvent>(\n    eventType: string | (new (...args: any[]) => T),\n    handler: { handle(event: T): Promise<void> | void }\n  ): void {\n    /* ... */\n  }\n  unsubscribe(\n    eventType: string | (new (...args: any[]) => IDomainEvent),\n    handler: any\n  ): void {\n    /* ... */\n  }\n  async publishMany(events: IDomainEvent[]): Promise<void> {\n    /* ... */\n  }\n}\n```",
+    "kind": "concept",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "advanced"
+  },
+  {
+    "section": "Using `createDomainEvent`",
+    "text": "```typescript\nimport { createDomainEvent } from '@vytches/ddd-contracts';\n\n// eventId + timestamp are generated automatically; only pass what varies\nconst event = createDomainEvent(\n  'OrderPlaced',\n  { orderId: 'o-1', amount: 100 },\n  { correlationId: 'req-42' }\n);\n// event.metadata.eventId and event.metadata.timestamp are already filled in\nawait eventBus.publish(event);\n```",
+    "kind": "concept",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "advanced"
+  },
+  {
+    "section": "Implementing `IValidator`",
+    "text": "```typescript\nimport type { IValidator, IValidationErrors } from '@vytches/ddd-contracts';\nimport { Result } from '@vytches/ddd-contracts';\n\ninterface CreateOrderInput {\n  customerId: string;\n  items: unknown[];\n}\n\nclass CreateOrderValidator implements IValidator<CreateOrderInput> {\n  validate(\n    value: CreateOrderInput\n  ): Result<CreateOrderInput, IValidationErrors> {\n    const errors = [];\n    if (!value.customerId) {\n      errors.push({\n        property: 'customerId',\n        message: 'customerId is required',\n      });\n    }\n    if (value.items.length === 0) {\n      errors.push({\n        property: 'items',\n        message: 'at least one item is required',\n      });\n    }\n    if (errors.length > 0) {\n      return Result.fail({ errors, length: errors.length });\n    }\n    return Result.ok(value);\n  }\n}\n```",
+    "kind": "concept",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "advanced"
+  },
+  {
+    "section": "Event-sourcing workflow: append → read → replay → snapshot",
+    "text": "Chains `IAdvancedEventStore`, `IEventReplay`, and `IAggregateSnapshot` — the\nlayers a typical event-sourced aggregate combines to persist its history and\nrehydrate state, instead of using any one of them in isolation.\n\n```typescript\nimport type {\n  IAdvancedEventStore,\n  IEventReplay,\n  IStoredDomainEvent,\n  IAggregateSnapshot,\n} from '@vytches/ddd-contracts';\n\ndeclare const eventStore: IAdvancedEventStore;\ndeclare const eventReplay: IEventReplay;\ndeclare const order: { apply(e: IStoredDomainEvent): void; toState(): unknown };\n\nconst streamId = `order-${orderId}`;\n\n// 1. Append events to a stream (produced when an aggregate is saved)\nconst events: IStoredDomainEvent[] = [\n  {\n    eventId: crypto.randomUUID(),\n    eventName: 'OrderPlaced',\n    aggregateId: orderId,\n    aggregateType: 'Order',\n    aggregateVersion: 1,\n    timestamp: new Date(),\n    payload: { amount: 100 },\n  },\n];\nconst appendResult = await eventStore.appendToStream(streamId, events);\n// appendResult: { streamId, fromVersion, toVersion, events, position }\n\n// 2. Read the stream back directly (e.g. to feed a read model)\nconst page = await eventStore.readStream(streamId, { fromVersion: 0 });\nconsole.log(page.events.length, page.isEndOfStream);\n\n// 3. Or replay it through a handler to rehydrate an aggregate\nconst replayResult = await eventReplay.replayFromStream(\n  streamId,\n  async storedEvent => order.apply(storedEvent),\n  { fromStreamVersion: 0 },\n  { batchSize: 100 }\n);\nconsole.log(replayResult.success, replayResult.eventsReplayed);\n\n// 4. Periodically snapshot so future loads skip replaying from event 0\nconst snapshot: IAggregateSnapshot = {\n  aggregateId: orderId,\n  version: appendResult.toVersion,\n  aggregateType: 'Order',\n  state: order.toState(),\n  timestamp: new Date(),\n};\nawait eventStore.saveSnapshot(streamId, snapshot);\n\n// 5. On next load: restore the snapshot, then replay only events after it\nconst restored = await eventStore.getSnapshot(streamId);\nif (restored) {\n  await eventReplay.replayFromStream(\n    streamId,\n    async storedEvent => order.apply(storedEvent),\n    { fromStreamVersion: restored.version }\n  );\n}\n```",
+    "kind": "concept",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "advanced"
+  },
+  {
+    "section": "Advanced replay: pausable session",
+    "text": "Builds on the workflow above using `IAdvancedEventReplay` when a replay needs to\nbe monitored, paused under load, or cancelled — e.g. rebuilding a large\nprojection during business hours.\n\n```typescript\nimport type {\n  IAdvancedEventReplay,\n  IReplaySession,\n} from '@vytches/ddd-contracts';\n\ndeclare const advancedReplay: IAdvancedEventReplay;\n\nconst session: IReplaySession = await advancedReplay.startReplaySession(\n  async event => rebuildProjection(event),\n  { aggregateTypes: ['Order'] },\n  { batchSize: 200, reportProgress: true }\n);\n\nsession.onProgress(progress => {\n  console.log(\n    `${progress.percentComplete}% (${progress.processedEvents}/${progress.totalEvents})`\n  );\n});\nsession.onError(async (error, event) => {\n  logger.warn('replay error', { eventId: event.eventId, error });\n  return true; // continue past this event\n});\n\n// Pause under load, resume later\nawait session.pause();\nawait session.resume();\n\nconst result = await session.waitForCompletion();\nconsole.log(result.success, result.eventsReplayed);\n```",
+    "kind": "concept",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "advanced"
+  },
+  {
+    "section": "Configuring diagnostics",
+    "text": "```typescript\nimport { configureDiagnostics } from '@vytches/ddd-contracts';\n\n// Silence all library-internal diagnostics (useful in tests or production)\nconfigureDiagnostics({ level: 'silent' });\n\n// Route to a structured logger instead of console\nconfigureDiagnostics({\n  sink: {\n    warn: (m, c) => pino.warn(c, m),\n    error: (m, e, c) => pino.error({ ...c, err: e }, m),\n  },\n});\n```",
+    "kind": "concept",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "advanced"
+  },
+  {
+    "section": "Anti-pattern: Using `any` instead of generic parameters",
+    "text": "**Using `any` instead of generic parameters.** Every interface is generic.\n`IDomainEvent` without a type parameter loses payload type safety. Always\nspecify: `IDomainEvent<MyPayload>`.",
+    "kind": "anti_pattern",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "Anti-pattern: Importing concrete implementations from contracts",
+    "text": "**Importing concrete implementations from contracts.** The only concrete class\nin contracts is `EntityId` (base) and `CapabilityRegistry`. Do not try to\ninstantiate `IEventBus` directly — it is abstract. Use implementations from\n`@vytches/ddd-events`.",
+    "kind": "anti_pattern",
+    "feature": "contracts",
+    "combines": [
+      "events"
+    ],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "Anti-pattern: Implementing `IRepository` without `IRepositoryEntity`",
+    "text": "**Implementing `IRepository` without `IRepositoryEntity`.** The `T` constraint\nrequires `getId(): unknown`. Forgetting this causes a type error that is\ndifficult to trace.",
+    "kind": "anti_pattern",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "Anti-pattern: Confusing `IRepository` with `ICQRSRepository`",
+    "text": "**Confusing `IRepository` with `ICQRSRepository`.** `IRepository` is for\nwrite-side aggregates. `ICQRSRepository` combines `IQueryRepository` and\n`IWriteRepository` for CQRS read/write separation. Do not use `ICQRSRepository`\nas the default repository type for aggregates.",
+    "kind": "anti_pattern",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "Anti-pattern: Using `new EntityId(value, type)` without understanding `IdType`",
+    "text": "**Using `new EntityId(value, type)` without understanding `IdType`.** The base\n`EntityId` in contracts does not validate the value — that is done by the\nextended `EntityId` in `@vytches/ddd-value-objects`. Always use the\nvalue-objects package's `EntityId` in application code.",
+    "kind": "anti_pattern",
+    "feature": "contracts",
+    "combines": [
+      "value-objects"
+    ],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "Anti-pattern: Importing `internalLogger`, `EVENT_HANDLER_METADATA`, or `EVENT_HANDLER_OPTIONS` in application code",
+    "text": "**Importing `internalLogger`, `EVENT_HANDLER_METADATA`, or\n`EVENT_HANDLER_OPTIONS` in application code.** These are `@internal` —\nre-exported from contracts only so sibling `@vytches/ddd-*` packages (events\ndecorator, NestJS explorer service) can resolve them via the standard import\npath. They carry no semver guarantee and may be reshaped or removed without\nnotice. Use `configureDiagnostics` to control diagnostics output instead of\ntouching `internalLogger` directly.",
+    "kind": "anti_pattern",
+    "feature": "contracts",
+    "combines": [
+      "events"
+    ],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "Hidden feature: IEventMetadata open index signature",
+    "text": "`IEventMetadata` has an open index signature (`[key: string]: unknown`) — you\ncan attach arbitrary application-specific data to any event without casting.",
+    "kind": "concept",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "advanced"
+  },
+  {
+    "section": "Hidden feature: ISpecification explainFailure",
+    "text": "`ISpecification<T>` declares `explainFailure?(candidate: T): string | null` —\nimplement this to get human-readable validation messages from domain rules\nwithout throwing.",
+    "kind": "concept",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "advanced"
+  },
+  {
+    "section": "Hidden feature: IUnitOfWork.getRepository generic typing",
+    "text": "`IUnitOfWork.getRepository<T>()` is generic and returns a typed repository,\nenabling type-safe multi-aggregate transactions without casting.",
+    "kind": "concept",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "advanced"
+  },
+  {
+    "section": "Hidden feature: BaseEventBusOptions onError callback",
+    "text": "`BaseEventBusOptions` (exported from contracts) contains an `onError` callback —\nwire this to your structured logger to capture event processing failures without\ncrashing the bus.",
+    "kind": "concept",
+    "feature": "contracts",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "contracts"
+    ],
+    "level": "advanced"
+  }
+]

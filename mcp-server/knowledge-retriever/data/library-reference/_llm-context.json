@@ -1,0 +1,400 @@
+[
+  {
+    "section": "@vytches/ddd - LLM Context",
+    "text": "> This file provides complete context for AI code assistants to generate correct\n> DDD code with @vytches/ddd.\n>\n> **Setup:** Run `npx @vytches/ddd init-context` to copy this file and\n> per-package guides into your project's `.claude/vytches-ddd/` directory, then\n> reference `@.claude/vytches-ddd/llm-context.md` in your CLAUDE.md.",
+    "kind": "concept",
+    "combines": [],
+    "tags": [
+      "vytches-ddd",
+      "architecture"
+    ],
+    "level": "quickstart"
+  },
+  {
+    "section": "Installation",
+    "text": "```bash\nnpm install @vytches/ddd   # meta-package, re-exports everything\n# or install individual packages for smaller bundles:\nnpm install @vytches/ddd-aggregates @vytches/ddd-value-objects @vytches/ddd-validation\n```",
+    "kind": "concept",
+    "combines": [
+      "aggregates",
+      "value-objects",
+      "validation"
+    ],
+    "tags": [
+      "vytches-ddd",
+      "architecture"
+    ],
+    "level": "quickstart"
+  },
+  {
+    "section": "Architecture Overview",
+    "text": "Packages form an acyclic dependency graph — lower layers have no knowledge of\nhigher ones:\n\n```\n@vytches/ddd-contracts          — Foundation: interfaces only, zero dependencies\n@vytches/ddd-domain-primitives  — Depends on: contracts\n@vytches/ddd-value-objects      — Depends on: contracts, domain-primitives\n@vytches/ddd-aggregates         — Depends on: contracts, value-objects\n@vytches/ddd-validation         — Depends on: contracts, utils            (Specification + BusinessRuleValidator)\n@vytches/ddd-events             — Depends on: contracts, domain-primitives (DomainEvent, IntegrationEvent, buses)\n@vytches/ddd-cqrs               — Depends on: contracts, di               (CommandBus, QueryBus, decorators)\n@vytches/ddd-repositories       — Depends on: contracts, domain-primitives (IBaseRepository, VersionError)\n@vytches/ddd-policies           — Depends on: contracts, validation        (PolicyBuilder, PolicyRegistry)\n@vytches/ddd-acl                — Depends on: contracts, utils             (ACLRegistry, BaseModelTranslator)\n@vytches/ddd-enterprise         — Re-exports everything above\n```\n\n`@vytches/ddd` is the canonical single-package import. Use individual packages\nonly when bundle size matters.",
+    "kind": "concept",
+    "combines": [
+      "contracts",
+      "domain-primitives",
+      "value-objects",
+      "aggregates",
+      "validation",
+      "utils",
+      "events",
+      "cqrs",
+      "di",
+      "repositories",
+      "policies",
+      "acl",
+      "enterprise"
+    ],
+    "tags": [
+      "vytches-ddd",
+      "architecture"
+    ],
+    "level": "quickstart"
+  },
+  {
+    "section": "Create a Value Object",
+    "text": "```typescript\nimport { BaseValueObject } from '@vytches/ddd';\n\nclass Money extends BaseValueObject<number> {\n  static create(amount: number): Money {\n    const vo = new Money(amount);\n    if (!vo.validate(amount)) throw new Error('Amount must be non-negative');\n    return vo;\n  }\n\n  validate(value: unknown): boolean {\n    return typeof value === 'number' && value >= 0;\n  }\n\n  add(other: Money): Money {\n    return Money.create(this.getValue() + other.getValue());\n  }\n}\n\nconst price = Money.create(100);\nprice.getValue(); // 100\nprice.equals(Money.create(100)); // true\n// Never mutate — always return new instances from operations\n```",
+    "kind": "concept",
+    "combines": [
+      "value-objects"
+    ],
+    "tags": [
+      "vytches-ddd",
+      "architecture"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "Create an Aggregate Root",
+    "text": "```typescript\nimport { AggregateRoot, EntityId } from '@vytches/ddd';\nimport type { IAggregateConstructorParams } from '@vytches/ddd';\n\ninterface OrderCreatedPayload {\n  customerId: string;\n  amount: number;\n}\ninterface OrderPaidPayload {\n  paidAt: string;\n}\n\nclass Order extends AggregateRoot<string> {\n  private customerId = '';\n  private amount = 0;\n  private status: 'draft' | 'paid' = 'draft';\n\n  constructor(params: IAggregateConstructorParams<string>) {\n    super(params);\n    // Register handlers BEFORE any apply() calls\n    this.registerEventHandler<OrderCreatedPayload>('OrderCreated', payload => {\n      this.customerId = payload!.customerId;\n      this.amount = payload!.amount;\n    });\n    this.registerEventHandler<OrderPaidPayload>('OrderPaid', () => {\n      this.status = 'paid';\n    });\n  }\n\n  // Factory method — the only way to create a new Order\n  static create(customerId: string, amount: number): Order {\n    const order = new Order({ id: EntityId.create(), version: 0 });\n    order.apply('OrderCreated', { customerId, amount });\n    return order;\n  }\n\n  // Reconstitute from stored events (used by repository)\n  static fromEvents(id: EntityId<string>, events: IDomainEvent[]): Order {\n    const order = new Order({ id, version: 0 });\n    order.loadFromHistory(events);\n    return order;\n  }\n\n  pay(): void {\n    if (this.status === 'paid') throw new Error('Already paid');\n    this.apply('OrderPaid', { paidAt: new Date().toISOString() });\n  }\n\n  getAmount(): number {\n    return this.amount;\n  }\n}\n\n// Usage\nconst order = Order.create('customer-1', 500);\norder.pay();\nconst events = order.getDomainEvents(); // uncommitted events\norder.commit(); // clear after saving\n```",
+    "kind": "concept",
+    "combines": [
+      "aggregates"
+    ],
+    "tags": [
+      "vytches-ddd",
+      "architecture"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "Create a Command and Handler",
+    "text": "Handlers return `Result<TValue, TError>` — never throw on domain failures.\n\n```typescript\nimport { CommandBus, CommandHandler } from '@vytches/ddd';\nimport type { ICommand, ICommandHandler } from '@vytches/ddd';\nimport { Result } from '@vytches/ddd';\n\n// 1. Define the command (plain data object)\nclass PlaceOrderCommand implements ICommand {\n  constructor(\n    public readonly customerId: string,\n    public readonly amount: number\n  ) {}\n}\n\n// 2. Implement the handler — Result<TValue, TError> return type\n@CommandHandler(PlaceOrderCommand)\nclass PlaceOrderHandler\n  implements ICommandHandler<PlaceOrderCommand, Result<string, Error>>\n{\n  constructor(private readonly orders: OrderRepository) {}\n\n  async execute(command: PlaceOrderCommand): Promise<Result<string, Error>> {\n    const orderResult = Order.create(command.customerId, command.amount);\n    if (orderResult.isFailure) return Result.fail(orderResult.error);\n    await this.orders.save(orderResult.value);\n    return Result.ok(orderResult.value.getId().getValue());\n  }\n}\n\n// 3. Wire up (without DI framework)\nconst bus = new CommandBus(container);\nbus.register(PlaceOrderCommand, new PlaceOrderHandler(orderRepo));\n\nconst result = await bus.execute(new PlaceOrderCommand('c-1', 500));\n// result is Result<string, Error> — check result.isSuccess before using result.value\n```\n\n> **With NestJS:** Use `@CommandHandler` + `@Injectable()` and list the handler\n> in module `providers`. `VytchesExplorerService` registers it with the command\n> bus automatically. See `QUICK_START_NESTJS.md` for the full wiring pattern.",
+    "kind": "concept",
+    "combines": [
+      "cqrs",
+      "nestjs"
+    ],
+    "tags": [
+      "vytches-ddd",
+      "architecture"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "Create a Domain Event",
+    "text": "```typescript\nimport { DomainEvent } from '@vytches/ddd';\n\ninterface OrderShippedPayload {\n  orderId: string;\n  trackingNumber: string;\n  shippedAt: string;\n}\n\nclass OrderShippedEvent extends DomainEvent<OrderShippedPayload> {\n  constructor(payload: OrderShippedPayload) {\n    super(payload);\n    // eventName defaults to class name: 'OrderShippedEvent'\n    // Override if class name may be mangled by minifiers:\n    // super(payload, undefined, 'OrderShipped');\n  }\n}\n\n// Register and publish via the event bus\nbus.registerHandler(OrderShippedEvent, new OrderShippedHandler());\nawait bus.publish(\n  new OrderShippedEvent({\n    orderId: 'o-1',\n    trackingNumber: 'TR-123',\n    shippedAt: new Date().toISOString(),\n  })\n);\n```",
+    "kind": "concept",
+    "combines": [
+      "events"
+    ],
+    "tags": [
+      "vytches-ddd",
+      "architecture"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "Create an Inline Specification (PREFERRED)",
+    "text": "Prefer `Specification.create` over class-based specs for all one-off or\nmodule-local rules.\n\n```typescript\nimport { Specification } from '@vytches/ddd';\n\ninterface Order {\n  total: number;\n  status: 'draft' | 'paid' | 'cancelled';\n  customerId: string;\n}\n\n// Single inline spec\nconst isPositive = Specification.create<Order>(o => o.total > 0);\nconst isDraft = Specification.create<Order>(o => o.status === 'draft');\n\n// Compose with static combinators (variadic AND/OR)\nconst canBePlaced = Specification.and(isPositive, isDraft);\n\ncanBePlaced.isSatisfiedBy({ total: 100, status: 'draft', customerId: 'c-1' }); // true\ncanBePlaced.isSatisfiedBy({ total: 0, status: 'draft', customerId: 'c-1' }); // false\n\n// Fluent validator with error details\nimport { BusinessRuleValidator } from '@vytches/ddd';\n\nconst validator = BusinessRuleValidator.create<Order>()\n  .addRule('total', o => o.total > 0, 'Total must be positive')\n  .addRule(\n    'status',\n    o => o.status !== 'cancelled',\n    'Cannot place cancelled order'\n  );\n\nconst result = validator.validate(order);\nif (result.isFailure) {\n  result.error.errors.forEach(e => console.error(e.property, e.message));\n}\n```",
+    "kind": "concept",
+    "combines": [
+      "validation"
+    ],
+    "tags": [
+      "vytches-ddd",
+      "architecture"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "Create a Class-Based Specification (reusable/named)",
+    "text": "Only use `CompositeSpecification` when the spec is complex, has injected\ndependencies, or is exported for reuse across modules.\n\n```typescript\nimport { CompositeSpecification } from '@vytches/ddd';\n\nclass MinimumOrderSpec extends CompositeSpecification<Order> {\n  constructor(private readonly minimum: number) {\n    super();\n  }\n\n  isSatisfiedBy(order: Order): boolean {\n    return order.total >= this.minimum;\n  }\n}\n\nconst policy = new MinimumOrderSpec(50).and(isDraft);\npolicy.isSatisfiedBy(order); // boolean\n```",
+    "kind": "concept",
+    "combines": [
+      "validation"
+    ],
+    "tags": [
+      "vytches-ddd",
+      "architecture"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "Create a Repository",
+    "text": "```typescript\nimport { IBaseRepository, VersionError } from '@vytches/ddd';\nimport type {\n  IEnhancedEventDispatcher,\n  IEventPersistenceHandler,\n} from '@vytches/ddd';\n\nclass OrderRepository extends IBaseRepository {\n  constructor(\n    dispatcher: IEnhancedEventDispatcher,\n    handler: IEventPersistenceHandler,\n    private readonly db: Database\n  ) {\n    super(dispatcher, handler);\n  }\n\n  async findById(id: string): Promise<Order | null> {\n    const row = await this.db.orders.findOne({ id });\n    return row ? Order.reconstitute(row) : null;\n  }\n}\n\n// Usage: save raises events and enforces optimistic locking\ntry {\n  await repo.save(order);\n} catch (err) {\n  if (err instanceof VersionError) {\n    // Reload and retry — concurrent modification was detected\n  }\n}\n```",
+    "kind": "concept",
+    "combines": [
+      "repositories"
+    ],
+    "tags": [
+      "vytches-ddd",
+      "architecture"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "Create a Policy",
+    "text": "Use `PolicyBuilder` for rules that require user/tenant context beyond what a\npure Specification can express.\n\n```typescript\nimport {\n  PolicyBuilder,\n  PolicyRequestFactory,\n  PolicyViolation,\n} from '@vytches/ddd';\nimport { Specification } from '@vytches/ddd';\n\nconst orderPolicy = PolicyBuilder.create<Order>()\n  .withId('order-placement')\n  .withDomain('ordering')\n  .withName('Order Placement Policy')\n  .must(Specification.create<Order>(o => o.total > 0))\n  .withErrorCode('INVALID_TOTAL')\n  .withMessage('Order total must be positive')\n  .must(Specification.create<Order>(o => o.status === 'draft'))\n  .withErrorCode('WRONG_STATUS')\n  .withMessage('Only draft orders can be placed')\n  .build();\n\nconst request = PolicyRequestFactory.minimal(order, userId);\nconst result = await orderPolicy.check(request);\n\nif (result.isFailure) {\n  const violation: PolicyViolation = result.error;\n  throw new Error(`${violation.code}: ${violation.message}`);\n}\n```",
+    "kind": "concept",
+    "combines": [
+      "policies"
+    ],
+    "tags": [
+      "vytches-ddd",
+      "architecture"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "Create an ACL Adapter (Anti-Corruption Layer)",
+    "text": "```typescript\nimport {\n  SimpleACLAdapter,\n  BaseModelTranslator,\n  ACLRegistry,\n} from '@vytches/ddd';\n\n// Translator isolates external types from domain types\nclass UserTranslator extends BaseModelTranslator<DomainUser, ExternalUser> {\n  constructor() {\n    super('UserContext');\n  }\n\n  protected performToExternalTranslation(domain: DomainUser): ExternalUser {\n    return { user_id: domain.id.getValue(), email: domain.email.value };\n  }\n\n  protected performFromExternalTranslation(ext: ExternalUser): DomainUser {\n    return DomainUser.reconstitute(ext.user_id, ext.email);\n  }\n}\n\nconst adapter = SimpleACLAdapter.create(\n  'UserContext',\n  'LegacyUserService',\n  new UserTranslator(),\n  new LegacyUserAPI(),\n  ['create', 'update']\n);\n\nconst registry = new ACLRegistry();\nregistry.registerDirect('UserContext', adapter);\n\nconst result = await registry\n  .getRequired<DomainUser, ExternalUser>('UserContext')\n  .execute('create', domainUser);\n```",
+    "kind": "concept",
+    "combines": [
+      "acl"
+    ],
+    "tags": [
+      "vytches-ddd",
+      "architecture"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "@vytches/ddd-contracts",
+    "text": "Foundation. Zero dependencies. Every package depends on this.\n\n| Export                                      | Description                                                                           |\n| ------------------------------------------- | ------------------------------------------------------------------------------------- |\n| `IDomainEvent<P>`                           | Base event interface: `eventName`, `payload?`, `metadata?`                            |\n| `IEventMetadata`                            | Tracing: `eventId`, `correlationId`, `causationId`, `aggregateId`, `aggregateVersion` |\n| `IEventBus<T>`                              | Abstract class / DI token: `publish`, `subscribe`, `registerHandler`, `publishMany`   |\n| `IEntityId<T>`                              | Typed identifier: `getValue()`, `equals()`, `toString()`, `isType()`                  |\n| `EntityId<T>`                               | Base implementation (prefer value-objects' `EntityId` in application code)            |\n| `IRepository<T>` / `IExtendedRepository<T>` | CRUD persistence contracts                                                            |\n| `IUnitOfWork`                               | Transaction: `begin`, `commit`, `rollback`, `getRepository`                           |\n| `ISpecification<T>`                         | `isSatisfiedBy`, `and`, `or`, `not`, `explainFailure?`                                |\n| `IAsyncSpecification<T>`                    | Async version with optional `context` parameter                                       |\n| `Capability` / `CapabilityRegistry`         | Base for aggregate capabilities                                                       |",
+    "kind": "concept",
+    "combines": [
+      "contracts"
+    ],
+    "tags": [
+      "vytches-ddd",
+      "architecture"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "@vytches/ddd-value-objects",
+    "text": "Immutable value holders and validated identifiers.\n\n| Export                    | Description                                                                               |\n| ------------------------- | ----------------------------------------------------------------------------------------- |\n| `BaseValueObject<T>`      | Immutable base: `getValue()`, `equals()`, `toString()`, `toJSON()`, abstract `validate()` |\n| `EntityId.create()`       | New random-UUID `EntityId<string>`                                                        |\n| `EntityId.fromUUID(v)`    | Parse and validate UUID                                                                   |\n| `EntityId.fromInteger(v)` | Validate non-negative integer, stored as string                                           |\n| `EntityId.fromBigInt(v)`  | Accepts native bigint or string representation                                            |\n| `EntityId.fromText(v)`    | Non-empty text with safe characters                                                       |\n\n```typescript\nimport { BaseValueObject, EntityId } from '@vytches/ddd';\n\nclass EmailAddress extends BaseValueObject<string> {\n  static create(raw: string): EmailAddress {\n    const vo = new EmailAddress(raw.toLowerCase().trim());\n    if (!vo.validate(raw)) throw new Error(`Invalid email: ${raw}`);\n    return vo;\n  }\n  validate(v: unknown): boolean {\n    return typeof v === 'string' && /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(v);\n  }\n}\n```",
+    "kind": "concept",
+    "combines": [
+      "value-objects"
+    ],
+    "tags": [
+      "vytches-ddd",
+      "architecture"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "@vytches/ddd-aggregates",
+    "text": "Event-sourced aggregate base class and optional capability system.\n\n| Export                           | Description                                   |\n| -------------------------------- | --------------------------------------------- |\n| `AggregateRoot<TId>`             | Base aggregate: version, events, capabilities |\n| `AggregateBuilder<TId>`          | Fluent builder for capabilities               |\n| `SnapshotCapability`             | Snapshot creation and restoration             |\n| `AuditCapability`                | Audit log attached to every event             |\n| `VersioningCapability`           | Event upcasters for schema evolution          |\n| `EventSourcingCapability`        | Integrates with `IEventStore`                 |\n| `asSnapshotAggregate(agg)`       | Type-safe cast; throws if capability absent   |\n| `hasAllCapabilities(agg, [...])` | Capability presence check                     |\n\n```typescript\n// Builder with capabilities\nconst order = AggregateBuilder.create({ id: EntityId.create() })\n  .withSnapshots()\n  .withAudit()\n  .build(Order);\n```",
+    "kind": "concept",
+    "combines": [
+      "aggregates"
+    ],
+    "tags": [
+      "vytches-ddd",
+      "architecture"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "@vytches/ddd-validation",
+    "text": "Specification pattern and fluent validator. The primary domain rule toolkit.\n\n| Export                                    | Description                                                                   |\n| ----------------------------------------- | ----------------------------------------------------------------------------- |\n| `Specification.create<T>(predicate)`      | Inline spec from lambda — **use this first**                                  |\n| `Specification.and<T>(...specs)`          | Variadic AND combinator                                                       |\n| `Specification.or<T>(...specs)`           | Variadic OR combinator                                                        |\n| `Specification.not<T>(spec)`              | Negate                                                                        |\n| `Specification.propertyEquals/In/Between` | Property convenience specs                                                    |\n| `CompositeSpecification<T>`               | Base class for named, reusable specs                                          |\n| `AsyncCompositeSpecification<T>`          | Async base; `.create(predicate, name?, desc?)` static factory                 |\n| `BusinessRuleValidator<T>`                | Fluent: `addRule`, `when`, `addNested`; returns `Result<T, ValidationErrors>` |",
+    "kind": "concept",
+    "combines": [
+      "validation"
+    ],
+    "tags": [
+      "vytches-ddd",
+      "architecture"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "@vytches/ddd-events",
+    "text": "Concrete event classes and event buses.\n\n| Export                                | Description                                                                  |\n| ------------------------------------- | ---------------------------------------------------------------------------- |\n| `DomainEvent<T>`                      | Auto-generates `eventId`, `occurredOn`, `eventName`; `withMetadata(partial)` |\n| `IntegrationEvent<T>`                 | Cross-context; `serialize()` / static `deserialize()`; `schemaVersion`       |\n| `UnifiedEventBus`                     | Handles domain, integration, and audit events; `registerHandler`, `publish`  |\n| `EventHandler(EventClass)`            | Decorator for handler auto-discovery                                         |\n| `DomainToIntegrationTransformer<D,I>` | Abstract; override `transform()` to translate domain → integration           |\n| `IDomainEventBus`                     | Type alias for `IEventBus<IDomainEvent>` — use as dependency type            |\n\n```typescript\n// Cross-context translation\nclass OrderPlacedTransformer extends DomainToIntegrationTransformer<\n  OrderPlacedPayload,\n  OrderCreatedIntegrationPayload\n> {\n  constructor() {\n    super('orders');\n  }\n  protected transform(\n    event: IDomainEvent<OrderPlacedPayload>\n  ): OrderCreatedIntegration {\n    return new OrderCreatedIntegration({\n      id: event.payload!.orderId,\n      totalAmount: event.payload!.amount,\n    });\n  }\n}\n```",
+    "kind": "concept",
+    "combines": [
+      "events"
+    ],
+    "tags": [
+      "vytches-ddd",
+      "architecture"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "@vytches/ddd-cqrs",
+    "text": "Command/query buses with middleware and decorator-based handler registration.\n\n| Export                                    | Description                                                  |\n| ----------------------------------------- | ------------------------------------------------------------ |\n| `CommandBus` / `QueryBus`                 | Route to handlers; `register`, `use` (middleware), `execute` |\n| `ICommandBus` / `IQueryBus`               | Abstract DI tokens                                           |\n| `CommandHandler(CmdClass)`                | Decorator; stores metadata for auto-discovery                |\n| `QueryHandler(QueryClass)`                | Decorator                                                    |\n| `EnhancedCommandBus` / `EnhancedQueryBus` | Adds circuit breaker, retry, timeout, bulkhead               |\n| `LoggingMiddleware`                       | Built-in execution-time logging middleware                   |\n| `CQRSDiscoveryPlugin`                     | Auto-registers decorated handlers from DI container          |\n| `HandlerNotFoundError`                    | Thrown when no handler is registered                         |",
+    "kind": "concept",
+    "combines": [
+      "cqrs"
+    ],
+    "tags": [
+      "vytches-ddd",
+      "architecture"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "@vytches/ddd-repositories",
+    "text": "Write-side aggregate persistence with optimistic locking and event dispatch.\n\n| Export            | Description                                                                     |\n| ----------------- | ------------------------------------------------------------------------------- |\n| `IBaseRepository` | Abstract class: implement `findById`; `save` handles events + version check     |\n| `VersionError`    | Thrown on version mismatch; `VersionError.withEntityIdAndVersions(id, db, new)` |\n| `IUnitOfWork`     | Re-exported from contracts; use for multi-aggregate transactions                |",
+    "kind": "concept",
+    "combines": [
+      "repositories",
+      "contracts"
+    ],
+    "tags": [
+      "vytches-ddd",
+      "architecture"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "@vytches/ddd-policies",
+    "text": "Context-aware business policies for rules that need user/tenant/environment\ndata.\n\n| Export                                         | Description                                                          |\n| ---------------------------------------------- | -------------------------------------------------------------------- |\n| `PolicyBuilder.create<T>()`                    | Fluent builder; requires `.withId()`, `.withDomain()`, `.withName()` |\n| `PolicyBuilder.must(spec)`                     | Required rule (ERROR severity)                                       |\n| `PolicyBuilder.should(spec)`                   | Optional rule (WARNING; does not fail the policy)                    |\n| `BaseBusinessPolicy<T>`                        | Abstract class for dependency-injected policies                      |\n| `PolicyViolation`                              | `code`, `message`, `severity`, `policyId`, `domain`                  |\n| `PolicyRegistry`                               | `register`, `resolve`, `findByTags`                                  |\n| `PolicyRequestFactory.minimal(entity, userId)` | Quick request construction                                           |\n| `PolicyRequestFactory.webRequest(opts)`        | Web context with IP, session                                         |",
+    "kind": "concept",
+    "combines": [
+      "policies"
+    ],
+    "tags": [
+      "vytches-ddd",
+      "architecture"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "@vytches/ddd-acl",
+    "text": "Anti-Corruption Layer: keeps external concepts out of domain code.\n\n| Export                                         | Description                                                                                      |\n| ---------------------------------------------- | ------------------------------------------------------------------------------------------------ |\n| `ACLRegistry`                                  | Singleton registry: `registerDirect`, `getRequired`, `importFromContext`                         |\n| `SimpleACLAdapter.create(...)`                 | Concrete adapter factory for simple integrations                                                 |\n| `BaseACLAdapter<D,E,R>`                        | Abstract base; implement `registerSupportedOperations()`                                         |\n| `BaseModelTranslator<D,E>`                     | Abstract translator; implement `performToExternalTranslation` + `performFromExternalTranslation` |\n| `ContextACLRegistry`                           | Per-bounded-context registry; export to global via `importFromContext`                           |\n| `ACLError.operationFailed(context, op, cause)` | Standard ACL error factory                                                                       |",
+    "kind": "concept",
+    "combines": [
+      "acl"
+    ],
+    "tags": [
+      "vytches-ddd",
+      "architecture"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "Critical Anti-Patterns (DO NOT)",
+    "text": "**Mutate aggregate state directly.** `this.status = 'paid'` bypasses event\nrecording. All state changes must go through `apply()`.\n\n**Call `apply()` before `registerEventHandler()` in the constructor** (when\nusing event-sourced aggregates). Handlers must be registered first. Events\napplied before their handler silently leave state un-updated. Note:\n`registerEventHandler` is only needed for event-sourced aggregates that use\n`loadFromHistory()`. If your repository reconstitutes state from a relational DB\n(e.g., via `reconstitute()` static method), you do not need\n`registerEventHandler`.\n\n**Forget `loadFromHistory` in event-sourced reconstitution.** Repositories that\nreload event-sourced aggregates must call `loadFromHistory(events)`, not the\nstatic `create()` factory. Using `create()` fires events again.\n\n**Make value objects mutable.** `BaseValueObject.value` is `readonly`. All\noperations must return new instances (`Money.create(a + b)`), never modify in\nplace.\n\n**Use `new EntityId(value, type)` directly.** The base constructor skips\nvalidation. Always use static factories: `EntityId.create()`,\n`EntityId.fromUUID()`, etc.\n\n**Use `EntityIdFactory` (deprecated).** Replace all uses with `EntityId` static\nmethods.\n\n**Use `AsyncCompositeSpecification` when no I/O is needed.** Async composition\nis slower and complicates the call site. Keep specs sync unless they actually\nawait something.\n\n**Create a class for a one-off spec.**\n\n```typescript\n// Wrong: unnecessary class\nclass IsActiveSpec extends CompositeSpecification<User> {\n  isSatisfiedBy(u: User) {\n    return u.isActive;\n  }\n}\n// Correct: inline\nconst isActive = Specification.create<User>(u => u.isActive);\n```\n\n**Return full aggregates from command handlers.** Commands should return a\nminimal result (an ID at most). Full aggregate reads belong in query handlers.\n\n**Couple domain code to `UnifiedEventBus`.** Domain code should depend on\n`IDomainEventBus` (the type alias), not the concrete class.\n\n**Publish `DomainEvent` directly to a message broker.** Use\n`DomainToIntegrationTransformer` to translate first — domain events are\ninternal; integration events cross boundaries.\n\n**Pass external types into domain code.** All translation between external DTOs\nand domain types must happen inside `BaseModelTranslator`, never inside\naggregates or domain services.\n\n**Call `PolicyBuilder.build()` without all three required calls.** `.withId()`,\n`.withDomain()`, and `.withName()` are all required; `build()` throws\nsynchronously if any are missing.\n\n**Ignore `result.isFailure` after `policy.check()` or `validator.validate()`.**\nBoth return `Result<T, ...>`, not a thrown exception. Skipping the check\nsilently allows invalid operations to proceed.\n\n**Create a new `ACLRegistry` per request.** `ACLRegistry` must be an\napplication-scoped singleton. Per-request instances discard all adapter\nregistrations.",
+    "kind": "anti_pattern",
+    "combines": [
+      "aggregates",
+      "value-objects",
+      "validation",
+      "cqrs",
+      "events",
+      "acl",
+      "policies"
+    ],
+    "tags": [
+      "vytches-ddd",
+      "architecture"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "NestJS Integration",
+    "text": "For production NestJS usage, see `QUICK_START_NESTJS.md`. Key differences from\nstandalone use:",
+    "kind": "concept",
+    "combines": [
+      "nestjs"
+    ],
+    "tags": [
+      "vytches-ddd",
+      "architecture"
+    ],
+    "level": "advanced"
+  },
+  {
+    "section": "Handler decorators and discovery",
+    "text": "```typescript\n// Command handler — @Injectable() is required alongside @CommandHandler\n@Injectable()\n@CommandHandler(CreateOrderCommand)\nexport class CreateOrderHandler\n  implements ICommandHandler<CreateOrderCommand, Result<string, Error>>\n{\n  async execute(command: CreateOrderCommand): Promise<Result<string, Error>> { ... }\n}\n\n// Query — IQuery<TResult> result type is MANDATORY\nexport class GetOrderQuery implements IQuery<OrderDto> {\n  constructor(public readonly orderId: string) {}\n}\n\n// Event handler — method decorator, one class handles multiple events\n@Injectable()\nexport class OrdersAuditHandler {\n  @EventHandler(OrderCreated)   // class reference, NOT string\n  async onOrderCreated(event: OrderCreated): Promise<void> { ... }\n\n  @EventHandler(ItemAdded)\n  async onItemAdded(event: ItemAdded): Promise<void> { ... }\n}\n```",
+    "kind": "concept",
+    "combines": [
+      "nestjs",
+      "cqrs",
+      "events"
+    ],
+    "tags": [
+      "vytches-ddd",
+      "architecture"
+    ],
+    "level": "advanced"
+  },
+  {
+    "section": "Discovery timing",
+    "text": "`VytchesExplorerService` discovers and registers handlers during\n`onApplicationBootstrap()` — after all `onModuleInit()` hooks. ACL registrations\nmust still happen in `onModuleInit()`.\n\n```typescript\n// Global DDD module — handler registration\nexport class DDDModule implements OnApplicationBootstrap {\n  async onApplicationBootstrap(): Promise<void> {\n    const handlers = await this.explorer.discoverHandlers();\n    for (const handler of handlers)\n      await this.explorer.registerHandler(handler);\n  }\n}\n\n// Bounded context module — ACL registration\nexport class OrdersModule implements OnModuleInit {\n  onModuleInit(): void {\n    this.aclRegistry.registerGlobal('orders', this.ordersApi);\n  }\n}\n```",
+    "kind": "concept",
+    "combines": [
+      "nestjs",
+      "acl"
+    ],
+    "tags": [
+      "vytches-ddd",
+      "architecture"
+    ],
+    "level": "advanced"
+  },
+  {
+    "section": "Cross-context calls",
+    "text": "```typescript\n// Call another bounded context via ACL — no direct module import\nconst paymentsApi =\n  this.aclRegistry.getGlobalRequired<IPaymentsApi>('payments');\nconst status = await paymentsApi.getStatusForOrder(orderId);\n```",
+    "kind": "concept",
+    "combines": [
+      "acl",
+      "nestjs"
+    ],
+    "tags": [
+      "vytches-ddd",
+      "architecture"
+    ],
+    "level": "advanced"
+  },
+  {
+    "section": "Import Map",
+    "text": "All symbols are available from `@vytches/ddd`. The table below shows which\npackage they come from — useful when using individual packages or when\ndiagnosing naming conflicts.\n\n| Symbol                                                                                                                                                                                                                                                         | Source package                                                                      |\n| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |\n| `IDomainEvent`, `ISpecification`, `IEntityId`, `IEventBus`, `IUnitOfWork`, `Capability`, `CapabilityRegistry`                                                                                                                                                  | `@vytches/ddd-contracts`                                                            |\n| `BaseEntityId`                                                                                                                                                                                                                                                 | `@vytches/ddd-contracts` (aliased to avoid conflict with value-objects' `EntityId`) |\n| `BaseValueObject`, `EntityId`, `EntityIdFactory` (deprecated)                                                                                                                                                                                                  | `@vytches/ddd-value-objects`                                                        |\n| `AggregateRoot`, `AggregateBuilder`, `SnapshotCapability`, `AuditCapability`, `VersioningCapability`, `EventSourcingCapability`, `AggregateError`, `IAggregateRoot`                                                                                            | `@vytches/ddd-aggregates`                                                           |\n| `Specification`, `CompositeSpecification`, `AsyncCompositeSpecification`, `BusinessRuleValidator`, `ValidationError`, `ValidationErrors`                                                                                                                       | `@vytches/ddd-validation`                                                           |\n| `DomainEvent`, `IntegrationEvent`, `UnifiedEventBus`, `BaseEventBus`, `EventHandler`, `DomainToIntegrationTransformer`, `EventDiscoveryPlugin`, `UniversalEventDispatcher`, `IDomainEventBus`, `IIntegrationEventBus`                                          | `@vytches/ddd-events`                                                               |\n| `CommandBus`, `QueryBus`, `ICommandBus`, `IQueryBus`, `CommandHandler`, `QueryHandler`, `EnhancedCommandBus`, `EnhancedQueryBus`, `LoggingMiddleware`, `CQRSDiscoveryPlugin`, `HandlerNotFoundError`, `ICommand`, `ICommandHandler`, `IQuery`, `IQueryHandler` | `@vytches/ddd-cqrs`                                                                 |\n| `IBaseRepository`, `VersionError`, `IRepository`, `IExtendedRepository`                                                                                                                                                                                        | `@vytches/ddd-repositories`                                                         |\n| `PolicyBuilder`, `BaseBusinessPolicy`, `PolicyViolation`, `PolicyRegistry`, `PolicyRequestFactory`, `PolicyRequestBuilder`, `PolicyEventBus`                                                                                                                   | `@vytches/ddd-policies`                                                             |\n| `ACLRegistry`, `SimpleACLAdapter`, `BaseACLAdapter`, `BaseModelTranslator`, `ContextACLRegistry`, `ACLError`                                                                                                                                                   | `@vytches/ddd-acl`                                                                  |\n| `Result`, `safeRun`                                                                                                                                                                                                                                            | `@vytches/ddd-utils`                                                                |",
+    "kind": "concept",
+    "combines": [
+      "contracts",
+      "value-objects",
+      "aggregates",
+      "validation",
+      "events",
+      "cqrs",
+      "repositories",
+      "policies",
+      "acl",
+      "utils"
+    ],
+    "tags": [
+      "vytches-ddd",
+      "architecture"
+    ],
+    "level": "core"
+  },
+  {
+    "section": "Naming conflicts resolved in `@vytches/ddd`",
+    "text": "| Conflict           | Resolution                                                                                  |\n| ------------------ | ------------------------------------------------------------------------------------------- |\n| `EntityId`         | Value-objects version is primary (`EntityId`); contracts version exported as `BaseEntityId` |\n| `ValidationError`  | Domain-primitives version is primary; CQRS variant exported as `CqrsValidationError`        |\n| `ExecutionContext` | CQRS version is primary                                                                     |",
+    "kind": "concept",
+    "combines": [
+      "domain-primitives",
+      "cqrs"
+    ],
+    "tags": [
+      "vytches-ddd",
+      "architecture"
+    ],
+    "level": "advanced"
+  }
+]

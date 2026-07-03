@@ -1,0 +1,254 @@
+[
+  {
+    "section": "Overview",
+    "text": "## Purpose\n\nBase classes and decorators for **domain services** — operations that naturally\nspan multiple aggregates and don't belong inside any single one. Async variant\nfor I/O-bound services, event-aware variant for services that emit, and\nunit-of-work-aware variant for transactional coordination.\n\nDomain services live in the domain layer but may be wired through DI; the\n`@DomainService()` decorator marks them for auto-discovery.\n\n## Quick Start\n\n```typescript\nimport {\n  AsyncDomainService,\n  DomainService,\n} from '@vytches/ddd-domain-services';\n\n// 1. Implement a domain service\n@DomainService('PricingService')\nexport class PricingService extends AsyncDomainService {\n  async calculateDiscount(order: Order, customer: Customer): Promise<number> {\n    if (customer.isLoyal && order.itemCount > 5) {\n      return order.subtotal * 0.1;\n    }\n    return 0;\n  }\n}\n\n// 2. Use from a command handler\nclass PlaceOrderHandler {\n  constructor(private readonly pricing: PricingService) {}\n\n  async handle(cmd: PlaceOrderCommand): Promise<void> {\n    const discount = await this.pricing.calculateDiscount(order, customer);\n    order.applyDiscount(discount);\n    // ...\n  }\n}\n```",
+    "kind": "concept",
+    "feature": "domain-services",
+    "combines": [],
+    "tags": ["vytches-ddd", "domain-services"],
+    "level": "quickstart"
+  },
+  {
+    "section": "PlainDomainService",
+    "text": "`PlainDomainService` | abstract class | **Bare baseline** (VF-CANON-001) — only `serviceId`, no logger, no event bus, no UoW. Use for stateless operations without DI infrastructure",
+    "kind": "api",
+    "feature": "domain-services",
+    "combines": [],
+    "tags": ["vytches-ddd", "domain-services"],
+    "level": "core"
+  },
+  {
+    "section": "IBaseDomainService",
+    "text": "`IBaseDomainService` | abstract class | Infrastructure-aware base (logger + serviceId)",
+    "kind": "api",
+    "feature": "domain-services",
+    "combines": [],
+    "tags": ["vytches-ddd", "domain-services"],
+    "level": "core"
+  },
+  {
+    "section": "AsyncDomainService",
+    "text": "`AsyncDomainService` | abstract class | Base for services with async lifecycle (`initialize`/`dispose`)",
+    "kind": "api",
+    "feature": "domain-services",
+    "combines": [],
+    "tags": ["vytches-ddd", "domain-services"],
+    "level": "core"
+  },
+  {
+    "section": "EventAwareDomainService",
+    "text": "`EventAwareDomainService` | abstract class | Adds protected `publish(event)` for emitting domain events",
+    "kind": "api",
+    "feature": "domain-services",
+    "combines": [],
+    "tags": ["vytches-ddd", "domain-services"],
+    "level": "core"
+  },
+  {
+    "section": "UnitOfWorkAwareDomainService",
+    "text": "`UnitOfWorkAwareDomainService` | abstract class | Adds protected `executeInTransaction(fn)` for atomic ops",
+    "kind": "api",
+    "feature": "domain-services",
+    "combines": [],
+    "tags": ["vytches-ddd", "domain-services"],
+    "level": "core"
+  },
+  {
+    "section": "DomainService(nameOrOpts)",
+    "text": "`DomainService(nameOrOpts)` | decorator | Marks a class for DI auto-discovery",
+    "kind": "api",
+    "feature": "domain-services",
+    "combines": [],
+    "tags": ["vytches-ddd", "domain-services"],
+    "level": "core"
+  },
+  {
+    "section": "getDomainServiceMetadata(target)",
+    "text": "`getDomainServiceMetadata(target)` | function | Read decorator metadata",
+    "kind": "api",
+    "feature": "domain-services",
+    "combines": [],
+    "tags": ["vytches-ddd", "domain-services"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "getDIDomainServiceMetadata(target)",
+    "text": "`getDIDomainServiceMetadata(target)` | function | Read DI-specific metadata for auto-registration",
+    "kind": "api",
+    "feature": "domain-services",
+    "combines": [],
+    "tags": ["vytches-ddd", "domain-services"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "isDomainServicePendingDIRegistration(t)",
+    "text": "`isDomainServicePendingDIRegistration(t)` | function | Check if class is registered but not yet wired",
+    "kind": "api",
+    "feature": "domain-services",
+    "combines": [],
+    "tags": ["vytches-ddd", "domain-services"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "DomainServiceOptions",
+    "text": "`DomainServiceOptions` | interface | Options accepted by `@DomainService()` — `serviceId` (required) plus optional `dependencies`, `transactional`, `async`, `publishesEvents`, `caching`; also the return type of `getDomainServiceMetadata()`",
+    "kind": "api",
+    "feature": "domain-services",
+    "combines": [],
+    "tags": ["vytches-ddd", "domain-services"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "EnhancedDomainServiceOptions",
+    "text": "`EnhancedDomainServiceOptions` | interface | `DomainServiceOptions` extended with DI-registration fields (`lifetime`, `context`, `autoRegister`, `dependencies`, `tags`, `contextResolver`, `fallbackToGlobal`) — pass this shape to `@DomainService()` (instead of a plain string/`DomainServiceOptions`) to trigger DI auto-registration",
+    "kind": "api",
+    "feature": "domain-services",
+    "combines": [],
+    "tags": ["vytches-ddd", "domain-services"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "DIServiceMetadata",
+    "text": "`DIServiceMetadata` | interface | `EnhancedDomainServiceOptions` plus `serviceType`, `isRegistered`, `createdAt` — the return type of `getDIDomainServiceMetadata()`",
+    "kind": "api",
+    "feature": "domain-services",
+    "combines": [],
+    "tags": ["vytches-ddd", "domain-services"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IDomainService",
+    "text": "`IDomainService` | interface | Sync domain service contract",
+    "kind": "api",
+    "feature": "domain-services",
+    "combines": [],
+    "tags": ["vytches-ddd", "domain-services"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IAsyncDomainService",
+    "text": "`IAsyncDomainService` | interface | Async domain service contract",
+    "kind": "api",
+    "feature": "domain-services",
+    "combines": [],
+    "tags": ["vytches-ddd", "domain-services"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IEventBusAware",
+    "text": "`IEventBusAware` | interface | Marks services that publish events",
+    "kind": "api",
+    "feature": "domain-services",
+    "combines": [],
+    "tags": ["vytches-ddd", "domain-services"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IUnitOfWorkAware",
+    "text": "`IUnitOfWorkAware` | interface | Marks services that coordinate transactions",
+    "kind": "api",
+    "feature": "domain-services",
+    "combines": [],
+    "tags": ["vytches-ddd", "domain-services"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "ServiceNotFoundError",
+    "text": "`ServiceNotFoundError` | error class | `ServiceNotFoundError.withServiceId(id)` — thrown when a service lookup by id fails (`DomainErrorCode.NotFound`)",
+    "kind": "api",
+    "feature": "domain-services",
+    "combines": ["domain-primitives"],
+    "tags": ["vytches-ddd", "domain-services"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "ServiceDuplicateError",
+    "text": "`ServiceDuplicateError` | error class | `ServiceDuplicateError.withServiceId(id)` — thrown when a service with that id is already registered (`DomainErrorCode.DuplicateEntry`)",
+    "kind": "api",
+    "feature": "domain-services",
+    "combines": ["domain-primitives"],
+    "tags": ["vytches-ddd", "domain-services"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "ServiceCircularError",
+    "text": "`ServiceCircularError` | error class | `ServiceCircularError.withServices([...ids])` — thrown when a circular dependency is detected among the listed service ids",
+    "kind": "api",
+    "feature": "domain-services",
+    "combines": [],
+    "tags": ["vytches-ddd", "domain-services"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "Event-emitting domain service",
+    "text": "### Event-emitting domain service\n\n```typescript\nimport {\n  EventAwareDomainService,\n  DomainService,\n} from '@vytches/ddd-domain-services';\n\n@DomainService('FraudDetectionService')\nexport class FraudDetectionService extends EventAwareDomainService {\n  async assess(order: Order): Promise<FraudScore> {\n    const score = await this.computeScore(order);\n    if (score > 0.8) {\n      await this.publish(new FraudSuspectedEvent({ orderId: order.id, score }));\n    }\n    return score;\n  }\n}\n```",
+    "kind": "concept",
+    "feature": "domain-services",
+    "combines": [],
+    "tags": ["vytches-ddd", "domain-services"],
+    "level": "core"
+  },
+  {
+    "section": "Transactional coordination across aggregates",
+    "text": "### Transactional coordination across aggregates\n\n```typescript\nimport {\n  UnitOfWorkAwareDomainService,\n  DomainService,\n} from '@vytches/ddd-domain-services';\n\n@DomainService('TransferService')\nexport class TransferService extends UnitOfWorkAwareDomainService {\n  async transfer(fromId: string, toId: string, amount: number): Promise<void> {\n    await this.withUnitOfWork(async uow => {\n      const from = await uow.repos.accounts.findById(fromId);\n      const to = await uow.repos.accounts.findById(toId);\n      from.debit(amount);\n      to.credit(amount);\n      await uow.repos.accounts.save(from);\n      await uow.repos.accounts.save(to);\n    });\n  }\n}\n```",
+    "kind": "concept",
+    "feature": "domain-services",
+    "combines": [],
+    "tags": ["vytches-ddd", "domain-services"],
+    "level": "advanced"
+  },
+  {
+    "section": "DI auto-registered, transactional, event-publishing service",
+    "text": "### DI auto-registered, transactional, event-publishing service\n\nCombine `@DomainService()` + `EnhancedDomainServiceOptions` (DI\nauto-registration) with `UnitOfWorkAwareDomainService` (which is transitively\n`IEventBusAware` + `IUnitOfWorkAware`, since\n`UnitOfWorkAwareDomainService extends EventAwareDomainService`). The decorator's\nDI-specific fields (`lifetime`, `context`, `autoRegister`, `tags`, ...) are\npicked up because the options object contains at least one of `lifetime` /\n`context` / `autoRegister` / `tags` — that's what makes `DomainService()` build\n`DIServiceMetadata` instead of the plain legacy `DomainServiceOptions`:\n\n```typescript\nimport {\n  DomainService,\n  UnitOfWorkAwareDomainService,\n  getDIDomainServiceMetadata,\n} from '@vytches/ddd-domain-services';\nimport type { EnhancedDomainServiceOptions } from '@vytches/ddd-domain-services';\nimport { ServiceLifetime } from '@vytches/ddd-di';\n\nconst transferServiceOptions: EnhancedDomainServiceOptions = {\n  serviceId: 'TransferService',\n  lifetime: ServiceLifetime.Singleton,\n  context: 'banking',\n  autoRegister: true,\n  dependencies: [],\n  tags: ['financial', 'transactional'],\n  transactional: true,\n  async: false,\n  publishesEvents: true,\n  caching: { enabled: false },\n};\n\n@DomainService(transferServiceOptions)\nexport class TransferService extends UnitOfWorkAwareDomainService {\n  async transfer(fromId: string, toId: string, amount: number): Promise<void> {\n    // executeInTransaction (from UnitOfWorkAwareDomainService) requires\n    // setUnitOfWork() to have been called first. The `@DomainService()`\n    // decorator only *records* the `transactional: true` / `lifetime` /\n    // `context` metadata (readable via getDIDomainServiceMetadata below) —\n    // it does not itself call setUnitOfWork(). Bootstrap/container wiring\n    // that consumes this metadata is responsible for calling\n    // `instance.setUnitOfWork(uow)` before the service is used.\n    await this.executeInTransaction(async () => {\n      const accounts = this.getRepository<AccountRepository>('accounts');\n      const from = await accounts.findById(fromId);\n      const to = await accounts.findById(toId);\n      from.debit(amount);\n      to.credit(amount);\n      await accounts.save(from);\n      await accounts.save(to);\n\n      // publishEvent (inherited from EventAwareDomainService) uses the event\n      // bus that setUnitOfWork() set from uow.getEventBus() (setUnitOfWork\n      // always assigns `this.eventBus = unitOfWork.getEventBus()` as a\n      // side effect) — no separate setEventBus() call is needed here.\n      this.publishEvent(new FundsTransferredEvent({ fromId, toId, amount }));\n    });\n  }\n}\n\n// Bootstrap/container-integration code reads the DI metadata back out of\n// reflect-metadata to know how to register and wire the service — this\n// package stores the metadata (and mirrors it into\n// DIDomainServiceMetadataRegistry) but ships no container that acts on it.\nconst metadata = getDIDomainServiceMetadata(TransferService);\n// metadata?.lifetime === ServiceLifetime.Singleton\n// metadata?.context === 'banking'\n// metadata?.transactional === true\n\n// Manual wiring, since nothing auto-calls setUnitOfWork():\nconst service = new TransferService(transferServiceOptions.serviceId);\nservice.setUnitOfWork(unitOfWork); // sets eventBus too, from unitOfWork.getEventBus()\nawait service.transfer('acc-1', 'acc-2', 100);\n```",
+    "kind": "concept",
+    "feature": "domain-services",
+    "combines": ["di"],
+    "tags": ["vytches-ddd", "domain-services"],
+    "level": "advanced"
+  },
+  {
+    "section": "Handling registry errors (`ServiceNotFoundError` / `ServiceDuplicateError` / `ServiceCircularError`)",
+    "text": "### Handling registry errors (`ServiceNotFoundError` / `ServiceDuplicateError` / `ServiceCircularError`)\n\nThese are `IDomainError` subclasses (so plain `Error`s under the hood) built via\nfactory methods — `withServiceId(id)` for not-found/duplicate,\n`withServices([...ids])` for circular dependency chains. A DI/service-locator\nintegration built on top of this package throws them from\nregistration/lookup/resolution paths; callers branch on `instanceof`:\n\n```typescript\nimport {\n  ServiceCircularError,\n  ServiceDuplicateError,\n  ServiceNotFoundError,\n} from '@vytches/ddd-domain-services';\n\nclass InMemoryDomainServiceRegistry {\n  private readonly services = new Map<string, unknown>();\n  private readonly resolving = new Set<string>();\n\n  register(serviceId: string, instance: unknown): void {\n    if (this.services.has(serviceId)) {\n      throw ServiceDuplicateError.withServiceId(serviceId);\n    }\n    this.services.set(serviceId, instance);\n  }\n\n  resolve<T>(serviceId: string, chain: string[] = []): T {\n    if (this.resolving.has(serviceId)) {\n      throw ServiceCircularError.withServices([...chain, serviceId]);\n    }\n    const instance = this.services.get(serviceId);\n    if (!instance) {\n      throw ServiceNotFoundError.withServiceId(serviceId);\n    }\n    return instance as T;\n  }\n}\n\n// Caller branches on the concrete error type:\ntry {\n  registry.register('PricingService', pricingService);\n  const pricing = registry.resolve<PricingService>('PricingService');\n} catch (error) {\n  if (error instanceof ServiceDuplicateError) {\n    // idempotent bootstrap: log and reuse the existing registration\n  } else if (error instanceof ServiceCircularError) {\n    // fatal wiring bug — surface immediately, don't retry\n    throw error;\n  } else if (error instanceof ServiceNotFoundError) {\n    // missing registration — fail the request, don't silently continue\n    throw error;\n  }\n}\n```",
+    "kind": "concept",
+    "feature": "domain-services",
+    "combines": [],
+    "tags": ["vytches-ddd", "domain-services"],
+    "level": "advanced"
+  },
+  {
+    "section": "Anti-pattern: Do not put logic in a domain service that belongs to one aggregate",
+    "text": "**Do not put logic in a domain service that belongs to one aggregate** — if\n`calculateTotal()` only needs `Order` data, it belongs **inside** `Order`, not\nin a service. Service is for cross-aggregate operations only.",
+    "kind": "anti_pattern",
+    "feature": "domain-services",
+    "combines": [],
+    "tags": ["vytches-ddd", "domain-services"],
+    "level": "core"
+  },
+  {
+    "section": "Anti-pattern: Do not let a domain service hold mutable state",
+    "text": "**Do not let a domain service hold mutable state** — services are stateless.\nState lives in aggregates and value objects.",
+    "kind": "anti_pattern",
+    "feature": "domain-services",
+    "combines": [],
+    "tags": ["vytches-ddd", "domain-services"],
+    "level": "core"
+  },
+  {
+    "section": "Anti-pattern: Do not skip the `@DomainService()` decorator",
+    "text": "**Do not skip the `@DomainService()` decorator** if you rely on auto-discovery\n— without it the DI system cannot find the service.",
+    "kind": "anti_pattern",
+    "feature": "domain-services",
+    "combines": [],
+    "tags": ["vytches-ddd", "domain-services"],
+    "level": "core"
+  },
+  {
+    "section": "Anti-pattern: Do not reach into the DI container from inside a service",
+    "text": "**Do not reach into the DI container from inside a service** — declare\ndependencies as constructor parameters; let DI inject them.",
+    "kind": "anti_pattern",
+    "feature": "domain-services",
+    "combines": [],
+    "tags": ["vytches-ddd", "domain-services"],
+    "level": "core"
+  }
+]

@@ -1,5 +1,5 @@
 {
-  "comment": "Golden-set eval retrievalu (TASK-RAG-002, D7 L1). expect = substringi pola hit.source; trafienie = KTÓRYKOLWIEK substring w source hita. Rozbudowa: dokładaj wpisy z realnych przebiegów /analyze-ddd (zapytanie panelu → wzorzec, który faktycznie był potrzebny).",
+  "comment": "Golden-set eval retrievalu (TASK-RAG-002, D7 L1; rozszerzone 2026-07-03 o kind=concept/api/anti_pattern po seedzie LLMGUIDE.md — TASK-RAG-003 sekcja 0.1/0.2). Match: 'expect' = substringi hit.source (KTÓRYKOLWIEK), 'expect_section' = substringi hit.section (KTÓRYKOLWIEK) — użyj expect_section gdy source jest współdzielone przez wiele chunków tego samego pliku (np. wszystkie chunki packages/<pkg>/LLMGUIDE.md mają ten sam source, więc tylko section rozróżnia właściwy). Jeśli podane oba, wymagane OBA. 'filter' = opcjonalny must-only filtr Qdrant (kind/level/feature/lib_version) — od 2026-07-03 library_reference_global miesza kind=example (uruchamialny kod) z kind=concept/api/anti_pattern (LLMGUIDE.md); zapytania o KONKRETNY plik przykładu MUSZĄ pinować filter.kind='example', inaczej konkurują z bogatszą treścią prozy LLMGUIDE.md i regresują (zob. E01/E02/E04 MISS 2026-07-03 przed dodaniem filtra).",
   "threshold_hit_at_5": 0.6,
   "queries": [
     { "id": "P01", "query": "agregat rzuca wyjątki zamiast zwracać Result", "collection": "patterns_global", "expect": ["aggregate"] },
@@ -17,10 +17,16 @@
     { "id": "P13", "query": "zdarzenia domenowe z danymi osobowymi GDPR segregacja", "collection": "patterns_global", "expect": ["domain-event"] },
     { "id": "P14", "query": "emisja zdarzeń domenowych z encji podrzędnej agregatu", "collection": "patterns_global", "expect": ["entity-event-emission"] },
     { "id": "P15", "query": "konwencje nazewnictwa plików CQRS i struktura folderów", "collection": "patterns_global", "expect": ["conventions"] },
-    { "id": "E01", "query": "prosty przykład agregatu zamówienia", "collection": "library_reference_global", "expect": ["order.aggregate"] },
-    { "id": "E02", "query": "łączenie wielu polityk operatorami AND OR", "collection": "library_reference_global", "expect": ["policy-group-and-or"] },
-    { "id": "E03", "query": "polityka z ponawianiem retry", "collection": "library_reference_global", "expect": ["retry-policy"] },
-    { "id": "E04", "query": "jak testować domain service", "collection": "library_reference_global", "expect": ["testing-domain-services"] },
-    { "id": "E05", "query": "cachowanie wyniku polityki", "collection": "library_reference_global", "expect": ["cached-policy"] }
+    { "id": "E01", "query": "prosty przykład agregatu zamówienia", "collection": "library_reference_global", "filter": { "kind": "example" }, "expect": ["order.aggregate"] },
+    { "id": "E02", "query": "łączenie wielu polityk operatorami AND OR", "collection": "library_reference_global", "filter": { "kind": "example" }, "expect": ["policy-group-and-or"] },
+    { "id": "E03", "query": "polityka z ponawianiem retry", "collection": "library_reference_global", "filter": { "kind": "example" }, "expect": ["retry-policy"] },
+    { "id": "E04", "query": "jak testować domain service", "collection": "library_reference_global", "filter": { "kind": "example" }, "expect": ["testing-domain-services"] },
+    { "id": "E05", "query": "cachowanie wyniku polityki", "collection": "library_reference_global", "filter": { "kind": "example" }, "expect": ["cached-policy"] },
+    { "id": "C01", "query": "combine multiple specifications with a variadic AND operator", "collection": "library_reference_global", "filter": { "kind": "api", "feature": "validation" }, "expect_section": ["Specification.and"] },
+    { "id": "C02", "query": "combine multiple specifications with a variadic OR operator", "collection": "library_reference_global", "filter": { "kind": "api", "feature": "validation" }, "expect_section": ["Specification.or"] },
+    { "id": "C03", "query": "OR-groups combining policies with shouldSatisfyAny", "collection": "library_reference_global", "filter": { "kind": "concept", "feature": "policies" }, "expect_section": ["Pattern 5"] },
+    { "id": "C04", "query": "ignoring the Result returned by validating a business rule validator", "collection": "library_reference_global", "filter": { "kind": "anti_pattern", "feature": "validation" }, "expect_section": ["Ignoring BusinessRuleValidator"] },
+    { "id": "C05", "query": "NestJS module that wires up outbox processing for transactional messaging", "collection": "library_reference_global", "filter": { "kind": "api", "feature": "nestjs", "level": "core" }, "expect_section": ["OutboxProcessorModule"] },
+    { "id": "C06", "query": "wire the global command bus and query bus tokens for dependency injection", "collection": "library_reference_global", "filter": { "kind": "api", "feature": "nestjs" }, "expect_section": ["GLOBAL_COMMAND_BUS", "GLOBAL_QUERY_BUS"] }
   ]
 }

@@ -1,0 +1,569 @@
+[
+  {
+    "section": "Overview",
+    "text": "## Purpose\n\nProduction-grade resilience patterns for command handlers, integration calls,\nand any I/O boundary: circuit breaker, retry with backoff, bulkhead (concurrency\nlimiting), timeout, and a composite strategy that chains them.\n\nIncludes a full **observability layer** — metric registry, Prometheus / JSON /\nCSV exporters, and per-pattern collectors — plus method **decorators** for\nzero-boilerplate adoption.\n\nDesigned to be opt-in — no default-on retries that could double-execute domain\ncommands.\n\n## Quick Start\n\n```typescript\nimport {\n  CircuitBreaker,\n  RetryPolicy,\n  Bulkhead,\n  ResiliencePolicyBuilder,\n} from '@vytches/ddd-resilience';\n\n// 1. Standalone circuit breaker\nconst breaker = new CircuitBreaker({\n  name: 'payment-gateway',\n  failureThreshold: 5,\n  recoveryTimeout: 30_000,\n});\nawait breaker.execute(() => paymentApi.charge(order));\n\n// 2. Composed policy: timeout → retry → circuit breaker → bulkhead\nconst policy = new ResiliencePolicyBuilder()\n  .withTimeout(5_000)\n  .withRetry({ maxAttempts: 3, baseDelayMs: 100 })\n  .withCircuitBreaker({ failureThreshold: 5 })\n  .withBulkhead({ maxConcurrent: 10, maxQueue: 50 })\n  .build();\n\nconst result = await policy.execute(() => externalService.call(payload));\n```",
+    "kind": "concept",
+    "feature": "resilience",
+    "combines": [],
+    "tags": ["vytches-ddd", "resilience"],
+    "level": "quickstart"
+  },
+  {
+    "section": "CircuitBreaker",
+    "text": "`CircuitBreaker` | class | Three-state breaker (Closed / Open / Half-Open) with thresholds",
+    "kind": "api",
+    "feature": "resilience",
+    "combines": [],
+    "tags": ["vytches-ddd", "resilience"],
+    "level": "core"
+  },
+  {
+    "section": "CircuitBreakerOpenError",
+    "text": "`CircuitBreakerOpenError` | error | Thrown when execution attempted while breaker is Open",
+    "kind": "api",
+    "feature": "resilience",
+    "combines": [],
+    "tags": ["vytches-ddd", "resilience"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "CircuitBreakerState",
+    "text": "`CircuitBreakerState` | enum | `Closed`, `Open`, `HalfOpen`",
+    "kind": "api",
+    "feature": "resilience",
+    "combines": [],
+    "tags": ["vytches-ddd", "resilience"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "RetryPolicy",
+    "text": "`RetryPolicy` | class | Exponential backoff retry with optional jitter",
+    "kind": "api",
+    "feature": "resilience",
+    "combines": [],
+    "tags": ["vytches-ddd", "resilience"],
+    "level": "core"
+  },
+  {
+    "section": "MaxRetriesExceededError",
+    "text": "`MaxRetriesExceededError` | error | Thrown when retry budget is exhausted",
+    "kind": "api",
+    "feature": "resilience",
+    "combines": [],
+    "tags": ["vytches-ddd", "resilience"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "Bulkhead",
+    "text": "`Bulkhead` | class | Concurrency limiter with optional queue",
+    "kind": "api",
+    "feature": "resilience",
+    "combines": [],
+    "tags": ["vytches-ddd", "resilience"],
+    "level": "core"
+  },
+  {
+    "section": "BulkheadRejectedException",
+    "text": "`BulkheadRejectedException` | error | Thrown when both active and queue are saturated",
+    "kind": "api",
+    "feature": "resilience",
+    "combines": [],
+    "tags": ["vytches-ddd", "resilience"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "TimeoutError",
+    "text": "`TimeoutError` | error | Thrown by `TimeoutStrategy` when deadline exceeded",
+    "kind": "api",
+    "feature": "resilience",
+    "combines": [],
+    "tags": ["vytches-ddd", "resilience"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "OperationCancelledError",
+    "text": "`OperationCancelledError` | error | Thrown when operation is cancelled mid-flight via context",
+    "kind": "api",
+    "feature": "resilience",
+    "combines": [],
+    "tags": ["vytches-ddd", "resilience"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "ResiliencePolicyBuilder",
+    "text": "`ResiliencePolicyBuilder` | class | Fluent builder for composing strategies",
+    "kind": "api",
+    "feature": "resilience",
+    "combines": [],
+    "tags": ["vytches-ddd", "resilience"],
+    "level": "core"
+  },
+  {
+    "section": "ResilienceStrategy",
+    "text": "`ResilienceStrategy` | interface | `execute<T>(fn): Promise<T>`",
+    "kind": "api",
+    "feature": "resilience",
+    "combines": [],
+    "tags": ["vytches-ddd", "resilience"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "CompositeResilienceStrategy",
+    "text": "`CompositeResilienceStrategy` | class | Chains multiple strategies into one",
+    "kind": "api",
+    "feature": "resilience",
+    "combines": [],
+    "tags": ["vytches-ddd", "resilience"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "RetryStrategy",
+    "text": "`RetryStrategy` | class | Strategy wrapper around RetryPolicy",
+    "kind": "api",
+    "feature": "resilience",
+    "combines": [],
+    "tags": ["vytches-ddd", "resilience"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "CircuitBreakerStrategy",
+    "text": "`CircuitBreakerStrategy` | class | Strategy wrapper around CircuitBreaker",
+    "kind": "api",
+    "feature": "resilience",
+    "combines": [],
+    "tags": ["vytches-ddd", "resilience"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "BulkheadStrategy",
+    "text": "`BulkheadStrategy` | class | Strategy wrapper around Bulkhead",
+    "kind": "api",
+    "feature": "resilience",
+    "combines": [],
+    "tags": ["vytches-ddd", "resilience"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "TimeoutStrategy",
+    "text": "`TimeoutStrategy` | class | Reject promise after N ms",
+    "kind": "api",
+    "feature": "resilience",
+    "combines": [],
+    "tags": ["vytches-ddd", "resilience"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "DefaultResilienceContext",
+    "text": "`DefaultResilienceContext` | class | Carries cancel signal + correlation ID through strategies",
+    "kind": "api",
+    "feature": "resilience",
+    "combines": [],
+    "tags": ["vytches-ddd", "resilience"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "RetryDecorator(opts?)",
+    "text": "`RetryDecorator(opts?)` | decorator | `@RetryDecorator({ maxAttempts: 3 })` on a method",
+    "kind": "api",
+    "feature": "resilience",
+    "combines": [],
+    "tags": ["vytches-ddd", "resilience"],
+    "level": "core"
+  },
+  {
+    "section": "CircuitBreakerDecorator(opts?)",
+    "text": "`CircuitBreakerDecorator(opts?)` | decorator | `@CircuitBreakerDecorator({ name, failureThreshold })`",
+    "kind": "api",
+    "feature": "resilience",
+    "combines": [],
+    "tags": ["vytches-ddd", "resilience"],
+    "level": "core"
+  },
+  {
+    "section": "BulkheadDecorator(opts?)",
+    "text": "`BulkheadDecorator(opts?)` | decorator | `@BulkheadDecorator({ maxConcurrent: 10 })`",
+    "kind": "api",
+    "feature": "resilience",
+    "combines": [],
+    "tags": ["vytches-ddd", "resilience"],
+    "level": "core"
+  },
+  {
+    "section": "TimeoutDecorator(opts?)",
+    "text": "`TimeoutDecorator(opts?)` | decorator | `@TimeoutDecorator({ ms: 2000 })`",
+    "kind": "api",
+    "feature": "resilience",
+    "combines": [],
+    "tags": ["vytches-ddd", "resilience"],
+    "level": "core"
+  },
+  {
+    "section": "ResilienceDecorator(opts?)",
+    "text": "`ResilienceDecorator(opts?)` | decorator | Composite — apply all four with one decorator",
+    "kind": "api",
+    "feature": "resilience",
+    "combines": [],
+    "tags": ["vytches-ddd", "resilience"],
+    "level": "core"
+  },
+  {
+    "section": "getResilienceMetrics(target)",
+    "text": "`getResilienceMetrics(target)` | function | Read accumulated metrics from a decorated class",
+    "kind": "api",
+    "feature": "resilience",
+    "combines": [],
+    "tags": ["vytches-ddd", "resilience"],
+    "level": "core"
+  },
+  {
+    "section": "RetryDecoratorConfig",
+    "text": "`RetryDecoratorConfig` | type | Decorator options",
+    "kind": "api",
+    "feature": "resilience",
+    "combines": [],
+    "tags": ["vytches-ddd", "resilience"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "CircuitBreakerDecoratorConfig",
+    "text": "`CircuitBreakerDecoratorConfig` | type | Decorator options",
+    "kind": "api",
+    "feature": "resilience",
+    "combines": [],
+    "tags": ["vytches-ddd", "resilience"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "BulkheadDecoratorConfig",
+    "text": "`BulkheadDecoratorConfig` | type | Decorator options",
+    "kind": "api",
+    "feature": "resilience",
+    "combines": [],
+    "tags": ["vytches-ddd", "resilience"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "TimeoutDecoratorConfig",
+    "text": "`TimeoutDecoratorConfig` | type | Decorator options",
+    "kind": "api",
+    "feature": "resilience",
+    "combines": [],
+    "tags": ["vytches-ddd", "resilience"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "CompositeResilienceConfig",
+    "text": "`CompositeResilienceConfig` | type | Composite decorator options",
+    "kind": "api",
+    "feature": "resilience",
+    "combines": [],
+    "tags": ["vytches-ddd", "resilience"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "ResilienceDecoratorConfig",
+    "text": "`ResilienceDecoratorConfig` | type | Generic config base",
+    "kind": "api",
+    "feature": "resilience",
+    "combines": [],
+    "tags": ["vytches-ddd", "resilience"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "GlobalMetricRegistry",
+    "text": "`GlobalMetricRegistry` | singleton | App-wide metric registry (`getInstance()`)",
+    "kind": "api",
+    "feature": "resilience",
+    "combines": [],
+    "tags": ["vytches-ddd", "resilience"],
+    "level": "core"
+  },
+  {
+    "section": "DefaultMetricRegistry",
+    "text": "`DefaultMetricRegistry` | class | Plain (non-global) registry",
+    "kind": "api",
+    "feature": "resilience",
+    "combines": [],
+    "tags": ["vytches-ddd", "resilience"],
+    "level": "core"
+  },
+  {
+    "section": "MetricRegistry",
+    "text": "`MetricRegistry` | interface | Registry public contract",
+    "kind": "api",
+    "feature": "resilience",
+    "combines": [],
+    "tags": ["vytches-ddd", "resilience"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "MetricCollector",
+    "text": "`MetricCollector` | interface | Collects metrics for one pattern",
+    "kind": "api",
+    "feature": "resilience",
+    "combines": [],
+    "tags": ["vytches-ddd", "resilience"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "CircuitBreakerMetricCollector",
+    "text": "`CircuitBreakerMetricCollector` | class | Open/closed counts, failure rate, recovery latency",
+    "kind": "api",
+    "feature": "resilience",
+    "combines": [],
+    "tags": ["vytches-ddd", "resilience"],
+    "level": "core"
+  },
+  {
+    "section": "RetryMetricCollector",
+    "text": "`RetryMetricCollector` | class | Attempts, retries, success-after-retry counts",
+    "kind": "api",
+    "feature": "resilience",
+    "combines": [],
+    "tags": ["vytches-ddd", "resilience"],
+    "level": "core"
+  },
+  {
+    "section": "BulkheadMetricCollector",
+    "text": "`BulkheadMetricCollector` | class | Active count, queue depth, rejections",
+    "kind": "api",
+    "feature": "resilience",
+    "combines": [],
+    "tags": ["vytches-ddd", "resilience"],
+    "level": "core"
+  },
+  {
+    "section": "TimeoutMetricCollector",
+    "text": "`TimeoutMetricCollector` | class | Timeout count, p50/p99 latency",
+    "kind": "api",
+    "feature": "resilience",
+    "combines": [],
+    "tags": ["vytches-ddd", "resilience"],
+    "level": "core"
+  },
+  {
+    "section": "MetricExporter",
+    "text": "`MetricExporter` | interface | Render registry to a wire format",
+    "kind": "api",
+    "feature": "resilience",
+    "combines": [],
+    "tags": ["vytches-ddd", "resilience"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "PrometheusMetricExporter",
+    "text": "`PrometheusMetricExporter` | class | Render to Prometheus text format",
+    "kind": "api",
+    "feature": "resilience",
+    "combines": [],
+    "tags": ["vytches-ddd", "resilience"],
+    "level": "core"
+  },
+  {
+    "section": "JsonMetricExporter",
+    "text": "`JsonMetricExporter` | class | Render to JSON",
+    "kind": "api",
+    "feature": "resilience",
+    "combines": [],
+    "tags": ["vytches-ddd", "resilience"],
+    "level": "core"
+  },
+  {
+    "section": "CsvMetricExporter",
+    "text": "`CsvMetricExporter` | class | Render to CSV",
+    "kind": "api",
+    "feature": "resilience",
+    "combines": [],
+    "tags": ["vytches-ddd", "resilience"],
+    "level": "core"
+  },
+  {
+    "section": "TextMetricExporter",
+    "text": "`TextMetricExporter` | class | Render to plain text",
+    "kind": "api",
+    "feature": "resilience",
+    "combines": [],
+    "tags": ["vytches-ddd", "resilience"],
+    "level": "core"
+  },
+  {
+    "section": "CompositeMetricExporter",
+    "text": "`CompositeMetricExporter` | class | Run multiple exporters at once",
+    "kind": "api",
+    "feature": "resilience",
+    "combines": [],
+    "tags": ["vytches-ddd", "resilience"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "MetricExporterFactory",
+    "text": "`MetricExporterFactory` | class | Build exporter by name",
+    "kind": "api",
+    "feature": "resilience",
+    "combines": [],
+    "tags": ["vytches-ddd", "resilience"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "Metric, MetricType",
+    "text": "`Metric`, `MetricType` | types | Metric model (counter / gauge / histogram / timer)",
+    "kind": "api",
+    "feature": "resilience",
+    "combines": [],
+    "tags": ["vytches-ddd", "resilience"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "MetricLabels, MetricValue",
+    "text": "`MetricLabels`, `MetricValue` | types | Label set + value variants",
+    "kind": "api",
+    "feature": "resilience",
+    "combines": [],
+    "tags": ["vytches-ddd", "resilience"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "HistogramMetric, HistogramBucket",
+    "text": "`HistogramMetric`, `HistogramBucket` | types | Histogram with bucket boundaries",
+    "kind": "api",
+    "feature": "resilience",
+    "combines": [],
+    "tags": ["vytches-ddd", "resilience"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "TimerMetric",
+    "text": "`TimerMetric` | type | Duration metric",
+    "kind": "api",
+    "feature": "resilience",
+    "combines": [],
+    "tags": ["vytches-ddd", "resilience"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "ObservabilityEventBus",
+    "text": "`ObservabilityEventBus` | interface | Pub/sub for resilience events",
+    "kind": "api",
+    "feature": "resilience",
+    "combines": [],
+    "tags": ["vytches-ddd", "resilience"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "DefaultObservabilityEventBus",
+    "text": "`DefaultObservabilityEventBus` | class | Reference implementation",
+    "kind": "api",
+    "feature": "resilience",
+    "combines": [],
+    "tags": ["vytches-ddd", "resilience"],
+    "level": "core"
+  },
+  {
+    "section": "GlobalObservabilityEventBus",
+    "text": "`GlobalObservabilityEventBus` | singleton | App-wide event bus",
+    "kind": "api",
+    "feature": "resilience",
+    "combines": [],
+    "tags": ["vytches-ddd", "resilience"],
+    "level": "core"
+  },
+  {
+    "section": "ObservabilityEvent",
+    "text": "`ObservabilityEvent` | type | Event shape (state change, threshold breach, ...)",
+    "kind": "api",
+    "feature": "resilience",
+    "combines": [],
+    "tags": ["vytches-ddd", "resilience"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "ObservabilityEventListener",
+    "text": "`ObservabilityEventListener` | type | `(event) => void` callback",
+    "kind": "api",
+    "feature": "resilience",
+    "combines": [],
+    "tags": ["vytches-ddd", "resilience"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "ObservabilityEventFactory",
+    "text": "`ObservabilityEventFactory` | class | Build canonical events",
+    "kind": "api",
+    "feature": "resilience",
+    "combines": [],
+    "tags": ["vytches-ddd", "resilience"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "Decorate a method with the full stack",
+    "text": "### Decorate a method with the full stack\n\n```typescript\nimport {\n  ResilienceDecorator,\n  getResilienceMetrics,\n} from '@vytches/ddd-resilience';\n\nclass PaymentService {\n  @ResilienceDecorator({\n    timeout: { ms: 2000 },\n    retry: { maxAttempts: 3, baseDelayMs: 100 },\n    circuitBreaker: { name: 'payments', failureThreshold: 5 },\n  })\n  async charge(orderId: string, amount: number): Promise<void> {\n    return paymentApi.charge(orderId, amount);\n  }\n}\n\n// Inspect runtime metrics\nconst metrics = getResilienceMetrics(PaymentService);\nconsole.log(metrics.charge.retries, metrics.charge.circuitBreaker.state);\n```",
+    "kind": "concept",
+    "feature": "resilience",
+    "combines": [],
+    "tags": ["vytches-ddd", "resilience"],
+    "level": "core"
+  },
+  {
+    "section": "Emit Prometheus metrics from circuit breaker",
+    "text": "### Emit Prometheus metrics from circuit breaker\n\n```typescript\nimport {\n  GlobalMetricRegistry,\n  CircuitBreakerMetricCollector,\n  PrometheusMetricExporter,\n  CircuitBreaker,\n} from '@vytches/ddd-resilience';\n\nconst breaker = new CircuitBreaker({ name: 'payments', failureThreshold: 5 });\n\nconst registry = GlobalMetricRegistry.getInstance();\nregistry.register(new CircuitBreakerMetricCollector(breaker));\n\n// In your /metrics HTTP handler\nconst exporter = new PrometheusMetricExporter();\nconst text = exporter.export(registry.collect());\nres.setHeader('Content-Type', 'text/plain; version=0.0.4').send(text);\n```",
+    "kind": "concept",
+    "feature": "resilience",
+    "combines": [],
+    "tags": ["vytches-ddd", "resilience"],
+    "level": "advanced"
+  },
+  {
+    "section": "Idempotent retries only",
+    "text": "### Idempotent retries only\n\nRetries are safe **only when the operation is idempotent**. Domain commands\n(e.g. `placeOrder`) are usually not. Wrap publish/projection/integration calls —\nnever raw command handlers.\n\n```typescript\n// SAFE: idempotent — sending an event with a deduplication ID\nawait retry.execute(() => bus.publish(event));\n\n// UNSAFE: command handler — could create 2 orders\n// await retry.execute(() => orderService.placeOrder(payload));\n```",
+    "kind": "concept",
+    "feature": "resilience",
+    "combines": [],
+    "tags": ["vytches-ddd", "resilience"],
+    "level": "advanced"
+  },
+  {
+    "section": "Anti-pattern: Do not retry domain command handlers",
+    "text": "**Do not retry domain command handlers** — most are not idempotent.\n  At-most-once semantics is the safe default.",
+    "kind": "anti_pattern",
+    "feature": "resilience",
+    "combines": [],
+    "tags": ["vytches-ddd", "resilience"],
+    "level": "core"
+  },
+  {
+    "section": "Anti-pattern: Do not set failureThreshold based on time only",
+    "text": "**Do not set `failureThreshold` based on time only** — combine with a minimum\n  sample size to avoid breaker flapping at low traffic.",
+    "kind": "anti_pattern",
+    "feature": "resilience",
+    "combines": [],
+    "tags": ["vytches-ddd", "resilience"],
+    "level": "core"
+  },
+  {
+    "section": "Anti-pattern: Do not stack retries on retries",
+    "text": "**Do not stack retries on retries** — if you retry inside the handler AND\n  outside, you multiply load on the failing dependency.",
+    "kind": "anti_pattern",
+    "feature": "resilience",
+    "combines": [],
+    "tags": ["vytches-ddd", "resilience"],
+    "level": "core"
+  },
+  {
+    "section": "Anti-pattern: Do not use timeout as the only resilience strategy",
+    "text": "**Do not use timeout as the only resilience strategy** — without circuit\n  breaker, a downstream outage will saturate your bulkhead within seconds.",
+    "kind": "anti_pattern",
+    "feature": "resilience",
+    "combines": [],
+    "tags": ["vytches-ddd", "resilience"],
+    "level": "core"
+  },
+  {
+    "section": "Anti-pattern: Do not skip MetricCollector registration",
+    "text": "**Do not skip `MetricCollector` registration** when using decorators in\n  production — without a registered collector, `getResilienceMetrics()` is empty\n  and you lose visibility into failure modes.",
+    "kind": "anti_pattern",
+    "feature": "resilience",
+    "combines": [],
+    "tags": ["vytches-ddd", "resilience"],
+    "level": "core"
+  }
+]

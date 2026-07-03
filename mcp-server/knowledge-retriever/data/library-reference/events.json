@@ -1,0 +1,263 @@
+[
+  {
+    "section": "Overview",
+    "text": "## Purpose\n\nProvides concrete event classes (`DomainEvent`, `IntegrationEvent`), three typed\nevent bus interfaces, a `UnifiedEventBus` implementation, decorator-based\nhandler registration, and a `DomainToIntegrationTransformer` for cross-context\nevent translation.\n\n## Quick Start\n\n```typescript\nimport {\n  DomainEvent,\n  UnifiedEventBus,\n  EventHandler,\n} from '@vytches/ddd-events';\nimport type { IDomainEventBus } from '@vytches/ddd-events';\n\n// 1. Define a domain event\ninterface OrderPlacedPayload {\n  orderId: string;\n  amount: number;\n}\n\nclass OrderPlacedEvent extends DomainEvent<OrderPlacedPayload> {\n  constructor(payload: OrderPlacedPayload) {\n    super(payload);\n  }\n}\n\n// 2. Register a handler\n@EventHandler(OrderPlacedEvent)\nclass OrderPlacedHandler {\n  async handle(event: OrderPlacedEvent): Promise<void> {\n    console.log('Order placed:', event.payload?.orderId);\n  }\n}\n\n// 3. Create the bus and publish\nconst bus: IDomainEventBus = new UnifiedEventBus({ enableLogging: true });\nbus.registerHandler(OrderPlacedEvent, new OrderPlacedHandler());\nawait bus.publish(new OrderPlacedEvent({ orderId: 'o-1', amount: 100 }));\n```",
+    "kind": "concept",
+    "feature": "events",
+    "combines": [],
+    "tags": ["vytches-ddd", "events"],
+    "level": "quickstart"
+  },
+  {
+    "section": "DomainEvent<T>",
+    "text": "`DomainEvent<T>` | abstract class | Base for domain events; auto-generates `eventId`, `occurredOn`, `eventName` from class name",
+    "kind": "api",
+    "feature": "events",
+    "combines": [],
+    "tags": ["vytches-ddd", "events"],
+    "level": "core"
+  },
+  {
+    "section": "IntegrationEvent<T>",
+    "text": "`IntegrationEvent<T>` | abstract class | Base for integration events; adds `serialize()` / static `deserialize()`, `schemaVersion`",
+    "kind": "api",
+    "feature": "events",
+    "combines": [],
+    "tags": ["vytches-ddd", "events"],
+    "level": "core"
+  },
+  {
+    "section": "IDomainEventBus",
+    "text": "`IDomainEventBus` | type alias | `IEventBus<IDomainEvent>` — for within-context events",
+    "kind": "api",
+    "feature": "events",
+    "combines": [],
+    "tags": ["vytches-ddd", "events"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IIntegrationEventBus",
+    "text": "`IIntegrationEventBus` | type alias | `IEventBus<IIntegrationEvent>` — for cross-context events",
+    "kind": "api",
+    "feature": "events",
+    "combines": [],
+    "tags": ["vytches-ddd", "events"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IAuditEventBus",
+    "text": "`IAuditEventBus` | type alias | `IEventBus<IAuditEvent>` — for compliance/audit events",
+    "kind": "api",
+    "feature": "events",
+    "combines": [],
+    "tags": ["vytches-ddd", "events"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "UnifiedEventBus",
+    "text": "`UnifiedEventBus` | class | Handles all three event types; routes by class name with optional context filtering",
+    "kind": "api",
+    "feature": "events",
+    "combines": [],
+    "tags": ["vytches-ddd", "events"],
+    "level": "core"
+  },
+  {
+    "section": "BaseEventBus<T>",
+    "text": "`BaseEventBus<T>` | class | Extend this to create custom bus implementations",
+    "kind": "api",
+    "feature": "events",
+    "combines": [],
+    "tags": ["vytches-ddd", "events"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "UniversalEventDispatcher",
+    "text": "`UniversalEventDispatcher` | class | Dispatches events to multiple registered buses simultaneously",
+    "kind": "api",
+    "feature": "events",
+    "combines": [],
+    "tags": ["vytches-ddd", "events"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "EventHandler(EventClass, opts?)",
+    "text": "`EventHandler(EventClass, opts?)` | decorator | Registers class or method as event handler; supports DI auto-discovery",
+    "kind": "api",
+    "feature": "events",
+    "combines": [],
+    "tags": ["vytches-ddd", "events"],
+    "level": "core"
+  },
+  {
+    "section": "EventDiscoveryPlugin",
+    "text": "`EventDiscoveryPlugin` | class | Scans metadata to auto-register `@EventHandler`-decorated classes",
+    "kind": "api",
+    "feature": "events",
+    "combines": [],
+    "tags": ["vytches-ddd", "events"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "DomainToIntegrationTransformer<D,I>",
+    "text": "`DomainToIntegrationTransformer<D,I>` | abstract class | Override `transform()` to map a domain event to an integration event",
+    "kind": "api",
+    "feature": "events",
+    "combines": [],
+    "tags": ["vytches-ddd", "events"],
+    "level": "core"
+  },
+  {
+    "section": "IntegrationEventProcessor",
+    "text": "`IntegrationEventProcessor` | class | Processes integration events through a pipeline",
+    "kind": "api",
+    "feature": "events",
+    "combines": [],
+    "tags": ["vytches-ddd", "events"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "DomainEvent.withMetadata(partial)",
+    "text": "`DomainEvent.withMetadata(partial)` | method | Returns a new event copy with merged metadata",
+    "kind": "api",
+    "feature": "events",
+    "combines": [],
+    "tags": ["vytches-ddd", "events"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IntegrationEvent.serialize()",
+    "text": "`IntegrationEvent.serialize()` | method | Serializes to JSON string with payload + metadata",
+    "kind": "api",
+    "feature": "events",
+    "combines": [],
+    "tags": ["vytches-ddd", "events"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "IntegrationEvent.deserialize(Cls, json)",
+    "text": "`IntegrationEvent.deserialize(Cls, json)` | static | Deserializes JSON back to typed event instance (max 1MB)",
+    "kind": "api",
+    "feature": "events",
+    "combines": [],
+    "tags": ["vytches-ddd", "events"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "Cross-context transformer",
+    "text": "```typescript\nimport {\n  DomainToIntegrationTransformer,\n  IntegrationEvent,\n} from '@vytches/ddd-events';\nimport type { IDomainEvent } from '@vytches/ddd-contracts';\n\ninterface OrderPlacedPayload {\n  orderId: string;\n  amount: number;\n}\ninterface OrderCreatedIntegrationPayload {\n  id: string;\n  totalAmount: number;\n}\n\nclass OrderCreatedIntegration extends IntegrationEvent<OrderCreatedIntegrationPayload> {}\n\nclass OrderPlacedTransformer extends DomainToIntegrationTransformer<\n  OrderPlacedPayload,\n  OrderCreatedIntegrationPayload\n> {\n  constructor() {\n    super('orders');\n  }\n\n  protected transform(\n    event: IDomainEvent<OrderPlacedPayload>\n  ): OrderCreatedIntegration {\n    return new OrderCreatedIntegration({\n      id: event.payload!.orderId,\n      totalAmount: event.payload!.amount,\n    });\n  }\n}\n```",
+    "kind": "concept",
+    "feature": "events",
+    "combines": ["contracts"],
+    "tags": ["vytches-ddd", "events"],
+    "level": "core"
+  },
+  {
+    "section": "UnifiedEventBus with middleware",
+    "text": "```typescript\nimport { UnifiedEventBus, BaseEventBus } from '@vytches/ddd-events';\nimport type { BaseEventBusOptions } from '@vytches/ddd-contracts';\n\nconst options: BaseEventBusOptions = {\n  enableLogging: true,\n  onError: (err, eventType) => logger.error('Event failed', { err, eventType }),\n  middlewares: [\n    next => async event => {\n      console.log('before', (event as any).eventName);\n      await next(event);\n      console.log('after', (event as any).eventName);\n    },\n  ],\n};\n\nconst bus = new UnifiedEventBus(options);\n```",
+    "kind": "concept",
+    "feature": "events",
+    "combines": ["contracts"],
+    "tags": ["vytches-ddd", "events"],
+    "level": "advanced"
+  },
+  {
+    "section": "Metadata correlation across events",
+    "text": "```typescript\nimport { DomainEvent } from '@vytches/ddd-events';\n\nclass PaymentProcessed extends DomainEvent<{ orderId: string }> {}\n\nconst event = new PaymentProcessed({ orderId: 'o-1' });\nconst correlated = event.withMetadata({\n  correlationId: 'req-abc',\n  causationId: event.eventId,\n});\n// correlated.metadata.correlationId === 'req-abc'\n```",
+    "kind": "concept",
+    "feature": "events",
+    "combines": [],
+    "tags": ["vytches-ddd", "events"],
+    "level": "advanced"
+  },
+  {
+    "section": "Anti-pattern: Publishing domain events from outside aggregates",
+    "text": "**Publishing domain events from outside aggregates.** Domain events should be\ngenerated exclusively inside aggregate methods via `apply()` and collected from\n`getDomainEvents()` after persistence. Publishing an event directly from an\napplication service bypasses the aggregate's version tracking.",
+    "kind": "anti_pattern",
+    "feature": "events",
+    "combines": [],
+    "tags": ["vytches-ddd", "events"],
+    "level": "core"
+  },
+  {
+    "section": "Anti-pattern: Not using metadata for tracing",
+    "text": "**Not using metadata for tracing.** `IDomainEvent.metadata` exists for\n`correlationId`, `causationId`, and `actor`. Ignoring these fields makes\ndistributed tracing impossible. Always propagate `correlationId` from inbound\nrequests into event metadata.",
+    "kind": "anti_pattern",
+    "feature": "events",
+    "combines": [],
+    "tags": ["vytches-ddd", "events"],
+    "level": "core"
+  },
+  {
+    "section": "Anti-pattern: Confusing DomainEvent with IntegrationEvent",
+    "text": "**Confusing `DomainEvent` with `IntegrationEvent`.** `DomainEvent` is for\nwithin-context state changes. `IntegrationEvent` crosses bounded context\nboundaries. Publishing a `DomainEvent` directly to a message broker bypasses\ntranslation and schema versioning — use `DomainToIntegrationTransformer`\ninstead.",
+    "kind": "anti_pattern",
+    "feature": "events",
+    "combines": [],
+    "tags": ["vytches-ddd", "events"],
+    "level": "core"
+  },
+  {
+    "section": "Anti-pattern: Coupling to UnifiedEventBus directly in domain code",
+    "text": "**Coupling to `UnifiedEventBus` directly in domain code.** Domain code should\ndepend on `IDomainEventBus` (the type alias), not `UnifiedEventBus` (the\nconcrete class). This keeps the domain testable with a simple in-memory stub.",
+    "kind": "anti_pattern",
+    "feature": "events",
+    "combines": [],
+    "tags": ["vytches-ddd", "events"],
+    "level": "core"
+  },
+  {
+    "section": "Anti-pattern: Expecting @EventHandler auto-registration without calling EventDiscoveryPlugin",
+    "text": "**Expecting `@EventHandler` auto-registration without calling\n`EventDiscoveryPlugin`.** The decorator records metadata but does not register\nhandlers with any bus. You must call `EventDiscoveryPlugin` (or\n`eventDiscoveryPlugin`) and provide a resolver to complete wiring.",
+    "kind": "anti_pattern",
+    "feature": "events",
+    "combines": [],
+    "tags": ["vytches-ddd", "events"],
+    "level": "core"
+  },
+  {
+    "section": "Hidden feature: DomainEvent.eventName defaults to the class name",
+    "text": "`DomainEvent.eventName` defaults to the class name — override by passing a third\nconstructor argument `eventName?: string` if you need a stable name that\nsurvives minification in production builds.",
+    "kind": "concept",
+    "feature": "events",
+    "combines": [],
+    "tags": ["vytches-ddd", "events"],
+    "level": "advanced"
+  },
+  {
+    "section": "Hidden feature: IntegrationEvent.deserialize security sanitization",
+    "text": "`IntegrationEvent.deserialize` enforces a hard 1MB size limit and sanitizes\n`__proto__`, `constructor`, and `prototype` keys — this is a security feature,\nnot just a parser.",
+    "kind": "concept",
+    "feature": "events",
+    "combines": [],
+    "tags": ["vytches-ddd", "events"],
+    "level": "advanced"
+  },
+  {
+    "section": "Hidden feature: UnifiedEventBus auto-registers handlers in constructor",
+    "text": "`UnifiedEventBus` calls `autoRegisterHandlers()` in its constructor — handlers\ndecorated with `@EventHandler` that are already in scope at construction time\nare registered without any additional call.",
+    "kind": "concept",
+    "feature": "events",
+    "combines": [],
+    "tags": ["vytches-ddd", "events"],
+    "level": "advanced"
+  },
+  {
+    "section": "Hidden feature: BaseEventBus CUSTOM_MIDDLEWARE_SYMBOL",
+    "text": "`BaseEventBus` (exported as `CUSTOM_MIDDLEWARE_SYMBOL`) exposes a symbol for\ninjecting custom middleware from outside the class — useful when extending\n`BaseEventBus` and needing to insert middleware at construction time from a DI\ncontainer.",
+    "kind": "concept",
+    "feature": "events",
+    "combines": [],
+    "tags": ["vytches-ddd", "events"],
+    "level": "advanced"
+  },
+  {
+    "section": "Hidden feature: DomainToIntegrationTransformer.transformToMultipleTargets()",
+    "text": "`DomainToIntegrationTransformer.transformToMultipleTargets()` routes a single\ndomain event to several integration events when a `IContextRouter` is provided —\nuseful for fan-out patterns to multiple downstream contexts.",
+    "kind": "concept",
+    "feature": "events",
+    "combines": [],
+    "tags": ["vytches-ddd", "events"],
+    "level": "advanced"
+  }
+]

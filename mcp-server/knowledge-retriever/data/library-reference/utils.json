@@ -1,0 +1,200 @@
+[
+  {
+    "section": "Overview",
+    "text": "## Purpose\n\nGeneric helpers used across the library: a `Result<T, E>` re-export shim\n(canonical home is `@vytches/ddd-contracts` since v0.25.0), grab-bag utility\nmethods (`LibUtils`), `safeRun` for error-as-value async/sync execution, and a\nminimal middleware pipeline for buses.\n\nMost consumers will not import this package directly — `@vytches/ddd` (the\nmeta-package) exposes the relevant subset.\n\n## Quick Start\n\n```typescript\nimport { Result, LibUtils, safeRun } from '@vytches/ddd-utils';\n\n// Result — outcome of a domain operation\nconst ok = Result.ok<number>(42);\nconst fail = Result.fail<number>(new Error('boom'));\nok.match(\n  v => console.log('value', v),\n  e => console.error(e)\n);\n\n// LibUtils — predicates, UUID, deep equality\nconst id = LibUtils.getUUID(); // RFC 4122 v4\nconst same = LibUtils.deepEqual(a, b); // handles Date/Map/Set/RegExp\nconst empty = LibUtils.isEmpty(value); // robust empty check\n\n// safeRun — never throws, returns [error, value] tuple\nconst [err, data] = await safeRun(() => fetchUser(id));\nif (err) return Result.fail(err);\n```",
+    "kind": "concept",
+    "feature": "utils",
+    "combines": [],
+    "tags": ["vytches-ddd", "utils"],
+    "level": "quickstart"
+  },
+  {
+    "section": "Result<T, E>",
+    "text": "| `Result<T, E>`               | class (re-export) | Outcome wrapper. Canonical source: `@vytches/ddd-contracts`          |",
+    "kind": "api",
+    "feature": "utils",
+    "combines": [],
+    "tags": ["vytches-ddd", "utils"],
+    "level": "core"
+  },
+  {
+    "section": "Result.ok(value)",
+    "text": "| `Result.ok(value)`           | static            | Successful result                                                    |",
+    "kind": "api",
+    "feature": "utils",
+    "combines": [],
+    "tags": ["vytches-ddd", "utils"],
+    "level": "core"
+  },
+  {
+    "section": "Result.fail(error)",
+    "text": "| `Result.fail(error)`         | static            | Failed result                                                        |",
+    "kind": "api",
+    "feature": "utils",
+    "combines": [],
+    "tags": ["vytches-ddd", "utils"],
+    "level": "core"
+  },
+  {
+    "section": "Result.empty()",
+    "text": "| `Result.empty()`             | static            | Successful void result                                               |",
+    "kind": "api",
+    "feature": "utils",
+    "combines": [],
+    "tags": ["vytches-ddd", "utils"],
+    "level": "core"
+  },
+  {
+    "section": "Result.try(fn)",
+    "text": "| `Result.try(fn)`             | static            | Wrap throwing sync fn into a Result                                  |",
+    "kind": "api",
+    "feature": "utils",
+    "combines": [],
+    "tags": ["vytches-ddd", "utils"],
+    "level": "core"
+  },
+  {
+    "section": "Result.tryAsync(fn)",
+    "text": "| `Result.tryAsync(fn)`        | static            | Wrap throwing async fn into a Result                                 |",
+    "kind": "api",
+    "feature": "utils",
+    "combines": [],
+    "tags": ["vytches-ddd", "utils"],
+    "level": "core"
+  },
+  {
+    "section": "LibUtils.getUUID()",
+    "text": "| `LibUtils.getUUID()`         | static            | RFC 4122 v4 UUID string                                              |",
+    "kind": "api",
+    "feature": "utils",
+    "combines": [],
+    "tags": ["vytches-ddd", "utils"],
+    "level": "core"
+  },
+  {
+    "section": "LibUtils.deepEqual(a, b)",
+    "text": "| `LibUtils.deepEqual(a, b)`   | static            | Structural equality with cycle detection (Date/Map/Set/RegExp aware) |",
+    "kind": "api",
+    "feature": "utils",
+    "combines": [],
+    "tags": ["vytches-ddd", "utils"],
+    "level": "core"
+  },
+  {
+    "section": "LibUtils.isEmpty(value)",
+    "text": "| `LibUtils.isEmpty(value)`    | static            | Robust empty check (handles `0`, `false`, `MIN_SAFE_INTEGER`, etc.)  |",
+    "kind": "api",
+    "feature": "utils",
+    "combines": [],
+    "tags": ["vytches-ddd", "utils"],
+    "level": "core"
+  },
+  {
+    "section": "LibUtils.hasValue(value)",
+    "text": "| `LibUtils.hasValue(value)`   | static            | Inverse of isEmpty                                                   |",
+    "kind": "api",
+    "feature": "utils",
+    "combines": [],
+    "tags": ["vytches-ddd", "utils"],
+    "level": "core"
+  },
+  {
+    "section": "LibUtils.sleep(ms)",
+    "text": "| `LibUtils.sleep(ms)`         | static            | Promise-based delay                                                  |",
+    "kind": "api",
+    "feature": "utils",
+    "combines": [],
+    "tags": ["vytches-ddd", "utils"],
+    "level": "core"
+  },
+  {
+    "section": "LibUtils.isValidUUID(s)",
+    "text": "| `LibUtils.isValidUUID(s)`    | static            | UUID v1–v8 format check                                              |",
+    "kind": "api",
+    "feature": "utils",
+    "combines": [],
+    "tags": ["vytches-ddd", "utils"],
+    "level": "core"
+  },
+  {
+    "section": "safeRun(fn)",
+    "text": "| `safeRun(fn)`                | function          | Returns `[Error \\| undefined, T \\| undefined]`; never throws         |",
+    "kind": "api",
+    "feature": "utils",
+    "combines": [],
+    "tags": ["vytches-ddd", "utils"],
+    "level": "core"
+  },
+  {
+    "section": "MiddlewarePipelineExecutor",
+    "text": "| `MiddlewarePipelineExecutor` | class             | Compose `IMiddleware<T>` chains for command/event buses              |",
+    "kind": "api",
+    "feature": "utils",
+    "combines": [],
+    "tags": ["vytches-ddd", "utils"],
+    "level": "core"
+  },
+  {
+    "section": "IMiddleware<T>",
+    "text": "| `IMiddleware<T>`             | interface         | `handle(ctx, next): Promise<R>`                                      |",
+    "kind": "api",
+    "feature": "utils",
+    "combines": [],
+    "tags": ["vytches-ddd", "utils"],
+    "level": "exhaustive"
+  },
+  {
+    "section": "Pattern: Error-as-value with safeRun",
+    "text": "### Error-as-value with safeRun\n\n```typescript\nimport { safeRun, Result } from '@vytches/ddd-utils';\n\nasync function loadUser(id: string): Promise<Result<User, Error>> {\n  const [err, user] = await safeRun(() => repo.findById(id));\n  return err ? Result.fail(err) : Result.ok(user!);\n}\n```",
+    "kind": "concept",
+    "feature": "utils",
+    "combines": [],
+    "tags": ["vytches-ddd", "utils"],
+    "level": "core"
+  },
+  {
+    "section": "Pattern: Middleware pipeline for a custom event bus",
+    "text": "### Middleware pipeline for a custom event bus\n\n```typescript\nimport {\n  MiddlewarePipelineExecutor,\n  type IMiddleware,\n} from '@vytches/ddd-utils';\n\nconst loggingMiddleware: IMiddleware<MyEvent> = {\n  async handle(event, next) {\n    console.log('->', event.type);\n    const result = await next(event);\n    console.log('<-', event.type);\n    return result;\n  },\n};\n\nconst pipeline = MiddlewarePipelineExecutor.from([loggingMiddleware]);\nawait pipeline.execute(event, finalHandler);\n```",
+    "kind": "concept",
+    "feature": "utils",
+    "combines": [],
+    "tags": ["vytches-ddd", "utils"],
+    "level": "advanced"
+  },
+  {
+    "section": "Anti-pattern: Do not use instanceof Result",
+    "text": "- **Do not use `instanceof Result`** — class identity differs across bundles.\n  Use `result.isSuccess` / `result.isFailure` or `Result.match()` instead.",
+    "kind": "anti_pattern",
+    "feature": "utils",
+    "combines": [],
+    "tags": ["vytches-ddd", "utils"],
+    "level": "core"
+  },
+  {
+    "section": "Anti-pattern: Do not import Result from @vytches/ddd-utils in new code",
+    "text": "- **Do not import `Result` from `@vytches/ddd-utils` in new code** — prefer\n  `@vytches/ddd-contracts` (the canonical home). The utils export is a re-export\n  shim kept for backwards compatibility.",
+    "kind": "anti_pattern",
+    "feature": "utils",
+    "combines": [],
+    "tags": ["vytches-ddd", "utils"],
+    "level": "core"
+  },
+  {
+    "section": "Anti-pattern: Do not put domain logic in LibUtils",
+    "text": "- **Do not put domain logic in `LibUtils`** — it is intentionally generic.\n  Domain helpers belong in `@vytches/ddd-domain-primitives` or a bounded\n  context.",
+    "kind": "anti_pattern",
+    "feature": "utils",
+    "combines": [],
+    "tags": ["vytches-ddd", "utils"],
+    "level": "core"
+  },
+  {
+    "section": "Migration Notes: v0.25.0+ Result source moved to ddd-contracts",
+    "text": "## Migration Notes\n\n- v0.25.0+ : `Result<T, E>` source moved to `@vytches/ddd-contracts`. Existing\n  imports from `@vytches/ddd-utils` continue to work via re-export shim.",
+    "kind": "concept",
+    "feature": "utils",
+    "combines": [],
+    "tags": ["vytches-ddd", "utils"],
+    "level": "advanced"
+  }
+]

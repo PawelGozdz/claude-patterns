@@ -1,0 +1,18 @@
+{
+  "comment": "Eval L1 strukturalny (deterministyczny, BEZ embeddera) dla library_reference_global — TASK-RAG-003 sekcja 0.1/0.2. Sprawdza integralność seedu (kind/level rozkłady, lib_version, tags, OR-match combines) przez czyste zapytania count()/scroll() do Qdranta — nie ranking semantyczny (to robi ../retrieval/). exact_counts to snapshot z 2026-07-03 (853 chunki ekstrakcji LLMGUIDE.md + 129 TS-examples = 982) — AKTUALIZUJ ŚWIADOMIE przy każdej zmianie treści LLMGUIDE.md/re-ekstrakcji, tak jak snapshot test. min_counts to podłoga do wykrywania regresji (spadek = alarm), nie snapshot — wzrost jest OK (nowa treść).",
+  "collection": "library_reference_global",
+  "exact_counts": {
+    "total": 982,
+    "kind": { "concept": 215, "api": 547, "anti_pattern": 91, "example": 129 },
+    "level": { "quickstart": 85, "core": 441, "advanced": 136, "exhaustive": 320 }
+  },
+  "invariants": [
+    { "id": "INV-LIBVER", "desc": "100% punktów ma lib_version == '0.30.0' (0 null/unknown/stale)", "must_not_match": { "key": "lib_version", "value": "0.30.0" }, "expect_count": 0 },
+    { "id": "INV-TAGS", "desc": "100% punktów ma tag 'vytches-ddd' (wspólny marker źródła)", "must_not_match": { "key": "tags", "value": "vytches-ddd" }, "expect_count": 0 }
+  ],
+  "combines_or_match_floor": [
+    { "id": "COMBINES-validation", "feature": "validation", "min_count": 60, "note": "zweryfikowana wartość rzeczywista 2026-07-03 (43 własne + cross-referencje z policies/llm-context/inne przez combines)" },
+    { "id": "COMBINES-events", "feature": "events", "min_count": 44, "note": "zweryfikowana wartość rzeczywista 2026-07-03 (29 własne + cross-referencje z messaging/nestjs/llm-context)" },
+    { "id": "COMBINES-cqrs", "feature": "cqrs", "min_count": 57, "note": "zweryfikowana wartość rzeczywista 2026-07-03 (44 własne + cross-referencje z resilience/nestjs/llm-context)" }
+  ]
+}
