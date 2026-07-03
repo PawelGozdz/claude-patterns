@@ -10,6 +10,9 @@
 
 - **RP1** — Command repository implementuje interfejs domenowy (port z `domain/repositories/`) — separacja warstw.
 - **RP2** — Extends `BaseKyselyRepository` — obowiązkowo dla repozytoriów command (write-side); query repo — bez tej bazy.
+  **Odstępstwo (dopuszczalne w ~5% przypadków)** wymaga: (a) komentarza `// RP2-EXCEPTION: <powód>`
+  nad klasą, (b) wpisu w sekcji „Wyjątki" pełnego wzorca (przeanalizowany kod + uzasadnienie).
+  Command-repo bez `extends` I bez adnotacji = VETO, nie „pewnie wiedzieli co robią".
 - **RP3** — `save()` / `delete()` zawiera persist + dispatch eventów z agregatu przez `BaseKyselyRepository`.
 - **RP4** — Mapper domena ↔ persistence (`mapToDomain` / `mapToPersistence`) jako prywatna metoda; żadna logika domenowa w mapperze.
 - **RP5** — Optimistic locking: kolumna `version` czytana i inkrementowana przy `save()`; konflikt → rzucić wyjątek infrastruktury (nie DomainError).
@@ -104,6 +107,8 @@ export class XxxQueryKyselyRepository {                                     // R
 
 | Symptom w kodzie | Złamana reguła |
 |---|---|
+| Klasa `*CommandRepository` / plik `*-command.*.repository.ts` BEZ `extends BaseKyselyRepository` i BEZ `// RP2-EXCEPTION:` | **RP2** |
+| Własna implementacja `save()` duplikująca persist+dispatch zamiast bazowej z `BaseKyselyRepository` | RP3 |
 | `return row` bez mappera z `domain/` | N1 |
 | Warunek domenowy (`if (user.isPremium)`) w repozytorium | N2 |
 | `import { ... } from '../../../other-context/...'` bez ACL | N3 |

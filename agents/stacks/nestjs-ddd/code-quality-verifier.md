@@ -190,6 +190,9 @@ below has a `_summary.md` sibling).
 
 ### Architecture
 - `.claude/knowledge/patterns/architecture/transactional-pattern.md`
+- `.claude/knowledge/patterns/architecture/transactional-outbox-pattern.md` — **KRYTYCZNY dla
+  handlerów eventów domenowych**: zero fanout/kolejek/HTTP z handlera (działa WEWNĄTRZ transakcji
+  — rollback-leak); publikacja wyłącznie przez outbox → poller po commit (Rule Card OB1-OB5/N1-N3)
 - `.claude/knowledge/patterns/architecture/cross-context-communication.md`
 - `.claude/knowledge/patterns/architecture/entity-event-emission-pattern.md`
 - `.claude/knowledge/patterns/architecture/integration-event-pattern.md`
