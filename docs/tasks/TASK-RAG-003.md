@@ -15,6 +15,29 @@
 
 ## Zakres
 
+### 0a. KIERUNEK POTWIERDZONY (user, 2026-07-03): examples-as-contract
+User zleca w repo vytches-ddd korpus przykładów: każdy feature na poziomach
+(quickstart 1-2 linijki → core → advanced → exhaustive-config) + KOMBINACJE feature'ów
+(serwis domenowy+polityki, CQRS handler+resilience, agregat+specyfikacje…) — „biblioteka
+jako żywy organizm". Decyzje ustalone:
+- [ ] **Meta W plikach przykładów, nie w naszym configu** (kontrakt samoopisujący): nagłówek
+      JSDoc `@example-meta` z `feature`, `level: quickstart|core|advanced|exhaustive`,
+      `combines: []` + konwencja katalogów `examples/<feature>/NN-*.ts`,
+      `examples/combinations/<a>+<b>/`. Kolejne biblioteki (flutter, shared-lib) wpinają się
+      zero-configiem.
+- [ ] **`buildExamplesIndex()` czyta meta z plików** (zamiast ręcznej mapy `vytchesLevels`
+      w global.config.json — do wycofania po migracji).
+- [ ] **Kombinacje**: `kind: example` + `tags` z ≥2 feature'ami — szwy między elementami to
+      główne miejsce naruszeń (fanout-w-handlerze = błąd szwu, nie elementu).
+- [ ] **Przykłady WYKONYWALNE w CI biblioteki** (min. tsc --noEmit, docelowo testy) — inaczej
+      korpus dryfuje od API i RAG serwuje nieaktualne sygnatury (klasa ANTI-SPOOF). Bonus:
+      gwarancja D5-style (battle-tested, per release) + docs dla ludzi z tego samego źródła.
+- [ ] **Macierz pokrycia jako spec** (features × poziomy × kombinacje, odhaczane komórki) —
+      „wyczerpanie opcji" mierzalne; per komórka golden-query do evalu.
+- [ ] **`anti_pattern` per feature** — pierwsi kandydaci: fanout-w-handlerze eventu domenowego,
+      deep-import zamiast publicznego barrela (oba z realnych incydentów 2026-07).
+- [ ] Golden-set kombinacyjny + eval PRZED poleganiem na korpusie (próg jak w RAG-002).
+
 ### 0. RESEARCH (przed seedem — zgłoszone przez usera 2026-07-03): korpus konceptów @vytches/ddd
 Obecne `library_reference_global` = tylko PRZYKŁADY użycia (129 chunków). Brak wiedzy o API
 surface i semantyce modułów biblioteki — dowody: bug VB-003 (forFeature DI wiring — implementerzy
