@@ -76,6 +76,13 @@ for unit of units:                          # MVP: units = [task]  (seam Ralphin
       # DONE/REMAINING manifestu lub git diff") PRZED verify — nie wysyłaj połowicznego kodu
       # do weryfikacji (nie pal próby fix-loopa na przewidywalnych brakach).
       if impl == null && !git_diff_empty(layer_dirs): implement_continuation(layer)  # max 1×
+      # BRAMKA TYPECHECK (deterministyczna, PRZED drogim verify — incydent VB-003/D-5):
+      # zielony vitest ≠ type-safe (vitest/esbuild = transpile-only!). Jeśli projekt ma target
+      # type-check (tsc --noEmit) → odpal; błędy → potraktuj jako violations i dispatchnij fix
+      # BEZ palenia próby weryfikatora (usunięcie pól z typów złamało 5 plików testowych na 34
+      # błędy TS, a vitest był zielony — weryfikator odkrył to dopiero w 2. rundzie).
+      tc = run_typecheck_if_available()   # np. pnpm nx run <pkg>:type-check / tsc --noEmit
+      if tc.errors: fix(layer, tc.errors_as_violations); re-run typecheck  # tanie, deterministyczne
       v = verify(layer)        # @code-quality-verifier → {verdict, violations:[rule_ids]}
       if v == null: ESCALATE(layer, "verifier padł (null z agent())"); HALT   # NIE retry w ciemno
       if v.verdict == GO: break
