@@ -15,6 +15,25 @@
 
 ## Zakres
 
+### 0. RESEARCH (przed seedem — zgłoszone przez usera 2026-07-03): korpus konceptów @vytches/ddd
+Obecne `library_reference_global` = tylko PRZYKŁADY użycia (129 chunków). Brak wiedzy o API
+surface i semantyce modułów biblioteki — dowody: bug VB-003 (forFeature DI wiring — implementerzy
+nie znają rejestracji handlerów local-vs-global bus), historyczny ANTI-SPOOF (stara sygnatura
+z training data). Research ma rozstrzygnąć PRZED seedem:
+- [ ] **Co seedować**: publiczne API (`.d.ts` + JSDoc) + docs/README + kurowane noty konceptowe
+      z repo vytches-ddd — raczej NIE surowe internals (ryzyko: agent uczy się deep-importów,
+      antywzorzec widziany w feature-handler-registrar.ts).
+- [ ] **Model treści**: `kind: concept|api` w istniejącej kolekcji (schema ma kind/tags/level)
+      vs osobna kolekcja; rozszerzenie `vytchesLevels` o koncepty mniej/bardziej zaawansowane.
+- [ ] **Wersjonowanie chunków**: `lib_version` w payload + reseed przy release biblioteki
+      (spięcie z pinem knowledge-pins.json, sekcja 1).
+- [ ] **Golden-set biblioteczny**: zapytania o API/koncepty (np. rejestracja handlera w
+      forFeature, sygnatura PolicyBuilder.must) — eval PRZED wpięciem, próg jak w RAG-002.
+- [ ] **Routing**: kiedy implementer pyta RAG o bibliotekę vs czyta node_modules — reguła
+      decyzyjna do sekcji decision-rule implementerów.
+- [ ] **Auto-reseed globalnych kolekcji** przy zmianie `patterns/**` (dziś ręczny `seed:global`
+      — ta sama klasa dyscypliny, która zawodzi; hook freshness obsługuje tylko kod projektów).
+
 ### 1. Wersjonowanie implementacji (Q5)
 - [ ] Chunk dostaje `version` + `lib_version` + `status` (`current│deprecated│latest`).
 - [ ] Pin per-projekt: **`.claude/config/knowledge-pins.json` W REPO PROJEKTU** — git-tracked,
