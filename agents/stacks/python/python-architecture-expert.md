@@ -10,7 +10,7 @@ description: |
   2. "How to structure async database operations?"
   3. "How to share code between modules without creating circular deps?"
   4. "Which module should own this new feature?"
-tools: Read, mcp__zen__thinkdeep, mcp__zen__planner, mcp__zen__analyze
+tools: Read, mcp__zen__thinkdeep, mcp__zen__planner, mcp__zen__analyze, StructuredOutput
 disallowedTools: Grep, Glob, Write, Edit, MultiEdit, NotebookEdit, Task, WebFetch
 model: sonnet
 permissionMode: plan

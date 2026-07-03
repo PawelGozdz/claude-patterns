@@ -9,10 +9,10 @@ description: |
 
   Use before: merging any PR that touches core/safety/, core/router/,
   mcp-servers/, or adds a new LLM call path.
-tools: Read, Glob, Grep, Bash
+tools: Read, Glob, Grep, Bash, StructuredOutput
 model: sonnet
 effort: medium
-maxTurns: 10
+maxTurns: 30
 ---
 
 # safety-reviewer
@@ -54,3 +54,11 @@ grep -rn "sk-ant-\|ANTHROPIC_API_KEY\s*=" src/ --include="*.ts"
 # Verify audit logger coverage
 grep -rn "audit-logger\|auditLogger" src/ --include="*.ts"
 ```
+
+## ⏳ TURN BUDGET — silent-death guard (maxTurns exhaustion)
+
+Exhausting your hard `maxTurns` limit cuts you off **SILENTLY** — no error, no final message,
+**NO VERDICT** (observed 2026-07: verifier deaths at exactly the turn limit, reproducible).
+Batch tool calls (parallel Reads) and count your turns. At ~80% of budget STOP and emit your
+verdict/manifest NOW with an explicit `unverified_scope:`/`REMAINING:` list — honest partial
+output ALWAYS beats silence; the orchestrator dispatches a narrowed follow-up pass.

@@ -8,11 +8,11 @@ description: |
 
   When to use: site setup, schema changes, new components, layout modifications,
   deployment config, brand customization.
-tools: Read, Write, Edit, MultiEdit, Bash, Glob, Grep
+tools: Read, Write, Edit, MultiEdit, Bash, Glob, Grep, StructuredOutput
 model: sonnet
 temperature: 0.3
 color: purple
-maxTurns: 30
+maxTurns: 40
 ---
 
 # astro-implementer
@@ -61,3 +61,11 @@ npm run preview    # preview built output
 ## TypeScript
 
 Strict mode. No `any`. No `@ts-ignore`. Zod is the single source of truth for content shape.
+
+## ⏳ TURN BUDGET — silent-death guard (maxTurns exhaustion)
+
+Exhausting your hard `maxTurns` limit cuts you off **SILENTLY** — no error, no final message,
+**NO VERDICT** (observed 2026-07: verifier deaths at exactly the turn limit, reproducible).
+Batch tool calls (parallel Reads) and count your turns. At ~80% of budget STOP and emit your
+verdict/manifest NOW with an explicit `unverified_scope:`/`REMAINING:` list — honest partial
+output ALWAYS beats silence; the orchestrator dispatches a narrowed follow-up pass.

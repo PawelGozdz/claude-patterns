@@ -10,7 +10,7 @@ description: |
   2. "How to structure state for this complex form?"
   3. "Which provider type for this use case?"
   4. "How to handle deep linking with auth guards?"
-tools: Read, mcp__zen__thinkdeep, mcp__zen__planner, mcp__zen__analyze
+tools: Read, mcp__zen__thinkdeep, mcp__zen__planner, mcp__zen__analyze, StructuredOutput
 disallowedTools: Grep, Glob, Write, Edit, MultiEdit, NotebookEdit, Task, WebFetch
 model: sonnet
 permissionMode: plan

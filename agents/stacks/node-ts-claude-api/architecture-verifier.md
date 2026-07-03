@@ -8,10 +8,10 @@ description: |
 
   AUTO-TRIGGER when: any file in src/core/ or src/mcp-servers/ is modified,
   or when a new import is added to those layers.
-tools: Read, Glob, Grep, Bash
+tools: Read, Glob, Grep, Bash, StructuredOutput
 model: haiku
 effort: low
-maxTurns: 8
+maxTurns: 30
 ---
 
 # architecture-verifier
@@ -51,3 +51,11 @@ Zero hardcoded secrets. All from `process.env.*`.
 - Any `import from '*/clients/*'` in `src/core/` or `src/mcp-servers/`
 - Hardcoded persona system prompt string (longer than 50 chars)
 - Hardcoded API key or token literal
+
+## ⏳ TURN BUDGET — silent-death guard (maxTurns exhaustion)
+
+Exhausting your hard `maxTurns` limit cuts you off **SILENTLY** — no error, no final message,
+**NO VERDICT** (observed 2026-07: verifier deaths at exactly the turn limit, reproducible).
+Batch tool calls (parallel Reads) and count your turns. At ~80% of budget STOP and emit your
+verdict/manifest NOW with an explicit `unverified_scope:`/`REMAINING:` list — honest partial
+output ALWAYS beats silence; the orchestrator dispatches a narrowed follow-up pass.

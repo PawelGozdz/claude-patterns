@@ -10,7 +10,7 @@ description: |
   2. "How to structure this component with $state and $derived?"
   3. "Form action vs API endpoint for this mutation?"
   4. "How to share state across routes?"
-tools: Read, mcp__zen__thinkdeep, mcp__zen__planner, mcp__zen__analyze
+tools: Read, mcp__zen__thinkdeep, mcp__zen__planner, mcp__zen__analyze, StructuredOutput
 disallowedTools: Grep, Glob, Write, Edit, MultiEdit, NotebookEdit, Task, WebFetch
 model: sonnet
 permissionMode: plan

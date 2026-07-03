@@ -10,13 +10,13 @@ description: |
   2. "How to deprecate this API safely?"
   3. "Should this type be exported or internal?"
   4. "How to extend this interface without breaking?"
-tools: Read, Glob, Grep, mcp__zen__thinkdeep, mcp__zen__analyze
+tools: Read, Glob, Grep, mcp__zen__thinkdeep, mcp__zen__analyze, StructuredOutput
 disallowedTools: Write, Edit, MultiEdit, NotebookEdit, WebFetch
 model: sonnet
 permissionMode: plan
 effort: high
 memory: project
-maxTurns: 25
+maxTurns: 30
 skills:
   - typescript-library/ts-library-patterns
 ---
@@ -85,3 +85,11 @@ Does it change the type signature of an exported symbol?
 ├── Narrows return type → MINOR (safe)
 └── Adds new export → MINOR (safe)
 ```
+
+## ⏳ TURN BUDGET — silent-death guard (maxTurns exhaustion)
+
+Exhausting your hard `maxTurns` limit cuts you off **SILENTLY** — no error, no final message,
+**NO VERDICT** (observed 2026-07: verifier deaths at exactly the turn limit, reproducible).
+Batch tool calls (parallel Reads) and count your turns. At ~80% of budget STOP and emit your
+verdict/manifest NOW with an explicit `unverified_scope:`/`REMAINING:` list — honest partial
+output ALWAYS beats silence; the orchestrator dispatches a narrowed follow-up pass.

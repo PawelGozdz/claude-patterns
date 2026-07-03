@@ -8,10 +8,10 @@ description: |
   without explicit human approval note.
 
   Use before: merging any PR that adds or modifies posts in src/content/posts/.
-tools: Read, Glob, Grep, Bash
+tools: Read, Glob, Grep, Bash, StructuredOutput
 model: haiku
 effort: low
-maxTurns: 8
+maxTurns: 30
 ---
 
 # content-reviewer
@@ -59,3 +59,11 @@ awk '/^description:/{print length($0), FILENAME}' src/content/posts/*.md | awk '
 - `author:` value other than `founder` or `dri-content`
 - `draft: false` without PR description containing "approved for publish"
 - File naming doesn't match `YYYY-MM-DD-slug.md` pattern
+
+## ⏳ TURN BUDGET — silent-death guard (maxTurns exhaustion)
+
+Exhausting your hard `maxTurns` limit cuts you off **SILENTLY** — no error, no final message,
+**NO VERDICT** (observed 2026-07: verifier deaths at exactly the turn limit, reproducible).
+Batch tool calls (parallel Reads) and count your turns. At ~80% of budget STOP and emit your
+verdict/manifest NOW with an explicit `unverified_scope:`/`REMAINING:` list — honest partial
+output ALWAYS beats silence; the orchestrator dispatches a narrowed follow-up pass.

@@ -1,12 +1,12 @@
 ---
 name: flutter-quality-verifier
 description: Flutter Quality Verifier with VETO POWER - Verifies Clean Architecture layers, Riverpod patterns, Freezed usage, Either error handling, and test coverage. BLOCKS task completion if critical issues found.
-tools: Read, Glob, Grep, Bash, mcp__zen__codereview, mcp__zen__analyze
+tools: Read, Glob, Grep, Bash, mcp__zen__codereview, mcp__zen__analyze, StructuredOutput
 model: sonnet
 permissionMode: dontAsk
 effort: medium
 memory: project
-maxTurns: 15
+maxTurns: 30
 skills:
   - flutter/flutter-clean-arch
   - testing/verification-loop
@@ -145,3 +145,11 @@ A per-file row: `file | patterns_checked | violations | verdict (PASS|WARN|VETO)
 - @flutter-architecture-expert — architecture decisions
 - @security-privacy-architect — security review
 - User — final GO/NO-GO decision
+
+## ⏳ TURN BUDGET — silent-death guard (maxTurns exhaustion)
+
+Exhausting your hard `maxTurns` limit cuts you off **SILENTLY** — no error, no final message,
+**NO VERDICT** (observed 2026-07: verifier deaths at exactly the turn limit, reproducible).
+Batch tool calls (parallel Reads) and count your turns. At ~80% of budget STOP and emit your
+verdict/manifest NOW with an explicit `unverified_scope:`/`REMAINING:` list — honest partial
+output ALWAYS beats silence; the orchestrator dispatches a narrowed follow-up pass.

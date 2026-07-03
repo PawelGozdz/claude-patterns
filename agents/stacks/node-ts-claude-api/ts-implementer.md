@@ -13,12 +13,12 @@ description: |
 
   When to use: implementing new features, refactoring, adding MCP tools,
   expanding persona logic, wiring new platform adapters.
-tools: Read, Write, Edit, MultiEdit, Bash, Glob, Grep, Task
+tools: Read, Write, Edit, MultiEdit, Bash, Glob, Grep, Task, StructuredOutput
 model: sonnet
 temperature: 0.3
 color: blue
 priority: high
-maxTurns: 30
+maxTurns: 40
 ---
 
 # ts-implementer
@@ -53,3 +53,11 @@ src/clients/       — Platform adapters ONLY. May import from core/ interfaces.
 - Dependency injection via constructor (no `new Service()` inside handlers)
 - Pino structured logging — no `console.log`
 - All persona definitions loaded from `../ai-os/team/agent-personas/*.md`
+
+## ⏳ TURN BUDGET — silent-death guard (maxTurns exhaustion)
+
+Exhausting your hard `maxTurns` limit cuts you off **SILENTLY** — no error, no final message,
+**NO VERDICT** (observed 2026-07: verifier deaths at exactly the turn limit, reproducible).
+Batch tool calls (parallel Reads) and count your turns. At ~80% of budget STOP and emit your
+verdict/manifest NOW with an explicit `unverified_scope:`/`REMAINING:` list — honest partial
+output ALWAYS beats silence; the orchestrator dispatches a narrowed follow-up pass.

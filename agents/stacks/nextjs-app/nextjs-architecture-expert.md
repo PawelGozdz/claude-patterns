@@ -10,7 +10,7 @@ description: |
   2. "How to structure caching with 'use cache'?"
   3. "Proxy.ts vs server-side auth check?"
   4. "How to handle this data fetching pattern?"
-tools: Read, mcp__zen__thinkdeep, mcp__zen__planner, mcp__zen__analyze
+tools: Read, mcp__zen__thinkdeep, mcp__zen__planner, mcp__zen__analyze, StructuredOutput
 disallowedTools: Grep, Glob, Write, Edit, MultiEdit, NotebookEdit, Task, WebFetch
 model: sonnet
 permissionMode: plan

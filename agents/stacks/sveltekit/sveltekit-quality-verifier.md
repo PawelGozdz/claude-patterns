@@ -1,12 +1,12 @@
 ---
 name: sveltekit-quality-verifier
 description: SvelteKit Quality Verifier with VETO POWER - Verifies Svelte 5 runes usage, SvelteKit conventions, component patterns, and test coverage. BLOCKS if critical issues found.
-tools: Read, Glob, Grep, Bash, mcp__zen__codereview, mcp__zen__analyze
+tools: Read, Glob, Grep, Bash, mcp__zen__codereview, mcp__zen__analyze, StructuredOutput
 model: sonnet
 permissionMode: dontAsk
 effort: medium
 memory: project
-maxTurns: 15
+maxTurns: 30
 skills:
   - sveltekit/sveltekit-patterns
   - testing/verification-loop
@@ -80,3 +80,11 @@ The orchestrator hands this agent a scoped `{PATTERNS}` list — treat as MUST-r
 
 ### Verifier output MUST include
 Per-file: `file | patterns_checked | violations | verdict (PASS|WARN|VETO)`.
+
+## ⏳ TURN BUDGET — silent-death guard (maxTurns exhaustion)
+
+Exhausting your hard `maxTurns` limit cuts you off **SILENTLY** — no error, no final message,
+**NO VERDICT** (observed 2026-07: verifier deaths at exactly the turn limit, reproducible).
+Batch tool calls (parallel Reads) and count your turns. At ~80% of budget STOP and emit your
+verdict/manifest NOW with an explicit `unverified_scope:`/`REMAINING:` list — honest partial
+output ALWAYS beats silence; the orchestrator dispatches a narrowed follow-up pass.
