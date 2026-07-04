@@ -40,28 +40,34 @@ shared briefing, so they don't need to re-Glob/grep the same data.
    - Read `project-orchestration/TEAM-STATE.md` (shared brain)
    - Note what changed since last pulse (Team Notes section)
 
-2. **Run @tech-lead** (technical lens — no strategist consultation)
-   - Ask: "Analyze project-orchestration/tasks/ and provide your Technical Pulse update for TEAM-STATE.md. Include: blocked tasks, stale tasks (>14d), debt score, critical path, and one key insight."
-   - Collect output
+2. **Run @tech-lead AND @product-owner in PARALLEL, in the FOREGROUND, in ONE message**
+   (two independent Agent tool calls, both with `run_in_background: false` — step 4 needs BOTH
+   results before it can do anything, so foreground is correct here, not background).
+   - @tech-lead: "Analyze project-orchestration/tasks/ and provide your Technical Pulse update for TEAM-STATE.md. Include: blocked tasks, stale tasks (>14d), debt score, critical path, and one key insight."
+   - @product-owner: "Analyze project-orchestration/tasks/ and business docs. Provide your Business Pulse update for TEAM-STATE.md. **For strategic items (roadmap, milestone, pricing, growth, GTM, ICP, segments)**, consult @marketing-strategist and @finance-strategist in parallel. **For items touching law/regulation (GDPR, contracts, NDA, ToS, IP, employment, compliance)**, also consult @legal-strategist. Synthesize their input. Include: milestone gap, unvalidated features, mobile UX risks, segment gaps, marketing lens (from @marketing-strategist), finance lens (from @finance-strategist), legal lens with jurisdiction (from @legal-strategist when triggered), and one synthesized recommendation." (product-owner internally spawns relevant strategists based on trigger keywords — see `agents/universal/product-owner.md` "Strategic Consultation" section)
+   - Both tool results land directly in this turn's tool output — collect them from there.
 
-3. **Run @product-owner with strategic consultation**
-   - Ask: "Analyze project-orchestration/tasks/ and business docs. Provide your Business Pulse update for TEAM-STATE.md. **For strategic items (roadmap, milestone, pricing, growth, GTM, ICP, segments)**, consult @marketing-strategist and @finance-strategist in parallel. **For items touching law/regulation (GDPR, contracts, NDA, ToS, IP, employment, compliance)**, also consult @legal-strategist. Synthesize their input. Include: milestone gap, unvalidated features, mobile UX risks, segment gaps, marketing lens (from @marketing-strategist), finance lens (from @finance-strategist), legal lens with jurisdiction (from @legal-strategist when triggered), and one synthesized recommendation."
-   - Product-owner internally spawns relevant strategists based on trigger keywords — see `agents/universal/product-owner.md` "Strategic Consultation" section
-   - Collect output
+   **Do NOT** (observed failure mode, 2026-07-04): launch these in the background with a custom
+   label/description and then try to fetch results by that label via a task-output lookup — the
+   label is a display alias, not a real task ID, so the lookup fails ("No task found with ID: ...").
+   If an agent genuinely must run in the background, wait for its actual completion notification
+   (which carries the full result inline) instead of polling for it — never spawn extra
+   "placeholder"/"wait check"/filler agents while waiting; that burns cost for zero value and this
+   skill has no use for them.
 
-4. **Update TEAM-STATE.md**
+3. **Update TEAM-STATE.md**
    - Replace "Technical Pulse" section with @tech-lead output
    - Replace "Business Pulse" section with @product-owner output
      (which already includes marketing + finance lenses synthesized in)
    - Add a Team Note for each key insight from agents
    - Update `Last sync` date at the top
 
-5. **Regenerate KANBAN.md**
+4. **Regenerate KANBAN.md**
    - Read all files in `project-orchestration/tasks/`
    - Group by priority (P0/P1/P2/P3) and status
    - Write updated KANBAN.md
 
-5b. **Security gap audit across all active tasks**
+4b. **Security gap audit across all active tasks**
     - For each task in `project-orchestration/tasks/`, read frontmatter
     - Match labels + title against `claude-patterns/templates/canonical-labels.yml`
     - Check `## 🔒 Security Pre-Analysis` section status (missing/empty/placeholder vs filled)
@@ -76,7 +82,7 @@ shared briefing, so they don't need to re-Glob/grep the same data.
         of those, 2 are status: in-progress (hook-blocking unless Pre-Analysis filled)
       ```
 
-6. **Output briefing to user**
+5. **Output briefing to user**
    - 10–15 line summary: critical items, key risks, one recommended action
    - Format: concise, actionable, no fluff
    - Include security posture line if gaps detected (>20% gap rate)
