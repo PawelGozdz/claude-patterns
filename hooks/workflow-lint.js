@@ -17,6 +17,10 @@
  *   WL4 (WARN)   verify bez schema — null przestaje odróżniać „agent umarł"
  *                od złego wyniku (ślepe retry).
  *   WL5 (WARN)   brak ESCALATE w skrypcie — pętla bez jawnej eskalacji wisi.
+ *   WL6 (WARN)   `git diff` bez --stat/--name-only/--numstat — pierwszy live end-to-end
+ *                przebieg (juz-ide-api-1, 2026-07-04): pełny diff Domain (~3191 linii)
+ *                wklejony w całości do promptu implementera Application zjadł budżet tury,
+ *                2× pusty wynik z rzędu. Wstrzykuj tylko listę plików, niech agent Read sam.
  *
  * Exit: 0 = czysto lub tylko WARN · 1 = ERROR (NIE uruchamiaj Workflow) · 2 = zły input.
  */
@@ -65,6 +69,15 @@ function lint(src) {
   // WL5 — jawna eskalacja
   if (!/ESCALATE/i.test(src)) {
     findings.push({ id: 'WL5', level: 'WARN', line: 0, msg: 'brak ESCALATE w skrypcie — pętla bez jawnej ścieżki eskalacji' });
+  }
+
+  // WL6 — pełny `git diff` (bez --stat/--name-only/--numstat) wstrzyknięty do promptu warstwy N
+  // (incydent 2026-07-04: diff ~3191 linii przeciążył budżet tury implementera, 2× pusty wynik)
+  for (const s of snippetsOf(src, 'git diff')) {
+    const line = s.text.slice(0, s.text.indexOf('\n') !== -1 ? s.text.indexOf('\n') : 120);
+    if (!/--stat|--name-only|--numstat/.test(line)) {
+      findings.push({ id: 'WL6', level: 'WARN', line: s.line, msg: 'git diff bez --stat/--name-only/--numstat — pełny tekst diffa jako input promptu przeciąża budżet tury implementera kolejnej warstwy; wstrzykuj listę plików, niech agent Read sam (incydent 2026-07-04)' });
+    }
   }
 
   return findings;

@@ -15,6 +15,37 @@
 
 ---
 
+## 2026-07-04 — Pierwszy live przebieg /orchestrate-ddd (juz-ide-api-1): full-diff-injection anty-wzorzec → WL6
+
+**Zmiana:** `commands/orchestrate-ddd.md` (Krok 3, pseudokod pętli warstw) + nowa reguła
+**WL6** (WARN) w `hooks/workflow-lint.js` + regresyjny test case w
+`tests/flow-evals/workflow-lint/run.js`. Do warstwy N wstrzykujemy **listę zmienionych plików**
+warstwy N-1 (`git diff --stat`/`--name-only`), NIGDY pełny tekst diffa — implementer sam czyta
+świeże pliki przez `Read`.
+
+**Dlaczego:** pierwszy live end-to-end przebieg `/orchestrate-ddd` w juz-ide-api-1
+(TS-SEC-ANTI-SPOOF-003, walidacja z watcherem+hookiem zapowiedziana w Filarze 0/2026-07-02) —
+Domain layer zaimplementowany i zweryfikowany GO, ale Application layer **2× z rzędu zwrócił
+pustkę** (0 plików, różne agentId) mimo poprawnego kodu domeny. Diagnoza z `journal.jsonl`: po
+naprawie eksportu diffa (żeby uwzględniał nowe pliki) diff Domain urósł do ~3191 linii i był
+wklejany w całości do promptu implementera Application — mimo jawnej instrukcji „to tylko
+orientacyjne, przeczytaj pliki sam", zjadał budżet tury na przetwarzanie zamiast pisania kodu.
+**Pozytyw:** twarda reguła „po DWÓCH nieudanych próbach wznowienia → STOP" (2026-07-02) zadziałała
+dokładnie jak zaprojektowano — zero spinning, czysta eskalacja z konkretną diagnozą, Domain layer
+pozostał staged i nienaruszony.
+
+**Odrzucone:** zwiększenie max_attempts/budżetu tury jako obejście — leczyłoby objaw (agent ma
+więcej tur na przetworzenie zbędnego tekstu), nie przyczynę (zbędny tekst w ogóle nie powinien
+trafiać do promptu).
+
+**Status:** done (fix + test regresyjny 4/4 zielone). Walidacja end-to-end z Filaru 0-2
+(2026-07-02) częściowo potwierdzona: watcher/gate/eskalacja działają na żywo; pełne domknięcie
+zadania TS-SEC-ANTI-SPOOF-003 (dokończenie warstwy Application) — pending, osobna akcja człowieka.
+**Ref:** `commands/orchestrate-ddd.md` Krok 3 · `hooks/workflow-lint.js` WL6 ·
+`tests/flow-evals/workflow-lint/run.js` · journal `wf_da74753f-ee1` (juz-ide-api-1).
+
+---
+
 ## 2026-07-04 — Częściowy powrót wiringu z Q8: backend-technology-expert do panelu nestjs-ddd
 
 **Zmiana:** `presets/nestjs-ddd.yml::phase_research.panel` + fallback w `commands/analyze-ddd.md` —

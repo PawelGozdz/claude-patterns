@@ -56,8 +56,16 @@ Zbuduj/uruchom Workflow o strukturze (MVP = liniowy, seam'y Ralphinho jako no-op
 for unit of units:                          # MVP: units = [task]  (seam Ralphinho)
   for layer of [domain, application, infrastructure]:  # OUTER: sekwencja (zależności DDD); split 3-warstwowy
     # (2026-07-02) domain-application ROZDZIELONE: mniejszy zakres = mieści się w budżecie tur,
-    # fail dotyka jednej warstwy. Do warstwy N wstrzyknij git diff warstwy N-1 + decisions[] —
-    # application czyta świeży kod domeny Z REPO, nie z pamięci agenta.
+    # fail dotyka jednej warstwy. Do warstwy N wstrzyknij LISTĘ ZMIENIONYCH PLIKÓW warstwy N-1
+    # (`git diff --stat` lub `--name-only`, NIGDY pełny tekst diffa) + decisions[] — implementer
+    # SAM czyta świeże pliki Z REPO (Read), nie z pamięci agenta ani z wklejonego diffa.
+    # (incydent 2026-07-04, pierwszy live end-to-end przebieg juz-ide-api-1: pełny git diff
+    # warstwy Domain urósł do ~3191 linii i został wklejony w całości do promptu implementera
+    # Application → zjadł budżet tury na czytanie zamiast pisania, 2× pusty wynik z rzędu mimo
+    # różnych agentId; gate zadziałał poprawnie — ESCALATE po 2 próbach wznowienia, zero
+    # spinning — ale root cause to przeciążony prompt. Zob. WL6 w workflow-lint.js.)
+    # Pełny `git diff --staged` zostaje WYŁĄCZNIE w raporcie STOP2 dla człowieka (Krok 4) —
+    # nigdy jako input promptu kolejnej warstwy.
     attempt = 0
     loop:
       # PRZED pisaniem: retrieve_code(intencja, collection) z MCP knowledge-retriever → istniejące
