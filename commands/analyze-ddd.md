@@ -123,7 +123,8 @@ stage = JEDNO wywołanie agenta. Wstrzykuj: spec zadania + **treść Rule Cards*
 
 **Dobór agentów wg `stack_profile`** — jeśli stack-specific agent nie istnieje w projekcie, użyj generycznego
 (nie hardcoduj agentów, których może nie być):
-- **nestjs-ddd:** threat-model(warunkowo) → architekt → `@ddd-application-expert` →
+- **nestjs-ddd:** threat-model(warunkowo) → architekt + `@backend-technology-expert` (równolegle,
+  ten drugi BEZ toola Task — bezpieczny liść panelu) → `@ddd-application-expert` →
   `@infrastructure-testing-implementer` → `@code-quality-verifier` → `@tech-lead` (synteza)
 - **typescript-library:** threat-model(warunkowo) → architekt → `@library-quality-verifier` (lub `@library-api-guardian`) → `@tech-lead`
 - **flutter / nextjs / python / inne:** analogicznie stack-specific verifier → `@tech-lead`

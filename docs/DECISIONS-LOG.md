@@ -15,6 +15,28 @@
 
 ---
 
+## 2026-07-04 — Częściowy powrót wiringu z Q8: backend-technology-expert do panelu nestjs-ddd
+
+**Zmiana:** `presets/nestjs-ddd.yml::phase_research.panel` + fallback w `commands/analyze-ddd.md` —
+dodany nowy etap `tech-analysis-specialist: backend-technology-expert`, OBOK (nie zamiast)
+istniejącego `tech-analysis: ecc:architect`.
+
+**Dlaczego:** Q8 (`TASK-RAG-002.analysis.md`, 2026-07-02) cofnęło DWA agenty naraz —
+`backend-technology-expert` (zastępujący `ecc:architect`) i `technical-architecture-lead`
+(zastępujący `tech-lead` na etapie synthesis) — bo ten drugi ma narzędzie `Task` (ryzyko
+zapętlenia, panel wymaga liści bez delegacji). Weryfikacja 2026-07-04: `backend-technology-expert`
+NIE ma toola `Task` (Tools: Read, WebFetch, WebSearch, mcp__zen__*) — nie dzieli ryzyka, które
+uzasadniało revert. Bezpieczny do wpięcia niezależnie od `technical-architecture-lead`, który
+zostaje POZA panelem (wciąż ma Task, wciąż czeka na "naprawę systemu" z Q8).
+
+**Odrzucone:** zastąpienie `ecc:architect` przez `backend-technology-expert` (zamiast dodania
+obok) — user wybrał więcej perspektyw (oba równolegle) zamiast zawężenia do jednego głosu.
+
+**Status:** done.
+**Ref:** `docs/tasks/TASK-RAG-002.analysis.md` Q8, `presets/nestjs-ddd.yml`, `commands/analyze-ddd.md`.
+
+---
+
 ## 2026-07-02 — Restrukturyzacja RAG w 4 filary: observability → regresja → eval+wpięcie → wersjonowanie
 
 **Zmiana:** pełna analiza przez /analyze-ddd (`docs/tasks/TASK-RAG-002.analysis.md`, approved) →

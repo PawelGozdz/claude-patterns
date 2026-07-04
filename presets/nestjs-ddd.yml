@@ -31,7 +31,13 @@ phase_research:
     # threat-model: pisze TM do docs/security/threat-models/; SKIP jeśli TM już istnieje
     - { stage: threat-model,      agent: "/threat-model", when: "auth|pii|cross_context|public_api",
         output: "docs/security/threat-models/TM-{TASK_ID}.md", skip_if_exists: true }
-    - { stage: tech-analysis,     agent: "ecc:architect" }          # lub backend-technology-expert
+    - { stage: tech-analysis,     agent: "ecc:architect" }
+    # 2026-07-04: backend-technology-expert DOŁĄCZONY obok ecc:architect (nie zamiast) — specjalista
+    # TS/Node.js dla tego konkretnego stacku. Bezpieczne do wpięcia jako liść panelu: BRAK toola Task
+    # (Tools: Read, WebFetch, WebSearch, mcp__zen__*) — nie dzieli ryzyka zapętlenia, które
+    # spowodowało revert technical-architecture-lead (Q8, TASK-RAG-002.analysis.md — TEN agent MA
+    # Task, dlatego zostaje POZA panelem, dopóki system tego nie obsłuży bezpiecznie).
+    - { stage: tech-analysis-specialist, agent: "backend-technology-expert" }
     - { stage: ddd-modeling,      agent: "ddd-application-expert" }
     - { stage: impl-analysis,     agent: "infrastructure-testing-implementer", advisory: true }
     - { stage: pattern-fit,       agent: "code-quality-verifier", advisory: true }
