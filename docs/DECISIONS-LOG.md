@@ -15,6 +15,44 @@
 
 ---
 
+## 2026-07-05 — Repozytorium zamiast raw DB token (RP12/N7) + kryterium tier audytu eventów (AH11)
+
+**Zmiana:**
+- `patterns/infrastructure/repository-pattern_summary.md` — nowa **RP12** (MUST) + **N7** (MUST NOT):
+  cron/scheduler/application-service musi wstrzykiwać port repozytorium, NIGDY surowy
+  `DATABASE_TOKEN`/`Kysely<Database>` do bezpośrednich zapytań; brakująca metoda na porcie = dodaj
+  metodę, nie obejście.
+- `hooks/lib/pattern-routing.js` — dodane `FILENAME_RULES` dla `*.cron.ts`/`*.scheduler.ts`/
+  `*.job.ts` → `infrastructure/repository-pattern.md` (wcześniej te pliki przechodziły przez
+  routing jako `null` — żaden wzorzec nie był auto-wstrzykiwany).
+- `patterns/application/audit-handler-pattern_summary.md` — nowa sekcja "Klasyfikacja NOWEGO
+  domenowego eventu do audytu" + **AH11**: uogólnione z ADR-0027 (juz-ide-api-1) kryterium
+  tier 1/2/3 (PII/security → obowiązkowy; config-dependent → selektywny; techniczny → brak),
+  żeby decyzja nie wymagała czytania projektowego ADR, którego inne projekty mogą nie mieć.
+  Brak jawnej klasyfikacji = traktuj jak Tier 1 (fail-safe na GDPR).
+
+**Dlaczego:** human review pierwszego live przebiegu `/orchestrate-ddd` (juz-ide-api-1,
+TS-SEC-ANTI-SPOOF-003) znalazł `DeviceNoncePurgeCron` z `@Inject(DATABASE_TOKEN)` zamiast portu
+repozytorium — sprawdzone: WSZYSTKIE 18 innych cronów/schedulerów w tym repo idą przez
+repozytorium/port/command-bus, więc to była luka w regule, nie w implementacji. Przy okazji
+review padło pytanie o regułę dla error-mapperów (już istnieje, **DE3**, oznaczona "łamana w ~90%
+przypadków") oraz dla audit-logów przy nowych eventach domenowych — okazało się, że
+`audit-handler-pattern_summary.md` już referuje ADR-0027 (AH4/N1: "Tier 1 event musi mieć
+handler"), ale samo KRYTERIUM tier nigdy nie zostało uogólnione do karty — żyło wyłącznie
+w projektowym ADR-0027, niedostępnym dla innych projektów używających tej samej karty.
+
+**Odrzucone:** seedowanie analogicznej reguły dla stacku Python/Neo4j (`rules/python/
+patterns-modular.md`, `python-quality-verifier.md`) — już ma równoważny anti-pattern
+("Direct DB driver imports outside `core/db/`" — psycopg/neo4j/redis muszą zostać w `db/`),
+więc nie ma tu luki do zamknięcia.
+
+**Status:** done.
+**Ref:** `patterns/infrastructure/repository-pattern_summary.md` (RP12/N7) ·
+`patterns/application/audit-handler-pattern_summary.md` (AH11) · `hooks/lib/pattern-routing.js` ·
+`docs/adr/0027-audit-event-selection-strategy.md` (juz-ide-api-1, źródło uogólnienia).
+
+---
+
 ## 2026-07-04 — Pierwszy live przebieg /orchestrate-ddd (juz-ide-api-1): full-diff-injection anty-wzorzec → WL6
 
 **Zmiana:** `commands/orchestrate-ddd.md` (Krok 3, pseudokod pętli warstw) + nowa reguła

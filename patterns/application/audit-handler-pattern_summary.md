@@ -5,7 +5,27 @@
 
 **Layer**: Application · **Applies to**: `*.handler.ts` w `**/application/event-handlers/`
 **Base**: `BaseAuditHandler` (@shared/application/audit) · **Decorators**: `@Injectable()`, `@EventHandler(XxxEvent)`
-**ADR**: 0027 (tier classification — KRYTYCZNY), 0025 (hybrid event system)
+**ADR**: 0027 (tier classification — projektowy ADR w juz-ide-api-1; kryteria uogólnione poniżej), 0025 (hybrid event system)
+
+## Klasyfikacja NOWEGO domenowego eventu do audytu (Tier 1/2/3)
+
+**Uogólnione z ADR-0027 (2026-07-05) — żeby decyzja nie wymagała czytania projektowego ADR,
+którego inne projekty mogą nie mieć.** Przy DODAWANIU nowego domenowego eventu, klasyfikuj wg
+kryteriów (nie "audytuj wszystko" — odrzucone w ADR-0027: narusza GDPR Art. 5(1)(c) minimalizacja
+danych + koszty storage):
+
+- **Tier 1 — OBOWIĄZKOWY audyt**: event przetwarza dane osobowe LUB niesie ryzyko bezpieczeństwa —
+  uwierzytelnianie, autoryzacja, operacje na PII, eventy security-sensitive (np. próby ataku,
+  zmiana uprawnień, usunięcie/eksport danych użytkownika — GDPR Art. 17/20).
+- **Tier 2 — SELEKTYWNY audyt**: event MOŻE wymagać śladu audytowego zależnie od konfiguracji/
+  kontekstu (np. widoczność profilu tylko gdy poziom prywatności tego wymaga) — flaga
+  feature-flag, domyślnie OFF dopóki nie ma wyraźnej potrzeby.
+- **Tier 3 — BRAK audytu**: event bez PII, bez wpływu na bezpieczeństwo, bez wymogu compliance
+  (eventy czysto techniczne/cache, odczyty bez dostępu do PII).
+
+**AH11** — każdy NOWY domenowy event musi mieć jawną klasyfikację tier (1/2/3) zapisaną przy jego
+wprowadzeniu (np. w `decisions[]` artefaktu `/analyze-ddd` lub w ADR projektu) — brak klasyfikacji
+= traktuj jak Tier 1 do czasu jawnej decyzji (fail-safe, nie fail-open na GDPR).
 
 ## MUST
 - **AH1** — extends `BaseAuditHandler` — dostarcza kolejkę BullMQ, metadane GDPR, circuit breaker.
@@ -109,5 +129,6 @@ export class XxxModule implements OnModuleInit {
 | Brak `extends BaseAuditHandler` | AH1 |
 | Brak `getBoundedContext()` lub `getEventCategory()` | AH2 / AH3 |
 | Tier 1 event z ADR-0027 bez odpowiadającej metody | AH4 / N1 |
+| Nowy domenowy event bez jawnej klasyfikacji tier w `decisions[]`/ADR | AH11 |
 
 **Pełny wzorzec**: [`audit-handler-pattern.md`](./audit-handler-pattern.md)

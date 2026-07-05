@@ -3,8 +3,16 @@
      Pełny wzorzec (kontekst, uzasadnienie, checklist, testy): repository-events-pattern.md
      Verifier sprawdza KAŻDĄ regułę z ID poniżej i cytuje ją przy naruszeniu. -->
 
-**Layer**: Infrastructure · **Applies to**: `*.repository.ts` w `**/infrastructure/repositories/` lub `**/infrastructure/persistence/`; interfejsy portów w `**/domain/repositories/`
+**Layer**: Infrastructure · **Applies to**: `*.repository.ts` w `**/infrastructure/repositories/` lub `**/infrastructure/persistence/`; interfejsy portów w `**/domain/repositories/`; RP12/N7 dodatkowo obejmują `*.cron.ts`/`*.scheduler.ts`/`*.job.ts` w `**/infrastructure/**` i serwisy w `**/application/services/`
 **ADR**: 0025 (Hybrid Event System)
+
+**Geneza RP12/N7 (2026-07-05):** pierwszy live przebieg `/orchestrate-ddd` w juz-ide-api-1
+(TS-SEC-ANTI-SPOOF-003) wygenerował `DeviceNoncePurgeCron` z `@Inject(DATABASE_TOKEN) private
+readonly db: Kysely<Database>` i inline `deleteFrom('device_nonces')...` zamiast przez
+`IDeviceNonceRepository` — human review złapał to (port nie miał jeszcze metody `purgeExpired()`,
+więc implementer poszedł na skróty zamiast dodać metodę do portu). Sprawdzone: WSZYSTKIE 18 innych
+cronów/schedulerów w tym repo idą przez repozytorium/port/command-bus, żaden inny nie wstrzykuje
+`DATABASE_TOKEN` bezpośrednio — to był jedyny wyjątek.
 
 ## MUST
 
@@ -22,6 +30,17 @@
 - **RP9** — Istnieje weryfikacyjny test L1 skanujący `domain/events/*.event.ts` i porównujący z `eventMap` (CI bloker).
 - **RP10** — Query repository (read-side): eksplicytne kolumny w `SELECT`, mapper `mapToOwnerQueryModel` / `mapToPublicQueryModel`, bez `BaseKyselyRepository`.
 - **RP11** — Niestandardowe typy SQL (enum, cast) przez `sql<Type>`` template literal (Kysely).
+- **RP12** — Cron/scheduler/application-service, który potrzebuje operacji na danych agregatu,
+  wstrzykuje interfejs repozytorium (port z `domain/repositories/`) — NIE surowy token bazy
+  (`DATABASE_TOKEN`/`Kysely<Database>` itp.) jako domyślny wybór. Brakująca metoda na porcie
+  (np. `purgeExpired()`) to sygnał **dodaj metodę do repozytorium**, nie obejście przez
+  wstrzyknięcie raw clienta.
+  **Odstępstwo (dopuszczalne, gdy jest dobry powód — np. cross-aggregate bulk operacja, dla
+  której repozytorium per-agregat byłoby sztucznym obejściem, albo poller/batch-job działający
+  poza granicą jednego agregatu jak w `KyselyOutboxRepository`)** wymaga: (a) komentarza
+  `// RP12-EXCEPTION: <powód>` nad konstruktorem/polem wstrzykującym raw client, (b) wpisu
+  w sekcji „Wyjątki" pełnego wzorca (przeanalizowany kod + uzasadnienie). Raw token bez
+  adnotacji I bez uzasadnienia = VETO, nie „pewnie miał powód" (ten sam standard co RP2).
 
 ## MUST NOT
 
@@ -31,6 +50,11 @@
 - **N4** — ❌ Hardcoded stringi zamiast enum w `eventMap` — brak compile-time safety (RP6).
 - **N5** — ❌ Pominięcie eventu w `eventMap` z powodu "jeszcze nie używany" — bug runtime w produkcji.
 - **N6** — ❌ Brak testu weryfikacyjnego `eventMap` — RP9 obowiązkowe dla każdego nowego repozytorium command.
+- **N7** — ❌ `@Inject(DATABASE_TOKEN)` (lub odpowiednik raw DB clienta) w klasie spoza
+  `**/infrastructure/repositories/` (cron, scheduler, application-service) do bezpośrednich
+  zapytań BEZ adnotacji `// RP12-EXCEPTION: <powód>` — łamie separację warstw i testowalność
+  (nie da się zamockować repozytorium w teście jednostkowym cron-a bez podnoszenia realnego DB
+  clienta). Z adnotacją i uzasadnieniem w sekcji „Wyjątki" — dopuszczalne (RP12).
 
 ## Minimal correct skeleton
 
@@ -119,5 +143,6 @@ export class XxxQueryKyselyRepository {                                     // R
 | `SELECT *` zamiast explicite kolumn w query repo | RP10 |
 | `console.warn` brakuje przy nieznanym evencie | RP8 |
 | Brak `version` w persist/select | RP5 |
+| Cron/scheduler/service z `@Inject(DATABASE_TOKEN)` / `Kysely<Database>` zamiast portu repozytorium, BEZ `// RP12-EXCEPTION: <powód>` | **RP12 / N7** |
 
 **Pełny wzorzec**: [`repository-events-pattern.md`](./repository-events-pattern.md)

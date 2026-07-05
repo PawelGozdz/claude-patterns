@@ -73,6 +73,9 @@ const FILENAME_RULES = [
   { match: /\.handler\.ts$/,         pattern: 'application/command-handler-pattern.md' },
   { match: /\.mapper\.ts$/,          pattern: 'infrastructure/mapper-pattern.md' },
   { match: /\.adapter\.ts$/,         pattern: 'architecture/acl-registry-pattern.md' },
+  { match: /\.cron\.ts$/,            pattern: 'infrastructure/repository-pattern.md' },      // RP12/N7
+  { match: /\.scheduler\.ts$/,       pattern: 'infrastructure/repository-pattern.md' },      // RP12/N7
+  { match: /\.job\.ts$/,             pattern: 'infrastructure/repository-pattern.md' },      // RP12/N7
 ];
 
 /**
