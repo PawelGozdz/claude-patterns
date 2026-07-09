@@ -101,7 +101,7 @@ Persistence, API, and technical implementation patterns.
 
 ---
 
-### Architecture Layer (11 patterns)
+### Architecture Layer (12 patterns)
 
 Cross-cutting architectural patterns spanning multiple layers.
 
@@ -118,6 +118,7 @@ Cross-cutting architectural patterns spanning multiple layers.
 | **[cross-context-communication.md](architecture/cross-context-communication.md)** | ~200 | Production | Decision guide: ACL vs Integration Events vs queues for cross-context communication | All implementers |
 | **[token-optimization-pattern.md](architecture/token-optimization-pattern.md)** | ~300 | Production | Token reduction settings, session quality, model selection strategy | All users |
 | **[fresh-context-pattern.md](architecture/fresh-context-pattern.md)** | 553 | Production | Keep orchestrator lean (~15%), subagents fresh (~100% relevant), context rot detection | project-orchestrator, all agents |
+| **[api-contract-sync-pattern.md](architecture/api-contract-sync-pattern.md)** | ~90 | Production | Cross-repo OpenAPI drift detection: backend vs mobile/web consumers, advisory-only | api-contract-sync skill |
 
 **Architecture Layer Key Principles**:
 - ACL Registry: `aclRegistry.getGlobalRequired<T>('context-name')` for cross-context calls
@@ -157,7 +158,7 @@ Testing strategies and patterns for all levels of the test pyramid.
 
 ---
 
-### Cross-Layer Patterns (4 patterns)
+### Cross-Layer Patterns (6 patterns)
 
 Patterns used across all architectural layers.
 
@@ -168,6 +169,8 @@ Patterns used across all architectural layers.
 | **[error-handler-chain-pattern.md](cross-layer/error-handler-chain-pattern.md)** | ~550 | Production | 9 specialized error handlers in Chain of Responsibility | infrastructure-testing-implementer |
 | **[conventions-pattern.md](cross-layer/conventions-pattern.md)** | ~400 | Production | Naming conventions, file organization, module structure | All implementers |
 | **[safe-error-propagation-pattern.md](cross-layer/safe-error-propagation-pattern.md)** | ~350 | Production | 3-layer defense against infra error leakage to HTTP (TS-SEC-011) | All implementers |
+| **[security-invariants-pattern.md](cross-layer/security-invariants-pattern.md)** | — | Production | (pre-existing, previously missing from this index) | All implementers |
+| **[snapshot-incremental-review-pattern.md](cross-layer/snapshot-incremental-review-pattern.md)** | ~90 | Production | Hash-per-item snapshot + diff for cheap incremental re-review | review-panel, api-contract-sync skills |
 
 **Cross-Layer Key Principles**:
 - Domain Errors: ErrorCode enum as single source of truth, Result<T> pattern everywhere
@@ -298,19 +301,19 @@ ecosystems, jurisdiction-bound disclaimers, AGPL contamination prevention.
 
 ## 📊 Pattern Statistics
 
-**Core Patterns**: 39
+**Core Patterns**: 42
 **Stack-Specific Patterns**: 29 (flutter, nextjs, python, sveltekit, typescript-library)
-**Total**: 68
+**Total**: 71
 **Production Status**: 100% (all patterns verified in production code)
 
 **Core Pattern Distribution**:
-- Domain: 15% (6)
+- Domain: 14% (6)
 - Application: 10% (4)
 - Infrastructure: 10% (4)
-- Architecture: 28% (11)
-- Testing: 23% (9)
-- Cross-Layer: 10% (4)
-- Orchestration: 3% (1)
+- Architecture: 29% (12)
+- Testing: 21% (9)
+- Cross-Layer: 14% (6)
+- Orchestration: 2% (1)
 
 ---
 

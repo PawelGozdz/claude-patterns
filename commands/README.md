@@ -1,7 +1,7 @@
 # Global Claude Code Commands
 
 **Location**: `~/.claude/commands/` -> `~/projects/claude-patterns/commands/`
-**Commands**: 23 active
+**Commands**: 26 active
 
 ---
 
@@ -25,12 +25,15 @@
 | `/tdd` | Test-driven development: interfaces -> tests -> minimal implementation | — |
 | `/scaffold` | Haiku template generator — fast boilerplate (60x cheaper) | Haiku |
 
-## Quality & Review (4)
+## Quality & Review (7)
 
 | Command | Purpose | Model |
 |---------|---------|-------|
 | `/verify` | Run quality gates: typecheck, lint, test, build, coverage | — |
 | `/code-review` | Structured code review with severity levels | — |
+| `/review-panel` | Multi-persona reviewer panel (16 agents), severity-graded report, incremental re-review | Sonnet |
+| `/pr-ops` | List/triage open PRs, classify comments blocking/question/resolved (read-only) | Sonnet |
+| `/api-schema-sync` | Cross-repo OpenAPI drift check: backend vs mobile/web consumers | Sonnet |
 | `/build-fix` | Diagnose and fix TypeScript build errors with minimal changes | — |
 | `/test-coverage` | Analyze test coverage gaps prioritized by business criticality | — |
 
