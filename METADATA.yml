@@ -106,13 +106,12 @@ patterns:
     deprecated: 0
 
 agents:
-  universal: 11
+  universal: 26
   stack_specific: 14
   categories:
     universal:
       - backend-technology-expert
       - security-privacy-architect
-      - technical-architecture-lead
       - tech-lead
       - product-owner
       - marketing-strategist        # v3.3
@@ -121,6 +120,22 @@ agents:
       - project-orchestrator
       - state-reader
       - changelog-bot
+      - reviewer-eagle               # v3.6 — code review panel (16 agents)
+      - reviewer-security             # v3.6
+      - reviewer-performance           # v3.6
+      - reviewer-user                  # v3.6
+      - reviewer-nitpicker              # v3.6
+      - reviewer-newbie                 # v3.6
+      - reviewer-skeptic                # v3.6
+      - reviewer-pragmatist              # v3.6
+      - reviewer-money                   # v3.6
+      - reviewer-compatibility            # v3.6
+      - reviewer-compliance                # v3.6
+      - reviewer-tester                     # v3.6
+      - reviewer-ops                         # v3.6
+      - reviewer-product                      # v3.6
+      - reviewer-champion                      # v3.6
+      - reviewer-professor                      # v3.6
     stacks:
       - nestjs-ddd (3)
       - flutter-clean-arch (3)

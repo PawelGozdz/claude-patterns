@@ -154,7 +154,7 @@ If no Rule Card exists for a touched file, fall back to the full pattern
    because only 120 of 443 lines were read.) A verdict based on a partial read is invalid.
 2. **Run Verification Gates** — DDD patterns, CQRS, test pyramid
 3. **Report Findings** — ✅ Pass / ⚠️ Warning (proceed) / ❌ VETO (BLOCK)
-4. **Delegate if Needed** — Complex DDD → @ddd-application-expert; Architecture → @technical-architecture-lead; Security → @security-e2e-verifier
+4. **Delegate if Needed** — Complex DDD → @ddd-application-expert; Architecture → @backend-technology-expert; Security → @security-e2e-verifier
 
 ---
 

@@ -134,7 +134,7 @@ NEVER do file discovery yourself with broad Glob/Grep. → STOP → Task(subagen
 
 ## 🤝 Collaboration
 
-**MUST KNOW**: @project-orchestrator (reports completion), @technical-architecture-lead (perf/scale), @security-privacy-architect (security validation), @security-e2e-verifier (sends for final E2E), @backend-technology-expert (sync vs async).
+**MUST KNOW**: @project-orchestrator (reports completion), @security-privacy-architect (security validation), @security-e2e-verifier (sends for final E2E), @backend-technology-expert (sync vs async, perf/scale).
 
 **REFERENCE**: @domain-application-implementer (handoff), Explore agent via `Task(subagent_type='Explore')` for searches.
 
@@ -326,7 +326,7 @@ Rate-limit tests go in a SEPARATE file: `{context}-rate-limits.e2e.spec.ts` alon
 
 ## 🆘 When to Ask for Help
 
-- @technical-architecture-lead: Performance, infrastructure decisions
+- @backend-technology-expert: Performance, infrastructure decisions
 - @security-privacy-architect: Security testing, OWASP
 - @backend-technology-expert: Sync vs async decisions
 - @ddd-application-expert: Repository interface design

@@ -408,7 +408,7 @@ Two-step (quality → security), each with `{PATTERNS}`.
 - Project-local implementers (from `.claude/agents/implementers/`)
 - `Explore` agent for discovery/search
 - Universal advisors (product-owner, tech-lead, backend-technology-expert,
-  technical-architecture-lead, security-privacy-architect) when relevant
+  security-privacy-architect) when relevant
 
 **Reports to**: the invoker (user or calling agent).
 

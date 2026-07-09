@@ -353,7 +353,6 @@ If no match in the table: check if a file named `*-implementer.md` exists in `.c
 | Agent | When to use |
 |---|---|
 | backend-technology-expert | Sync/async decisions, performance, technology trade-offs |
-| technical-architecture-lead | Cross-cutting architecture decisions |
 | product-owner | Business value validation (replaces customer-value-guardian) |
 | tech-lead | Task health, blocked work, dependency analysis |
 

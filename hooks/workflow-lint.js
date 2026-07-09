@@ -21,6 +21,18 @@
  *                przebieg (juz-ide-api-1, 2026-07-04): pełny diff Domain (~3191 linii)
  *                wklejony w całości do promptu implementera Application zjadł budżet tury,
  *                2× pusty wynik z rzędu. Wstrzykuj tylko listę plików, niech agent Read sam.
+ *   WL7 (WARN)   tsc/typecheck wygląda na punkt listy WEWNĄTRZ prompta implementera (proza,
+ *                nieegzekwowalne), nie osobny dedykowany krok PRZED verify (juz-ide-api-2,
+ *                2026-07-08, TS-PRICING-RADIUS-TIER-002): "tsc --noEmit bez nowych błędów" było
+ *                punktem 4 listy kryteriów w prompt-cie implementera infra-consumers — nigdy nie
+ *                uruchomione jako osobny krok. 4 nowe błędy TS + martwa deklaracja
+ *                (isLocationInAdminBoundary) przeszły przez code-quality-verifier (poza jego
+ *                zakresem — sprawdza wzorce, NIE kompiluje) aż do security-e2e-verifier.
+ *   WL8 (WARN)   ciężki blok kontekstu kodu (np. EXISTING_INFRA/DECISIONS/PATTERNS) wstrzyknięty
+ *                do warstwy, której `dirs` to WYŁĄCZNIE dokumentacja/config (juz-ide-api-2,
+ *                2026-07-08): warstwa infra-docs dostała ten sam ciężki blok co warstwy kodu —
+ *                agent zinterpretował to jako zachętę do re-audytu (30×Read + 21×Bash, ZERO
+ *                Write) zamiast pisania 3 plików Markdown; maxTurns cliff.
  *
  * Exit: 0 = czysto lub tylko WARN · 1 = ERROR (NIE uruchamiaj Workflow) · 2 = zły input.
  */
@@ -77,6 +89,49 @@ function lint(src) {
     const line = s.text.slice(0, s.text.indexOf('\n') !== -1 ? s.text.indexOf('\n') : 120);
     if (!/--stat|--name-only|--numstat/.test(line)) {
       findings.push({ id: 'WL6', level: 'WARN', line: s.line, msg: 'git diff bez --stat/--name-only/--numstat — pełny tekst diffa jako input promptu przeciąża budżet tury implementera kolejnej warstwy; wstrzykuj listę plików, niech agent Read sam (incydent 2026-07-04)' });
+    }
+  }
+
+  // WL7 — tsc/typecheck wygląda na punkt listy WEWNĄTRZ prompta implementera (proza), nie osobny
+  // dedykowany krok PRZED verify (incydent 2026-07-08, juz-ide-api-2: patrz komentarz nagłówka).
+  {
+    const tscMarkers = [...snippetsOf(src, 'tsc'), ...snippetsOf(src, 'typecheck'), ...snippetsOf(src, 'type-check')];
+    const hasDedicatedStep = /label\s*:\s*['"`][^'"`]{0,60}(tsc|typecheck|type-check)/i.test(src)
+      || /phase\(\s*['"`][^'"`]{0,60}(tsc|typecheck|type-check)/i.test(src);
+    if (!hasDedicatedStep) {
+      const buried = tscMarkers.filter((s) => /\n\s*\d+\.\s/.test(src.slice(Math.max(0, s.at - 300), s.at)));
+      if (buried.length) {
+        findings.push({ id: 'WL7', level: 'WARN', line: buried[0].line, msg: 'tsc/typecheck wygląda na punkt listy wewnątrz prompta implementera (proza) — dodaj osobne wywołanie agent() z label zawierającym "typecheck" PRZED verify; code-quality-verifier nie kompiluje kodu (incydent 2026-07-08, juz-ide-api-2)' });
+      }
+    }
+  }
+
+  // WL8 — ciężki blok kontekstu kodu wstrzyknięty do warstwy, której `dirs` to wyłącznie
+  // dokumentacja/config (incydent 2026-07-08, juz-ide-api-2: patrz komentarz nagłówka).
+  {
+    const dirsDecl = /const\s+\w*[Dd]irs\s*=\s*\[([^\]]*)\]/g;
+    let m;
+    while ((m = dirsDecl.exec(src))) {
+      const raw = m[1];
+      // string literals ('docs/x.md') LUB referencje do właściwości (FILES.geoDomainDoc) — realny
+      // skrypt juz-ide-api-2 używał `infraDocsDirs = [FILES.geoDomainDoc, FILES.tokenEconomyDoc, ...]`,
+      // nie inline stringów; bez tego fallbacku reguła by go nie złapała.
+      const quoted = raw.match(/['"`][^'"`]+['"`]/g) || [];
+      const idents = raw.match(/[A-Za-z_$][\w.$]*/g) || [];
+      if (!quoted.length && !idents.length) continue;
+      const touchesCode = quoted.some((e) => /\.(ts|tsx|js|jsx)['"`]/i.test(e))
+        || idents.some((e) => /\b(src|handler|controller|service|repository|aggregate)\b/i.test(e));
+      const looksDocsOnly = !touchesCode && (
+        quoted.some((e) => /\.(md|ya?ml|json)['"`]|docs\//i.test(e))
+        || (quoted.length === 0 && idents.length > 0 && idents.every((e) => /doc/i.test(e)))
+      );
+      if (!looksDocsOnly) continue;
+      const window = src.slice(m.index, m.index + 4000);
+      const hasHeavyBlock = /EXISTING_INFRA|DECISIONS\b|PATTERNS\b/.test(window);
+      const hasMitigation = /ZAKAZ|NIE czytaj|NIE grepuj|NIE weryfikuj.{0,20}kod|already implemented|już zaimplementowane/i.test(window);
+      if (hasHeavyBlock && !hasMitigation) {
+        findings.push({ id: 'WL8', level: 'WARN', line: src.slice(0, m.index).split('\n').length, msg: 'warstwa z dirs wyłącznie docs/config dostaje ciężki blok kontekstu kodu bez terse-wariantu z jawnym zakazem eksploracji (src/) — ryzyko re-audytu zamiast pisania (incydent 2026-07-08, juz-ide-api-2: 30×Read+21×Bash, ZERO Write)' });
+      }
     }
   }
 

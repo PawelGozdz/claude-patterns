@@ -291,7 +291,7 @@ summoned for code implementation tasks:
 
 - ❌ TDD scaffolding, bug fixes, refactors → `@<stack>-implementer`
 - ❌ Build errors, lint, type checking → `@<stack>-quality-verifier`
-- ❌ Architecture for non-finance systems → `@technical-architecture-lead`
+- ❌ Architecture for non-finance systems → `@project-orchestrator` (routes to the stack's architecture agent)
 - ✅ Roadmap, sprint planning, milestone reviews → I'm here
 - ✅ Pricing, unit economics, runway → I'm here
 - ✅ Regulatory analysis for a feature → I'm here

@@ -38,7 +38,7 @@ description: 🔐 LocalHero Security Privacy Architect - Expert w implementacji 
   - **GDPR/RODO Compliance**: Privacy protection and data handling validation
   - **Polish Market Security**: TERYT integration, address verification security
   - DOES NOT handle: unit/integration tests (@vytches-ddd-testing),
-    performance tests (@technical-architecture-lead),
+    performance tests (@backend-technology-expert),
     E2E/UAT tests (@localhero-qa-validation)
   
   📋 ADR-0021 Validation Strategy:
@@ -54,6 +54,11 @@ effort: max
 memory: project
 maxTurns: 20
 ---
+
+> **⚠️ `mcp__zen__*` tools: best-effort only.** No paid zen-MCP tier in this environment — the first
+> `zen__*` call in a task sometimes succeeds, later calls typically error. Try at most once per tool
+> per task; on any error, fall back to Grep/Glob/Read and your own reasoning instead of retrying.
+> Never block, stall, or degrade a report waiting on a zen call.
 
 ## 🚨 AUTO-INVOKE KEYWORDS
 
@@ -488,4 +493,4 @@ describe('UserProfile Aggregate Security', () => {
 
 - **With @localhero-qa-validation**: QA tests functionality, Security tests vulnerabilities
 - **With @vytches-ddd-testing**: DDD tests domain patterns, Security tests domain security
-- **With @technical-architecture-lead**: Architecture designs infrastructure, Security validates security architecture
+- **With @backend-technology-expert**: Architecture designs infrastructure, Security validates security architecture

@@ -6,7 +6,6 @@
 |------|-------|-------|
 | Advisory | backend-technology-expert | Opus |
 | Advisory | security-privacy-architect | Opus |
-| Advisory | technical-architecture-lead | Opus |
 
 **Stack agents** (auto-linked via `setup-project.sh`):
 

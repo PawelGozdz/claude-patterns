@@ -47,8 +47,11 @@ Brak pliku → graceful (implementer spada na grep, jak przy niedostępnym MCP).
 
 **LINT PRZED STARTEM (obowiązkowy):** zapisz skrypt Workflow do pliku (np.
 `project-orchestration/.workflow/{TASK-ID}.workflow.js` — gitignored — albo scratchpad) i uruchom
-`node "$HOME/.claude/hooks/workflow-lint.js" <plik>`. Lint MUSI dać exit 0 (reguły WL1-WL5:
-schema tylko na verify/final-gate, verify nigdy w parallel(), bramka git-diff obecna). Dopiero
+`node "$HOME/.claude/hooks/workflow-lint.js" <plik>`. Lint MUSI dać exit 0 (reguły WL1-WL8 —
+pełna lista i incydent za każdą regułą w nagłówku `hooks/workflow-lint.js`; skrótowo: schema tylko
+na verify/final-gate, verify nigdy w parallel(), bramka git-diff obecna, git diff bez pełnego tekstu,
+tsc/typecheck jako osobny krok PRZED verify — nie proza w prompt-cie implementera, ciężki blok
+kontekstu kodu nie trafia do warstw czysto docs/config). Dopiero
 wtedy `Workflow({scriptPath: <plik>})`. To zamienia poniższe reguły-prozę w twardą bramkę.
 
 Zbuduj/uruchom Workflow o strukturze (MVP = liniowy, seam'y Ralphinho jako no-op):
@@ -57,8 +60,11 @@ for unit of units:                          # MVP: units = [task]  (seam Ralphin
   for layer of [domain, application, infrastructure]:  # OUTER: sekwencja (zależności DDD); split 3-warstwowy
     # (2026-07-02) domain-application ROZDZIELONE: mniejszy zakres = mieści się w budżecie tur,
     # fail dotyka jednej warstwy. Do warstwy N wstrzyknij LISTĘ ZMIENIONYCH PLIKÓW warstwy N-1
-    # (`git diff --stat` lub `--name-only`, NIGDY pełny tekst diffa) + decisions[] — implementer
-    # SAM czyta świeże pliki Z REPO (Read), nie z pamięci agenta ani z wklejonego diffa.
+    # (`git status --porcelain -- <layer_dirs>`, NIGDY pełny tekst diffa) + decisions[] —
+    # implementer SAM czyta świeże pliki Z REPO (Read), nie z pamięci agenta ani z wklejonego diffa.
+    # UWAGA: użyj `git status --porcelain`, NIE `git diff --name-only` — ten drugi widzi tylko
+    # pliki ŚLEDZONE i pomija nowo utworzone (untracked, `??`) pliki warstwy N-1, więc warstwa N
+    # nie dowiedziałaby się o nowych plikach, które ma importować (patrz incydent niżej).
     # (incydent 2026-07-04, pierwszy live end-to-end przebieg juz-ide-api-1: pełny git diff
     # warstwy Domain urósł do ~3191 linii i został wklejony w całości do promptu implementera
     # Application → zjadł budżet tury na czytanie zamiast pisania, 2× pusty wynik z rzędu mimo
@@ -75,9 +81,27 @@ for unit of units:                          # MVP: units = [task]  (seam Ralphin
       # Cards/wzorce, gdy wstrzyknięte karty nie pokrywają pytania (karty pozostają WIĄŻĄCE);
       # retrieve_examples — kanoniczne przykłady @vytches/ddd (level, antywzorce).
       # Graceful: jeśli MCP/Qdrant niedostępny lub collection nieznany → implementer szuka klasycznie (grep).
+      # ANTY-EKSPLORACJA (obowiązkowe dla KAŻDEJ warstwy poza pierwszą — incydent 2026-07-08,
+      # juz-ide-api-2: warstwa infra-docs-final dostała ten sam ciężki blok EXISTING_INFRA+
+      # DECISIONS+PATTERNS co warstwy piszące kod + zdanie "poprzednie warstwy już zaimplementowane —
+      # Read świeży kod jeśli potrzebujesz faktów". Implementer odczytał to jako zachętę do
+      # re-audytu: 30× Read + 21× Bash, ZERO Write/Edit, maxTurns cliff, mimo że zadanie to była
+      # edycja 3 plików Markdown. Ten sam wzorzec incydentu już raz wystąpił 2026-07-07 —
+      # udokumentowany tylko jako komentarz w JEDNYM skrypcie, więc nie przeniósł się do kolejnego
+      # zadania. Dlatego żyje tu, w kanonicznym szablonie, nie w pojedynczym wygenerowanym skrypcie.)
+      # Prompt implementera warstwy N>1 MUSI zawierać jawne zdanie: "Warstwy 1..N-1 już
+      # zweryfikowane (GO) — NIE re-czytaj, NIE grepuj, NIE weryfikuj kodu SPOZA własnego zakresu
+      # tej warstwy; ZAUFAJ że działa." Jeśli warstwa dotyka WYŁĄCZNIE dokumentacji/configu (nie
+      # `src/`) — użyj terse-wariantu (minimalny kontekst, bez pełnego EXISTING_INFRA/DECISIONS/
+      # PATTERNS) — backstop: WL8 w workflow-lint.js łapie to mechanicznie przed startem.
       implement(layer, {decisions, patterns, rule_cards, existing_code: retrieve_code(layer_intent, collection)}, worktree)   # gate: check-delegation
-      # BRAMKA „kod istnieje" (CONFORMANCE §2): git diff --stat puste → ESCALATE, NIE weryfikuj —
-      # weryfikacja kodu, który nigdy nie powstał, to spalony przebieg.
+      # BRAMKA „kod istnieje" (CONFORMANCE §2): git status --porcelain puste → ESCALATE, NIE
+      # weryfikuj — weryfikacja kodu, który nigdy nie powstał, to spalony przebieg.
+      # UWAGA (incydent juz-ide-api-1, 2026-07-07): `git_diff_empty` MUSI sprawdzać
+      # `git status --porcelain -- <layer_dirs>` (obejmuje untracked `??`), NIE samo
+      # `git diff --stat` — ten ostatni widzi tylko pliki ŚLEDZONE. Implementer, który stworzył
+      # WYŁĄCZNIE nowe pliki (bez `git add`), dawał pusty `git diff --stat` mimo że kod fizycznie
+      # powstał → false-positive ESCALATE po pierwszej próbie zamiast przejścia do verify().
       if git_diff_empty(layer_dirs): ESCALATE(layer, "implementer nie zmienił żadnych plików"); HALT
       # KONTYNUACJA (klif maxTurns — odzyskiwalny, nie śmiertelny): implementer skończył BEZ
       # tekstu finalnego, a diff NIEPUSTY → JEDNO wywołanie kontynuacyjne ("dokończ wg
@@ -89,6 +113,15 @@ for unit of units:                          # MVP: units = [task]  (seam Ralphin
       # type-check (tsc --noEmit) → odpal; błędy → potraktuj jako violations i dispatchnij fix
       # BEZ palenia próby weryfikatora (usunięcie pól z typów złamało 5 plików testowych na 34
       # błędy TS, a vitest był zielony — weryfikator odkrył to dopiero w 2. rundzie).
+      # `run_typecheck_if_available()` MUSI być OSOBNYM, dedykowanym wywołaniem `agent()`
+      # (label zawierający "typecheck", np. tani Haiku/Sonnet agent, którego JEDYNYM zadaniem jest
+      # odpalić `tsc --noEmit` przez Bash i zwrócić {errors:[...]}) — Workflow script sam nie ma
+      # dostępu do Bash/fs, więc to nie może być zwykła funkcja w skrypcie. NIGDY punkt listy
+      # kryteriów WEWNĄTRZ prompta implement() (incydent 2026-07-08, juz-ide-api-2:
+      # "tsc --noEmit bez nowych błędów" było punktem 4 listy w prompt-cie implementera —
+      # nigdy nie uruchomione, 4 nowe błędy TS + martwa deklaracja przeszły przez
+      # code-quality-verifier aż do security-e2e-verifier na finalnej bramce). Backstop
+      # mechaniczny: WL7 w workflow-lint.js wykrywa dokładnie ten anti-pattern przed startem.
       tc = run_typecheck_if_available()   # np. pnpm nx run <pkg>:type-check / tsc --noEmit
       if tc.errors: fix(layer, tc.errors_as_violations); re-run typecheck  # tanie, deterministyczne
       v = verify(layer)        # @code-quality-verifier → {verdict, violations:[rule_ids]}

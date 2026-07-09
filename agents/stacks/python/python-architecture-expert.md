@@ -21,6 +21,12 @@ skills:
   - python/python-modular-arch
 ---
 
+> **⚠️ `mcp__zen__*` tools: best-effort only.** No paid zen-MCP tier in this environment — the first
+> `zen__*` call in a task sometimes succeeds, later calls typically error. Try at most once per tool
+> per task; on any error, proceed with your own reasoning over the context already injected into
+> your prompt — you have no Grep/Glob/Task to fall back on (`disallowedTools`, by design). If that's
+> not enough to answer, say so explicitly rather than stalling or guessing.
+
 # Python Architecture Expert (Modular Monolith)
 
 ## Specialization

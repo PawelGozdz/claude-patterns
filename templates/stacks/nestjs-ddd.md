@@ -7,7 +7,6 @@
 | Advisory | ddd-application-expert | Sonnet |
 | Advisory | backend-technology-expert | Opus |
 | Advisory | security-privacy-architect | Opus |
-| Advisory | technical-architecture-lead | Opus |
 | Verification | code-quality-verifier (VETO) | Sonnet |
 | Verification | security-e2e-verifier (VETO) | Opus |
 

@@ -1,0 +1,96 @@
+# Preset: flutter-clean-arch — deklaracja overlayu + faz /analyze-ddd i /orchestrate-ddd.
+# Czytany przez setup-project.sh v2 (materializacja) oraz przez komendy (stage'e/bramki).
+# UWAGA: preset = SZABLON, nie wyrocznia. /analyze-ddd proponuje plan; człowiek edytuje
+# {TASK-ID}.analysis.md; /orchestrate-ddd czyta ZATWIERDZONY artefakt (nie ten preset) jako plan.
+#
+# Wzorowany na presets/nestjs-ddd.yml — patrz tam po komentarz do każdego pola, jeśli coś niejasne.
+# Różnice względem nestjs-ddd:
+#   - Model warstw: 3 OBOWIĄZKOWE (domain, data, presentation) + 1 OPCJONALNA per-feature
+#     (application). Zweryfikowane 2026-07-05 w projekcie źródłowym `juz-ide-mobile-app`
+#     (agent ecc:flutter-reviewer, kontekst: ARCH-001-ADR-A-application-layer-optional.md) —
+#     `CLAUDE.md` tego projektu wcześniej wymagał 4 warstw obowiązkowo, ale kod już dawno
+#     odszedł od tego (application/ istniał tylko w 6/27 feature'ów); ADR-A zalegalizował stan
+#     faktyczny zamiast wymuszać backfill. `patterns/flutter/clean-architecture-pattern.md`
+#     (3-warstwowy, use case'y w domain/usecases/) i `templates/flutter-hooks.json`
+#     (`noInfraImportLayers: [domain, application]` — czysty JEŚLI ISTNIEJE, nie "musi istnieć")
+#     są oba zgodne z tym modelem. Kryterium tworzenia application/: logika przekracza prosty
+#     CRUD (multi-step workflow, orkiestracja wielu repozytoriów, złożona walidacja niezależna
+#     od UI) — decyzja per-task, zapisywana w decisions[] zatwierdzonego artefaktu analizy.
+#   - Implementer: flutter-implementer (agents/stacks/flutter-clean-arch/flutter-implementer.md).
+#     Pozostałe 3 agenty tego stacku (flutter-architecture-expert, flutter-quality-verifier,
+#     flutter-ui-verifier) zostają ADVISORY/VETO — bez Write/Edit, jak dotychczas.
+
+name: flutter-clean-arch
+
+# Czego oczekujemy od bazy ECC (plugin, globalnie)
+requires_ecc:
+  profile: developer
+  modules: [lang:dart, capability:orchestration]
+
+# Co materializujemy do <repo>/.claude/ (setup-project.sh v2)
+overlay:
+  agents:   [stacks/flutter-clean-arch/]     # → .claude/agents/flutter/ (implementer + advisory/VETO verifiers)
+  patterns: [flutter/, cross-layer/, testing/]  # → .claude/knowledge/patterns/ (+ conventions/testing-pyramid, jak w _stack-defaults/flutter-clean-arch.yml)
+  rules:    [dart/]                          # → .claude/rules/dart/
+  hooks:    [check-clean-arch, check-riverpod-patterns, check-flutter-imports, check-pumpandsettle,
+             check-approval-before-impl]     # pierwsze 4 = Flutter-specific (config-driven via flutter-hooks.json,
+                                              # patrz templates/flutter-hooks.json); check-approval-before-impl = generyczna bramka STOP1/STOP2
+
+# Środowisko per-projekt DDD (rozbrojenie kolizji z ECC — patrz spike S3, jak w nestjs-ddd)
+env:
+  ECC_GATEGUARD: "off"
+  ECC_DISABLED_HOOKS: "pre:edit-write:gateguard-fact-force,pre:bash:gateguard-fact-force"
+  DELEGATION_MODE: "block"
+
+# FAZA RESEARCH (/analyze-ddd) — panel → artefakt → STOP1
+phase_research:
+  pattern_discovery: true                   # Step 0.5: czytaj knowledge/patterns + _stack-defaults/flutter-clean-arch.yml
+  security_preflight: true                  # Step 0a: labels auth/pii/cross_context → threat-model (rzadziej niż nestjs, ale możliwe: auth/biometric/local-storage)
+  panel:                                     # stage'e advisory (kolejność = porządek raportu)
+    - { stage: threat-model,      agent: "/threat-model", when: "auth|pii|cross_context|public_api",
+        output: "docs/security/threat-models/TM-{TASK_ID}.md", skip_if_exists: true }
+    - { stage: tech-analysis,     agent: "flutter-architecture-expert" }
+    - { stage: impl-analysis,     agent: "flutter-quality-verifier",  advisory: true }
+    - { stage: ui-analysis,       agent: "flutter-ui-verifier",       advisory: true }
+    - { stage: synthesis,         agent: "tech-lead" }               # pisze artefakt + OTWARTE PYTANIA
+  output: "project-orchestration/analysis/{TASK_ID}.analysis.md"    # NIE tasks/ — tasks tylko na taski
+  links: { threat_model: "docs/security/threat-models/TM-{TASK_ID}.md" }  # analiza referuje TM, nie scala
+  exit: PAUSE                                # STOP1 — blokuj impl aż status: approved
+
+# FAZA IMPLEMENTACJI (/orchestrate-ddd) — pętla aż VETO GO → STOP2
+phase_implementation:
+  engine: workflow                           # Workflow tool (deterministyczny), nie /goal
+  prerequisite: "{TASK_ID}.analysis.md::status == approved && no open_questions.answer == null"
+  layers:                                    # OUTER: sekwencja wg zależności Clean Architecture
+    # domain — obowiązkowa, zero importów Flutter/infra (entities, repo interfaces, use_cases/ domyślnie tu).
+    # application — OPCJONALNA (patrz nagłówek pliku): twórz TYLKO gdy decisions[] artefaktu tak mówi
+    #   (kryterium ADR-A: multi-step workflow / orkiestracja wielu repo / złożona walidacja poza UI).
+    #   Gdy pominięta: use_cases zostają w domain/use_cases/, warstwa NIE pojawia się w tym przebiegu.
+    #   Gdy tworzona: musi być równie czysta jak domain (noInfraImportLayers obejmuje obie).
+    # data — implementuje interfejsy z domain (repository impls, datasources, DTO/models); ma testy.
+    # presentation — ostatnia: zależy od (application jeśli istnieje, inaczej wprost od domain) + data
+    #   przez DI; providery Riverpod, ekrany, widgety; ma testy (widget/golden).
+    - { id: domain,       dirs: [domain/],       agent: "flutter-implementer" }
+    - { id: application,  dirs: [application/],  agent: "flutter-implementer", optional: true,
+        create_when: "decisions[].application_layer == true (kryterium ADR-A — patrz nagłówek)" }
+    - { id: data,         dirs: [data/],         agent: "flutter-implementer", tests: true }
+    - { id: presentation, dirs: [presentation/], agent: "flutter-implementer", tests: true }
+  inner_loop:                                # per warstwa
+    steps: [implement, verify, fix]
+    implement: { agent: "flutter-implementer",
+                 inject: [decisions, patterns, rule_cards], gate: check-delegation }
+    verify:    { agent: "flutter-quality-verifier | flutter-ui-verifier",  # ui-verifier dodatkowo na warstwie presentation
+                 returns: "{verdict, violations[]}" }
+    stop_when: "verdict == GO"
+    max_attempts: 3                          # stall-guard; loop-operator ECC jako backstop
+    on_max: ESCALATE_AND_HALT
+  final_gate: { agent: "flutter-quality-verifier", returns: "{verdict}", on_fail: ESCALATE_AND_HALT }
+  exit: STAGE_NOT_COMMIT                     # STOP2 — git add + raport + HALT (commit = człowiek)
+
+# Seam'y Ralphinho — w MVP no-op/jednoelementowe (patrz ADR 0002), jak w nestjs-ddd
+ralphinho:
+  units: single                             # single = [task]; later: decompose(task) z analysis.md units:
+  worktree: shared                          # shared = jeden; later: per-unit (scripts ECC)
+  fan_out: sequential                       # sequential; later: parallel (cap 16)
+  merge_stage: noop                         # noop; later: merge-queue + re-run final_gate
+  guardrails: { push_only: "claude/*", max_attempts_per_layer: 3 }

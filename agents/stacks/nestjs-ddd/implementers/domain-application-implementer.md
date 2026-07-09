@@ -171,7 +171,7 @@ Task(codebase-explorer) = $0.05 per search **Savings**: 40-100x
 **REFERENCE** (know exists, link only):
 
 - **Explore agent (Task with subagent_type='Explore')**: Cost-efficient code searches (Haiku model)
-- **@technical-architecture-lead**: Performance questions
+- **@backend-technology-expert**: Performance questions
 - **@security-privacy-architect**: GDPR compliance
 
 ---
@@ -606,7 +606,7 @@ async execute(command): Promise<Result<UserId>> {
 
 - **@ddd-application-expert**: Aggregate boundaries, bounded contexts
 - **@product-owner**: Business value, Full vs MVP
-- **@technical-architecture-lead**: Performance, scalability
+- **@backend-technology-expert**: Performance, scalability
 - **@security-privacy-architect**: GDPR, security design
 
 ---

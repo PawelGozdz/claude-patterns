@@ -69,10 +69,18 @@ ujawnia rzeczy do przedyskutowania, zanim warto pisać kod.
 ### 0.5. Pattern discovery (grounding)
 - Wczytaj `.claude/knowledge/patterns/README.md` + `_stack-defaults/{stack}.yml`.
 - Zbierz listę kanonicznych wzorców (`patterns[]`) istotnych dla zadania → do `patterns[]` w artefakcie.
-- **WCZYTAJ treść Rule Cards** (`*_summary.md`) dla tych wzorców i WSTRZYKNIJ ją do promptów panelu —
-  nie tylko ścieżki. Agenci ECC (`ecc:architect` itd.) NIE znają naszych konwencji proaktywnie;
-  bez wstrzykniętej treści wzorca ich rekomendacje będą generyczne. To ten sam grounding, który
-  check-patterns-read / check-subagent-pattern-reads egzekwują w fazie implementacji.
+  **Trzymaj się `always_include` + trafionych `trigger_includes`** z `_stack-defaults/{stack}.yml`
+  (zwykle 3-8 wzorców) — to NIE jest zaproszenie do wczytania całego `patterns/README.md` jako listy.
+  Jeśli zadanie faktycznie dotyka więcej warstw niż zwykle, to w porządku — ale uzasadnij to w
+  artefakcie, nie ładuj "na wszelki wypadek".
+- **WCZYTAJ treść Rule Cards** (`*_summary.md`) **TYLKO dla wzorców z powyższej, zawężonej listy** i
+  WSTRZYKNIJ ją do promptów panelu — nie wszystkie 16 kart, nie tylko ścieżki. Agenci ECC
+  (`ecc:architect` itd.) NIE znają naszych konwencji proaktywnie; bez wstrzykniętej treści wzorca ich
+  rekomendacje będą generyczne. To ten sam grounding, który check-patterns-read /
+  check-subagent-pattern-reads egzekwują w fazie implementacji. Panel-agenci (np. `ddd-application-expert`)
+  mają we własnym Knowledge Base instrukcję polegania na TEJ wstrzykniętej treści zamiast
+  samodzielnego Globowania całych katalogów `patterns/domain/` czy `patterns/application/` — nie
+  podważaj tego, wstrzykując im "na wszelki wypadek" więcej niż zawężoną listę.
 
 ### 0.6. RAG retrieval (jeśli MCP `knowledge-retriever` dostępny — graceful)
 `knowledge-retriever` to **jeden współdzielony HTTP daemon** (wszystkie projekty, `docker-compose`
@@ -102,15 +110,46 @@ Dla decyzji projektowych (agregat vs encja, VO vs encja, ACL vs events, policy v
 domain-service vs metoda, granica agregatu) NIE polegaj na osądzie agenta — użyj kart decyzyjnych:
 1. Wczytaj trafne karty z `.claude/knowledge/decisions/` (symlink; fallback: `decisions/README.md` indeks).
    Dobór wg tego, czego dotyka task (np. „cross-context" → acl-vs-domain-events; „nowy obiekt z tożsamością" → aggregate-vs-entity).
-2. **Konsultuj PRECEDENS projektu:** `docs/adr/` + `BUSINESS_RULES.yaml`. Jeśli decyzja już zapadła →
-   **zastosuj i cytuj ADR**, NIE re-decyduj. Jeśli nie → rekomenduj wg kryteriów karty + **zaproponuj nowy ADR**.
+2. **Konsultuj PRECEDENS projektu:** `docs/adr/` + `BUSINESS_RULES.yaml`. **NIE zgaduj nazwy pliku ADR i NIE
+   traktuj `docs/adr/README.md` jako pełnego/aktualnego indeksu** — bywa kuratorowany i niekompletny
+   (obserwacja 2026-07-07, juz-ide-api-1: katalog miał ~100 plików ADR, README wymieniało ~20; main command
+   celowo nie ma Glob/Bash w `tools:`, więc bez tego kroku jedyną opcją było zgadywanie slugów z tematu →
+   seria `File does not exist`, kilkadziesiąt spalonych tool-calli zanim trafiono albo poddano się).
+   Zamiast czytać na ślepo: **deleguj odkrycie realnej ścieżki do Explore-agenta** (ma Glob/Grep — main
+   command specjalnie nie), np. `Task(subagent_type='Explore', prompt: 'Znajdź w docs/adr/ pliki dotyczące
+   <temat/numer>. Jeśli tematu nie ma w docs/adr/README.md, wylistuj katalog (Glob) i dopasuj po treści —
+   NIE zgaduj nazwy pliku. Zwróć: dokładną ścieżkę, status, 2-3 zdania streszczenia decyzji.')`. Read całego
+   pliku rób dopiero na zwróconej, potwierdzonej ścieżce — i tylko jeśli streszczenie nie wystarcza.
+   Jeśli decyzja już zapadła → **zastosuj i cytuj ADR**, NIE re-decyduj. Jeśli nie → rekomenduj wg kryteriów
+   karty + **zaproponuj nowy ADR**.
 3. Wstrzyknij wybrane karty + znalezione ADR-y do stage'a **ddd-modeling**.
 Każda decyzja → wpis w `decisions[]` artefaktu z: wybór, **uzasadnienie wg karty**, cytat ADR lub `propose_adr: true`.
 
 ### 1. Panel advisory — agenci LIŚCIE (bez narzędzia Task!)
 **KRYTYCZNE (bug-fix):** wołaj agentów panelu jako **LIŚCIE — BEZ narzędzia Task**. Nie pozwól im
-delegować dalej — inaczej zapętlają się, próbując wołać nieistniejące agenty (np. `Explore`). Każdy
-stage = JEDNO wywołanie agenta. Wstrzykuj: spec zadania + **treść Rule Cards** (z 0.5) + kontekst poprzednich stage'ów.
+delegować dalej — nieograniczona sub-delegacja z każdego z 7 stage'ów to realne ryzyko zapętlenia
+niezależnie od tego, do kogo próbują delegować. **Korekta (2026-07-07): `Explore` TO realny, istniejący
+subagent — poprzednia wersja tego zdania błędnie sugerowała, że nie istnieje.** Kilku agentów panelu
+(np. `infrastructure-testing-implementer`, `code-quality-verifier`) ma we własnym prompt-cie doktrynę
+"zawsze deleguj wyszukiwanie do Explore" — w TYM kontekście (jako liść panelu) fizycznie tego nie
+zrobią, bo Task im odebrany, i to jest ZAMIERZONE: research/wyszukiwanie ma zrobić GŁÓWNA komenda
+`/analyze-ddd` (kroki 0.5-0.7, ona ma Task) PRZED wywołaniem panelu, nie sam panel-agent w locie.
+Każdy stage = JEDNO wywołanie agenta. Wstrzykuj: spec zadania + **treść Rule Cards** (z 0.5) + kontekst
+poprzednich stage'ów.
+
+**Budżet kontekstu międzystage'owego (KRYTYCZNE — obserwacja 2026-07-07):** "kontekst poprzednich
+stage'ów" wstrzykiwany do każdego kolejnego z 7 stage'ów **MUSI być zwięzłym streszczeniem
+(ustalenia + otwarte pytania, kilka-kilkanaście linii), NIGDY pełnym surowym outputem poprzedniego
+agenta**. Bez tego ograniczenia rośnie to kwadratowo (stage 7 dostaje sumę 1-6) — dokładnie ten sam
+anti-pattern, który w `/orchestrate-ddd` spalił przebieg pełnym `git diff` wklejonym do promptu kolejnej
+warstwy (incydent 2026-07-04, naprawiony regułą WL6 w `workflow-lint.js`); tu nie ma jeszcze
+analogicznego twardego gate'a, więc pilnuj tego ręcznie przy każdym wywołaniu. Realny przebieg
+2026-07-07 (juz-ide-api-1) spalił ~700k tokenów na 4 Explore-agentach jeszcze PRZED panelem — część
+tego to zgadywanie ścieżek (naprawione w 0.7), część to zbyt szerokie, nieograniczone zapytania
+Explore. **Zasada dla kroków 0.5-0.7 i dla każdego `Task(subagent_type='Explore', ...)` wołanego przez
+tę komendę:** jedno wąskie pytanie na wywołanie (jeden temat/plik/wzorzec, nie "zbadaj cały kontekst
+X"), z jawnym limitem w prompt-cie (np. "maks. 15 tool-calli, zwróć fakty + ścieżki, NIE pełne pliki").
+Jeśli research faktycznie wymaga wielu wątków, uruchom kilka WĄSKICH Explore zamiast jednego szerokiego.
 
 **Hardening (obserwacje z realnych przebiegów 2026-07-02):**
 - Wołaj agentów panelu **BEZ parametru `name`** — tryb mailbox potrafi nie dowieźć treści wyniku;

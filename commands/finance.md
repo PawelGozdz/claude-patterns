@@ -60,7 +60,7 @@ disallowedTools: Write, Edit, MultiEdit, Bash, NotebookEdit
 ## When NOT to use this command
 
 - Code generation tasks → use `/orchestrate` or implementer agents
-- Architecture decisions for non-finance systems → use `@technical-architecture-lead`
+- Architecture decisions for non-finance systems → use `@project-orchestrator` (routes to the stack's architecture agent)
 - Project planning → use `/pulse`, `/sprint`, `@tech-lead`, `@product-owner`
 - Marketing/CRO/copy/SEO/growth → use `/marketing`
 - Direct skill invocation when you already know which skill you want →

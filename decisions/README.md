@@ -17,6 +17,7 @@ nie re-decyduj. Jeśli nie → rekomenduj wg karty + zaproponuj **nowy ADR**. (P
 | [acl-vs-domain-events](acl-vs-domain-events.md) | cross-context sync (ACL) czy async (events)? |
 | [policy-vs-specification](policy-vs-specification.md) | predykat selekcji/walidacji czy decyzja biznesowa? |
 | [domain-service-vs-aggregate-method](domain-service-vs-aggregate-method.md) | logika wielu agregatów czy jednego? |
+| [execution-actor-vs-domain-actor](execution-actor-vs-domain-actor.md) | wykonawca żądania (ExecutionActor) czy właściciel (ActorId) czy klasa rynkowa (ActorType)? |
 
 ## Użycie
 Wstrzykiwane w stage **ddd-modeling** komendy `/analyze-ddd` — agent dobiera trafne karty wg tego,

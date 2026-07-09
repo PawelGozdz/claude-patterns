@@ -13,6 +13,11 @@ skills:
   - quality/coding-standards
 ---
 
+> **⚠️ `mcp__zen__*` tools: best-effort only.** No paid zen-MCP tier in this environment — the first
+> `zen__*` call in a task sometimes succeeds, later calls typically error. Try at most once per tool
+> per task; on any error, fall back to Grep/Glob/Read/Bash and your own reasoning instead of
+> retrying. Never block, stall, or degrade a verdict waiting on a zen call.
+
 # SvelteKit Quality Verifier
 
 **Role**: Quality gate with VETO power for SvelteKit projects

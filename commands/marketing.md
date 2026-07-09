@@ -65,7 +65,7 @@ disallowedTools: Write, Edit, MultiEdit, Bash, NotebookEdit
 ## When NOT to use this command
 
 - Pure code generation tasks → use `/orchestrate` or implementer agents
-- Architecture decisions → use `@technical-architecture-lead`
+- Architecture decisions → use `@project-orchestrator` (routes to the stack's architecture agent)
 - Project planning → use `/pulse`, `/sprint`, `@tech-lead`, `@product-owner`
 - Direct skill invocation when you already know which skill you want →
   `/<skill-name>` (e.g., `/copywriting`, `/seo-audit`)

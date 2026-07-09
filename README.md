@@ -37,14 +37,14 @@ A **single source of truth** for production-tested software patterns and agent t
 ├── README.md                    # This file
 ├── METADATA.yml                 # Repository metadata
 ├── .gitignore                   # Git exclusions
-├── patterns/                    # Production patterns (38 core + 29 stack-specific + 1 marketing + 2 finance + 2 legal)
+├── patterns/                    # Production patterns (42 core + 29 stack-specific + 1 marketing + 2 finance + 2 legal)
 │   ├── README.md                # Pattern index & usage guide
 │   ├── domain/                  # Domain layer (6 patterns)
 │   ├── application/             # Application layer (4 patterns)
 │   ├── infrastructure/          # Infrastructure layer (4 patterns)
-│   ├── architecture/            # Architecture patterns (9 patterns)
-│   ├── testing/                 # Testing patterns (7 patterns)
-│   ├── cross-layer/             # Cross-layer patterns (4 patterns)
+│   ├── architecture/            # Architecture patterns (12 patterns)
+│   ├── testing/                 # Testing patterns (9 patterns)
+│   ├── cross-layer/             # Cross-layer patterns (6 patterns)
 │   ├── orchestration/           # Orchestration patterns (1 pattern)
 │   ├── marketing/               # Marketing patterns (1 pattern)
 │   ├── finance/                 # Finance patterns (2 patterns: layered-knowledge, regulatory-disclaimer)
@@ -54,12 +54,11 @@ A **single source of truth** for production-tested software patterns and agent t
 │   ├── requirements.txt         # Python dependencies
 │   ├── settings.json.example    # Example Claude settings
 │   └── README.md                # MCP setup & usage guide
-├── agents/                      # Agent definitions (11 universal + 14 stack-specific)
+├── agents/                      # Agent definitions (26 universal + 15 stack-specific)
 │   ├── README.md                # Agent setup & usage guide
 │   ├── universal/               # Stack-agnostic agents (linked to ~/.claude/agents/)
 │   │   ├── backend-technology-expert.md
 │   │   ├── security-privacy-architect.md
-│   │   ├── technical-architecture-lead.md
 │   │   ├── tech-lead.md              # PM: project health, debt, dependencies
 │   │   ├── product-owner.md          # PM: business value, mobile UX, milestones
 │   │   ├── marketing-strategist.md   # Marketing coordinator (CRO, copy, SEO, growth)
@@ -130,7 +129,7 @@ A **single source of truth** for production-tested software patterns and agent t
 ├── hooks/                       # PostToolUse/Stop hooks
 │   ├── pm-task-check.js         # [NEW] PM briefing when task files change
 │   └── ...                      # (other hooks)
-├── commands/                    # Global commands (22 — symlinked to ~/.claude/commands/)
+├── commands/                    # Global commands (26 — symlinked to ~/.claude/commands/)
 │   ├── README.md                # Command catalog & usage guide
 │   ├── pulse.md                 # PM: full team sync
 │   ├── pm-status.md             # PM: quick state read (~$0)
@@ -678,7 +677,6 @@ User-level resources available across ALL projects on your system.
 | `@product-owner` | Business value: milestones, mobile UX, segment gaps | Sonnet |
 | `@backend-technology-expert` | Sync/async decisions, performance, tech stack | Opus |
 | `@security-privacy-architect` | OWASP, GDPR, encryption, auth | Opus |
-| `@technical-architecture-lead` | Infrastructure, scalability, architecture | Opus |
 
 ### Commands (22)
 

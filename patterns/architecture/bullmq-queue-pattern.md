@@ -596,4 +596,4 @@ export class DiscordModule {}
 **Created**: 2026-01-04
 **Status**: PRODUCTION
 **Primary Users**: infrastructure-testing-implementer, domain-application-implementer
-**Maintained By**: @technical-architecture-lead
+**Maintained By**: @backend-technology-expert

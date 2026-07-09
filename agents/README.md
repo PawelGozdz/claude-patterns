@@ -1,7 +1,7 @@
 # Global Claude Code Agents
 
 **Purpose**: Reusable specialist and advisory agents for Claude Code projects.
-**Total**: 11 universal + 14 stack-specific = 25 agents
+**Total**: 26 universal + 15 stack-specific = 41 agents
 
 ---
 
@@ -17,7 +17,6 @@
     project-orchestrator.md       -> agents/universal/
     security-privacy-architect.md -> agents/universal/
     state-reader.md               -> agents/universal/
-    technical-architecture-lead.md -> agents/universal/
     tech-lead.md                  -> agents/universal/
     product-owner.md              -> agents/universal/
 
@@ -30,7 +29,7 @@ project/.claude/agents/        <- stack agents (per-project, via setup-project.s
 
 ---
 
-## Universal Agents (11)
+## Universal Agents (26)
 
 Linked globally to `~/.claude/agents/` via `setup-global.sh`.
 
@@ -61,13 +60,12 @@ Use these instead of running discovery/extraction in Sonnet/Opus context — 12-
 These agents power the PM system (`/pulse`, `/sprint`, etc.).
 See `patterns/orchestration/project-management-system.md` for full docs.
 
-### Specialists (3)
+### Specialists (2)
 
 | Agent | Purpose | Model | Writes Code |
 |-------|---------|-------|-------------|
 | **backend-technology-expert** | Sync vs async, performance, tech stack decisions | Opus | No |
 | **security-privacy-architect** | OWASP, GDPR, encryption, auth strategies | Opus | No |
-| **technical-architecture-lead** | Infrastructure design, scalability, architecture decisions | Opus | No |
 
 ### Marketing, Finance & Legal Strategy (3)
 
@@ -84,9 +82,38 @@ see `patterns/marketing/product-marketing-context-pattern.md`,
 `patterns/finance/regulatory-disclaimer-pattern.md`, and
 `patterns/legal/jurisdiction-aware-disclaimer-pattern.md` for architecture.
 
+### Code Review Panel (16)
+
+Persona-based reviewers dispatched in parallel by the `review-panel` skill (`/review-panel`).
+Each agent is advisory-only (`Writes Code: No` — the skill applies approved fixes itself via
+`Edit`, agents only return findings) and enforces a mandatory verification step before flagging
+anything missing or wrong, to keep false-positive rate low.
+
+| Agent | Purpose | Model | Writes Code |
+|-------|---------|-------|-------------|
+| **reviewer-eagle** | Architecture, module boundaries, abstraction quality | Sonnet | No |
+| **reviewer-security** | Injection, authz/authn, secrets, PII exposure | Sonnet | No |
+| **reviewer-performance** | N+1 queries, blocking I/O, algorithmic complexity | Sonnet | No |
+| **reviewer-user** | Loading/error/empty states, a11y, i18n, confusing flows | Sonnet | No |
+| **reviewer-nitpicker** | Naming, formatting, dead code — deliberately low-severity | Sonnet | No |
+| **reviewer-newbie** | Readability/cognitive load for someone new to the code | Sonnet | No |
+| **reviewer-skeptic** | Race conditions, null/edge-case assumptions | Sonnet | No |
+| **reviewer-pragmatist** | Production-blocker baseline — always included in the panel | Sonnet | No |
+| **reviewer-money** | Financial/numeric calculations, rounding, currency | Sonnet | No |
+| **reviewer-compatibility** | Breaking API/schema changes, consumer contracts | Sonnet | No |
+| **reviewer-compliance** | PII/regulated-data exposure, retention, audit trails | Sonnet | No |
+| **reviewer-tester** | Test quality (not just coverage), flaky/snapshot-abuse patterns | Sonnet | No |
+| **reviewer-ops** | Logging, error handling, config/env, migration/rollback safety | Sonnet | No |
+| **reviewer-product** | Requirement/acceptance-criteria fit, ambiguity flagging | Sonnet | No |
+| **reviewer-champion** | Only positive reviewer — praises good patterns worth repeating | Sonnet | No |
+| **reviewer-professor** | Subtle language/runtime bugs (closures, async, coercion), explains why | Sonnet | No |
+
+Skill: `skills/quality/review-panel/SKILL.md` · Command: `/review-panel` · Pattern:
+`patterns/cross-layer/snapshot-incremental-review-pattern.md`
+
 ---
 
-## Stack-Specific Agents (15)
+## Stack-Specific Agents (16)
 
 Linked per-project to `.claude/agents/` via `setup-project.sh`.
 
@@ -98,10 +125,11 @@ Linked per-project to `.claude/agents/` via `setup-project.sh`.
 | **code-quality-verifier** | DDD/CQRS quality verification, test pyramid | Sonnet | Yes |
 | **security-e2e-verifier** | Security validation, OWASP, E2E coverage | Opus | Yes |
 
-### flutter-clean-arch (3)
+### flutter-clean-arch (4)
 
 | Agent | Purpose | Model | VETO |
 |-------|---------|-------|------|
+| **flutter-implementer** | Implements domain/(application)/data/presentation layers | Sonnet | No |
 | **flutter-architecture-expert** | Clean architecture, Riverpod patterns | Sonnet | No |
 | **flutter-quality-verifier** | Flutter quality, layer purity | Sonnet | Yes |
 | **flutter-ui-verifier** | UI/UX patterns, widget testing | Sonnet | Yes |

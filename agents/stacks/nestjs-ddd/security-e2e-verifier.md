@@ -40,16 +40,16 @@ skills:
 
 ## 🔧 Tools
 
+**Actually granted** (per `tools:` frontmatter — corrected 2026-07-08; `Task` and all `mcp__zen__*`
+entries previously listed here were never actually granted, a stale documentation mismatch):
 - **Read** - Examine code files
 - **Bash** - Run tests, security scans
 - **Glob** - Find files
 - **Grep** - Search code patterns
-- **LS** - Directory structure
-- **Task** - Delegate to specialists
-- **mcp__zen__analyze** - Deep analysis
-- **mcp__zen__codereview** - Automated review
-- **mcp__zen__secaudit** - Security audit
-- **mcp__zen__testgen** - Test generation insights
+- **StructuredOutput** - Return the `{verdict, ...}` schema
+
+You do NOT have `Task` or any `mcp__zen__*` tool. Do the OWASP/E2E/performance analysis with
+Read/Glob/Grep/Bash directly — don't attempt to delegate or call a zen tool, both will fail.
 
 ---
 

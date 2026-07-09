@@ -42,12 +42,70 @@ if (v == null) { log('ESCALATE: verifier padł'); return { escalated: true } }
 const final = await agent('final security gate', { label: 'final-gate', agentType: 'security-e2e-verifier', schema: VERDICT })
 `;
 
+const TSC_BURIED_IN_PROSE = `
+export const meta = { name: 'impl-tscburied', description: 'x', phases: [] }
+phase('InfraConsumers')
+const impl = await agent(\`Zaimplementuj warstwe. Zakres:
+1. Handler A.
+2. Handler B.
+3. Test piramida.
+4. Test piramida L1~50%/L2~30% dla tej warstwy. tsc --noEmit bez nowych bledow.\`, { label: 'impl:infra-consumers', agentType: 'infrastructure-testing-implementer' })
+const diff = await agent('run: git diff --stat', { label: 'gate:code-exists' })
+if (!diff || !diff.trim()) { log('ESCALATE'); return { escalated: true } }
+phase('Verify')
+const v = await agent('verify infra layer', { label: 'verify:infra', agentType: 'code-quality-verifier', schema: VERDICT })
+if (v == null) { log('ESCALATE: verifier padł'); return { escalated: true } }
+const final = await agent('final security gate', { label: 'final-gate', agentType: 'security-e2e-verifier', schema: VERDICT })
+`;
+
+const DOCS_LAYER_HEAVY_CONTEXT = `
+export const meta = { name: 'impl-docsheavy', description: 'x', phases: [] }
+const infraDocsDirs = ['docs/product/geo-domain.md', 'docs/business/token-economy.md']
+phase('InfraDocs')
+const impl = await agent(\`Zaktualizuj dokumentacje.
+\${EXISTING_INFRA}
+\${DECISIONS}
+Kod jest juz zaimplementowany, Read swiezy kod jesli potrzebujesz faktow.\`, { label: 'impl:infra-docs' })
+const diff = await agent('run: git diff --stat', { label: 'gate:code-exists' })
+if (!diff || !diff.trim()) { log('ESCALATE'); return { escalated: true } }
+phase('Verify')
+const v = await agent('verify docs layer', { label: 'verify:infra-docs', agentType: 'code-quality-verifier', schema: VERDICT })
+if (v == null) { log('ESCALATE: verifier padł'); return { escalated: true } }
+const final = await agent('final security gate', { label: 'final-gate', agentType: 'security-e2e-verifier', schema: VERDICT })
+`;
+
+const DOCS_LAYER_MITIGATED = DOCS_LAYER_HEAVY_CONTEXT.replace(
+  'Kod jest juz zaimplementowany, Read swiezy kod jesli potrzebujesz faktow.',
+  'ZAKAZ: NIE czytaj, NIE grepuj, NIE weryfikuj zadnego kodu zrodlowego (src/) — kod jest juz w pelni zaimplementowany.'
+);
+
+// Regresja: realny skrypt juz-ide-api-2 uzywal referencji do wlasciwosci (FILES.geoDomainDoc),
+// nie inline stringow — pierwsza wersja WL8 (tylko cudzyslowy) by tego nie zlapala.
+const DOCS_LAYER_PROPERTY_REFS = `
+export const meta = { name: 'impl-docsproprefs', description: 'x', phases: [] }
+const infraDocsDirs = [FILES.geoDomainDoc, FILES.tokenEconomyDoc, FILES.monetizationMatrixDoc]
+phase('InfraDocs')
+const impl = await agent(\`Zaktualizuj dokumentacje.
+\${EXISTING_INFRA}
+\${DECISIONS}
+Kod jest juz zaimplementowany, Read swiezy kod jesli potrzebujesz faktow.\`, { label: 'impl:infra-docs' })
+const diff = await agent('run: git diff --stat', { label: 'gate:code-exists' })
+if (!diff || !diff.trim()) { log('ESCALATE'); return { escalated: true } }
+phase('Verify')
+const v = await agent('verify docs layer', { label: 'verify:infra-docs', agentType: 'code-quality-verifier', schema: VERDICT })
+if (v == null) { log('ESCALATE: verifier padł'); return { escalated: true } }
+const final = await agent('final security gate', { label: 'final-gate', agentType: 'security-e2e-verifier', schema: VERDICT })
+`;
+
 const CASES = [
   { name: 'good-script-passes', src: GOOD, expectErrors: [], expectWarns: [] },
   { name: 'bad-script-wl1-wl2-wl3', src: BAD, expectErrors: ['WL1', 'WL2', 'WL3'], expectWarns: ['WL5'] },
   { name: 'verify-without-schema-warns-wl4', src: GOOD.replace(', schema: VERDICT })', ' })'), expectErrors: [], expectWarns: ['WL4'] }, // replace = tylko 1. wystąpienie
   { name: 'full-diff-injected-warns-wl6', src: FULL_DIFF_INJECTED, expectErrors: [], expectWarns: ['WL6'] },
-
+  { name: 'tsc-buried-in-prose-warns-wl7', src: TSC_BURIED_IN_PROSE, expectErrors: [], expectWarns: ['WL7'] },
+  { name: 'docs-layer-heavy-context-warns-wl8', src: DOCS_LAYER_HEAVY_CONTEXT, expectErrors: [], expectWarns: ['WL8'] },
+  { name: 'docs-layer-mitigated-no-wl8', src: DOCS_LAYER_MITIGATED, expectErrors: [], expectWarns: [] },
+  { name: 'docs-layer-property-refs-warns-wl8', src: DOCS_LAYER_PROPERTY_REFS, expectErrors: [], expectWarns: ['WL8'] },
 ];
 
 let failed = 0;
