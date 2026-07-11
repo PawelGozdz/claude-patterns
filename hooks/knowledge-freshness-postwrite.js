@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * PostToolUse Hook: knowledge-retriever freshness — fire-and-forget incremental re-embed of an
- * edited .ts/.tsx file, IF the project opted in via .claude/config/knowledge.json.
+ * edited .ts/.tsx/.dart file, IF the project opted in via .claude/config/knowledge.json.
  *
  * OPT-IN PER PROJECT — NOT registered in the global hooks.json (see hooks/README.md). A project
  * that uses knowledge-retriever adds this to its own .claude/settings.json PostToolUse hooks with
@@ -44,7 +44,13 @@ process.stdin.on("end", () => {
 
   try {
     const filePath = input.tool_input?.file_path;
-    if (!filePath || !/\.(ts|tsx)$/.test(filePath)) {
+    // .ts/.tsx/.dart — mirrors indexer.ts::isCode (generated .g/.freezed.dart + tests excluded)
+    if (
+      !filePath ||
+      !/\.(ts|tsx|dart)$/.test(filePath) ||
+      /\.(g|freezed)\.dart$/.test(filePath) ||
+      /_test\.dart$/.test(filePath)
+    ) {
       finish();
       return;
     }

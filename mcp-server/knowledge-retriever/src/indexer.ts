@@ -4,6 +4,7 @@
 import { readdirSync, readFileSync, statSync, mkdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { chunkCode } from "./code-chunker.js";
+import { chunkDart } from "./dart-chunker.js";
 import { QdrantStore } from "./store-qdrant.js";
 import { HttpEmbedder } from "./embedder.js";
 import type { Chunk } from "./types.js";
@@ -11,7 +12,13 @@ import type { Chunk } from "./types.js";
 const BATCH = 64;
 const MANIFEST = process.env.KR_MANIFEST ?? "./mirror/collections.json"; // tiny, git-committed: model+dim per collection
 const SKIP_DIR = (n: string) => n === "node_modules" || n === "dist" || n === "__tests__" || n.startsWith(".");
-const isCode = (n: string) => (n.endsWith(".ts") || n.endsWith(".tsx")) && !n.endsWith(".spec.ts") && !n.endsWith(".d.ts");
+const isTs = (n: string) => (n.endsWith(".ts") || n.endsWith(".tsx")) && !n.endsWith(".spec.ts") && !n.endsWith(".d.ts");
+// Dart: skip generated files (.g/.freezed — build_runner output, retrieval noise) and tests
+const isDart = (n: string) =>
+  n.endsWith(".dart") && !n.endsWith(".g.dart") && !n.endsWith(".freezed.dart") && !n.endsWith("_test.dart");
+const isCode = (n: string) => isTs(n) || isDart(n);
+const chunkFile = (content: string, source: string): Chunk[] =>
+  source.endsWith(".dart") ? chunkDart(content, source) : chunkCode(content, source);
 
 // `dir` must already be absolute (callers resolve() before the first call) — `source` is stored
 // as an absolute path so retrieve_code results are Read-able regardless of the caller's cwd
@@ -21,7 +28,7 @@ function walk(dir: string, acc: Chunk[]): void {
     const full = join(dir, name);
     const st = statSync(full);
     if (st.isDirectory()) { if (!SKIP_DIR(name)) walk(full, acc); }
-    else if (isCode(name)) acc.push(...chunkCode(readFileSync(full, "utf8"), full));
+    else if (isCode(name)) acc.push(...chunkFile(readFileSync(full, "utf8"), full));
   }
 }
 
@@ -64,7 +71,7 @@ export async function reindexFile(absPath: string, collection: string): Promise<
   const store = new QdrantStore(collection);
   await store.deleteBySource(absPath);
 
-  const chunks = chunkCode(readFileSync(absPath, "utf8"), absPath);
+  const chunks = chunkFile(readFileSync(absPath, "utf8"), absPath);
   if (!chunks.length) return 0;
 
   const embedder = new HttpEmbedder();

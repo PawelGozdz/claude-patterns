@@ -14,7 +14,7 @@ Konsumowany przez `/analyze-ddd` (Codebase Facts + grounding) i `/orchestrate-dd
 
 ## Architektura
 ```
-embedder (pluggable) ──→ chunk (kod: TS AST per-symbol | md: H2/H3 per-sekcja) ──→ Qdrant (dedykowany)
+embedder (pluggable) ──→ chunk (kod: TS AST per-symbol | Dart: heurystyczny skaner per-symbol | md: H2/H3 per-sekcja) ──→ Qdrant (dedykowany)
 ```
 - **Embedder** (swappable wg env): `KR_EMBED_PROVIDER` = `ct301` (GPU e5-large 1024, domyślny) | `openai` (dowolny /v1/embeddings — vLLM/Ollama/zewn.). `KR_EMBED_URL`, `KR_EMBED_MODEL`.
 - **Store:** **dedykowany** Qdrant (docker-compose, port **6401**) — izolowany od współdzielonego prod-Qdrant. Kolekcje: `code_<project>` / `best_practices_<project>` (per-projekt), `patterns_global` / `library_reference_global` (globalne) — rejestr w `src/schema.ts`.

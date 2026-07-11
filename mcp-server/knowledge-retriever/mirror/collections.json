@@ -20,5 +20,9 @@
     "model": "ct301:multilingual-e5-large",
     "dim": 1024,
     "indexedAt": "2026-07-01T18:47:04Z"
+  },
+  "code_juz_ide_mobile_app": {
+    "model": "ct301:multilingual-e5-large",
+    "dim": 1024
   }
 }

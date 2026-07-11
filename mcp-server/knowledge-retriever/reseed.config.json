@@ -2,6 +2,7 @@
   "_comment": "collection -> source dirs. Reseed embeds (KR_EMBED_*) + recreates each Qdrant collection. Naming: code_<project-basename> by default, OR explicit project.yml::knowledge_collection override for twin/shared-repo projects (see setup-project.sh) — must match the value written to that project's .claude/config/knowledge.json.",
   "collections": {
     "code_juz_ide_api": ["../../../juz-ide-api-1/src"],
+    "code_juz_ide_mobile_app": ["../../../juz-ide-mobile-app/lib"],
     "code_grant_flow": ["../../../grant-flow/src"],
     "code_universal_learning_system": ["../../../universal-learning-system/src"]
   }

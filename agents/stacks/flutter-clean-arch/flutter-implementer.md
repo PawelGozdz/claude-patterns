@@ -6,7 +6,7 @@ description: |
   Implements DOMAIN, optional APPLICATION, DATA and PRESENTATION layers per feature, following
   the 3-mandatory + 1-optional layer model (domain/data/presentation always; application only
   when the task needs orchestration beyond simple CRUD).
-tools: Read, Write, Edit, MultiEdit, Glob, Grep, LS, Task, StructuredOutput
+tools: Read, Write, Edit, MultiEdit, Glob, Grep, LS, Task, StructuredOutput, mcp__knowledge-retriever__retrieve_code, mcp__knowledge-retriever__retrieve_patterns
 disallowedTools: Bash
 model: sonnet
 temperature: 0.3
@@ -87,6 +87,21 @@ and the `flutter-hooks.json` config afterward. Skipping this step reliably produ
 ---
 
 ## 💰 Cost Optimization — delegate file discovery
+
+**Decision rule — `retrieve_code` (MCP tool) vs Explore/Grep/Read** (mirrors the nestjs-ddd
+implementers; the daemon is shared, so ALWAYS pass `collection` explicitly — read it from
+`.claude/config/knowledge.json`, e.g. `code_juz_ide_mobile_app`):
+- **Unknown exact symbol/file name** (you know the CAPABILITY — e.g. "how does another feature
+  map DioException to Failure", "an existing paginated notifier" — but not where it lives) →
+  call `retrieve_code` first. Semantic search over the project's existing Dart code, returns
+  file+symbol+lines. Generated files (`.g.dart`/`.freezed.dart`) and tests are not indexed.
+- **Known exact name to copy verbatim** (the task/prompt already told you which file/symbol
+  to look at) → go straight to Read/Grep. `retrieve_code` adds a network roundtrip for nothing.
+- **`retrieve_patterns(query)`** (global, no collection needed) — when the injected Rule Cards
+  don't cover your question about OUR conventions (patterns/flutter/*, rules/dart/* are indexed).
+  Injected Rule Cards remain BINDING — retrieval supplements, never overrides them.
+- Do NOT use `retrieve_examples` — it serves `@vytches/ddd` (TypeScript backend library),
+  irrelevant for Flutter work.
 
 **Sonnet is far more expensive than the Explore agent (Haiku) for pure search.** Before
 implementing, delegate discovery of reference implementations:
