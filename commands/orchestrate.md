@@ -337,7 +337,7 @@ Implementers live in `{project}/.claude/agents/` (flat — no `implementers/` su
 
 | Stack Profile | Layer 1 (domain/app — run first) | Layer 2 (infra/testing — run second) |
 |---|---|---|
-| nestjs-ddd | `domain-application-implementer` | `infrastructure-testing-implementer` |
+| nestjs-ddd | `domain-application-implementer` | `infrastructure-implementer` |
 | flutter* | `flutter-implementer` | — |
 | python* | `python-implementer` | — |
 | sveltekit* | `sveltekit-implementer` | — |
@@ -485,9 +485,9 @@ Agent(subagent_type='domain-application-implementer',
 ```
 Capture output as `{DOMAIN_LAYER_OUTPUT}`.
 
-**Step 3B — Infrastructure/Testing layer** (`infrastructure-testing-implementer`):
+**Step 3B — Infrastructure/Testing layer** (`infrastructure-implementer`):
 ```
-Agent(subagent_type='infrastructure-testing-implementer',
+Agent(subagent_type='infrastructure-implementer',
       prompt='Implement infrastructure + tests for [feature].\n' + TEMPLATE +
              '\nDomain layer already implemented:\n{DOMAIN_LAYER_OUTPUT}',
       description='Infra/testing implementation')

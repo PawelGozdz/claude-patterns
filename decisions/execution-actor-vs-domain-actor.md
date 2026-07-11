@@ -63,5 +63,9 @@ wykonujesz TO żądanie.**
 
 `docs/adr/` + BUSINESS_RULES.yaml. W LocalHero: TS-MULTI-ACTOR-001 (ActorId/ActorType),
 TS-SEC-ONBEHALF-001 + `project-orchestration/analysis/TS-SEC-ONBEHALF-001.analysis.md` §3
-(D-ACTOR — źródło tej karty), vytches-ddd VA-001 (IAIActor, dispatcher AI). Jeśli projekt
-nie ma jeszcze pojęcia wykonawcy — rekomenduj `ExecutionActor` na `IActor` i zaproponuj ADR.
+(D-ACTOR — źródło tej karty), vytches-ddd VA-001 (IAIActor, dispatcher AI),
+ADR-0104 (2026-07-11 — drugi konsument `ActorId` poza Quick-Jobs: ServiceProvider/
+ServiceOffering migrują z bespoke `userId`+`organizationId`+`ownerType` na `ActorId`,
+zamiast wymyślać nowe pole — przykład stosowania tej karty przy refaktorze istniejącego
+agregatu, nie tylko przy projektowaniu nowego). Jeśli projekt nie ma jeszcze pojęcia
+wykonawcy — rekomenduj `ExecutionActor` na `IActor` i zaproponuj ADR.

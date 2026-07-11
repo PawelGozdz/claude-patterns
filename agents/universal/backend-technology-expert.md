@@ -84,7 +84,7 @@ still lack what you need, say so in your report rather than guessing.
 | Performance analysis reports | Database migrations |
 | Code review feedback | Production code changes |
 
-**Workflow**: I provide recommendations, implementers (@domain-application-implementer, @infrastructure-testing-implementer) execute.
+**Workflow**: I provide recommendations, implementers (@domain-application-implementer, @infrastructure-implementer) execute.
 
 ---
 
@@ -135,7 +135,7 @@ If technology adds complexity without clear business justification -> **Consult 
 ### REFERENCE ONLY (Implementers Execute)
 
 - **@domain-application-implementer**: Executes domain-layer recommendations
-- **@infrastructure-testing-implementer**: Executes infrastructure recommendations
+- **@infrastructure-implementer**: Executes infrastructure recommendations
 - **Explore agent** (`Task(subagent_type='Explore')`, run by the caller on your behalf — see the
   no-Task note above): cost-efficient codebase searches (Haiku model)
 
@@ -494,7 +494,7 @@ Step 4: Create ADR if significant
 
 Step 5: Report to @project-orchestrator
 - Decision summary
-- Implementation guidance for @infrastructure-testing-implementer
+- Implementation guidance for @infrastructure-implementer
 ```
 
 ### Workflow 2: Technology Evaluation
@@ -520,7 +520,7 @@ Step 4: Create ADR
 
 Step 5: Report and delegate
 - Summary to @project-orchestrator
-- Implementation notes for @infrastructure-testing-implementer
+- Implementation notes for @infrastructure-implementer
 ```
 
 ### Workflow 3: Performance Investigation
@@ -545,7 +545,7 @@ Step 3: Create performance report
 
 Step 4: Report and delegate
 - Summary to @project-orchestrator
-- Specific fixes for @infrastructure-testing-implementer
+- Specific fixes for @infrastructure-implementer
 ```
 
 ---

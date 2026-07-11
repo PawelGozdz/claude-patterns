@@ -166,7 +166,7 @@ Task(codebase-explorer) = $0.05 per search **Savings**: 40-100x
   boundaries, contexts)
 - **@product-owner**: Validates business value before implementation
 - **@code-quality-verifier**: Sends work for verification
-- **@infrastructure-testing-implementer**: Delegates testing (context isolation)
+- **@test-implementer**: Delegates testing (context isolation)
 
 **REFERENCE** (know exists, link only):
 
@@ -354,13 +354,13 @@ Grep(
 ## 🔄 Testing Delegation (Context Isolation)
 
 **CRITICAL**: NEVER write tests. ALWAYS delegate to
-@infrastructure-testing-implementer.
+@test-implementer.
 
 **After implementation**:
 
 ```typescript
 Task(
-  (subagent_type = 'infrastructure-testing-implementer'),
+  (subagent_type = 'test-implementer'),
   (prompt = `
 Create tests for [feature]:
 
@@ -392,9 +392,9 @@ If unclear → **CONSULT @product-owner**
 
 ## ⛔ NOT Your Responsibility
 
-- Controllers/Zod schemas → @infrastructure-testing-implementer
-- Tests → @infrastructure-testing-implementer
-- Repositories → @infrastructure-testing-implementer
+- Controllers/Zod schemas → @infrastructure-implementer
+- Tests → @test-implementer
+- Repositories → @infrastructure-implementer
 - Strategic DDD → @ddd-application-expert
 - Security design → @security-privacy-architect
 
@@ -450,7 +450,7 @@ IMMEDIATELY after code changes
 
 ### 5. Delegate Testing
 
-Call @infrastructure-testing-implementer with minimal input
+Call @test-implementer with minimal input
 
 ---
 
@@ -462,143 +462,30 @@ Call @infrastructure-testing-implementer with minimal input
 - **ADR-0021**: Validation layer separation
 - **ADR-0035**: BUSINESS_RULES.yaml as truth
 
-### CQRS Repository Segregation (CRITICAL)
+**Concrete code templates and examples live in the canonical pattern files — read them before
+implementing, don't pattern-match against memory of this list. This file is not the source of
+truth; `.claude/knowledge/patterns/` is (same convention `infrastructure-implementer.md`
+already uses for its own "Controller / Repository / Test Patterns" section):**
 
-```typescript
-// ✅ CORRECT: Command handler uses ONLY command repository
-@CommandHandler(UpdateOfferCommand)
-export class UpdateOfferHandler extends BaseCommandHandler {
-  constructor(
-    @Inject(OFFER_COMMAND_REPOSITORY) private readonly repo: IOfferCommandRepository
-  ) { super(...) }
-}
-
-// ❌ WRONG: Command handler injecting query repository
-@CommandHandler(UpdateOfferCommand)
-export class UpdateOfferHandler extends BaseCommandHandler {
-  constructor(
-    @Inject(OFFER_QUERY_REPOSITORY) private readonly queryRepo: IOfferQueryRepository // ← VIOLATION
-  ) { super(...) }
-}
-```
-
-**Rule**: If a command handler needs data only available in query repo → add the
-method to the command repo interface. NEVER inject query repo into command
-handler and vice versa.
-
-### ConfigService (SHARED — NOT @nestjs/config)
-
-```typescript
-// ✅ CORRECT: shared ConfigService
-import { ConfigService } from '@shared/config/config.service';
-
-// ❌ WRONG: NestJS built-in ConfigService
-import { ConfigService } from '@nestjs/config'; // NEVER use this
-```
-
-### Policy Base Class
-
-```typescript
-// ✅ CORRECT: validation policy via PolicyBuilder factory function
-export function createMyPolicy() {
-  return PolicyBuilder.create<MyContext>()
-    .must(new SomeSpecification())
-    .build();
-}
-
-// ✅ CORRECT: calculation policy extends BaseBusinessPolicy
-export class DiscountCalculationPolicy extends BaseBusinessPolicy<Order> {
-  calculate(order: Order): number { ... }
-}
-
-// ❌ WRONG: plain class for policies
-export class MyPolicy { // No base class
-  validate(...) { }
-}
-```
-
-### Audit Handler (MANDATORY for new contexts)
-
-Every bounded context with Tier 1 domain events MUST have an audit handler. See
-`.claude/knowledge/patterns/application/audit-handler-pattern.md` for full
-checklist.
-
-```typescript
-// ✅ CORRECT: extends BaseAuditHandler
-@Injectable()
-export class MyContextAuditHandler extends BaseAuditHandler {
-  protected getBoundedContext(): BoundedContextName {
-    return 'MyContext';
-  }
-  protected getEventCategory(): AuditEventCategory {
-    return 'MY_CATEGORY';
-  }
-
-  @EventHandler(MyTier1Event)
-  async handleMyTier1Event(event: MyTier1Event): Promise<void> {
-    await this.createAuditEntry('MY_ACTION', {
-      userId: event.aggregateId,
-      legalBasis: 'CONTRACT',
-      dataCategories: ['identity'],
-      retentionPeriod: '7_YEARS',
-    });
-  }
-}
-```
-
-### Result Pattern (Domain)
-
-```typescript
-// ✅ CORRECT — void success uses Result.empty()
-updateEmail(email: Email): Result<void, DomainError> {
-  if (!this.canChangeEmail()) {
-    return Result.fail(new EmailChangeNotAllowedError());
-  }
-  return Result.empty();
-}
-
-// ✅ CORRECT — success with payload uses Result.ok(value)
-static create(email: string): Result<Email, EmailValidationError> {
-  if (!email.includes('@')) return Result.fail(new EmailValidationError(email));
-  return Result.ok(new Email(email));
-}
-
-// ❌ WRONG: throwing exceptions in domain layer
-updateEmail(email: string): void {
-  if (!email.includes('@')) throw new Error('Invalid'); // DDD layer purity violation
-}
-
-// ❌ DEPRECATED: Result.ok() with no argument
-// Removed in @vytches/ddd upgrade (2026-04). Use Result.empty() for void.
-updateEmail(email: Email): Result<void, DomainError> {
-  return Result.ok(); // ← TypeScript error: expected 1 argument
-}
-```
-
-**API surface** (`@vytches/ddd`):
-
-- `Result.ok(value)` — success with payload (required argument)
-- `Result.empty()` — success without payload (void result)
-- `Result.ok(undefined)` — intentional `undefined` as a value (rare: optional
-  field mappers)
-- `Result.fail(error)` — failure (always takes domain error instance)
-
-### Hybrid Error Handling (Application)
-
-```typescript
-// ✅ CORRECT
-@Transactional()
-async execute(command): Promise<Result<UserId>> {
-  try {
-    const result = UserAggregate.create(command.email);
-    if (result.isFailure) return result; // Rollback
-    await this.repo.save(result.value); // Can throw
-    return Result.ok(result.value.id);
-  } catch (error) {
-    return Result.fail(new InfrastructureError(error));
-  }
-}
-```
+- **CQRS repository segregation** (command handler → command repo ONLY, query handler → query
+  repo ONLY; if a command handler needs query-only data, add the method to the command repo
+  interface — never inject query repo into a command handler or vice versa) →
+  `application/command-handler-pattern.md` / `application/query-handler-pattern.md`
+- **ConfigService** — always `@shared/config/config.service`, NEVER `@nestjs/config` →
+  `cross-layer/conventions-pattern.md`
+- **Policy base class** — `PolicyBuilder.create<T>()` factory for validation policies,
+  `BaseBusinessPolicy<T>` for calculation policies, never a plain class →
+  `domain/specification-policy-pattern.md`
+- **Audit handler** (mandatory for every context with Tier 1 domain events, extends
+  `BaseAuditHandler`, implements `getBoundedContext()`/`getEventCategory()`) →
+  `application/audit-handler-pattern.md`
+- **Result pattern** — `Result.ok(value)` for payload success, `Result.empty()` for void success,
+  `Result.fail(error)` for failure, NEVER `throw` in domain → `cross-layer/domain-errors-pattern.md`.
+  One library-API gotcha worth keeping inline (versioned behavior, not a project convention that
+  can drift with our pattern files): `Result.ok()` with no argument was removed in the
+  `@vytches/ddd` 2026-04 upgrade — use `Result.empty()` for void.
+- **Hybrid error handling** — Result for domain-level failures, try/catch for infra/external errors
+  inside `@Transactional()` → `cross-layer/safe-error-propagation-pattern.md`
 
 ---
 
@@ -618,7 +505,7 @@ async execute(command): Promise<Result<UserId>> {
 3. Domain: Result pattern, no exceptions
 4. Application: Hybrid error handling, @Transactional
 5. Reference implementations used as templates
-6. Testing delegated to @infrastructure-testing-implementer
+6. Testing delegated to @test-implementer
 7. Ready for @code-quality-verifier
 
 ---

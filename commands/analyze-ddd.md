@@ -130,7 +130,7 @@ Każda decyzja → wpis w `decisions[]` artefaktu z: wybór, **uzasadnienie wg k
 delegować dalej — nieograniczona sub-delegacja z każdego z 7 stage'ów to realne ryzyko zapętlenia
 niezależnie od tego, do kogo próbują delegować. **Korekta (2026-07-07): `Explore` TO realny, istniejący
 subagent — poprzednia wersja tego zdania błędnie sugerowała, że nie istnieje.** Kilku agentów panelu
-(np. `infrastructure-testing-implementer`, `code-quality-verifier`) ma we własnym prompt-cie doktrynę
+(np. `infrastructure-implementer`, `code-quality-verifier`) ma we własnym prompt-cie doktrynę
 "zawsze deleguj wyszukiwanie do Explore" — w TYM kontekście (jako liść panelu) fizycznie tego nie
 zrobią, bo Task im odebrany, i to jest ZAMIERZONE: research/wyszukiwanie ma zrobić GŁÓWNA komenda
 `/analyze-ddd` (kroki 0.5-0.7, ona ma Task) PRZED wywołaniem panelu, nie sam panel-agent w locie.
@@ -164,7 +164,7 @@ Jeśli research faktycznie wymaga wielu wątków, uruchom kilka WĄSKICH Explore
 (nie hardcoduj agentów, których może nie być):
 - **nestjs-ddd:** threat-model(warunkowo) → architekt + `@backend-technology-expert` (równolegle,
   ten drugi BEZ toola Task — bezpieczny liść panelu) → `@ddd-application-expert` →
-  `@infrastructure-testing-implementer` → `@code-quality-verifier` → `@tech-lead` (synteza)
+  `@infrastructure-implementer` → `@code-quality-verifier` → `@tech-lead` (synteza)
 - **typescript-library:** threat-model(warunkowo) → architekt → `@library-quality-verifier` (lub `@library-api-guardian`) → `@tech-lead`
 - **flutter / nextjs / python / inne:** analogicznie stack-specific verifier → `@tech-lead`
 - **fallback (brak stack-agentów):** architekt (generyczny) → ogólny reviewer → `@tech-lead`

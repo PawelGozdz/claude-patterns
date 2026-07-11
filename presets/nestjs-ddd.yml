@@ -39,7 +39,7 @@ phase_research:
     # Task, dlatego zostaje POZA panelem, dopóki system tego nie obsłuży bezpiecznie).
     - { stage: tech-analysis-specialist, agent: "backend-technology-expert" }
     - { stage: ddd-modeling,      agent: "ddd-application-expert" }
-    - { stage: impl-analysis,     agent: "infrastructure-testing-implementer", advisory: true }
+    - { stage: impl-analysis,     agent: "infrastructure-implementer", advisory: true }
     - { stage: pattern-fit,       agent: "code-quality-verifier", advisory: true }
     - { stage: synthesis,         agent: "tech-lead" }              # pisze artefakt + OTWARTE PYTANIA
   output: "project-orchestration/analysis/{TASK_ID}.analysis.md"   # NIE tasks/ — tasks tylko na taski
@@ -50,17 +50,24 @@ phase_research:
 phase_implementation:
   engine: workflow                          # Workflow tool (deterministyczny), nie /goal
   prerequisite: "{TASK_ID}.analysis.md::status == approved && no open_questions.answer == null"
-  layers:                                   # OUTER: sekwencja (zależności DDD); split 3-warstwowy
+  layers:                                   # OUTER: sekwencja (zależności DDD); split 4-warstwowy
     # 2026-07-02: domain-application ROZDZIELONE — podwójna warstwa (15-25 plików) strukturalnie
     # nie mieściła się w budżecie tur implementera (klif maxTurns), a fail handlera oznaczał
     # re-implementację OBU warstw ×3. Application czyta świeży kod domeny z repo + dostaje
     # decisions[] i git diff poprzedniej warstwy — interfejs nie może się rozjechać.
+    # 2026-07-09: infrastructure-testing-implementer ROZDZIELONY na infrastructure-implementer
+    # (kod) + test-implementer (cała piramida testów L1-L3 dla WSZYSTKICH warstw + load testy
+    # warunkowo) — dwa różne fachy (pisanie produkcyjnego kodu vs. pisanie testów dla kodu,
+    # którego się nie napisało) były zbite w jednym agencie; load-testy nie miały właściciela
+    # w ogóle. test-implementer dostaje minimalny input (ścieżki + ID reguł biznesowych),
+    # ten sam sprawdzony wzorzec izolacji kontekstu co domain-application-implementer → testy.
     - { id: domain,         dirs: [domain/],         agent: "domain-application-implementer" }
     - { id: application,    dirs: [application/],    agent: "domain-application-implementer" }
-    - { id: infrastructure, dirs: [infrastructure/], agent: "infrastructure-testing-implementer", tests: true }
+    - { id: infrastructure, dirs: [infrastructure/], agent: "infrastructure-implementer" }
+    - { id: testing,        dirs: [__tests__/],      agent: "test-implementer", tests: true }
   inner_loop:                               # per warstwa
     steps: [implement, verify, fix]
-    implement: { agent: "domain-application-implementer | infrastructure-testing-implementer",
+    implement: { agent: "domain-application-implementer | infrastructure-implementer | test-implementer",
                  inject: [decisions, patterns, rule_cards], gate: check-delegation }
     verify:    { agent: "code-quality-verifier", returns: "{verdict, violations[]}" }
     stop_when: "verdict == GO"
