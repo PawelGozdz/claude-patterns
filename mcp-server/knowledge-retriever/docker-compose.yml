@@ -25,6 +25,12 @@ services:
       - qdrant
     ports:
       - "6403:6403"   # MCP HTTP (POST /mcp) — shared daemon, all projects point .mcp.json here
+    volumes:
+      # Host-path mirror (ro) — required for POST /reindex-file (knowledge-freshness-postwrite.js
+      # hook): the container must read the same absolute path the host-side hook sends it, e.g.
+      # /opt/projects/juz-ide-api-1/src/x.ts. Without this the endpoint 500s with ENOENT for every
+      # project. Full reseed (reseed.sh/reseed.mjs) is unaffected — that runs on the host, not here.
+      - /opt/projects:/opt/projects:ro
     environment:
       KR_TRANSPORT: http
       KR_HTTP_PORT: "6403"
