@@ -4,9 +4,9 @@
 
 This knowledge base contains production-enforced patterns for DDD/CQRS projects. Each pattern is derived from real implementations (2-3 verified code examples) and includes comprehensive anti-patterns sections.
 
-**Version**: 3.5
-**Last Updated**: 2026-05-07
-**Status**: PRODUCTION (38 core patterns + 29 stack-specific + 1 marketing + 2 finance + 2 legal)
+**Version**: 3.6
+**Last Updated**: 2026-07-12
+**Status**: PRODUCTION (39 core patterns + 29 stack-specific + 1 marketing + 2 finance + 2 legal)
 
 ---
 
@@ -131,7 +131,7 @@ Cross-cutting architectural patterns spanning multiple layers.
 
 ---
 
-### Testing Layer (8 patterns)
+### Testing Layer (9 patterns)
 
 Testing strategies and patterns for all levels of the test pyramid.
 
@@ -146,6 +146,7 @@ Testing strategies and patterns for all levels of the test pyramid.
 | **[redis-test-isolation-pattern.md](testing/redis-test-isolation-pattern.md)** | ~350 | Production | Redis database isolation in tests | infrastructure-testing-implementer |
 | **[business-rules-yaml-pattern.md](testing/business-rules-yaml-pattern.md)** | ~400 | Production | BUSINESS_RULES.yaml as test oracle, specification/policy alignment | All implementers |
 | **[golevelup-mock-pattern.md](testing/golevelup-mock-pattern.md)** | ~300 | Production | `createMock<T>()` zamiast factory functions, DeepMocked type safety, co NIE migrować | All implementers |
+| **[typed-projection-row-builder-pattern.md](testing/typed-projection-row-builder-pattern.md)** | ~250 | Production | Typed row-builder kolokowany przy repo dla cross-context projection tables bez repozytorium zapisu | infrastructure-testing-implementer |
 
 **Testing Layer Key Principles**:
 - Test Pyramid: L1 (unit) ~50%, L2 (integration) ~30%, L3 (E2E) ~20%
@@ -155,6 +156,7 @@ Testing strategies and patterns for all levels of the test pyramid.
 - Rate Limit Tests: ALWAYS in separate `*-rate-limits.e2e.spec.ts` files
 - Redis Isolation: Use unique database index per test suite
 - Mock Pattern: `createMock<T>()` from @golevelup/ts-vitest for ALL interface mocks — NEVER manual factory functions or `{ method: vi.fn() }` inline objects
+- Projection Row-Builders: one typed builder per projection table, colocated with the repository that owns real writes — NEVER a shared dynamic-table-name builder across contexts
 
 ---
 
@@ -301,23 +303,27 @@ ecosystems, jurisdiction-bound disclaimers, AGPL contamination prevention.
 
 ## 📊 Pattern Statistics
 
-**Core Patterns**: 42
+**Core Patterns**: 43
 **Stack-Specific Patterns**: 29 (flutter, nextjs, python, sveltekit, typescript-library)
-**Total**: 71
+**Total**: 72
 **Production Status**: 100% (all patterns verified in production code)
 
 **Core Pattern Distribution**:
 - Domain: 14% (6)
-- Application: 10% (4)
-- Infrastructure: 10% (4)
-- Architecture: 29% (12)
-- Testing: 21% (9)
+- Application: 9% (4)
+- Infrastructure: 9% (4)
+- Architecture: 28% (12)
+- Testing: 23% (10)
 - Cross-Layer: 14% (6)
 - Orchestration: 2% (1)
 
 ---
 
 ## 🔄 Pattern Updates
+
+**Version 3.6** (2026-07-12):
+- Added testing/typed-projection-row-builder-pattern.md (typed row-builder colocated with the owning repository for cross-context projection tables with no local write path)
+- Total patterns: 43 (was 42)
 
 **Version 3.2** (2026-04-19):
 - Added testing/golevelup-mock-pattern.md (@golevelup/ts-vitest createMock<T> pattern)
