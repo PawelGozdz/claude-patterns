@@ -8,7 +8,18 @@ const path = require('path');
 const vm = require('vm');
 
 const HOOKS_FILE = path.join(__dirname, '../../hooks/hooks.json');
-const VALID_EVENTS = ['PreToolUse', 'PostToolUse', 'PreCompact', 'SessionStart', 'SessionEnd', 'Stop', 'Notification', 'SubagentStop'];
+// Claude Code hook events. Keep in sync with the harness — an event missing from
+// this list makes a working hook look broken (that is how SubagentStart and
+// WorktreeCreate showed up as "invalid" while running fine).
+const VALID_EVENTS = [
+  'PreToolUse', 'PostToolUse',
+  'UserPromptSubmit',
+  'Notification',
+  'Stop', 'SubagentStart', 'SubagentStop',
+  'PreCompact',
+  'SessionStart', 'SessionEnd',
+  'WorktreeCreate',
+];
 
 /**
  * Validate a single hook entry has required fields and valid inline JS

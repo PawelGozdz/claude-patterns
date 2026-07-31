@@ -12,6 +12,13 @@ const COMMANDS_DIR = path.join(ROOT_DIR, 'commands');
 const AGENTS_DIR = path.join(ROOT_DIR, 'agents');
 const SKILLS_DIR = path.join(ROOT_DIR, 'skills');
 
+// Claude Code built-ins — not files in this repo, but valid `/name` references.
+const BUILTIN_COMMANDS = new Set([
+  'help', 'clear', 'compact', 'config', 'cost', 'model', 'review',
+  'workflows', 'agents', 'init', 'resume', 'status', 'doctor',
+  'memory', 'permissions', 'hooks', 'mcp', 'vim', 'terminal-setup',
+]);
+
 function validateCommands() {
   if (!fs.existsSync(COMMANDS_DIR)) {
     console.log('No commands directory found, skipping validation');
@@ -39,14 +46,23 @@ function validateCommands() {
   }
   findAgentNames(AGENTS_DIR);
 
-  // Build set of valid skill directory names — recursive search
+  // Build two sets:
+  //   validSkills     — every directory name, for path refs like "skills/testing/"
+  //                     (that segment is a category, not a skill)
+  //   invocableSkills — only directories holding a SKILL.md, i.e. the ones a user
+  //                     can actually invoke as /<skill-name>. Kept separate so a
+  //                     typo like /references is not silently accepted.
   const validSkills = new Set();
+  const invocableSkills = new Set();
   function findSkillNames(dir) {
     if (!fs.existsSync(dir)) return;
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
       const fullPath = path.join(dir, entry.name);
       if (entry.isDirectory()) {
         validSkills.add(entry.name);
+        if (fs.existsSync(path.join(fullPath, 'SKILL.md'))) {
+          invocableSkills.add(entry.name);
+        }
         findSkillNames(fullPath);
       }
     }
@@ -84,15 +100,19 @@ function validateCommands() {
       const lineRefs = line.matchAll(/`\/([a-z][-a-z0-9]*)`/g);
       for (const match of lineRefs) {
         const refName = match[1];
-        if (!validCommands.has(refName)) {
+        // A `/name` reference resolves to a command, a skill (skills are invoked
+        // as /<skill-name> too), or a Claude Code built-in.
+        if (!validCommands.has(refName) && !invocableSkills.has(refName) && !BUILTIN_COMMANDS.has(refName)) {
           console.error(`ERROR: ${file} - references non-existent command /${refName}`);
           hasErrors = true;
         }
       }
     }
 
-    // Check agent references (e.g., "agents/planner.md" or "`planner` agent")
-    const agentPathRefs = contentNoCodeBlocks.matchAll(/agents\/([a-z][-a-z0-9]*)\.md/g);
+    // Check agent references (e.g., "agents/planner.md" or "`planner` agent").
+    // The negative lookbehind excludes `.agents/foo.md` — that is the per-project
+    // context-file convention, not a reference to an agent in this repo.
+    const agentPathRefs = contentNoCodeBlocks.matchAll(/(?<![.\w-])agents\/([a-z][-a-z0-9]*)\.md/g);
     for (const match of agentPathRefs) {
       const refName = match[1];
       if (!validAgents.has(refName)) {

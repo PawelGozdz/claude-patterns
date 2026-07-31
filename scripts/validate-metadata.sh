@@ -61,10 +61,28 @@ while IFS= read -r -d '' file; do
     if [ $? -eq 0 ]; then
       echo -e "${GREEN}  ✅ Valid YAML syntax${NC}"
 
-      # Check for required fields
-      required_fields=("version" "layer" "stack_support" "patterns")
-      missing_fields=()
+      # Two legitimate METADATA shapes exist in this repo:
+      #
+      #   layer  — core pattern layers (domain/, application/, architecture/, ...)
+      #            carry a per-pattern manifest: layer + stack_support + patterns[]
+      #   stack  — stack categories (python/, flutter/, ai-ml/, ...) carry a flat
+      #            summary: category + patterns_count
+      #
+      # The root METADATA.yml is the repository manifest and is checked separately.
+      # Requiring the "layer" shape everywhere reported all 6 stack categories as
+      # broken when they simply use the other convention.
+      if [ "$file" = "./METADATA.yml" ] || [ "$file" = "METADATA.yml" ]; then
+        schema="root"
+        required_fields=("version" "description" "patterns" "agents" "skills")
+      elif grep -q "^category:" "$file"; then
+        schema="stack"
+        required_fields=("category" "version" "description" "patterns_count")
+      else
+        schema="layer"
+        required_fields=("version" "layer" "stack_support" "patterns")
+      fi
 
+      missing_fields=()
       for field in "${required_fields[@]}"; do
         if ! grep -q "^${field}:" "$file"; then
           missing_fields+=("$field")
@@ -72,10 +90,10 @@ while IFS= read -r -d '' file; do
       done
 
       if [ ${#missing_fields[@]} -eq 0 ]; then
-        echo -e "${GREEN}  ✅ All required fields present${NC}"
+        echo -e "${GREEN}  ✅ All required fields present (${schema} schema)${NC}"
         valid_count=$((valid_count + 1))
       else
-        echo -e "${RED}  ❌ Missing fields: ${missing_fields[*]}${NC}"
+        echo -e "${RED}  ❌ Missing fields (${schema} schema): ${missing_fields[*]}${NC}"
         invalid_count=$((invalid_count + 1))
       fi
     else

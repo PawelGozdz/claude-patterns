@@ -1,0 +1,29 @@
+{
+  "name": "claude-patterns",
+  "version": "3.6.1",
+  "private": true,
+  "description": "Production-tested software patterns, agents, skills and hooks for Claude Code projects",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/PawelGozdz/claude-patterns.git"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "validate": "npm run validate:agents && npm run validate:commands && npm run validate:skills && npm run validate:rules && npm run validate:hooks && npm run validate:business-rules && npm run validate:metadata && npm run validate:counts",
+    "validate:agents": "node scripts/ci/validate-agents.js",
+    "validate:commands": "node scripts/ci/validate-commands.js",
+    "validate:skills": "node scripts/ci/validate-skills.js",
+    "validate:rules": "node scripts/ci/validate-rules.js",
+    "validate:hooks": "node scripts/ci/validate-hooks.js",
+    "validate:business-rules": "node scripts/ci/validate-business-rules.js",
+    "validate:metadata": "bash scripts/validate-metadata.sh",
+    "validate:counts": "node scripts/ci/sync-counts.js",
+    "counts:fix": "node scripts/ci/sync-counts.js --fix",
+    "lint:shell": "bash -c 'fail=0; for f in $(git ls-files \"*.sh\"); do bash -n \"$f\" || fail=1; done; exit $fail'",
+    "lint:json": "node -e \"const {execSync}=require('child_process');let f=0;for(const p of execSync('git ls-files \\\"*.json\\\"').toString().trim().split('\\n')){if(!p||p.includes('package-lock'))continue;try{JSON.parse(require('fs').readFileSync(p,'utf8'))}catch(e){console.error('Invalid JSON: '+p+' — '+e.message);f=1}}process.exit(f)\"",
+    "check": "npm run validate && npm run lint:shell && npm run lint:json"
+  }
+}

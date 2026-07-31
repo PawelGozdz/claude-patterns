@@ -17,6 +17,7 @@ Konsumowany przez `/analyze-ddd` (Codebase Facts + grounding) i `/orchestrate-dd
 embedder (pluggable) ──→ chunk (kod: TS AST per-symbol | Dart: heurystyczny skaner per-symbol | md: H2/H3 per-sekcja) ──→ Qdrant (dedykowany)
 ```
 - **Embedder** (swappable wg env): `KR_EMBED_PROVIDER` = `ct301` (GPU e5-large 1024, domyślny) | `openai` (dowolny /v1/embeddings — vLLM/Ollama/zewn.). `KR_EMBED_URL`, `KR_EMBED_MODEL`.
+  Odporność: `KR_EMBED_TIMEOUT_MS` (domyślnie 60000 — pierwszy request po bezczynności płaci cold load modelu na współdzielonym GPU) oraz `KR_EMBED_RETRIES` (domyślnie 2, backoff wykładniczy; 4xx nie jest ponawiane, bo to błąd po naszej stronie). Bez timeoutu zwis serwera embeddingów zawieszał cały reseed.
 - **Store:** **dedykowany** Qdrant (docker-compose, port **6401**) — izolowany od współdzielonego prod-Qdrant. Kolekcje: `code_<project>` / `best_practices_<project>` (per-projekt), `patterns_global` / `library_reference_global` (globalne) — rejestr w `src/schema.ts`.
 - **Diversity:** wyszukiwanie domyślnie grupuje po `source` (Qdrant `searchPointGroups`, max 2 trafienia z jednego pliku) — unika N wariantów tego samego pliku w wynikach.
 - **Transport:** `KR_TRANSPORT=http` (domyślny — współdzielony daemon, docker-compose, port **6403**, każdy caller MUSI podać `collection` jawnie) | `stdio` (legacy, per-sesja subproces).

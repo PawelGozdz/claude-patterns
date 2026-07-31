@@ -21,7 +21,7 @@ const {
   writeFile,
   replaceInFile,
   log
-} = require('../lib/utils');
+} = require('./lib/utils');
 
 /**
  * Extract a meaningful summary from the session transcript.

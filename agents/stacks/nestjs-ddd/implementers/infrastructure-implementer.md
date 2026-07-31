@@ -6,8 +6,7 @@ description: |
   Implements Infrastructure/API layer (Controllers, Schemas, Repos, External Services)
   following NestJS, Kysely, and ADR conventions. Tests are NOT written here —
   delegated to @test-implementer.
-tools:
-  Read, Write, Edit, MultiEdit, Bash, Glob, Grep, LS, Task, StructuredOutput, mcp__knowledge-retriever__retrieve_code, mcp__knowledge-retriever__retrieve_patterns, mcp__knowledge-retriever__retrieve_examples
+tools: Read, Write, Edit, MultiEdit, Bash, Glob, Grep, LS, Task, StructuredOutput, mcp__knowledge-retriever__retrieve_code, mcp__knowledge-retriever__retrieve_patterns, mcp__knowledge-retriever__retrieve_examples
 model: sonnet
 temperature: 0.3
 color: orange

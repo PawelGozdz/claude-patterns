@@ -1,0 +1,82 @@
+name: validate
+
+# The scripts in scripts/ci/ existed for months without anything running them,
+# so four of them were red and nobody knew. This is the thing that notices.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Agents
+        run: npm run validate:agents
+
+      - name: Commands
+        run: npm run validate:commands
+
+      - name: Skills
+        run: npm run validate:skills
+
+      - name: Rules
+        run: npm run validate:rules
+
+      - name: Hooks
+        run: npm run validate:hooks
+
+      - name: Business rules
+        run: npm run validate:business-rules
+
+      - name: METADATA schema
+        run: npm run validate:metadata
+
+      - name: METADATA counts match filesystem
+        run: npm run validate:counts
+
+      - name: Shell syntax
+        run: npm run lint:shell
+
+      - name: JSON syntax
+        run: npm run lint:json
+
+  # Every hook must survive malformed stdin without blocking the agent:
+  # read stdin, write it back, exit 0. A hook that throws breaks the tool call
+  # it was attached to, which is the worst possible failure mode for tooling
+  # that is symlinked into every project.
+  hooks-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Hooks tolerate garbage stdin and exit 0
+        run: |
+          # workflow-lint.js lives in hooks/ only because that directory is
+          # symlinked globally — it is a CLI taking an argv path, not a stdin
+          # hook. Its own header says so. Add further CLIs here if any appear.
+          NOT_HOOKS="workflow-lint.js"
+
+          fail=0
+          for hook in hooks/*.js; do
+            case " $NOT_HOOKS " in *" $(basename "$hook") "*) continue ;; esac
+            for payload in '' 'not json' '{}' '{"tool_input":{}}' '{"tool_input":{"file_path":"/nonexistent.py"}}'; do
+              if ! printf '%s' "$payload" | node "$hook" >/dev/null 2>&1; then
+                echo "FAIL: $hook exited non-zero on payload: ${payload:-<empty>}"
+                fail=1
+              fi
+            done
+          done
+          exit $fail

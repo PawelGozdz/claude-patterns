@@ -10,8 +10,7 @@ description: |
   (domain aggregates, application handlers) requires real domain awareness, which
   is why this agent's Knowledge Base treats domain/application patterns as
   near-core, not "link only."
-tools:
-  Read, Write, Edit, MultiEdit, Bash, Glob, Grep, LS, Task, StructuredOutput, mcp__knowledge-retriever__retrieve_code, mcp__knowledge-retriever__retrieve_patterns, mcp__knowledge-retriever__retrieve_examples
+tools: Read, Write, Edit, MultiEdit, Bash, Glob, Grep, LS, Task, StructuredOutput, mcp__knowledge-retriever__retrieve_code, mcp__knowledge-retriever__retrieve_patterns, mcp__knowledge-retriever__retrieve_examples
 model: sonnet
 temperature: 0.3
 color: purple

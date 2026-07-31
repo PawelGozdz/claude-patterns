@@ -30,6 +30,35 @@ A **single source of truth** for production-tested software patterns and agent t
 
 ---
 
+## ✅ Validation & CI
+
+Every change is checked by `.github/workflows/validate.yml` on push and PR.
+Run the same checks locally:
+
+```bash
+npm run check          # everything below
+npm run validate       # 8 validators (agents, commands, skills, rules, hooks,
+                       # business-rules, METADATA schema, METADATA counts)
+npm run counts:fix     # rewrite METADATA.yml counts to match the filesystem
+npm run lint:shell     # bash -n over every tracked .sh
+npm run lint:json      # JSON.parse over every tracked .json
+```
+
+`scripts/ci/sync-counts.js` exists because METADATA.yml is this repo's source of
+truth, and hand-maintained numbers do not survive a large merge — they had
+drifted by ~30% (105 patterns counted as 79). CI now fails on drift instead.
+
+The CI also smoke-tests every hook against malformed stdin. A hook must read
+stdin, write it back, and exit 0 — one that throws breaks the tool call it is
+attached to, in every project that symlinks this repo.
+
+**Licensing**: original content is MIT (`LICENSE`). Vendored third-party skills
+keep their upstream licenses — see `NOTICE` for the attribution list, and
+`skills/legal/EXTERNAL.md` for AGPL/proprietary skills that are deliberately
+cataloged rather than vendored.
+
+---
+
 ## 🏗️ Repository Structure
 
 ```

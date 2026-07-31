@@ -1,6 +1,6 @@
 # Global Claude Patterns Repository - Metadata
 
-version: "3.6.0"
+version: "3.6.1"
 created: "2026-02-05"
 last_updated: "2026-07-31"
 author: "LocalHero Team"
@@ -72,12 +72,12 @@ repository:
   remote: null
 
 patterns:
-  core_count: 38
-  stack_specific_count: 36
+  core_count: 63
+  stack_specific_count: 37
   marketing_count: 1
   finance_count: 2
   legal_count: 2
-  total_count: 79
+  total_count: 105
   core_categories:
     domain: 6
     application: 4
@@ -101,14 +101,14 @@ patterns:
     legal: 2      # jurisdiction-aware-disclaimer-pattern, external-skills-catalog-pattern
 
   maturity:
-    production: 79
+    production: 105
     stable: 0
     experimental: 0
     deprecated: 0
 
 agents:
   universal: 26
-  stack_specific: 16
+  stack_specific: 26
   categories:
     universal:
       - backend-technology-expert
@@ -160,8 +160,8 @@ commands:
     meta: 1           # skill-create
 
 skills:
-  total_categories: 22
-  total_skills: 170  # 33 internal + 41 vendored marketing + 84 vendored finance + 12 vendored legal
+  total_categories: 24
+  total_skills: 187  # 49 internal + 42 vendored marketing + 84 vendored finance + 12 vendored legal
   orchestration_skills:
     - pulse
     - pm-status
@@ -264,12 +264,12 @@ skills:
     jurisdictions_supported: ["PL", "EU general", "US", "UK", "FR (limited)"]
 
 hooks:
-  total: 20
+  total: 33
   global: 19  # registered in hooks.json or available as stack hooks
   pm_specific: 1  # pm-task-check.js (per-project, not in hooks.json)
 
 templates:
-  stack_presets: 10
+  stack_presets: 13
   settings_presets: 8
   project_orchestration: true
   product_marketing_context: true  # v3.3 — copy to .agents/product-marketing-context.md
@@ -348,3 +348,17 @@ notes: |
     skills, check-gpu-patterns hook (config-gated via gpu.enabled), stack +
     settings + hooks templates. Extracted from ai-ml-inference (CT 301,
     RTX 5090, 18 endpoints, GPU shared with Ollama and ComfyUI).
+
+  - v3.6.1: Repository hygiene. CI added (.github/workflows/validate.yml +
+    package.json scripts) — scripts/ci/ had existed for months with nothing
+    running it, and 4 of 7 validators were red. Fixed: validate-commands
+    treated skills and Claude Code built-ins as missing commands and read the
+    per-project `.agents/` convention as a repo agent reference (15 false
+    errors); validate-hooks rejected the real SubagentStart / WorktreeCreate
+    events; validate-metadata assumed one schema where two exist (layer vs
+    stack). Real bugs found and fixed: 5 hooks crashed on every invocation via
+    require('../lib/...') instead of './lib/...'; embedder had no timeout or
+    retry, so a hung embedding server hung a whole reseed. Added LICENSE (MIT)
+    and NOTICE — the v3.5 license-hygiene system referenced an MIT model that
+    had no file. sync-counts.js keeps METADATA counts honest (they had drifted
+    ~30%: 105 patterns recorded as 79).

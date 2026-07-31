@@ -1,0 +1,69 @@
+claude-patterns
+Copyright (c) 2026 PawelGozdz
+
+This product includes software developed by third parties. Original content in
+this repository is MIT-licensed (see LICENSE). Vendored third-party content
+retains the license of its upstream author, listed below.
+
+The authoritative machine-readable record is the `vendored_dependencies` block
+in METADATA.yml. This file is its human-readable counterpart — keep them in sync
+when running any `scripts/sync-*-skills.sh`.
+
+================================================================================
+MARKETING SKILLS
+================================================================================
+marketingskills — Corey Haines
+https://github.com/coreyhaines31/marketingskills
+License: MIT
+Pinned:  1.9.0
+Located: skills/marketing/, tools/marketing/
+Marker:  skills/marketing/UPSTREAM_VERSION
+
+================================================================================
+FINANCE SKILLS
+================================================================================
+finance_skills — Joel Lewis (joel@eleazar.dev)
+https://github.com/JoelLewis/finance_skills
+License: MIT
+Pinned:  1.0.0
+Located: skills/finance/, tests/finance-evals/
+Marker:  skills/finance/UPSTREAM_VERSION
+
+================================================================================
+LEGAL SKILLS
+================================================================================
+claude-legal-skill — Christopher Sheehan (evolsb)
+https://github.com/evolsb/claude-legal-skill
+License: MIT
+Pinned:  3.0.0
+Located: skills/legal/contract-review/
+
+awesome-legal-skills (filtered) — various authors
+https://github.com/lawvable/awesome-legal-skills
+License: Apache-2.0 and MIT, per individual skill
+Located: skills/legal/<skill>/ (11 skills)
+Marker:  skills/legal/UPSTREAM_VERSION
+
+    The upstream repository index is licensed CC BY-NC-ND 4.0. That license is
+    NOT applied to, and does not cover, the individual skills vendored here —
+    only skills carrying an Apache-2.0 or MIT license of their own were taken.
+    Each vendored skill keeps its upstream LICENSE.txt / LICENSE.upstream in its
+    own directory.
+
+    30 further skills from this source (mostly AGPL-3.0, some proprietary) are
+    deliberately NOT vendored, to keep this repository's MIT model intact. They
+    are cataloged for per-project installation in skills/legal/EXTERNAL.md.
+
+    Drift check: scripts/sync-legal-skills.sh --verify-licenses
+
+================================================================================
+APACHE LICENSE 2.0 ATTRIBUTION
+================================================================================
+Portions of skills/legal/ are licensed under the Apache License, Version 2.0.
+You may obtain a copy of that license at:
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Per-skill LICENSE files are retained alongside each vendored skill. Files
+modified from their upstream form carry a note in their own header or in the
+skill's UPSTREAM_VERSION marker.
