@@ -32,6 +32,7 @@ patterns/
 │
 ├── flutter/            # Flutter-specific patterns - 7 patterns (per-project)
 ├── nextjs/             # Next.js-specific patterns - 7 patterns (per-project)
+├── ai-ml/              # GPU inference patterns - 7 patterns (per-project)
 ├── python/             # Python-specific patterns - 5 patterns (per-project)
 ├── sveltekit/          # SvelteKit-specific patterns - 5 patterns (per-project)
 └── typescript-library/ # TS library-specific patterns - 5 patterns (per-project)
@@ -271,6 +272,27 @@ ecosystems, jurisdiction-bound disclaimers, AGPL contamination prevention.
 - External: 30 cataloged in `skills/legal/EXTERNAL.md`
 - Agent: `@legal-strategist` (universal, consulted by `@product-owner`)
 - Command: `/legal <task>`
+
+---
+
+### AI/ML — GPU Inference (7 patterns, per-project)
+
+Extracted from a live multi-model inference API (18 endpoints, RTX 5090 shared
+with Ollama and ComfyUI). Linked via `patterns: [ai-ml]` or `stack_profile: python-ml`.
+
+| Pattern | Status | Description |
+|---------|--------|-------------|
+| **model-lifecycle-pattern** | production | Lazy load, TTL tiers, VRAM preflight, LRU eviction, correct unload |
+| **dynamic-batching-pattern** | production | Coalescing concurrent requests into GPU batches, partial-failure isolation |
+| **gpu-concurrency-pattern** | production | `to_thread`, thread pool sizing, semaphores for thread-unsafe libraries |
+| **inference-api-pattern** | production | `routers/` vs `models/` split, module contract, composite endpoints |
+| **llm-integration-pattern** | production | Streaming, OpenAI-compatible surface, greedy decoding for tool calls |
+| **ml-observability-pattern** | production | Cold vs warm latency, VRAM gauges, batch efficiency, alerting |
+| **ml-testing-pattern** | production | Markers, stubbing at the module boundary, GPU-free coverage |
+
+**Companion**: agents `ml-inference-architect` + `gpu-resource-verifier`,
+skills `ai-ml/ml-inference-patterns`, `ai-ml/gpu-memory-budget`, `ai-ml/model-selection`,
+hook `check-gpu-patterns.js`.
 
 ---
 

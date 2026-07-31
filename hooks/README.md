@@ -38,6 +38,7 @@ User request → Claude picks a tool → PreToolUse hook runs → Tool executes 
 | **Prettier format** | `Edit` | Auto-formats JS/TS files with Prettier after edits |
 | **TypeScript check** | `Edit` | Runs `tsc --noEmit` after editing `.ts`/`.tsx` files |
 | **console.log warning** | `Edit` | Warns about `console.log` statements in edited files |
+| **GPU patterns** | `Edit` | ML inference: blocking calls in `async def`, `empty_cache()` without `gc.collect()`, `asyncio.gather` fan-out over GPU calls. Requires `gpu.enabled` in `python-hooks.json` — silent skip otherwise |
 
 > **Knowledge freshness** (`knowledge-freshness-postwrite.js`) lives in the hooks dir but is **not**
 > registered in global `hooks.json` — it's OPT-IN per project, since it only makes sense for

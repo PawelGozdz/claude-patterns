@@ -113,9 +113,18 @@ Skill: `skills/quality/review-panel/SKILL.md` · Command: `/review-panel` · Pat
 
 ---
 
-## Stack-Specific Agents (17)
+## Stack-Specific Agents (18)
 
 Linked per-project to `.claude/agents/` via `setup-project.sh`.
+
+### python-ml (2)
+
+For Python ML inference services (FastAPI + PyTorch on a shared GPU).
+
+| Agent | Purpose | Model | VETO |
+|-------|---------|-------|------|
+| **ml-inference-architect** | Model lifecycle, VRAM budget, batching strategy, serving runtime | Sonnet | No |
+| **gpu-resource-verifier** | Event-loop safety, VRAM lifecycle, thread safety, batching correctness | Sonnet | Yes |
 
 ### nestjs-ddd (4)
 

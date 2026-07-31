@@ -1,8 +1,8 @@
 # Global Claude Patterns Repository - Metadata
 
-version: "3.5.0"
+version: "3.6.0"
 created: "2026-02-05"
-last_updated: "2026-05-07"
+last_updated: "2026-07-31"
 author: "LocalHero Team"
 source_project: "LocalHero v3"
 license: "MIT"
@@ -73,11 +73,11 @@ repository:
 
 patterns:
   core_count: 38
-  stack_specific_count: 29
+  stack_specific_count: 36
   marketing_count: 1
   finance_count: 2
   legal_count: 2
-  total_count: 72
+  total_count: 79
   core_categories:
     domain: 6
     application: 4
@@ -90,6 +90,7 @@ patterns:
     flutter: 7
     nextjs: 7
     python: 5
+    ai-ml: 7
     sveltekit: 5
     typescript-library: 5
   marketing_categories:
@@ -100,14 +101,14 @@ patterns:
     legal: 2      # jurisdiction-aware-disclaimer-pattern, external-skills-catalog-pattern
 
   maturity:
-    production: 72
+    production: 79
     stable: 0
     experimental: 0
     deprecated: 0
 
 agents:
   universal: 26
-  stack_specific: 14
+  stack_specific: 16
   categories:
     universal:
       - backend-technology-expert
@@ -141,6 +142,7 @@ agents:
       - flutter-clean-arch (3)
       - nextjs-app (2)
       - python (2)
+      - python-ml (2)
       - typescript-library (2)
 
 commands:
@@ -158,8 +160,8 @@ commands:
     meta: 1           # skill-create
 
 skills:
-  total_categories: 21
-  total_skills: 167  # 30 internal + 41 vendored marketing + 84 vendored finance + 12 vendored legal
+  total_categories: 22
+  total_skills: 170  # 33 internal + 41 vendored marketing + 84 vendored finance + 12 vendored legal
   orchestration_skills:
     - pulse
     - pm-status
@@ -262,13 +264,13 @@ skills:
     jurisdictions_supported: ["PL", "EU general", "US", "UK", "FR (limited)"]
 
 hooks:
-  total: 19
-  global: 18  # registered in hooks.json or available as stack hooks
+  total: 20
+  global: 19  # registered in hooks.json or available as stack hooks
   pm_specific: 1  # pm-task-check.js (per-project, not in hooks.json)
 
 templates:
-  stack_presets: 9
-  settings_presets: 7
+  stack_presets: 10
+  settings_presets: 8
   project_orchestration: true
   product_marketing_context: true  # v3.3 — copy to .agents/product-marketing-context.md
 
@@ -285,6 +287,7 @@ tests:
 stack_support:
   current:
     - typescript
+    - ai-ml
     - python
     - flutter
     - sveltekit
@@ -296,6 +299,10 @@ projects_using:
   - name: "LocalHero v3"
     path: "~/projects/local-hero-3"
     since: "2026-02-05"
+    status: "active"
+  - name: "AI-ML Inference"
+    path: "/opt/inference"
+    since: "2026-07-31"
     status: "active"
 
 maintenance:
@@ -336,3 +343,8 @@ notes: |
     sync script (--verify-licenses mode catches upstream drift).
     @product-owner now consults all three strategists (marketing +
     finance + legal) during strategic work.
+  - v3.6.0: AI/ML preset (python-ml) — 7 GPU inference patterns, 2 agents
+    (ml-inference-architect advisory + gpu-resource-verifier VETO), 3 ai-ml
+    skills, check-gpu-patterns hook (config-gated via gpu.enabled), stack +
+    settings + hooks templates. Extracted from ai-ml-inference (CT 301,
+    RTX 5090, 18 endpoints, GPU shared with Ollama and ComfyUI).

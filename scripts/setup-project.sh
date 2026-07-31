@@ -162,53 +162,65 @@ link_pattern_dirs() {
   done
 }
 
-# Determine which patterns to link based on stack_profile
-case "$STACK_PROFILE" in
-  nestjs-ddd)
-    # DDD core + shared core patterns (NO flutter/python/nextjs/sveltekit/ts-library)
-    link_pattern_dirs "${DDD_PATTERN_DIRS[@]}" "${CORE_PATTERN_DIRS[@]}"
-    ;;
-  flutter*)
-    # Flutter + shared core patterns
-    link_pattern_dirs flutter "${CORE_PATTERN_DIRS[@]}"
-    ;;
-  sveltekit*)
-    # SvelteKit + shared core patterns
-    link_pattern_dirs sveltekit "${CORE_PATTERN_DIRS[@]}"
-    ;;
-  nextjs*)
-    # Next.js + shared core patterns
-    link_pattern_dirs nextjs "${CORE_PATTERN_DIRS[@]}"
-    ;;
-  python*)
-    # Python + shared core patterns
-    link_pattern_dirs python "${CORE_PATTERN_DIRS[@]}"
-    ;;
-  typescript-library)
-    # TypeScript library + shared core patterns
-    link_pattern_dirs typescript-library "${CORE_PATTERN_DIRS[@]}"
-    ;;
-  node-ts-claude-api)
-    # Node.js + Anthropic SDK — core patterns only (no DDD/flutter/etc.)
-    link_pattern_dirs "${CORE_PATTERN_DIRS[@]}"
-    ;;
-  astro-static)
-    # Astro SSG — core patterns only (architecture + testing essentials)
-    link_pattern_dirs "${CORE_PATTERN_DIRS[@]}"
-    ;;
-  docs-only)
-    # Pure markdown/YAML repo — no code patterns needed
-    echo -e "  ${YELLOW}Skipped:${NC} docs-only stack has no code patterns"
-    ;;
-  *)
-    # Unknown stack — link all patterns
-    if [[ "$PROJECT_LANGUAGE" == "typescript" ]]; then
-      link_pattern_dirs "${DDD_PATTERN_DIRS[@]}" "${CORE_PATTERN_DIRS[@]}" flutter sveltekit nextjs typescript-library
-    else
-      echo -e "  ${YELLOW}Skipped:${NC} No patterns for stack '$STACK_PROFILE' (use patterns-local/)"
-    fi
-    ;;
-esac
+# Check for explicit patterns list in project.yml (takes precedence over stack_profile)
+EXPLICIT_PATTERNS=()
+while IFS= read -r pat; do
+  [[ -z "$pat" ]] && continue
+  EXPLICIT_PATTERNS+=("$pat")
+done < <(yml_list "patterns")
+
+if [[ ${#EXPLICIT_PATTERNS[@]} -gt 0 ]]; then
+  # Explicit patterns list — use exactly what the project declares
+  link_pattern_dirs "${EXPLICIT_PATTERNS[@]}"
+else
+  # Fallback: determine which patterns to link based on stack_profile
+  case "$STACK_PROFILE" in
+    nestjs-ddd)
+      # DDD core + shared core patterns (NO flutter/python/nextjs/sveltekit/ts-library)
+      link_pattern_dirs "${DDD_PATTERN_DIRS[@]}" "${CORE_PATTERN_DIRS[@]}"
+      ;;
+    flutter*)
+      # Flutter + shared core patterns
+      link_pattern_dirs flutter "${CORE_PATTERN_DIRS[@]}"
+      ;;
+    sveltekit*)
+      # SvelteKit + shared core patterns
+      link_pattern_dirs sveltekit "${CORE_PATTERN_DIRS[@]}"
+      ;;
+    nextjs*)
+      # Next.js + shared core patterns
+      link_pattern_dirs nextjs "${CORE_PATTERN_DIRS[@]}"
+      ;;
+    python*)
+      # Python + shared core patterns
+      link_pattern_dirs python "${CORE_PATTERN_DIRS[@]}"
+      ;;
+    typescript-library)
+      # TypeScript library + shared core patterns
+      link_pattern_dirs typescript-library "${CORE_PATTERN_DIRS[@]}"
+      ;;
+    node-ts-claude-api)
+      # Node.js + Anthropic SDK — core patterns only (no DDD/flutter/etc.)
+      link_pattern_dirs "${CORE_PATTERN_DIRS[@]}"
+      ;;
+    astro-static)
+      # Astro SSG — core patterns only (architecture + testing essentials)
+      link_pattern_dirs "${CORE_PATTERN_DIRS[@]}"
+      ;;
+    docs-only)
+      # Pure markdown/YAML repo — no code patterns needed
+      echo -e "  ${YELLOW}Skipped:${NC} docs-only stack has no code patterns"
+      ;;
+    *)
+      # Unknown stack — link all patterns
+      if [[ "$PROJECT_LANGUAGE" == "typescript" ]]; then
+        link_pattern_dirs "${DDD_PATTERN_DIRS[@]}" "${CORE_PATTERN_DIRS[@]}" flutter sveltekit nextjs typescript-library
+      else
+        echo -e "  ${YELLOW}Skipped:${NC} No patterns for stack '$STACK_PROFILE' (use patterns-local/)"
+      fi
+      ;;
+  esac
+fi
 
 # Patterns README — discovery hub read by orchestrator Phase 0.5a and
 # direct-invoked implementers. Copy from template if absent; preserve

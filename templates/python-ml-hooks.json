@@ -1,0 +1,60 @@
+{
+  "layerPath": ".",
+  "purity": {
+    "noInfraImportLayers": ["routers"],
+    "forbiddenImports": [
+      "torch",
+      "transformers",
+      "sentence_transformers",
+      "spacy",
+      "gliner",
+      "faster_whisper",
+      "ctranslate2",
+      "cupy"
+    ]
+  },
+  "typing": {
+    "checkUntyped": {
+      "enabled": true,
+      "filePatterns": ["**/*.py"]
+    }
+  },
+  "gpu": {
+    "enabled": true,
+    "inferenceCallNames": [
+      "encode",
+      "predict",
+      "generate",
+      "transcribe",
+      "translate",
+      "extract",
+      "classify",
+      "summarize",
+      "__call__"
+    ],
+    "modelLoadNames": [
+      "from_pretrained",
+      "SentenceTransformer",
+      "GLiNER",
+      "WhisperModel",
+      "pipeline",
+      "spacy.load"
+    ],
+    "managerModule": "model_manager",
+    "ignoreQualified": [
+      "ioc.extract",
+      "language.detect",
+      "re.compile"
+    ]
+  },
+  "skipPatterns": [
+    "test_",
+    "_test.py",
+    "conftest.py",
+    "__pycache__",
+    ".venv",
+    "venv/",
+    "notebooks/",
+    "scripts/"
+  ]
+}
