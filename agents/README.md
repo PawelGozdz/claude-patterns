@@ -113,17 +113,18 @@ Skill: `skills/quality/review-panel/SKILL.md` · Command: `/review-panel` · Pat
 
 ---
 
-## Stack-Specific Agents (16)
+## Stack-Specific Agents (17)
 
 Linked per-project to `.claude/agents/` via `setup-project.sh`.
 
-### nestjs-ddd (3)
+### nestjs-ddd (4)
 
 | Agent | Purpose | Model | VETO |
 |-------|---------|-------|------|
 | **ddd-application-expert** | DDD patterns, bounded contexts, aggregate design | Sonnet | No |
 | **code-quality-verifier** | DDD/CQRS quality verification, test pyramid | Sonnet | Yes |
 | **security-e2e-verifier** | Security validation, OWASP, E2E coverage | Opus | Yes |
+| **sql-postgres-optimizer** | Repository query review — EXPLAIN-backed index/rewrite recommendations, consulted by `@infrastructure-implementer` before any non-trivial query ships | Sonnet | No |
 
 ### flutter-clean-arch (4)
 

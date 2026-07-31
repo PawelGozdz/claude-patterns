@@ -151,6 +151,15 @@ tę komendę:** jedno wąskie pytanie na wywołanie (jeden temat/plik/wzorzec, n
 X"), z jawnym limitem w prompt-cie (np. "maks. 15 tool-calli, zwróć fakty + ścieżki, NIE pełne pliki").
 Jeśli research faktycznie wymaga wielu wątków, uruchom kilka WĄSKICH Explore zamiast jednego szerokiego.
 
+**Budżet PRODUKCJI outputu per-stage (incydent 2026-07-20, juz-ide-api-3):** `code-quality-verifier`
+padł bez ŻADNEGO outputu po 106k tokenów w jednym ze stage'ów panelu — wyczerpał budżet tur na
+eksplorację (ten sam mechanizm co WL10 w `hooks/workflow-lint.js` dla `/orchestrate-ddd`, tylko że
+panel `/analyze-ddd` nie idzie przez `Workflow`+lint, więc nie ma tam mechanicznego backstopu).
+KAŻDE wywołanie agenta-liścia panelu (nie tylko Explore) MUSI dostać w prompt-cie: jawny, numeryczny
+limit narzędzi (np. "masz budżet ~15 wywołań narzędzi") + "gdy się zbliża, NATYCHMIAST wypisz swój
+raport/ustalenia w obecnej formie — częściowy output jest lepszy niż brak outputu". Fallback syntezy
+niżej (środowisko przerywa agenta) łagodzi SKUTEK; ten wymóg ma zapobiec PRZYCZYNIE.
+
 **Hardening (obserwacje z realnych przebiegów 2026-07-02):**
 - Wołaj agentów panelu **BEZ parametru `name`** — tryb mailbox potrafi nie dowieźć treści wyniku;
   bezimienny background + task-notification działa niezawodnie.
@@ -174,6 +183,17 @@ Jeśli research faktycznie wymaga wielu wątków, uruchom kilka WĄSKICH Explore
 `docs/security/threat-models/TM-{TASK}.md`**. Synteza wciąga podsumowanie + ustawia `threat_model:` link (NIE kopiuje STRIDE).
 
 `synthesis` (ostatni, `@tech-lead`): zbiera wszystko, wskazuje co robić, wypisuje **OTWARTE PYTANIA**.
+
+**Weryfikacja nazwanych symboli PRZED zapisem** (incydent TS-SEC-ONBEHALF-001, juz-ide-api-3):
+checklisty pisane z analizy/taska bywają ASPIRACYJNE — opisują docelowy design, nie stan repo.
+Zaobserwowany przypadek: checklist odwoływał się do `buildContentAuthorizationContext` jak do
+istniejącej funkcji — nie istniała nigdzie w repo; implementer warstwy dostał to jako fakt i
+szukał jej w kółko (Glob/Grep bez końca, zero napisanego kodu, maxTurns cliff). Synteza (lub
+osobny tani Explore-agent PRZED syntezą) MUSI zgrepować repo dla każdej nazwanej funkcji/klasy/
+wzorca wymienionego w checkliście/decisions — jeśli nie istnieje, artefakt **jawnie oznacza**
+„TO TRZEBA STWORZYĆ" obok tej nazwy (nie zostawia jej brzmiącej jak istniejący fakt). To samo
+dotyczy ścieżek plików referencjonowanych jako „już istnieje, edytuj" — zweryfikuj `Read`/`Glob`
+przed wpisaniem do artefaktu, nie ufaj pamięci/założeniom panelu.
 
 ### 2. Zapis artefaktu (jedyny Write)
 Zapisz **`project-orchestration/analysis/{TASK-ID}.analysis.md`** (NIE w tasks/ — tam tylko taski)

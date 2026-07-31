@@ -26,6 +26,13 @@ export interface Chunk {
   combines?: string[];
   lib_version?: string; // @vytches/ddd version this chunk was extracted from (Lerna fixed-mode — one version for the whole library, not per-package)
   indexedAt?: string;  // ISO timestamp — freshness signal
+  // scope/project: patterns_global only. A pattern-doc marks itself project-specific via a
+  // `**Scope**: project-specific (<project>)` line (see markdown-chunker.ts) — undefined/absent
+  // means "universal" (the default for all pre-existing pattern docs, no migration needed).
+  // retrieve_patterns excludes scope=="project-specific" by default so one project's derived
+  // pattern doesn't get surfaced as generic guidance in an unrelated project's session.
+  scope?: "universal" | "project-specific";
+  project?: string;
 }
 
 export interface Hit {
@@ -42,4 +49,6 @@ export interface Hit {
   combines?: string[];
   lib_version?: string;
   indexedAt?: string;
+  scope?: "universal" | "project-specific";
+  project?: string;
 }

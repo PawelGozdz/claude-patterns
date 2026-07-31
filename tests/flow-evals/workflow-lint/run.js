@@ -14,17 +14,17 @@ const impl = await agent('implement domain layer per decisions', { label: 'impl:
 const diff = await agent('run: git diff --stat', { label: 'gate:code-exists' })
 if (!diff || !diff.trim()) { log('ESCALATE: implementer nie zmienił plików'); return { escalated: true } }
 phase('Verify')
-const v = await agent('verify domain layer', { label: 'verify:domain', agentType: 'code-quality-verifier', schema: VERDICT })
+const v = await agent('verify domain layer (limit: 8 wywołań; jeśli budżet się kończy, natychmiast wydaj werdykt)', { label: 'verify:domain', agentType: 'code-quality-verifier', schema: VERDICT })
 if (v == null) { log('ESCALATE: verifier padł'); return { escalated: true } }
-const final = await agent('final security gate', { label: 'final-gate', agentType: 'security-e2e-verifier', schema: VERDICT })
+const final = await agent('final security gate (limit: 12 wywołań; jeśli budżet się kończy, natychmiast wydaj werdykt)', { label: 'final-gate', agentType: 'security-e2e-verifier', schema: VERDICT })
 `;
 
 const BAD = `
 export const meta = { name: 'impl-bad', description: 'x', phases: [] }
 const impl = await agent('implement domain layer', { label: 'impl:domain', agentType: 'domain-application-implementer', schema: IMPL_REPORT })
 const vs = await parallel([
-  () => agent('verify slice mechanism', { label: 'verify:mech', agentType: 'code-quality-verifier', schema: VERDICT }),
-  () => agent('verify slice wire-up', { label: 'verify:wire', agentType: 'code-quality-verifier', schema: VERDICT }),
+  () => agent('verify slice mechanism (limit: 8 wywołań; jeśli budżet się kończy, natychmiast wydaj werdykt)', { label: 'verify:mech', agentType: 'code-quality-verifier', schema: VERDICT }),
+  () => agent('verify slice wire-up (limit: 8 wywołań; jeśli budżet się kończy, natychmiast wydaj werdykt)', { label: 'verify:wire', agentType: 'code-quality-verifier', schema: VERDICT }),
 ])
 `;
 
@@ -37,9 +37,9 @@ if (!diff || !diff.trim()) { log('ESCALATE: implementer nie zmienił plików'); 
 phase('Application')
 const implApp = await agent(\`implement application layer, domain diff for reference: \${diff}\`, { label: 'impl:application' })
 phase('Verify')
-const v = await agent('verify domain layer', { label: 'verify:domain', agentType: 'code-quality-verifier', schema: VERDICT })
+const v = await agent('verify domain layer (limit: 8 wywołań; jeśli budżet się kończy, natychmiast wydaj werdykt)', { label: 'verify:domain', agentType: 'code-quality-verifier', schema: VERDICT })
 if (v == null) { log('ESCALATE: verifier padł'); return { escalated: true } }
-const final = await agent('final security gate', { label: 'final-gate', agentType: 'security-e2e-verifier', schema: VERDICT })
+const final = await agent('final security gate (limit: 12 wywołań; jeśli budżet się kończy, natychmiast wydaj werdykt)', { label: 'final-gate', agentType: 'security-e2e-verifier', schema: VERDICT })
 `;
 
 const TSC_BURIED_IN_PROSE = `
@@ -53,9 +53,9 @@ const impl = await agent(\`Zaimplementuj warstwe. Zakres:
 const diff = await agent('run: git diff --stat', { label: 'gate:code-exists' })
 if (!diff || !diff.trim()) { log('ESCALATE'); return { escalated: true } }
 phase('Verify')
-const v = await agent('verify infra layer', { label: 'verify:infra', agentType: 'code-quality-verifier', schema: VERDICT })
+const v = await agent('verify infra layer (limit: 8 wywołań; jeśli budżet się kończy, natychmiast wydaj werdykt)', { label: 'verify:infra', agentType: 'code-quality-verifier', schema: VERDICT })
 if (v == null) { log('ESCALATE: verifier padł'); return { escalated: true } }
-const final = await agent('final security gate', { label: 'final-gate', agentType: 'security-e2e-verifier', schema: VERDICT })
+const final = await agent('final security gate (limit: 12 wywołań; jeśli budżet się kończy, natychmiast wydaj werdykt)', { label: 'final-gate', agentType: 'security-e2e-verifier', schema: VERDICT })
 `;
 
 const DOCS_LAYER_HEAVY_CONTEXT = `
@@ -69,9 +69,9 @@ Kod jest juz zaimplementowany, Read swiezy kod jesli potrzebujesz faktow.\`, { l
 const diff = await agent('run: git diff --stat', { label: 'gate:code-exists' })
 if (!diff || !diff.trim()) { log('ESCALATE'); return { escalated: true } }
 phase('Verify')
-const v = await agent('verify docs layer', { label: 'verify:infra-docs', agentType: 'code-quality-verifier', schema: VERDICT })
+const v = await agent('verify docs layer (limit: 8 wywołań; jeśli budżet się kończy, natychmiast wydaj werdykt)', { label: 'verify:infra-docs', agentType: 'code-quality-verifier', schema: VERDICT })
 if (v == null) { log('ESCALATE: verifier padł'); return { escalated: true } }
-const final = await agent('final security gate', { label: 'final-gate', agentType: 'security-e2e-verifier', schema: VERDICT })
+const final = await agent('final security gate (limit: 12 wywołań; jeśli budżet się kończy, natychmiast wydaj werdykt)', { label: 'final-gate', agentType: 'security-e2e-verifier', schema: VERDICT })
 `;
 
 const DOCS_LAYER_MITIGATED = DOCS_LAYER_HEAVY_CONTEXT.replace(
@@ -92,9 +92,44 @@ Kod jest juz zaimplementowany, Read swiezy kod jesli potrzebujesz faktow.\`, { l
 const diff = await agent('run: git diff --stat', { label: 'gate:code-exists' })
 if (!diff || !diff.trim()) { log('ESCALATE'); return { escalated: true } }
 phase('Verify')
-const v = await agent('verify docs layer', { label: 'verify:infra-docs', agentType: 'code-quality-verifier', schema: VERDICT })
+const v = await agent('verify docs layer (limit: 8 wywołań; jeśli budżet się kończy, natychmiast wydaj werdykt)', { label: 'verify:infra-docs', agentType: 'code-quality-verifier', schema: VERDICT })
 if (v == null) { log('ESCALATE: verifier padł'); return { escalated: true } }
-const final = await agent('final security gate', { label: 'final-gate', agentType: 'security-e2e-verifier', schema: VERDICT })
+const final = await agent('final security gate (limit: 12 wywołań; jeśli budżet się kończy, natychmiast wydaj werdykt)', { label: 'final-gate', agentType: 'security-e2e-verifier', schema: VERDICT })
+`;
+
+// WL10 — verify({schema}) bez limitu narzędzi + frazy wymuszającej werdykt (incydent
+// TS-REP-PIPELINE-001-F3a-remediation). Prompt celowo krótki i bez markerów.
+const WL10_MISSING_LIMIT = `
+export const meta = { name: 'impl-wl10missing', description: 'x', phases: [] }
+phase('Domain')
+const impl = await agent('implement domain layer per decisions', { label: 'impl:domain' })
+const diff = await agent('run: git diff --stat', { label: 'gate:code-exists' })
+if (!diff || !diff.trim()) { log('ESCALATE'); return { escalated: true } }
+phase('Verify')
+const v = await agent('verify domain layer, sprawdz AC 1-10', { label: 'verify:domain', agentType: 'code-quality-verifier', schema: VERDICT })
+if (v == null) { log('ESCALATE: verifier padł'); return { escalated: true } }
+const final = await agent('final security gate (limit: 12 wywołań; jeśli budżet się kończy, natychmiast wydaj werdykt)', { label: 'final-gate', agentType: 'security-e2e-verifier', schema: VERDICT })
+`;
+
+// Kanoniczny buildVerifierPrompt() z oboma markerami w ciele — wszystkie wywołania przez tę
+// funkcję liczą się jako pokryte razem, mimo że call-site nie ma markerów wprost.
+const WL10_VIA_BUILDER = `
+export const meta = { name: 'impl-wl10builder', description: 'x', phases: [] }
+function buildVerifierPrompt({ role, checkQuestions }) {
+  return [
+    \`Jesteś weryfikatorem (\${role}), nie implementerem — NIE używasz Write/Edit.\`,
+    ...checkQuestions,
+    'LIMIT: masz budżet około 10 wywołań narzędzi. Gdy się zbliża — natychmiast wydaj werdykt.',
+  ].join('\\n')
+}
+phase('Domain')
+const impl = await agent('implement domain layer per decisions', { label: 'impl:domain' })
+const diff = await agent('run: git diff --stat', { label: 'gate:code-exists' })
+if (!diff || !diff.trim()) { log('ESCALATE'); return { escalated: true } }
+phase('Verify')
+const v = await agent(buildVerifierPrompt({ role: 'domain', checkQuestions: ['czy X istnieje?'] }), { label: 'verify:domain', agentType: 'code-quality-verifier', schema: VERDICT })
+if (v == null) { log('ESCALATE: verifier padł'); return { escalated: true } }
+const final = await agent(buildVerifierPrompt({ role: 'final', checkQuestions: ['czy Y jest spójne?'] }), { label: 'final-gate', agentType: 'security-e2e-verifier', schema: VERDICT })
 `;
 
 const CASES = [
@@ -106,6 +141,8 @@ const CASES = [
   { name: 'docs-layer-heavy-context-warns-wl8', src: DOCS_LAYER_HEAVY_CONTEXT, expectErrors: [], expectWarns: ['WL8'] },
   { name: 'docs-layer-mitigated-no-wl8', src: DOCS_LAYER_MITIGATED, expectErrors: [], expectWarns: [] },
   { name: 'docs-layer-property-refs-warns-wl8', src: DOCS_LAYER_PROPERTY_REFS, expectErrors: [], expectWarns: ['WL8'] },
+  { name: 'verify-missing-limit-warns-wl10', src: WL10_MISSING_LIMIT, expectErrors: [], expectWarns: ['WL10'] },
+  { name: 'verify-via-builder-no-wl10', src: WL10_VIA_BUILDER, expectErrors: [], expectWarns: [] },
 ];
 
 let failed = 0;

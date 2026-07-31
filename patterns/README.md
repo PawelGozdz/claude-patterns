@@ -4,9 +4,14 @@
 
 This knowledge base contains production-enforced patterns for DDD/CQRS projects. Each pattern is derived from real implementations (2-3 verified code examples) and includes comprehensive anti-patterns sections.
 
-**Version**: 3.6
-**Last Updated**: 2026-07-12
-**Status**: PRODUCTION (39 core patterns + 29 stack-specific + 1 marketing + 2 finance + 2 legal)
+**Version**: 3.10
+**Last Updated**: 2026-07-18
+**Status**: PRODUCTION (44 core patterns + 29 stack-specific + 1 marketing + 2 finance + 2 legal)
+
+**⚠ project-specific** marker = derived from ONE project's codebase, not yet validated in a second
+one. Marked in the pattern's own `**Scope**:` line (see `CLAUDE.md` → "Adding a New Pattern"). These
+are excluded from `retrieve_patterns` by default — the calling project must pass `project: "<name>"`
+to opt in. Promote to plain "Production" once a second project adopts the same shape.
 
 ---
 
@@ -67,7 +72,7 @@ CQRS command and query handlers, application services for complex workflows.
 | Pattern | Lines | Status | Description | Primary Users |
 |---------|-------|--------|-------------|---------------|
 | **[command-handler-pattern.md](application/command-handler-pattern.md)** | ~500 | Production | Write-side CQRS, Dual Identity, ACL Registry, @Transactional | domain-application-implementer |
-| **[query-handler-pattern.md](application/query-handler-pattern.md)** | ~400 | Production | Read-side CQRS, pagination, user context, read models | domain-application-implementer |
+| **[query-handler-pattern.md](application/query-handler-pattern.md)** | ~400 | Production | Read-side CQRS, pagination, user context, read models; self-scoped queries read userId from RequestContextService (ARCH-D001) | domain-application-implementer |
 | **[application-service-pattern.md](application/application-service-pattern.md)** | 375 | Production | Multi-step workflows, saga pattern, integration events, cross-context orchestration | domain-application-implementer |
 | **[audit-handler-pattern.md](application/audit-handler-pattern.md)** | ~450 | Production | GDPR audit logging, tier classification, BaseAuditHandler extension | domain-application-implementer, infrastructure-testing-implementer |
 
@@ -107,9 +112,9 @@ Cross-cutting architectural patterns spanning multiple layers.
 
 | Pattern | Lines | Status | Description | Primary Users |
 |---------|-------|--------|-------------|---------------|
-| **[acl-registry-pattern.md](architecture/acl-registry-pattern.md)** | 364 | Production | Cross-context communication without circular dependencies | infrastructure-testing-implementer |
+| **[acl-registry-pattern.md](architecture/acl-registry-pattern.md)** | ~450 | Production | Cross-context communication without circular dependencies; batch calls to avoid N+1 across contexts | infrastructure-testing-implementer |
 | **[user-projection-pattern.md](architecture/user-projection-pattern.md)** | 432 | Production | Each context has own `{context}_users` table, NO cross-context JOINs | infrastructure-testing-implementer |
-| **[dual-identity-pattern.md](architecture/dual-identity-pattern.md)** | 493 | Production | userId from JWT (RequestContext), NEVER from request body (SECURITY) | domain-application-implementer, infrastructure-testing-implementer |
+| **[dual-identity-pattern.md](architecture/dual-identity-pattern.md)** | ~600 | Production | userId from JWT (RequestContext), NEVER from request body — Commands AND self-scoped Queries (SECURITY) | domain-application-implementer, infrastructure-testing-implementer |
 | **[transactional-pattern.md](architecture/transactional-pattern.md)** | 412 | Production | @Transactional decorator, auto-commit/rollback | domain-application-implementer |
 | **[bullmq-queue-pattern.md](architecture/bullmq-queue-pattern.md)** | 490 | Production | Async job processing with BullMQ | infrastructure-testing-implementer |
 | **[integration-event-pattern.md](architecture/integration-event-pattern.md)** | ~800 | Production | Cross-context events via Outbox Pattern, NO PII, priority-based processing | domain-application-implementer, infrastructure-testing-implementer |
@@ -123,7 +128,7 @@ Cross-cutting architectural patterns spanning multiple layers.
 **Architecture Layer Key Principles**:
 - ACL Registry: `aclRegistry.getGlobalRequired<T>('context-name')` for cross-context calls
 - User Projections: Each context maintains own user data (no circular dependencies)
-- Dual Identity: CRITICAL security pattern (prevents user impersonation)
+- Dual Identity: CRITICAL security pattern (prevents user impersonation) — applies to self-scoped Query classes too, not just Commands (ARCH-D001)
 - Transactions: Inherited from BaseCommandHandler/BaseKyselyRepository
 - Queue Jobs: Async processing for long-running operations
 - Integration Events: Cross-context communication with NO PII (only IDs/references), Outbox Pattern for transactional consistency
@@ -131,7 +136,7 @@ Cross-cutting architectural patterns spanning multiple layers.
 
 ---
 
-### Testing Layer (9 patterns)
+### Testing Layer (11 patterns)
 
 Testing strategies and patterns for all levels of the test pyramid.
 
@@ -147,6 +152,7 @@ Testing strategies and patterns for all levels of the test pyramid.
 | **[business-rules-yaml-pattern.md](testing/business-rules-yaml-pattern.md)** | ~400 | Production | BUSINESS_RULES.yaml as test oracle, specification/policy alignment | All implementers |
 | **[golevelup-mock-pattern.md](testing/golevelup-mock-pattern.md)** | ~300 | Production | `createMock<T>()` zamiast factory functions, DeepMocked type safety, co NIE migrować | All implementers |
 | **[typed-projection-row-builder-pattern.md](testing/typed-projection-row-builder-pattern.md)** | ~250 | Production | Typed row-builder kolokowany przy repo dla cross-context projection tables bez repozytorium zapisu | infrastructure-testing-implementer |
+| **[domain-colocated-fixture-mother-pattern.md](testing/domain-colocated-fixture-mother-pattern.md)** | ~200 | Production | Pure Mother (`*.mother.ts`) kolokowany w `domain/aggregates/__fixtures__/` buduje agregat przez publiczne `create()`; persystencja przez realny `repository.save()` via DI; kompozyt łączy Mother+save+typed row-buildery dla cross-context projekcji | infrastructure-testing-implementer |
 
 **Testing Layer Key Principles**:
 - Test Pyramid: L1 (unit) ~50%, L2 (integration) ~30%, L3 (E2E) ~20%
@@ -157,6 +163,7 @@ Testing strategies and patterns for all levels of the test pyramid.
 - Redis Isolation: Use unique database index per test suite
 - Mock Pattern: `createMock<T>()` from @golevelup/ts-vitest for ALL interface mocks — NEVER manual factory functions or `{ method: vi.fn() }` inline objects
 - Projection Row-Builders: one typed builder per projection table, colocated with the repository that owns real writes — NEVER a shared dynamic-table-name builder across contexts
+- Fixture Mothers: construction is a pure domain function through the aggregate's public `create()` — NEVER `as any` on props, NEVER `reconstituteFromPersistence()` as a construction shortcut; persistence is a separate `test/` layer via real `repository.save()`
 
 ---
 
@@ -303,23 +310,64 @@ ecosystems, jurisdiction-bound disclaimers, AGPL contamination prevention.
 
 ## 📊 Pattern Statistics
 
-**Core Patterns**: 43
+**Core Patterns**: 46
 **Stack-Specific Patterns**: 29 (flutter, nextjs, python, sveltekit, typescript-library)
-**Total**: 72
+**Total**: 75
 **Production Status**: 100% (all patterns verified in production code)
 
 **Core Pattern Distribution**:
-- Domain: 14% (6)
-- Application: 9% (4)
+- Domain: 15% (7)
+- Application: 11% (5)
 - Infrastructure: 9% (4)
-- Architecture: 28% (12)
-- Testing: 23% (10)
-- Cross-Layer: 14% (6)
+- Architecture: 26% (12)
+- Testing: 24% (11)
+- Cross-Layer: 13% (6)
 - Orchestration: 2% (1)
 
 ---
 
 ## 🔄 Pattern Updates
+
+**Version 3.10** (2026-07-18):
+- Removed application/quote-reservation-pattern.md and domain/config-policy-aggregate-pattern.md
+  (+ their `_summary.md` rule cards) from the shared library — on review, both are genuinely
+  specific to `juz-ide-api-1`'s reach/pricing domain, not generic nestjs-ddd guidance. Moved to
+  `juz-ide-api-1/docs/tech/` (that project's own DDD pattern docs, alongside
+  `ddd-implementation-patterns.md`). Supersedes the v3.9 `**Scope**: project-specific` tagging —
+  the `scope`/`project` retrieve_patterns mechanism stays in place (see "Adding a New Pattern")
+  for genuine future incubation cases, just unused right now.
+
+**Version 3.9** (2026-07-13):
+- Introduced the `**Scope**: project-specific (<project>)` convention (see "Adding a New Pattern"
+  below) for patterns derived from a single project's codebase, not yet validated in a second one.
+  `retrieve_patterns` now excludes `scope: project-specific` chunks by default; pass
+  `project: "<name>"` to include a specific project's own patterns.
+- Retroactively marked application/quote-reservation-pattern.md and
+  domain/config-policy-aggregate-pattern.md as `project-specific (juz-ide-api-1)` — both are
+  real production patterns but only observed in one codebase so far, not yet generic nestjs-ddd
+  guidance. Re-classify as universal once a second project adopts the same shape.
+
+**Version 3.8** (2026-07-13):
+- Added application/quote-reservation-pattern.md (ephemeral persisted price quote, TTL +
+  policyVersion, consumed atomically at commit via MIN(quoted, fresh) — never reserves
+  resources at quote-creation time) + rule card. Derived from `TS-REACH-SYSTEM-001` decision D7.
+- Added domain/config-policy-aggregate-pattern.md (whole-matrix config aggregate for
+  admin-editable business rules — pricing tiers, rate limits — with cross-row Specifications,
+  audit events, VO catalog injected not self-loaded) + rule card. Derived from decisions D1/D2.
+- Extended architecture/dual-identity-pattern.md with Anti-Pattern 5: userId as a Query
+  constructor field (not just Commands) is the same hijacking surface, one layer later. Real
+  gap found live as `ARCH-D001` (22 Query classes across 5 bounded contexts). Also extended
+  application/query-handler-pattern.md (Anti-Pattern 5) and `rules/nestjs-ddd/application-handlers.md`.
+- Extended architecture/acl-registry-pattern.md with Anti-Pattern 4: per-item ACL round-trip
+  instead of a batched call is N+1 across a bounded-context boundary — a real cost even inside
+  a monolith. Derived from decision D6. Also extended `rules/nestjs-ddd/acl-registry.md`.
+- Total patterns: 46 (was 44)
+
+**Version 3.7** (2026-07-12):
+- Added testing/domain-colocated-fixture-mother-pattern.md (pure Mother in `domain/aggregates/__fixtures__/` + real `repository.save()` via DI + composite for cross-context projections) — the Category 1 counterpart to `typed-projection-row-builder-pattern.md`'s Category 2, both introduced by the `TS-TEST-FIXTURE-001..006` series
+- Refreshed testing/test-seeding-performance-guide.md (1.3 → 2.0): mode-selection guidance, decision trees, and quick-reference tables now point to the Mother/composite instead of the retired `UserIdentityFixture.createAsync()`/`.createSync()` API; corrected stale references to `FixtureRegistry` (deleted as dead code) and `AtomicCreators` (removed, not merely deprecated)
+- Refreshed testing/e2e-hybrid-fixture-pattern.md: Pattern 2 (Fixture Helper Classes) now points to `user-identity-db-helpers.fixture.ts` instead of the legacy fixture class for the same use case (mutating a user created via real `POST /auth/register`)
+- Total patterns: 44 (was 43)
 
 **Version 3.6** (2026-07-12):
 - Added testing/typed-projection-row-builder-pattern.md (typed row-builder colocated with the owning repository for cross-context projection tables with no local write path)

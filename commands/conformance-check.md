@@ -21,12 +21,19 @@ Odpowiada na: „czy gdzieś używamy `extends AggregateRoot`, a w innym miejscu
 konformności, NIE semantyczny retrieval — deterministyczna analiza AST (TS compiler).
 
 ## Kroki
-1. Ustal `<src-dir>` (arg lub `src/`). Ustal ścieżkę do narzędzia w claude-patterns:
-   `<CLAUDE_PATTERNS>/tools/conformance/` (np. przez `.claude/knowledge` symlink lub znaną lokalizację repo).
-2. Jednorazowo: `npm install` w `tools/conformance/` (potrzebny `typescript`).
-3. Uruchom:
+1. Ustal `<src-dir>` (arg lub `src/`). Narzędzie ma STAŁĄ, znaną lokalizację w tym lokalnym
+   setupie: `/opt/projects/claude-patterns/tools/conformance/` — NIE odkrywaj jej przez
+   `ls`/`find`/`cd` (patrz "Ważne o komendach Bash" niżej), po prostu użyj tej ścieżki wprost.
+2. `node_modules` (`typescript`) jest już zainstalowane raz, współdzielone przez wszystkie
+   projekty — nic nie trzeba instalować per-projekt. Jeśli `check.mjs` zgłosi
+   `MODULE_NOT_FOUND`, dopiero wtedy napraw JEDNĄ atomową komendą (nie w ramach zwykłego
+   uruchomienia, osobny krok naprawczy):
    ```bash
-   node <CLAUDE_PATTERNS>/tools/conformance/check.mjs --dir <src-dir>
+   npm install --prefix /opt/projects/claude-patterns/tools/conformance
+   ```
+3. Uruchom DOKŁADNIE tę jedną, niełańcuchowaną komendę (pełna ścieżka, żadnego `cd`, `&&`, `||`):
+   ```bash
+   node /opt/projects/claude-patterns/tools/conformance/check.mjs --dir <src-dir>
    ```
    (flagą `--json` dla maszynowego wyjścia / CI.)
 4. Zinterpretuj raport:
@@ -35,6 +42,16 @@ konformności, NIE semantyczny retrieval — deterministyczna analiza AST (TS co
    - **CONSISTENCY outliers** — odstępstwa od większości (emergentny rozjazd konwencji). Do przeglądu:
      albo wyrównać do większości, albo (jeśli celowe) udokumentować w ADR.
 5. Wynik: lista `file:line` z „found vs expected/majority". Exit 1 gdy są hard-violations (przydatne w CI).
+
+## Ważne o komendach Bash
+
+NIE łącz komend przez `&&`/`||`/`;` (np. `ls X && echo found || find / ...`) — permission-model
+projektów (np. `.claude/settings.json` allow-listy typu `Bash(ls:*)`, `Bash(node:*)`) dopasowuje
+PREFIKS całej komendy. Dla łańcuchowanej komendy to dopasowanie zawodzi nawet gdy każdy segment
+osobno jest dozwolony (celowe zabezpieczenie — inaczej `ls && rm -rf /` przeszłoby tylko dlatego,
+że zaczyna się od `ls`), więc pojawia się prompt o zgodę, który w niektórych środowiskach (np. bez
+interaktywnego operatora) kończy się odmową — powtarzalnie, nawet przy ponownej próbie tej samej
+komendy. Zawsze wywołuj `check.mjs` jako pojedynczą, prostą komendę z pełną ścieżką (patrz krok 3).
 
 ## Konfiguracja
 - Domyślne reguły: `tools/conformance/rules.json` (z `rules/nestjs-ddd` + decision cards).

@@ -185,6 +185,8 @@ export class AuthorizationContextAPI implements IACLAdapter<any, any, any> {
 - ✅ **MUST** use lowercase context names as registry keys
 - ✅ **MUST** return `Result<T, E>` from adapter methods (hybrid error handling)
 - ✅ **MUST** handle adapter retrieval failures gracefully
+- ✅ **MUST** batch a cross-context call that would otherwise repeat per unit of work — one
+  adapter method taking a list/array in, one round trip out; see Anti-Pattern 4
 
 ### MUST NOT
 
@@ -193,6 +195,8 @@ export class AuthorizationContextAPI implements IACLAdapter<any, any, any> {
 - ❌ **MUST NOT** inject adapters directly in constructor
 - ❌ **MUST NOT** store adapter references in class properties (retrieve each time)
 - ❌ **MUST NOT** throw exceptions from adapter methods (use Result pattern)
+- ❌ **MUST NOT** call a per-item ACL method in a loop when the caller already knows the full
+  set of items up front (N+1 across a bounded context boundary — see Anti-Pattern 4)
 
 ## ⚠️ Anti-Patterns
 
@@ -238,7 +242,65 @@ constructor(@Inject(ACL_REGISTRY_SERVICE) private readonly aclRegistry: ACLRegis
 
 **Fix**: Retrieve adapter at method call time, not in constructor.
 
-### Anti-Pattern 4: Missing onModuleInit Registration
+### Anti-Pattern 4: Per-Item ACL Round-Trip Instead of Batch (N+1 across contexts)
+
+```typescript
+// ❌ WRONG: one cross-context call PER level, for a bootstrap endpoint that needs all 7 up front
+async buildPricingContext(lat: number, lng: number, levels: ReachLevel[]) {
+  const perLevel = [];
+  for (const level of levels) {
+    // 7 separate round trips through the ACL registry for ONE bootstrap request
+    const geo = this.geoACL.getReachContext(lat, lng, level.targetPopulation);
+    perLevel.push(geo);
+  }
+  return perLevel;
+}
+```
+
+**Why Bad**: an ACL call still crosses a real boundary (a service call, a DB query on the other
+side, a timeout budget) even though both contexts live in the same monolith — "it's just a
+function call" is the exact assumption that lets N+1 hide in cross-context code. A naive
+per-level implementation of a "show me the whole pricing curve" endpoint turns ONE user action
+into 7 (or N) round trips, each carrying its own latency and its own chance to fail
+independently.
+
+**Real project trigger** (`TS-REACH-SYSTEM-001`, decision D6): `GET /my/pricing-context` must
+return cost + radius + population + app-users-in-radius for ALL 7 reach levels in one response
+(so a mobile slider can react locally, without an HTTP call per drag). A naive per-level ACL
+call would have made that endpoint issue 7 round trips to `geographic-auth` on every load.
+
+**Fix**: design the ACL method to accept the full list and return the full list in one call —
+push the "loop over levels" to whichever side can do it in a single query (e.g. one SQL
+statement computing `SUM(CASE WHEN ST_DWithin(...) THEN 1 END)` per radius, rather than one
+query per radius):
+
+```typescript
+// ✅ CORRECT: ACL interface takes the whole set, returns the whole set — ONE round trip
+const geoACL = this.aclRegistry.getGlobalRequired<{
+  getReachContext(lat: number, lng: number, levels: ReachLevelInput[]): Promise<Result<{
+    densityPerKm2: number;
+    perLevel: Array<{ levelCode: string; radiusM: number; populationInRadius: number; appUsersInRadius?: number }>;
+  }, Error>>;
+}>('geographic-auth');
+
+const context = await geoACL.getReachContext(lat, lng, allSevenLevels); // ONE call, ONE round trip
+```
+
+**Test that catches a regression back into N+1**:
+
+```typescript
+it('calls the geo ACL exactly once for a 7-level pricing context, regardless of level count', async () => {
+  await handler.executeBusinessLogic(new GetPricingContextQuery(/* feature */ 'event'));
+
+  expect(mockGeoACL.getReachContext).toHaveBeenCalledTimes(1); // not once-per-level
+  expect(mockGeoACL.getReachContext).toHaveBeenCalledWith(
+    expect.any(Number), expect.any(Number),
+    expect.arrayContaining([expect.objectContaining({ levelCode: 'L1' }), expect.objectContaining({ levelCode: 'L7' })])
+  );
+});
+```
+
+### Anti-Pattern 5: Missing onModuleInit Registration
 
 ```typescript
 // ❌ WRONG: Adapter provided but never registered

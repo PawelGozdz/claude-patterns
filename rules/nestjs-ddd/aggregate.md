@@ -14,6 +14,7 @@
 - Expose `getSpecificationContext()` for policy/spec evaluation.
 - Put only business rules here; delegate format validation to value objects.
 - Update `BUSINESS_RULES.yaml` in the same change whenever an invariant changes.
+- When a method's `Result.fail(...)` introduces a NEW domain error class, register it in the context's error-mapper in the same change — see [error-mapper.md](./error-mapper.md). An aggregate returning a new error type nobody mapped is invisible until it silently degrades to a generic 422 at the HTTP boundary.
 
 ## NEVER
 - `throw` — always `Result.fail(...)` (domain-purity invariant).

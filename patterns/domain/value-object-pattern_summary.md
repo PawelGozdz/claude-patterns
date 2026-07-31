@@ -17,6 +17,7 @@
 - **VO8** — implementacja `validate(props)` wymagana przez `BaseValueObject`.
 - **VO9** — metody obliczeniowe jako czyste funkcje (zero side effects, zero async).
 - **VO10** — dla VO opartych na enumach: `declare public readonly value: EnumType` (re-deklaracja bez emisji JS).
+- **VO11** — VO reprezentujący oś statycznej taksonomii (`shared/domain/taxonomy/`) MA dedykowany L1 guardian test weryfikujący zgodność `create()`/`isValidSlug(...)` z drzewem tej osi (wzór: `taxonomy-vo-consistency.guardian.spec.ts`, `TS-TAXONOMY-CONSOLIDATION-001` PR0/D12).
 
 ## MUST NOT
 - **N1** — ❌ reguły biznesowe w VO — tylko format/struktura (ADR-0021); logika biznesowa → Specification.
@@ -108,5 +109,6 @@ export class XxxTypeVO extends BaseValueObject<XxxTypeEnum> {  // VO1
 | `async` / `await` w metodzie VO | VO9 / N3 |
 | `import { ... } from '...infrastructure...'` | N2 |
 | plain enum class bez `declare public readonly value` | VO10 |
+| nowa oś taksonomii bez guardian testu `create()`/`isValidSlug()` vs drzewo | VO11 |
 
 **Pełny wzorzec**: [`value-object-pattern.md`](./value-object-pattern.md)

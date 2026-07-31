@@ -49,28 +49,49 @@ function tagsFromPath(source: string): string[] {
   return Array.from(new Set(tags));
 }
 
-function pushChunk(acc: Chunk[], source: string, heading: string, body: string, kind: ChunkKind, tags: string[]): void {
+// Project-specific pattern marker — a pattern-doc derived from ONE project's codebase (not yet
+// generalized/validated in a second project) opts into exclusion-by-default from retrieve_patterns
+// by adding a `**Scope**: project-specific (<project-name>)` line anywhere in the file (convention:
+// next to the existing `**Status**:` footer line). Absence = universal (every pre-existing pattern).
+const SCOPE_RE = /^\*\*Scope\*\*:\s*project-specific\s*\(([^)]+)\)/m;
+
+function parseScope(content: string): { scope?: "project-specific"; project?: string } {
+  const m = SCOPE_RE.exec(content);
+  if (!m) return {};
+  return { scope: "project-specific", project: m[1].trim() };
+}
+
+function pushChunk(
+  acc: Chunk[],
+  source: string,
+  heading: string,
+  body: string,
+  kind: ChunkKind,
+  tags: string[],
+  scopeInfo: { scope?: "project-specific"; project?: string }
+): void {
   const text = body.trim();
   if (text.length < MIN_LEN) return;
-  acc.push({ id: `${source}#${slugify(heading)}`, source, section: heading, text, kind, tags });
+  acc.push({ id: `${source}#${slugify(heading)}`, source, section: heading, text, kind, tags, ...scopeInfo });
 }
 
 export function chunkMarkdown(content: string, source: string): Chunk[] {
   const tags = tagsFromPath(source);
+  const scopeInfo = parseScope(content);
   const chunks: Chunk[] = [];
 
   for (const section of splitByHeading(content, "## ")) {
     if (ANTI_RE.test(section.heading)) {
       const subsections = splitByHeading(section.body, "### ");
       if (!subsections.length) {
-        pushChunk(chunks, source, section.heading, section.body, "anti_pattern", tags);
+        pushChunk(chunks, source, section.heading, section.body, "anti_pattern", tags, scopeInfo);
       } else {
         for (const sub of subsections) {
-          pushChunk(chunks, source, `${section.heading} — ${sub.heading}`, sub.body, "anti_pattern", tags);
+          pushChunk(chunks, source, `${section.heading} — ${sub.heading}`, sub.body, "anti_pattern", tags, scopeInfo);
         }
       }
     } else {
-      pushChunk(chunks, source, section.heading, section.body, "rule_card", tags);
+      pushChunk(chunks, source, section.heading, section.body, "rule_card", tags, scopeInfo);
     }
   }
 

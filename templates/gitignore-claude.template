@@ -18,6 +18,10 @@
 .claude/agents/code-quality-verifier.md
 .claude/agents/ddd-application-expert.md
 .claude/agents/security-e2e-verifier.md
+.claude/agents/sql-postgres-optimizer.md
+.claude/agents/domain-application-implementer.md
+.claude/agents/infrastructure-implementer.md
+.claude/agents/test-implementer.md
 .claude/agents/implementers/
 # node-ts-claude-api
 .claude/agents/ts-implementer.md

@@ -64,6 +64,22 @@ Detects `ref.read()` inside `build()` methods:
 [Hook] Flutter: ref.read() at line 42 in login_page.dart — use ref.watch() inside build() for reactivity
 ```
 
+### Typography/Spacing Token Detection (`check-typography-tokens.js`)
+
+Detects inline styling that bypasses design-system tokens:
+- `TextStyle(...fontSize...)` — should use `AppTypography.*` tokens instead
+- `EdgeInsets.*()` with a bare numeric literal argument (not an identifier/constant) — should use
+  `LocalHeroDesignTokens.space*` instead
+- Only checks files matching configured patterns (default: `**/presentation/**/*.dart`)
+- Simple per-line regex detection (not a full AST parser) — false negatives are acceptable,
+  false positives are not
+
+**Warning format:**
+```
+[Hook] Flutter: TextStyle(fontSize:...) at line 42 in foo_screen.dart — use AppTypography.* instead (see .claude/rules/dart/design-system.md)
+[Hook] Flutter: EdgeInsets literal at line 17 in foo_screen.dart — use LocalHeroDesignTokens.space* instead (see .claude/rules/dart/design-system.md)
+```
+
 ## Stop Hook
 
 ### Cross-Feature Import Detection (`check-flutter-imports.js`)

@@ -17,6 +17,7 @@ file organization, error handling) and `rules/typescript/`.
 - **NestJS DI** — `@Inject()` on every dependency; register handlers in `providers[]` / `onModuleInit`.
 - **Cross-context** — only via ACL Registry or domain events (dot-notation EVENT_NAME enum as SSoT).
 - **`BUSINESS_RULES.yaml`** — keep in sync with code whenever an invariant changes.
+- **New `D_`-prefixed error class ⇒ mapper entry, same PR** — a new domain error and its context `IDomainErrorMapper` registration are ONE change, not two (see [error-mapper.md](./error-mapper.md); 72-class gap found repo-wide 2026-07 when this wasn't followed).
 
 ## Index
 
@@ -30,6 +31,7 @@ file organization, error handling) and `rules/typescript/`.
 | [repository.md](./repository.md) | Ports + mappers, event dispatch on save, `eventMap` enum SSoT, optimistic locking. | `patterns/infrastructure/repository-pattern.md` |
 | [acl-registry.md](./acl-registry.md) | Cross-context only via ACL Registry or events; no cross-BC imports. | `patterns/architecture/acl-registry-pattern.md` |
 | [application-handlers.md](./application-handlers.md) | Command/query handlers: orchestration only, `@Inject()`, auto-discovery, userId from context. | `patterns/application/command-handler-pattern.md`, `query-handler-pattern.md` |
+| [error-mapper.md](./error-mapper.md) | New `D_` error class ⇒ mapper entry same PR; `switch(errorCode)` covers every real code; guardian coverage test mandatory. | `patterns/cross-layer/domain-errors-pattern.md` (Anti-Pattern 5), `error-handler-chain-pattern.md` |
 
 ## Related patterns not (yet) given a dedicated rule file
 
@@ -39,3 +41,5 @@ file organization, error handling) and `rules/typescript/`.
 - Application services / sagas — `patterns/application/application-service-pattern.md` (covered inline by application-handlers.md).
 - Controller schema — `patterns/infrastructure/controller-schema-pattern.md`.
 - Audit handlers — `patterns/application/audit-handler-pattern.md`.
+- Quote / price-lock (TTL + policyVersion, consume-at-commit) — `patterns/application/quote-reservation-pattern.md` (card: `quote-reservation-pattern_summary.md`).
+- Configuration-as-data policy aggregate (cross-row Specifications for admin-editable pricing/limits) — `patterns/domain/config-policy-aggregate-pattern.md` (card: `config-policy-aggregate-pattern_summary.md`).

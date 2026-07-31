@@ -216,15 +216,26 @@ while IFS= read -r category; do
     for skill_dir in "$CATEGORY_DIR"/*/; do
       [[ -d "$skill_dir" ]] || continue
       skill_name=$(basename "$skill_dir")
-      if [[ -f "$skill_dir/SKILL.md" ]]; then
-        SKILLS_LIST_ITEMS="${SKILLS_LIST_ITEMS}- \`${category}/${skill_name}\`\n"
+      skill_md="$skill_dir/SKILL.md"
+      if [[ -f "$skill_md" ]]; then
+        # Flat name — matches actual .claude/skills/<name>/ symlink + Skill(<name>) invocation
+        # (native discovery replaced the old nested .claude/knowledge/skills/<category>/<name>/
+        # layout — see setup-project.sh [4b/8]). A `category/name` listing here silently breaks
+        # every `Skill(category/name)` call a reader makes from this doc.
+        if grep -q "^disable-model-invocation: *true" "$skill_md" 2>/dev/null; then
+          # Not flat-symlinked (setup-project.sh skips these) — only reachable via its
+          # slash-command counterpart (commands/<name>.md), never via the Skill tool.
+          SKILLS_LIST_ITEMS="${SKILLS_LIST_ITEMS}- \`/${skill_name}\` (slash command only, not Skill tool)\n"
+        else
+          SKILLS_LIST_ITEMS="${SKILLS_LIST_ITEMS}- \`${skill_name}\`\n"
+        fi
       fi
     done
   fi
 done < <(yml_list "skills")
 
 if [[ -n "$SKILLS_LIST_ITEMS" ]]; then
-  SKILLS_IMPORTS="## Available Skills (auto-discovered from .claude/knowledge/skills/)\n\n"
+  SKILLS_IMPORTS="## Available Skills (auto-discovered from .claude/skills/)\n\n"
   SKILLS_IMPORTS="${SKILLS_IMPORTS}${SKILLS_LIST_ITEMS}"
 fi
 

@@ -5,6 +5,20 @@
 **Introduced**: TS-TEST-001 Week 2 (2025-01-08)
 **Status**: ACTIVE
 
+> **Status migracji [2026-07-12]**: the underlying philosophy here (HTTP for
+> what you test, fixtures for setup/verification) is unchanged and still
+> ACTIVE. What changed is the concrete construction API for `UserIdentity`:
+> `TS-TEST-FIXTURE-001..006` replaced ad-hoc `UserIdentityFixtureClass`
+> construction with a domain-colocated Mother + real `repository.save()` +
+> typed projection row-builders. See
+> [`domain-colocated-fixture-mother-pattern.md`](./domain-colocated-fixture-mother-pattern.md)
+> for the full pattern. The old `UserIdentityFixtureClass.createProjections()`
+> has **not** been deleted yet — retirement is blocked on `TS-TEST-FIXTURE-006`
+> until zero consumers remain (133 of 135 already migrated as of 2026-07-11).
+> Pattern 2 below is updated to the current file; Patterns 1 and 3-6 describe
+> HTTP/DB/Redis/timing techniques that are independent of this migration and
+> remain accurate as written.
+
 ## Problem
 
 E2E tests need to balance:
@@ -77,7 +91,7 @@ describe('Authorization E2E', () => {
 For modifying state after HTTP creation:
 
 ```typescript
-import { UserIdentityFixtureClass } from '@test/shared/fixtures/auth';
+import { markEmailVerified } from '@test/shared/fixtures/auth/user-identity-db-helpers.fixture';
 import { DatabaseService } from '@shared/database/database.service';
 
 describe('Email Verification E2E', () => {
@@ -93,7 +107,7 @@ describe('Email Verification E2E', () => {
 
     // 2. Fixture helper for state change (fast)
     const db = context.app.get(DatabaseService).getDatabase();
-    await UserIdentityFixtureClass.markEmailVerified(db, userId);
+    await markEmailVerified(db, userId);
 
     // 3. Test protected endpoint
     await request(context.app.getHttpServer())
@@ -105,8 +119,10 @@ describe('Email Verification E2E', () => {
 });
 ```
 
-**When**: Need specific state (verified, suspended, etc.) without full HTTP flow
+**When**: Need specific state (verified, suspended, etc.) without full HTTP flow, on a user **already created via a real SUT call** (not a fixture-constructed one — if you need to *construct* a user from scratch, use the Mother/composite from `domain-colocated-fixture-mother-pattern.md` instead).
 **Why**: Avoids slow email verification flow for every test
+
+**Provenance**: `markEmailVerified(db, userId)` was extracted 1:1 (identical signature and body — a single `db.updateTable('users').set({...}).where('id', '=', userId).execute()`) out of the old `UserIdentityFixtureClass` and into its own file, `user-identity-db-helpers.fixture.ts`, during `TS-TEST-FIXTURE-002` (2026-07-11). This is exactly the case the task predicted: 3 e2e files (`auth-core.e2e.spec.ts`, `auth-advanced.e2e.spec.ts`, `auth-accept-policy.e2e.spec.ts`) never *constructed* a user through the fixture — they only mutated a user created by a real `POST /auth/register` call — so the Mother/composite (which builds from scratch) doesn't apply to them, but the standalone class was still their only source for `markEmailVerified`. `setPhoneNumber` and `getUserIdByEmail` are documented (not yet verified as extracted) as facing the same situation — check the current file before assuming which helpers have moved.
 
 ## Pattern 3: Manual Database Queries
 
@@ -320,6 +336,7 @@ What are you testing?
 
 ## Related Patterns
 
+- [Domain-Colocated Fixture Mother Pattern](./domain-colocated-fixture-mother-pattern.md) - canonical construction+persistence for Pattern 2's fixture layer
 - [Test Seeding Performance Guide](./test-seeding-performance-guide.md) - "Fixture what you DON'T test"
 - [Context Isolation Pattern](./context-isolation-pattern.md) - DatabaseCleaner usage
 - [Testing Pyramid Pattern](./testing-pyramid-pattern.md) - L3 E2E layer
@@ -333,7 +350,10 @@ What are you testing?
 - `src/app/api/authorization/authorization-rate-limits.e2e.spec.ts` - Concurrent testing
 
 **Helpers**:
-- `test/shared/fixtures/auth/user-identity-fixture-class.ts` - Fixture helper
+- `src/contexts/auth/domain/aggregates/__fixtures__/user-identity.mother.ts` - construction (Mother)
+- `test/shared/fixtures/auth/user-identity-composite.fixture.ts` - construction + save + projections
+- `test/shared/fixtures/auth/user-identity-db-helpers.fixture.ts` - state mutation on a SUT-created user (`markEmailVerified`)
+- `test/shared/fixtures/auth/user-identity-fixture-class.ts` - legacy class, mid-retirement (`createProjections()` not yet deleted, see [`domain-colocated-fixture-mother-pattern.md`](./domain-colocated-fixture-mother-pattern.md))
 - `test/shared/redis-test.helper.ts` - Redis cache management
 - `test/shared/nestjs-test-setup.ts` - DatabaseCleaner
 
@@ -346,8 +366,8 @@ What are you testing?
 ❌ **DON'T** use ONLY fixtures (misses integration issues)
 ```typescript
 // ❌ WRONG - Never touches HTTP layer
-const user = UserIdentityFixtureClass.create(db, { email: 'test@test.com' });
-await PermissionFixtureClass.grant(db, user.id, 'read', 'JobRequest');
+const { userId } = await saveTestUnverifiedUserWithProjections(context.app);
+await PermissionFixtureClass.grant(db, userId, 'read', 'JobRequest');
 // Test passes but HTTP layer never tested!
 ```
 
@@ -380,8 +400,8 @@ const response = await request(app).post('/auth/register').send(...).expect(201)
 
 ✅ **DO** use fixtures for setup/verification
 ```typescript
-// ✅ CORRECT - Fast state setup
-await UserIdentityFixtureClass.markEmailVerified(db, userId);
+// ✅ CORRECT - Fast state setup on a SUT-created user
+await markEmailVerified(db, userId); // from user-identity-db-helpers.fixture.ts
 ```
 
 ✅ **DO** wait for async handlers

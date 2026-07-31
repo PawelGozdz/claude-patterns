@@ -11,8 +11,14 @@ patterns:
   - name: dual-identity-pattern.md
     stacks: [typescript, generic]
     maturity: production
-    last_verified: 2026-02-05
-    description: "Security pattern for userId extraction from RequestContext"
+    last_verified: 2026-07-13
+    description: "Security pattern for userId extraction from RequestContext — Commands AND self-scoped Queries (ARCH-D001 gap documented)"
+
+  - name: acl-registry-pattern.md
+    stacks: [typescript, generic]
+    maturity: production
+    last_verified: 2026-07-13
+    description: "Cross-context service locator via ACL Registry; includes batch-call requirement to avoid N+1 across bounded contexts"
 
   - name: transactional-pattern.md
     stacks: [typescript, generic]
@@ -28,7 +34,11 @@ patterns:
 
 notes: |
   Architecture patterns are broadly applicable across tech stacks.
-  dual-identity-pattern is security-focused (prevent audit spoofing).
+  dual-identity-pattern is security-focused (prevent audit spoofing); as of
+  2026-07-13 explicitly covers self-scoped Query classes too, not just Commands
+  (ARCH-D001: found live as a gap in 22 Query classes, TS-REACH-SYSTEM-001).
+  acl-registry-pattern's batch-call rule (Anti-Pattern 4) closes an N+1 found
+  in the same task (D6) — one round trip for a set, not one per item.
   transactional-pattern works with any ORM/database abstraction.
   fresh-context-pattern is Claude Code specific but generic pattern.
 

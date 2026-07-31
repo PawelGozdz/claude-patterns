@@ -11,8 +11,12 @@
 - Use a lowercase context-name key (`'authorization'`, `'auth'`, `'geographic-auth'`).
 - Fetch the adapter inside the method (not the constructor) — guarantees init order.
 - Use the dot-notation EVENT_NAME enum as the single source of truth for event-based cross-context messaging.
+- Batch a cross-context call that would otherwise repeat per unit of work (per level/tier/item) —
+  one adapter method taking the full list in, one round trip out (TS-REACH-SYSTEM-001 D6).
 
 ## NEVER
+- Call a per-item ACL method in a loop when the caller already knows the full set up front —
+  N+1 across a bounded-context boundary still costs a real round trip per iteration.
 - `import { XxxModule } from '@contexts/xxx/...'` in another context — creates circular deps and breaks BC isolation.
 - Import another context's adapter/API class — defeats the whole pattern.
 - Resolve the adapter in the constructor — it may not be registered yet.

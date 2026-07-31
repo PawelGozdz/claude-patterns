@@ -100,9 +100,16 @@ V1EntityHubTile(
 
 ## Interactive states — wzorzec ConsumerStatefulWidget
 
+> **Zaktualizowane 2026-07-11** (decyzja Pawła, miękki kierunek wizualny BRAND.md 2026-07-06 +
+> MOTION-FRAMEWORK.md §8.1): pressed state = **zmiana koloru tła cream → latte**, NIE
+> `translate(2,2) + shadow collapse`. Stary twardy wariant jest DEPRECATED — nie kopiuj go
+> z niezmigrowanych plików legacy; docelowo każdy tappable przechodzi na `SoftPressable`
+> z `lib/core/motion/` (gdy MOTION-001 wyląduje).
+
 Każdy interaktywny komponent (tappable) MUSI implementować:
 
-1. **Pressed state**: translate(2,2) + shadow collapse
+1. **Pressed state**: tween koloru tła `v1Cream → v1Latte` (`animationFast`) — bez translate,
+   bez kolapsu cienia (w miękkim stylu nie ma twardego cienia, który mógłby się „zapadać")
 2. **Focus ring**: WCAG SC 2.4.7 — widoczny focus indicator klawiaturowy
 3. **Semantics**: `button: true` + `label:`
 4. **Tap target**: min 44×44dp (`BoxConstraints(minHeight: 44)`)
@@ -142,17 +149,14 @@ class _MyWidgetState extends ConsumerState<MyWidget> {
             child: AnimatedContainer(
               duration: LocalHeroDesignTokens.animationFast,
               curve: Curves.easeInOut,
-              transform: _pressed
-                  ? Matrix4.translationValues(2.0, 2.0, 0.0)
-                  : Matrix4.identity(),
               constraints: const BoxConstraints(minHeight: 44),
               decoration: BoxDecoration(
-                boxShadow: [BoxShadow(
-                  color: LocalHeroDesignTokens.v1Coffee,
-                  offset: _pressed
-                      ? LocalHeroDesignTokens.shadowSmall
-                      : LocalHeroDesignTokens.shadowMedium,
-                )],
+                color: _pressed
+                    ? LocalHeroDesignTokens.v1Latte
+                    : LocalHeroDesignTokens.v1Cream,
+                borderRadius: BorderRadius.circular(8),
+                border: LocalHeroDesignTokens.getSoftBorder(),
+                boxShadow: LocalHeroDesignTokens.getSoftShadow(),
               ),
               child: ...,
             ),

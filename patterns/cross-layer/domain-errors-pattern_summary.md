@@ -12,10 +12,15 @@
   wywołujący sprawdza `isFailure` i mapuje `result.error`. NIGDY `throw` w domenie.
 - **DE2** — Każdy błąd domenowy ma **stabilny `code`** z enuma kodów projektu (np.
   `ProjectErrorCode.XXX`) — nie ad-hoc string, nie sama klasa bez kodu.
-- **DE3 (KRYTYCZNA — łamana w ~90% przypadków)** — **NOWY kod błędu ⇒ wpis w error-mapperze /
-  `ERROR_HTTP_STATUS` W TYM SAMYM PR/diffie.** Błąd bez mapowania dochodzi do warstwy HTTP jako
-  „nieznany" (brak właściwości `code` w mapowaniu) → klient dostaje **500** zamiast właściwego
-  4xx z kodem. Definicja błędu i jego mapowanie to JEDNA zmiana, nie dwie.
+- **DE3 (KRYTYCZNA — łamana w ~90% przypadków; 72 klasy w 8/11 kontekstów, audyt 2026-07)** —
+  **NOWY kod błędu ⇒ wpis w kontekstowym error-mapperze (`IDomainErrorMapper`) W TYM SAMYM
+  PR/diffie.** Błąd bez mapowania NIE daje 500 — realnie ląduje na generycznym 422 z
+  `GlobalFallbackErrorMapper` (`ERROR_HTTP_STATUS` nie jest niezawodną siatką bezpieczeństwa, patrz
+  domain-errors-pattern.md Anti-Pattern 5), tracąc zamierzony status i treść. Definicja błędu i jego
+  mapowanie to JEDNA zmiana, nie dwie. Mechaniczny backstop: obowiązkowy L1 guardian coverage test
+  per mapper (`rules/nestjs-ddd/error-mapper.md`, helper
+  `src/shared/response/testing/error-mapper-coverage.guardian.ts`) — CI blocker, nie polega już
+  wyłącznie na review.
 - **DE4** — Mapowanie błąd→HTTP żyje w warstwie infrastruktury (mapper/registry) — domena nie zna
   kodów HTTP.
 - **DE5** — `error.message` NIE trafia do odpowiedzi HTTP (leak szczegółów) — klient dostaje
@@ -33,24 +38,28 @@
 ```ts
 // domain/errors/xxx.errors.ts — DE1/DE2
 export class XxxCapacityExceededError extends DomainError {
-  readonly code = ProjectErrorCode.XXX_CAPACITY_EXCEEDED; // DE2 — stabilny kod z enuma
+  readonly code = ProjectErrorCode.XXX_CAPACITY_EXCEEDED; // DE2 — stabilny kod z enuma, D_-prefiksowany
 }
 
-// infrastructure/.../error-mapper (TEN SAM PR co nowy kod! — DE3)
-export const ERROR_HTTP_STATUS: Record<ProjectErrorCode, number> = {
+// infrastructure/.../xxx-error.mapper.ts — PRIMARY mechanizm (TEN SAM PR co nowy kod! — DE3)
+private readonly errorMappings = new Map<ErrorConstructor<BaseError>, MapFn>([
   // ...istniejące...
-  [ProjectErrorCode.XXX_CAPACITY_EXCEEDED]: 409, // DE3/DE4
-};
+  [XxxCapacityExceededError, error => new ConflictError('Capacity exceeded', { code: error.code })], // DE3/DE4
+]);
+
+// infrastructure/.../xxx-error-mapper-coverage.guardian.spec.ts — CI backstop (patrz error-mapper.md)
+findUnregisteredErrorClasses({ domainRoots: [...], mapperFiles: [...], exclusions: [...] }); // must be []
 ```
 
 ## Verifier — najczęstsze naruszenia → VETO
 | Symptom w kodzie | Złamana reguła |
 |---|---|
-| W diffie: nowy członek enuma kodów błędów, a plik mappera/`ERROR_HTTP_STATUS` NIETKNIĘTY | **DE3/N3** |
+| W diffie: nowa klasa błędu w `domain/**`, a `errorMappings` Map w kontekstowym mapperze NIETKNIĘTA | **DE3/N3** |
+| Kontekstowy mapper bez pliku `*-error-mapper-coverage.guardian.spec.ts` | **DE3** (brak mechanicznego backstopu) |
 | `throw new` w `domain/**` | N1 |
 | `catch` bez `Result.fail(...)` ani rethrow | N2 |
 | `error.message` w body odpowiedzi HTTP / mapowane 1:1 do klienta | DE5 |
 | `instanceof XxxError` w kontrolerze zamiast mapowania po `code` | N4 |
-| Klasa błędu bez właściwości `code` | DE2 |
+| Klasa błędu bez właściwości `code`, lub `code` bez prefiksu `D_` | DE2 |
 
 **Pełny wzorzec**: [`domain-errors-pattern.md`](./domain-errors-pattern.md)

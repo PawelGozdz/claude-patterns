@@ -8,6 +8,11 @@
 - Inject EVERY constructor dependency with `@Inject(TOKEN)` — logger, requestContext, repos, services, ACL.
 - Register handlers in the module `providers[]` (auto-discovery); for explicit registration use the module's `onModuleInit`.
 - Get `userId` exclusively from `this.requestContext.getUserId()` — never from a command field (ADR-0021).
+  Applies EQUALLY to self-scoped ("my X") Query classes, not just Commands — a `GetMyXQuery`
+  reads userId in the handler too (ARCH-D001: found as a gap in 22 Query classes across 5
+  contexts — see `patterns/architecture/dual-identity-pattern.md` Anti-Pattern 5). A `userId`
+  field used ONLY for `getUserContext()` audit telemetry (never to scope the result set) is not
+  this violation — the line is "does this field decide WHAT comes back," not "does the field exist."
 - Return `Result<DTO, E>` from `executeBusinessLogic()` — orchestration only: load → build VO → call aggregate factory → save → map DTO.
 - Do cross-context calls only via `aclRegistry.getGlobalRequired<ILocalInterface>('context')` with a local interface.
 - Implement `getOperationName()` and `getBoundedContext()` (telemetry); rely on inherited `@Transactional` for commands.
@@ -15,6 +20,8 @@
 
 ## NEVER
 - Put `userId` in a Command class — it comes from the JWT/RequestContext, not the request body (security gap).
+- Put `userId` in a self-scoped Query class's constructor to determine WHOSE data is returned —
+  same security gap, one layer later (ARCH-D001).
 - Put domain logic (age checks, business rules) in a handler — it belongs in the aggregate/specification.
 - `throw` in `executeBusinessLogic` — always `Result.fail(error)`.
 - Manage transactions manually (`beginTransaction`/`commit`/`rollback`) — `@Transactional` handles it.

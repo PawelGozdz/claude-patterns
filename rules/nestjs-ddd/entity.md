@@ -15,6 +15,7 @@
 - Use identity-based equality (compare by ID); implement `isValid()` (required by `BaseEntity`).
 - Validate via Specifications, not inline regex/string-length.
 - Expose props through getters; mutate `this.props.*` only inside entity methods.
+- When a business method's `Result.fail(...)` introduces a NEW domain error class, register it in the context's error-mapper in the same change — see [error-mapper.md](./error-mapper.md). Entity-thrown errors are easy to forget here specifically because the entity itself is never HTTP-facing — the gap only surfaces once the owning aggregate's write-side is actually wired to a controller.
 
 ## NEVER
 - `throw` — always `Result.fail(...)`.

@@ -23,7 +23,8 @@ import { buildCodeIndex, reindexFile } from "./indexer.js";
 // — the caller shouldn't have to know which side of a combination a feature landed on (see types.ts).
 function buildFilter(
   must: { key: string; value: unknown }[],
-  should?: { key: string; value: unknown }[]
+  should?: { key: string; value: unknown }[],
+  mustNot?: { key: string; value: unknown }[]
 ): Record<string, unknown> | undefined {
   const mustClauses = must
     .filter((c) => c.value !== undefined)
@@ -31,10 +32,14 @@ function buildFilter(
   const shouldClauses = (should ?? [])
     .filter((c) => c.value !== undefined)
     .map((c) => ({ key: c.key, match: { value: c.value } }));
+  const mustNotClauses = (mustNot ?? [])
+    .filter((c) => c.value !== undefined)
+    .map((c) => ({ key: c.key, match: Array.isArray(c.value) ? { any: c.value } : { value: c.value } }));
   const filter: Record<string, unknown> = {};
   if (mustClauses.length) filter.must = mustClauses;
   if (shouldClauses.length) filter.should = shouldClauses;
-  return mustClauses.length || shouldClauses.length ? filter : undefined;
+  if (mustNotClauses.length) filter.must_not = mustNotClauses;
+  return mustClauses.length || shouldClauses.length || mustNotClauses.length ? filter : undefined;
 }
 
 function buildServer(): McpServer {
@@ -63,15 +68,24 @@ function buildServer(): McpServer {
     "Semantic retrieval of DDD Rule Cards / canonical pattern docs / anti-patterns from claude-patterns " +
       "(patterns/**, rules/**) — GLOBAL collection, shared across every project (not per-project). Use for " +
       "'how should I model X' / 'what's the canonical rule for Y' questions — distinct from retrieve_code " +
-      "(existing project implementations, may contain drift/bugs).",
+      "(existing project implementations, may contain drift/bugs). By default EXCLUDES patterns marked " +
+      "project-specific (derived from one project's codebase, not yet generalized) — pass `project` " +
+      "(matching that project's name, e.g. 'juz-ide-api-1') to include that project's own patterns too.",
     {
       query: z.string().describe("what pattern/rule to find"),
       k: z.number().int().positive().optional(),
       kind: z.enum(["rule_card", "anti_pattern"]).optional(),
       tags: z.array(z.string()).optional(),
+      project: z.string().optional().describe(
+        "include project-specific patterns for this project name too (default: only universal patterns)"
+      ),
     },
-    async ({ query, k, kind, tags }) => {
-      const filter = buildFilter([{ key: "kind", value: kind }, { key: "tags", value: tags }]);
+    async ({ query, k, kind, tags, project }) => {
+      const filter = buildFilter(
+        [{ key: "kind", value: kind }, { key: "tags", value: tags }],
+        project ? [{ key: "scope", value: "universal" }, { key: "project", value: project }] : undefined,
+        project ? undefined : [{ key: "scope", value: "project-specific" }]
+      );
       const hits = await retrieveFromCollection(query, k ?? 5, "patterns_global", { filter });
       return { content: [{ type: "text", text: JSON.stringify(hits, null, 2) }] };
     }

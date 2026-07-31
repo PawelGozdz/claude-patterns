@@ -841,6 +841,21 @@ export const ERROR_HTTP_STATUS: Record<ProjectErrorCode, number> = {
 };
 ```
 
+> **Two-tier mechanism, both must be kept in sync (2026-07 finding):** in practice,
+> a request is mapped by (1) the bounded context's `IDomainErrorMapper`
+> (`Map<ErrorConstructor, mapFn>`, keyed by error CLASS, checked first) and only
+> falls back to (2) `GlobalFallbackErrorMapper` consulting `ERROR_HTTP_STATUS`
+> (keyed by error CODE) when no context mapper claims the class. **Do not assume
+> step 2 is a safety net** — `GlobalFallbackErrorMapper` only special-cases a
+> couple of code prefixes and defaults everything else to a generic 422
+> regardless of what `ERROR_HTTP_STATUS` says for that code. A repo-wide audit
+> (2026-07) found 72 classes across 8 of 11 contexts relying on step 1 that was
+> never wired up, silently landing on step 2's generic 422. Registering the
+> class in its context mapper (step 1) is the actual fix — see
+> [`rules/nestjs-ddd/error-mapper.md`](../../rules/nestjs-ddd/error-mapper.md)
+> for the mapper-side contract, including the mandatory L1 guardian coverage
+> test that now catches this mechanically instead of relying on review.
+
 ---
 
 ### ❌ ANTI-PATTERN 6: No Business Rule Documentation

@@ -73,6 +73,7 @@ handler, repository mock, …) without reading its pattern first.
 - ❌ Manual `function createMockX()` factories instead of `createMock<T>()` (see golevelup-mock)
 - ❌ Snapshot tests as a substitute for behavioral assertions
 - ❌ L3 tests without L1/L2 coverage underneath (pyramid inversion)
+- ❌ Unit-testing a repository / SQL against a mocked DB — always L2 integration (see Core Responsibilities)
 
 ---
 
@@ -110,7 +111,10 @@ emit `DONE:` / `REMAINING:` instead of risking a silent mid-file cutoff.
 code to test), @security-e2e-verifier (you prep L3 E2E scaffolding; it executes/holistically
 verifies), @code-quality-verifier (sends your test files for pattern-conformance review).
 
-**REFERENCE**: Explore agent via `Task(subagent_type='Explore')` for searches.
+**REFERENCE**: Explore agent via `Task(subagent_type='Explore')` for searches. Project-local
+query specialists (check `.claude/agents/` — e.g. a geo/PostGIS specialist for spatial
+predicates): consult when an L2 repository test needs to assert domain-specific query
+correctness, not just generic SQL — see "Geo/Spatial Repository Tests" below.
 
 ---
 
@@ -153,7 +157,59 @@ verifies), @code-quality-verifier (sends your test files for pattern-conformance
 - **L1-Agg**: Aggregate unit tests (domain — read the aggregate's pattern + BUSINESS_RULES.yaml first)
 - **L1-Sch**: Schema tests (6-category methodology)
 - **L2-Hdl**: Handler integration tests (~30%) — assert the business flow, not just "handler returns ok"
+- **L2-Repo**: Repository/SQL integration tests — see the hard rule below
 - **L3-E2E Setup**: E2E infrastructure (actual execution/final verdict → @security-e2e-verifier)
+
+### 🔴 HARD RULE: anything that emits SQL is L2, never L1 (ADR-0035, added 2026-07-20)
+
+Repository methods, query builders, raw `sql` templates and non-trivial migrations
+MUST get an `*.integration.spec.ts` against a real PostgreSQL (testcontainers). A unit
+test with a mocked/in-memory DB is **not coverage** for these — it asserts what the mock
+does, not what PostgreSQL does.
+
+This is structural, not stylistic: `pnpm test` is
+`vitest run --exclude '**/*.(e2e.spec|integration.spec|integration.test).ts'`, so it
+**physically cannot run** integration tests. A repo covered only by L1 produces a green
+signal carrying zero information about whether its SQL executes.
+
+Two defects escaped exactly this way on 2026-07-20 (TS-LS-LIFECYCLE-001), each failing
+100% of the time on a real DB while passing a full green `pnpm test` (28k+ tests) **and**
+two independent VETO verifier passes:
+
+- a migration dropped 3 of 6 partial indexes before an `ALTER COLUMN ... TYPE text`
+  → `operator does not exist: text = share_status`;
+- a query bound `CASE` thresholds as untyped params, so PG inferred `text`
+  → `operator does not exist: timestamp with time zone <= text`.
+
+So: **if you are asked to test a repository and you only write L1, you have not done the
+job** — say so and write the L2 instead. If the task forbids integration tests (no DB
+available), report that the repository is UNCOVERED rather than substituting mocked
+unit tests, which would misrepresent the coverage.
+
+Run them as `pnpm test:integration <file...>` / `pnpm test:e2e <file...>` — **never**
+with `--`, which makes pnpm ignore the file list and run the entire suite.
+
+### 🌍 Geo/Spatial Repository Tests (consult BEFORE asserting correctness)
+
+An L2 integration test for a repository method with a spatial predicate
+(`ST_DWithin`, `ST_Intersects`, `ST_Contains`, geography/geometry columns) is
+easy to write in a way that's green but proves nothing — e.g. asserting "rows
+came back" without asserting the SRID, the `geography`/`geometry` distance
+semantics, or that the plan actually uses the GiST index rather than a seq
+scan. Before finalizing assertions on such a test:
+
+1. Check `.claude/agents/` for a project-local geo/PostGIS specialist. If one
+   exists, hand it the query + the fixture data you intend to assert against
+   (NOT full task context) — it tells you what the *correct* result should be
+   (radius vs containment semantics, expected SRID) and whether an
+   `EXPLAIN (ANALYZE, BUFFERS)` assertion on GiST usage belongs in the test.
+2. Assert the real invariant, not just "no error" — e.g. a point just outside
+   a radius/boundary is excluded, a point just inside is included, and (where
+   the project convention calls for it) the query plan uses the spatial
+   index at realistic row counts.
+3. Non-spatial parts of the same repository test (pagination, unrelated
+   joins) stay yours — only the spatial-correctness question routes to the
+   specialist.
 
 ### Load & Performance Testing (CONDITIONAL — only when the task actually calls for it)
 
@@ -231,6 +287,8 @@ actual files yourself rather than expecting them pasted into your prompt.
   actually supposed to do, if BUSINESS_RULES.yaml is ambiguous
 - @backend-technology-expert: load-test thresholds/SLA when none was given
 - @ddd-application-expert: whether a discovered test gap is a real bug or intended behavior
+- Project-local query specialists (check `.claude/agents/`): correctness semantics for a
+  domain-specific query (e.g. geo/PostGIS) beyond generic relational assertions
 
 ---
 

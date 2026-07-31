@@ -196,6 +196,10 @@ export class GetCommentsForTargetHandler extends BaseQueryHandler<
 4. **Pagination**: ALL list queries support `page` and `limit`
 5. **User context**: Override `getUserContext()` for audit logging
 6. **Read model context**: Override `getReadModelContext()` for telemetry
+11. **Self-scoped queries ("my X") read userId from `RequestContextService` in the handler** —
+    NOT as a constructor field. This is distinct from rule 5: `getUserContext()`/`requestingUserId`
+    is for AUDIT TELEMETRY (who queried); it must never double as the value that SCOPES the
+    query's result set. See `patterns/architecture/dual-identity-pattern.md` Anti-Pattern 5.
 7. **Result pattern**: Return `Result<DTO, Error>`
 8. **Filtering & sorting**: Optional parameters for flexible queries
 9. **Log read access**: Call `logReadModelAccess()` for audit trail
@@ -209,6 +213,8 @@ export class GetCommentsForTargetHandler extends BaseQueryHandler<
 4. **NEVER missing pagination** - all list queries must paginate
 5. **NEVER @Transactional** - read operations don't need transactions
 6. **NEVER state changes** - queries must be side-effect free
+7. **NEVER `userId` as a constructor field for a self-scoped ("my X") query** - read it from
+   `RequestContextService` in the handler instead (see Anti-Pattern 5 below)
 
 ---
 
@@ -329,6 +335,60 @@ export class GetCommentsHandler extends BaseQueryHandler<...> {
 // Later: Audit log has user information
 // "User 'uuid-123' accessed comment #12345 at 2026-01-04 15:30:00"
 ```
+
+Note the difference between this Anti-Pattern and the next one: `query.requestingUserId` above
+feeds `getUserContext()` ONLY — telemetry describing who made the call. It is never read inside
+`executeBusinessLogic()` to decide WHAT to return. The moment a query field named `userId` /
+`requestingUserId` is ALSO used to scope the result set ("my X"), you've slid into Anti-Pattern 5.
+
+---
+
+### 5. userId as Constructor Field for a Self-Scoped Query (ARCH-D001)
+
+```typescript
+// ❌ WRONG: "my pricing context" scoped by a constructor field
+export class GetPricingContextQuery extends Query {
+  constructor(
+    public readonly userId: string, // ← who does "my" mean? Determined by whoever builds this object.
+    public readonly feature: string,
+  ) { super(); }
+}
+
+export class GetPricingContextHandler extends BaseQueryHandler<...> {
+  async executeBusinessLogic(query: GetPricingContextQuery) {
+    // query.userId decides WHOSE data comes back — this is authorization-relevant,
+    // not just an audit-log field, unlike Anti-Pattern 4 above.
+    return this.pricingService.buildContext(query.userId, query.feature);
+  }
+}
+```
+
+**Why Bad**: identical shape to the correct `getUserContext()` telemetry field above, which is
+exactly why it spreads — a reviewer sees "userId flows from a field" and assumes it's the
+established pattern. But here `userId` is doing double duty as the SCOPE of a self-owned
+resource ("my X"), which is the same trust boundary as a Command's Dual Identity rule — it must
+come from `RequestContextService` INSIDE the handler, never from a constructor field a caller
+populates. Found live as **22 Query classes across 5 bounded contexts** (`ARCH-D001`,
+`TS-REACH-SYSTEM-001`).
+
+```typescript
+// ✅ CORRECT: no userId field on the query at all
+export class GetPricingContextQuery extends Query {
+  constructor(public readonly feature: string) { super(); } // WHAT, never WHO
+}
+
+export class GetPricingContextHandler extends BaseQueryHandler<...> {
+  constructor(@Inject(RequestContextService) private readonly requestContext: RequestContextService, /* ... */) { super(/* ... */); }
+
+  async executeBusinessLogic(query: GetPricingContextQuery) {
+    const userId = this.requestContext.getUserId(); // ← same source a Command would use
+    if (!userId) return Result.fail(new UnauthenticatedError());
+    return this.pricingService.buildContext(userId, query.feature);
+  }
+}
+```
+
+**Fix**: full pattern + tests in `patterns/architecture/dual-identity-pattern.md` Anti-Pattern 5.
 
 ---
 

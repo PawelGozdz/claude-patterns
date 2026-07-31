@@ -33,6 +33,27 @@
  *                2026-07-08): warstwa infra-docs dostała ten sam ciężki blok co warstwy kodu —
  *                agent zinterpretował to jako zachętę do re-audytu (30×Read + 21×Bash, ZERO
  *                Write) zamiast pisania 3 plików Markdown; maxTurns cliff.
+ *   WL9 (ERROR)  realny SyntaxError w skrypcie — WL1-WL8 to regexy na tekście, nie parsują
+ *                składni. Incydent (TS-SEC-ONBEHALF-001, juz-ide-api-3): nieescapowany backtick
+ *                wewnątrz template literala (fragment promptu zawierający `npx vitest run`)
+ *                dał realny SyntaxError, ale wszystkie regexowe reguły przeszły na zielono —
+ *                złapane dopiero ręcznym `node -e "new Function(...)"` przed każdym resume.
+ *                WL9 odpala to jako TWARDY, PIERWSZY krok, przed WL1-WL8 — sensowność reguł
+ *                regexowych jest bez znaczenia, jeśli skrypt się w ogóle nie sparsuje.
+ *   WL10 (WARN)  agent({schema}) w roli weryfikatora (verify/final-gate) bez twardego limitu
+ *                narzędzi + frazy wymuszającej werdykt ("wydaj werdykt natychmiast gdy budżet
+ *                się kończy") w prompt-cie. Incydent (TS-REP-PIPELINE-001-F3a-remediation,
+ *                juz-ide-api-1, 2026-07-19): TRZY niezależne awarie tej klasy w jednym
+ *                przebiegu — verify(Testing) bez limitu, surowy `cfg.scope` (imperatywna lista
+ *                poleceń dla warstwy Docs) wstrzyknięty 1:1 do promptu weryfikatora zamiast
+ *                deklaratywnych pytań kontrolnych, finalPrompt bez limitu — verifier wyczerpuje
+ *                budżet tur eksploracją i kończy turę BEZ StructuredOutput → twardy `Error`,
+ *                `status: failed` całego Workflow (gorsze niż ESCALATE — wymaga `resume`, nie
+ *                tylko kontynuacji). Koszt: 4 podejścia, ~3.1M tokenów subagentów. Jeśli skrypt
+ *                definiuje kanoniczny `buildVerifierPrompt(...)` i JEGO ciało ma oba markery,
+ *                wszystkie wywołania przez tę funkcję liczą się jako pokryte razem (nie trzeba
+ *                markerów w każdym call-site z osobna) — to jest zalecany kształt, nie ręczne
+ *                dopisywanie limitu per-warstwa (dokładnie to zawiodło w incydencie).
  *
  * Exit: 0 = czysto lub tylko WARN · 1 = ERROR (NIE uruchamiaj Workflow) · 2 = zły input.
  */
@@ -51,6 +72,29 @@ function snippetsOf(src, marker) {
 
 function lint(src) {
   const findings = [];
+
+  // WL9 — realny syntax-check, PRZED wszystkimi regexowymi regułami (incydent
+  // TS-SEC-ONBEHALF-001: nieescapowany backtick w template literalu dał SyntaxError, a WL1-WL8
+  // (regex na tekście) dały zielone światło). Dwie właściwości realnych skryptów Workflow, które
+  // gołe `new Function(src)` fałszywie odrzuciłoby jako SyntaxError mimo poprawności:
+  //  1. `await agent(...)` na najwyższym poziomie ciała (opis narzędzia Workflow: "runs in an
+  //     async context — use await directly") — nielegalne w zwykłej, nie-async funkcji.
+  //  2. `export const meta = {...}` jako wymagana pierwsza linia (spec narzędzia Workflow) —
+  //     `export` jest nielegalny wewnątrz ciała funkcji (tylko na top-level modułu).
+  // Naprawiamy oba: zdejmujemy `export ` (tekstowo, bezpiecznie — meta to PURE LITERAL, `const
+  // meta = {...}` bez export parsuje się identycznie) i walidujemy resztę owiniętą w async arrow
+  // function. `new Function` tylko PARSUJE przy konstrukcji, nigdy nie wykonuje `src`.
+  try {
+    const withoutExports = src.replace(/^export\s+/gm, '');
+    // eslint-disable-next-line no-new-func
+    new Function(`return (async () => {\n${withoutExports}\n})`);
+  } catch (e) {
+    findings.push({ id: 'WL9', level: 'ERROR', line: 0, msg: `SyntaxError: ${e.message} — skrypt się nie sparsuje, regexowe reguły WL1-WL8 poniżej są bez znaczenia dopóki to nie jest naprawione` });
+    // Fatal — dalsze reguły operują na tekście założeniem "to jest poprawny JS"; skoro nie jest,
+    // zwróć od razu zamiast ryzykować myślące-że-to-OK WARN/ERROR na złamanym skrypcie.
+    return findings;
+  }
+
   const isVerifyish = (t) => /verif|final[_\s-]?gate|security[-_]e2e/i.test(t);
 
   // WL1 — schema tylko na verify/final gate. Snippet przycinamy do końca obiektu opcji ('})'),
@@ -132,6 +176,36 @@ function lint(src) {
       if (hasHeavyBlock && !hasMitigation) {
         findings.push({ id: 'WL8', level: 'WARN', line: src.slice(0, m.index).split('\n').length, msg: 'warstwa z dirs wyłącznie docs/config dostaje ciężki blok kontekstu kodu bez terse-wariantu z jawnym zakazem eksploracji (src/) — ryzyko re-audytu zamiast pisania (incydent 2026-07-08, juz-ide-api-2: 30×Read+21×Bash, ZERO Write)' });
       }
+    }
+  }
+
+  // WL10 — agent({schema}) w roli weryfikatora bez twardego limitu narzędzi + frazy wymuszającej
+  // werdykt (incydent TS-REP-PIPELINE-001-F3a-remediation, juz-ide-api-1: patrz komentarz
+  // nagłówka). Jeśli skrypt definiuje kanoniczny `buildVerifierPrompt(...)` i jego CIAŁO ma oba
+  // markery, wszystkie wywołania przez tę funkcję liczą się jako pokryte razem — bez tego
+  // backstopu każdy realny skrypt (który komponuje prompt raz, w jednej funkcji) fałszywie
+  // dostawałby WARN na każdym call-site z osobna.
+  {
+    const BUDGET_RE = /\b(limit|budget|budżet)\b/i;
+    const VERDICT_RE = /wyda[jć].{0,15}werdykt|issue.{0,15}verdict|emit.{0,15}verdict/i;
+    const hasBoth = (t) => BUDGET_RE.test(t) && VERDICT_RE.test(t);
+
+    const builderMatch = /(?:function\s+buildVerifierPrompt\s*\(|const\s+buildVerifierPrompt\s*=)/.exec(src);
+    const builderCovers = builderMatch && hasBoth(src.slice(builderMatch.index, builderMatch.index + 4000));
+
+    if (!builderCovers) {
+      // Okno TYLKO do następnego `agent(` (nie stały stride) — inaczej krótki prompt bez markerów
+      // fałszywie "pożycza" markery z NASTĘPNEGO, niepowiązanego wywołania dalej w skrypcie.
+      const agentCalls = snippetsOf(src, 'agent(');
+      agentCalls.forEach((s, i) => {
+        const end = s.text.indexOf('})');
+        const t = end === -1 ? s.text : s.text.slice(0, end + 2);
+        if (!(/schema\s*:/.test(t) && isVerifyish(t))) return;
+        const windowEnd = agentCalls[i + 1] ? agentCalls[i + 1].at : src.length;
+        if (!hasBoth(src.slice(s.at, windowEnd))) {
+          findings.push({ id: 'WL10', level: 'WARN', line: s.line, msg: 'agent({schema}) weryfikatora bez twardego limitu narzędzi + frazy "wydaj werdykt natychmiast gdy budżet się kończy" — verifier może wyczerpać budżet tur eksploracją i skończyć BEZ StructuredOutput (twardy Error, status: failed całego Workflow, wymaga resume). Użyj kanonicznego buildVerifierPrompt() zamiast ręcznego promptu per-warstwa (incydent TS-REP-PIPELINE-001-F3a-remediation, juz-ide-api-1, 2026-07-19)' });
+        }
+      });
     }
   }
 

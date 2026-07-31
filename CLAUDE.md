@@ -255,11 +255,63 @@ tmux sessions (days/weeks) without relying on session-start hooks.
    
    ## What This Is
    ## When to Use
+   **Use this pattern for:** (✅ bullets — concrete trigger conditions)
+   **Do NOT use for:** (❌ bullets — the naive/wrong-fit cases, name the pattern that IS correct there)
    ## Implementation
    ## Anti-Patterns
    ```
-3. Update `patterns/README.md` to add it to the index
-4. Add `METADATA.yml` entry if adding to a new category
+   The ✅/❌ "When to Use" bullets are REQUIRED, not optional — they're what makes a pattern
+   cheap to seed and cheap to pick correctly via `retrieve_patterns` (a reader/agent can match
+   their situation against 3-5 bullets far faster than re-deriving intent from prose).
+3. **Is this pattern derived from ONE project's codebase and not yet seen/validated in a second
+   one?** (e.g. promoted straight out of a single task like `TS-REACH-SYSTEM-001`, not yet reused
+   elsewhere) — if so, add a line right after `**Status**:`:
+   ```markdown
+   **Scope**: project-specific (<project-name>) — single-project derivation, not yet validated
+   in a second codebase. Excluded from `retrieve_patterns` by default; pass
+   `project: "<project-name>"` to include it. Promote to universal once a second project adopts
+   this shape.
+   ```
+   `markdown-chunker.ts` parses this line and tags every chunk from the file
+   `scope: "project-specific", project: "<name>"` — `retrieve_patterns` filters these OUT by
+   default so one project's derived pattern doesn't get suggested as generic guidance in an
+   unrelated project. Also add `scope: project-specific` + `project: <name>` to the pattern's
+   `METADATA.yml` entry, and mark it `⚠ project-specific (<name>)` in the `patterns/README.md`
+   Status column. Omit the `**Scope**` line entirely for genuinely universal patterns (the
+   default for all pre-existing patterns — no migration needed).
+4. Update `patterns/README.md` to add it to the index
+5. Add `METADATA.yml` entry if adding to a new category
+6. **Reseed the MCP** so `retrieve_patterns` sees the change: `./scripts/reseed-patterns.sh`
+   (one command — builds `knowledge-retriever`, ensures the dedicated Qdrant is up, rebuilds
+   `patterns_global` + `library_reference_global` from the current `patterns/**`+`rules/**` tree).
+   Purely mechanical, no LLM needed. **Easy to forget** — a new/edited pattern file is invisible
+   to agents calling `retrieve_patterns` until this runs; batch several pattern edits into one
+   reseed rather than running it per-file (it's a full `recreate()`, not incremental).
+
+### Promoting a Project Refactor to a Pattern
+
+When a downstream project (`juz-ide-api-*`, `grant-flow`, `vytches-ddd`, ...) finishes a task/refactor
+and you're deciding whether it belongs in this shared library — this is the repeatable procedure
+(not something to re-derive from scratch each time):
+
+1. **Scope the diff, don't read all of it.** For a large feature (dozens/hundreds of files), delegate
+   a review to an agent: point it at the architecturally interesting files (aggregates, domain
+   services, specifications, ADRs) and explicitly tell it to SKIP routine CRUD query handlers,
+   `.spec.ts` files, and migrations unless their content itself is the interesting part.
+2. **Check for existing coverage first.** Read `patterns/README.md`'s index (and, if unsure,
+   `retrieve_patterns`) before writing anything — "haven't we already documented this mechanism
+   under a different name" is the most common false positive.
+3. **Decide scope: universal vs project-specific.** Default to **project-specific** for anything
+   derived from a single project's codebase — mark it with the `**Scope**:` line (see "Adding a New
+   Pattern" above). Only classify a pattern as universal/generic nestjs-ddd guidance once **a second,
+   independent project has adopted the same shape** — a pattern's own prose sounding generalizable is
+   NOT sufficient evidence by itself; a human call on real reuse is. Re-classify (drop the `**Scope**`
+   line) the moment that second adoption happens — don't leave it stale as project-specific forever.
+4. **Write it using the template above**, including the required ✅/❌ "Use this pattern for / Do NOT
+   use for" bullets.
+5. **Reseed** (`./scripts/reseed-patterns.sh`) and spot-check with a direct Qdrant query or
+   `retrieve_patterns` call before calling the promotion done — a pattern that isn't reseeded is
+   invisible to every agent that would otherwise use it.
 
 ### Adding / Updating Legal Skills
 

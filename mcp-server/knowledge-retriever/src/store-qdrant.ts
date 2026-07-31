@@ -34,6 +34,8 @@ function toHit(p: { score: number; payload?: Record<string, unknown> | null }): 
     combines: (payload.combines as string[]) ?? undefined,
     lib_version: (payload.lib_version as string) ?? undefined,
     indexedAt: (payload.indexedAt as string) ?? undefined,
+    scope: (payload.scope as Hit["scope"]) ?? undefined,
+    project: (payload.project as string) ?? undefined,
     score: p.score,
   };
 }
@@ -60,6 +62,7 @@ export class QdrantStore {
         startLine: c.startLine ?? null, endLine: c.endLine ?? null,
         kind: c.kind ?? null, tags: c.tags ?? null, level: c.level ?? null, indexedAt: c.indexedAt ?? null,
         feature: c.feature ?? null, combines: c.combines ?? null, lib_version: c.lib_version ?? null,
+        scope: c.scope ?? null, project: c.project ?? null,
       },
     }));
     for (let i = 0; i < points.length; i += 256) {

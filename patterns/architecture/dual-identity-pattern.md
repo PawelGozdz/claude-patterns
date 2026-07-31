@@ -259,6 +259,10 @@ export class SomeHandler extends BaseCommandHandler<SomeCommand, string> {
 - ✅ **MUST** protect endpoints with `@Auth()` guard (validates JWT)
 - ✅ **MUST** use RequestContextService for userId in non-controller contexts
 - ✅ **MUST** document in command JSDoc that userId comes from JWT
+- ✅ **MUST** apply ALL of the above to **Query classes exactly like Commands** — a
+  `GetMyXQuery` is just as much a Dual Identity boundary as a `CreateXCommand`; there is
+  no "read-only, so it's fine" exception (see Anti-Pattern 5 — found as `ARCH-D001`,
+  22 Query classes across 5 contexts, `project-orchestration/TECH-DEBT.md`)
 
 ### MUST NOT
 
@@ -267,6 +271,10 @@ export class SomeHandler extends BaseCommandHandler<SomeCommand, string> {
 - ❌ **MUST NOT** trust userId from query parameters (use JWT only)
 - ❌ **MUST NOT** trust userId from URL path parameters for current user operations
 - ❌ **MUST NOT** use userId from cookies (except JWT cookie with HttpOnly flag)
+- ❌ **MUST NOT** add `userId` to a Query class's constructor "for consistency with the
+  Command" — a self-scoped Query (`GetMyXQuery`) reads userId from
+  `RequestContextService` INSIDE the handler, exactly like a Command would; putting it in
+  the constructor re-opens the request-body/param hijacking surface one layer later
 
 ## ⚠️ Anti-Patterns
 
@@ -348,6 +356,73 @@ async getMyActions(
 
 **Fix**: Use `@CurrentUserId()` for "my" operations, ignore query userId.
 
+### Anti-Pattern 5: userId in a Query Class Constructor
+
+```typescript
+// ❌ WRONG: Query takes userId as a constructor parameter, mirroring the Command pattern
+export class GetPricingContextQuery extends Query {
+  constructor(
+    public readonly userId: string, // ← Threaded in from the controller, just like a Command
+    public readonly feature: string,
+  ) { super(); }
+}
+
+@QueryHandler(GetPricingContextQuery)
+export class GetPricingContextHandler extends BaseQueryHandler<GetPricingContextQuery, Result<PricingContextDto, Error>> {
+  async executeBusinessLogic(query: GetPricingContextQuery) {
+    const context = await this.pricingService.buildContext(query.userId, query.feature); // ← query.userId
+    return Result.ok(context);
+  }
+}
+```
+
+**Why Bad**: this LOOKS identical to the correct Command pattern from Step 3/4 above, which is
+exactly why it spreads by copy-paste — a reviewer skimming for "does userId come from the JWT
+via the controller" sees the right shape and approves it. But a Query's controller wiring is
+easier to get wrong precisely because queries feel lower-stakes ("it's just a read"), and once
+`userId` is a constructor field, nothing stops a future refactor (a batch endpoint, an admin
+"query on behalf of" tool, a test fixture) from populating it from something other than the JWT.
+
+**Real incident**: found live as **22 Query classes across 5 bounded contexts**
+(`ARCH-D001`, `TS-REACH-SYSTEM-001`, logged in `project-orchestration/TECH-DEBT.md`) — the
+project's OWN `application-handlers.md` rule already said "userId exclusively from
+`RequestContextService`," but every existing Query example in this repo (including the one
+that used to live in `query-handler-pattern.md`) took `userId` as a field for **audit
+telemetry** (`getUserContext()`), which normalized taking it as a field for **business logic**
+too — the rule existed, but no example showed the boundary between "field for telemetry" and
+"field for authorization," so implementers merged the two.
+
+**✅ CORRECT**: userId read from RequestContextService INSIDE the handler, never in the constructor
+
+```typescript
+export class GetPricingContextQuery extends Query {
+  constructor(
+    public readonly feature: string, // ← NO userId field at all
+  ) { super(); }
+}
+
+@QueryHandler(GetPricingContextQuery)
+export class GetPricingContextHandler extends BaseQueryHandler<GetPricingContextQuery, Result<PricingContextDto, Error>> {
+  constructor(
+    @Inject(RequestContextService) private readonly requestContext: RequestContextService,
+    // ...
+  ) { super(/* ... */); }
+
+  async executeBusinessLogic(query: GetPricingContextQuery) {
+    const userId = this.requestContext.getUserId(); // ← read in the handler, same as a Command
+    if (!userId) return Result.fail(new UnauthenticatedError());
+
+    const context = await this.pricingService.buildContext(userId, query.feature);
+    return Result.ok(context);
+  }
+}
+```
+
+**Fix**: remove `userId` from the Query constructor entirely; read it via
+`this.requestContext.getUserId()` inside `executeBusinessLogic()`. Reserve constructor
+fields on a Query for values that identify WHAT is being read (a target id, filters,
+pagination) — never WHO is reading it, when the answer is "the caller."
+
 ## 📚 References
 
 ### ADRs
@@ -367,6 +442,12 @@ async getMyActions(
 1. **Engagement Actions** (`engagement/api/controllers/actions.controller.ts`)
 2. **Community Events** (`community-communication/api/controllers/events.controller.ts`)
 3. **Event Feedback** (`community-communication/application/commands/submit-event-feedback/command.ts`)
+4. **Query done CORRECTLY**: `pricing/application/reach/commands/create-pricing-quote/command.ts`
+   (`CreatePricingQuoteCommand`) — the one construct in `TS-REACH-SYSTEM-001` that already read
+   userId from `RequestContextService` in the handler; used as the reference fix for `ARCH-D001`
+5. **Query done WRONG (ARCH-D001, unfixed technical debt)**: 22 Query classes across `auth`,
+   `authorization`, `community-communication`, `engagement`, `neighborhood-economy` — see
+   `project-orchestration/TECH-DEBT.md` for the live list
 
 ## 🎯 When to Use
 
@@ -396,6 +477,36 @@ Does endpoint require authentication?
 ```
 
 ### Testing Strategy
+
+**Unit Test — Query class must NOT expose userId as a constructor field**:
+
+```typescript
+describe('GetPricingContextQuery', () => {
+  it('does not accept userId as a constructor parameter', () => {
+    // Compile-time guard: constructing without userId must type-check.
+    const query = new GetPricingContextQuery('event.publish');
+    expect(query).not.toHaveProperty('userId'); // structural guard against Anti-Pattern 5
+  });
+});
+
+describe('GetPricingContextHandler', () => {
+  it('reads userId from RequestContextService, not from the query', async () => {
+    requestContext.getUserId.mockReturnValue('authenticated-user-id');
+
+    await handler.executeBusinessLogic(new GetPricingContextQuery('event.publish'));
+
+    expect(requestContext.getUserId).toHaveBeenCalled(); // handler pulled it, query never carried it
+  });
+
+  it('fails closed when RequestContextService has no userId', async () => {
+    requestContext.getUserId.mockReturnValue(null);
+
+    const result = await handler.executeBusinessLogic(new GetPricingContextQuery('event.publish'));
+
+    expect(result.isFailure).toBe(true); // unauthenticated read is rejected, not defaulted
+  });
+});
+```
 
 **Unit Tests**: Mock RequestContextService or pass userId directly
 
@@ -488,6 +599,6 @@ it('should IGNORE userId in body even if sent', async () => {
 
 ---
 
-**Pattern Type**: Security-Critical (MANDATORY for all user operations)
-**Status**: Production-enforced (all contexts)
-**Lines**: 297
+**Pattern Type**: Security-Critical (MANDATORY for all user operations, Commands AND Queries)
+**Status**: Production-enforced (Commands); Query enforcement is KNOWN-INCOMPLETE (ARCH-D001, 22 classes, TECH-DEBT.md)
+**Lines**: 604

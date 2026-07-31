@@ -1,10 +1,49 @@
 # Test Seeding Performance Guide
 
-**Version**: 1.3
+**Version**: 2.0
 **Created**: 2026-01-06
-**Updated**: 2026-01-09
+**Updated**: 2026-07-12
 **Purpose**: Unified guide for optimal test data seeding in Project Hybrid Fixture System
 **Principle**: **"Fixture what you DON'T test, real flow for what you DO test"**
+
+---
+
+## Status migracji [2026-07-12]
+
+`TS-TEST-FIXTURE-001` through `006` replaced `UserIdentityFixture.createAsync()` /
+`.createSync()` / `.createViaHandlers()` as the concrete API for seeding a
+`UserIdentity` user with a **domain-colocated Mother + real `repository.save()` +
+typed projection row-builders**. See
+[`domain-colocated-fixture-mother-pattern.md`](./domain-colocated-fixture-mother-pattern.md)
+for the full pattern, code, and migration status.
+
+**What this means for this guide**: the *conceptual* mode-selection guidance
+below (L1 = pure construction, L2 = fast setup + real orchestration test, L2
+event tests = full event flow, L3 = HTTP for what you test) is still correct
+and generalizes to any aggregate's fixture — but the concrete `UserIdentity`
+code examples throughout this guide that show `UserIdentityFixture.createAsync(db, {...})`
+are **historical**. For new code, use:
+- L1 pure construction → call the Mother directly (`createUnverifiedUser()`, `createVerifiedUser()`, etc.)
+- L2/L3 setup needing projections in other contexts → `saveTest*WithProjections()` composite
+- L2/L3 setup needing only the `users` row + real events, no cross-context projections → the repository fixture (`saveTest*User()`)
+
+**What is NOT superseded**: the *Core Principle* below, the *Context-Specific
+Seeders* for `geographic-auth`/`authorization` (still real, unchanged code),
+and the *Password Hashing Optimization* section are all independent of this
+migration and remain accurate as written.
+
+**What still physically exists, by design**: `UserIdentityFixtureClass.createProjections()`
+has **not been deleted** — `TS-TEST-FIXTURE-006` (done 2026-07-12) confirmed
+exactly one remaining transitive consumer, `authorization-seeders.ts`, a
+documented Category 3 exception (272-file blast radius). This is now a closed,
+intentional exception, not a pending removal. `-006` did remove the 3
+genuinely dead `UserIdentityFixtureClass` helpers (`setPhoneNumber`/
+`getUserIdByEmail`/static `markEmailVerified`) and the dead barrel
+`auth/domain/aggregates/__fixtures__/index.ts`. See "Status migracji" in
+[`domain-colocated-fixture-mother-pattern.md`](./domain-colocated-fixture-mother-pattern.md)
+for the full per-task rollout, including `TS-TEST-FIXTURE-007` (2026-07-12,
+not started) which audits the `geographic-auth`/`neighborhood-economy`/
+`engagement`/`core` seeders below that were never in scope of `-001`..`-006`.
 
 ---
 
@@ -237,6 +276,18 @@ describe('Geographic Tests', () => {
 
 ## Fixture Mode Selection
 
+> **UserIdentity-specific note (2026-07-12)**: the mode-selection *logic* below
+> (pure construction vs. fast setup vs. full event flow vs. HTTP) is still the
+> right way to think about any aggregate's fixture. The concrete
+> `UserIdentityFixture.createSync/createAsync/createViaHandlers` calls in the
+> code blocks are the **historical** API for `UserIdentity` specifically —
+> `createSync()` → call the Mother directly; `createAsync()` (setup, no
+> cross-context projections needed) → `saveTest*User()` repository fixture;
+> `createAsync()` (setup, projections needed in other contexts) →
+> `saveTest*WithProjections()` composite. `createViaHandlers()` was not part
+> of this migration and, as of 2026-07-12, still lives on the legacy class.
+> See [`domain-colocated-fixture-mother-pattern.md`](./domain-colocated-fixture-mother-pattern.md).
+
 ### L1 Tests (Unit - Specifications, Aggregates, Value Objects)
 
 **Mode**: `createSync()` ALWAYS
@@ -250,19 +301,18 @@ describe('Geographic Tests', () => {
 - Fast feedback (<30s for 1,200+ tests)
 
 ```typescript
-// src/contexts/auth/domain/aggregates/__tests__/user-identity.aggregate.spec.ts
+// src/contexts/auth/domain/aggregates/__tests__/user-identity-events.spec.ts
+import { createUnverifiedUser } from '@contexts/auth/domain/aggregates/__fixtures__/user-identity.mother';
+
 describe('UserIdentityAggregate', () => {
   it('should verify email and emit EmailVerifiedEvent', () => {
-    // ✅ createSync() - No DB, <1ms
-    const userResult = UserIdentityFixture.createSync({
-      isEmailVerified: false
-    });
-    const user = userResult.value;
+    // ✅ Mother, called directly - No DB, <1ms, no test/ layer at all
+    const user = createUnverifiedUser({ email: createTestEmail({ value: 'test@example.com' }) });
 
     // Test state transition (aggregate concern)
-    const result = user.verifyEmail();
+    const token = user.generateEmailVerificationToken();
+    user.verifyEmail(token);
 
-    expect(result.isSuccess).toBe(true);
     expect(user.isEmailVerified).toBe(true);
 
     // Test event emission (aggregate concern, NOT handler concern)
@@ -273,6 +323,8 @@ describe('UserIdentityAggregate', () => {
   });
 });
 ```
+
+**Historical shape** (pre-`TS-TEST-FIXTURE-002`): `UserIdentityFixture.createSync({ isEmailVerified: false })` returned a `Result`-wrapped user, requiring `.value` and an `expect(result.isSuccess)` check. The Mother returns the aggregate directly — `create()` isn't a `Result` factory, so those checks are gone, not just moved.
 
 **Exception**: Testing event emission mechanics (L1 Aggregate test) - still use `createSync()`, verify `uncommittedEvents`.
 
@@ -320,12 +372,12 @@ What are you testing?
 
 ```typescript
 // src/contexts/auth/application/commands/set-date-of-birth/__tests__/handler.integration.spec.ts
+import { saveTestVerifiedUserWithProjections } from '@test/shared/fixtures/auth/user-identity-composite.fixture';
+
 describe('SetDateOfBirthHandler (L2 Integration)', () => {
   it('should successfully set date of birth for user aged 25', async () => {
-    // ✅ CORRECT: createAsync() for setup (50ms)
-    const userId = await UserIdentityFixture.createAsync(db, {
-      isEmailVerified: true
-    });
+    // ✅ CORRECT: composite for setup (~60ms, real repository.save() + real events)
+    const { userId } = await saveTestVerifiedUserWithProjections(context.app);
 
     const command = new SetDateOfBirthCommand(userId, dateOfBirth, ...);
 
@@ -352,6 +404,14 @@ describe('SetDateOfBirthHandler (L2 Integration)', () => {
 - Event handlers ARE integration points
 - Testing event flow verifies aggregate behavior
 - Event semantics matter - "UserRegisteredEvent triggers permission creation" ≠ "user exists in DB"
+
+> `createViaHandlers()` (Mode 3, "Traditional" in the old `HybridFixture`)
+> was **not** part of the `TS-TEST-FIXTURE-001..006` migration — only
+> `createAsync()`'s internal `createProjections()` bypass was replaced. As
+> of 2026-07-12 this call still exists on the legacy fixture class; verify
+> it's still present before copying this example into new code, and prefer
+> the repository fixture/composite with `eventDispatcher: { mode: 'real' }`
+> (the default) for new tests that need real event handlers to run.
 
 ```typescript
 // src/contexts/authorization/application/event-handlers/__tests__/user-registered.handler.spec.ts
@@ -380,13 +440,15 @@ describe('UserRegisteredEventHandler', () => {
 
 **Anti-Pattern**:
 ```typescript
-// ❌ WRONG: Using createAsync() for event handler test
+// ❌ WRONG: capture-mode dispatcher for an event handler test
 describe('UserRegisteredEventHandler', () => {
   it('should create permissions (BROKEN)', async () => {
-    // createAsync() bypasses events → handler NEVER runs
-    const userId = await UserIdentityFixture.createAsync(db, { ... });
+    // eventDispatcher: { mode: 'capture' } swaps the dispatcher for a no-op —
+    // real handlers never run, so downstream side effects never happen.
+    const context = await testSetup.setup({ eventDispatcher: { mode: 'capture' } });
+    const { userId } = await saveTestUnverifiedUser(context.app);
 
-    // This assertion will FAIL because event handler didn't run!
+    // This assertion will FAIL because the event handler didn't run!
     const permissions = await db
       .selectFrom('user_permissions')
       .where('user_id', '=', userId)
@@ -395,6 +457,10 @@ describe('UserRegisteredEventHandler', () => {
     expect(permissions).toHaveLength(1); // ❌ FAIL: permissions.length = 0
   });
 });
+
+// ✅ CORRECT: default 'real' mode (or omit eventDispatcher entirely) —
+// repository.save() emits the real UserRegisteredEvent, handler runs
+const { userId } = await saveTestUnverifiedUser(context.app); // eventDispatcher defaults to 'real'
 ```
 
 ---
@@ -413,10 +479,9 @@ describe('UserRegisteredEventHandler', () => {
 ```typescript
 describe('POST /local-services/requests', () => {
   beforeEach(async () => {
-    // ✅ Fast setup via fixtures (50ms)
-    userId = await UserIdentityFixture.createAsync(db, {
-      isEmailVerified: true
-    });
+    // ✅ Fast setup via composite (~60ms, real save + real events)
+    const { userId: newUserId } = await saveTestVerifiedUserWithProjections(context.app);
+    userId = newUserId;
     residenceId = await UserResidenceFixture.createAsync(db, { userId });
 
     // Get auth token via HTTP (this IS the flow for auth tests)
@@ -449,7 +514,7 @@ Only when testing full event flow end-to-end:
 describe('Event Moderation Flow E2E', () => {
   it('should create event, enqueue moderation, and process', async () => {
     // ✅ Fixture user (not testing auth)
-    const userId = await UserIdentityFixture.createAsync(db, { ... });
+    const { userId } = await saveTestUnverifiedUserWithProjections(context.app);
 
     // ✅ Real flow for event (THIS is what we're testing)
     const response = await request(app)
@@ -480,38 +545,36 @@ describe('Event Moderation Flow E2E', () => {
 
 ### Dependency Depth Strategy
 
-**Principle**: Fixture only **immediate** dependencies. Let `FixtureRegistry.createMany()` handle transitive dependencies.
+> **`FixtureRegistry` no longer exists.** The example below (`FixtureRegistry.createMany()`)
+> documented a cross-context orchestration mechanism (`ScenarioBuilder` +
+> `RelationshipBuilder` + `FixtureRegistry`) that `TS-TEST-FIXTURE-003`
+> (2026-07-11) found to be **dead, unregistered, and unusable code — zero
+> real consumers, and every `FixtureRegistry.register()` call it depended on
+> was itself only ever a JSDoc example, never a real registration**. All 6
+> files were deleted. Kept below only as a historical record of the intent;
+> for immediate dependencies, fixture them explicitly (Mother/composite for
+> Category 1, row-builder for Category 2) — there is no registry to resolve
+> transitive ones automatically as of 2026-07-12.
+
+**Principle**: Fixture only **immediate** dependencies.
 
 ```
 Authorization test needs:
 ├── UserIdentity (immediate - required)
 ├── Geographic verification (immediate - required for capabilities)
 └── UserResidence (transitive - UserResidenceFixture handles this)
-
-DON'T manually create all 3. Use FixtureRegistry:
 ```
 
 ```typescript
-// ✅ GOOD: Let registry resolve dependencies
-const ids = await FixtureRegistry.createMany(db, [
-  {
-    name: 'UserIdentity',
-    params: { email: 'test@project.test' },
-    as: 'testUser'
-  },
-  {
-    name: 'UserResidence',
-    params: { userId: '$testUser.id' } // Reference syntax
-  },
-]);
-
-const userId = ids.get('testUser');
-const residenceId = ids.get('UserResidence');
-
-// ❌ BAD: Manual dependency management
-const userId = await UserIdentityFixture.createAsync(db, {...});
+// ✅ CORRECT (2026-07-12): explicit, typed composite for UserIdentity + projections
+const { userId } = await saveTestVerifiedUserWithProjections(context.app, { email: 'test@project.test' });
 const residenceId = await UserResidenceFixture.createAsync(db, { userId });
-const capabilityId = await CapabilityFixture.createAsync(db, { residenceId });
+
+// ❌ HISTORICAL (pre-migration, do not copy): FixtureRegistry no longer exists
+// const ids = await FixtureRegistry.createMany(db, [
+//   { name: 'UserIdentity', params: { email: 'test@project.test' }, as: 'testUser' },
+//   { name: 'UserResidence', params: { userId: '$testUser.id' } },
+// ]);
 ```
 
 ### User Projection Pattern (Project Reality)
@@ -526,21 +589,23 @@ const capabilityId = await CapabilityFixture.createAsync(db, { residenceId });
 | **Engagement** | UserIdentity | engagement_users |
 | **Neighborhood-Economy** | UserIdentity, UserResidence | All above |
 
-**Projections are auto-created** by `UserIdentityFixture.createProjections()`:
+**Projections are created** by the `saveTest*WithProjections()` composite —
+Mother + real `repository.save()` + 6 typed Category 2 row-builders
+(`geographic_auth_users`, `engagement_users`, `economy_users`,
+`community_communication_users`, `organization_users`, `user_profiles`,
+`user_profile_stats`), replacing the old `UserIdentityFixture.createProjections()`
+raw-insert transaction. Full detail, including exact `onConflict` semantics
+per table: [`domain-colocated-fixture-mother-pattern.md`](./domain-colocated-fixture-mother-pattern.md).
+**Note**: `createProjections()` itself still physically exists on the legacy
+`UserIdentityFixtureClass` as of 2026-07-12 — `TS-TEST-FIXTURE-006` (done) closed this as a
+**permanent, intentional exception** (one remaining transitive consumer, `authorization-seeders.ts`,
+registered as `TEST-D001`), not a pending removal — do not assume it has been or will be deleted.
 
 ```typescript
-// /opt/projects/project-4/test/shared/fixtures/auth/user-identity-fixture.class.ts
-protected override async createProjections(
-  trx: Transaction<Database>,
-  userId: string,
-  params: UserIdentityFixtureParams
-): Promise<void> {
-  // Creates projections in parallel within same transaction
-  await Promise.all([
-    trx.insertInto('geographic_auth_users').values({...}).execute(),
-    trx.insertInto('engagement_users').values({...}).execute(),
-  ]);
-}
+// ✅ CORRECT (2026-07-12): composite creates the users row AND all projections
+const { userId } = await saveTestUnverifiedUserWithProjections(context.app);
+// -> repository.save() on the real UserIdentity aggregate, then Promise.all
+//    over 7 typed row-builders, onConflict semantics preserved per table
 ```
 
 **Implication**: Don't manually create projections - fixture handles it.
@@ -602,7 +667,19 @@ describe('Rate Limiting Tests', () => {
 
 ### Events Context Seeders
 
-**File**: `test/shared/fixtures/events/event-seeders.ts`
+> **Consolidated (2026-07-11, `TS-TEST-FIXTURE-003`)**: the standalone
+> `test/shared/fixtures/events/event-seeders.ts` file below has been
+> **removed**. Its 4 functions were folded into `EventTestFixtures`
+> (`src/contexts/community-communication/infrastructure/events/repositories/__fixtures__/event-test.fixtures.ts`)
+> as methods, preserving each function's subtle field differences (attendee
+> increment behavior, moderation status, `completed` vs `posted`, version
+> numbering) rather than forcing a single unified shape — 9 e2e files were
+> migrated to the consolidated class. The functional descriptions and
+> options below are still accurate; only the import path/API surface
+> (function → class method) changed. Check `EventTestFixtures` directly for
+> current method signatures before copying the examples below.
+
+**Original file** (removed): `test/shared/fixtures/events/event-seeders.ts`
 **Created**: TS-TEST-001 Week 4
 **Use Cases**: E2E tests for community-communication context (events, feedback)
 
@@ -1229,14 +1306,11 @@ describe('CreateJobRequestHandler', () => {
   beforeEach(async () => {
     await context.cleaner.cleanPostgreSQL(); // ~50ms (skip Redis)
 
-    // Fast fixture setup (~100ms total)
-    const ids = await FixtureRegistry.createMany(db, [
-      { name: 'UserIdentity', params: {}, as: 'user' },
-      { name: 'UserResidence', params: { userId: '$user.id' } },
-    ]);
-
-    userId = ids.get('user');
-    residenceId = ids.get('UserResidence');
+    // Fast fixture setup (~100ms total) — FixtureRegistry no longer exists
+    // (removed as dead code, TS-TEST-FIXTURE-003); fixture immediate deps explicitly
+    const { userId: newUserId } = await saveTestUnverifiedUserWithProjections(context.app);
+    userId = newUserId;
+    residenceId = await UserResidenceFixture.createAsync(db, { userId });
   });
 
   it('should create job request', async () => {
@@ -1264,50 +1338,59 @@ describe('CreateJobRequestHandler', () => {
 
 ### Master Decision Tree
 
+> Concepts below are generic (any aggregate). For `UserIdentity` specifically,
+> read `createSync()` as "call the Mother directly", `createAsync()` as
+> "`saveTest*User()` repository fixture or `saveTest*WithProjections()`
+> composite", and note `createViaHandlers()` is unmigrated legacy API — see
+> [`domain-colocated-fixture-mother-pattern.md`](./domain-colocated-fixture-mother-pattern.md).
+
 ```
 What are you implementing?
 │
 ├─ L1 Test (Aggregate/Spec/VO)?
-│  └─ Mode: createSync() ALWAYS
+│  └─ Mode: pure construction ALWAYS (Mother, direct call)
 │  └─ Setup: beforeEach (pure functions)
 │  └─ Performance: <1ms per test
 │
 ├─ L2 Handler Test?
 │  ├─ Testing handler orchestration?
-│  │  └─ Mode: createAsync() for setup
-│  │  └─ Performance: ~50ms setup, test handler directly
+│  │  └─ Mode: repository fixture / composite for setup
+│  │  └─ Performance: ~60ms setup, test handler directly
 │  │
 │  ├─ Testing event handler?
-│  │  └─ Mode: createViaHandlers() for entity
-│  │  └─ Performance: ~800ms, full event flow
+│  │  └─ Mode: repository fixture / composite, eventDispatcher default 'real'
+│  │  └─ Performance: ~60ms setup + real handler execution, no artificial wait needed for save itself
 │  │
 │  └─ Testing repository?
-│     └─ Mode: createSync() for aggregate
+│     └─ Mode: Mother (pure construction) for aggregate
 │     └─ Performance: <1ms, test save/load
 │
 └─ L3 E2E Test?
    ├─ Testing endpoint setup?
-   │  └─ Mode: createAsync() + HTTP calls
-   │  └─ Performance: ~50ms setup, ~200ms per request
+   │  └─ Mode: composite + HTTP calls
+   │  └─ Performance: ~60ms setup, ~200ms per request
    │
    └─ Testing event flow end-to-end?
-      └─ Mode: createAsync() + HTTP + waitFor BullMQ
+      └─ Mode: composite + HTTP + waitFor BullMQ (dispatcher stays 'real')
       └─ Performance: ~2s for full flow
 ```
 
 ### Fixture Mode Selection Decision Tree
 
 ```
-What fixture mode?
+What fixture mode? (UserIdentity-concrete, 2026-07-12)
 │
-├─ createSync() → L1 tests (aggregate, spec, VO)
+├─ Mother, direct call → L1 tests (aggregate, spec, VO)
 │  └─ No DB, no events, <1ms
 │
-├─ createAsync() → L2 setup, L3 setup
-│  └─ DB INSERT, bypass events, ~50ms
+├─ Repository fixture (saveTest*User()) → L2/L3 setup, no cross-context projection needed
+│  └─ Real repository.save(), real events by default, ~62ms measured
 │
-└─ createViaHandlers() → L2 event tests, L3 event flow
-   └─ Full event flow, ~800ms
+├─ Composite (saveTest*WithProjections()) → L2/L3 setup needing another context's projection row
+│  └─ Repository fixture + Promise.all over typed row-builders, ~60-70ms
+│
+└─ createViaHandlers() → legacy, unmigrated — verify it still exists before use
+   └─ Full event flow through the old fixture class, ~800ms
 ```
 
 ### Rate Limiting Cleanup Decision Tree
@@ -1329,24 +1412,29 @@ Should I clear rate limits in beforeEach?
 
 ```typescript
 // L1 Aggregate Test
+import { createUnverifiedUser } from '@contexts/auth/domain/aggregates/__fixtures__/user-identity.mother';
+
 describe('UserIdentityAggregate', () => {
   it('should verify email', () => {
-    const user = UserIdentityFixture.createSync({ isEmailVerified: false }).value;
-    user.verifyEmail();
+    const user = createUnverifiedUser({ email: createTestEmail({ value: 'test@example.com' }) });
+    const token = user.generateEmailVerificationToken();
+    user.verifyEmail(token);
     expect(user.isEmailVerified).toBe(true);
   });
 });
 
 // L2 Handler Test
+import { saveTestVerifiedUserWithProjections } from '@test/shared/fixtures/auth/user-identity-composite.fixture';
+
 describe('SetDateOfBirthHandler', () => {
   it('should set date of birth', async () => {
-    const userId = await UserIdentityFixture.createAsync(db, { ... }); // 50ms
+    const { userId } = await saveTestVerifiedUserWithProjections(context.app); // ~60ms, real save + real events
     const result = await handler.execute(new SetDateOfBirthCommand(userId, dob));
     expect(result.isSuccess).toBe(true);
   });
 });
 
-// L2 Event Handler Test
+// L2 Event Handler Test — createViaHandlers() untouched by the migration, still legacy as of 2026-07-12
 describe('UserRegisteredEventHandler', () => {
   it('should create permissions', async () => {
     const userId = await UserIdentityFixture.createViaHandlers(app, { ... }); // 800ms
@@ -1361,9 +1449,11 @@ describe('UserRegisteredEventHandler', () => {
 
 ```typescript
 // L2 Handler Test (depends on Auth)
+import { saveTestUnverifiedUserWithProjections } from '@test/shared/fixtures/auth/user-identity-composite.fixture';
+
 describe('AssignRoleHandler', () => {
   it('should assign role', async () => {
-    const userId = await UserIdentityFixture.createAsync(db, { ... }); // 50ms
+    const { userId } = await saveTestUnverifiedUserWithProjections(context.app); // ~60ms
     const result = await handler.execute(new AssignRoleCommand(userId, 'MODERATOR'));
     expect(result.isSuccess).toBe(true);
   });
@@ -1423,8 +1513,8 @@ describe('Authorization E2E', () => {
 - **Use `.userId`** (not `.id`) - consistent with `AuthorizedUserWithSessionResult` type
 - **Use `.accessToken`** for Bearer header - same value as `sessionId`
 - Seeders auto-create: user, session, permissions, capabilities, projections
-- ~25ms per user (94% faster than **deprecated** `AtomicCreators` ~400ms)
-- ⚠️ **AtomicCreators DEPRECATED** (TS-TEST-001 Week 3) - use authorization seeders instead
+- ~25ms per user (94% faster than the old `AtomicCreators` ~400ms)
+- ⚠️ **`AtomicCreators` — REMOVED** (`TS-TEST-FIXTURE-001` Faza 3, 2026-07-10): the file (`test/shared/test-data/atomic-creators.ts`, 1201 lines) was deleted entirely, not merely deprecated — a grep audit found `new AtomicCreators(` had zero real instances repo-wide (only its own JSDoc example matched). The two lightweight types some files still imported from it (`TestResidence`, `CustomPermission`) were relocated to `test/shared/test-data/types.ts` and inline in `permissions-seeder.ts` respectively. Use authorization seeders instead.
 
 ### Geographic-Auth Context
 
@@ -1432,7 +1522,7 @@ describe('Authorization E2E', () => {
 // L2 Handler Test (depends on Auth + Residence)
 describe('VerifyResidenceHandler', () => {
   it('should verify residence', async () => {
-    const userId = await UserIdentityFixture.createAsync(db, { ... }); // 50ms
+    const { userId } = await saveTestVerifiedUserWithProjections(context.app); // ~60ms
     const result = await handler.execute(new VerifyResidenceCommand(userId, address));
     expect(result.isSuccess).toBe(true);
   });
@@ -1446,12 +1536,8 @@ describe('VerifyResidenceHandler', () => {
 describe('CreateQuickJobHandler', () => {
   it('should create job and enqueue moderation', async () => {
     // ✅ Fixture dependencies (not testing user/residence creation)
-    const ids = await FixtureRegistry.createMany(db, [
-      { name: 'UserIdentity', params: {}, as: 'user' },
-      { name: 'UserResidence', params: { userId: '$user.id' } },
-    ]);
-
-    const userId = ids.get('user');
+    // FixtureRegistry no longer exists (removed as dead code, TS-TEST-FIXTURE-003)
+    const { userId } = await saveTestUnverifiedUserWithProjections(context.app);
 
     // Test handler (THIS is what we're testing)
     const result = await handler.execute(new CreateQuickJobCommand(...));
@@ -1491,37 +1577,46 @@ describe('AssignRoleHandler', () => {
   });
 });
 
-// ✅ CORRECT: 50ms setup
+// ✅ CORRECT: composite setup (~60ms, real save + real events, no full handler chain wait)
 describe('AssignRoleHandler', () => {
   it('should assign role', async () => {
-    const userId = await UserIdentityFixture.createAsync(db, { ... }); // 50ms
+    const { userId } = await saveTestUnverifiedUserWithProjections(context.app); // ~60ms
   });
 });
 ```
 
-### Anti-Pattern 2: Using createAsync() for Event Handler Tests
+### Anti-Pattern 2: Capture-Mode Dispatcher for Event Handler Tests
 
 ```typescript
 // ❌ WRONG: Event handler never runs
 describe('UserRegisteredEventHandler', () => {
   it('should create permissions', async () => {
-    const userId = await UserIdentityFixture.createAsync(db, { ... }); // Bypasses events!
+    // eventDispatcher: { mode: 'capture' } swaps in a no-op — bypasses events!
+    const context = await testSetup.setup({ eventDispatcher: { mode: 'capture' } });
+    const { userId } = await saveTestUnverifiedUser(context.app);
     // Handler didn't run, test will fail
     const permissions = await db.selectFrom('user_permissions')...;
     expect(permissions).toHaveLength(1); // ❌ FAIL: 0 permissions
   });
 });
 
-// ✅ CORRECT: Full event flow
+// ✅ CORRECT: default 'real' dispatcher — repository.save() emits real events, handler runs
 describe('UserRegisteredEventHandler', () => {
   it('should create permissions', async () => {
-    const userId = await UserIdentityFixture.createViaHandlers(app, { ... }); // 800ms
+    const { userId } = await saveTestUnverifiedUser(context.app); // eventDispatcher defaults to 'real'
     await waitFor(1000);
     const permissions = await db.selectFrom('user_permissions')...;
     expect(permissions).toHaveLength(1); // ✅ PASS
   });
 });
 ```
+
+> **Historical note**: prior to `TS-TEST-FIXTURE-001..006`, this anti-pattern
+> was framed as "`createAsync()` (raw INSERT, bypasses events) vs.
+> `createViaHandlers()` (full flow)". The raw-INSERT bypass no longer exists
+> for `UserIdentity` — `repository.save()` always emits real events unless
+> the DI-level `eventDispatcher: { mode: 'capture' }` override is used, which
+> is the new (and only) way to intentionally suppress them.
 
 ### Anti-Pattern 3: Testing Aggregate Invariants at L2/L3
 
@@ -1544,7 +1639,7 @@ describe('MinimumAgeSpecification', () => {
 // ✅ CORRECT: Handler at L2 (orchestration only)
 describe('SetDateOfBirthHandler', () => {
   it('should set date of birth successfully', async () => {
-    const userId = await UserIdentityFixture.createAsync(db, { ... });
+    const { userId } = await saveTestVerifiedUserWithProjections(context.app);
     const result = await handler.execute(new SetDateOfBirthCommand(userId, validDate));
     expect(result.isSuccess).toBe(true);
   });
@@ -1563,11 +1658,11 @@ describe('CreateEventHandler', () => {
   });
 });
 
-// ✅ CORRECT: Dummy hash via fixture (50ms)
+// ✅ CORRECT: Dummy hash via composite (~60ms)
 describe('CreateEventHandler', () => {
   it('should create event', async () => {
-    const userId = await UserIdentityFixture.createAsync(db, { ... }); // 50ms
-    // 4x faster, same test coverage for events
+    const { userId } = await saveTestUnverifiedUserWithProjections(context.app); // ~60ms
+    // Still ~3-4x faster than real HTTP registration, same test coverage for events
   });
 });
 ```
@@ -1578,21 +1673,33 @@ describe('CreateEventHandler', () => {
 
 ### Mode Selection by Test Level
 
-| Test Level | Default Mode | Alternative Mode | When Alternative |
-|------------|--------------|------------------|------------------|
-| **L1 Unit** | createSync() | Never | - |
-| **L2 Handler** | createAsync() | createViaHandlers() | Testing event handlers |
-| **L2 Event** | createViaHandlers() | createAsync() + dispatch | Testing event handler in isolation |
-| **L3 E2E Setup** | createAsync() | HTTP registration | Testing auth flow specifically |
-| **L3 E2E Event** | createAsync() + HTTP | createViaHandlers() | Testing full event flow end-to-end |
+**Concepts** (generic, valid for any aggregate's fixture) mapped to the
+**concrete `UserIdentity` API** as of 2026-07-12 — see
+[`domain-colocated-fixture-mother-pattern.md`](./domain-colocated-fixture-mother-pattern.md)
+for the full pattern:
+
+| Test Level | Concept | Concrete `UserIdentity` API | When Alternative |
+|------------|---------|------------------------------|------------------|
+| **L1 Unit** | Pure construction, no DB/events | Mother directly (`createUnverifiedUser()` etc.) | Never — always pure construction at L1 |
+| **L2 Handler** | Fast setup, real save, no full downstream handler wait | `saveTest*User()` (repository fixture) or `saveTest*WithProjections()` (composite, if another context's projection is read) | Testing event handlers → keep `eventDispatcher: { mode: 'real' }` (default) and wait for the handler |
+| **L2 Event** | Full event flow through real handlers | Composite/repository fixture with default `eventDispatcher: { mode: 'real' }` + `waitFor()` | Testing handler in isolation → `eventDispatcher: { mode: 'capture' }` + assert on the captured dispatcher |
+| **L3 E2E Setup** | Fast setup for dependencies you don't test | Composite (`saveTest*WithProjections()`) | Testing auth flow specifically → real HTTP registration |
+| **L3 E2E Event** | Composite/repository fixture + HTTP for what you test | Composite + HTTP | Testing full event flow end-to-end → default `eventDispatcher: { mode: 'real' }`, no override needed |
+
+`createViaHandlers()` (the old "Mode 3 / Traditional" on the legacy
+`UserIdentityFixtureClass`) was **not** part of the `TS-TEST-FIXTURE-001..006`
+migration and may still exist on the legacy class as of 2026-07-12 — verify
+before relying on it in new code; prefer the real-dispatcher composite/repository
+fixture path above.
 
 ### Performance Comparison
 
 | Operation | Time | Use Case |
 |-----------|------|----------|
-| createSync() | <1ms | L1 tests |
-| createAsync() | ~50ms | L2/L3 setup |
-| createViaHandlers() | ~800ms | L2 event tests |
+| Mother, direct call (e.g. `createUnverifiedUser()`) | <1ms | L1 tests |
+| `saveTest*User()` (repository fixture, Mother + real `repository.save()`) | ~62ms (measured, `TS-TEST-FIXTURE-001` Faza 2+, capture mode, 20 calls avg) | L2/L3 setup, no cross-context projections needed |
+| `saveTest*WithProjections()` (composite) | ~60-70ms (repository fixture + `Promise.all` over 6-7 typed row-builders) | L2/L3 setup needing another context's projection row |
+| `createViaHandlers()` (legacy, unmigrated) | ~800ms | Historical — verify it still exists before using |
 | seedAdminUserE2E() | ~25ms | Authorization E2E tests |
 | seedModeratorUserE2E() | ~25ms | Authorization E2E tests |
 | seedRegularUserE2E() | ~25ms | Authorization E2E tests |
@@ -1619,9 +1726,13 @@ describe('CreateEventHandler', () => {
 - [Testing Pyramid Pattern](.claude/knowledge/patterns/testing/testing-pyramid-pattern.md)
 - [Aggregate Pattern](.claude/knowledge/patterns/domain/aggregate-pattern.md)
 - [Domain Event Pattern](.claude/knowledge/patterns/domain/domain-event-pattern.md)
+- [Domain-Colocated Fixture Mother Pattern](./domain-colocated-fixture-mother-pattern.md) — canonical replacement for `UserIdentityFixture.createAsync()`/`createSync()` as of `TS-TEST-FIXTURE-001..006` (2026-07-10/12)
+- [Typed Projection Row-Builder Pattern](./typed-projection-row-builder-pattern.md) — Category 2 (cross-context projection tables) detail
 
 **Real Examples**:
-- `test/shared/fixtures/auth/user-identity-fixture.class.ts`
+- `src/contexts/auth/domain/aggregates/__fixtures__/user-identity.mother.ts` — canonical construction
+- `test/shared/fixtures/auth/user-identity-repository.fixture.ts` / `user-identity-composite.fixture.ts` — canonical persistence
+- `test/shared/fixtures/auth/user-identity-fixture-class.ts` — legacy class, `createProjections()` kept as a permanent exception (`TEST-D001`, closed via `TS-TEST-FIXTURE-006`), not scheduled for deletion
 - `src/contexts/auth/application/commands/set-date-of-birth/__tests__/handler.integration.spec.ts`
 - `src/app/api/auth/auth-core.e2e.spec.ts`
 
@@ -1631,6 +1742,17 @@ describe('CreateEventHandler', () => {
 ---
 
 **Version History**:
+- 2.1 (2026-07-13): `TS-TEST-FIXTURE-006` is closed (was still described as "blocked" in two places) —
+  corrected wording to "closed as a permanent, intentional exception (`TEST-D001`)" wherever this
+  guide referenced it. No API/content changes, wording-only.
+- 2.0 (2026-07-12): Migrated `UserIdentity` mode-selection guidance to the domain-colocated Mother pattern (`TS-TEST-FIXTURE-001..006`)
+  - **NEW**: "Status migracji [2026-07-12]" section at top — links to `domain-colocated-fixture-mother-pattern.md`
+  - Rewrote `Fixture Mode Selection`, `Cross-Context Dependencies`, `Project Context-Specific Examples`, `Anti-Patterns to Avoid`, `Decision Trees`, and `Quick Reference Tables` to reference the Mother + repository fixture + composite (`saveTest*WithProjections()`) instead of `UserIdentityFixture.createAsync()`/`.createSync()` as the concrete API
+  - Corrected `FixtureRegistry.createMany()` examples — that class was found to be dead code (zero real consumers) and **deleted** in `TS-TEST-FIXTURE-003`, not merely unused
+  - Corrected `AtomicCreators` from "DEPRECATED" to **REMOVED** (`TS-TEST-FIXTURE-001` Faza 3 — file deleted, zero real consumers found on re-audit)
+  - Corrected `Events Context Seeders` — `event-seeders.ts` consolidated into `EventTestFixtures` (`TS-TEST-FIXTURE-003`), file removed
+  - Left unchanged, per explicit scope: `Core Principle`, `Context-Specific Seeders` (`geographic-auth`/`authorization` subsections), `Password Hashing Optimization`
+  - Documented current migration status: 133/135 real `UserIdentityFixture` consumers migrated; `createProjections()` on the legacy class still physically exists, retirement blocked on `TS-TEST-FIXTURE-006`
 - 1.3 (2026-01-09): Added Context-Specific Seeders section (TS-TEST-001 Week 4)
   - **NEW SECTION**: Context-Specific Seeders (~600 lines)
   - **Events Context Seeders**: `seedPastEvent()`, `seedEventAttendee()`, `seedEventFeedback()`

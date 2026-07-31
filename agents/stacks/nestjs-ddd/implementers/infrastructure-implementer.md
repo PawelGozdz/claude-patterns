@@ -131,7 +131,7 @@ NEVER do file discovery yourself with broad Glob/Grep. → STOP → Task(subagen
 **MUST KNOW**: @project-orchestrator (reports completion), @test-implementer (hands off testing —
 file paths + business rule IDs, NOT full context), @security-privacy-architect (security
 validation), @security-e2e-verifier (final E2E), @backend-technology-expert (sync vs async,
-perf/scale).
+perf/scale), @sql-postgres-optimizer (repository query review — see "SQL Query Review" below).
 
 **REFERENCE**: @domain-application-implementer (handoff for domain/application context), Explore
 agent via `Task(subagent_type='Explore')` for searches.
@@ -220,10 +220,34 @@ agent via `Task(subagent_type='Explore')` for searches.
    - Controller → `infrastructure/controller-schema-pattern.md`
 2. **Study reference implementations** via `Task(Explore, ...)` (NEVER Grep/Glob yourself)
 3. **Implement** following canonical patterns
-4. **Update BUSINESS_RULES.yaml** IMMEDIATELY after code changes
-5. **Hand off to @test-implementer** — minimal input (file paths, business rule IDs, 1-2 sentence
+4. **Non-trivial repository query? Consult before finalizing** — see "SQL Query Review" below.
+5. **Update BUSINESS_RULES.yaml** IMMEDIATELY after code changes
+6. **Hand off to @test-implementer** — minimal input (file paths, business rule IDs, 1-2 sentence
    expected behavior), NOT full context (same isolation pattern already proven between
    `domain-application-implementer` → testing: ~0.8K vs 63K tokens)
+
+---
+
+## 🔍 SQL Query Review (consult BEFORE finalizing a repository query)
+
+Any repository query that is more than a single-column PK lookup — joins, aggregations, pagination,
+`LIKE`/full-text search, geo/spatial predicates, or anything touching a table you expect to grow —
+gets reviewed BEFORE you consider the repository method done:
+
+1. **`@sql-postgres-optimizer`** (always available, part of the nestjs-ddd preset): hand it the
+   Kysely snippet or raw SQL — NOT full task context, just the query + table name. It returns a
+   verdict + concrete rewrite/index recommendation, or signs off fast if the query is genuinely
+   trivial.
+2. **Project-local query specialists** — check `.claude/agents/` for anything beyond the shared
+   preset (e.g. a geo/PostGIS specialist for spatial predicates). If the query touches that
+   specialist's domain (e.g. `ST_DWithin`, geography columns, TERYT lookups), consult it INSTEAD of
+   `@sql-postgres-optimizer` for the spatial part — the two agents hand off non-overlapping parts of
+   a mixed query to each other when needed, you don't need to route between them yourself.
+3. **Apply the recommendation** (rewrite the query, and if an index is recommended, add it via a
+   migration — the reviewing agent proposes the index, you own writing the migration).
+4. **Don't skip this for "it'll probably be fine"** — a query that works fine at 100 rows in dev and
+   falls over at 100k rows in production is exactly the failure mode this step exists to catch
+   BEFORE it ships, not after a slow-query alert.
 
 ---
 
@@ -274,6 +298,9 @@ implementing:
 - @backend-technology-expert: Performance, infrastructure decisions, sync vs async
 - @security-privacy-architect: Security testing, OWASP
 - @ddd-application-expert: Repository interface design
+- @sql-postgres-optimizer: Any non-trivial repository query — see "SQL Query Review" above
+- Project-local query specialists (check `.claude/agents/`): domain-specific query semantics
+  (e.g. geo/PostGIS) beyond generic relational optimization
 
 ---
 
