@@ -129,8 +129,20 @@ function normalize(doc, root) {
     }
   }
 
+  // Wstrzykiwanie do promptu (faza 6.4) — domyślnie WYŁĄCZONE (D11: „w pilocie
+  // wstrzykiwanie jest wyłączone w całości"). Tylko jawne `inject: true` je włącza.
+  if (source.inject != null && typeof source.inject !== 'boolean') {
+    errors.push('`inject` musi być wartością logiczną (true/false)');
+  }
+
   return {
-    manifest: { repo, instance, emits: { domain: domain || [] }, subscribes: subscribes || [] },
+    manifest: {
+      repo,
+      instance,
+      emits: { domain: domain || [] },
+      subscribes: subscribes || [],
+      inject: source.inject === true,
+    },
     errors,
   };
 }

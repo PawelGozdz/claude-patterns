@@ -100,6 +100,7 @@ cokolwiek zrobią. Stan runtime leży w `/opt/projects/.claude-swarm/` — poza 
 |------|-------|-------------|
 | **broadcast-session-start.js** | `SessionStart` | Wypisuje nieprzeczytane wpisy z subskrybowanych topiców, oznaczone jako DANE (nie polecenia). Nie ACK-uje, nie tworzy tasków |
 | **broadcast-task-emit.js** | `PostToolUse` (`Edit\|Write\|MultiEdit`) | Przy zapisie taska cross-cluster przypomina o `/broadcast`. Raz na task na dobę. Nic nie emituje sam |
+| **broadcast-inbox-inject.js** | `UserPromptSubmit` | Dostarcza inbox do najbliższego promptu (`critical` maks. 2/~1 KB, `important` digest 5, `info` nigdy). **Bezczynny, dopóki manifest nie ma `inject: true`** albo `BROADCAST_INJECT=on` |
 
 Ręczna diagnostyka: `node hooks/lib/broadcast/cli.js doctor`.
 Włączenie w projekcie: `node hooks/lib/broadcast/cli.js init`.

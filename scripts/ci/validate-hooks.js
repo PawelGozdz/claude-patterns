@@ -8,7 +8,36 @@ const path = require('path');
 const vm = require('vm');
 
 const HOOKS_FILE = path.join(__dirname, '../../hooks/hooks.json');
-const VALID_EVENTS = ['PreToolUse', 'PostToolUse', 'PreCompact', 'SessionStart', 'SessionEnd', 'Stop', 'Notification', 'SubagentStop'];
+
+/**
+ * Pełna lista zdarzeń hooków wspieranych przez harness.
+ * Źródło: https://code.claude.com/docs/en/hooks — zweryfikowane 2026-08-08.
+ *
+ * Wcześniejsza wersja tej listy miała 8 pozycji i odrzucała `SubagentStart`
+ * oraz `WorktreeCreate` — wpisy obecne w `hooks.json` i całkowicie poprawne.
+ * Fałszywy alarm walidatora jest gorszy niż brak walidatora: uczy ignorowania
+ * jego wyjścia, przez co prawdziwy błąd przechodzi niezauważony.
+ *
+ * Przy aktualizacji Claude Code: sprawdź dokumentację, nie zgaduj z zachowania.
+ */
+const VALID_EVENTS = [
+  // sesja
+  'SessionStart', 'SessionEnd', 'Setup',
+  // tura
+  'UserPromptSubmit', 'UserPromptExpansion', 'Stop', 'StopFailure',
+  // narzędzia
+  'PreToolUse', 'PostToolUse', 'PostToolUseFailure', 'PostToolBatch',
+  'PermissionRequest', 'PermissionDenied',
+  // subagenci i taski
+  'SubagentStart', 'SubagentStop', 'TaskCreated', 'TaskCompleted', 'TeammateIdle',
+  // środowisko
+  'ConfigChange', 'CwdChanged', 'DirectoryAdded', 'FileChanged',
+  'WorktreeCreate', 'WorktreeRemove', 'InstructionsLoaded',
+  // kontekst
+  'PreCompact', 'PostCompact',
+  // komunikaty
+  'Notification', 'MessageDisplay', 'Elicitation', 'ElicitationResult',
+];
 
 /**
  * Validate a single hook entry has required fields and valid inline JS

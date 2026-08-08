@@ -273,6 +273,38 @@ Odpalić, gdy w kanale będzie materiał z realnej pracy.
    `hookSpecificOutput.additionalContext`. Dwa rozstrzygnięcia poniżej.
 4. 6.5 (`question`/`answer` + audyt cykliczny jako źródło) — blokowane przez OQ5-OQ7.
 
+### Faza 6.4 — ZROBIONA 2026-08-08 (kod), wstrzykiwanie WYŁĄCZONE
+
+`hooks/broadcast-inbox-inject.js` (`UserPromptSubmit`) + `cli.js inbox show|push|clear`.
+
+**Domyślnie bezczynny.** Włączenie wymaga `inject: true` w manifeście albo
+`BROADCAST_INJECT=on`; `BROADCAST_INJECT=off` wygrywa z manifestem. Zgodnie z D11 pilot
+zostaje z wstrzykiwaniem wyłączonym do czasu potwierdzenia trafności filtra w 6.3 — kod
+jest gotowy, decyzja o włączeniu jest osobna i należy do człowieka.
+
+Format inboxa: markdown czytelny `cat`-em, każdy blok poprzedzony znacznikiem
+`<!-- broadcast:<ULID> severity=<s> ts=<ISO> -->`, żeby hook parsował bez zgadywania.
+Przepisanie pliku przy usuwaniu dostarczonych wpisów jest bezpieczne, bo inbox ma
+**jednego pisarza na instancję** — inaczej niż kanał, który dlatego jest append-only.
+
+**Zweryfikowane na żywo** (`claude -p`, hook wpięty w izolacji od pozostałych):
+
+- dostarczenie przez `UserPromptSubmit` **działa** — model otrzymał blok;
+- hook odpala się **dokładnie raz na turę** (licznik wywołań w osobnym runie), więc limit
+  D11 jest limitem na turę, nie na wywołanie: 3 `critical` w inboxie → 2 dostarczone,
+  1 został;
+- `info` nigdy nie jest pchane, zostaje do `/broadcast-status`;
+- dostarczone wpisy znikają z inboxa, niedostarczone zostają;
+- bez opt-in hook nie produkuje ANI JEDNEGO bajtu na stdout/stderr;
+- model potraktował treść jako dane, nie polecenia, i sam to nazwał — ramka z klamrą
+  „wracaj do zadania" zadziałała zgodnie z zamysłem.
+
+**Pułapka wykryta przy testach**: pierwszy test „przeszedł" fałszywie — blok, który
+zobaczył model, przyszedł z hooka `SessionStart` (odczyt kanału z 6.1), a nie z inboxa,
+bo `install-hooks` nie miał jeszcze wpisu `UserPromptSubmit`. Dopiero wpięcie w izolacji
+(z usuniętym `SessionStart`) dało wiarygodny wynik. Wniosek na przyszłość: przy testowaniu
+dostarczania **wyłącz pozostałe źródła kontekstu**, inaczej mierzysz nie to, co myślisz.
+
 ### Rozstrzygnięcia dla fazy 6.4 (2026-08-08)
 
 #### `/btw` NIE jest kanałem dostarczania — D8 zostaje bez zmian

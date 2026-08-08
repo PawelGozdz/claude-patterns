@@ -67,6 +67,18 @@
         "description": "Broadcast: read cross-instance channel (ADR 0006). Silent unless .claude/config/broadcast.yml exists."
       }
     ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$HOME/.claude/hooks/broadcast-inbox-inject.js\""
+          }
+        ],
+        "description": "Broadcast: deliver inbox into the next prompt (ADR 0006 D8/D11). Inert unless the manifest sets inject: true or BROADCAST_INJECT=on."
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "Bash",

@@ -56,6 +56,8 @@ function main(argv) {
       return cmdInstallHooks(args);
     case 'gate':
       return cmdGate(args);
+    case 'inbox':
+      return cmdInbox(args);
     case 'stop':
       return cmdStop(args);
     case 'resume':
@@ -359,6 +361,132 @@ function cmdGate(args) {
   return 0;
 }
 
+// ── inbox (faza 6.4) ──────────────────────────────────────────────────────────
+
+/**
+ * Inbox per instancja (ADR 0006, D8) — jedyna droga, którą treść broadcastu trafia
+ * do pracującego implementera.
+ *
+ * `tmux send-keys` jest wykluczony: trafia do stdin panelu, więc gdy implementer stoi
+ * na dialogu uprawnień („Allow Edit?") albo na `AskUserQuestion`, wstrzyknięty tekst
+ * zostaje potraktowany jako odpowiedź na ten dialog. Inbox + hook `UserPromptSubmit`
+ * osiąga to samo bez dotykania stdin.
+ *
+ * Format: markdown czytelny dla człowieka (`cat` wystarczy), z komentarzem-znacznikiem
+ * na początku każdego bloku, żeby hook mógł go sparsować bez zgadywania.
+ */
+const INBOX_MARKER = /^<!-- broadcast:([0-9A-HJKMNP-TV-Z]{26}) severity=(\w+) ts=(\S+) -->$/;
+
+function cmdInbox(args) {
+  const ctx = requireManifest();
+  if (!ctx) return 2;
+
+  const action = args._[0] || 'show';
+  const instance = typeof args.instance === 'string' ? args.instance : ctx.manifest.instance;
+  const target = paths.inboxPath(instance);
+
+  if (action === 'clear') {
+    try {
+      fs.unlinkSync(target);
+      process.stdout.write(`Inbox wyczyszczony: ${target}\n`);
+    } catch {
+      process.stdout.write('Inbox był pusty.\n');
+    }
+    return 0;
+  }
+
+  if (action === 'show') {
+    const entries = readInbox(instance);
+    if (args.json) {
+      process.stdout.write(`${JSON.stringify(entries, null, 2)}\n`);
+      return 0;
+    }
+    if (entries.length === 0) {
+      process.stdout.write('Inbox pusty.\n');
+      return 0;
+    }
+    process.stdout.write(entries.map((e) => e.raw).join('\n') + '\n');
+    return 0;
+  }
+
+  if (action !== 'push') {
+    process.stderr.write('Użycie: inbox [show|push --id <ULID> [--note "..."]|clear] [--instance <name>]\n');
+    return 1;
+  }
+
+  const id = args.id;
+  if (!id || id === true) {
+    process.stderr.write('`inbox push` wymaga --id <ULID>\n');
+    return 1;
+  }
+
+  const { messages } = channel.readWindow();
+  const msg = messages.find((m) => m.id === id);
+  if (!msg) {
+    process.stderr.write(`Nie znaleziono wiadomości ${id} w oknie kanału (mogła wygasnąć — TTL 72 h)\n`);
+    return 1;
+  }
+
+  // Stand-by wolno wagę OBNIŻYĆ, nigdy podnieść (D11) — dlatego `--severity` przyjmujemy
+  // tylko wtedy, gdy jest słabsza od oryginalnej.
+  let severity = msg.severity;
+  if (typeof args.severity === 'string' && SEVERITY_RANK[args.severity] > SEVERITY_RANK[msg.severity]) {
+    severity = args.severity;
+  } else if (typeof args.severity === 'string' && args.severity !== msg.severity) {
+    process.stderr.write(`⚠ ignoruję --severity ${args.severity}: wagę wolno tylko obniżyć (wpis ma ${msg.severity})\n`);
+  }
+
+  const existing = readInbox(instance);
+  if (existing.some((e) => e.id === msg.id)) {
+    process.stdout.write(`${msg.id} jest już w inboxie — pomijam.\n`);
+    return 0;
+  }
+
+  const block = renderInboxEntry(msg, severity, typeof args.note === 'string' ? args.note : '');
+  paths.ensureLayout();
+  fs.appendFileSync(target, `${block}\n`, 'utf8');
+  process.stdout.write(`Do inboxa ${instance}: ${msg.id} [${severity}] ${msg.title}\n`);
+  return 0;
+}
+
+const SEVERITY_RANK = { critical: 0, important: 1, info: 2 };
+
+function renderInboxEntry(msg, severity, note) {
+  const lines = [`<!-- broadcast:${msg.id} severity=${severity} ts=${new Date().toISOString()} -->`];
+  lines.push(`[${severity}] ${msg.topic} — ${msg.title}`);
+  lines.push(`  od: ${msg.instance}${msg.branch ? ` (${msg.branch})` : ''}${msg.owner ? ` · owner: ${msg.owner}` : ''}`);
+  if (msg.body) lines.push(`  ${String(msg.body).replace(/\s+/g, ' ').slice(0, 600)}`);
+  if (msg.paths?.length) lines.push(`  pliki: ${msg.paths.slice(0, 5).join(', ')}`);
+  if (note) lines.push(`  stand-by: ${note}`);
+  return lines.join('\n');
+}
+
+/** @returns {Array<{id: string, severity: string, ts: string, raw: string}>} */
+function readInbox(instance) {
+  let raw;
+  try {
+    raw = fs.readFileSync(paths.inboxPath(instance), 'utf8');
+  } catch {
+    return [];
+  }
+
+  const entries = [];
+  let current = null;
+  for (const line of raw.split('\n')) {
+    const marker = line.match(INBOX_MARKER);
+    if (marker) {
+      if (current) entries.push(current);
+      current = { id: marker[1], severity: marker[2], ts: marker[3], raw: line };
+      continue;
+    }
+    if (current) current.raw += `\n${line}`;
+  }
+  if (current) entries.push(current);
+
+  // Uszkodzony/ręcznie edytowany inbox nie może wywrócić hooka — pomijamy resztki.
+  return entries.map((e) => ({ ...e, raw: e.raw.replace(/\n+$/, '') }));
+}
+
 // ── stop / resume ─────────────────────────────────────────────────────────────
 
 /**
@@ -446,6 +574,15 @@ const HOOK_ENTRIES = [
     script: 'broadcast-task-emit.js',
     command: 'node "$HOME/.claude/hooks/broadcast-task-emit.js"',
     description: 'Broadcast: remind about /broadcast on cross-cluster task files. Once per task per day.',
+  },
+  {
+    // Faza 6.4. Wpięcie jest bezpieczne nawet przed decyzją o wstrzykiwaniu: hook kończy
+    // się bez wyjścia, dopóki manifest nie ma `inject: true` (albo BROADCAST_INJECT=on).
+    event: 'UserPromptSubmit',
+    matcher: '*',
+    script: 'broadcast-inbox-inject.js',
+    command: 'node "$HOME/.claude/hooks/broadcast-inbox-inject.js"',
+    description: 'Broadcast: deliver inbox into the next prompt (ADR 0006 D8/D11). Inert unless inject: true.',
   },
 ];
 
@@ -717,6 +854,7 @@ function usage() {
     '  claim   atomowe przejęcie obowiązku repo-level (O_EXCL)',
     '  install-hooks  wpięcie obu hooków do .claude/settings.json projektu (--remove wycofuje)',
     '  gate    bramka pustego przebiegu: STOP | EMPTY | NEW <bajty>',
+    '  inbox   show | push --id <ULID> [--note "..."] | clear   (faza 6.4)',
     '  stop    wyłącznik awaryjny WSZYSTKICH pętli stand-by (--reason "...")',
     '  resume  zdjęcie wyłącznika',
     '  status  raport kanału (wzorzec /pm-status — bez agenta)',
