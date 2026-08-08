@@ -514,6 +514,10 @@ cd ~/projects/claude-patterns
 
 ```bash
 ./scripts/setup-project.sh ~/projects/your-project
+
+# Optional add-ons (never change the core; without flags behaviour is unchanged):
+./scripts/setup-project.sh ~/projects/your-project --with-broadcast   # ADR 0006
+./scripts/setup-project.sh ~/projects/your-project --interactive      # ask per add-on
 ```
 
 **What this does**:

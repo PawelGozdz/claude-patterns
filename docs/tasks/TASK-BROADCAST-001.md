@@ -158,19 +158,71 @@ w scratchpadzie): każda reguła walidacji z osobna, widoczność między siostr
 instancjami, filtr „nie widzę swoich", claim wygrany/przegrany, ACK, uszkodzone linie,
 wykrycie rozjazdu manifestów, oba hooki (z manifestem i bez). L1 eval hooków: 17/17.
 
-### Następny krok: 6.2
+### Faza 6.2 — ZROBIONA 2026-08-08 (kod), zostało włączenie repów pilota
 
-1. `scripts/setup-project.sh` — sekcja warunkowa wołająca `cli.js init`; trzy drogi
-   (blok `broadcast:` w `project.yml`, `--with-broadcast`, menu `--interactive`).
-   **Warunek konieczny: bez flag zachowanie bit w bit jak dziś.**
-2. Założyć manifesty w repach pilota (`juz-ide-api-1..4`, `juz-ide-mobile-app`,
-   `claude-patterns`) — wartości gotowe w ADR, sekcja „Manifesty pilota".
-3. Podpiąć oba hooki do aktywnej konfiguracji. **Uwaga: `hooks/hooks.json` nie jest przez
-   nic instalowany** — `setup-global.sh` tylko symlinkuje katalog `hooks/`, a jedyny
-   konsument pliku to `scripts/ci/validate-hooks.js` (walidacja schematu). Wpisy trzeba
-   przenieść ręcznie do `~/.claude/settings.json` albo do `.claude/settings.json` repo
-   pilota. Dziś globalny `settings.json` nie ma sekcji `hooks` w ogóle, więc hooki
-   broadcastu nie odpalają się nigdzie — i to jest stan zamierzony do momentu decyzji.
+**Decyzja: hooki wpinane PER PROJEKT**, nie globalnie. Powód: skoro cały system ma być
+porzucalny, wpięcie też musi być porzucalne w jednym miejscu. Wpis globalny dokładałby dwa
+procesy `node` do każdego `SessionStart` i każdej edycji we **wszystkich** projektach —
+także tych, które o broadcaście nigdy nie słyszały.
+
+Dostarczone:
+
+- `cli.js install-hooks [--remove] [--dry-run] [--settings <ścieżka>]` — scala oba wpisy
+  do `<projekt>/.claude/settings.local.json`. Idempotentne, zapis atomowy, obce hooki
+  i pozostałe klucze nietknięte (sprawdzone na pliku z `model` + `post-edit-format`).
+
+  **Dlaczego plik lokalny, a nie `settings.json`** (korekta wykryta przy włączaniu pilota):
+  `settings.json` jest w repach pilota **śledzony przez gita**. Wpisanie tam hooków
+  złamałoby główną obietnicę ADR („zero zmian śledzonych w repo serwisowym") i przy
+  czterech równoległych branchach produkowałoby dokładnie te konflikty, którym broadcast
+  ma zapobiegać. `settings.local.json` jest gitignorowany.
+  Założenie „hooki z obu plików dokładają się, nie przesłaniają" **zweryfikowane
+  empirycznie** 2026-08-08: sandbox z hookiem `SessionStart` w każdym z plików,
+  headless `claude -p` — odpaliły oba.
+- `scripts/setup-project.sh` — sekcja `[7b/8]`, trzy drogi włączenia, woła
+  `cli.js init` + `cli.js install-hooks`, wypisuje procedurę wycofania.
+- `templates/project.yml.example` — zakomentowany blok `broadcast:` (formy inline,
+  bo `yml_get` nie czyta list blokowych).
+- `README.md` — flagi w sekcji Project Setup.
+
+**Warunek „bit w bit" spełniony i zweryfikowany**: bez flag i bez bloku `broadcast:`
+sekcja nie wypisuje ani jednej linii. Porównanie z wersją sprzed zmiany na dwóch
+identycznych sandboksach: `stdout` i drzewo plików zgodne (różnice tylko timestamp
+generacji `CLAUDE.md` i nazwa katalogu testowego).
+
+**Sprostowanie do ADR**: ROADMAP i sekcja Setup w ADR mówiły „dopisująca wpis do
+`.gitignore`", co jest sprzeczne z D3 („nie dotyka `.gitignore`"). Implementacja idzie
+za D3 — wpis trafia do `.git/info/exclude`.
+
+**Odkrycie przy okazji**: `hooks/hooks.json` nie jest przez nic instalowany —
+`setup-global.sh` tylko symlinkuje katalog `hooks/`, a jedynym konsumentem pliku jest
+`scripts/ci/validate-hooks.js` (walidacja schematu). Dodane tam w 6.1 wpisy są więc
+wyłącznie referencją; realne wpięcie robi `install-hooks` per projekt.
+
+### Pilot WŁĄCZONY 2026-08-08 — pełny zakres z ADR (6 instancji)
+
+`juz-ide-api-1..4`, `juz-ide-mobile-app`, `claude-patterns` — manifesty z wartościami
+z tabeli „Manifesty pilota", hooki w `settings.local.json` każdego repo.
+
+Włączane przez `cli.js init` + `install-hooks` **bezpośrednio**, nie przez
+`setup-project.sh` — ten przelinkowałby też patterns/rules/agents i przegenerował
+`CLAUDE.md` w pięciu aktywnych repo, czyli zasięg nieproporcjonalny do zadania.
+`setup-project.sh --with-broadcast` zostaje dla świeżych projektów.
+
+Weryfikacja po włączeniu:
+
+- `git status` czysty we wszystkich repach pilota — **zero zmian śledzonych**
+  (jedyne zmiany w `juz-ide-api-3` to wcześniejsza praca człowieka w `.spec.ts`);
+- przelot kanału: `api-2` nadał na `juz-ide-api/contracts` → 4 subskrybentów,
+  wpis odczytany z `api-1` i z `juz-ide-mobile-app`.
+
+**Zegar go/no-go startuje 2026-08-08.** Ocena około **2026-08-22**:
+≥1 wpis, który realnie zapobiegł pracy na nieaktualnym założeniu, i ≥30% wpisów
+ocenionych przez człowieka jako trafne. Dane: `/broadcast-status --json`.
+**Trafności nie ocenia agent** — to jest ta hipoteza, którą testujemy.
+
+Do obserwacji w trakcie: rozjazd manifestów między instancjami tego samego repo
+(manifest jest per klon) — `/broadcast-status`, sekcja „Rozjazd manifestów".
 4. Dopiero wtedy startuje dwutygodniowy zegar kryterium go/no-go.
 
 Potem **6.3**: stand-by w `juz-ide-api-1`, `/loop`, **wyłącznie log do terminala**, zero

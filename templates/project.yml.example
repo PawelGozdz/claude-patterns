@@ -120,3 +120,23 @@ entry_points:
   orchestrate: "/o"
   scaffold: "/scaffold"
   progress: "/progress"
+
+# Cross-instance broadcast (ADR 0006) — OPT-IN, domyślnie nieobecny.
+#
+# Obecność tego bloku z `enabled: true` sprawia, że `setup-project.sh` zakłada manifest
+# `.claude/config/broadcast.yml` (nieśledzony przez gita) i wpina dwa hooki do
+# `.claude/settings.json` TEGO projektu. Bez bloku — skrypt nie wypisze ani jednej linii.
+#
+# Wartości muszą być w formie INLINE (jednolinijkowej) — `yml_get` w setup-project.sh
+# czyta tylko pola wcięte o 2 spacje, nie listy blokowe.
+#
+# Alternatywy: flaga `--with-broadcast` albo `--interactive` (menu dodatków).
+# Wycofanie: `node <claude-patterns>/hooks/lib/broadcast/cli.js install-hooks --remove`
+#            oraz `rm .claude/config/broadcast.yml`
+#
+# broadcast:
+#   enabled: true
+#   repo: juz-ide-api            # nazwa LOGICZNA, wspólna dla wszystkich klonów
+#   instance: juz-ide-api-3      # tożsamość TEJ kopii; puste = basename katalogu
+#   emits: [geo, pricing, actor] # topiki domenowe; strukturalne dochodzą automatycznie
+#   subscribes: [juz-ide-api/*, juz-ide-mobile-app/contracts, claude-patterns/hooks]

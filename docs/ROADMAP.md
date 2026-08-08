@@ -233,7 +233,18 @@ Stan runtime leży w `/opt/projects/.claude-swarm/`, poza wszystkimi repozytoria
   nieaktualnym założeniu, i ≥30% wpisów ocenionych jako trafne. Poniżej progu —
   porzucamy całość kosztem jednego katalogu i dwóch komend.
 
-- [ ] **6.2 `setup-project.sh` — wybór komponentów** — sekcja warunkowa zakładająca
+- [x] **6.2 `setup-project.sh` — wybór komponentów** — ZAIMPLEMENTOWANE 2026-08-08.
+  Sekcja `[7b/8]`, trzy drogi włączenia (blok `broadcast:` w `project.yml`,
+  `--with-broadcast`, `--interactive`), woła `cli.js init` + `cli.js install-hooks`.
+  **Hooki wpinane PER PROJEKT** do `.claude/settings.local.json` (decyzja 2026-08-08),
+  nie globalnie i nie do śledzonego `settings.json` — wycofanie: `install-hooks --remove`.
+  Pilot włączony 2026-08-08 w 6 instancjach; zegar go/no-go liczy się od tej daty.
+  Zweryfikowane: bez flag `stdout` i drzewo plików identyczne z wersją sprzed zmiany
+  (jedyne różnice to timestamp generacji CLAUDE.md i nazwa katalogu testowego).
+  **Uwaga do ADR**: sekcja dopisuje wpis do `.git/info/exclude`, **nie do `.gitignore`**
+  (ADR w tym miejscu mówił „dopisująca wpis do `.gitignore`" — sprzeczność z własnym D3).
+  Zostało: założenie manifestów w repach pilota.
+  Oryginalny zakres:
   manifest z szablonu (`templates/broadcast/broadcast.yml`), dopisująca wpis do
   `.gitignore` i tworząca `/opt/projects/.claude-swarm/`. Trzy drogi: blok `broadcast:`
   w `project.yml`, flaga `--with-broadcast`, tryb `--interactive` z menu dodatków.

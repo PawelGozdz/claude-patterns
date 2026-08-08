@@ -52,6 +52,8 @@ function main(argv) {
       return cmdAck(args);
     case 'claim':
       return cmdClaim(args);
+    case 'install-hooks':
+      return cmdInstallHooks(args);
     case 'gate':
       return cmdGate(args);
     case 'status':
@@ -343,6 +345,118 @@ function cmdGate(args) {
   return 0;
 }
 
+// ── install-hooks ─────────────────────────────────────────────────────────────
+
+/**
+ * Wpięcie obu hooków do `<projekt>/.claude/settings.local.json` — PER PROJEKT, nie globalnie.
+ *
+ * Dlaczego per projekt: skoro cały system ma być porzucalny, wpięcie też musi być
+ * porzucalne w jednym miejscu (`--remove`). Wpis globalny dokładałby dwa procesy node
+ * do każdego `SessionStart` i każdej edycji we WSZYSTKICH projektach, w tym tych,
+ * które o broadcaście nigdy nie słyszały.
+ *
+ * Dlaczego `settings.local.json`, a NIE `settings.json`: w repach pilota ten drugi jest
+ * ŚLEDZONY przez gita. Wpisanie tam hooków złamałoby główną obietnicę ADR („zero zmian
+ * śledzonych w repo serwisowym") i przy czterech równoległych branchach produkowałoby
+ * dokładnie te konflikty, którym broadcast ma zapobiegać. `settings.local.json` jest
+ * gitignorowany, a hooki z obu plików **dokładają się** — sprawdzone empirycznie
+ * 2026-08-08 (dwa hooki `SessionStart` w obu plikach, oba odpaliły).
+ *
+ * `setup-project.sh` nigdzie indziej nie modyfikuje ustawień (dla PM tylko wypisuje
+ * podpowiedź). Łamiemy tę konwencję świadomie i tylko tutaj: sekcja jest opt-in,
+ * scalanie robi Node (nie bash), zapis jest atomowy i idempotentny.
+ */
+const HOOK_ENTRIES = [
+  {
+    event: 'SessionStart',
+    matcher: '*',
+    script: 'broadcast-session-start.js',
+    command: 'node "$HOME/.claude/hooks/broadcast-session-start.js"',
+    description: 'Broadcast: read cross-instance channel (ADR 0006). Silent without .claude/config/broadcast.yml.',
+  },
+  {
+    event: 'PostToolUse',
+    matcher: 'Edit|Write|MultiEdit',
+    script: 'broadcast-task-emit.js',
+    command: 'node "$HOME/.claude/hooks/broadcast-task-emit.js"',
+    description: 'Broadcast: remind about /broadcast on cross-cluster task files. Once per task per day.',
+  },
+];
+
+function cmdInstallHooks(args) {
+  const root = gitRoot(process.cwd()) || process.cwd();
+  const settingsPath = args.settings === true || !args.settings
+    ? path.join(root, '.claude', 'settings.local.json')
+    : path.resolve(args.settings);
+
+  let settings = {};
+  let existed = false;
+  try {
+    settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+    existed = true;
+  } catch (err) {
+    if (err.code !== 'ENOENT') {
+      process.stderr.write(`Nie mogę sparsować ${settingsPath}: ${err.message}\n(popraw plik ręcznie — nie nadpisuję czegoś, czego nie rozumiem)\n`);
+      return 1;
+    }
+  }
+
+  if (!settings.hooks || typeof settings.hooks !== 'object') settings.hooks = {};
+  const changes = [];
+
+  for (const entry of HOOK_ENTRIES) {
+    const bucket = Array.isArray(settings.hooks[entry.event]) ? settings.hooks[entry.event] : [];
+    const index = bucket.findIndex((group) =>
+      (group.hooks || []).some((hook) => String(hook.command || '').includes(entry.script)),
+    );
+
+    if (args.remove) {
+      if (index >= 0) {
+        bucket.splice(index, 1);
+        changes.push(`− ${entry.event}: ${entry.command}`);
+      }
+      settings.hooks[entry.event] = bucket;
+      continue;
+    }
+
+    if (index >= 0) continue; // już wpięty — idempotencja
+    bucket.push({
+      matcher: entry.matcher,
+      hooks: [{ type: 'command', command: entry.command }],
+      description: entry.description,
+    });
+    settings.hooks[entry.event] = bucket;
+    changes.push(`+ ${entry.event}: ${entry.command}`);
+  }
+
+  // Nie zostawiamy pustych sekcji po `--remove`.
+  for (const event of Object.keys(settings.hooks)) {
+    if (Array.isArray(settings.hooks[event]) && settings.hooks[event].length === 0) delete settings.hooks[event];
+  }
+  if (Object.keys(settings.hooks).length === 0) delete settings.hooks;
+
+  if (changes.length === 0) {
+    process.stdout.write(`Bez zmian: ${settingsPath}${args.remove ? ' (hooków broadcastu tam nie było)' : ' (oba hooki już wpięte)'}\n`);
+    return 0;
+  }
+
+  if (args['dry-run']) {
+    process.stdout.write(`[dry-run] ${settingsPath}\n  ${changes.join('\n  ')}\n`);
+    return 0;
+  }
+
+  fs.mkdirSync(path.dirname(settingsPath), { recursive: true });
+  const tmp = `${settingsPath}.tmp-${process.pid}`;
+  fs.writeFileSync(tmp, `${JSON.stringify(settings, null, 2)}\n`, 'utf8');
+  fs.renameSync(tmp, settingsPath);
+
+  process.stdout.write(
+    `${existed ? 'Zaktualizowano' : 'Utworzono'}: ${settingsPath}\n  ${changes.join('\n  ')}\n` +
+      `${args.remove ? '' : 'Wycofanie: node <ten-plik> install-hooks --remove\n'}`,
+  );
+  return 0;
+}
+
 // ── status ────────────────────────────────────────────────────────────────────
 
 function cmdStatus(args) {
@@ -535,6 +649,7 @@ function usage() {
     '  read    nieprzeczytane wpisy dla tej instancji',
     '  ack     decyzja o wpisie (acked|ignored|escalated|applied|dismissed)',
     '  claim   atomowe przejęcie obowiązku repo-level (O_EXCL)',
+    '  install-hooks  wpięcie obu hooków do .claude/settings.json projektu (--remove wycofuje)',
     '  gate    bramka pustego przebiegu: EMPTY albo NEW <bajty>',
     '  status  raport kanału (wzorzec /pm-status — bez agenta)',
     '  doctor  diagnostyka konfiguracji',
