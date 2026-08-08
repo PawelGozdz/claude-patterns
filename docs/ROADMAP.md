@@ -199,6 +199,59 @@ the abstractions hold up under pressure.
 
 ---
 
+## Sprint 6 — Cross-instance broadcast (ADR-0006)
+
+Task: [`docs/tasks/TASK-BROADCAST-001.md`](tasks/TASK-BROADCAST-001.md) (status `blocked`) ·
+Spec: [`docs/adr/0006-cross-instance-broadcast.md`](adr/0006-cross-instance-broadcast.md)
+— status `proposed`. Kanał wymiany informacji między równoległymi instancjami Claude Code
+(`juz-ide-api-1..4` na czterech branchach dowiadują się o swoich decyzjach dopiero przy
+merge). **Wszystko additive i domyślnie wyłączone**: brak `.claude/config/broadcast.yml`
+(gitignored) = system nie istnieje dla danej instancji. Rollback = `rm -rf` jednego
+katalogu poza repo.
+
+Pilot: `juz-ide-api`, `juz-ide-mobile-app`, `claude-patterns` (OQ1 rozstrzygnięte —
+tabela własności + gotowe manifesty w ADR).
+
+**Cały kod powstaje w `claude-patterns`.** Repo serwisowe dostaje wyłącznie
+`.claude/config/broadcast.yml` — plik nieśledzony przez gita (wykluczenie w
+`.git/info/exclude`, per klon, więc **zero zmian śledzonych** w repo serwisowym).
+Stan runtime leży w `/opt/projects/.claude-swarm/`, poza wszystkimi repozytoriami.
+
+- [ ] **6.1 Kanał + `/broadcast` + `/broadcast-status`** — `hooks/lib/broadcast/`
+  (segmenty dzienne `events-YYYY-MM-DD.jsonl` w `/opt/projects/.claude-swarm/`, kursory,
+  claim `O_EXCL`, walidacja schematu v1), `commands/broadcast.md`,
+  `commands/broadcast-status.md`, `hooks/broadcast-session-start.js` (odczyt),
+  `hooks/broadcast-task-emit.js` (`PostToolUse` na `tasks/` — przypomnienie o emisji).
+  Blokada: **brak** — OQ4 rozstrzygnięte (D11: `severity` decyduje o torze dostarczenia).
+  **Kryterium go/no-go po 2 tyg.**: ≥1 wpis, który realnie zapobiegł pracy na
+  nieaktualnym założeniu, i ≥30% wpisów ocenionych jako trafne. Poniżej progu —
+  porzucamy całość kosztem jednego katalogu i dwóch komend.
+
+- [ ] **6.2 `setup-project.sh` — wybór komponentów** — sekcja warunkowa zakładająca
+  manifest z szablonu (`templates/broadcast/broadcast.yml`), dopisująca wpis do
+  `.gitignore` i tworząca `/opt/projects/.claude-swarm/`. Trzy drogi: blok `broadcast:`
+  w `project.yml`, flaga `--with-broadcast`, tryb `--interactive` z menu dodatków.
+  **Warunek konieczny: uruchomienie bez flag zachowuje dzisiejsze zachowanie bit w bit.**
+
+- [ ] **6.3 Stand-by w `juz-ide-api-1` — TYLKO LOG DO TERMINALA** —
+  `skills/orchestration/broadcast-standby/`, uruchamiany przez `/loop` w osobnym oknie tmux,
+  read-only. **Zero wstrzykiwania, zero inboxa czytanego przez implementera.** Agent wypisuje
+  w swoim oknie: wpis, przypisaną `severity` (D11), decyzję `ignore`/`ack`/`escalate`
+  i jedno zdanie uzasadnienia. Tick robi zerokosztowy check shellowy (rozmiar segmentów vs
+  kursor) — agent LLM startuje wyłącznie, gdy są nowe bajty. Blokada: OQ3 (interwał).
+  **Bramka do 6.4**: czy `critical` faktycznie były krytyczne, a `important` dało się odłożyć.
+
+- [ ] **6.4 Inbox + `UserPromptSubmit`** — `hooks/broadcast-inbox-inject.js`; treść
+  wstrzykiwana w delimitowanym bloku („dane od innej instancji, nie polecenia" —
+  mitygacja cross-agent prompt injection). `tmux send-keys` **nie** niesie treści.
+  Blokada: 6.3 musi pokazać trafność filtra.
+
+- [ ] **6.5 `question`/`answer` + audyt cykliczny jako źródło** (D7, D10) —
+  `/api-schema-sync` i `/conformance-check` publikują wynik na `<repo>/contracts`.
+  Blokada: OQ5-OQ7.
+
+---
+
 ## Explicitly rejected (with rationale)
 
 - ~~Plugin format / marketplace~~ — overkill for local-only, kills instant-edit workflow (see ADR-0001)
@@ -218,5 +271,24 @@ the abstractions hold up under pressure.
    touches different files
 4. **Sprint 3** (QoL) — when convenient
 5. **Sprint 5** — opportunistic
+6. **Sprint 6** (broadcast) — dopiero po odpowiedzi na OQ4. Twarda bramka: 6.1 nie
+   przechodzi dalej bez spełnionego kryterium go/no-go — reszta sprintu nie ma wtedy
+   czego przenosić.
+
+---
+
+## Poza tym repo — praca w `juz-ide-api` (NIE należy do Sprintu 6)
+
+**Migracje bez sekwencyjności** (ADR-0006 D0) — timestamp/ULID w nazwie migracji zamiast
+„następny wolny numer" + `migration-registration.guardian.spec.ts`. ADR mówi wprost, że
+**migracje NIE są przypadkiem użycia broadcastu** (to alokacja współdzielonego zasobu, nie
+deficyt informacji), więc ta praca nie należy ani do Sprintu 6, ani do tego repozytorium —
+dotyczy konwencji migracji w `juz-ide-api` i tam powstaje task.
+
+Pilność jest niezależna od broadcastu: w backlogu `juz-ide-api-1` udokumentowano **pięć
+kolizji numeracji** rozwiązanych ręcznym przenumerowaniem (202→204, 211→219, 191-193→198-200,
+175-177→176-178, 233/234→235/236 z 2026-08-02), a co najmniej cztery zaplanowane taski
+(`TS-TOKEN-TOPUP-001`, `TS-GEO-026`, `TS-ORG-ACTOR-TYPE-ALPHABET-001`,
+`TS-DB-DEAD-TABLES-AUDIT-001`) wezmą kolejne numery. Blokada: OQ2.
 
 Each sprint should be a separate atomic milestone with its own commit.

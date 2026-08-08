@@ -85,6 +85,13 @@ repo w jego prefiksie. To rozwiązuje trzy problemy naraz:
 Konsekwencja: repo nie może emitować na topic cudzego repo. Chce zgłosić coś do `pricing`
 w `juz-ide-api`? Emituje na **swój** topic albo zadaje pytanie (D7).
 
+**Jedyny wyjątek: `<repo>/questions`.** Ten topic jest z definicji *przychodzący* —
+emitują na niego repa **obce** (`juz-ide-mobile-app` pisze na `juz-ide-api/questions`),
+a właściciel prefiksu jest adresatem, nie nadawcą. Odpowiedzi (`kind: answer`,
+`reply_to`) lecą na ten sam topic, więc pytający musi go subskrybować, żeby zobaczyć
+odpowiedź. Walidacja zapisu przepuszcza cudzy prefiks **wyłącznie** dla `questions`
+i `kind ∈ {question, answer}`; każde inne cross-repo emitowanie jest odrzucane.
+
 ### D2 — Dwie warstwy topiców: strukturalne (stałe) + domenowe (per repo)
 
 **Strukturalne** — ten sam zestaw w każdym repo, zdefiniowany centralnie w `claude-patterns`,
@@ -96,7 +103,7 @@ nierozszerzalny ad hoc:
 | `<repo>/migrations` | migracje danych/schematu |
 | `<repo>/security` | ustalenie o wpływie na bezpieczeństwo |
 | `<repo>/release` | wydanie / merge do integracyjnego brancha |
-| `<repo>/questions` | pytania kierowane do tego repo (patrz D7) |
+| `<repo>/questions` | pytania kierowane **do** tego repo — jedyny topic przychodzący, emitują obce repa (wyjątek od D1); odpowiedzi wracają na ten sam topic |
 
 **Domenowe** — deklarowane przez repo w jego manifeście, dowolna liczba, zmienne w czasie.
 Dziś w `juz-ide-api`: `geo`, `pricing`, `actor`. Za miesiąc mogą dojść `legal`, `gdpr`,
@@ -105,21 +112,28 @@ Dziś w `juz-ide-api`: `geo`, `pricing`, `actor`. Za miesiąc mogą dojść `leg
 Rozdział jest istotny: strukturalne mają znaną semantykę i mogą mieć twarde reguły
 (np. `contracts` zawsze wymaga ACK), domenowe są luźne i lokalne.
 
-### D3 — Manifest per repo: `.claude/config/broadcast.yml`
+### D3 — Manifest per instancja: `.claude/config/broadcast.yml` (GITIGNOROWANY)
 
-Jedno miejsce deklaracji, walidowane lintem:
+Jedno miejsce deklaracji, walidowane lintem. **Plik jest nieśledzony przez gita** —
+wykluczany przez `.git/info/exclude` (per klon; sam plik wykluczeń nie jest w repo), więc
+repo serwisowe nie dostaje **żadnej zmiany śledzonej**. `.gitignore` byłby gorszy: to plik
+commitowany, więc już sam wpis wykluczający byłby zmianą w repozytorium:
 
 ```yaml
 repo: juz-ide-api          # nazwa logiczna, NIE nazwa katalogu instancji
+instance: juz-ide-api-3    # tożsamość fizyczna tej kopii (patrz akapit niżej)
 emits:
   domain: [geo, pricing, actor]     # + strukturalne automatycznie
 subscribes:
   - juz-ide-api/*                   # siostrzane instancje TEGO SAMEGO repo
-  - juz-ide-mobile-app/questions
   - juz-ide-mobile-app/contracts
-  - vytches-ddd/contracts
-  - claude-patterns/*
+  - claude-patterns/hooks
+  - claude-patterns/agents
 ```
+
+Wartości powyżej to **obowiązujący manifest pilota**, nie przykład — pełny zestaw dla
+trzech repów wraz z uzasadnieniem każdej linii: sekcja „Tabela własności topiców".
+Własny `<repo>/questions` jest subskrybowany implicit i nie występuje w `subscribes`.
 
 **Kluczowe rozróżnienie repo ↔ instancja.** `juz-ide-api-1..4` to **jedno repo,
 cztery instancje**. Topic jest per repo (logiczne), pole `instance` w wiadomości mówi,
@@ -127,26 +141,32 @@ kto fizycznie nadał. Subskrypcja `juz-ide-api/*` obejmuje więc siostrzane inst
 i to jest **główny przypadek użycia** (cross-cluster impact z sekcji Kontekst, pkt 1).
 Reguła „nie widzę własnych wiadomości" działa po `instance`, nigdy po `repo`.
 
-**Źródło `instance`.** Manifest jest commitowany, więc w czterech klonach jest
-**identyczny** — `instance` nie może z niego pochodzić. Tożsamość instancji =
-basename katalogu roboczego (`juz-ide-api-3`), z opcjonalnym override w gitignorowanym
-`.claude/config/instance.local` (explicit config wygrywa z konwencją nazwy katalogu).
+**Źródło `instance`.** Manifest jest gitignorowany, więc każda instancja ma własny —
+`instance` deklarujemy **wprost w nim**, z fallbackiem na basename katalogu roboczego,
+gdy pole jest puste. Osobny plik `instance.local` (wcześniejsza propozycja) jest zbędny.
+
+**Dlaczego gitignore.** Manifest nie dotyka merge'ów do `develop`, nie generuje
+konfliktów przy czterech równoległych branchach i nie zmienia zachowania niczego
+u kogoś, kto pilota nie włączył. Brak pliku = system nie istnieje dla tej instancji.
+Koszt: manifest nie propaguje się między klonami — zakłada go `setup-project.sh`
+(sekcja Setup), a rozjazd deklaracji między instancjami tego samego repo raportuje
+`/broadcast-status`.
 
 ### D4 — Fan-out zawsze; obowiązek pojedynczy i przypisany, nigdy wywalczony
 
 **Nie ma trybu „pierwszy bierze"** (competing consumers) — to on produkuje duplikaty tasków.
 Jest fan-out do wszystkich subskrybentów + jedno pole `owner`:
 
-- `owner` domyślnie = właściciel topicu (z prefiksu, D1);
-- może być nadpisany jawnie (np. wiadomość na `juz-ide-api/contracts` z `owner: juz-ide-mobile-app`);
-- **pusty `owner` = informacja, nikt nie ma obowiązku działać** — i to powinien być
-  najczęstszy przypadek.
+- **`owner` domyślnie PUSTY** = informacja, nikt nie ma obowiązku działać — i to ma być
+  najczęstszy przypadek. Nadawca musi wpisać `owner` **świadomie**, nie odziedziczyć go;
+- wpisany jawnie wskazuje repo zobowiązane do akcji — zwykle właściciela topicu
+  (z prefiksu, D1), ale może wskazywać inne (wiadomość na `juz-ide-api/contracts`
+  z `owner: juz-ide-mobile-app` = „to wy musicie się dostosować");
+- `owner` wskazujący repo, które topicu nie subskrybuje, jest odrzucany na zapisie —
+  obowiązek przypisany komuś, kto go nie zobaczy, to najgorszy wariant.
 
 Tylko `owner` tworzy task. Pozostali subskrybenci ACK-ują i reagują lokalnie
 (np. przestawiają kolejność u siebie), ale **nie tworzą tasków**.
-
-Rezerwacja `O_EXCL` zostaje wyłącznie jako awaryjne rozstrzygnięcie, gdy właściciela nie
-da się wyznaczyć. Przy dobrze zdefiniowanych topicach ma być rzadka.
 
 **Zasada nadrzędna: rozstrzygaj przed pracą, ogłaszaj po.** Ogłoszenie „utworzyłem TS-XXX"
 nie jest mechanizmem deduplikacji (wyścig już się wtedy odbył) — jest informacją
@@ -160,6 +180,11 @@ odpowiedź na `question`), zakłada claim i działa; pozostałe widzą claim i k
 Claim leży na współdzielonym filesystemie poza repozytoriami, więc działa niezależnie
 od stanu branchy. Reakcje **lokalne** (przestawienie kolejności u siebie, ACK) nie
 wymagają claimu — są per instancja z definicji i nie tworzą współdzielonych artefaktów.
+
+**Uwaga: `O_EXCL` występuje w tym ADR w dwóch różnych rolach** i nie należy ich mylić:
+w D0 rezerwuje **zasób** (numer migracji) *przed* pracą; tutaj rozstrzyga **wykonawcę**
+konkretnej wiadomości. Ten drugi jest ścieżką standardową dla każdej wiadomości z
+niepustym `owner`, nie awaryjną.
 
 ### D5 — Dwie klasy sygnałów; tylko deterministyczne mogą tworzyć taski automatycznie
 
@@ -321,6 +346,8 @@ uszkodzonych linii (D9).
   "topic": "juz-ide-api/pricing",     // <repo>/<domain>  (D1)
   "kind": "discovery",                // discovery | done | question | answer | invalidate (tabela niżej)
   "class": "interpretive",            // deterministic | interpretive          (D5)
+  "severity": "important",            // critical | important | info; brak = info (D11)
+                                      // critical TYLKO dla class=deterministic albo od człowieka
   "instance": "juz-ide-api-3",        // kto nadał fizycznie                   (D3)
   "branch": "feature/TS-...",
   "owner": "juz-ide-api",             // kto ma obowiązek; pusty = informacja  (D4)
@@ -351,35 +378,104 @@ Faza 1 używa wyłącznie `discovery` + `done`; `question`/`answer` dochodzą w 
 
 ---
 
-## Tabela własności topiców — DO WYPEŁNIENIA
+## Tabela własności topiców — WYPEŁNIONA DLA PILOTA (OQ1 rozstrzygnięte 2026-08-02)
 
-Wypełnia człowiek. `emits.domain` to jedyna kolumna wymagająca decyzji — strukturalne
-(D2) dochodzą automatycznie. Propozycja wstępna na podstawie obecnych klastrów w KANBAN;
-**wszystko poniżej jest do zmiany**:
+Zakres pilota: **trzy repa logiczne**. Reszta ekosystemu (`vytches-ddd`, `grant-flow`,
+`grant-flow-ui`, `feature-flags`, `juz-ide-blog`, `juz-ide-landing-page`) świadomie
+**poza pilotem** — dołącza w fazie 4 albo wcale. Manifestu bez decyzji nie zakładamy;
+repo bez manifestu jest dla systemu niewidoczne.
 
-| repo (logiczne) | instancje | `emits.domain` (propozycja) | `subscribes` (propozycja) |
+| repo (logiczne) | instancje | `emits.domain` | `subscribes` |
 |---|---|---|---|
-| `juz-ide-api` | api-1..4 | `geo`, `pricing`, `actor` | `juz-ide-api/*`, `juz-ide-mobile-app/{questions,contracts}` |
-| `juz-ide-mobile-app` | mobile-app | `ui-flows` | `juz-ide-api/{contracts,questions,geo,pricing,actor}` |
-| `vytches-ddd` | vytches | ? | `claude-patterns/*` |
-| `grant-flow` | — | ? | `vytches-ddd/contracts`, `claude-patterns/*` |
-| `grant-flow-ui` | — | ? | `grant-flow/contracts` |
-| `claude-patterns` | claude-patterns | `patterns`, `agents`, `hooks` | (mało — źródło, nie odbiorca) |
-| `feature-flags` | feature-flags | ? | ? |
-| `juz-ide-blog` / `juz-ide-landing-page` | — | ? | ? |
+| `juz-ide-api` | `juz-ide-api-1..4` | `geo`, `pricing`, `actor` | `juz-ide-api/*`, `juz-ide-mobile-app/contracts`, `claude-patterns/{hooks,agents}` |
+| `juz-ide-mobile-app` | `juz-ide-mobile-app` | `ui-flows` | `juz-ide-api/{contracts,release}`, `claude-patterns/{hooks,agents}` |
+| `claude-patterns` | `claude-patterns` | `patterns`, `agents`, `hooks` | — (źródło; tylko implicit własne `questions`) |
 
-Uwaga do wypełniania: **subskrybować możliwie wąsko.** Repo, które słucha wszystkiego,
+Strukturalne (D2: `contracts`, `migrations`, `security`, `release`, `questions`)
+dochodzą do `emits` każdego repo automatycznie — nie wpisuje się ich do manifestu.
+
+**Reguła implicit**: repo **zawsze** subskrybuje własny `<repo>/questions`, bez
+deklaracji — inaczej nikt nie odpowiadałby na kierowane do niego pytania. Instancja widzi
+też własne topiki domenowe nadane przez **siostrzane** instancje: filtr „nie widzę
+swoich" działa po `instance`, nie po `repo` (D3).
+
+### Uzasadnienie subskrypcji (dlaczego akurat tak wąsko)
+
+**`juz-ide-api` → `juz-ide-api/*`** — to jest cały powód istnienia systemu: cztery
+instancje jednego repo na czterech branchach, dziś dowiadujące się o swoich decyzjach
+dopiero przy merge do `develop`. Jedyna subskrypcja z wildcardem w pilocie.
+
+**`juz-ide-api` → `juz-ide-mobile-app/contracts`** — mobile jest konsumentem API, więc
+jego zmiany kontraktowe (nowe oczekiwania klienta, deprecacje po stronie UI) wracają do
+API jako sygnał. Pytania od mobile przychodzą na `juz-ide-api/questions`, subskrybowany
+implicit — **nie** deklarujemy go.
+
+**`juz-ide-mobile-app` → `juz-ide-api/{contracts,release}`** — dokładnie dwa zdarzenia,
+które łamią mobile: zmiana kontraktu i wydanie. Klastry domenowe (`geo`, `pricing`,
+`actor`) **celowo pominięte w pilocie** — dopisujemy, dopiero gdy okaże się, że mobile
+potrzebuje sygnału wcześniejszego niż `contracts`. Rozszerzenie to jedna linia
+w manifeście; zwężenie po zalaniu hałasem jest trudniejsze.
+
+**oba → `claude-patterns/{hooks,agents}`** — zmiany hooków i definicji agentów propagują
+się symlinkiem **natychmiast** i zmieniają zachowanie pracującej instancji (nowy hook
+potrafi zablokować `Edit`). `claude-patterns/patterns` pominięte: to materiał
+referencyjny pobierany na żądanie przez `retrieve_patterns`, nie zdarzenie.
+
+**`claude-patterns` nie subskrybuje niczego** — jest źródłem, nie odbiorcą. Odbiera
+wyłącznie pytania na własnym `claude-patterns/questions` (implicit).
+
+### Manifesty pilota (zakłada je `setup-project.sh`)
+
+```yaml
+# /opt/projects/juz-ide-api-3/.claude/config/broadcast.yml   (gitignored, D3)
+repo: juz-ide-api
+instance: juz-ide-api-3          # w api-1/2/4 analogicznie
+emits:
+  domain: [geo, pricing, actor]
+subscribes:
+  - juz-ide-api/*
+  - juz-ide-mobile-app/contracts
+  - claude-patterns/hooks
+  - claude-patterns/agents
+```
+
+```yaml
+# /opt/projects/juz-ide-mobile-app/.claude/config/broadcast.yml
+repo: juz-ide-mobile-app
+instance: juz-ide-mobile-app
+emits:
+  domain: [ui-flows]
+subscribes:
+  - juz-ide-api/contracts
+  - juz-ide-api/release
+  - claude-patterns/hooks
+  - claude-patterns/agents
+```
+
+```yaml
+# /opt/projects/claude-patterns/.claude/config/broadcast.yml
+repo: claude-patterns
+instance: claude-patterns
+emits:
+  domain: [patterns, agents, hooks]
+subscribes: []                   # źródło; własne questions implicit
+```
+
+Uwaga na przyszłość: **subskrybować możliwie wąsko.** Repo, które słucha wszystkiego,
 przestanie czytać cokolwiek.
 
 ---
 
 ## OTWARTE PYTANIA (blokują implementację)
 
-**OQ1 — Tabela własności.** Powyższa, do wypełnienia. Które repo emituje jakie domeny
-i kto kogo słucha? To jedyna decyzja niewywnioskowalna z kodu.
-*Rekomendacja (review):* nie wypełniać całej — w pilocie manifesty tylko dla trzech repo:
-`juz-ide-api`, `juz-ide-mobile-app`, `claude-patterns`. Reszta = decyzja odroczona do
-fazy 4; „subskrybować wąsko" najlepiej wymusza się przez niedodawanie wierszy.
+**Stan 2026-08-02**: OQ1 ✅ i OQ4 ✅ rozstrzygnięte — **faza 1 odblokowana**. (dawniej: limit
+wstrzykiwania — bez niego pierwszy hook czytający kanał nie ma zdefiniowanego budżetu).
+OQ2 dotyczy niezależnej fazy 0; OQ3 i OQ5-OQ8 blokują dopiero fazy 2-4.
+
+**OQ1 — Tabela własności.** ✅ **ROZSTRZYGNIĘTE 2026-08-02** — tabela wyżej wypełniona
+dla trzech repów pilotażowych (`juz-ide-api`, `juz-ide-mobile-app`, `claude-patterns`)
+wraz z gotowymi manifestami i uzasadnieniem każdej subskrypcji. Pozostałe repa
+ekosystemu świadomie poza pilotem — decyzja odroczona do fazy 4.
 
 **OQ2 — Migracje: timestamp czy rezerwacja?** (D0) Timestamp jest czystszy, ale wymaga
 zmiany konwencji i guardiana. Rezerwacja zachowuje numery kosztem mechanizmu do utrzymania.
@@ -395,14 +491,11 @@ tick `/loop` najpierw robi zerokosztowy check shellowy (rozmiar segmentów vs ku
 instancji); agent LLM startuje tylko, gdy są nowe bajty. Wtedy interwał może być
 agresywny (5-10 min) przy koszcie ~0 w ciszy.
 
-**OQ4 — Budżet hałasu.** Ile wiadomości maksymalnie wstrzykiwać do promptu implementera
-w jednym oknie? Jaki TTL (propozycja 72 h)? Czy `discovery` wolno emitować tylko gdy
-dotyczy innego repo/klastra niż własny?
-*Rekomendacja (review):* maks. 3 wpisy / ~2 KB na wstrzyknięcie; priorytet:
-`owner == ja` > deterministyczne z moich subskrypcji > interpretacyjne; nadmiar jako
-jedna linia „…+N starszych, `/broadcast-status`". TTL 72 h = 3 segmenty dzienne.
-`discovery` tylko cross-cluster/cross-repo — wewnątrz własnego klastra informacja
-i tak jest w `tasks/` tej instancji.
+**OQ4 — Budżet hałasu.** ✅ **ROZSTRZYGNIĘTE 2026-08-02.** Kryterium to nie liczba, lecz
+**waga wiadomości** — patrz **D11** (dwa tory dostarczania: krytyczne przerywają, istotne
+czekają na koniec bloku pracy). TTL **72 h** = 3 segmenty dzienne. `discovery` wolno
+emitować **tylko** gdy dotyczy innego repo/klastra niż własny — wewnątrz własnego klastra
+informacja i tak jest w `tasks/` tej instancji.
 
 **OQ5 — Kto może emitować `invalidate`.** Najsilniejszy sygnał. Tylko człowiek?
 Tylko klasa deterministyczna? Czy agent po weryfikacji?
@@ -443,6 +536,77 @@ overengineering przy skali dziesiątek tasków.
 | **Koszt** | 8 stand-by × cykl × doba, niezależnie od aktywności | OQ3 (zerokosztowy check shellowy przed obudzeniem agenta), wąskie zadanie, tańszy model + jawny budżet |
 | **Duplikaty tasków** | dwie instancje/repo tworzą ten sam task | D4 (owner + claim `O_EXCL` na id wiadomości) + D5 (gate klas) + OQ8 (dedup po treści) |
 | **Martwe topiki** | emisja w próżnię, nikt nie subskrybuje | lint manifestów + raport „topiki bez subskrybentów" |
+| **Rozjazd manifestów** | manifest gitignorowany (D3) → api-1 subskrybuje coś, czego api-4 nie widzi; cicha luka w pokryciu | generowanie z jednego szablonu przez `setup-project.sh`; `/broadcast-status` raportuje różnice `emits`/`subscribes` między instancjami tego samego `repo` |
+
+### D11 — Waga wiadomości decyduje o torze dostarczenia (OQ4)
+
+Budżetem nie jest liczba wpisów, tylko **waga**. Pole `severity` w wiadomości:
+
+| `severity` | tor dostarczenia | kiedy |
+|---|---|---|
+| `critical` | **przerywa** — wstrzyknięcie do najbliższego promptu (D8) | praca implementera opiera się na założeniu, które właśnie przestało być prawdziwe |
+| `important` | **czeka** — odkładane do `inbox/<instance>.md`, czytane po skończeniu bloku pracy (koniec workflow / tury) | trzeba się do tego odnieść, ale nie w połowie implementacji |
+| `info` | **nie jest pchane** — widoczne wyłącznie w `/broadcast-status` | ślad, do przejrzenia gdy ktoś chce |
+
+Limity: `critical` maks. **2 wpisy / ~1 KB** na wstrzyknięcie (więcej niż dwie rzeczy
+naraz i tak nie zostaną obsłużone); nadmiar zwijany do jednej linii „…+N, `/broadcast-status`".
+`important` bez limitu w inboxie, ale digest pokazuje maks. 5 najnowszych.
+
+**Kto ustala wagę — i dlaczego nie sam nadawca.** Inflacja ważności („wszystko krytyczne")
+to typowy sposób, w jaki takie kanały umierają. Dlatego:
+
+- `critical` wolno nadać **wyłącznie** wiadomości klasy `deterministic` (D5) albo emitowanej
+  przez człowieka. Agent z interpretacyjnym wnioskiem **nie może** sam ogłosić krytyczności —
+  maksymalnie `important`;
+- odbiorca (stand-by, D7) może wagę **obniżyć** dla swojej instancji („to nie dotyczy mojego
+  brancha" → `important` schodzi do `info`), **nigdy podnieść**. Podnoszenie tworzyłoby
+  kaskadę pilności między instancjami;
+- brak pola = `info`. Domyślnie nic nikomu nie przerywa.
+
+**W pilocie wstrzykiwanie jest wyłączone w całości** — również dla `critical`. Oba tory
+kończą się wpisem do logu terminala stand-by (patrz Plan wdrożenia, faza 2). Dopiero gdy
+filtr okaże się trafny, `critical` dostaje prawo przerywać.
+
+---
+
+## Setup — gdzie mieszka kod i jak się instaluje
+
+Kod żyje w **`claude-patterns`**, bez nowego repo (dystrybucja symlinkiem już istnieje;
+`conductor` to inna warstwa — control-plane — i jeszcze nie istnieje):
+
+| ścieżka | zawartość |
+|---|---|
+| `hooks/lib/broadcast/` | runtime: segmenty, kursory, claim `O_EXCL`, parsowanie manifestu, walidacja schematu |
+| `hooks/broadcast-*.js` | `SessionStart` (odczyt), `UserPromptSubmit` (inbox → prompt), `PostToolUse` na `tasks/` (przypomnienie o emisji) |
+| `commands/broadcast.md`, `commands/broadcast-status.md` | komendy globalne |
+| `skills/orchestration/broadcast-standby/` | pętla stand-by (faza 2+) |
+| `templates/broadcast/broadcast.yml` | szablon manifestu kopiowany do projektu |
+
+Stan runtime (`/opt/projects/.claude-swarm/`: segmenty, kursory, claimy, inboxy) leży
+**poza wszystkimi repo** — zgodnie z regułą „instance data → projekt, nie do
+claude-patterns". Pełny rollback = `rm -rf` jednego katalogu.
+
+**Instalacja przez `setup-project.sh` — opt-in, nie domyślna.** Skrypt jest dziś
+sterowany deklaratywnie przez `project.yml` (`yml_get`/`yml_list`) i wykonuje sekcje
+sekwencyjnie. Broadcast dokłada się jako **kolejna sekcja warunkowa**, uruchamiana gdy:
+
+- `project.yml` ma blok `broadcast:` (tryb nieinteraktywny, np. w CI), albo
+- użytkownik wybrał go w **menu komponentów** (`--interactive`), albo
+- podano jawną flagę `--with-broadcast`.
+
+Menu wybiera *dodatki* (broadcast, PM/project-orchestration, hooki stack-owe), nigdy
+rdzeń (patterns/rules/skills). **Uruchomienie bez flag zachowuje dzisiejsze zachowanie
+bit w bit** — to warunek konieczny, skrypt chodzi po istniejących projektach.
+
+Sekcja broadcast robi dokładnie trzy rzeczy, wszystkie idempotentne:
+1. kopiuje szablon → `.claude/config/broadcast.yml` (jeśli nie istnieje; nigdy nie nadpisuje),
+   podstawiając `instance:` z basename katalogu;
+2. dopisuje `.claude/config/broadcast.yml` do `.git/info/exclude` (jeśli wpisu brak) —
+   D3; **nie dotyka `.gitignore`**, żeby repo serwisowe nie miało żadnej zmiany śledzonej;
+3. tworzy `/opt/projects/.claude-swarm/` z podkatalogami, jeśli nie istnieje.
+
+Nie modyfikuje `hooks.json` ani żadnego istniejącego hooka — hooki broadcastu same
+sprawdzają obecność manifestu i kończą `exit 0`, gdy go nie ma.
 
 ---
 
@@ -452,7 +616,7 @@ overengineering przy skali dziesiątek tasków.
 |---|---|---|
 | **0** | Migracje (D0) — timestamp albo rezerwacja | niezależne od reszty; usuwa najbardziej bolesną klasę kolizji |
 | **1** | Segmenty (D9) + `/broadcast` (człowiek i agent) + odczyt na `SessionStart` + **mechanizm emisji**: hook `PostToolUse` na `project-orchestration/tasks/` (precedens: `pm-task-check.js`) przypominający o `/broadcast` przy taskach cross-cluster + linijka w CLAUDE.md repo pilotażowych. Bez stand-by, bez ACK, bez pytań | **jedyna hipoteza mogąca obalić całość: czy agenty będą pisać sensowne `discovery`.** Bez mechanizmu emisji wynik byłby nieinterpretowalny (fałszywy negatyw: „nikt nie nadawał" ≠ „kanał bezwartościowy"). **Kryterium go/no-go po 2 tyg.: ≥1 wpis, który realnie zapobiegł pracy na nieaktualnym założeniu, i ≥30% wpisów ocenionych przez człowieka jako trafne** |
-| **2** | Stand-by przez `/loop` w **jednym** repo, read-only, **bez dostarczania** — tylko raportuje człowiekowi „to dotyczyłoby Twojego taska" | trafność filtra, zanim dostanie prawo przerywać |
+| **2** | **Stand-by w `juz-ide-api-1`** przez `/loop`, read-only, **wyłącznie log do terminala** — żadnego wstrzykiwania, żadnego inboxa czytanego przez implementera. Agent wypisuje w swoim oknie tmux: wpis, przypisaną `severity`, decyzję (`ignore`/`ack`/`escalate`) i **jedno zdanie uzasadnienia**. Człowiek czyta na bieżąco i ocenia trafność | trafność filtra i kalibracja `severity`, **zanim** cokolwiek dostanie prawo przerywać. Bramka do fazy 3: czy `critical` faktycznie były krytyczne, a `important` dało się odłożyć |
 | **3** | Inbox + hook `UserPromptSubmit` (D8) + kursory (D6); opcjonalny nudge `send-keys` dopiero na końcu fazy, po dowiezieniu detekcji panelu | czy dostarczenia są trafione |
 | **4** | `question`/`answer` (D7) + audyt cykliczny jako źródło (D10) | czy req-res między repo się przyjmuje |
 
