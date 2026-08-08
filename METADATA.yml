@@ -77,11 +77,11 @@ patterns:
   marketing_count: 1
   finance_count: 2
   legal_count: 2
-  total_count: 79
+  total_count: 80
   core_categories:
     domain: 6
     application: 4
-    infrastructure: 4
+    infrastructure: 5   # +external-adapter-pattern (scope: project-specific, grant-flow)
     architecture: 11
     testing: 8
     cross-layer: 4
