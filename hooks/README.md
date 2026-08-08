@@ -89,6 +89,21 @@ User request → Claude picks a tool → PreToolUse hook runs → Tool executes 
 > (per-agent burn tokens, tokens-since-progress, silence) + HALT flags at 2× the spin threshold.
 > L1 eval (run on every hook change): `node tests/flow-evals/hooks/run.js`.
 
+### Cross-instance broadcast (ADR 0006)
+
+Dwa hooki + biblioteka `hooks/lib/broadcast/` (segmenty dzienne JSONL, kursory,
+claim `O_EXCL`, manifest, walidacja schematu v1). **Wszystko domyślnie wyłączone**:
+brak `.claude/config/broadcast.yml` w projekcie = oba hooki kończą `exit 0`, zanim
+cokolwiek zrobią. Stan runtime leży w `/opt/projects/.claude-swarm/` — poza repozytoriami.
+
+| Hook | Event | What It Does |
+|------|-------|-------------|
+| **broadcast-session-start.js** | `SessionStart` | Wypisuje nieprzeczytane wpisy z subskrybowanych topiców, oznaczone jako DANE (nie polecenia). Nie ACK-uje, nie tworzy tasków |
+| **broadcast-task-emit.js** | `PostToolUse` (`Edit\|Write\|MultiEdit`) | Przy zapisie taska cross-cluster przypomina o `/broadcast`. Raz na task na dobę. Nic nie emituje sam |
+
+Ręczna diagnostyka: `node hooks/lib/broadcast/cli.js doctor`.
+Włączenie w projekcie: `node hooks/lib/broadcast/cli.js init`.
+
 ### Lifecycle Hooks
 
 | Hook | Event | What It Does |

@@ -217,7 +217,13 @@ tabela własności + gotowe manifesty w ADR).
 `.git/info/exclude`, per klon, więc **zero zmian śledzonych** w repo serwisowym).
 Stan runtime leży w `/opt/projects/.claude-swarm/`, poza wszystkimi repozytoriami.
 
-- [ ] **6.1 Kanał + `/broadcast` + `/broadcast-status`** — `hooks/lib/broadcast/`
+- [x] **6.1 Kanał + `/broadcast` + `/broadcast-status`** — ZAIMPLEMENTOWANE 2026-08-08
+  (`hooks/lib/broadcast/{paths,ulid,yaml,manifest,schema,channel,cursor,claim,cli}.js`,
+  `commands/broadcast{,-status}.md`, `hooks/broadcast-{session-start,task-emit}.js`,
+  `templates/broadcast/broadcast.yml`, wpisy w `hooks/hooks.json`). Reguły D1/D4/D5/D9/D11
+  wymuszane w CLI, nie w prompcie. **Kryterium go/no-go jeszcze NIE oceniane** — zegar
+  dwóch tygodni startuje z chwilą włączenia manifestów w repach pilota (6.2).
+  Oryginalny zakres: — `hooks/lib/broadcast/`
   (segmenty dzienne `events-YYYY-MM-DD.jsonl` w `/opt/projects/.claude-swarm/`, kursory,
   claim `O_EXCL`, walidacja schematu v1), `commands/broadcast.md`,
   `commands/broadcast-status.md`, `hooks/broadcast-session-start.js` (odczyt),

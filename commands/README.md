@@ -54,6 +54,16 @@
 | `/instinct-import` | Import instincts from teammates or other sources | — |
 | `/evolve` | Cluster related instincts into skills, commands, or agents | — |
 
+## Cross-instance broadcast (2)
+
+| Command | Purpose | Model |
+|---------|---------|-------|
+| `/broadcast` | Nadaj/przeczytaj wpis w kanale między instancjami, ACK, claim (ADR 0006) | Haiku |
+| `/broadcast-status` | Raport kanału: wpisy bez claimu, martwe topiki, rozjazd manifestów (~$0) | Haiku |
+
+Wymaga `.claude/config/broadcast.yml` w projekcie (plik nieśledzony). Bez niego oba
+polecenia mówią wprost, że broadcast jest tu wyłączony — i to jest stan domyślny.
+
 ## Infrastructure (2)
 
 | Command | Purpose | Model |

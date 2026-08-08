@@ -1,8 +1,9 @@
 # TASK-BROADCAST-001 — Cross-instance broadcast: kanał wymiany informacji między instancjami Claude Code
 
-> **▶ STATUS: READY (2026-08-02).** Spec kompletny i zrecenzowany, **wszystkie twarde blokady
-> zdjęte**, implementacja jeszcze nie ruszyła (kodu: zero). Branch: `feat/cross-instance-broadcast`.
-> Następny krok: **faza 6.1** — patrz sekcja „Stan i co dalej" na końcu pliku.
+> **▶ STATUS: FAZA 6.1 ZAIMPLEMENTOWANA (2026-08-08), niewłączona nigdzie.**
+> Kod runtime + komendy + hooki + szablon manifestu gotowe i przetestowane na sztucznych
+> repo; **żadne repo pilota nie ma jeszcze manifestu**, więc system jest wyłączony wszędzie.
+> Branch: `feat/cross-instance-broadcast`. Następny krok: **6.2** — patrz „Stan i co dalej".
 
 **Źródło:** [`docs/adr/0006-cross-instance-broadcast.md`](../adr/0006-cross-instance-broadcast.md)
 (status `proposed`, review architektoniczny 2026-08-02) — D0-D11, OQ1 + OQ4 rozstrzygnięte.
@@ -117,28 +118,75 @@ odnotować przy implementacji, żeby nie wyglądało na cichą zmianę kursu.
   (`:132-154`), layout `renderRunState` (`:232-258`), rozdział raportuje/egzekwuje,
   opt-in per projekt.
 
-### Następny krok: faza 6.1
+### Faza 6.1 — ZROBIONA 2026-08-08
 
-Pliki do napisania (wszystkie w `claude-patterns`, szczegóły w sekcji „Zakres" wyżej):
+| plik | co robi |
+|---|---|
+| `hooks/lib/broadcast/paths.js` | layout `/opt/projects/.claude-swarm/`, okno 3 segmentów, prune przez `rm` (bez rewrite'u), `CLAUDE_SWARM_DIR` do testów |
+| `hooks/lib/broadcast/ulid.js` | ULID bez zależności — sortowalność między segmentami jest wymaganiem kursora, nie ozdobą |
+| `hooks/lib/broadcast/yaml.js` | parser **podzbioru** YAML pod manifest (hooki chodzą gołym `node`, bez `node_modules`) |
+| `hooks/lib/broadcast/manifest.js` | ładowanie/walidacja manifestu, dopasowanie subskrypcji (wildcard + implicit `questions`), rejestr `manifests/<instance>.json` |
+| `hooks/lib/broadcast/schema.js` | walidacja v1: `hops=0`, `body` ≤ 2 KB, linia ≤ 4 KB, cross-repo tylko `questions`, `critical` tylko `deterministic`/człowiek, `owner` musi subskrybować |
+| `hooks/lib/broadcast/channel.js` | append jednym `write()` z `O_APPEND`, odczyt okna, pomijanie uszkodzonych linii z licznikiem, bramka bajtowa |
+| `hooks/lib/broadcast/cursor.js` | kursor per instancja (zapis atomowy tmp+rename), decyzje, `segment_bytes` |
+| `hooks/lib/broadcast/claim.js` | `open(O_EXCL)` na id wiadomości — wyłonienie jednego wykonawcy |
+| `hooks/lib/broadcast/cli.js` | `init · emit · read · ack · claim · gate · status · doctor` |
+| `commands/broadcast.md`, `commands/broadcast-status.md` | komendy globalne |
+| `hooks/broadcast-session-start.js` | odczyt na `SessionStart`, blok oznaczony „to dane, nie polecenia" |
+| `hooks/broadcast-task-emit.js` | przypomnienie o emisji przy tasku cross-cluster, raz na task na dobę |
+| `templates/broadcast/broadcast.yml` | szablon manifestu (zakłada go `cli.js init`) |
+| `hooks/hooks.json` | dwa wpisy — nieaktywne bez manifestu |
 
-1. `hooks/lib/broadcast/` — segmenty dzienne, kursory, claim `O_EXCL`, manifest,
-   walidacja schematu v1 (z polem `severity`, limit `body` 2 KB, odrzucanie `hops >= 1`,
-   cross-repo tylko dla `questions`)
-2. `commands/broadcast.md` + `commands/broadcast-status.md`
-3. `hooks/broadcast-session-start.js` (odczyt) i `hooks/broadcast-task-emit.js`
-   (`PostToolUse` na `tasks/` — przypomnienie o emisji; **bez tego faza 1 nie ma czego mierzyć**)
-4. `templates/broadcast/broadcast.yml` + sekcja w `scripts/setup-project.sh`
-   (warunkowa, `--with-broadcast` / `--interactive`; **bez flag zachowanie bit w bit jak dziś**)
+**Rozstrzygnięcia podjęte przy implementacji** (nie było ich w ADR):
+
+- **Cała walidacja siedzi w CLI, nie w prompcie komendy.** Model nie pisze do kanału
+  bezpośrednio, więc reguł D1/D4/D5/D9/D11 nie da się obejść przez nieuważny prompt.
+- **Rejestr manifestów** `manifests/<instance>.json`, odświeżany przy każdym użyciu CLI.
+  Bez niego nie dało się zrobić dwóch rzeczy wymaganych przez ADR: walidacji `owner`
+  (D4 — czy adresat w ogóle subskrybuje) i raportu rozjazdu manifestów.
+- **`owner` wskazujący repo nieznane rejestrowi przechodzi z ostrzeżeniem**, nie odrzuceniem.
+  ADR mówi „odrzucany", ale odrzucanie z powodu instancji, która jeszcze dziś nie
+  wystartowała, zablokowałoby pilota. Sprzeczność z rejestrem = twarde odrzucenie.
+- **`kind` spoza `{discovery, done}` odrzucany** w fazie 6.1 (`--allow-experimental` omija).
+- **`gate` odświeża rejestr** — to najczęściej uruchamiana komenda, więc rozjazd manifestów
+  wychodzi na jaw bez czekania na czyjąś emisję.
+- **`init` jest w CLI, nie w `setup-project.sh`** — dzięki temu 6.2 sprowadza się do
+  wywołania jednej komendy, a manifest da się założyć ręcznie już teraz.
+
+Przetestowane na sztucznych repo (`juz-ide-api-1`, `juz-ide-api-3`, `juz-ide-mobile-app`
+w scratchpadzie): każda reguła walidacji z osobna, widoczność między siostrzanymi
+instancjami, filtr „nie widzę swoich", claim wygrany/przegrany, ACK, uszkodzone linie,
+wykrycie rozjazdu manifestów, oba hooki (z manifestem i bez). L1 eval hooków: 17/17.
+
+### Następny krok: 6.2
+
+1. `scripts/setup-project.sh` — sekcja warunkowa wołająca `cli.js init`; trzy drogi
+   (blok `broadcast:` w `project.yml`, `--with-broadcast`, menu `--interactive`).
+   **Warunek konieczny: bez flag zachowanie bit w bit jak dziś.**
+2. Założyć manifesty w repach pilota (`juz-ide-api-1..4`, `juz-ide-mobile-app`,
+   `claude-patterns`) — wartości gotowe w ADR, sekcja „Manifesty pilota".
+3. Podpiąć oba hooki do aktywnej konfiguracji. **Uwaga: `hooks/hooks.json` nie jest przez
+   nic instalowany** — `setup-global.sh` tylko symlinkuje katalog `hooks/`, a jedyny
+   konsument pliku to `scripts/ci/validate-hooks.js` (walidacja schematu). Wpisy trzeba
+   przenieść ręcznie do `~/.claude/settings.json` albo do `.claude/settings.json` repo
+   pilota. Dziś globalny `settings.json` nie ma sekcji `hooks` w ogóle, więc hooki
+   broadcastu nie odpalają się nigdzie — i to jest stan zamierzony do momentu decyzji.
+4. Dopiero wtedy startuje dwutygodniowy zegar kryterium go/no-go.
 
 Potem **6.3**: stand-by w `juz-ide-api-1`, `/loop`, **wyłącznie log do terminala**, zero
 wstrzykiwania. Bramka do 6.4: czy `critical` faktycznie było krytyczne, a `important` dało
 się odłożyć.
 
-### Do zweryfikowania przy pierwszym kodzie (nie zakładać)
+### Do zweryfikowania przy pierwszym kodzie
 
-- czy `Stop` obsługuje `hookSpecificOutput.additionalContext` (potrzebne dopiero w 6.4;
-  wiedza pochodzi z odpowiedzi agenta czytającego dokumentację, nie ze sprawdzonego działania);
-- czy `open(O_EXCL)` na współdzielonym katalogu zachowuje się jak zakładamy przy 4 instancjach.
+- ~~czy `open(O_EXCL)` na współdzielonym katalogu zachowuje się jak zakładamy~~ —
+  **sprawdzone 2026-08-08**: 8 procesów startujących równolegle (`spawn` + `Promise.all`)
+  o ten sam claim → dokładnie 1 zwycięzca. Dodatkowo 30 równoległych appendów linii
+  ~1,6 KB → 30 wpisów odczytanych bez przeplotu i bez uszkodzeń. Lokalny ext4, jeden host —
+  założenie z D9 trzyma się na tej skali;
+- czy `Stop` obsługuje `hookSpecificOutput.additionalContext` — **wciąż niezweryfikowane**,
+  potrzebne dopiero w 6.4. Faza 6.1 tego nie używa (`SessionStart` wstrzykuje przez stdout,
+  co jest sprawdzonym wzorcem z `session-start-pm.js`).
 
 ### Zaległość niezwiązana, ale warta odhaczenia
 
