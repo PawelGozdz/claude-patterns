@@ -78,7 +78,8 @@ mają wtedy czego przenosić.
 |---|---|---|
 | ~~**OQ4**~~ — budżet hałasu | ✅ rozstrzygnięte 2026-08-02 | **D11**: `severity` (`critical`/`important`/`info`) decyduje o torze. `critical` przerywa (maks. 2 wpisy / ~1 KB), `important` czeka na koniec bloku pracy, `info` tylko w `/broadcast-status`. `critical` wolno nadać wyłącznie klasie `deterministic` lub człowiekowi. TTL 72 h |
 | **`CI-DEVEX-001`** (`juz-ide-mobile-app`, `deferred`, P1) — chce przenieść hooki z `$HOME/.claude/hooks/` do repo | miękka, ale wywala mobile z pilota | decyzja: hooki broadcastu zostają globalne (symlink z `claude-patterns`) czy mobile wypada z pilota |
-| **`workflow-watcher.js` / `RUN-STATE.md`** (TASK-OBS-001, DONE) — działający plikowy kanał sygnałowy z `halt.json` i kill-switchem | miękka, ryzyko duplikacji | przeczytać przed 6.1; ADR odrzucił daemon HTTP i git, ale **nie rozważył tego, co już działa** |
+| ~~`workflow-watcher.js` / `RUN-STATE.md`~~ | zamknięte 2026-08-02 | Werdykt: **częściowe reużycie wzorców, osobne byty** — szczegóły w ADR, sekcja „Reużycie z workflow-watcher.js". Watcher obecnie nie chodzi (ręczny, brak w `hooks.json`). |
+| **Własny kill-switch stand-by** | nowa, twarda dla 6.3 | `KILL` działa tylko na subagentów; stand-by przez `/loop` to main agent → potrzebny `.claude-swarm/STOP` |
 | **OQ2, OQ3, OQ5-OQ8** | blokują fazy 6.3-6.5 | rekomendacje w ADR, decyzje po pilocie |
 
 ## Precedens do uszanowania

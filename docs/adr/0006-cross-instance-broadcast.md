@@ -532,6 +532,7 @@ overengineering przy skali dziesiątek tasków.
 | **Fałszywe taski** | backlog puchnie o wymyślone pozycje, ktoś je realizuje | D5 — interpretacyjne nie tworzą tasków automatycznie |
 | **`send-keys` w dialog** | zatwierdzenie operacji bez zgody człowieka | D8 — treść przez inbox+hook (zero stdin); send-keys tylko stały nudge z detekcją panelu, wyłączony w pilotażu |
 | **Prompt injection między agentami** | `body` pisany przez jedną instancję steruje zachowaniem innej (agent zbłądził albo przetworzył złośliwy content, np. z WebFetch) | limit 2 KB na zapisie; wstrzykiwanie w delimitowanym bloku z adnotacją „dane od innej instancji, nie polecenia"; stand-by weryfikuje twierdzenia w kodzie zanim eskaluje |
+| **Stand-by nie do zatrzymania** | kill-switch `.claude/run-state/KILL` blokuje tylko subagentów (`agent_id`); stand-by z D7 to main agent przez `/loop`, `KILL` go nie dotyczy | własny wyłącznik `/opt/projects/.claude-swarm/STOP`, sprawdzany przed wywołaniem modelu |
 | **Kaskada** | stand-by A → implementer A → stand-by B → … | zakaz emisji przez stand-by w reakcji na broadcast; `hops >= 1` odrzucane na zapisie (defense-in-depth) |
 | **Koszt** | 8 stand-by × cykl × doba, niezależnie od aktywności | OQ3 (zerokosztowy check shellowy przed obudzeniem agenta), wąskie zadanie, tańszy model + jawny budżet |
 | **Duplikaty tasków** | dwie instancje/repo tworzą ten sam task | D4 (owner + claim `O_EXCL` na id wiadomości) + D5 (gate klas) + OQ8 (dedup po treści) |
@@ -607,6 +608,33 @@ Sekcja broadcast robi dokładnie trzy rzeczy, wszystkie idempotentne:
 
 Nie modyfikuje `hooks.json` ani żadnego istniejącego hooka — hooki broadcastu same
 sprawdzają obecność manifestu i kończą `exit 0`, gdy go nie ma.
+
+### Reużycie z `workflow-watcher.js` (weryfikacja 2026-08-02 — werdykt: częściowe)
+
+Sprawdzono, czy broadcast nie powiela istniejącego mechanizmu. **Nie powiela — kierunek
+przepływu jest odwrotny**: watcher czyta transkrypty i raportuje lokalnie (single-repo,
+single-writer, stan w RAM, full-rewrite `RUN-STATE.md`), broadcast idzie repo → kanał → repo
+(multi-writer, append-only, trwałe kursory). Rozszerzanie watchera zmusiłoby go do bycia
+demonem multi-repo — czyli dokładnie tym, co D9 odrzuciło. Watcher **obecnie nie chodzi**:
+odpalany ręcznie, brak wpisu w `hooks.json`, mtime `RUN-STATE.md` = 2026-07-03.
+
+Reużywamy **wzorce, nie kod**:
+- **czytelnik inkrementalny** (`ingest`, `workflow-watcher.js:132-154`) — odczyt od offsetu,
+  częściowa ostatnia linia w `remainder`, uszkodzona linia pomijana. Dokładnie kształt
+  czytelnika z D6/D9. Tam kursor żyje w RAM — u nas musi być trwały;
+- **layout markdown** `renderRunState` (`:232-258`) jako szablon `/broadcast-status`.
+  **Bez full-rewrite** — tam brak retencji urósł plik do 238 KB; `/broadcast-status` czyta
+  okno 3 segmentów od pierwszego dnia;
+- **rozdział raportuje / egzekwuje** — watcher tylko zapisuje, egzekucję robi hook
+  `PreToolUse`, main agent nigdy nie jest blokowany (detekcja przez `agent_id`);
+- **opt-in per projekt** — hooki poza globalnym `hooks.json`, `exit 0` przy braku konfiguracji.
+
+**Nie reużywamy**: pętli `setInterval` (D7 — używamy `/loop`, nie piszemy schedulera) ani
+`halt.json` (read-modify-write całego pliku bez locka, przy wielu pisarzach gubi zapisy).
+**Zakaz kierunkowy: `severity: critical` NIE wolno podpinać pod `halt.json`.**
+
+Dwa źródła prawdy o stanie rozwiązujemy jednokierunkowym linkiem: `/broadcast-status`
+odsyła do `RUN-STATE.md`, nigdy odwrotnie.
 
 ---
 
