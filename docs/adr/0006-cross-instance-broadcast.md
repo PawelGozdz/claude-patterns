@@ -12,6 +12,13 @@ rozpoznanie stanu 2026-08-01/02 (git, tmux, hooki, ECC).
 > **Ten ADR niczego nie implementuje.** Zawiera decyzje do zatwierdzenia i sekcję
 > OTWARTE PYTANIA, które wymagają odpowiedzi człowieka przed napisaniem pierwszej linii kodu.
 
+> **Zakres nazwy (decyzja 2026-08-02).** „Broadcast" to nazwa **całego systemu komunikacji
+> między instancjami**, nie samego pliku. Obejmuje: kanał (D9) jako warstwę transportową,
+> stand-by agentów (D7), dostarczanie i wstrzykiwanie do implementera (D8, D11), pytania
+> i odpowiedzi między repo (D7) oraz audyt spójności jako źródło zdarzeń (D10). Czytanie
+> tego dokumentu jako „ADR o pliku JSONL" gubi to, że jest specyfikacją architektury
+> multi-agent — kanał jest w niej najprostszą częścią.
+
 ---
 
 ## Kontekst
