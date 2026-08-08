@@ -1,6 +1,6 @@
 ---
 name: sprint
-description: "Sprint planning: @tech-lead + @product-owner (which auto-consults @marketing-strategist + @finance-strategist + @legal-strategist when relevant) propose sprint scope"
+description: "Sprint planning: @tech-lead + @product-owner (this skill explicitly asks it to consult @marketing-strategist + @finance-strategist + @legal-strategist when relevant) propose sprint scope"
 origin: LocalHero
 allowed-tools: Read, Glob, Grep, Write, Agent
 model: opus
@@ -17,14 +17,15 @@ disable-model-invocation: true
 
 Interactive sprint planning session with two primary advisory agents.
 Combines technical capacity (what's feasible) with business priority
-(what's most valuable). `@product-owner` automatically consults up to
-three specialist strategists (`@marketing-strategist`,
-`@finance-strategist`, `@legal-strategist`) in parallel for relevant
-lenses on each candidate item — so the sprint scope reflects GTM, CRO,
-unit-economics, regulatory exposure, AND legal/jurisdiction
-considerations, not just feature delivery.
+(what's most valuable). `@product-owner` does **not** spawn strategists on
+its own (opt-in since v3.6) — step 4 below explicitly asks it to consult up
+to three specialists (`@marketing-strategist`, `@finance-strategist`,
+`@legal-strategist`) in parallel for relevant lenses on each candidate item,
+so the sprint scope reflects GTM, CRO, unit-economics, regulatory exposure,
+AND legal/jurisdiction considerations, not just feature delivery.
 
-**Cost**: ~$0.30–0.60 (tech-lead + product-owner + up to 3 strategist sub-calls + iteration)
+**Cost**: ~$0.50–1.00 (tech-lead on haiku + product-owner on sonnet + up to 3
+strategist sub-calls + iteration)
 **When**: Start of each 1-2 week sprint
 
 ## Steps
