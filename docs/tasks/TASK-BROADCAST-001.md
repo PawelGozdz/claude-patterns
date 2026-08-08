@@ -1,9 +1,8 @@
 # TASK-BROADCAST-001 — Cross-instance broadcast: kanał wymiany informacji między instancjami Claude Code
 
-> **⏸ STATUS: BLOCKED (2026-08-02).** Spec gotowy i zrecenzowany, implementacja **nie ruszyła**.
-> OQ1 i OQ4 rozstrzygnięte (D11: `severity` → tor dostarczenia). Pozostałe blokady miękkie.
-> Kolejność uzgodniona 2026-08-02: stand-by w `juz-ide-api-1` **tylko z logiem do terminala**,
-> wstrzykiwanie dopiero gdy filtr okaże się trafny. Otwarte: `CI-DEVEX-001` (hooki globalne czy vendorowane) + weryfikacja `workflow-watcher.js`.
+> **▶ STATUS: READY (2026-08-02).** Spec kompletny i zrecenzowany, **wszystkie twarde blokady
+> zdjęte**, implementacja jeszcze nie ruszyła (kodu: zero). Branch: `feat/cross-instance-broadcast`.
+> Następny krok: **faza 6.1** — patrz sekcja „Stan i co dalej" na końcu pliku.
 
 **Źródło:** [`docs/adr/0006-cross-instance-broadcast.md`](../adr/0006-cross-instance-broadcast.md)
 (status `proposed`, review architektoniczny 2026-08-02) — D0-D11, OQ1 + OQ4 rozstrzygnięte.
@@ -77,7 +76,7 @@ mają wtedy czego przenosić.
 | co | rodzaj | rozstrzygnięcie |
 |---|---|---|
 | ~~**OQ4**~~ — budżet hałasu | ✅ rozstrzygnięte 2026-08-02 | **D11**: `severity` (`critical`/`important`/`info`) decyduje o torze. `critical` przerywa (maks. 2 wpisy / ~1 KB), `important` czeka na koniec bloku pracy, `info` tylko w `/broadcast-status`. `critical` wolno nadać wyłącznie klasie `deterministic` lub człowiekowi. TTL 72 h |
-| **`CI-DEVEX-001`** (`juz-ide-mobile-app`, `deferred`, P1) — chce przenieść hooki z `$HOME/.claude/hooks/` do repo | miękka, ale wywala mobile z pilota | decyzja: hooki broadcastu zostają globalne (symlink z `claude-patterns`) czy mobile wypada z pilota |
+| ~~`CI-DEVEX-001`~~ | zamknięte 2026-08-02 | **ADR 0007 D4**: lefthook = bramka dla człowieka bez Claude Code (w repo), hooki Claude zostają centralnie dla agenta; jedna implementacja checku, dwóch wywołujących. Mobile **zostaje w pilocie**. |
 | ~~`workflow-watcher.js` / `RUN-STATE.md`~~ | zamknięte 2026-08-02 | Werdykt: **częściowe reużycie wzorców, osobne byty** — szczegóły w ADR, sekcja „Reużycie z workflow-watcher.js". Watcher obecnie nie chodzi (ręczny, brak w `hooks.json`). |
 | **Własny kill-switch stand-by** | nowa, twarda dla 6.3 | `KILL` działa tylko na subagentów; stand-by przez `/loop` to main agent → potrzebny `.claude-swarm/STOP` |
 | **OQ2, OQ3, OQ5-OQ8** | blokują fazy 6.3-6.5 | rekomendacje w ADR, decyzje po pilocie |
@@ -88,6 +87,67 @@ mają wtedy czego przenosić.
 synchronizacji między instancjami — git sha + branch jako klucz"*. Broadcast jej **nie łamie**
 (kanał to lokalny plik na współdzielonym filesystemie, nie sieć), ale należy to jawnie
 odnotować przy implementacji, żeby nie wyglądało na cichą zmianę kursu.
+
+## Stan i co dalej (aktualizacja 2026-08-02, przed przejściem na świeży kontekst)
+
+### Zrobione — same dokumenty, kodu zero
+
+| commit | co |
+|---|---|
+| `1109a75` | ADR 0006: OQ1 + OQ4 rozstrzygnięte, D11 `severity`, poprawki spójności z review |
+| `7e10034` | weryfikacja `workflow-watcher.js` — werdykt: częściowe reużycie wzorców, byty osobne |
+| `16d7436` | ADR 0007 (zarządzanie lokalnym setupem) + zastrzeżenie zakresu nazwy „broadcast" |
+| `f35deb2` | D7 przepisane (`/loop` + bramka pustego przebiegu), OQ3 przeformułowane |
+
+### Rozstrzygnięcia, które trzeba znać zaczynając od zera
+
+- **Nazwa**: „broadcast" = **cały system** (kanał, stand-by, wstrzykiwanie, pytania, audyt),
+  nie sam plik. Kanał jest tylko warstwą transportową.
+- **Cały kod w `claude-patterns`.** Repo serwisowe dostaje wyłącznie
+  `.claude/config/broadcast.yml`, nieśledzony przez `.git/info/exclude` — zero zmian
+  śledzonych. Stan runtime w `/opt/projects/.claude-swarm/`, poza wszystkimi repo.
+- **`severity` decyduje o torze** (D11): `critical` przerywa, `important` czeka do końca
+  bloku pracy, `info` tylko w `/broadcast-status`. `critical` wolno nadać wyłącznie klasie
+  `deterministic` albo człowiekowi.
+- **Stand-by przez `/loop` z bramką pustego przebiegu** (D7) — nie hook, nie `claude -p`
+  z hooka (odrzucone, powody w ADR). Interwał wyjściowy 3 min. `/loop` napędza **ocenę**,
+  hooki realizują **dostarczenie**.
+- **`tmux send-keys` nigdy nie niesie treści** (D8) — dostarczanie przez inbox + hook.
+- Z `workflow-watcher.js` reużywamy **wzorce, nie kod**: czytelnik inkrementalny
+  (`:132-154`), layout `renderRunState` (`:232-258`), rozdział raportuje/egzekwuje,
+  opt-in per projekt.
+
+### Następny krok: faza 6.1
+
+Pliki do napisania (wszystkie w `claude-patterns`, szczegóły w sekcji „Zakres" wyżej):
+
+1. `hooks/lib/broadcast/` — segmenty dzienne, kursory, claim `O_EXCL`, manifest,
+   walidacja schematu v1 (z polem `severity`, limit `body` 2 KB, odrzucanie `hops >= 1`,
+   cross-repo tylko dla `questions`)
+2. `commands/broadcast.md` + `commands/broadcast-status.md`
+3. `hooks/broadcast-session-start.js` (odczyt) i `hooks/broadcast-task-emit.js`
+   (`PostToolUse` na `tasks/` — przypomnienie o emisji; **bez tego faza 1 nie ma czego mierzyć**)
+4. `templates/broadcast/broadcast.yml` + sekcja w `scripts/setup-project.sh`
+   (warunkowa, `--with-broadcast` / `--interactive`; **bez flag zachowanie bit w bit jak dziś**)
+
+Potem **6.3**: stand-by w `juz-ide-api-1`, `/loop`, **wyłącznie log do terminala**, zero
+wstrzykiwania. Bramka do 6.4: czy `critical` faktycznie było krytyczne, a `important` dało
+się odłożyć.
+
+### Do zweryfikowania przy pierwszym kodzie (nie zakładać)
+
+- czy `Stop` obsługuje `hookSpecificOutput.additionalContext` (potrzebne dopiero w 6.4;
+  wiedza pochodzi z odpowiedzi agenta czytającego dokumentację, nie ze sprawdzonego działania);
+- czy `open(O_EXCL)` na współdzielonym katalogu zachowuje się jak zakładamy przy 4 instancjach.
+
+### Zaległość niezwiązana, ale warta odhaczenia
+
+`patterns/flutter/either-error-pattern.md` (commit `b0ef096`) i nowy
+`patterns/infrastructure/external-adapter-pattern.md` są **niewidoczne dla
+`retrieve_patterns`** do czasu `./scripts/reseed-patterns.sh`. Reseed to pełny `recreate()`,
+więc warto zebrać zmiany wzorców i puścić raz.
+
+---
 
 ## Powiązane
 
