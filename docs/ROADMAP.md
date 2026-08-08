@@ -238,7 +238,8 @@ Stan runtime leży w `/opt/projects/.claude-swarm/`, poza wszystkimi repozytoria
   read-only. **Zero wstrzykiwania, zero inboxa czytanego przez implementera.** Agent wypisuje
   w swoim oknie: wpis, przypisaną `severity` (D11), decyzję `ignore`/`ack`/`escalate`
   i jedno zdanie uzasadnienia. Tick robi zerokosztowy check shellowy (rozmiar segmentów vs
-  kursor) — agent LLM startuje wyłącznie, gdy są nowe bajty. Blokada: OQ3 (interwał).
+  kursor) — pełna ocena rusza wyłącznie, gdy są nowe bajty; pusty przebieg to minimalna
+  tura, nie zero. Interwał wyjściowy 3 min (OQ3, kalibracja na danych).
   **Bramka do 6.4**: czy `critical` faktycznie były krytyczne, a `important` dało się odłożyć.
 
 - [ ] **6.4 Inbox + `UserPromptSubmit`** — `hooks/broadcast-inbox-inject.js`; treść

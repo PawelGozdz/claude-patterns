@@ -236,10 +236,10 @@ ACK jest **śladem audytowym, nie gwarancją dostarczenia.** Nie wyzwala retry i
 nie blokuje — instancja Claude Code nie jest niezawodnym konsumentem w pętli i nie wolno
 budować mechanizmu, który udaje, że jest.
 
-### D7 — Stand-by: osobna instancja per sesja tmux, read-only, uruchamiana przez `/loop`
+### D7 — Stand-by: osobna instancja, `/loop` + bramka pustego przebiegu
 
-Nie wstrzykujemy do pracującego implementera na podstawie dopasowania ścieżki. Zamiast tego
-**dedykowane okno tmux ze stand-by agentem**:
+Nie wstrzykujemy do pracującego implementera na podstawie dopasowania ścieżki. Decyzję,
+co trafia do promptu, podejmuje **dedykowane okno tmux ze stand-by agentem**:
 
 - uruchamiany przez istniejący `/loop <interwał>` — **nie piszemy schedulera**;
 - uprawnienia: **read + tworzenie tasków/dokumentacji; zero edycji kodu** — granica
@@ -248,9 +248,36 @@ Nie wstrzykujemy do pracującego implementera na podstawie dopasowania ścieżki
   taska → zdecyduj: ignoruj / ACK / eskaluj*;
 - obsługuje też `<repo>/questions` — odpowiada na pytania innych repo z kodu i dokumentacji.
 
-Trzy zalety wobec wariantu z hookiem: implementer nie płaci kontekstem za cudzą korespondencję;
-filtr działa **przed** przerwaniem (stand-by najpierw czyta task i kod, potem decyduje);
-błąd stand-by nie może zepsuć kodu.
+**Bramka pustego przebiegu.** Prompt pętli zaczyna się od porównania rozmiaru segmentów
+z kursorem instancji (jedno wywołanie Bash). Nic nowego → **koniec tury natychmiast**: zero
+czytania plików, zero rozumowania o stanie taska. Kosztowna ścieżka — task, kod, ocena,
+`severity`, decyzja — odpala się wyłącznie, gdy coś faktycznie przyszło. Pusty przebieg
+pozostaje turą modelu, ale minimalną; to jest cena za prostotę i jest akceptowalna.
+
+**Latencja nie jest ograniczeniem.** Stand-by i tak musi przeczytać bieżący task, sprawdzić
+stan implementacji i ocenić wiadomość — jego użyteczna tura z natury trwa. Nic w tym systemie
+nie wymaga reakcji w sekundach, bo i tak czekamy na koniec czyjegoś bloku pracy. Stąd
+interwał liczony w minutach, nie sekundach (patrz OQ3).
+
+**Rola hooków jest inna niż wybudzanie.** `/loop` napędza **ocenę**, hooki realizują
+**dostarczenie**: `UserPromptSubmit` w instancji pracującej wstrzykuje to, co stand-by już
+przepuścił (D8, D11). Podział jest czysty i nie ma między nimi konkurencji.
+
+**Efekt uboczny wart odnotowania**: stand-by to żywa sesja, więc repo, w którym nikt akurat
+nie implementuje, **nadal ma kto odpowiadać na `<repo>/questions`**. Model oparty wyłącznie
+na hookach tego nie daje — bez aktywnej pracy nic by się tam nie działo.
+
+Zalety wobec wariantu czysto hookowego: implementer nie płaci kontekstem za cudzą
+korespondencję; filtr działa **przed** przerwaniem (stand-by najpierw czyta task i kod, potem
+decyduje); błąd stand-by nie może zepsuć kodu; ocena jest interpretacyjna, a hook potrafi
+tylko dopasować ścieżki.
+
+**Odrzucona alternatywa: hook `Stop` odpalający `claude -p` w tle.** Kusząca, bo wybudzałaby
+stand-by dokładnie po zakończeniu bloku pracy i kosztowała zero w ciszy (hook jest procesem,
+nie turą modelu). Odrzucona, bo niosła rekurencję do zabezpieczenia (headless też odpala
+hooki), wymóg czystego odłączenia procesu (hook wykonuje się synchronicznie — blokowałby
+koniec każdej tury) i dwa niezweryfikowane założenia o kontrakcie hooków — a oszczędność
+wobec taniej bramki pustego przebiegu jest marginalna.
 
 **Zakres oceny istotności: branch instancji, nie cały codebase.** Stand-by odpowiada
 wyłącznie na pytanie lokalne: *czy ta wiadomość dotyka bieżącej pracy MOJEJ instancji*
@@ -490,13 +517,16 @@ zmiany konwencji i guardiana. Rezerwacja zachowuje numery kosztem mechanizmu do 
 TypeORM i tak domyślnie timestampuje migracje, a precedens zmiany konwencji
 cross-instance już istnieje (`TS-TEST-HISTORY-001`). Koszt guardiana jednorazowy.
 
-**OQ3 — Stand-by: gdzie i kiedy.** W każdej sesji tmux, czy tylko tam, gdzie ktoś aktualnie
-pracuje? Osiem stand-by budzonych cyklicznie to stała opłata niezależna od tego, czy coś
-się dzieje. Jaki interwał `/loop`?
-*Rekomendacja (review):* tylko tam, gdzie trwa praca, i **nie budzić agenta bez potrzeby**:
-tick `/loop` najpierw robi zerokosztowy check shellowy (rozmiar segmentów vs kursor
-instancji); agent LLM startuje tylko, gdy są nowe bajty. Wtedy interwał może być
-agresywny (5-10 min) przy koszcie ~0 w ciszy.
+**OQ3 — Interwał `/loop` i kształt bramki pustego przebiegu.** Model wybudzania rozstrzygnięty
+w D7 (`/loop` + bramka, nie hook). Zostaje kalibracja: jaki interwał i jak wąsko da się
+zamknąć pusty przebieg, żeby kosztował jak najmniej.
+*Rekomendacja:* **3 minuty** jako punkt wyjścia — nikt nie odczuje różnicy wobec 30 sekund,
+a to 20 pustych tur na godzinę zamiast 120. Bramka: pojedyncze wywołanie Bash porównujące
+rozmiar segmentów z `last_processed` w kursorze; przy braku zmian tura kończy się bez
+czytania czegokolwiek. Kalibracja na realnych danych w fazie 2.
+*Uwaga:* pusty przebieg **nie jest darmowy** — to nadal tura modelu. Wcześniejsza wersja
+tej rekomendacji obiecywała koszt zerowy, co jest osiągalne tylko w modelu hookowym
+odrzuconym w D7.
 
 **OQ4 — Budżet hałasu.** ✅ **ROZSTRZYGNIĘTE 2026-08-02.** Kryterium to nie liczba, lecz
 **waga wiadomości** — patrz **D11** (dwa tory dostarczania: krytyczne przerywają, istotne
