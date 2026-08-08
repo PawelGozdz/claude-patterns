@@ -70,6 +70,17 @@ function statePath(name) {
   return path.join(stateDir(), `${safeName(name)}.json`);
 }
 
+/**
+ * Wyłącznik stand-by (sekcja Ryzyka: „stand-by nie do zatrzymania").
+ *
+ * `.claude/run-state/KILL` blokuje wyłącznie subagentów — rozpoznaje ich po `agent_id`.
+ * Stand-by z D7 to pętla `/loop` na MAIN agencie, więc `KILL` go nie dotyczy i potrzebuje
+ * własnego wyłącznika. Obecność tego pliku = każda pętla kończy się przy najbliższym ticku.
+ */
+function stopPath() {
+  return path.join(root(), 'STOP');
+}
+
 /** Nazwa segmentu dla podanej daty (domyślnie dziś, czas lokalny — jak nazwa pliku w ADR). */
 function segmentName(date = new Date()) {
   const y = date.getFullYear();
@@ -155,6 +166,7 @@ module.exports = {
   inboxPath,
   registryPath,
   statePath,
+  stopPath,
   segmentName,
   segmentPath,
   listSegments,

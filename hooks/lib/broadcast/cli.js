@@ -56,6 +56,10 @@ function main(argv) {
       return cmdInstallHooks(args);
     case 'gate':
       return cmdGate(args);
+    case 'stop':
+      return cmdStop(args);
+    case 'resume':
+      return cmdResume(args);
     case 'status':
       return cmdStatus(args);
     case 'doctor':
@@ -327,6 +331,16 @@ function cmdClaim(args) {
 }
 
 function cmdGate(args) {
+  // STOP sprawdzamy PRZED manifestem i przed czymkolwiek innym — to jest wyłącznik
+  // awaryjny stand-by (`KILL` dotyczy tylko subagentów, a stand-by to main agent).
+  const stop = readStop();
+  if (stop) {
+    const suffix = stop.reason ? ` — ${stop.reason}` : '';
+    if (args.json) process.stdout.write(`${JSON.stringify({ stop: true, ...stop })}\n`);
+    else process.stdout.write(`STOP${suffix}\n`);
+    return 0;
+  }
+
   const ctx = requireManifest();
   if (!ctx) return 2;
 
@@ -343,6 +357,58 @@ function cmdGate(args) {
     process.stdout.write(hasNew ? `NEW ${newBytes}\n` : 'EMPTY\n');
   }
   return 0;
+}
+
+// ── stop / resume ─────────────────────────────────────────────────────────────
+
+/**
+ * Wyłącznik awaryjny wszystkich pętli stand-by (sekcja Ryzyka).
+ * Jeden plik zatrzymuje WSZYSTKIE instancje — celowo gruby młot: sytuacja, w której
+ * się go używa, to „coś oszalało", a nie precyzyjne strojenie.
+ */
+function cmdStop(args) {
+  paths.ensureLayout();
+  const payload = {
+    reason: typeof args.reason === 'string' ? args.reason : '',
+    ts: new Date().toISOString(),
+    by: process.env.USER || 'unknown',
+  };
+  fs.writeFileSync(paths.stopPath(), `${JSON.stringify(payload, null, 2)}\n`, 'utf8');
+  process.stdout.write(
+    `STOP założony: ${paths.stopPath()}\nWszystkie pętle stand-by zakończą się przy najbliższym ticku.\nWznowienie: resume\n`,
+  );
+  return 0;
+}
+
+function cmdResume() {
+  const stop = readStop();
+  if (!stop) {
+    process.stdout.write('STOP nie był założony — nic do zrobienia.\n');
+    return 0;
+  }
+  try {
+    fs.unlinkSync(paths.stopPath());
+  } catch (err) {
+    process.stderr.write(`Nie mogę usunąć ${paths.stopPath()}: ${err.message}\n`);
+    return 1;
+  }
+  process.stdout.write(`STOP zdjęty (był od ${stop.ts || '?'}${stop.reason ? `, powód: ${stop.reason}` : ''}).\n`);
+  return 0;
+}
+
+/** @returns {{reason?: string, ts?: string, by?: string}|null} */
+function readStop() {
+  try {
+    const raw = fs.readFileSync(paths.stopPath(), 'utf8');
+    try {
+      return JSON.parse(raw);
+    } catch {
+      // Ręcznie utworzony `touch STOP` też musi działać — liczy się obecność pliku.
+      return { reason: raw.trim().slice(0, 200) };
+    }
+  } catch {
+    return null;
+  }
 }
 
 // ── install-hooks ─────────────────────────────────────────────────────────────
@@ -650,7 +716,9 @@ function usage() {
     '  ack     decyzja o wpisie (acked|ignored|escalated|applied|dismissed)',
     '  claim   atomowe przejęcie obowiązku repo-level (O_EXCL)',
     '  install-hooks  wpięcie obu hooków do .claude/settings.json projektu (--remove wycofuje)',
-    '  gate    bramka pustego przebiegu: EMPTY albo NEW <bajty>',
+    '  gate    bramka pustego przebiegu: STOP | EMPTY | NEW <bajty>',
+    '  stop    wyłącznik awaryjny WSZYSTKICH pętli stand-by (--reason "...")',
+    '  resume  zdjęcie wyłącznika',
     '  status  raport kanału (wzorzec /pm-status — bez agenta)',
     '  doctor  diagnostyka konfiguracji',
     '',

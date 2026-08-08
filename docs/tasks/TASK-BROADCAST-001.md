@@ -225,9 +225,53 @@ Do obserwacji w trakcie: rozjazd manifestów między instancjami tego samego rep
 (manifest jest per klon) — `/broadcast-status`, sekcja „Rozjazd manifestów".
 4. Dopiero wtedy startuje dwutygodniowy zegar kryterium go/no-go.
 
-Potem **6.3**: stand-by w `juz-ide-api-1`, `/loop`, **wyłącznie log do terminala**, zero
-wstrzykiwania. Bramka do 6.4: czy `critical` faktycznie było krytyczne, a `important` dało
-się odłożyć.
+### Faza 6.3 — ZROBIONA 2026-08-08 (kod), stand-by jeszcze nie chodzi na stałe
+
+`skills/orchestration/broadcast-standby/SKILL.md` — **jedna tura**, nie pętla; pętlę robi
+`/loop`. Podlinkowany do `juz-ide-api-1/.claude/skills/` (katalog gitignorowany, więc
+zero zmian śledzonych).
+
+Uruchomienie:
+
+```bash
+cd /opt/projects/juz-ide-api-1
+claude --disallowed-tools Edit Write
+# w sesji:
+/loop 3m /broadcast-standby
+```
+
+**Obie blokady z tabeli „Blokady" zdjęte:**
+
+- **Własny kill-switch** — `cli.js stop [--reason]` / `resume` zakłada i zdejmuje
+  `/opt/projects/.claude-swarm/STOP`. `gate` sprawdza go **przed manifestem i przed
+  czymkolwiek innym**, więc zatrzymuje pętlę nawet w instancji z zepsutą konfiguracją.
+  Działa też gołe `touch STOP` (bez JSON-a). Sprawdzone z dwóch instancji naraz.
+- **Granica uprawnień** — `claude --disallowed-tools Edit Write`. Zweryfikowane
+  empirycznie: narzędzia znikają z sesji całkowicie (model sam raportuje ich brak),
+  a `--permission-mode acceptEdits` tego nie omija — plik testowy pozostał nietknięty.
+  Rozważany wcześniej `--settings` z osobnym plikiem uprawnień okazał się niepotrzebny;
+  odpada tym samym pytanie, czy dokłada się, czy zastępuje ustawienia projektu.
+
+**Kształt tury**: `gate` → `STOP` kończy pętlę, `EMPTY` kończy turę jedną linią bez
+czytania czegokolwiek, `NEW` uruchamia ścieżkę kosztowną (read → branch + aktywny task →
+decyzja per wpis → `ack` → raport w oknie).
+
+**Cztery zakazy w prompcie skilla**: zero wstrzykiwania/inboxa (to 6.4), zero tworzenia
+tasków i claimów (akcje repo-level idą jako `escalated` do człowieka), zero emisji
+w reakcji na wpis (bariera kaskady), zero edycji kodu.
+
+**Świadomie NIE uruchomiony na stałe.** Bramka do 6.4 brzmi „czy `critical` faktycznie
+było krytyczne, a `important` dało się odłożyć" — na pustym kanale nie da się tego ocenić.
+Odpalić, gdy w kanale będzie materiał z realnej pracy.
+
+### Następny krok
+
+1. **Poczekać na materiał w kanale** (zegar go/no-go: do ~2026-08-22).
+2. Gdy wpisy się pojawią — odpalić stand-by w `juz-ide-api-1` i czytać log przez kilka dni.
+3. 6.4 (inbox + `UserPromptSubmit`) dopiero po potwierdzeniu trafności filtra.
+   Wtedy trzeba zweryfikować niesprawdzone założenie: czy `Stop` obsługuje
+   `hookSpecificOutput.additionalContext`.
+4. 6.5 (`question`/`answer` + audyt cykliczny jako źródło) — blokowane przez OQ5-OQ7.
 
 ### Do zweryfikowania przy pierwszym kodzie
 

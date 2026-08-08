@@ -250,7 +250,17 @@ Stan runtime leży w `/opt/projects/.claude-swarm/`, poza wszystkimi repozytoria
   w `project.yml`, flaga `--with-broadcast`, tryb `--interactive` z menu dodatków.
   **Warunek konieczny: uruchomienie bez flag zachowuje dzisiejsze zachowanie bit w bit.**
 
-- [ ] **6.3 Stand-by w `juz-ide-api-1` — TYLKO LOG DO TERMINALA** —
+- [x] **6.3 Stand-by w `juz-ide-api-1` — TYLKO LOG DO TERMINALA** — ZAIMPLEMENTOWANE
+  2026-08-08. `skills/orchestration/broadcast-standby/SKILL.md` (podlinkowany do
+  `juz-ide-api-1/.claude/skills/`, katalog gitignorowany). Obie blokady zdjęte:
+  **kill-switch** = `cli.js stop|resume` + plik `/opt/projects/.claude-swarm/STOP`
+  sprawdzany przez `gate` PRZED manifestem (działa też jako gołe `touch STOP`);
+  **granica uprawnień** = `claude --disallowed-tools Edit Write` — zweryfikowane, że
+  narzędzia znikają z sesji całkowicie i `--permission-mode acceptEdits` tego nie omija
+  (`--settings` okazał się niepotrzebny). Uruchomienie: `/loop 3m /broadcast-standby`.
+  **Nie odpalony jeszcze na stałe** — czeka na materiał w kanale (ocena filtra na pustym
+  kanale niczego nie zweryfikuje).
+  Oryginalny zakres:
   `skills/orchestration/broadcast-standby/`, uruchamiany przez `/loop` w osobnym oknie tmux,
   read-only. **Zero wstrzykiwania, zero inboxa czytanego przez implementera.** Agent wypisuje
   w swoim oknie: wpis, przypisaną `severity` (D11), decyzję `ignore`/`ack`/`escalate`
