@@ -370,9 +370,117 @@ Future<Either<Failure, Receipt>> processPayment(PaymentParams params) async {
 
 ---
 
+## UI Presentation Convention (ERROR-UX-001)
+
+> Project-specific — supersedes the generic `ScaffoldMessenger.showSnackBar` shown in the
+> `fold()`/widget examples above for this repo. Those examples are the generic Either pattern;
+> this section is what `juz-ide-mobile-app` actually does with a `Left(failure)` once it reaches
+> the presentation layer. **This is the default from 2026-08-02 onward — a new ad-hoc
+> `SnackBar` for an error is an anti-pattern, not a style choice** (see Anti-Patterns below).
+
+Three ways a `Failure` reaches the user, chosen by **who owns the UI that failed** — not by
+`Failure` subtype, not by feature. Pick exactly one per failure site:
+
+| Failure has... | Use | Component |
+|---|---|---|
+| No specific UI owner — session/infra-level, happened outside any one screen's control | **Global toast** | `GlobalToastManager` (`lib/core/providers/global_toast_manager.dart`) |
+| A specific UI owner — a button/form the user just pressed/submitted | **Inline error** | `InlineErrorMessage` (`lib/core/design/components/inline_error_message.dart`) |
+| Broken the screen/section's primary content — nothing to show at all | **Dedicated error state** | `ErrorState` (`lib/core/ui/components/error_state.dart`) or a per-Failure-type private view, see below |
+
+### 1. Global toast — no per-screen owner
+
+Session expiry (401) and unhandled 5xx with no JSend body (infra failures — gateway
+timeout, proxy 502/503/504 — where no repository has structured data to render anything
+specific from anyway). This is **infrastructure-driven, not feature-driven**: it lives in
+`error_interceptor.dart`, not in individual screens. Features should essentially never call
+`GlobalToastManager` directly — if you think a feature needs to, that's a signal the failure
+actually has a UI owner and belongs in one of the other two categories instead.
+
+```dart
+// lib/core/api/interceptors/error_interceptor.dart — the only intended call site
+GlobalToastManager.instance.showSessionExpired(); // before the forced /welcome redirect
+GlobalToastManager.instance.showServerError();    // 5xx, no JSend body only
+```
+
+### 2. Inline error — action has a specific UI owner
+
+The failure belongs to one button/form the user just interacted with (save, submit, retry a
+single action). Render `InlineErrorMessage` next to that action — not a `SnackBar`, which
+disappears before an elder user can read it and has no fixed position to look for.
+
+```dart
+// A repository/notifier failure — pass the Failure straight through, no re-derivation of
+// its text. lib/features/profile/presentation/screens/edit_profile_screen.dart:
+final failure = await ref.read(profileExtendedProvider.notifier).updateProfile(updates);
+if (failure != null) {
+  setState(() => _saveFailure = failure);
+  return;
+}
+// ...in build():
+if (_saveFailure != null) InlineErrorMessage(failure: _saveFailure!),
+```
+
+```dart
+// State layer already stores a resolved message string, not a Failure — use .text().
+// lib/features/groups/presentation/screens/edit_group_screen.dart (GroupsState.error mixes
+// known domain codes resolved via resolveGroupMessage() and raw backend messages):
+final error = state.error;
+submitError: (error != null && error.isNotEmpty)
+    ? InlineErrorMessage.text(error.resolveGroupMessage(l10n))
+    : null,
+```
+
+`ProfileFormTemplate` has a built-in `submitError` slot rendered under the submit CTA — reuse
+it for any screen already built on that template instead of hand-rolling placement.
+
+### 3. Dedicated error state — the screen/section has nothing to show
+
+The failure prevented loading the content the user came for (a feed, an entity detail) — there
+is no "form" or "button" to attach an inline error to, the whole body needs to become the error.
+Two established shapes, pick based on scope:
+
+- **`ErrorState`** (`lib/core/ui/components/error_state.dart`) — shared, reusable, full-screen
+  or full-section error with type-specific icon/retry/support-link. Default choice for a new
+  screen.
+- **Private per-`Failure`-type view** — when the screen wants distinct copy per failure type
+  (network vs server vs unauthorized) rather than `ErrorState`'s generic message, mirror
+  `_FailureView`/`_ErrorView` in `lib/features/events/presentation/screens/non_local_feed_screen.dart`
+  (FEED-ERROR-STATE-001) — a small `if (failure is X) message = ... else if ...` switch feeding
+  a shared visual shell. Don't invent a fourth visual shell per feature; reuse the shell, vary
+  only the message mapping.
+
+```dart
+// lib/features/events/presentation/screens/non_local_feed_screen.dart
+if (state.hasError) {
+  return _FailureView(
+    failure: state.failure!,
+    elderMode: elderMode,
+    onRetry: () => ref.read(nonLocalFeedProvider.notifier).loadFeed(filter: state.activeFilter),
+  );
+}
+```
+
+### Decision checklist
+
+1. Did this failure happen because of something the CURRENT screen's user action did (tapped
+   a specific button/submitted a specific form)? → **Inline error**.
+2. Did this failure prevent the screen from showing the content it exists to show, with no
+   single action to blame? → **Dedicated error state**.
+3. Neither of the above — session expired, or a 5xx with no JSend body that no repository can
+   render anything specific for? → **Global toast** (interceptor-driven, not a per-screen call).
+4. Reaching for `ScaffoldMessenger.of(context).showSnackBar(...)` for an error? Stop — re-run
+   this checklist, one of the three above is the actual answer.
+
+---
+
 ## Anti-Patterns
 
 ```dart
+// BAD (as of ERROR-UX-001, 2026-08-02): new ad-hoc SnackBar for an error
+ScaffoldMessenger.of(context).showSnackBar(
+  SnackBar(content: Text(failure.message)), // No — pick from the UI Presentation
+);                                           // Convention above instead.
+
 // BAD: Returning null to indicate failure
 Future<User?> login(String email, String password) async {
   try {
