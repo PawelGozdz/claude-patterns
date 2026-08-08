@@ -22,8 +22,19 @@ const KINDS = ['discovery', 'done', 'question', 'answer', 'invalidate'];
 const CLASSES = ['deterministic', 'interpretive'];
 const SEVERITIES = ['critical', 'important', 'info'];
 
-/** Faza 1 (6.1) używa wyłącznie `discovery` + `done` — reszta dochodzi w 6.5 (ADR, „Semantyka kind"). */
-const PHASE_1_KINDS = ['discovery', 'done'];
+/**
+ * Kindy dopuszczone do emisji na dziś.
+ *
+ * 6.1 startowała z `discovery` + `done`; 6.5 dokłada `question` + `answer` (D7).
+ * `invalidate` NADAL zablokowane — OQ5 (kto ma prawo je emitować) i OQ6 (co ono
+ * znaczy u odbiorcy) czekają na decyzję człowieka. To najsilniejszy sygnał w systemie
+ * i odblokowanie go bez odpowiedzi na te dwa pytania byłoby przekroczeniem mandatu.
+ * Obejście na własną odpowiedzialność: `--allow-experimental`.
+ */
+const ENABLED_KINDS = ['discovery', 'done', 'question', 'answer'];
+
+/** @deprecated nazwa z fazy 6.1 — alias, żeby nie zerwać istniejących importów */
+const PHASE_1_KINDS = ENABLED_KINDS;
 
 /** Kindy, dla których wolno emitować na cudzy `<repo>/questions`. */
 const CROSS_REPO_KINDS = ['question', 'answer'];
@@ -188,6 +199,7 @@ module.exports = {
   KINDS,
   CLASSES,
   SEVERITIES,
+  ENABLED_KINDS,
   PHASE_1_KINDS,
   CROSS_REPO_KINDS,
   buildMessage,

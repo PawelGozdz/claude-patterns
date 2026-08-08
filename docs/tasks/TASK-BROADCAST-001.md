@@ -305,6 +305,39 @@ bo `install-hooks` nie miał jeszcze wpisu `UserPromptSubmit`. Dopiero wpięcie 
 (z usuniętym `SessionStart`) dało wiarygodny wynik. Wniosek na przyszłość: przy testowaniu
 dostarczania **wyłącz pozostałe źródła kontekstu**, inaczej mierzysz nie to, co myślisz.
 
+### Faza 6.5 — ZROBIONA 2026-08-08 z wyjątkiem `invalidate`
+
+`ENABLED_KINDS = discovery, done, question, answer`. **`invalidate` zostaje zablokowane** —
+OQ5 (kto ma prawo emitować) i OQ6 (co znaczy u odbiorcy) wymagają decyzji człowieka.
+To najsilniejszy sygnał w systemie; odblokowanie go bez odpowiedzi na te pytania byłoby
+przekroczeniem mandatu. Obejście: `--allow-experimental`.
+
+Dostarczone:
+
+- **pytania i odpowiedzi cross-repo** (D7) — obce repo emituje na `<repo>/questions`
+  (jedyny wyjątek od D1), odpowiedź wraca z `reply_to`;
+- **obsługa pytań w skillu stand-by** — krok 4b: claim → odpowiedź **z kodu, nie z pamięci**
+  → `escalated`, gdy nie wiadomo. Zakaz emisji w reakcji na wpis dostał jawny, jedyny
+  wyjątek: `answer` na `question`;
+- **audyt jako źródło** (D10) — `/api-schema-sync` i `/conformance-check` publikują wynik
+  na `<repo>/contracts` jako `class: deterministic`. Świadome zawężenia: schema-sync
+  publikuje **tylko wykryty drift** (nie „sprawdzone, OK"), conformance **tylko HARD-RULE**
+  (nie `MAJORITY-OUTLIER` — zalałby kanał);
+- **OQ7 w wersji raportowej** — `/broadcast-status` pokazuje „pytania bez odpowiedzi > 24 h".
+  Świadomie tylko raport: żadnej automatycznej eskalacji ani ponowienia. Cicha rezygnacja
+  jest zakazana, ale kanał pytań nie ma prawa sam sobie generować ruchu.
+
+**Poprawka do ADR wykryta testem — D1 był w tym miejscu błędny.** ADR zakładał, że pytający
+zasubskrybuje topic, na który wysłał pytanie („pytający musi go subskrybować, żeby zobaczyć
+odpowiedź"). Test pokazał, że pytający **nie widział odpowiedzi**, a proponowane lekarstwo
+byłoby gorsze od choroby: subskrypcja cudzego `<repo>/questions` oznacza oglądanie
+WSZYSTKICH pytań kierowanych do tego repo. Widoczność idzie teraz po `reply_to` —
+widzę odpowiedzi na MOJE pytania i nic ponadto. Zweryfikowane: trzecie repo zadało pytanie
+do tego samego topicu i pozostało niewidoczne dla pierwszego pytającego.
+
+Przy okazji: emisja `answer` nie wypisuje już fałszywego ostrzeżenia o „martwym topicu" —
+odpowiedź ma z definicji jednego adresata wskazanego przez `reply_to`, nie subskrybentów.
+
 ### Rozstrzygnięcia dla fazy 6.4 (2026-08-08)
 
 #### `/btw` NIE jest kanałem dostarczania — D8 zostaje bez zmian

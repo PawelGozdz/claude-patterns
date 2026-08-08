@@ -61,3 +61,22 @@ komendy. Zawsze wywołuj `check.mjs` jako pojedynczą, prostą komendę z pełn�
 - Przed sprintem / w CI — wykryć drift konwencji w 6800-plikowym DDD.
 - Zasila `@code-quality-verifier` (VETO: nie wprowadzaj rozjazdu) i `/analyze-ddd` (poznaj realne konwencje).
 - Komplement do hooków `check-ddd-patterns`/`check-domain-purity` (te per-edit; to — całe repo naraz).
+
+## Publikacja wyniku na kanał broadcastu (ADR 0006, D10 — opcjonalne)
+
+Jeśli projekt ma `.claude/config/broadcast.yml`: wynik tego audytu jest **deterministyczny**
+(AST, jawnie bez RAG), więc kwalifikuje się jako `class: deterministic` — jedyna klasa,
+która może tworzyć taski automatycznie (D5).
+
+Publikuj **wyłącznie naruszenia HARD-RULE**. `MAJORITY-OUTLIER` to sygnał interpretacyjny
+o charakterze „warto się przyjrzeć" i publikowanie go zalałoby kanał hałasem — a kanał,
+którego agenty przestaną czytać, jest gorszy niż brak kanału. Bez manifestu pomiń ten krok.
+
+```bash
+node "$HOME/.claude/hooks/lib/broadcast/cli.js" emit \
+  --topic <repo>/contracts --kind discovery --class deterministic \
+  --severity important \
+  --title "conformance: <N> naruszeń HARD-RULE" \
+  --body "<reguła + file:line, maks. kilka najważniejszych>" \
+  --paths <pliki z naruszeniami>
+```

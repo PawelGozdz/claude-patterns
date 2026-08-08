@@ -120,9 +120,22 @@ function gate(cursor, limit = paths.SEGMENT_WINDOW) {
  * instancja widzi wpisy siostrzanych instancji tego samego repo.
  */
 function visibleFor(messages, manifest) {
-  return messages.filter(
-    (msg) => msg.instance !== manifest.instance && manifestLib.subscribesTo(manifest, msg.topic),
+  // Odpowiedzi na MOJE pytania widzę zawsze — bez subskrybowania cudzego `questions`.
+  //
+  // ADR (D1) zakładał, że pytający zasubskrybuje topic, na który wysłał pytanie. Test
+  // pokazał, że to nie działa w praktyce i jest złym pomysłem: subskrypcja cudzego
+  // `<repo>/questions` oznacza oglądanie WSZYSTKICH pytań kierowanych do tego repo,
+  // nie tylko własnych odpowiedzi. Dopasowanie po `reply_to` jest precyzyjne i nie
+  // wymaga poszerzania subskrypcji.
+  const myQuestionIds = new Set(
+    messages.filter((msg) => msg.kind === 'question' && msg.instance === manifest.instance).map((msg) => msg.id),
   );
+
+  return messages.filter((msg) => {
+    if (msg.instance === manifest.instance) return false; // nigdy nie widzę swoich (D3)
+    if (msg.kind === 'answer' && msg.reply_to && myQuestionIds.has(msg.reply_to)) return true;
+    return manifestLib.subscribesTo(manifest, msg.topic);
+  });
 }
 
 /**

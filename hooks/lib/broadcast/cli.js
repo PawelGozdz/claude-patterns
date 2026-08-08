@@ -158,10 +158,11 @@ function cmdEmit(args) {
   if (!ctx) return 2;
 
   const kind = args.kind || 'discovery';
-  if (!schema.PHASE_1_KINDS.includes(kind) && !args['allow-experimental']) {
+  if (!schema.ENABLED_KINDS.includes(kind) && !args['allow-experimental']) {
     process.stderr.write(
-      `Faza 6.1 dopuszcza wyłącznie kind: ${schema.PHASE_1_KINDS.join(', ')}.\n` +
-        `\`${kind}\` dochodzi w fazie 6.5 (ADR 0006, „Semantyka kind"). Wymuszenie: --allow-experimental\n`,
+      `Dopuszczone kind: ${schema.ENABLED_KINDS.join(', ')}.\n` +
+        `\`${kind}\` jest zablokowane — OQ5 (kto może emitować) i OQ6 (semantyka u odbiorcy)\n` +
+        'czekają na decyzję człowieka. Wymuszenie na własną odpowiedzialność: --allow-experimental\n',
     );
     return 1;
   }
@@ -206,7 +207,10 @@ function cmdEmit(args) {
   const listeners = registry.filter(
     (entry) => entry.instance !== ctx.manifest.instance && subscribesFromRegistry(entry, message.topic),
   );
-  if (listeners.length === 0) {
+  // `answer` ma z definicji jednego adresata — pytającego, wskazanego przez `reply_to`.
+  // Ostrzeżenie o „martwym topicu" byłoby tu myląco fałszywe.
+  const isTargetedAnswer = message.kind === 'answer' && !!message.reply_to;
+  if (listeners.length === 0 && !isTargetedAnswer) {
     process.stderr.write(`⚠ topic ${message.topic} nie ma dziś ani jednego subskrybenta w rejestrze\n`);
   }
 
@@ -674,6 +678,7 @@ function cmdStatus(args) {
   const deadTopics = [...new Set(messages.map((m) => m.topic))].filter(
     (topic) => !registry.some((entry) => subscribesFromRegistry(entry, topic)),
   );
+  const staleQuestions = unansweredQuestions(messages);
   const drift = manifestDrift(registry);
 
   if (args.json) {
@@ -714,6 +719,15 @@ function cmdStatus(args) {
   }
 
   lines.push(`Topiki bez subskrybentów: ${deadTopics.length ? deadTopics.join(', ') : '—'}`);
+
+  // OQ7 — cicha rezygnacja jest zakazana: po dwóch takich przypadkach agenty przestaną
+  // używać kanału pytań. Raport, nie automatyczna akcja.
+  if (staleQuestions.length > 0) {
+    lines.push(`⚠ Pytania bez odpowiedzi > ${QUESTION_TIMEOUT_HOURS} h: ${staleQuestions.length}`);
+    for (const q of staleQuestions.slice(0, 5)) {
+      lines.push(`  ${q.id} · ${q.topic} · od ${q.instance} (${q.ageHours} h) — ${q.title}`);
+    }
+  }
   lines.push('');
 
   lines.push('Kursory:');
@@ -734,6 +748,29 @@ function cmdStatus(args) {
 
   process.stdout.write(`${lines.join('\n')}\n`);
   return 0;
+}
+
+/** OQ7 — próg, po którym pytanie bez odpowiedzi trafia do raportu dla człowieka. */
+const QUESTION_TIMEOUT_HOURS = 24;
+
+/**
+ * Pytania starsze niż próg, na które nie ma `answer` z pasującym `reply_to`.
+ * Świadomie tylko RAPORT — żadnej automatycznej eskalacji ani ponowienia. Kanał pytań
+ * ma być widoczny dla człowieka, a nie sam sobie generować ruch.
+ */
+function unansweredQuestions(messages) {
+  const answered = new Set(messages.filter((m) => m.kind === 'answer' && m.reply_to).map((m) => m.reply_to));
+  const cutoff = Date.now() - QUESTION_TIMEOUT_HOURS * 3600 * 1000;
+
+  return messages
+    .filter((m) => m.kind === 'question' && !answered.has(m.id) && Date.parse(m.ts) < cutoff)
+    .map((m) => ({
+      id: m.id,
+      topic: m.topic,
+      instance: m.instance,
+      title: m.title,
+      ageHours: Math.floor((Date.now() - Date.parse(m.ts)) / 3600000),
+    }));
 }
 
 /** Manifest jest gitignorowany (D3) → instancje jednego repo mogą się rozjechać po cichu. */

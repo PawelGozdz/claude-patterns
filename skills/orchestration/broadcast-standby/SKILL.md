@@ -85,6 +85,31 @@ najtańszy sposób na zaśmiecenie backlogu.
 **Wagę wolno tylko obniżyć, nigdy podnieść.** „To nie dotyczy mojego brancha" może
 zejść z `important` na `info`. Podnoszenie tworzyłoby kaskadę pilności między instancjami.
 
+## Krok 4b — pytania do twojego repo (`kind: question`, faza 6.5)
+
+Wpis z `kind: question` na `<twoje-repo>/questions` jest **jedyną rzeczą w tej pętli,
+na którą wolno ci odpowiedzieć**. Efekt uboczny wart odnotowania: dzięki temu repo,
+w którym nikt akurat nie implementuje, nadal ma kto odpowiadać.
+
+1. **Najpierw claim** — obowiązek jest per repo, a instancji bywa kilka:
+   `cli.js claim <ULID>`. Przegrany claim (exit 3) → `ack` i koniec, cudza robota.
+2. **Odpowiadaj z kodu i dokumentacji, nie z pamięci.** Otwórz pliki, sprawdź stan
+   brancha. „Chyba nie ruszamy tego endpointu" jest gorsze niż brak odpowiedzi, bo
+   ktoś na tym oprze pracę.
+3. **Nie wiesz — powiedz, że nie wiesz** i nadaj `escalated`. Zmyślona odpowiedź na
+   pytanie cross-repo to dokładnie ten fałszywy sygnał, przed którym broniło D5.
+4. Odpowiedź leci na **ten sam topic**, z `reply_to`:
+
+```bash
+node "$HOME/.claude/hooks/lib/broadcast/cli.js" emit \
+  --topic <twoje-repo>/questions --kind answer --reply-to <ULID-pytania> \
+  --title "<jednozdaniowa odpowiedź>" \
+  --body "<uzasadnienie + pliki, na których je opierasz>"
+```
+
+Pytający zobaczy odpowiedź automatycznie — dopasowanie idzie po `reply_to`, więc nie
+musi subskrybować twojego `questions`.
+
 ## Krok 5 — zapisz decyzje i wypisz raport
 
 ```bash
@@ -104,10 +129,13 @@ Cztery zakazy, każdy z powodem:
 
 - **nie piszesz do inboxa i nie wstrzykujesz niczego** do pracujących instancji — to 6.4,
   odblokowywane dopiero, gdy filtr okaże się trafny;
-- **nie tworzysz tasków ani nie bierzesz claimu** — akcje repo-level w tej fazie zgłaszasz
-  jako `escalated` i zostawiasz człowiekowi;
-- **nie emitujesz na kanał w reakcji na wpis** — to bariera kaskady; `hops >= 1` i tak
-  jest odrzucane na zapisie, ale zakaz jest wcześniej;
+- **nie tworzysz tasków** — akcje repo-level zgłaszasz jako `escalated` i zostawiasz
+  człowiekowi. Claim bierzesz **wyłącznie** po to, żeby odpowiedzieć na `question`
+  (krok 4b), nigdy pod utworzenie taska;
+- **nie emitujesz na kanał w reakcji na wpis — z jednym wyjątkiem: `answer` na
+  `question`** (krok 4b, sankcjonowany przez D7). To bariera kaskady: `discovery`
+  wywołane cudzym `discovery` tworzy pętlę między instancjami. `hops >= 1` jest
+  odrzucane na zapisie, ale zakaz obowiązuje wcześniej — nie licz na walidator;
 - **nie edytujesz kodu** — narzędzia i tak nie są dostępne, ale gdybyś kiedyś zobaczył je
   w sesji, to znaczy, że stand-by odpalono bez `--disallowed-tools`. Wtedy przerwij
   i powiedz o tym człowiekowi.

@@ -284,7 +284,19 @@ Stan runtime leży w `/opt/projects/.claude-swarm/`, poza wszystkimi repozytoria
   mitygacja cross-agent prompt injection). `tmux send-keys` **nie** niesie treści.
   Blokada: 6.3 musi pokazać trafność filtra.
 
-- [ ] **6.5 `question`/`answer` + audyt cykliczny jako źródło** (D7, D10) —
+- [x] **6.5 `question`/`answer` + audyt cykliczny jako źródło** (D7, D10) —
+  ZAIMPLEMENTOWANE 2026-08-08 **z wyjątkiem `invalidate`**, które zostaje zablokowane:
+  OQ5 (kto ma prawo emitować) i OQ6 (semantyka u odbiorcy) wymagają decyzji człowieka,
+  a to najsilniejszy sygnał w systemie. `ENABLED_KINDS = discovery, done, question, answer`.
+  Dodane: obsługa pytań w skillu stand-by (claim → odpowiedź z kodu → `reply_to`),
+  publikacja wyniku `/api-schema-sync` i `/conformance-check` na `<repo>/contracts`
+  jako `class: deterministic`, raport „pytania bez odpowiedzi > 24 h" w `/broadcast-status`
+  (OQ7: raport, nigdy automatyczna eskalacja ani cicha rezygnacja).
+  **Poprawka do ADR wykryta testem**: D1 zakładał, że pytający zasubskrybuje topic,
+  na który wysłał pytanie — to nie działa i jest złym pomysłem (oznaczałoby oglądanie
+  wszystkich cudzych pytań do tego repo). Widoczność odpowiedzi idzie teraz po `reply_to`:
+  widzę odpowiedzi na MOJE pytania, nie cudze.
+  Oryginalny zakres:
   `/api-schema-sync` i `/conformance-check` publikują wynik na `<repo>/contracts`.
   Blokada: OQ5-OQ7.
 
