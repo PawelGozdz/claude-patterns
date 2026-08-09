@@ -25,8 +25,15 @@ a w sesji:
 
 `--disallowed-tools Edit Write` **nie jest ozdobą** — to jedyna granica bezpieczeństwa
 tego agenta. Bez niej pomyłka stand-by potrafi zepsuć kod w repo, w którym ktoś pracuje.
-Zweryfikowane: narzędzia znikają z sesji całkowicie, `--permission-mode acceptEdits`
-tego nie obchodzi.
+Zweryfikowane behawioralnie (próba realnej edycji pliku, nie deklaracja modelu): narzędzia
+znikają z sesji całkowicie, `--permission-mode acceptEdits` tego nie omija, a `allow`
+w `settings.json` projektu tego nie przywraca.
+
+**Skill musi być podlinkowany w repo**, w którym go odpalasz — jest w
+`claude-patterns/skills/orchestration/`, a `.claude/skills/` każdego projektu ma własną
+listę symlinków. Brakujący link:
+`ln -sfn /opt/projects/claude-patterns/skills/orchestration/broadcast-standby .claude/skills/broadcast-standby`
+(katalog jest gitignorowany, więc repo nic nie zauważy).
 
 ## Krok 1 — bramka (ZAWSZE PIERWSZY, zanim cokolwiek przeczytasz)
 
@@ -157,9 +164,16 @@ Cztery zakazy, każdy z powodem:
   `question`** (krok 4b, sankcjonowany przez D7). To bariera kaskady: `discovery`
   wywołane cudzym `discovery` tworzy pętlę między instancjami. `hops >= 1` jest
   odrzucane na zapisie, ale zakaz obowiązuje wcześniej — nie licz na walidator;
-- **nie edytujesz kodu** — narzędzia i tak nie są dostępne, ale gdybyś kiedyś zobaczył je
-  w sesji, to znaczy, że stand-by odpalono bez `--disallowed-tools`. Wtedy przerwij
-  i powiedz o tym człowiekowi.
+- **nie edytujesz kodu** — nigdy, w żadnym trybie. Jeśli wniosek z oceny wymaga zmiany
+  w kodzie, jest to `escalated`, nie robota do wykonania tutaj.
+
+**NIE oceniaj, czy masz uprawnienia — nie potrafisz tego wiarygodnie stwierdzić.**
+Sprawdzone empirycznie 2026-08-09: zapytany o własne narzędzia model odpowiadał
+„mam dostęp do Edit i Write" w sesji, w której te narzędzia były **faktycznie usunięte**
+(próba realnego użycia kończyła się `BRAK-NARZEDZI`, plik pozostawał nietknięty).
+Taka introspekcja raz zablokowała start stand-by bez powodu. Bariera bezpieczeństwa
+siedzi w komendzie uruchomieniowej i odpowiada za nią człowiek — twoim zadaniem jest
+po prostu nie edytować kodu, a nie audytować własną sesję.
 
 ## Bramka do fazy 6.4
 

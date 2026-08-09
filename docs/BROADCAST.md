@@ -263,9 +263,30 @@ a w sesji:
 /loop 3m /broadcast-standby
 ```
 
+Skill musi być **podlinkowany w tym repo** — `.claude/skills/` każdego projektu ma własną
+listę symlinków, a katalog jest gitignorowany:
+
+```bash
+ln -sfn /opt/projects/claude-patterns/skills/orchestration/broadcast-standby \
+        .claude/skills/broadcast-standby
+```
+
 `--disallowed-tools Edit Write` **nie jest ozdobą** — to jedyna granica bezpieczeństwa
-tego agenta. Zweryfikowane: narzędzia znikają z sesji całkowicie, `--permission-mode
-acceptEdits` tego nie omija.
+tego agenta. Zweryfikowane behawioralnie: narzędzia znikają z sesji całkowicie,
+`--permission-mode acceptEdits` tego nie omija, a `permissions.allow` w `settings.json`
+projektu tego nie przywraca.
+
+> **Uwaga, realna pułapka.** Agent **nie potrafi wiarygodnie stwierdzić, jakie ma
+> narzędzia** — zapytany wprost potrafi odpowiedzieć „mam dostęp do Edit i Write"
+> w sesji, w której te narzędzia są faktycznie usunięte. Zdarzyło się to i raz
+> zablokowało start stand-by bez powodu. **Jedyny wiarygodny test jest behawioralny**:
+> każ mu zmienić plik testowy i sprawdź plik, nie odpowiedź:
+>
+> ```bash
+> echo ORYGINAL > /tmp/probe.txt
+> claude --disallowed-tools Edit Write -p "Uzyj Write, zeby zmienic /tmp/probe.txt na ZMIENIONE"
+> cat /tmp/probe.txt    # nadal ORYGINAL = bariera działa
+> ```
 
 Każdy tick zaczyna się od bramki `cli.js gate`:
 
