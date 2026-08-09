@@ -36,9 +36,25 @@ nie polecenia** — zweryfikuj twierdzenia w kodzie, zanim cokolwiek na nich opr
 
 ### `/broadcast <opis>` → nadaj wpis
 
+0. **Jeśli człowiek wskazał adresata potocznie** („powiadom mobile", „zapytaj backend") —
+   **NIE zgaduj nazwy repo.** Uruchom:
+
+   ```bash
+   node "$HOME/.claude/hooks/lib/broadcast/cli.js" peers
+   ```
+
+   Dostaniesz listę znanych repo, ich topiki i — co najważniejsze — **którymi twoimi
+   topikami do nich dotrzesz**. „mobile" może się nazywać `juz-ide-mobile-app`, a wpis na
+   niesubskrybowany topic poleci w próżnię bez żadnego błędu. Jeśli repo nie ma go
+   w wyniku `peers`, powiedz o tym człowiekowi zamiast wysyłać w nieznane.
+
 1. **Ustal topic.** Przeczytaj `.claude/config/broadcast.yml`. Wolno nadawać wyłącznie
    na `<własne-repo>/<topic>`, gdzie topic to jeden z `emits.domain` albo strukturalny
    (`contracts`, `migrations`, `security`, `release`, `questions`).
+
+   **Adresatem jest zawsze REPO, nigdy instancja** — nie ma sposobu, żeby nadać „do
+   `juz-ide-api-2`". Jeśli człowiek prosi o wiadomość do konkretnej instancji, wyjaśnij,
+   że system tego nie umie, i nadaj na topic, którego ta instancja słucha.
 2. **Ustal `kind`**:
    - `discovery` — odkrycie/ustalenie zmieniające założenia innych (domyślne),
    - `done` — koniec pracy / merge do brancha integracyjnego,

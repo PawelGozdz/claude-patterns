@@ -172,6 +172,23 @@ własności do utrzymania.
 
 **Domenowe** — deklarujesz w swoim manifeście, dowolna liczba, zmienne w czasie.
 
+### Kto istnieje i jak do niego trafić
+
+```bash
+node "$CLI" peers
+```
+
+Wypisuje znane repa, ich topiki i **którymi twoimi topikami do nich dotrzesz**. To jest
+odpowiedź na pytanie „skąd system wie, że »mobile« to `juz-ide-mobile-app`" — **nie wie**,
+dopóki tego nie sprawdzisz. Nazwa repo w topicu nie jest przez nic walidowana poza
+kształtem, więc literówka daje wpis, który po prostu nikogo nie dosięgnie.
+
+Widać wyłącznie repa, które choć raz użyły broadcastu — rejestr buduje się z ich
+manifestów. Repo, które nigdy nie wystartowało, jest dla systemu niewidzialne.
+
+**Adresatem jest zawsze repo, nigdy instancja.** Nie da się nadać „do `juz-ide-api-2`" —
+to celowe: fan-out zamiast punkt-punkt. Pole `instance` mówi tylko, kto nadał.
+
 **Reguła własności:** nadajesz wyłącznie na własny prefiks. Chcesz coś zgłosić do cudzego
 repo? Albo nadaj na swój topic, albo zadaj pytanie. Jedyny wyjątek: `<repo>/questions`
 jest topikiem *przychodzącym* — obce repa nadają na niego `question`/`answer`.

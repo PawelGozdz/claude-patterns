@@ -56,6 +56,8 @@ function main(argv) {
       return cmdInstallHooks(args);
     case 'gate':
       return cmdGate(args);
+    case 'peers':
+      return cmdPeers(args);
     case 'inbox':
       return cmdInbox(args);
     case 'stop':
@@ -381,6 +383,74 @@ function cmdGate(args) {
   } else {
     process.stdout.write(hasNew ? `NEW ${newBytes}\n` : 'EMPTY\n');
   }
+  return 0;
+}
+
+// ── peers ─────────────────────────────────────────────────────────────────────
+
+/**
+ * Kto istnieje w systemie i na jaki topic można do niego trafić.
+ *
+ * Bez tego adresowanie było zgadywanką: człowiek mówi „zapytaj mobile", a agent musi
+ * skądś wiedzieć, że „mobile" to `juz-ide-mobile-app`. Literówka w nazwie repo nie jest
+ * błędem składniowym — `<cokolwiek>/questions` przechodzi walidację i leci w próżnię.
+ * Ta komenda zamienia zgadywanie na odczyt rejestru.
+ *
+ * Źródłem jest rejestr `manifests/<instancja>.json`, więc widać wyłącznie repa, które
+ * choć raz użyły broadcastu. Repo, które nigdy nie wystartowało, jest dla systemu
+ * niewidzialne — i to jest poprawne zachowanie, nie brak.
+ */
+function cmdPeers(args) {
+  const registry = manifestLib.loadRegistry();
+  const loaded = manifestLib.load();
+  const me = loaded.manifest ? loaded.manifest.repo : null;
+
+  if (registry.length === 0) {
+    process.stdout.write('Rejestr pusty — żadna instancja nie użyła jeszcze broadcastu.\n');
+    return 0;
+  }
+
+  // Grupujemy per repo logiczne: adresatem jest repo, nie instancja (D1).
+  const byRepo = new Map();
+  for (const entry of registry) {
+    if (!byRepo.has(entry.repo)) byRepo.set(entry.repo, { repo: entry.repo, instances: [], emits: [], subscribes: [] });
+    const group = byRepo.get(entry.repo);
+    group.instances.push(entry.instance);
+    for (const d of entry.emits?.domain || []) if (!group.emits.includes(d)) group.emits.push(d);
+    for (const s of entry.subscribes || []) if (!group.subscribes.includes(s)) group.subscribes.push(s);
+  }
+
+  const peers = [...byRepo.values()].map((g) => ({
+    ...g,
+    self: g.repo === me,
+    questionsTopic: `${g.repo}/questions`,
+    topics: [...manifestLib.STRUCTURAL_TOPICS, ...g.emits].map((t) => `${g.repo}/${t}`),
+  }));
+
+  if (args.json) {
+    process.stdout.write(`${JSON.stringify({ me, peers }, null, 2)}\n`);
+    return 0;
+  }
+
+  const lines = [];
+  lines.push(`Znane repa (${peers.length})${me ? ` · jesteś: ${me}` : ''}`);
+  for (const p of peers) {
+    lines.push('');
+    lines.push(`${p.repo}${p.self ? '  (TY)' : ''} — instancje: ${p.instances.sort().join(', ')}`);
+    lines.push(`  topiki domenowe: ${p.emits.length ? p.emits.join(', ') : '—'}`);
+    lines.push(`  pytania kieruj na: ${p.questionsTopic}`);
+    if (!p.self && me) {
+      // Najważniejsza informacja praktyczna: którymi MOIMI topikami do nich dotrę.
+      const reachable = p.subscribes
+        .filter((s) => s.startsWith(`${me}/`))
+        .map((s) => (s.endsWith('/*') ? `${s} (wszystkie moje)` : s));
+      lines.push(`  słucha moich topiców: ${reachable.length ? reachable.join(', ') : 'ŻADNYCH — dotrzesz tylko pytaniem'}`);
+    }
+  }
+  lines.push('');
+  lines.push('Adresatem jest REPO, nie instancja — nie da się nadać „do juz-ide-api-2".');
+
+  process.stdout.write(`${lines.join('\n')}\n`);
   return 0;
 }
 
@@ -906,6 +976,7 @@ function usage() {
     '  init    założenie manifestu + katalogu stanu (idempotentne)',
     '  emit    nadanie wiadomości (waliduje D1/D4/D5/D9/D11 przed zapisem)',
     '  read    nieprzeczytane wpisy dla tej instancji',
+    '  peers   kto istnieje i na jaki topic do niego trafić (rozwiązywanie nazw repo)',
     '  ack     decyzja o wpisie (acked|ignored|escalated|applied|dismissed)',
     '  claim   atomowe przejęcie obowiązku repo-level (O_EXCL)',
     '  install-hooks  wpięcie hooków do .claude/settings.local.json projektu (--remove wycofuje)',
