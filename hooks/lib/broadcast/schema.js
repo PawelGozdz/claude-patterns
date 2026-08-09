@@ -136,6 +136,22 @@ function validate(message, ctx = {}) {
     errors.push('`paths` musi zawierać stringi krótsze niż 300 znaków');
   }
 
+  // Pytania i odpowiedzi żyją WYŁĄCZNIE na `<repo>/questions`.
+  //
+  // Bez tej reguły `kind: question` przechodził na dowolnym własnym topicu — i tak się
+  // zdarzyło w pilocie 2026-08-09: pytanie do mobile poleciało na `juz-ide-api/contracts`.
+  // Skutek jest gorszy niż samo nietrafienie: adresat NIE MOŻE odpowiedzieć, bo emisja
+  // `answer` na cudzy topic inny niż `questions` jest odrzucana przez D1. Powstaje wpis
+  // w ślepej uliczce, na który pytający czeka bez końca.
+  if (CROSS_REPO_KINDS.includes(msg.kind) && topic && topic.name !== manifestLib.INBOUND_TOPIC) {
+    const target = msg.kind === 'question' ? '<repo-adresata>/questions' : `${topic.repo}/questions`;
+    errors.push(
+      `\`kind: ${msg.kind}\` wolno emitować wyłącznie na topic \`${manifestLib.INBOUND_TOPIC}\` ` +
+        `(jest: \`${msg.topic}\`). Użyj \`--topic ${target}\` — na innym topicu adresat nie ma jak odpowiedzieć. ` +
+        'Nazwę repo adresata sprawdź komendą `peers`.',
+    );
+  }
+
   // OQ5 — kto ma prawo unieważniać.
   if (msg.kind === 'invalidate' && msg.class !== 'deterministic' && !ctx.human) {
     errors.push(
