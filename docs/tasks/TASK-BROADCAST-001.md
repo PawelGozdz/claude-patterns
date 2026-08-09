@@ -31,6 +31,63 @@
 **Priorytet:** średni — nic nie jest zablokowane *na* tym tasku; wartość rośnie z liczbą
 równoległych instancji.
 
+## Wejście od zera (stan na 2026-08-09)
+
+**Czytaj tylko tę sekcję + [`docs/BROADCAST.md`](../BROADCAST.md).** Reszta pliku to
+historia wdrożenia — przydatna, gdy trzeba zrozumieć *dlaczego* coś wygląda tak, jak
+wygląda, ale niepotrzebna do dalszej pracy.
+
+### Co istnieje i gdzie
+
+| warstwa | pliki |
+|---|---|
+| runtime | `hooks/lib/broadcast/` — `paths, ulid, yaml, manifest, schema, channel, cursor, claim, cli` |
+| hooki | `hooks/broadcast-{session-start,task-emit,inbox-inject}.js` |
+| komendy | `commands/broadcast.md`, `commands/broadcast-status.md` |
+| stand-by | `skills/orchestration/broadcast-standby/SKILL.md` |
+| instalacja | `cli.js init` + `install-hooks`; sekcja `[7b/8]` w `scripts/setup-project.sh` |
+| dokumentacja | `docs/BROADCAST.md` (przewodnik), ten task (historia), ADR 0006 (spec) |
+
+12 commitów, od `d375a97` do `bd88841`, branch `feat/cross-instance-broadcast`.
+
+### Stan pilota
+
+Włączony w **6 instancjach**: `juz-ide-api-1..4`, `juz-ide-mobile-app`, `claude-patterns`.
+Każda ma manifest, trzy hooki w `settings.local.json` i podlinkowany skill stand-by.
+Zero zmian śledzonych w repach serwisowych. Wstrzykiwanie (`inject: true`)
+**wyłączone wszędzie** — zgodnie z D11.
+
+W kanale są dziś **dwa wpisy**: testowy z uruchomienia i pytanie źle zaadresowane
+(poszło na `juz-ide-api/contracts` zamiast `juz-ide-mobile-app/questions`, więc mobile
+nie ma jak odpowiedzieć — wygaśnie samo po 72 h). **Zero materiału do oceny.**
+
+### Co robić dalej — w tej kolejności
+
+1. **Normalnie pracować.** System działa w tle; `SessionStart` pokazuje nowe wpisy sam.
+   Nadawanie: `/broadcast <opis>`. Stan: `/broadcast-status`.
+2. **Ocenić pilota ~2026-08-22** wg checklisty ze statusu na górze pliku. **Ocenia
+   człowiek.** Pusty kanał po dwóch tygodniach też jest wynikiem — i raczej „nie".
+3. **Dopiero po pozytywnej ocenie**: włączyć stand-by na stałe, potem rozważyć
+   `inject: true`.
+
+### Czego NIE robić bez decyzji człowieka
+
+- nie włączać `inject: true` przed oceną filtra (D11 — pilot ma być bez przerywania);
+- nie zamykać taska przed odhaczeniem kryterium go/no-go;
+- nie rozszerzać pilota o kolejne repa — zakres z OQ1 jest świadomie wąski.
+
+### Pułapki wykryte w boju (nie powtarzać)
+
+- **Agent nie potrafi wiarygodnie stwierdzić, jakie ma narzędzia.** Twierdził, że ma
+  `Edit`/`Write` w sesji, w której były usunięte. Jedyny wiarygodny test jest
+  behawioralny — każ zmienić plik i sprawdź plik, nie odpowiedź.
+- **Test dostarczania mierzy nie to, co myślisz**, jeśli działa więcej niż jedno źródło
+  kontekstu. Pierwszy test 6.4 „przeszedł" na bloku z hooka `SessionStart`.
+- **Nazwa repo w topicu nie jest walidowana** poza kształtem — przed emisją cross-repo
+  uruchom `cli.js peers`, nie zgaduj.
+
+---
+
 ## Problem
 
 Przy pracy na 2-4 równoległych instancjach Claude Code (`juz-ide-api-1..4` to cztery klony
@@ -284,14 +341,12 @@ w reakcji na wpis (bariera kaskady), zero edycji kodu.
 było krytyczne, a `important` dało się odłożyć" — na pustym kanale nie da się tego ocenić.
 Odpalić, gdy w kanale będzie materiał z realnej pracy.
 
-### Następny krok
+### ~~Następny krok~~ (nieaktualne — plan z 2026-08-08, wykonany tego samego dnia)
 
-1. **Poczekać na materiał w kanale** (zegar go/no-go: do ~2026-08-22).
-2. Gdy wpisy się pojawią — odpalić stand-by w `juz-ide-api-1` i czytać log przez kilka dni.
-3. 6.4 (inbox + `UserPromptSubmit`) dopiero po potwierdzeniu trafności filtra.
-   Wtedy trzeba zweryfikować niesprawdzone założenie: czy `Stop` obsługuje
-   `hookSpecificOutput.additionalContext`. Dwa rozstrzygnięcia poniżej.
-4. 6.5 (`question`/`answer` + audyt cykliczny jako źródło) — blokowane przez OQ5-OQ7.
+Punkty 3 i 4 zostały zrealizowane: 6.4 i 6.5 są gotowe. Punkt o `Stop` +
+`hookSpecificOutput.additionalContext` **odpadł** — 6.4 użyła `UserPromptSubmit`,
+gdzie zwykłe stdout wystarcza i zostało zweryfikowane na żywo.
+Aktualny plan: sekcja „Wejście od zera" na górze pliku.
 
 ### Faza 6.4 — ZROBIONA 2026-08-08 (kod), wstrzykiwanie WYŁĄCZONE
 
@@ -437,16 +492,17 @@ ustalić, wystarczy sam identyfikator taska.
   o ten sam claim → dokładnie 1 zwycięzca. Dodatkowo 30 równoległych appendów linii
   ~1,6 KB → 30 wpisów odczytanych bez przeplotu i bez uszkodzeń. Lokalny ext4, jeden host —
   założenie z D9 trzyma się na tej skali;
-- czy `Stop` obsługuje `hookSpecificOutput.additionalContext` — **wciąż niezweryfikowane**,
-  potrzebne dopiero w 6.4. Faza 6.1 tego nie używa (`SessionStart` wstrzykuje przez stdout,
-  co jest sprawdzonym wzorcem z `session-start-pm.js`).
+- ~~czy `Stop` obsługuje `hookSpecificOutput.additionalContext`~~ — **pytanie odpadło**:
+  6.4 użyła `UserPromptSubmit`, gdzie zwykłe stdout wystarcza. Zweryfikowane na żywo,
+  łącznie z tym, że hook odpala się dokładnie raz na turę.
 
-### Zaległość niezwiązana, ale warta odhaczenia
+### ~~Zaległość niezwiązana~~ — odhaczona 2026-08-09
 
-`patterns/flutter/either-error-pattern.md` (commit `b0ef096`) i nowy
-`patterns/infrastructure/external-adapter-pattern.md` są **niewidoczne dla
-`retrieve_patterns`** do czasu `./scripts/reseed-patterns.sh`. Reseed to pełny `recreate()`,
-więc warto zebrać zmiany wzorców i puścić raz.
+Reseed wykonany (`patterns_global` 996 chunków). Przy okazji
+`patterns/infrastructure/external-adapter-pattern.md` doprowadzony do konwencji
+i oznaczony `Scope: project-specific (grant-flow)` — bez tego `retrieve_patterns`
+podpowiadałby wzorzec wyprowadzony z jednego projektu jako uniwersalną wytyczną
+we wszystkich (commit `e428565`).
 
 ---
 
