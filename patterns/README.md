@@ -21,7 +21,7 @@ to opt in. Promote to plain "Production" once a second project adopts the same s
 patterns/
 ├── domain/              # Domain Layer (core business logic) - 6 patterns
 ├── application/         # Application Layer (CQRS handlers) - 4 patterns
-├── infrastructure/      # Infrastructure Layer (persistence, API) - 4 patterns
+├── infrastructure/      # Infrastructure Layer (persistence, API) - 5 patterns
 ├── architecture/        # Cross-cutting architecture patterns - 11 patterns
 ├── testing/            # Testing patterns - 9 patterns
 ├── cross-layer/        # Used everywhere (errors, logging, error handlers) - 4 patterns
@@ -97,6 +97,7 @@ Persistence, API, and technical implementation patterns.
 | **[repository-events-pattern.md](infrastructure/repository-events-pattern.md)** | 400 | Production | 3-layer event protection (imports, eventMap, verification test) | infrastructure-testing-implementer |
 | **[mapper-pattern.md](infrastructure/mapper-pattern.md)** | ~600 | Production | toDomain(), toPersistence(), value object reconstruction | infrastructure-testing-implementer |
 | **[controller-schema-pattern.md](infrastructure/controller-schema-pattern.md)** | ~600 | Production | Zod validation, @CurrentUser, rate limiting, Result pattern | infrastructure-testing-implementer |
+| **[external-adapter-pattern.md](infrastructure/external-adapter-pattern.md)** | ~230 | ⚠ project-specific (grant-flow) | Logging placeholder adapter: realny port, zero I/O, fail-fast w onModuleInit, rozdzielone klasy błędów | infrastructure-testing-implementer |
 
 **Infrastructure Layer Key Principles**:
 - CQRS separation: Command repositories (BaseKyselyRepository) vs Query repositories (direct Kysely)

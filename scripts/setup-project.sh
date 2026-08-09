@@ -22,7 +22,29 @@ echo -e "${BLUE}================================${NC}"
 echo ""
 
 # Parse arguments
-PROJECT_DIR="${1:-.}"  # Default to current directory if not provided
+#
+# Positional: project directory (default: current directory).
+# Flags (all optional, all additive — bez nich skrypt zachowuje się dokładnie jak dotąd):
+#   --with-broadcast   włącz sekcję broadcastu (ADR 0006) bez pytania
+#   --interactive      zapytaj o dodatki (broadcast); nigdy nie dotyczy rdzenia
+PROJECT_DIR=""
+WITH_BROADCAST=false
+INTERACTIVE=false
+
+for arg in "$@"; do
+  case "$arg" in
+    --with-broadcast) WITH_BROADCAST=true ;;
+    --interactive)    INTERACTIVE=true ;;
+    --*)
+      echo -e "${YELLOW}Unknown flag ignored:${NC} $arg"
+      ;;
+    *)
+      [[ -z "$PROJECT_DIR" ]] && PROJECT_DIR="$arg"
+      ;;
+  esac
+done
+
+PROJECT_DIR="${PROJECT_DIR:-.}"  # Default to current directory if not provided
 GLOBAL_PATTERNS="$PATTERNS_REPO/patterns"
 
 # Resolve absolute path
@@ -711,6 +733,74 @@ else
   echo -e "  ${YELLOW}Skipped:${NC} PM template not found"
 fi
 echo ""
+
+# --- 7b. Cross-instance broadcast (opt-in, ADR 0006) ---
+#
+# WARUNEK KONIECZNY: uruchomienie bez flag i bez bloku `broadcast:` w project.yml
+# nie wypisuje ANI JEDNEJ linii i nie dotyka ani jednego pliku. Ta sekcja chodzi
+# po istniejących projektach — cisza jest tu funkcją, nie oszczędnością.
+#
+# Trzy drogi włączenia (ADR 0006, sekcja Setup):
+#   1. blok `broadcast:` w .claude/config/project.yml  (tryb nieinteraktywny, CI)
+#   2. flaga --with-broadcast
+#   3. --interactive → pytanie w menu dodatków
+BROADCAST_ENABLED=$(yml_get "broadcast.enabled")
+BROADCAST_WANTED=false
+
+if [[ "$BROADCAST_ENABLED" == "true" ]] || [[ "$WITH_BROADCAST" == "true" ]]; then
+  BROADCAST_WANTED=true
+elif [[ "$INTERACTIVE" == "true" ]]; then
+  echo -e "${BLUE}[7b/8] Optional add-ons${NC}"
+  read -r -p "  Enable cross-instance broadcast (ADR 0006)? [y/N] " REPLY_BROADCAST
+  [[ "$REPLY_BROADCAST" =~ ^[Yy]$ ]] && BROADCAST_WANTED=true
+  echo ""
+fi
+
+if [[ "$BROADCAST_WANTED" == "true" ]]; then
+  echo -e "${BLUE}[7b/8] Cross-instance broadcast${NC} (opt-in, ADR 0006)"
+
+  BROADCAST_CLI="$PATTERNS_REPO/hooks/lib/broadcast/cli.js"
+
+  if ! command -v node >/dev/null 2>&1; then
+    echo -e "  ${RED}Skipped:${NC} node not found in PATH — broadcast runtime requires it"
+  elif [[ ! -f "$BROADCAST_CLI" ]]; then
+    echo -e "  ${RED}Skipped:${NC} broadcast CLI not found at $BROADCAST_CLI"
+  else
+    # Wartości z project.yml, gdy są; inaczej CLI wyprowadzi je z nazwy katalogu.
+    BC_ARGS=()
+    BC_REPO=$(yml_get "broadcast.repo")
+    BC_INSTANCE=$(yml_get "broadcast.instance")
+    BC_EMITS=$(yml_get "broadcast.emits")
+    BC_SUBSCRIBES=$(yml_get "broadcast.subscribes")
+
+    # Formy inline z project.yml: `emits: [geo, pricing]` albo `emits: geo,pricing`
+    BC_EMITS=$(echo "$BC_EMITS" | tr -d '[] ' )
+    BC_SUBSCRIBES=$(echo "$BC_SUBSCRIBES" | tr -d '[] ')
+
+    [[ -n "$BC_REPO" ]]       && BC_ARGS+=(--repo "$BC_REPO")
+    [[ -n "$BC_INSTANCE" ]]   && BC_ARGS+=(--instance "$BC_INSTANCE")
+    [[ -n "$BC_EMITS" ]]      && BC_ARGS+=(--emits "$BC_EMITS")
+    [[ -n "$BC_SUBSCRIBES" ]] && BC_ARGS+=(--subscribes "$BC_SUBSCRIBES")
+
+    # 1) manifest + .git/info/exclude + katalog stanu (idempotentne, nigdy nie nadpisuje)
+    if (cd "$PROJECT_DIR" && node "$BROADCAST_CLI" init "${BC_ARGS[@]:+${BC_ARGS[@]}}" 2>&1 | sed 's/^/  /'); then
+      :
+    else
+      echo -e "  ${YELLOW}Warning:${NC} broadcast init returned non-zero (check the manifest by hand)"
+    fi
+
+    # 2) wpięcie hooków PER PROJEKT — nie globalnie. Wycofanie: install-hooks --remove
+    if (cd "$PROJECT_DIR" && node "$BROADCAST_CLI" install-hooks 2>&1 | sed 's/^/  /'); then
+      :
+    else
+      echo -e "  ${YELLOW}Warning:${NC} could not wire broadcast hooks into .claude/settings.json"
+    fi
+
+    echo -e "  ${YELLOW}Note:${NC} manifest is gitignored per clone — each instance needs its own"
+    echo -e "  ${YELLOW}  Rollback:${NC} node $BROADCAST_CLI install-hooks --remove && rm .claude/config/broadcast.yml"
+  fi
+  echo ""
+fi
 
 # --- 8. Regenerate CLAUDE.md ---
 echo -e "${BLUE}[8/8] CLAUDE.md generation${NC}"

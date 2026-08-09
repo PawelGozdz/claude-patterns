@@ -14,6 +14,11 @@ A **single source of truth** for production-tested software patterns and agent t
 > **🔌 Używasz ECC (plugin) + nasz overlay?** Przewodnik: [`docs/ECC-USAGE.md`](docs/ECC-USAGE.md).
 > Kierunek refaktoru: [`docs/REFACTOR-ANALYSIS.md`](docs/REFACTOR-ANALYSIS.md) · plan: [`docs/faza-1-plan.md`](docs/faza-1-plan.md) · dyrygent: [`docs/orchestrate-ddd-design.md`](docs/orchestrate-ddd-design.md).
 
+> **📣 Pracujesz na kilku instancjach naraz?** [`docs/BROADCAST.md`](docs/BROADCAST.md) —
+> kanał wymiany informacji między równoległymi sesjami Claude Code: konfiguracja per repo,
+> nadawanie, trzy tory nasłuchu, pytania cross-repo, obserwowalność i wycofanie.
+> Domyślnie wyłączony — bez `.claude/config/broadcast.yml` nie istnieje dla projektu.
+
 **Three Distribution Systems**:
 1. **MCP Server** (`.mcp.json` per project) - Pattern delivery to Claude Code
 2. **Filesystem Symlinks** (Global agents/commands/hooks) - Universal resources
@@ -514,6 +519,10 @@ cd ~/projects/claude-patterns
 
 ```bash
 ./scripts/setup-project.sh ~/projects/your-project
+
+# Optional add-ons (never change the core; without flags behaviour is unchanged):
+./scripts/setup-project.sh ~/projects/your-project --with-broadcast   # ADR 0006
+./scripts/setup-project.sh ~/projects/your-project --interactive      # ask per add-on
 ```
 
 **What this does**:

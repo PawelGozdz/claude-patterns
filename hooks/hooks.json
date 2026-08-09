@@ -55,6 +55,28 @@
           }
         ],
         "description": "Auto-load TEAM-STATE.md for projects with PM-system (silent if absent)"
+      },
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$HOME/.claude/hooks/broadcast-session-start.js\""
+          }
+        ],
+        "description": "Broadcast: read cross-instance channel (ADR 0006). Silent unless .claude/config/broadcast.yml exists."
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$HOME/.claude/hooks/broadcast-inbox-inject.js\""
+          }
+        ],
+        "description": "Broadcast: deliver inbox into the next prompt (ADR 0006 D8/D11). Inert unless the manifest sets inject: true or BROADCAST_INJECT=on."
       }
     ],
     "PostToolUse": [
@@ -107,6 +129,16 @@
           }
         ],
         "description": "Show security checklist progress when editing .ts source files. Disable via AGENT_SECURITY_IMPL_FEEDBACK=off. Silent for non-source or no-active-task."
+      },
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$HOME/.claude/hooks/broadcast-task-emit.js\""
+          }
+        ],
+        "description": "Broadcast: remind about /broadcast when a cross-cluster task file changes (ADR 0006). Silent without .claude/config/broadcast.yml; once per task per day."
       }
     ],
     "SubagentStart": [

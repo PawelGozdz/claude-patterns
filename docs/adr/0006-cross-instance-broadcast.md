@@ -1,6 +1,12 @@
 # ADR 0006 — Cross-instance broadcast: kanał wymiany informacji między instancjami Claude Code
 
-**Status**: proposed (2026-08-02) — **NIE zaakceptowany, do przedyskutowania**
+**Status**: accepted (2026-08-09) — wdrożony w całości, pilot w biegu.
+Wszystkie decyzje D0-D11 zaimplementowane, wszystkie OQ rozstrzygnięte
+(OQ2 należy do `juz-ide-api`, nie do tego repo). **Los ADR-a zależy od kryterium
+go/no-go** z `TASK-BROADCAST-001` (ocena ~2026-08-22): poniżej progu cały system
+jest porzucany, a ten dokument staje się zapisem nieudanego eksperymentu.
+Dwie poprawki naniesione po testach: D1 (widoczność odpowiedzi po `reply_to`)
+oraz zawężenie `question`/`answer` do topicu `questions`.
 **Rev**: 2026-08-02 — naniesiono poprawki z review architektonicznego: ACK jako kursor
 poza kanałem (D6), segmenty dzienne (D9), źródło `instance` (D3), wykonawca obowiązku
 repo-level + zakres oceny stand-by (D4/D7), mechanizm emisji w fazie 1, ryzyko prompt
@@ -236,10 +242,10 @@ ACK jest **śladem audytowym, nie gwarancją dostarczenia.** Nie wyzwala retry i
 nie blokuje — instancja Claude Code nie jest niezawodnym konsumentem w pętli i nie wolno
 budować mechanizmu, który udaje, że jest.
 
-### D7 — Stand-by: osobna instancja per sesja tmux, read-only, uruchamiana przez `/loop`
+### D7 — Stand-by: osobna instancja, `/loop` + bramka pustego przebiegu
 
-Nie wstrzykujemy do pracującego implementera na podstawie dopasowania ścieżki. Zamiast tego
-**dedykowane okno tmux ze stand-by agentem**:
+Nie wstrzykujemy do pracującego implementera na podstawie dopasowania ścieżki. Decyzję,
+co trafia do promptu, podejmuje **dedykowane okno tmux ze stand-by agentem**:
 
 - uruchamiany przez istniejący `/loop <interwał>` — **nie piszemy schedulera**;
 - uprawnienia: **read + tworzenie tasków/dokumentacji; zero edycji kodu** — granica
@@ -248,9 +254,36 @@ Nie wstrzykujemy do pracującego implementera na podstawie dopasowania ścieżki
   taska → zdecyduj: ignoruj / ACK / eskaluj*;
 - obsługuje też `<repo>/questions` — odpowiada na pytania innych repo z kodu i dokumentacji.
 
-Trzy zalety wobec wariantu z hookiem: implementer nie płaci kontekstem za cudzą korespondencję;
-filtr działa **przed** przerwaniem (stand-by najpierw czyta task i kod, potem decyduje);
-błąd stand-by nie może zepsuć kodu.
+**Bramka pustego przebiegu.** Prompt pętli zaczyna się od porównania rozmiaru segmentów
+z kursorem instancji (jedno wywołanie Bash). Nic nowego → **koniec tury natychmiast**: zero
+czytania plików, zero rozumowania o stanie taska. Kosztowna ścieżka — task, kod, ocena,
+`severity`, decyzja — odpala się wyłącznie, gdy coś faktycznie przyszło. Pusty przebieg
+pozostaje turą modelu, ale minimalną; to jest cena za prostotę i jest akceptowalna.
+
+**Latencja nie jest ograniczeniem.** Stand-by i tak musi przeczytać bieżący task, sprawdzić
+stan implementacji i ocenić wiadomość — jego użyteczna tura z natury trwa. Nic w tym systemie
+nie wymaga reakcji w sekundach, bo i tak czekamy na koniec czyjegoś bloku pracy. Stąd
+interwał liczony w minutach, nie sekundach (patrz OQ3).
+
+**Rola hooków jest inna niż wybudzanie.** `/loop` napędza **ocenę**, hooki realizują
+**dostarczenie**: `UserPromptSubmit` w instancji pracującej wstrzykuje to, co stand-by już
+przepuścił (D8, D11). Podział jest czysty i nie ma między nimi konkurencji.
+
+**Efekt uboczny wart odnotowania**: stand-by to żywa sesja, więc repo, w którym nikt akurat
+nie implementuje, **nadal ma kto odpowiadać na `<repo>/questions`**. Model oparty wyłącznie
+na hookach tego nie daje — bez aktywnej pracy nic by się tam nie działo.
+
+Zalety wobec wariantu czysto hookowego: implementer nie płaci kontekstem za cudzą
+korespondencję; filtr działa **przed** przerwaniem (stand-by najpierw czyta task i kod, potem
+decyduje); błąd stand-by nie może zepsuć kodu; ocena jest interpretacyjna, a hook potrafi
+tylko dopasować ścieżki.
+
+**Odrzucona alternatywa: hook `Stop` odpalający `claude -p` w tle.** Kusząca, bo wybudzałaby
+stand-by dokładnie po zakończeniu bloku pracy i kosztowała zero w ciszy (hook jest procesem,
+nie turą modelu). Odrzucona, bo niosła rekurencję do zabezpieczenia (headless też odpala
+hooki), wymóg czystego odłączenia procesu (hook wykonuje się synchronicznie — blokowałby
+koniec każdej tury) i dwa niezweryfikowane założenia o kontrakcie hooków — a oszczędność
+wobec taniej bramki pustego przebiegu jest marginalna.
 
 **Zakres oceny istotności: branch instancji, nie cały codebase.** Stand-by odpowiada
 wyłącznie na pytanie lokalne: *czy ta wiadomość dotyka bieżącej pracy MOJEJ instancji*
@@ -378,10 +411,18 @@ pracą (D0/D4), nie wiadomość *po* fakcie.
 | `done` | instancja kończąca pracę / merge | ACK, aktualizacja założeń | nie |
 | `question` | dowolne repo | odpowiedź `answer` od stand-by właściciela topicu (D7) | nie |
 | `answer` | właściciel topicu | ACK, użycie odpowiedzi | nie |
-| `invalidate` | wg OQ5 | „sprawdź zanim napiszesz" (OQ6) + decyzja `applied/dismissed` w kursorze | nie |
+| `invalidate` | **tylko `class: deterministic` albo człowiek** (OQ5 ✅) | „sprawdź, zanim napiszesz" — NIE „zatrzymaj się" (OQ6 ✅); wymagana decyzja `applied`/`dismissed` z uzasadnieniem | nie |
 
-Faza 1 używa wyłącznie `discovery` + `done`; `question`/`answer` dochodzą w fazie 4,
-`invalidate` po rozstrzygnięciu OQ5.
+Faza 1 używała wyłącznie `discovery` + `done`; `question`/`answer` doszły w fazie 4,
+`invalidate` w fazie 5 po rozstrzygnięciu OQ5/OQ6 (2026-08-09). Wszystkie pięć jest
+dziś dopuszczonych do emisji, każdy z własnymi bramkami wymuszanymi na zapisie.
+
+**Poprawka do D1 (2026-08-09, wykryta testem).** D1 zakładał, że pytający „musi
+subskrybować" topic, na który wysłał pytanie, żeby zobaczyć odpowiedź. To jest błędne
+i było błędne od początku: pytający **nie widział** odpowiedzi, a lekarstwo byłoby gorsze
+od choroby — subskrypcja cudzego `<repo>/questions` oznacza oglądanie WSZYSTKICH pytań
+kierowanych do tego repo. Obowiązuje: **widoczność odpowiedzi idzie po `reply_to`** —
+instancja widzi odpowiedzi na własne pytania i nic ponadto, bez poszerzania subskrypcji.
 
 ---
 
@@ -490,13 +531,16 @@ zmiany konwencji i guardiana. Rezerwacja zachowuje numery kosztem mechanizmu do 
 TypeORM i tak domyślnie timestampuje migracje, a precedens zmiany konwencji
 cross-instance już istnieje (`TS-TEST-HISTORY-001`). Koszt guardiana jednorazowy.
 
-**OQ3 — Stand-by: gdzie i kiedy.** W każdej sesji tmux, czy tylko tam, gdzie ktoś aktualnie
-pracuje? Osiem stand-by budzonych cyklicznie to stała opłata niezależna od tego, czy coś
-się dzieje. Jaki interwał `/loop`?
-*Rekomendacja (review):* tylko tam, gdzie trwa praca, i **nie budzić agenta bez potrzeby**:
-tick `/loop` najpierw robi zerokosztowy check shellowy (rozmiar segmentów vs kursor
-instancji); agent LLM startuje tylko, gdy są nowe bajty. Wtedy interwał może być
-agresywny (5-10 min) przy koszcie ~0 w ciszy.
+**OQ3 — Interwał `/loop` i kształt bramki pustego przebiegu.** Model wybudzania rozstrzygnięty
+w D7 (`/loop` + bramka, nie hook). Zostaje kalibracja: jaki interwał i jak wąsko da się
+zamknąć pusty przebieg, żeby kosztował jak najmniej.
+*Rekomendacja:* **3 minuty** jako punkt wyjścia — nikt nie odczuje różnicy wobec 30 sekund,
+a to 20 pustych tur na godzinę zamiast 120. Bramka: pojedyncze wywołanie Bash porównujące
+rozmiar segmentów z `last_processed` w kursorze; przy braku zmian tura kończy się bez
+czytania czegokolwiek. Kalibracja na realnych danych w fazie 2.
+*Uwaga:* pusty przebieg **nie jest darmowy** — to nadal tura modelu. Wcześniejsza wersja
+tej rekomendacji obiecywała koszt zerowy, co jest osiągalne tylko w modelu hookowym
+odrzuconym w D7.
 
 **OQ4 — Budżet hałasu.** ✅ **ROZSTRZYGNIĘTE 2026-08-02.** Kryterium to nie liczba, lecz
 **waga wiadomości** — patrz **D11** (dwa tory dostarczania: krytyczne przerywają, istotne
@@ -504,25 +548,31 @@ czekają na koniec bloku pracy). TTL **72 h** = 3 segmenty dzienne. `discovery` 
 emitować **tylko** gdy dotyczy innego repo/klastra niż własny — wewnątrz własnego klastra
 informacja i tak jest w `tasks/` tej instancji.
 
-**OQ5 — Kto może emitować `invalidate`.** Najsilniejszy sygnał. Tylko człowiek?
-Tylko klasa deterministyczna? Czy agent po weryfikacji?
-*Rekomendacja (review):* w fazach 1-3 tylko człowiek + klasa deterministyczna
-(np. schema-diff wykrył usunięcie endpointu). Agent po weryfikacji emituje najwyżej
-`discovery` z propozycją unieważnienia, eskalowaną do człowieka — spójne z D5:
-najsilniejszy sygnał wymaga najsilniejszej klasy źródła.
+**OQ5 — Kto może emitować `invalidate`.** ✅ **ROZSTRZYGNIĘTE 2026-08-09** — zgodnie
+z rekomendacją: **tylko klasa deterministyczna albo człowiek**. Agent z wnioskiem
+interpretacyjnym emituje najwyżej `discovery` z propozycją unieważnienia i eskaluje ją
+do człowieka. Spójne z D5 i D11: najsilniejszy sygnał wymaga najsilniejszej klasy źródła,
+bo alarm, który krzyczy za często, przestaje być alarmem.
+*Wymuszone w kodzie* (`schema.js`, `INVALIDATE_REQUIRES`), nie w prompcie — emisja
+`invalidate` z `class: interpretive` bez flagi `--human` jest odrzucana na zapisie.
 
-**OQ6 — Semantyka `invalidate` u odbiorcy.** „Sprawdź zanim napiszesz" czy „zatrzymaj się"?
-Ryzyko: agent użyje go jako wymówki („nie mogę, ktoś to unieważnił"). Rekomendacja: pierwsze.
-*Review potwierdza + domknięcie:* odbiorca zapisuje w kursorze decyzję `applied/dismissed`
-z jednym zdaniem uzasadnienia (D6) — wymówka przestaje być darmowa, bo zostawia ślad.
+**OQ6 — Semantyka `invalidate` u odbiorcy.** ✅ **ROZSTRZYGNIĘTE 2026-08-09** —
+**„sprawdź, zanim napiszesz", NIE „zatrzymaj się"**. Odbiorca musi zająć stanowisko:
+decyzja `applied` albo `dismissed`, **zawsze** z jednym zdaniem uzasadnienia w kursorze (D6).
+Zwykłe `acked`/`ignored` jest dla `invalidate` odrzucane.
+*Powód:* bez tego `invalidate` staje się darmową wymówką („nie zrobiłem, bo ktoś
+unieważnił") i praca staje bez powodu. Obowiązek uzasadnienia zostawia ślad do przeglądu,
+więc wymówka przestaje być darmowa. *Wymuszone w kodzie* (`cli.js`, `cmdAck`).
 
-**OQ7 — Pytania bez odpowiedzi.** Co, gdy nikt nie odpowie na `question` w rozsądnym czasie?
+**OQ7 — Pytania bez odpowiedzi.** ✅ **ROZSTRZYGNIĘTE 2026-08-09** — wdrożone w wersji raportowej: `/broadcast-status` pokazuje „pytania bez odpowiedzi > 24 h". Świadomie BEZ automatycznej eskalacji i bez ponowień — kanał pytań nie ma prawa sam sobie generować ruchu; cicha rezygnacja pozostaje zakazana.
+*Pierwotne pytanie:* Co, gdy nikt nie odpowie na `question` w rozsądnym czasie?
 Timeout + eskalacja do człowieka, czy cicha rezygnacja?
 *Rekomendacja (review):* timeout 24 h → eskalacja do człowieka przez istniejący kanał
 (sekcja w TEAM-STATE.md / raport `/pulse`: „pytania bez odpowiedzi > 24 h"). Nigdy cicha
 rezygnacja — po dwóch takich przypadkach agenty przestaną używać kanału pytań.
 
-**OQ8 — Dedup po treści.** Przed utworzeniem taska sprawdzać `tasks/` + `completed-tasks/`
+**OQ8 — Dedup po treści.** ✅ **ROZSTRZYGNIĘTE 2026-08-09** — przyjęta wersja minimalna: obowiązek grepu po tytule i `paths` w `tasks/` + `completed-tasks/` przed utworzeniem taska, zapisany w `commands/broadcast.md`. Bez embeddingów — overengineering przy skali dziesiątek tasków.
+*Pierwotne pytanie:* Przed utworzeniem taska sprawdzać `tasks/` + `completed-tasks/`
 pod kątem podobnego? (Łapie powtórki rozłożone w czasie, których żadna rezerwacja nie wyłapie.)
 *Rekomendacja (review):* tak, ale minimalnie — w momencie tworzenia taska przez ownera
 prosty przegląd (grep po słowach kluczowych tytułu + ścieżkach z `paths`) przez agenta,

@@ -1,0 +1,42 @@
+# Manifest broadcastu — kopiowany do <projekt>/.claude/config/broadcast.yml
+#
+# Ten plik jest JEDYNYM przełącznikiem systemu dla instancji (ADR 0006, D3):
+# jego brak = broadcast nie istnieje tutaj, hooki kończą exit 0 przed jakąkolwiek pracą.
+#
+# Plik jest NIEŚLEDZONY przez gita — wykluczenie trafia do `.git/info/exclude`
+# (per klon), nie do `.gitignore`, żeby repo serwisowe nie dostało żadnej zmiany śledzonej.
+#
+# Zakłada go: `node <claude-patterns>/hooks/lib/broadcast/cli.js init`
+
+# Nazwa LOGICZNA repo — wspólna dla wszystkich klonów (np. juz-ide-api-1..4 → juz-ide-api).
+repo: CHANGE_ME
+
+# Tożsamość FIZYCZNA tej kopii. Puste = basename katalogu roboczego.
+# Filtr „nie widzę własnych wiadomości" działa po tym polu, nigdy po `repo` —
+# dzięki temu instancja widzi wpisy siostrzanych instancji tego samego repo.
+instance: CHANGE_ME
+
+emits:
+  # Topiki domenowe tego repo. Strukturalne (contracts, migrations, security,
+  # release, questions) dochodzą automatycznie — NIE wpisuj ich tutaj.
+  domain: []
+
+# Czego słuchamy. Formaty: `repo/topic` albo `repo/*`.
+# Własny `<repo>/questions` jest subskrybowany implicit — nie deklaruj go.
+#
+# Zasada: subskrybować możliwie WĄSKO. Repo, które słucha wszystkiego,
+# przestanie czytać cokolwiek. Rozszerzenie to jedna linia; zwężenie po
+# zalaniu hałasem jest dużo trudniejsze.
+subscribes: []
+
+# Wstrzykiwanie inboxa do promptu implementera (faza 6.4, D8 + D11).
+#
+# DOMYŚLNIE WYŁĄCZONE i tak ma zostać do czasu, aż filtr stand-by okaże się trafny —
+# D11: „w pilocie wstrzykiwanie jest wyłączone w całości, również dla critical".
+# Hook `broadcast-inbox-inject.js` bez tego pola kończy się bez żadnego wyjścia.
+#
+# Po włączeniu: `critical` maks. 2 wpisy / ~1 KB na turę, `important` digest maks. 5,
+# `info` nigdy nie jest pchane. Hook odpala się raz na turę (zweryfikowane).
+# Wyłącznik awaryjny bez edycji pliku: BROADCAST_INJECT=off
+#
+# inject: true

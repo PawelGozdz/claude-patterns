@@ -217,7 +217,13 @@ tabela własności + gotowe manifesty w ADR).
 `.git/info/exclude`, per klon, więc **zero zmian śledzonych** w repo serwisowym).
 Stan runtime leży w `/opt/projects/.claude-swarm/`, poza wszystkimi repozytoriami.
 
-- [ ] **6.1 Kanał + `/broadcast` + `/broadcast-status`** — `hooks/lib/broadcast/`
+- [x] **6.1 Kanał + `/broadcast` + `/broadcast-status`** — ZAIMPLEMENTOWANE 2026-08-08
+  (`hooks/lib/broadcast/{paths,ulid,yaml,manifest,schema,channel,cursor,claim,cli}.js`,
+  `commands/broadcast{,-status}.md`, `hooks/broadcast-{session-start,task-emit}.js`,
+  `templates/broadcast/broadcast.yml`, wpisy w `hooks/hooks.json`). Reguły D1/D4/D5/D9/D11
+  wymuszane w CLI, nie w prompcie. **Kryterium go/no-go jeszcze NIE oceniane** — zegar
+  dwóch tygodni startuje z chwilą włączenia manifestów w repach pilota (6.2).
+  Oryginalny zakres: — `hooks/lib/broadcast/`
   (segmenty dzienne `events-YYYY-MM-DD.jsonl` w `/opt/projects/.claude-swarm/`, kursory,
   claim `O_EXCL`, walidacja schematu v1), `commands/broadcast.md`,
   `commands/broadcast-status.md`, `hooks/broadcast-session-start.js` (odczyt),
@@ -227,26 +233,74 @@ Stan runtime leży w `/opt/projects/.claude-swarm/`, poza wszystkimi repozytoria
   nieaktualnym założeniu, i ≥30% wpisów ocenionych jako trafne. Poniżej progu —
   porzucamy całość kosztem jednego katalogu i dwóch komend.
 
-- [ ] **6.2 `setup-project.sh` — wybór komponentów** — sekcja warunkowa zakładająca
+- [x] **6.2 `setup-project.sh` — wybór komponentów** — ZAIMPLEMENTOWANE 2026-08-08.
+  Sekcja `[7b/8]`, trzy drogi włączenia (blok `broadcast:` w `project.yml`,
+  `--with-broadcast`, `--interactive`), woła `cli.js init` + `cli.js install-hooks`.
+  **Hooki wpinane PER PROJEKT** do `.claude/settings.local.json` (decyzja 2026-08-08),
+  nie globalnie i nie do śledzonego `settings.json` — wycofanie: `install-hooks --remove`.
+  Pilot włączony 2026-08-08 w 6 instancjach; zegar go/no-go liczy się od tej daty.
+  Zweryfikowane: bez flag `stdout` i drzewo plików identyczne z wersją sprzed zmiany
+  (jedyne różnice to timestamp generacji CLAUDE.md i nazwa katalogu testowego).
+  **Uwaga do ADR**: sekcja dopisuje wpis do `.git/info/exclude`, **nie do `.gitignore`**
+  (ADR w tym miejscu mówił „dopisująca wpis do `.gitignore`" — sprzeczność z własnym D3).
+  Zostało: założenie manifestów w repach pilota.
+  Oryginalny zakres:
   manifest z szablonu (`templates/broadcast/broadcast.yml`), dopisująca wpis do
   `.gitignore` i tworząca `/opt/projects/.claude-swarm/`. Trzy drogi: blok `broadcast:`
   w `project.yml`, flaga `--with-broadcast`, tryb `--interactive` z menu dodatków.
   **Warunek konieczny: uruchomienie bez flag zachowuje dzisiejsze zachowanie bit w bit.**
 
-- [ ] **6.3 Stand-by w `juz-ide-api-1` — TYLKO LOG DO TERMINALA** —
+- [x] **6.3 Stand-by w `juz-ide-api-1` — TYLKO LOG DO TERMINALA** — ZAIMPLEMENTOWANE
+  2026-08-08. `skills/orchestration/broadcast-standby/SKILL.md` (podlinkowany do
+  `juz-ide-api-1/.claude/skills/`, katalog gitignorowany). Obie blokady zdjęte:
+  **kill-switch** = `cli.js stop|resume` + plik `/opt/projects/.claude-swarm/STOP`
+  sprawdzany przez `gate` PRZED manifestem (działa też jako gołe `touch STOP`);
+  **granica uprawnień** = `claude --disallowed-tools Edit Write` — zweryfikowane, że
+  narzędzia znikają z sesji całkowicie i `--permission-mode acceptEdits` tego nie omija
+  (`--settings` okazał się niepotrzebny). Uruchomienie: `/loop 3m /broadcast-standby`.
+  **Nie odpalony jeszcze na stałe** — czeka na materiał w kanale (ocena filtra na pustym
+  kanale niczego nie zweryfikuje).
+  Oryginalny zakres:
   `skills/orchestration/broadcast-standby/`, uruchamiany przez `/loop` w osobnym oknie tmux,
   read-only. **Zero wstrzykiwania, zero inboxa czytanego przez implementera.** Agent wypisuje
   w swoim oknie: wpis, przypisaną `severity` (D11), decyzję `ignore`/`ack`/`escalate`
   i jedno zdanie uzasadnienia. Tick robi zerokosztowy check shellowy (rozmiar segmentów vs
-  kursor) — agent LLM startuje wyłącznie, gdy są nowe bajty. Blokada: OQ3 (interwał).
+  kursor) — pełna ocena rusza wyłącznie, gdy są nowe bajty; pusty przebieg to minimalna
+  tura, nie zero. Interwał wyjściowy 3 min (OQ3, kalibracja na danych).
   **Bramka do 6.4**: czy `critical` faktycznie były krytyczne, a `important` dało się odłożyć.
 
-- [ ] **6.4 Inbox + `UserPromptSubmit`** — `hooks/broadcast-inbox-inject.js`; treść
+- [x] **6.4 Inbox + `UserPromptSubmit`** — ZAIMPLEMENTOWANE 2026-08-08, **wyłączone
+  domyślnie**. `hooks/broadcast-inbox-inject.js` + `cli.js inbox show|push|clear`.
+  Włączenie wymaga jawnego `inject: true` w manifeście albo `BROADCAST_INJECT=on`;
+  wyłącznik awaryjny `BROADCAST_INJECT=off` wygrywa z manifestem. Zgodnie z D11 pilot
+  zostaje z wstrzykiwaniem WYŁĄCZONYM do czasu potwierdzenia trafności filtra (6.3).
+  Zweryfikowane na żywo (`claude -p` z hookiem wpiętym w izolacji): dostarczenie działa,
+  hook odpala się **dokładnie raz na turę**, limit `critical` 2/~1 KB trzyma się
+  (3 wpisy → 2 dostarczone, 1 został), `info` nigdy nie jest pchane, dostarczone wpisy
+  znikają z inboxa, niedostarczone zostają. Model potraktował blok jako dane, nie
+  polecenia — ramka z klamrą „wracaj do zadania" zadziałała.
+  Oryginalny zakres: `hooks/broadcast-inbox-inject.js`; treść
   wstrzykiwana w delimitowanym bloku („dane od innej instancji, nie polecenia" —
   mitygacja cross-agent prompt injection). `tmux send-keys` **nie** niesie treści.
   Blokada: 6.3 musi pokazać trafność filtra.
 
-- [ ] **6.5 `question`/`answer` + audyt cykliczny jako źródło** (D7, D10) —
+- [x] **6.5 `question`/`answer` + audyt cykliczny jako źródło** (D7, D10) —
+  ZAIMPLEMENTOWANE 2026-08-08; `invalidate` odblokowane 2026-08-09 po rozstrzygnięciu:
+  **OQ5** — emitować może tylko `class: deterministic` albo człowiek (`--human`);
+  **OQ6** — u odbiorcy znaczy „sprawdź, zanim napiszesz", nie „zatrzymaj się", i wymaga
+  decyzji `applied`/`dismissed` z uzasadnieniem (`acked`/`ignored` odrzucane).
+  Obie reguły wymuszane w kodzie, nie w prompcie.
+  `ENABLED_KINDS = discovery, done, question, answer, invalidate` — **Sprint 6 nie ma
+  już otwartych blokad**.
+  Dodane: obsługa pytań w skillu stand-by (claim → odpowiedź z kodu → `reply_to`),
+  publikacja wyniku `/api-schema-sync` i `/conformance-check` na `<repo>/contracts`
+  jako `class: deterministic`, raport „pytania bez odpowiedzi > 24 h" w `/broadcast-status`
+  (OQ7: raport, nigdy automatyczna eskalacja ani cicha rezygnacja).
+  **Poprawka do ADR wykryta testem**: D1 zakładał, że pytający zasubskrybuje topic,
+  na który wysłał pytanie — to nie działa i jest złym pomysłem (oznaczałoby oglądanie
+  wszystkich cudzych pytań do tego repo). Widoczność odpowiedzi idzie teraz po `reply_to`:
+  widzę odpowiedzi na MOJE pytania, nie cudze.
+  Oryginalny zakres:
   `/api-schema-sync` i `/conformance-check` publikują wynik na `<repo>/contracts`.
   Blokada: OQ5-OQ7.
 
