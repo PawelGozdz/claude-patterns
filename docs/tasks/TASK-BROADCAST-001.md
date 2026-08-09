@@ -1,9 +1,29 @@
 # TASK-BROADCAST-001 — Cross-instance broadcast: kanał wymiany informacji między instancjami Claude Code
 
-> **▶ STATUS: FAZA 6.1 ZAIMPLEMENTOWANA (2026-08-08), niewłączona nigdzie.**
-> Kod runtime + komendy + hooki + szablon manifestu gotowe i przetestowane na sztucznych
-> repo; **żadne repo pilota nie ma jeszcze manifestu**, więc system jest wyłączony wszędzie.
-> Branch: `feat/cross-instance-broadcast`. Następny krok: **6.2** — patrz „Stan i co dalej".
+> **▶ STATUS: PILOT W BIEGU — czeka wyłącznie na ocenę go/no-go (~2026-08-22).**
+>
+> **Kod: skończony.** Wszystkie fazy 6.1-6.5 zaimplementowane, przetestowane i wdrożone
+> w 6 instancjach (`juz-ide-api-1..4`, `juz-ide-mobile-app`, `claude-patterns`).
+> Wszystkie otwarte pytania rozstrzygnięte (OQ1, OQ4-OQ8; OQ2 należy do `juz-ide-api`,
+> nie do tego repo). Branch: `feat/cross-instance-broadcast`.
+>
+> **Task NIE jest do zamknięcia**, bo jego sens to hipoteza, nie kod: *czy agenty będą
+> pisać sensowne `discovery`*. Zamknięcie teraz oznaczałoby wyrzucenie jedynej rzeczy,
+> dla której ten task powstał. Kryterium (ADR, „Kryterium go/no-go"):
+>
+> - [ ] **≥1 wpis, który realnie zapobiegł pracy na nieaktualnym założeniu**
+> - [ ] **≥30% wpisów ocenionych przez człowieka jako trafne**
+> - [ ] bramka do włączenia wstrzykiwania: czy `critical` faktycznie były krytyczne,
+>       a `important` dało się odłożyć (obserwacja z logu stand-by)
+>
+> **Ocenia człowiek, nie agent** — to jest dokładnie ta hipoteza, którą testujemy.
+> Dane: `/broadcast-status --json` + przegląd wpisów. Zegar ruszył 2026-08-08.
+>
+> Poniżej progu — **porzucamy całość**: `install-hooks --remove` w 6 repach,
+> `rm .claude/config/broadcast.yml`, `rm -rf /opt/projects/.claude-swarm`. Kod zostaje
+> w historii gita, nic w repach serwisowych nie zostaje do posprzątania.
+>
+> Instrukcja użycia dla człowieka: [`docs/BROADCAST.md`](../BROADCAST.md).
 
 **Źródło:** [`docs/adr/0006-cross-instance-broadcast.md`](../adr/0006-cross-instance-broadcast.md)
 (status `proposed`, review architektoniczny 2026-08-02) — D0-D11, OQ1 + OQ4 rozstrzygnięte.

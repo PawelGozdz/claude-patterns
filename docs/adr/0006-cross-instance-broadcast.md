@@ -1,6 +1,12 @@
 # ADR 0006 — Cross-instance broadcast: kanał wymiany informacji między instancjami Claude Code
 
-**Status**: proposed (2026-08-02) — **NIE zaakceptowany, do przedyskutowania**
+**Status**: accepted (2026-08-09) — wdrożony w całości, pilot w biegu.
+Wszystkie decyzje D0-D11 zaimplementowane, wszystkie OQ rozstrzygnięte
+(OQ2 należy do `juz-ide-api`, nie do tego repo). **Los ADR-a zależy od kryterium
+go/no-go** z `TASK-BROADCAST-001` (ocena ~2026-08-22): poniżej progu cały system
+jest porzucany, a ten dokument staje się zapisem nieudanego eksperymentu.
+Dwie poprawki naniesione po testach: D1 (widoczność odpowiedzi po `reply_to`)
+oraz zawężenie `question`/`answer` do topicu `questions`.
 **Rev**: 2026-08-02 — naniesiono poprawki z review architektonicznego: ACK jako kursor
 poza kanałem (D6), segmenty dzienne (D9), źródło `instance` (D3), wykonawca obowiązku
 repo-level + zakres oceny stand-by (D4/D7), mechanizm emisji w fazie 1, ryzyko prompt
@@ -558,13 +564,15 @@ Zwykłe `acked`/`ignored` jest dla `invalidate` odrzucane.
 unieważnił") i praca staje bez powodu. Obowiązek uzasadnienia zostawia ślad do przeglądu,
 więc wymówka przestaje być darmowa. *Wymuszone w kodzie* (`cli.js`, `cmdAck`).
 
-**OQ7 — Pytania bez odpowiedzi.** Co, gdy nikt nie odpowie na `question` w rozsądnym czasie?
+**OQ7 — Pytania bez odpowiedzi.** ✅ **ROZSTRZYGNIĘTE 2026-08-09** — wdrożone w wersji raportowej: `/broadcast-status` pokazuje „pytania bez odpowiedzi > 24 h". Świadomie BEZ automatycznej eskalacji i bez ponowień — kanał pytań nie ma prawa sam sobie generować ruchu; cicha rezygnacja pozostaje zakazana.
+*Pierwotne pytanie:* Co, gdy nikt nie odpowie na `question` w rozsądnym czasie?
 Timeout + eskalacja do człowieka, czy cicha rezygnacja?
 *Rekomendacja (review):* timeout 24 h → eskalacja do człowieka przez istniejący kanał
 (sekcja w TEAM-STATE.md / raport `/pulse`: „pytania bez odpowiedzi > 24 h"). Nigdy cicha
 rezygnacja — po dwóch takich przypadkach agenty przestaną używać kanału pytań.
 
-**OQ8 — Dedup po treści.** Przed utworzeniem taska sprawdzać `tasks/` + `completed-tasks/`
+**OQ8 — Dedup po treści.** ✅ **ROZSTRZYGNIĘTE 2026-08-09** — przyjęta wersja minimalna: obowiązek grepu po tytule i `paths` w `tasks/` + `completed-tasks/` przed utworzeniem taska, zapisany w `commands/broadcast.md`. Bez embeddingów — overengineering przy skali dziesiątek tasków.
+*Pierwotne pytanie:* Przed utworzeniem taska sprawdzać `tasks/` + `completed-tasks/`
 pod kątem podobnego? (Łapie powtórki rozłożone w czasie, których żadna rezerwacja nie wyłapie.)
 *Rekomendacja (review):* tak, ale minimalnie — w momencie tworzenia taska przez ownera
 prosty przegląd (grep po słowach kluczowych tytułu + ścieżkach z `paths`) przez agenta,
