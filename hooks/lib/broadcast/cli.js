@@ -908,7 +908,7 @@ function usage() {
     '  read    nieprzeczytane wpisy dla tej instancji',
     '  ack     decyzja o wpisie (acked|ignored|escalated|applied|dismissed)',
     '  claim   atomowe przejęcie obowiązku repo-level (O_EXCL)',
-    '  install-hooks  wpięcie obu hooków do .claude/settings.json projektu (--remove wycofuje)',
+    '  install-hooks  wpięcie hooków do .claude/settings.local.json projektu (--remove wycofuje)',
     '  gate    bramka pustego przebiegu: STOP | EMPTY | NEW <bajty>',
     '  inbox   show | push --id <ULID> [--note "..."] | clear   (faza 6.4)',
     '  stop    wyłącznik awaryjny WSZYSTKICH pętli stand-by (--reason "...")',
