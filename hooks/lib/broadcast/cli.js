@@ -303,6 +303,25 @@ function cmdAck(args) {
     return 1;
   }
 
+  // OQ6 (rozstrzygnięte 2026-08-09) — `invalidate` znaczy „sprawdź, zanim napiszesz",
+  // NIE „zatrzymaj się". Żeby to nie stało się darmową wymówką („nie zrobiłem, bo ktoś
+  // unieważnił"), odbiorca musi zająć stanowisko: `applied` albo `dismissed`, zawsze
+  // z jednym zdaniem uzasadnienia. Ślad zostaje w kursorze i jest widoczny w przeglądzie.
+  const acked = channel.readWindow().messages.find((m) => m.id === id);
+  if (acked && acked.kind === 'invalidate') {
+    if (decision !== 'applied' && decision !== 'dismissed') {
+      process.stderr.write(
+        `Wpis ${id} to \`invalidate\` — wymagana decyzja \`applied\` albo \`dismissed\` (OQ6), nie \`${decision}\`.\n` +
+          '`invalidate` znaczy „sprawdź, zanim napiszesz", więc trzeba powiedzieć, co ze sprawdzenia wyszło.\n',
+      );
+      return 1;
+    }
+    if (!args.note) {
+      process.stderr.write('Decyzja o `invalidate` wymaga --note z jednym zdaniem uzasadnienia (OQ6)\n');
+      return 1;
+    }
+  }
+
   try {
     cursorLib.recordDecision(ctx.manifest.instance, id, decision, args.note);
   } catch (err) {

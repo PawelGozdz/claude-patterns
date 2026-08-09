@@ -110,6 +110,27 @@ node "$HOME/.claude/hooks/lib/broadcast/cli.js" emit \
 Pytający zobaczy odpowiedź automatycznie — dopasowanie idzie po `reply_to`, więc nie
 musi subskrybować twojego `questions`.
 
+## Krok 4c — `kind: invalidate` (OQ5/OQ6, rozstrzygnięte 2026-08-09)
+
+Najsilniejszy sygnał w systemie: „to, na czym pracujesz, właśnie przestało być prawdziwe".
+Dociera wyłącznie od źródła deterministycznego albo od człowieka — CLI nie przepuści
+`invalidate` od agenta z wnioskiem interpretacyjnym.
+
+**Znaczy „sprawdź, zanim napiszesz", NIE „zatrzymaj się".** Nie wolno użyć go jako
+powodu wstrzymania pracy bez sprawdzenia. Otwórz pliki z `paths`, zobacz, czy założenie
+faktycznie upadło dla TWOJEGO brancha, i dopiero wtedy zajmij stanowisko:
+
+```bash
+node "$HOME/.claude/hooks/lib/broadcast/cli.js" ack <ULID> \
+  --decision applied   --note "<co zmieniam u siebie w konsekwencji>"
+# albo
+node "$HOME/.claude/hooks/lib/broadcast/cli.js" ack <ULID> \
+  --decision dismissed --note "<dlaczego mnie to nie dotyczy>"
+```
+
+`acked`/`ignored` są dla `invalidate` **odrzucane** — uzasadnienie jest obowiązkowe,
+żeby „ktoś to unieważnił" nie stało się darmową wymówką. Ślad zostaje w kursorze.
+
 ## Krok 5 — zapisz decyzje i wypisz raport
 
 ```bash

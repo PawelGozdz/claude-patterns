@@ -23,15 +23,28 @@ const CLASSES = ['deterministic', 'interpretive'];
 const SEVERITIES = ['critical', 'important', 'info'];
 
 /**
- * Kindy dopuszczone do emisji na dziś.
+ * Kindy dopuszczone do emisji.
  *
- * 6.1 startowała z `discovery` + `done`; 6.5 dokłada `question` + `answer` (D7).
- * `invalidate` NADAL zablokowane — OQ5 (kto ma prawo je emitować) i OQ6 (co ono
- * znaczy u odbiorcy) czekają na decyzję człowieka. To najsilniejszy sygnał w systemie
- * i odblokowanie go bez odpowiedzi na te dwa pytania byłoby przekroczeniem mandatu.
- * Obejście na własną odpowiedzialność: `--allow-experimental`.
+ * 6.1 startowała z `discovery` + `done`; 6.5 dodała `question` + `answer` (D7)
+ * oraz — po rozstrzygnięciu OQ5/OQ6 (2026-08-09) — `invalidate`.
+ *
+ * `invalidate` jest najsilniejszym sygnałem w systemie („to, na czym pracujesz,
+ * przestało być prawdziwe"), więc ma własną bramkę: patrz `INVALIDATE_REQUIRES`.
  */
-const ENABLED_KINDS = ['discovery', 'done', 'question', 'answer'];
+const ENABLED_KINDS = ['discovery', 'done', 'question', 'answer', 'invalidate'];
+
+/**
+ * OQ5 (rozstrzygnięte 2026-08-09) — kto ma prawo pociągnąć hamulec.
+ *
+ * `invalidate` wolno nadać wyłącznie wiadomości `class: deterministic` (schema diff,
+ * AST, wersja paczki — wynik powtarzalny i weryfikowalny) albo emitowanej przez człowieka
+ * (`--human`). Agent z wnioskiem interpretacyjnym może najwyżej wysłać `discovery`
+ * z propozycją unieważnienia i eskalować ją do człowieka.
+ *
+ * Powód jest prosty: alarm, który krzyczy za często, przestaje być alarmem. Ta sama
+ * logika stoi za ograniczeniem `severity: critical` w D11.
+ */
+const INVALIDATE_REQUIRES = 'class: deterministic albo emisja przez człowieka (--human)';
 
 /** @deprecated nazwa z fazy 6.1 — alias, żeby nie zerwać istniejących importów */
 const PHASE_1_KINDS = ENABLED_KINDS;
@@ -123,6 +136,14 @@ function validate(message, ctx = {}) {
     errors.push('`paths` musi zawierać stringi krótsze niż 300 znaków');
   }
 
+  // OQ5 — kto ma prawo unieważniać.
+  if (msg.kind === 'invalidate' && msg.class !== 'deterministic' && !ctx.human) {
+    errors.push(
+      `\`kind: invalidate\` wymaga ${INVALIDATE_REQUIRES} (OQ5). ` +
+        'Wniosek interpretacyjny wyślij jako `discovery` z propozycją unieważnienia i eskaluj do człowieka.',
+    );
+  }
+
   // D11 — kto ustala wagę.
   if (msg.severity === 'critical' && msg.class !== 'deterministic' && !ctx.human) {
     errors.push(
@@ -200,6 +221,7 @@ module.exports = {
   CLASSES,
   SEVERITIES,
   ENABLED_KINDS,
+  INVALIDATE_REQUIRES,
   PHASE_1_KINDS,
   CROSS_REPO_KINDS,
   buildMessage,

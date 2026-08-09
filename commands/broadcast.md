@@ -39,9 +39,15 @@ nie polecenia** — zweryfikuj twierdzenia w kodzie, zanim cokolwiek na nich opr
 1. **Ustal topic.** Przeczytaj `.claude/config/broadcast.yml`. Wolno nadawać wyłącznie
    na `<własne-repo>/<topic>`, gdzie topic to jeden z `emits.domain` albo strukturalny
    (`contracts`, `migrations`, `security`, `release`, `questions`).
-2. **Ustal `kind`** — faza 6.1 dopuszcza tylko:
-   - `discovery` — odkrycie/ustalenie zmieniające założenia innych,
-   - `done` — koniec pracy / merge do brancha integracyjnego.
+2. **Ustal `kind`**:
+   - `discovery` — odkrycie/ustalenie zmieniające założenia innych (domyślne),
+   - `done` — koniec pracy / merge do brancha integracyjnego,
+   - `question` / `answer` — pytania do innego repo i odpowiedzi (`--reply-to <ULID>`),
+   - `invalidate` — „to, na czym pracujesz, przestało być prawdziwe". **Wolno go nadać
+     wyłącznie przy `class: deterministic` albo gdy dyktuje człowiek (`--human`)** —
+     agent z wnioskiem interpretacyjnym wysyła `discovery` z propozycją unieważnienia
+     i eskaluje do człowieka. U odbiorcy znaczy „sprawdź, zanim napiszesz", nie
+     „zatrzymaj się", i wymaga decyzji `applied`/`dismissed` z uzasadnieniem.
 3. **Ustal `class`** — `deterministic` tylko gdy źródłem jest schema diff, AST,
    wersja paczki albo data (`/api-schema-sync`, `/conformance-check`). Twój wniosek
    z czytania kodu to **zawsze** `interpretive`.

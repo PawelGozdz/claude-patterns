@@ -285,9 +285,13 @@ Stan runtime leży w `/opt/projects/.claude-swarm/`, poza wszystkimi repozytoria
   Blokada: 6.3 musi pokazać trafność filtra.
 
 - [x] **6.5 `question`/`answer` + audyt cykliczny jako źródło** (D7, D10) —
-  ZAIMPLEMENTOWANE 2026-08-08 **z wyjątkiem `invalidate`**, które zostaje zablokowane:
-  OQ5 (kto ma prawo emitować) i OQ6 (semantyka u odbiorcy) wymagają decyzji człowieka,
-  a to najsilniejszy sygnał w systemie. `ENABLED_KINDS = discovery, done, question, answer`.
+  ZAIMPLEMENTOWANE 2026-08-08; `invalidate` odblokowane 2026-08-09 po rozstrzygnięciu:
+  **OQ5** — emitować może tylko `class: deterministic` albo człowiek (`--human`);
+  **OQ6** — u odbiorcy znaczy „sprawdź, zanim napiszesz", nie „zatrzymaj się", i wymaga
+  decyzji `applied`/`dismissed` z uzasadnieniem (`acked`/`ignored` odrzucane).
+  Obie reguły wymuszane w kodzie, nie w prompcie.
+  `ENABLED_KINDS = discovery, done, question, answer, invalidate` — **Sprint 6 nie ma
+  już otwartych blokad**.
   Dodane: obsługa pytań w skillu stand-by (claim → odpowiedź z kodu → `reply_to`),
   publikacja wyniku `/api-schema-sync` i `/conformance-check` na `<repo>/contracts`
   jako `class: deterministic`, raport „pytania bez odpowiedzi > 24 h" w `/broadcast-status`

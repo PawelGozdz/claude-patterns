@@ -405,10 +405,18 @@ pracą (D0/D4), nie wiadomość *po* fakcie.
 | `done` | instancja kończąca pracę / merge | ACK, aktualizacja założeń | nie |
 | `question` | dowolne repo | odpowiedź `answer` od stand-by właściciela topicu (D7) | nie |
 | `answer` | właściciel topicu | ACK, użycie odpowiedzi | nie |
-| `invalidate` | wg OQ5 | „sprawdź zanim napiszesz" (OQ6) + decyzja `applied/dismissed` w kursorze | nie |
+| `invalidate` | **tylko `class: deterministic` albo człowiek** (OQ5 ✅) | „sprawdź, zanim napiszesz" — NIE „zatrzymaj się" (OQ6 ✅); wymagana decyzja `applied`/`dismissed` z uzasadnieniem | nie |
 
-Faza 1 używa wyłącznie `discovery` + `done`; `question`/`answer` dochodzą w fazie 4,
-`invalidate` po rozstrzygnięciu OQ5.
+Faza 1 używała wyłącznie `discovery` + `done`; `question`/`answer` doszły w fazie 4,
+`invalidate` w fazie 5 po rozstrzygnięciu OQ5/OQ6 (2026-08-09). Wszystkie pięć jest
+dziś dopuszczonych do emisji, każdy z własnymi bramkami wymuszanymi na zapisie.
+
+**Poprawka do D1 (2026-08-09, wykryta testem).** D1 zakładał, że pytający „musi
+subskrybować" topic, na który wysłał pytanie, żeby zobaczyć odpowiedź. To jest błędne
+i było błędne od początku: pytający **nie widział** odpowiedzi, a lekarstwo byłoby gorsze
+od choroby — subskrypcja cudzego `<repo>/questions` oznacza oglądanie WSZYSTKICH pytań
+kierowanych do tego repo. Obowiązuje: **widoczność odpowiedzi idzie po `reply_to`** —
+instancja widzi odpowiedzi na własne pytania i nic ponadto, bez poszerzania subskrypcji.
 
 ---
 
@@ -534,17 +542,21 @@ czekają na koniec bloku pracy). TTL **72 h** = 3 segmenty dzienne. `discovery` 
 emitować **tylko** gdy dotyczy innego repo/klastra niż własny — wewnątrz własnego klastra
 informacja i tak jest w `tasks/` tej instancji.
 
-**OQ5 — Kto może emitować `invalidate`.** Najsilniejszy sygnał. Tylko człowiek?
-Tylko klasa deterministyczna? Czy agent po weryfikacji?
-*Rekomendacja (review):* w fazach 1-3 tylko człowiek + klasa deterministyczna
-(np. schema-diff wykrył usunięcie endpointu). Agent po weryfikacji emituje najwyżej
-`discovery` z propozycją unieważnienia, eskalowaną do człowieka — spójne z D5:
-najsilniejszy sygnał wymaga najsilniejszej klasy źródła.
+**OQ5 — Kto może emitować `invalidate`.** ✅ **ROZSTRZYGNIĘTE 2026-08-09** — zgodnie
+z rekomendacją: **tylko klasa deterministyczna albo człowiek**. Agent z wnioskiem
+interpretacyjnym emituje najwyżej `discovery` z propozycją unieważnienia i eskaluje ją
+do człowieka. Spójne z D5 i D11: najsilniejszy sygnał wymaga najsilniejszej klasy źródła,
+bo alarm, który krzyczy za często, przestaje być alarmem.
+*Wymuszone w kodzie* (`schema.js`, `INVALIDATE_REQUIRES`), nie w prompcie — emisja
+`invalidate` z `class: interpretive` bez flagi `--human` jest odrzucana na zapisie.
 
-**OQ6 — Semantyka `invalidate` u odbiorcy.** „Sprawdź zanim napiszesz" czy „zatrzymaj się"?
-Ryzyko: agent użyje go jako wymówki („nie mogę, ktoś to unieważnił"). Rekomendacja: pierwsze.
-*Review potwierdza + domknięcie:* odbiorca zapisuje w kursorze decyzję `applied/dismissed`
-z jednym zdaniem uzasadnienia (D6) — wymówka przestaje być darmowa, bo zostawia ślad.
+**OQ6 — Semantyka `invalidate` u odbiorcy.** ✅ **ROZSTRZYGNIĘTE 2026-08-09** —
+**„sprawdź, zanim napiszesz", NIE „zatrzymaj się"**. Odbiorca musi zająć stanowisko:
+decyzja `applied` albo `dismissed`, **zawsze** z jednym zdaniem uzasadnienia w kursorze (D6).
+Zwykłe `acked`/`ignored` jest dla `invalidate` odrzucane.
+*Powód:* bez tego `invalidate` staje się darmową wymówką („nie zrobiłem, bo ktoś
+unieważnił") i praca staje bez powodu. Obowiązek uzasadnienia zostawia ślad do przeglądu,
+więc wymówka przestaje być darmowa. *Wymuszone w kodzie* (`cli.js`, `cmdAck`).
 
 **OQ7 — Pytania bez odpowiedzi.** Co, gdy nikt nie odpowie na `question` w rozsądnym czasie?
 Timeout + eskalacja do człowieka, czy cicha rezygnacja?

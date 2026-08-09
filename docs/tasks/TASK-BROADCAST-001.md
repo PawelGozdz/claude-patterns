@@ -305,7 +305,23 @@ bo `install-hooks` nie miał jeszcze wpisu `UserPromptSubmit`. Dopiero wpięcie 
 (z usuniętym `SessionStart`) dało wiarygodny wynik. Wniosek na przyszłość: przy testowaniu
 dostarczania **wyłącz pozostałe źródła kontekstu**, inaczej mierzysz nie to, co myślisz.
 
-### Faza 6.5 — ZROBIONA 2026-08-08 z wyjątkiem `invalidate`
+### OQ5 i OQ6 — ROZSTRZYGNIĘTE 2026-08-09, `invalidate` odblokowane
+
+Człowiek zatwierdził obie rekomendacje z ADR. **Sprint 6 nie ma już otwartych blokad.**
+
+- **OQ5 — kto ma prawo pociągnąć hamulec**: tylko `class: deterministic` albo człowiek
+  (`--human`). Agent z wnioskiem interpretacyjnym wysyła `discovery` z propozycją
+  unieważnienia i eskaluje. Wymuszone w `schema.js`, nie w prompcie.
+- **OQ6 — co ten alarm znaczy**: „sprawdź, zanim napiszesz", NIE „zatrzymaj się".
+  Odbiorca musi zająć stanowisko `applied`/`dismissed` z jednym zdaniem uzasadnienia;
+  `acked`/`ignored` są dla `invalidate` odrzucane. Wymuszone w `cli.js` (`cmdAck`).
+
+Przetestowane: `invalidate` interpretacyjne odrzucone, deterministyczne i z `--human`
+przyjęte, `ignored` na `invalidate` odrzucone, `dismissed` bez uzasadnienia odrzucone,
+`dismissed` z uzasadnieniem zapisane w kursorze wraz z treścią. Zwykły `discovery`
+nadal przyjmuje `ignored` — bramka nie rozlała się na resztę.
+
+### Faza 6.5 — ZROBIONA 2026-08-08 (`invalidate` doszło 2026-08-09)
 
 `ENABLED_KINDS = discovery, done, question, answer`. **`invalidate` zostaje zablokowane** —
 OQ5 (kto ma prawo emitować) i OQ6 (co znaczy u odbiorcy) wymagają decyzji człowieka.
