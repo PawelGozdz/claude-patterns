@@ -31,7 +31,12 @@ Thin wrapper that invokes the `incident` skill from
    personal data breach)
 5. **Postmortem** — root cause, timeline, action items
 6. **Long-term fix** — code change, monitoring, prevention pattern
-   (candidate for a new entry in `patterns/cross-layer/security-invariants-pattern.md`)
+   (candidate for a new entry in `patterns/cross-layer/security-invariants-pattern.md`).
+   Before implementing: run `/analyze {slug}` (research/analysis gate, ADR
+   0002/0008) — it auto-falls-back to `/analyze-ddd` if the project has no
+   `.claude/config/runtime.yml` yet. Don't hardcode `/analyze-ddd` here —
+   the postmortem should point at whichever gate is actually live in that
+   project.
 
 ## When to use
 
@@ -52,6 +57,8 @@ Thin wrapper that invokes the `incident` skill from
 
 - `docs/security/INCIDENT_RESPONSE_RUNBOOK.md` (project-level operational
   runbook with escalation contacts, must be filled in per project)
+- `/analyze` (or `/analyze-ddd` fallback) — research gate for the
+  long-term fix, step 6 below
 - `/security-review` — pre-merge security validation
 - `/threat-model` — pre-implementation analysis
 - Skill source: `skills/security/incident/SKILL.md`

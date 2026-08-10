@@ -15,7 +15,7 @@ description: |
   Examples:
     /analyze-ddd TS-AUTH-003
     /ad BookmarksContext (nowa funkcja)
-tools: Task, Read, Write
+tools: Task, Read, Write, Skill
 disallowedTools: Edit, MultiEdit, Bash, Grep, Glob, NotebookEdit
 ---
 
@@ -42,6 +42,11 @@ ujawnia rzeczy do przedyskutowania, zanim warto pisać kod.
 ## Kroki
 
 ### 0. Setup (samowystarczalny — działa w KAŻDYM projekcie, nie tylko nestjs-ddd)
+- **BRAMKA PILOTA ADR 0008 — sprawdź PRZED wszystkim innym:** jeśli istnieje
+  `.claude/config/runtime.yml`, projekt jest na kompozycji bloków (TASK-BLOCKS-001).
+  Wypisz: „⛔ Projekt w pilocie ADR 0008 — użyj /analyze {TASK-ID} (research → approval),
+  potem /orchestrate-blocks {TASK-ID}." i **ZAKOŃCZ — nie wykonuj żadnego dalszego kroku.**
+  W projektach bez runtime.yml ta bramka niczego nie zmienia.
 - Wczytaj `.claude/config/project.yml` → `stack_profile`. **NIE zakładaj nestjs-ddd.**
 - Preset jest **OPCJONALNY**: jeśli istnieje `.claude/config/preset.yml` (in-project, materializowany
   przez setup-project.sh) → użyj jego `phase_research`. **Jeśli BRAK → użyj wbudowanych domyślnych
@@ -194,6 +199,14 @@ wzorca wymienionego w checkliście/decisions — jeśli nie istnieje, artefakt *
 „TO TRZEBA STWORZYĆ" obok tej nazwy (nie zostawia jej brzmiącej jak istniejący fakt). To samo
 dotyczy ścieżek plików referencjonowanych jako „już istnieje, edytuj" — zweryfikuj `Read`/`Glob`
 przed wpisaniem do artefaktu, nie ufaj pamięci/założeniom panelu.
+
+### 1.5. Przepuść prozę przez humanizer (przed zapisem)
+Sekcje czytane przez CZŁOWIEKA (`Synteza`, `Otwarte pytania`, `Decyzje (proponowane)`, `Ryzyka / uwagi`
+w body — patrz krok 2) przepuść przez `Skill(humanizer)` PRZED zapisem: usuwa AI-tells (em dash, "moreover",
+signposting, watę hedgingową), NIE dotyka frontmatteru (`open_questions[].q/answer`, `decisions[]`,
+`patterns[]` — to bramka maszynowa dla `/orchestrate-ddd`, zostaje jak jest). Nie zmienia faktów ani decyzji
+— tylko jak są sformułowane. Człowiek ma to realnie przeczytać i podjąć decyzję, nie przebrnąć przez
+wygenerowaną prozę.
 
 ### 2. Zapis artefaktu (jedyny Write)
 Zapisz **`project-orchestration/analysis/{TASK-ID}.analysis.md`** (NIE w tasks/ — tam tylko taski)
