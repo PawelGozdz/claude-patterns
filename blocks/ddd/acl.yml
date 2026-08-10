@@ -1,0 +1,10 @@
+# Blok: ddd/acl — komunikacja między bounded contextami przez ACL Registry.
+name: ddd/acl
+requires: [ddd/core, ddd/events]
+
+patterns:
+  triggers:
+    - keywords: [acl, cross-context, bounded context, another context]
+      include:
+        - architecture/acl-registry-pattern.md
+        - architecture/cross-context-communication.md

@@ -1,0 +1,13 @@
+# Blok: ddd/cqrs — command/query handlery, sagi.
+name: ddd/cqrs
+requires: [ddd/core]
+
+patterns:
+  triggers:
+    - keywords: [handler, command, query, saga, cqrs]
+      include:
+        - application/command-handler-pattern.md
+        - application/query-handler-pattern.md
+
+overlay:
+  patterns: [application/]

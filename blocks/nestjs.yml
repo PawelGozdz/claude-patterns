@@ -1,0 +1,31 @@
+# Blok: nestjs — framework backendowy (bez DDD, bez konkretnej persystencji).
+# Samodzielnie wystarcza projektowi typu ../sso (NestJS + TS bez DDD).
+name: nestjs
+requires: []
+
+# Czego blok oczekuje od bazy ECC (przeniesione z presets/nestjs-ddd.yml —
+# to wymaganie frameworkowe, nie DDD-owe)
+requires_ecc:
+  profile: developer
+  modules: [lang:typescript, capability:orchestration]
+
+patterns:
+  always:
+    - cross-layer/conventions-pattern.md
+    - cross-layer/security-invariants-pattern.md
+    - cross-layer/safe-error-propagation-pattern.md
+    - cross-layer/logger-pattern.md
+  triggers:
+    - keywords: [auth, authentication, authorization, permission, login]
+      include:
+        - cross-layer/security-invariants-pattern.md
+    - keywords: [test, fixture, mock, coverage, e2e]
+      include:
+        - testing/testing-pyramid-pattern.md
+
+analyze:
+  panel:
+    - { stage: threat-model, agent: "/threat-model", when: "auth|pii|cross_context|public_api",
+        output: "docs/security/threat-models/TM-{TASK_ID}.md", skip_if_exists: true }
+    - { stage: tech-analysis, agent: "ecc:architect" }
+    - { stage: tech-analysis-specialist, agent: "backend-technology-expert" }

@@ -1,0 +1,10 @@
+# Aliasy: skróty rozwijane przez materializację (setup-project.sh, F2)
+# oraz przez scripts/blocks-equivalence-check.mjs (F1).
+#
+# `stack_profile: nestjs-ddd` w istniejących project.yml jest po migracji
+# czytany jako `stack_blocks: [nestjs, ddd, kysely]` — zero zmian w repach
+# w dniu przełączenia (ADR 0008 D7).
+
+aliases:
+  ddd: [ddd/core, ddd/cqrs, ddd/events, ddd/acl]
+  nestjs-ddd: [nestjs, ddd, kysely]

@@ -1,0 +1,14 @@
+# Blok: kysely — persystencja (query builder). Wzorce repozytoriów i infrastruktury.
+# Konkretna implementacja outboxa pod Kysely przyjeżdża z ddd/events + tym blokiem;
+# sam outbox jako wzorzec należy do ddd/events (OQ1).
+name: kysely
+requires: []
+
+patterns:
+  triggers:
+    - keywords: [repository, migration, schema, transaction]
+      include:
+        - infrastructure/repository-pattern.md
+
+overlay:
+  patterns: [infrastructure/]

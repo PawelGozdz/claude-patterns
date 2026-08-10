@@ -1,0 +1,52 @@
+# Blok: ddd/core — rdzeń DDD: modelowanie domeny, agenci DDD + VETO verifiers,
+# twarda bramka approval (analyze PAUSE) i warstwowa orchestracja implementacji.
+# Specyfikacje i polityki należą tutaj (OQ1). Wymagany przez wszystkie ddd/*.
+name: ddd/core
+requires: []
+
+patterns:
+  always:
+    - cross-layer/domain-errors-pattern.md
+  triggers:
+    - keywords: [aggregate, entity, value object, domain event, specification, policy]
+      include:
+        - domain/aggregate-pattern.md
+        - domain/value-object-pattern.md
+
+overlay:
+  agents: [stacks/nestjs-ddd/]
+  patterns: [domain/]
+  rules: [nestjs-ddd/]
+  hooks: [check-delegation, check-patterns-read, check-subagent-pattern-reads, check-approval-before-impl]
+
+# Rozbrojenie kolizji z ECC (spike S3) + wymuszenie delegacji — przeniesione
+# z presets/nestjs-ddd.yml (env należy do overlay'u DDD, nie do frameworka)
+env:
+  ECC_GATEGUARD: "off"
+  ECC_DISABLED_HOOKS: "pre:edit-write:gateguard-fact-force,pre:bash:gateguard-fact-force"
+  DELEGATION_MODE: "block"
+
+analyze:
+  panel:
+    - { stage: ddd-modeling, agent: "ddd-application-expert" }
+    - { stage: impl-analysis, agent: "infrastructure-implementer", advisory: true }
+    - { stage: pattern-fit, agent: "code-quality-verifier", advisory: true }
+  exit: PAUSE
+
+orchestrate:
+  layers:
+    - { id: domain, dirs: [domain/], agent: "domain-application-implementer" }
+    - { id: application, dirs: [application/], agent: "domain-application-implementer" }
+    - { id: infrastructure, dirs: [infrastructure/], agent: "infrastructure-implementer" }
+    - { id: testing, dirs: [__tests__/], agent: "test-implementer", tests: true }
+  inner_loop: { verify: "code-quality-verifier", max_attempts: 3, on_max: ESCALATE_AND_HALT }
+  final_gate: { agent: "security-e2e-verifier", on_fail: ESCALATE_AND_HALT }
+  exit: STAGE_NOT_COMMIT
+
+# Seam'y Ralphinho — no-op w MVP (ADR 0002); przeniesione z presetu bez zmian
+ralphinho:
+  units: single
+  worktree: shared
+  fan_out: sequential
+  merge_stage: noop
+  guardrails: { push_only: "claude/*", max_attempts_per_layer: 3 }

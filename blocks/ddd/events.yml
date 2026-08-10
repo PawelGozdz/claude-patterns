@@ -1,0 +1,23 @@
+# Blok: ddd/events — zdarzenia domenowe/integracyjne + transactional outbox.
+# Outbox mieszka TU, nie w bloku persystencji (OQ1): to sposób dostarczania
+# zdarzeń; konkretną implementację pod bazę dowozi blok persystencji (np. kysely).
+#
+# Keyword `transaction` celowo zachowany przy outboxie — w legacy
+# _stack-defaults/nestjs-ddd.yml grupa persystencyjna [repository, migration,
+# schema, transaction] ciągnęła outbox; po dekompozycji `transaction` nadal go
+# ciągnie (przez ten blok), a czysto persystencyjne keywordy już nie (zamierzona
+# różnica, patrz raport blocks-equivalence-check).
+name: ddd/events
+requires: [ddd/core]
+
+patterns:
+  triggers:
+    - keywords: [transaction, outbox, domain event, integration event]
+      include:
+        - architecture/transactional-outbox-pattern.md
+    - keywords: [integration event, publish, subscribe]
+      include:
+        - architecture/integration-event-pattern.md
+
+overlay:
+  patterns: [architecture/]
