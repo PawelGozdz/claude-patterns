@@ -1,0 +1,13 @@
+# Blok: approval-gate — składalna TWARDA bramka approval dla projektów bez ddd/core.
+# Wnosi to samo co ddd/core w wymiarze procesu: /analyze kończy się PAUSE
+# (artefakt czeka na odpowiedzi + status: approved), /orchestrate-blocks odmawia
+# startu bez zatwierdzonej analizy; hook egzekwuje to także fizycznie.
+# Projekt, który świadomie NIE chce bramki, po prostu nie dodaje tego bloku.
+name: approval-gate
+requires: []
+
+overlay:
+  hooks: [check-approval-before-impl]
+
+analyze:
+  exit: PAUSE

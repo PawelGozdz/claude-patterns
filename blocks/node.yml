@@ -1,0 +1,31 @@
+# Blok: node — framework/runtime: czysty serwis Node/TS (ESM), bez NestJS.
+# Drugi adopter tego kształtu obok ai-os-bot: iam (Fastify + Kysely + Zitadel).
+# Rdzeń cross-layer identyczny z blokiem nestjs (wzorce są stack-agnostyczne);
+# przyszły refaktor: nestjs `requires: [node]` zamiast duplikacji tych 4 pozycji.
+name: node
+requires: []
+
+requires_ecc:
+  profile: developer
+  modules: [lang:typescript, capability:orchestration]
+
+patterns:
+  always:
+    - cross-layer/conventions-pattern.md
+    - cross-layer/security-invariants-pattern.md
+    - cross-layer/safe-error-propagation-pattern.md
+    - cross-layer/logger-pattern.md
+  triggers:
+    - keywords: [auth, authentication, authorization, permission, login]
+      include:
+        - cross-layer/security-invariants-pattern.md
+    - keywords: [test, fixture, mock, coverage, e2e]
+      include:
+        - testing/testing-pyramid-pattern.md
+
+analyze:
+  panel:
+    - { stage: threat-model, agent: "/threat-model", when: "auth|pii|cross_context|public_api",
+        output: "docs/security/threat-models/TM-{TASK_ID}.md", skip_if_exists: true }
+    - { stage: tech-analysis, agent: "ecc:architect" }
+    - { stage: tech-analysis-specialist, agent: "backend-technology-expert" }

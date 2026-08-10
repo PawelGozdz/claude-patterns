@@ -1,0 +1,14 @@
+# Blok: flat-service — architektura: prosty, płaski serwis (bez DDD, bez warstw
+# domenowych; kod + testy kolokowane, np. iam/ai-os-bot). Oś architektury —
+# alternatywa dla ddd/* tam, gdzie DDD byłoby przerostem.
+# Agenci generyczni: implementacja general-purpose, verify/gate z ECC.
+name: flat-service
+requires: []
+
+orchestrate:
+  layers:
+    - { id: implementation, dirs: [src/], agent: "general-purpose" }
+    - { id: testing, dirs: [src/, test/], agent: "general-purpose", tests: true }
+  inner_loop: { verify: "ecc:typescript-reviewer", max_attempts: 3, on_max: ESCALATE_AND_HALT }
+  final_gate: { agent: "ecc:security-reviewer", on_fail: ESCALATE_AND_HALT }
+  exit: STAGE_NOT_COMMIT

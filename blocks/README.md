@@ -82,14 +82,18 @@ Agenta-proxy decydującego per task NIE budujemy — rozstrzygnięte w OQ4 ADR 0
 
 ## Bloki i aliasy (stan F1)
 
-| blok | wnosi | requires |
-|---|---|---|
-| `nestjs` | konwencje, security, error-handling, logger, testing-pyramid; panel: threat-model + architekt + backend-expert | — |
-| `ddd/core` | domain-errors, wzorce domenowe, agenci DDD + VETO, bramka PAUSE, warstwy orchestracji | — |
-| `ddd/cqrs` | wzorce command/query handlerów | `ddd/core` |
-| `ddd/events` | outbox, integration events | `ddd/core` |
-| `ddd/acl` | ACL Registry, komunikacja cross-context | `ddd/core`, `ddd/events` |
-| `kysely` | wzorce infrastruktury persystencji | — |
+| blok | oś | wnosi | requires |
+|---|---|---|---|
+| `nestjs` | framework | konwencje, security, error-handling, logger, testing-pyramid; panel: threat-model + architekt + backend-expert | — |
+| `node` | framework | jak `nestjs`, dla czystych serwisów Node/TS bez NestJS (iam, ai-os-bot) | — |
+| `ddd/core` | architektura | domain-errors, wzorce domenowe, agenci DDD + VETO, bramka PAUSE, warstwy orchestracji | — |
+| `ddd/cqrs` | architektura | wzorce command/query handlerów | `ddd/core` |
+| `ddd/events` | architektura | outbox, integration events | `ddd/core` |
+| `ddd/acl` | architektura | ACL Registry, komunikacja cross-context | `ddd/core`, `ddd/events` |
+| `flat-service` | architektura | płaski serwis bez DDD: 2 warstwy (implementation→testing), verify `ecc:typescript-reviewer`, gate `ecc:security-reviewer` | — |
+| `kysely` | persystencja | wzorce infrastruktury persystencji | — |
+| `zod` | walidacja | wzorzec schematów wejścia na granicach HTTP/API | — |
+| `approval-gate` | proces | twarda bramka PAUSE + hook approval dla projektów bez `ddd/core` | — |
 
 Aliasy: `blocks/_aliases.yml`. Test równoważności dekompozycji:
 `node scripts/blocks-equivalence-check.mjs` (bramka wyjścia F1).

@@ -1,0 +1,11 @@
+# Blok: zod — walidacja wejścia (schematy Zod na granicach HTTP/API).
+# Keyword `schema` celowo pokrywa się z blokiem kysely (unia zbiorów, OQ7):
+# task o "schema" dostaje i wzorzec walidacji, i repozytorium — oba zasadne.
+name: zod
+requires: []
+
+patterns:
+  triggers:
+    - keywords: [validation, dto, input, request body, schema, endpoint]
+      include:
+        - infrastructure/controller-schema-pattern.md
