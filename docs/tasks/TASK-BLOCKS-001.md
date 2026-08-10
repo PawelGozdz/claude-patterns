@@ -79,6 +79,11 @@ Jeden `/analyze` i jeden `/orchestrate` sterowane kompozycją bloków z `project
       budżetów (czy miękki limit ratuje output przed klifem), koszt vs stara bramka,
       kolizje triggers (OQ7).
 
+- [x] Wznowienia po przepełnieniu kontekstu (2026-08-10, przed pierwszym
+      przebiegiem): `/orchestrate-blocks` czyta i aktualizuje `layers_done:`
+      we frontmatter artefaktu (checkpoint per warstwa GO); wznowienie pomija
+      zapisane warstwy, final_gate zawsze na końcu.
+
 **Kryteria go (wszystkie):**
 - [ ] wynik taska nie gorszy niż analogiczny na starej bramce (ocena człowieka);
 - [ ] zero regresji bramki approval (implementacja nie ruszyła bez `status: approved`);
@@ -125,6 +130,9 @@ głowy" — wyłapywać odstępstwa i ESKALOWAĆ, nie decydować samowolnie.
 
 - [ ] Aliasy pozostałych 5 profili; test równoważności per profil.
 - [ ] `/analyze-ddd`, `/orchestrate-ddd` → deprecated aliasy na nowe komendy.
+- [ ] Przy przejęciu nazwy `/orchestrate` przez silnik bloków: ZACHOWAĆ tryby
+      narzędziowe search/validate/review jako tryby obok silnika implementacji
+      (rekomendacja 2026-08-10) — implement-mode przejmuje silnik, reszta zostaje.
 - [ ] Migracja rusza od razu po go z F4, repo pojedynczo, w kolejności:
       `juz-ide-api-1` → `juz-ide-api-2` → `juz-ide-api-3` → `iam` → `vytches-ddd`
       → pozostałe. Stare mechanizmy usuwane dopiero, gdy ostatnie repo przejdzie.

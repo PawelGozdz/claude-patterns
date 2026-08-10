@@ -45,6 +45,19 @@ pisze kodu produkcyjnego. Wszystko stackowe przychodzi z `runtime.yml`.
   0.5) + `patterns[]` z artefaktu analizy. Rule Cards wstrzykuj do promptów
   implementerów i verifierów.
 
+## 1b. Checkpoint warstw i wznowienie (przepełniony kontekst → nowa sesja)
+
+- Artefakt analizy może mieć we frontmatter `layers_done: [domain, application]` —
+  warstwy z werdyktem GO z poprzednich przebiegów. Jeśli lista istnieje: **POMIŃ
+  te warstwy** (w raporcie: „pominięte — GO z poprzedniego przebiegu") i zacznij
+  od pierwszej spoza listy. Zaufaj zapisowi — nie re-implementuj; zamiast pełnego
+  verify zrób szybki sanity check (pliki warstwy istnieją w repo/stage).
+- Po **KAŻDYM** GO warstwy silnik NATYCHMIAST dopisuje jej id do `layers_done:`
+  w artefakcie (Write po Read albo Bash; jedyna modyfikacja artefaktu przez tę
+  komendę) — to checkpoint, dzięki któremu wznowienie nie płaci za zrobione.
+- `final_gate` uruchamiaj ZAWSZE na końcu, także przy wznowieniu — obejmuje całość
+  zmiany, nie ostatnią warstwę.
+
 ## 2. Silnik: Workflow tool (deterministyczny)
 
 Uruchom przez `Workflow` (nie /goal). Pętla per warstwa
