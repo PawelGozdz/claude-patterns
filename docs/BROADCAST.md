@@ -370,9 +370,22 @@ node "$CLI" emit --topic juz-ide-api/questions --kind answer --reply-to <ULID-py
   --body "Sprawdzone w handlerach + branch develop."
 ```
 
-Pytający zobaczy odpowiedź **automatycznie** — dopasowanie idzie po `reply_to`. Nie musi
-(i nie powinien) subskrybować cudzego `questions`, bo to oznaczałoby oglądanie wszystkich
-pytań kierowanych do tego repo.
+Odpowiedź **przechodzi filtr widoczności** u pytającego — dopasowanie idzie po `reply_to`,
+więc nie musi (i nie powinien) subskrybować cudzego `questions`, bo to oznaczałoby oglądanie
+wszystkich pytań kierowanych do tego repo.
+
+**Nie trafia natomiast sama do sesji, która pytała.** Kanał adresuje instancje, nie wątki —
+w wiadomości nie ma adresu zwrotnego. Odbiera się ją komendą, podając ULID pytania:
+
+```bash
+node "$CLI" answers <ULID-pytania>          # także --json
+```
+
+`answers` celowo **ignoruje kursor i decyzje**. Stand-by i wątek pracujący w tej samej
+instancji dzielą jeden kursor (`cursors/<instancja>.json`), więc gdyby komenda ich słuchała,
+stand-by mógłby oznaczyć odpowiedź jako przeczytaną, zanim sięgnie po nią pytający —
+zdarzyło się to realnie 2026-08-09. Kody wyjścia: `0` = są odpowiedzi, `4` = jeszcze ich
+nie ma albo pytanie wypadło z okna 72 h.
 
 Pytania bez odpowiedzi > 24 h pokazuje `/broadcast-status`. Świadomie tylko raport — bez
 automatycznej eskalacji i bez ponowień.

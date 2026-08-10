@@ -80,7 +80,7 @@ Dla każdego wpisu dokładnie jedna decyzja:
 
 | decyzja | kiedy |
 |---|---|
-| `ignored` | nie dotyka mojego brancha ani aktywnego taska. **To ma być najczęstsza decyzja** i jest pełnoprawna, nie porażka |
+| `ignored` | nie dotyka mojego brancha ani aktywnego taska. **To ma być najczęstsza decyzja** i jest pełnoprawna, nie porażka. **Zakazana dla `kind: answer` na twoje pytanie** — krok 4a |
 | `acked` | dotyczy mnie, przyjmuję do wiadomości, sam z siebie zmieniam kolejność/założenia u siebie |
 | `escalated` | wymaga decyzji człowieka albo akcji repo-level (utworzenie taska, odpowiedź) |
 
@@ -91,6 +91,48 @@ najtańszy sposób na zaśmiecenie backlogu.
 
 **Wagę wolno tylko obniżyć, nigdy podnieść.** „To nie dotyczy mojego brancha" może
 zejść z `important` na `info`. Podnoszenie tworzyłoby kaskadę pilności między instancjami.
+
+## Krok 4a — odpowiedź na TWOJE pytanie (`kind: answer`)
+
+Wpis `kind: answer`, którego `reply_to` wskazuje pytanie wysłane przez twoją instancję,
+jest **zamówiony** — ktoś stąd o niego poprosił. `ignored` jest dla niego **zakazane**.
+
+Powód, dla którego trzeba to napisać wprost: pytanie zadaje zwykle **inna sesja** (człowiek
+albo implementer), więc w chwili nadejścia odpowiedzi zwykle **nie ma żadnego taska
+`in_progress`, który by do niej pasował**. Reguła z kroku 3 („czy dotyczy pracy, która
+dzieje się TUTAJ") daje wtedy fałszywe „nie dotyczy" i kasuje dokładnie tę rzecz, po którą
+ten kanał istnieje. Zdarzyło się realnie 2026-08-09: odpowiedź `juz-ide-api-4` o bookmarkach
+została zignorowana z notatką „brak aktywnego taska in_progress" — mimo że mobile sam o nią
+poprosił 51 sekund wcześniej.
+
+Zamiast tego:
+
+- **`escalated`** — domyślnie. Odpowiedź zamówił człowiek albo inna sesja i to oni mają ją
+  zobaczyć, a wstrzykiwanie jest wyłączone (6.4) — twój `--note` i linia w oknie są jedynym
+  trwałym śladem;
+- **`acked`** — tylko gdy odpowiedź brzmi „nic się nie zmienia" i nie zostawia nikomu
+  decyzji do podjęcia.
+
+`--note` ma zawierać **streszczenie odpowiedzi, nie fakt jej otrzymania**. „przyszła
+odpowiedź o bookmarkach" jest bezużyteczne; „brak GET listy bookmarków, `findUserSaves()`
+jest w repo, ale nie woła go żaden handler" da się przeczytać za tydzień w kursorze.
+
+**Nie weryfikuj twierdzeń o cudzym repo.** Nakazu z kroku 4 („otwórz plik z `paths`
+i sprawdź") tutaj nie stosujesz — tych plików u siebie nie masz. Przekazujesz z atrybucją:
+kto odpowiedział i na czym oparł odpowiedź.
+
+Raport wypisuje **treść, nie werdykt** — inaczej człowiek musi i tak sięgać do kursora:
+
+```
+[standby] 19:52 juz-ide-api/questions (answer) → escalated
+          na MOJE pytanie 01KZM14F o bookmarki: brak GET listy zapisanych,
+          findUserSaves() (user-action-query-kysely.repository.ts:275) bez konsumenta,
+          zero wzmianek w roadmapie → decyzja o usunięciu akcji z UI należy do człowieka
+```
+
+Jeśli na to samo pytanie przyszła **więcej niż jedna odpowiedź** — potraktuj je łącznie
+jako jeden wątek: jedna eskalacja, w notatce rozbieżności między nimi (jeśli są). Osobna
+eskalacja per odpowiedź zamienia jeden fakt w trzy pozycje do przejrzenia.
 
 ## Krok 4b — pytania do twojego repo (`kind: question`, faza 6.5)
 

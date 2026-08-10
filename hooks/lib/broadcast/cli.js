@@ -13,6 +13,7 @@
  *                         [--severity info|important|critical] [--owner REPO]
  *                         [--paths a.ts,b.ts] [--reply-to ULID] [--human] [--dry-run] [--json]
  *   node cli.js read      [--limit N] [--include-decided] [--json]
+ *   node cli.js answers   <ULID-pytania> [--json]
  *   node cli.js ack       <id> --decision acked|ignored|escalated|applied|dismissed [--note "..."]
  *   node cli.js claim     <id>
  *   node cli.js gate      [--json]
@@ -48,6 +49,8 @@ function main(argv) {
       return cmdEmit(args);
     case 'read':
       return cmdRead(args);
+    case 'answers':
+      return cmdAnswers(args);
     case 'ack':
       return cmdAck(args);
     case 'claim':
@@ -286,6 +289,79 @@ function renderMessage(msg) {
   const body = msg.body ? `  ${String(msg.body).split('\n').join('\n  ')}` : '';
   const files = msg.paths && msg.paths.length ? `  paths: ${msg.paths.join(', ')}` : '';
   return [head, `  ${msg.title}`, meta, body, files].filter(Boolean).join('\n');
+}
+
+// ── answers ───────────────────────────────────────────────────────────────────
+
+/**
+ * Odpowiedzi na KONKRETNE pytanie — odbiór inicjowany przez pytającego.
+ *
+ * Powód istnienia: kanał adresuje instancje, nie sesje. Odpowiedź nie wraca więc sama
+ * do wątku, który zadał pytanie, a bez odbioru pytania cross-repo nie mają sensu.
+ * Dało się to obejść przez `read --include-decided` i ręczne szukanie po `reply_to`,
+ * ale to obejście, którego nikt nie wykona w praktyce.
+ *
+ * Świadomie NIE dotyka kursora ani decyzji. Stand-by i wątek pracujący w tej samej
+ * instancji dzielą jeden kursor (`cursors/<instancja>.json`), więc gdyby ta komenda
+ * respektowała `decisions`, stand-by mógłby „zjeść" odpowiedź przed pytającym —
+ * dokładnie ten przypadek zdarzył się 2026-08-09. Czysty odczyt: dwa wywołania z rzędu
+ * dają ten sam wynik.
+ */
+function cmdAnswers(args) {
+  const ctx = requireManifest();
+  if (!ctx) return 2;
+
+  const id = args._[0];
+  if (!id) {
+    process.stderr.write('Użycie: answers <ULID-pytania> [--json]\n');
+    return 1;
+  }
+
+  const { messages } = channel.readWindow();
+  const question = messages.find((msg) => msg.id === id);
+
+  // Brak pytania w oknie 3 segmentów to nie błąd, tylko upływ czasu (TTL 72 h).
+  if (!question) {
+    if (args.json) {
+      process.stdout.write(`${JSON.stringify({ question: null, answers: [], reason: 'not_found' }, null, 2)}\n`);
+    } else {
+      process.stdout.write(
+        `Nie ma wpisu ${id} w oknie kanału — pytanie wygasło (TTL 72 h) albo ULID jest błędny.\n`,
+      );
+    }
+    return 4;
+  }
+
+  // Widoczność jak w `channel.visibleFor`: widzę odpowiedzi na SWOJE pytania i tylko na nie.
+  // Filtr po `instance`, nigdy po `repo` (D3) — inna sesja tej samej instancji to nadal ja,
+  // siostrzana instancja tego samego repo to już ktoś inny.
+  if (question.instance !== ctx.manifest.instance) {
+    process.stderr.write(
+      `Wpis ${id} zadała instancja ${question.instance}, nie ${ctx.manifest.instance} — ` +
+        'odpowiedzi na cudze pytania są niewidoczne z założenia (D1).\n',
+    );
+    return 1;
+  }
+
+  const answers = messages.filter((msg) => msg.kind === 'answer' && msg.reply_to === id);
+
+  if (args.json) {
+    process.stdout.write(`${JSON.stringify({ question, answers, count: answers.length }, null, 2)}\n`);
+    return answers.length > 0 ? 0 : 4;
+  }
+
+  if (answers.length === 0) {
+    const minutes = Math.max(0, Math.round((Date.now() - Date.parse(question.ts)) / 60000));
+    process.stdout.write(
+      `Brak odpowiedzi na „${question.title}" (${id}, wysłane ${minutes} min temu).\n` +
+        'Stand-by po drugiej stronie chodzi zwykle co 3 min — sprawdź ponownie za chwilę.\n',
+    );
+    return 4;
+  }
+
+  process.stdout.write(`Odpowiedzi na „${question.title}" (${answers.length}):\n\n`);
+  process.stdout.write(`${answers.map(renderMessage).join('\n\n')}\n`);
+  return 0;
 }
 
 // ── ack / claim / gate ────────────────────────────────────────────────────────
@@ -976,6 +1052,7 @@ function usage() {
     '  init    założenie manifestu + katalogu stanu (idempotentne)',
     '  emit    nadanie wiadomości (waliduje D1/D4/D5/D9/D11 przed zapisem)',
     '  read    nieprzeczytane wpisy dla tej instancji',
+    '  answers odpowiedzi na MOJE pytanie: answers <ULID> (bez kursora — stand-by ich nie zabierze)',
     '  peers   kto istnieje i na jaki topic do niego trafić (rozwiązywanie nazw repo)',
     '  ack     decyzja o wpisie (acked|ignored|escalated|applied|dismissed)',
     '  claim   atomowe przejęcie obowiązku repo-level (O_EXCL)',
