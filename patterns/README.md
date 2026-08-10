@@ -30,7 +30,9 @@ patterns/
 ├── finance/            # Finance workflow patterns - 2 patterns
 ├── legal/              # Legal workflow patterns - 2 patterns
 │
-├── flutter/            # Flutter-specific patterns - 7 patterns (per-project)
+├── flutter/            # Flutter-specific patterns - 14 patterns (per-project)
+│                       #   incl. mobile-security, platform-channel, offline-first,
+│                       #   design-token, accessibility, localization (+ rule-cards _summary.md)
 ├── nextjs/             # Next.js-specific patterns - 7 patterns (per-project)
 ├── ai-ml/              # GPU inference patterns - 7 patterns (per-project)
 ├── python/             # Python-specific patterns - 5 patterns (per-project)
@@ -98,8 +100,10 @@ Persistence, API, and technical implementation patterns.
 | **[mapper-pattern.md](infrastructure/mapper-pattern.md)** | ~600 | Production | toDomain(), toPersistence(), value object reconstruction | infrastructure-testing-implementer |
 | **[controller-schema-pattern.md](infrastructure/controller-schema-pattern.md)** | ~600 | Production | Zod validation, @CurrentUser, rate limiting, Result pattern | infrastructure-testing-implementer |
 | **[external-adapter-pattern.md](infrastructure/external-adapter-pattern.md)** | ~230 | ⚠ project-specific (grant-flow) | Logging placeholder adapter: realny port, zero I/O, fail-fast w onModuleInit, rozdzielone klasy błędów | infrastructure-testing-implementer |
+| **[geo-spatial-query-pattern.md](infrastructure/geo-spatial-query-pattern.md)** | ~300 | ⚠ project-specific (juz-ide) | PostGIS: 3 predicate classes (metric/topological/KNN), cast shape = index shape, catalogue-before-EXPLAIN verification, spatial predicate as access control | infrastructure-testing-implementer, geo-postgres-specialist |
 
 **Infrastructure Layer Key Principles**:
+- Spatial queries: classify the predicate (metric/topological/KNN) BEFORE writing it; cast shape must match index shape; verify against `pg_indexes` before `EXPLAIN` (small tables cannot distinguish correct from broken)
 - CQRS separation: Command repositories (BaseKyselyRepository) vs Query repositories (direct Kysely)
 - Optimistic locking: `aggregate_versions` table join pattern
 - 3-layer event protection: MANDATORY for all command repositories
@@ -334,8 +338,8 @@ hook `check-gpu-patterns.js`.
 ## 📊 Pattern Statistics
 
 **Core Patterns**: 46
-**Stack-Specific Patterns**: 29 (flutter, nextjs, python, sveltekit, typescript-library)
-**Total**: 75
+**Stack-Specific Patterns**: 35 (flutter, nextjs, python, sveltekit, typescript-library)
+**Total**: 81
 **Production Status**: 100% (all patterns verified in production code)
 
 **Core Pattern Distribution**:
@@ -350,6 +354,18 @@ hook `check-gpu-patterns.js`.
 ---
 
 ## 🔄 Pattern Updates
+
+**Version 3.11** (2026-08-10):
+- Added infrastructure/geo-spatial-query-pattern.md + rule card + `rules/nestjs-ddd/geo-spatial-query.md`.
+  Closes a real gap: `retrieve_patterns` returned NOTHING for PostGIS/geo queries in two separate
+  analyses, so every bounded context touching geo invented its own predicate shape — five parallel
+  implementations in one codebase, two production findings. Derived from
+  `TS-GEO-SPATIAL-QUERY-AUDIT-001` (2026-07-29) and `-002` (2026-08), including the incident where
+  `ST_DWithin` on `geometry` operands read metres as degrees and exposed 121/125 locally-scoped
+  events nationwide for a week with a green test suite.
+  Marked `project-specific (juz-ide)` per the "Promoting a Project Refactor" rule — the PostGIS
+  mechanics generalise, but a second project must adopt the shape before promotion.
+- Total patterns: 47 (was 46)
 
 **Version 3.10** (2026-07-18):
 - Removed application/quote-reservation-pattern.md and domain/config-policy-aggregate-pattern.md

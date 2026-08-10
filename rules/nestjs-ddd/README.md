@@ -31,6 +31,7 @@ file organization, error handling) and `rules/typescript/`.
 | [repository.md](./repository.md) | Ports + mappers, event dispatch on save, `eventMap` enum SSoT, optimistic locking. | `patterns/infrastructure/repository-pattern.md` |
 | [acl-registry.md](./acl-registry.md) | Cross-context only via ACL Registry or events; no cross-BC imports. | `patterns/architecture/acl-registry-pattern.md` |
 | [application-handlers.md](./application-handlers.md) | Command/query handlers: orchestration only, `@Inject()`, auto-discovery, userId from context. | `patterns/application/command-handler-pattern.md`, `query-handler-pattern.md` |
+| [geo-spatial-query.md](./geo-spatial-query.md) | PostGIS: predicate class dictates cast + index; catalogue before EXPLAIN; spatial predicate is access control. | `patterns/infrastructure/geo-spatial-query-pattern.md` |
 | [error-mapper.md](./error-mapper.md) | New `D_` error class ⇒ mapper entry same PR; `switch(errorCode)` covers every real code; guardian coverage test mandatory. | `patterns/cross-layer/domain-errors-pattern.md` (Anti-Pattern 5), `error-handler-chain-pattern.md` |
 
 ## Related patterns not (yet) given a dedicated rule file
