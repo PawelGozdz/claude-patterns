@@ -25,6 +25,11 @@ Silnik: **Workflow tool** (deterministyczny control-flow), NIE /goal. Warunek st
 maszynowy verdykt GO/NO-GO od naszych VETO verifierów — nie „model uznał, że gotowe".
 
 ## Krok 1 — BRAMKA (precondition, twardy gate)
+**BRAMKA PILOTA ADR 0008 — sprawdź PRZED wszystkim innym:** jeśli istnieje
+`.claude/config/runtime.yml`, projekt jest na kompozycji bloków (TASK-BLOCKS-001). Wypisz:
+„⛔ Projekt w pilocie ADR 0008 — użyj /orchestrate-blocks {TASK-ID} (po approval z /analyze)."
+i **ZAKOŃCZ**. W projektach bez runtime.yml ta bramka niczego nie zmienia.
+
 Wczytaj `project-orchestration/analysis/{TASK-ID}.analysis.md`. **ODMÓW startu** (wypisz instrukcję
 i ZAKOŃCZ) gdy:
 - artefakt nie istnieje → „Najpierw uruchom /analyze-ddd {TASK-ID}", albo
