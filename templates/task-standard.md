@@ -15,7 +15,9 @@ labels: []
 
 ## 🎯 Goal
 
-<!-- 2-3 sentences: what changes, who is affected, why now -->
+<!-- 2-3 sentences: what changes, who is affected, why now.
+     A human reads this to decide whether to pick up the task — run the `humanizer`
+     skill pass on it before saving (see skills/quality/humanizer/SKILL.md). -->
 
 ---
 
@@ -53,7 +55,8 @@ templates/task-security-first.md (Level 3, full Feature TM file) instead.
 - [ ] No `error.message` / `error.stack` in HTTP responses
 - [ ] No PII in logger calls
 
-**Findings summary:** <!-- 0-2 sentences, e.g., "no critical issues; 1 medium (rate limit not currently fail-closed — fix in scope)" -->
+**Findings summary:** <!-- 0-2 sentences, humanized before saving (see skills/quality/humanizer/SKILL.md),
+e.g., "no critical issues; 1 medium (rate limit not currently fail-closed — fix in scope)" -->
 
 ---
 

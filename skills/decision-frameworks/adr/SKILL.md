@@ -2,7 +2,7 @@
 name: adr
 description: "Create an Architecture Decision Record for a decision just made"
 origin: claude-patterns
-allowed-tools: Read, Write, Glob, Bash
+allowed-tools: Read, Write, Glob, Bash, Skill
 effort: low
 ---
 
@@ -66,6 +66,13 @@ After gathering the core 6, ask targeted follow-ups based on `stack_profile`:
 - Does this affect data fetching strategy (SSR, RSC, SWR)?
 
 **universal** — no additional prompts.
+
+### 4.5. Humanize before writing
+
+Run `Skill(humanizer)` on the prose you gathered — Context / Options Considered / Decision /
+Consequences — before composing the file. Strips AI-writing tells (em dashes, signposting,
+hedge-padding) without changing the actual decision or reasoning. Skip it for `Status`/`Date`/
+`Stack` — those stay as plain values.
 
 ### 5. Write the ADR
 

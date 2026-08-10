@@ -511,6 +511,10 @@ produces mediocre analysis in both dimensions.
 - **Test locally** before committing — changes propagate instantly via symlinks
 - **Pattern files**: real production code as examples, not pseudocode
 - **Agent files**: clear `disallowedTools` — explicit deny is safer than permissive
+- **Human-facing prose** (README, ADRs, `/analyze-ddd` open questions, task Goal/Findings
+  summaries) — finish with the `humanizer` skill pass (`skills/quality/humanizer/`) before
+  saving. Leave YAML/frontmatter, code, and machine-parsed fields untouched — see the
+  skill's When to Use / Do NOT list.
 
 ---
 
