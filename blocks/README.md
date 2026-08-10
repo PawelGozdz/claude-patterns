@@ -86,6 +86,8 @@ Agenta-proxy decydującego per task NIE budujemy — rozstrzygnięte w OQ4 ADR 0
 |---|---|---|---|
 | `nestjs` | framework | konwencje, security, error-handling, logger, testing-pyramid; panel: threat-model + architekt + backend-expert | — |
 | `node` | framework | jak `nestjs`, dla czystych serwisów Node/TS bez NestJS (iam, ai-os-bot) | — |
+| `flutter` | framework | konwencje, wzorce riverpod/dio/navigation/freezed/testing; panel: threat-model | — |
+| `clean-arch` | architektura | Flutter Clean Architecture: agenci (implementer + advisory/VETO verifiers), warstwy domain/application?/data/presentation, bramka PAUSE | — |
 | `ddd/core` | architektura | domain-errors, wzorce domenowe, agenci DDD + VETO, bramka PAUSE, warstwy orchestracji | — |
 | `ddd/cqrs` | architektura | wzorce command/query handlerów | `ddd/core` |
 | `ddd/events` | architektura | outbox, integration events | `ddd/core` |

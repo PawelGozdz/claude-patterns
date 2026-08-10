@@ -1,13 +1,19 @@
 # Either Error Handling Pattern
 
+**Layer**: Cross-Layer
+**Status**: production
+
 ## When to Use
 
-- Every repository method that can fail (network, cache, validation)
-- Every use case return type
-- Any boundary between layers where errors must be translated
-- When you need to propagate errors without throwing exceptions across architectural layers
+**Use this pattern for:**
+- ✅ Every repository method that can fail (network, cache, validation)
+- ✅ Every use case return type
+- ✅ Any boundary between layers where errors must be translated
+- ✅ When you need to propagate errors without throwing exceptions across architectural layers
 
-**Do NOT use** for programmer errors (null dereference, index out of bounds). Those should crash — they signal bugs, not runtime failures.
+**Do NOT use for:**
+- ❌ Programmer errors (null dereference, index out of bounds) — those should crash, they signal bugs, not runtime failures
+- ❌ Modeling a screen's final loading/success/error state shape — that's `freezed-immutability-pattern` (state unions); Either propagates a failure between layers, it doesn't define the presentation state itself
 
 ---
 

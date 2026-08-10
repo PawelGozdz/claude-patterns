@@ -1,0 +1,75 @@
+# Blok: clean-arch — Flutter Clean Architecture: agenci Flutter (implementer + advisory/VETO
+# verifiers), warstwy domain/application?/data/presentation, bramka approval (analyze PAUSE).
+# Wymaga bloku `flutter` w praktyce (framework), ale strukturalnie samodzielny (jak ddd/core
+# względem nestjs) — `requires: []`, powiązanie egzekwuje alias `flutter-clean-arch`.
+# Zdekomponowany z presets/flutter-clean-arch.yml (TASK-BLOCKS-001 F-mobile).
+#
+# Model warstw: 3 OBOWIĄZKOWE (domain, data, presentation) + 1 OPCJONALNA (application) —
+# zweryfikowane 2026-07-05 w juz-ide-mobile-app (ecc:flutter-reviewer, ARCH-001-ADR-A).
+# Kryterium tworzenia application/: logika przekracza prosty CRUD (multi-step workflow,
+# orkiestracja wielu repozytoriów, złożona walidacja niezależna od UI) — decyzja per-task,
+# zapisywana w decisions[] zatwierdzonego artefaktu analizy.
+name: clean-arch
+requires: []
+
+patterns:
+  always:
+    - flutter/clean-architecture-pattern.md
+    - flutter/either-error-pattern.md
+  triggers:
+    - keywords: [ekran, screen, widget, komponent, ui, ux, layout, formularz]
+      include:
+        - flutter/design-token-pattern.md
+        - flutter/accessibility-pattern.md
+    - keywords: [tekst, string, tłumaczenie, arb, l10n, lokalizacja]
+      include:
+        - flutter/localization-pattern.md
+
+overlay:
+  agents: [stacks/flutter-clean-arch/]
+  patterns: [flutter/, testing/]
+  rules: [dart/]
+  hooks: [check-clean-arch, check-riverpod-patterns, check-flutter-imports, check-pumpandsettle, check-typography-tokens, check-design-tokens, check-l10n-hardcoded, check-approval-before-impl]
+
+# Rozbrojenie kolizji z ECC (spike S3) + wymuszenie delegacji — przeniesione z presetu
+# (env należy do overlayu architektury, nie do frameworka — jak w ddd/core)
+env:
+  ECC_GATEGUARD: "off"
+  ECC_DISABLED_HOOKS: "pre:edit-write:gateguard-fact-force,pre:bash:gateguard-fact-force"
+  DELEGATION_MODE: "block"
+
+analyze:
+  panel:
+    - { stage: tech-analysis, agent: "flutter-architecture-expert" }
+    # ux-design przed impl-analysis: najpierw ustalamy JAK ekran ma działać
+    # (stany, dostępność, teksty), potem sprawdzamy wykonalność implementacyjną
+    - { stage: ux-design,     agent: "flutter-ux-designer",
+        when: "ekran|screen|widget|komponent|ui|ux|formularz|onboarding|przepływ|flow", advisory: true }
+    - { stage: impl-analysis, agent: "flutter-quality-verifier", advisory: true }
+    - { stage: ui-analysis,   agent: "flutter-ui-verifier",      advisory: true }
+    - { stage: perf-analysis, agent: "flutter-performance-verifier",
+        when: "lista|list|przewijan|scroll|mapa|map|animacj|wydajnoś|performance|jank|czat|chat", advisory: true }
+  exit: PAUSE
+
+orchestrate:
+  layers:
+    - { id: domain,       dirs: [domain/],       agent: "flutter-implementer" }
+    - { id: application,  dirs: [application/],  agent: "flutter-implementer", optional: true,
+        create_when: "decisions[].application_layer == true (kryterium ADR-A)" }
+    - { id: data,         dirs: [data/],         agent: "flutter-implementer", tests: true }
+    - { id: presentation, dirs: [presentation/], agent: "flutter-implementer", tests: true }
+  inner_loop: { verify: "flutter-quality-verifier | flutter-ui-verifier", max_attempts: 3, on_max: ESCALATE_AND_HALT }
+  # Bramka końcowa = bezpieczeństwo, analogicznie do ddd/core (security-e2e-verifier).
+  # Jakość/wzorce są już wymuszone w inner_loop przy każdej warstwie; ostatni zamek
+  # przed staged sprawdza to, czego nie widać w pojedynczej warstwie: sekrety, logi,
+  # pinning, deep linki i realność kanałów natywnych.
+  final_gate: { agent: "flutter-security-verifier", on_fail: ESCALATE_AND_HALT }
+  exit: STAGE_NOT_COMMIT
+
+# Seam'y Ralphinho — no-op w MVP (ADR 0002); przeniesione z presetu bez zmian
+ralphinho:
+  units: single
+  worktree: shared
+  fan_out: sequential
+  merge_stage: noop
+  guardrails: { push_only: "claude/*", max_attempts_per_layer: 3 }

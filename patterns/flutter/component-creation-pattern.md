@@ -1,7 +1,22 @@
 # Component Creation Pattern (DS-007)
 
+**Layer**: Cross-Layer
+**Status**: production
+
 > Każdy nowy komponent w `lib/core/design/components/` musi przejść 6 gates.
 > Wzorzec V1 components (v1_entity_card, v1_menu_row_card, v1_filter_chip) jest referencją.
+
+## When to Use
+
+**Use this pattern for:**
+- ✅ Tworzysz nowy współdzielony komponent UI w `lib/core/design/components/` (card, tile, chip, badge itp.)
+- ✅ Komponent ma być reużywalny w wielu features i musi przejść przez współdzielony design system
+- ✅ Potrzebujesz gwarancji zero-hardcoded-tokens, WCAG AA, testów widget+golden i story dokumentacji przed mergem
+
+**Do NOT use for:**
+- ❌ Budujesz jednorazowy widget specyficzny dla jednej feature, bez ambicji reużycia — zwykły plik w `features/x/presentation/widgets/` wystarczy, patrz `clean-architecture-pattern` (sekcja "shared/ vs feature-specific")
+- ❌ Potrzebujesz tylko dobrać wartości tokenów (kolor, spacing, typografia) do istniejącego komponentu — to `design-token-pattern`, nie tworzenie nowego komponentu
+- ❌ Dostępność (kontrast, focus, semantics) jest głównym tematem niezależnie od tworzenia nowego widgetu — pogłębiona checklista WCAG żyje w `accessibility-pattern`
 
 ## 6 Gates — obowiązkowe
 

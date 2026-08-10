@@ -1,0 +1,37 @@
+# Blok: flutter — framework/runtime: Flutter + Dart, Riverpod + Dio + GoRouter + Freezed
+# jako domyślny stack. Bez założeń o architekturze (Clean Architecture wnosi ./clean-arch) —
+# projekt mógłby w teorii użyć tego bloku samodzielnie z inną organizacją warstw.
+# Zdekomponowany z presets/flutter-clean-arch.yml + patterns/_stack-defaults/flutter-clean-arch.yml
+# (TASK-BLOCKS-001 F-mobile) — patrz tam po historię/uzasadnienie każdego pola.
+name: flutter
+requires: []
+
+requires_ecc:
+  profile: developer
+  modules: [lang:dart, capability:orchestration]
+
+patterns:
+  always:
+    - cross-layer/conventions-pattern.md
+  triggers:
+    - keywords: [state, riverpod, provider, notifier]
+      include:
+        - flutter/riverpod-state-pattern.md
+    - keywords: [api, dio, http, network, request]
+      include:
+        - flutter/dio-networking-pattern.md
+    - keywords: [navigation, route, screen, push, pop]
+      include:
+        - flutter/navigation-pattern.md
+    - keywords: [model, entity, dto, freezed, immutable]
+      include:
+        - flutter/freezed-immutability-pattern.md
+    - keywords: [test, mockito, golden]
+      include:
+        - flutter/testing-pattern.md
+        - testing/testing-pyramid-pattern.md
+
+analyze:
+  panel:
+    - { stage: threat-model, agent: "/threat-model", when: "auth|pii|cross_context|public_api",
+        output: "docs/security/threat-models/TM-{TASK_ID}.md", skip_if_exists: true }

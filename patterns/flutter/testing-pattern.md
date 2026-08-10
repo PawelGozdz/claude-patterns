@@ -1,11 +1,20 @@
 # Flutter Testing Pattern
 
+**Layer**: Testing
+**Status**: production
+
 ## When to Use
 
-- Every feature must have unit tests for use cases and repositories
-- Every screen should have at least one widget test verifying render and interaction
-- Golden tests for design-critical screens (onboarding, checkout, branded components)
-- Integration tests for critical user flows (login, purchase, onboarding)
+**Use this pattern for:**
+- ✅ Every feature must have unit tests for use cases and repositories
+- ✅ Every screen should have at least one widget test verifying render and interaction
+- ✅ Golden tests for design-critical screens (onboarding, checkout, branded components)
+- ✅ Integration tests for critical user flows (login, purchase, onboarding)
+
+**Do NOT use for:**
+- ❌ Golden-testing every screen indiscriminately — reserve goldens for design-critical screens; golden-testing routine CRUD screens is maintenance cost with no real signal
+- ❌ Replacing fast unit coverage with integration tests for logic that doesn't need a running app — integration tests are for critical user flows only (10% of the pyramid), not a substitute for the unit layer
+- ❌ Verifying a component's accessibility semantics as the primary goal — that's `accessibility-pattern`'s own testing guidance; this pattern is the general unit/widget/golden/integration structure
 
 **Test distribution target**: Unit 60%, Widget 30%, Integration/Golden 10%.
 

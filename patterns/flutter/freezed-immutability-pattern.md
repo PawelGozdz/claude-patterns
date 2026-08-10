@@ -1,14 +1,20 @@
 # Freezed Immutability Pattern
 
+**Layer**: Domain
+**Status**: production
+
 ## When to Use
 
-- All domain entities that need equality by value
-- All state classes managed by StateNotifier (loading/success/error unions)
-- All DTOs that serialize to/from JSON
-- Any class where you need `copyWith`, `==`, `hashCode`, and `toString` generated
-- When pattern matching on sealed union types
+**Use this pattern for:**
+- ✅ All domain entities that need equality by value
+- ✅ All state classes managed by StateNotifier (loading/success/error unions)
+- ✅ All DTOs that serialize to/from JSON
+- ✅ Any class where you need `copyWith`, `==`, `hashCode`, and `toString` generated
+- ✅ When pattern matching on sealed union types
 
-**Do NOT use** for trivial wrapper types with 1-2 fields where a manual implementation is shorter than the annotation boilerplate.
+**Do NOT use for:**
+- ❌ Trivial wrapper types with 1-2 fields where a manual implementation is shorter than the annotation boilerplate
+- ❌ Modeling how an error crosses a layer boundary (repository → use case → presentation) — that's `either-error-pattern`; Freezed here only shapes the final state, not the propagation mechanism
 
 ---
 

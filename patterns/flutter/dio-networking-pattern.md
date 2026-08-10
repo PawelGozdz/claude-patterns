@@ -1,13 +1,19 @@
 # Dio Networking Pattern
 
+**Layer**: Infrastructure
+**Status**: production
+
 ## When to Use
 
-- Any Flutter app that communicates with a REST API
-- When you need token-based authentication with automatic refresh
-- When requests need retry logic, caching, or structured logging
-- When you want a single, injectable HTTP client across the app
+**Use this pattern for:**
+- ✅ Any Flutter app that communicates with a REST API
+- ✅ When you need token-based authentication with automatic refresh
+- ✅ When requests need retry logic, caching, or structured logging
+- ✅ When you want a single, injectable HTTP client across the app
 
-**Do NOT use** for GraphQL (use `graphql_flutter` or `ferry` instead) or for simple one-off HTTP calls in a prototype.
+**Do NOT use for:**
+- ❌ Talking to a GraphQL API — use `graphql_flutter` or `ferry`, which own their own client/cache lifecycle; wrapping GraphQL in Dio interceptors fights the tool
+- ❌ A one-off HTTP call in a throwaway prototype with no auth, retry, or reuse need — a bare `http` package call is enough; this pattern's overhead (5 interceptors, token storage) isn't worth it yet
 
 ---
 

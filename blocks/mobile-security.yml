@@ -1,0 +1,39 @@
+# Blok: mobile-security — bezpieczeństwo specyficzne dla aplikacji mobilnej.
+# Składalny: dokłada wzorce, hook higieny logów i etap analizy bezpieczeństwa do
+# dowolnego projektu mobilnego. Nie zakłada Clean Architecture ani konkretnego
+# frameworka stanu — działa obok `flutter` i `clean-arch`, ale ich nie wymaga.
+#
+# Czym różni się od generycznego przeglądu bezpieczeństwa: pilnuje rzeczy, które
+# istnieją TYLKO na urządzeniu użytkownika — sekrety w pamięci telefonu, log
+# systemowy czytelny po podpięciu kabla, pinning certyfikatu, wejście z deep
+# linka, oraz kontrakt Dart↔natywna (kanał bez natywnego handlera po cichu
+# raportuje „bezpiecznie").
+name: mobile-security
+requires: []
+
+patterns:
+  always:
+    - flutter/mobile-security-pattern.md
+  triggers:
+    - keywords: [token, sekret, secret, storage, keychain, keystore, biometr, biometric, session]
+      include:
+        - flutter/mobile-security-pattern.md
+    - keywords: [channel, natywna, native, platform channel, rasp, root, jailbreak, integrity]
+      include:
+        - flutter/platform-channel-pattern.md
+    - keywords: [deep link, deeplink, redirect, returnTo, url, routing]
+      include:
+        - flutter/mobile-security-pattern.md
+    - keywords: [cache, offline, hive, szyfrowanie, encryption]
+      include:
+        - flutter/offline-first-pattern.md
+
+overlay:
+  patterns: [flutter/]
+  hooks: [check-debugprint-guard]
+
+analyze:
+  panel:
+    - { stage: mobile-security-analysis, agent: "flutter-security-verifier",
+        when: "auth|token|sekret|secret|storage|biometr|pin|channel|native|deep link|redirect|cache|offline|pii",
+        advisory: true }

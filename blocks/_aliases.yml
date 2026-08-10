@@ -8,3 +8,4 @@
 aliases:
   ddd: [ddd/core, ddd/cqrs, ddd/events, ddd/acl]
   nestjs-ddd: [nestjs, ddd, kysely]
+  flutter-clean-arch: [flutter, clean-arch]

@@ -1,14 +1,20 @@
 # Riverpod State Management Pattern
 
+**Layer**: Cross-Layer
+**Status**: production
+
 ## When to Use
 
-- Any screen that manages mutable state beyond a single `setState` call
-- Async data fetching (API calls, database reads)
-- State shared across multiple widgets or screens
-- Complex form state with validation
-- When you need dependency injection without `BuildContext`
+**Use this pattern for:**
+- ✅ Any screen that manages mutable state beyond a single `setState` call
+- ✅ Async data fetching (API calls, database reads)
+- ✅ State shared across multiple widgets or screens
+- ✅ Complex form state with validation
+- ✅ When you need dependency injection without `BuildContext`
 
-**Do NOT use** for ephemeral UI state that lives and dies with a single widget (e.g., a toggle button). Use `useState` from `flutter_hooks` or plain `StatefulWidget`.
+**Do NOT use for:**
+- ❌ Ephemeral UI state that lives and dies with a single widget (e.g., a toggle button) — use `useState` from `flutter_hooks` or plain `StatefulWidget`
+- ❌ Defining the shape of the state itself (loading/success/error union) — that's `freezed-immutability-pattern`; Riverpod here only supplies the container/notifier, not the state's data modeling
 
 ---
 

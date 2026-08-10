@@ -1,13 +1,20 @@
 # Flutter Clean Architecture Pattern
 
+**Layer**: Architecture
+**Status**: production
+
 ## When to Use
 
-- Any Flutter feature that involves business logic, data fetching, or state management
-- When you need testable, maintainable feature modules with clear dependency boundaries
-- When multiple developers work on distinct features in parallel
-- When domain logic must remain portable (reusable across platforms or apps)
+**Use this pattern for:**
+- ✅ Any Flutter feature that involves business logic, data fetching, or state management
+- ✅ When you need testable, maintainable feature modules with clear dependency boundaries
+- ✅ When multiple developers work on distinct features in parallel
+- ✅ When domain logic must remain portable (reusable across platforms or apps)
 
-**Do NOT use** for trivial screens with zero business logic (e.g., static about pages). A flat widget file suffices there.
+**Do NOT use for:**
+- ❌ Trivial screens with zero business logic (e.g., static about pages) — a flat widget file suffices; full domain/data/presentation layering only adds ceremony
+- ❌ Choosing how to manage state within a screen that already sits inside this architecture — that's `riverpod-state-pattern`, not a replacement for the layering itself
+- ❌ Building a new design-system component in isolation — that's `component-creation-pattern` (6-gate checklist), which doesn't require full domain/data/presentation layering
 
 ---
 

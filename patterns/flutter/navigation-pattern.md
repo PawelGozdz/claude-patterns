@@ -1,14 +1,20 @@
 # GoRouter Navigation Pattern
 
+**Layer**: Cross-Layer
+**Status**: production
+
 ## When to Use
 
-- Any Flutter app with more than 2-3 screens
-- When you need authentication-based route guards (redirect unauthenticated users)
-- When you need deep linking (push notifications, shared URLs)
-- When you have a bottom navigation bar with nested navigation stacks
-- When route paths must be declarative and testable
+**Use this pattern for:**
+- ✅ Any Flutter app with more than 2-3 screens
+- ✅ When you need authentication-based route guards (redirect unauthenticated users)
+- ✅ When you need deep linking (push notifications, shared URLs)
+- ✅ When you have a bottom navigation bar with nested navigation stacks
+- ✅ When route paths must be declarative and testable
 
-**Do NOT use** for single-screen apps or simple `Navigator.push` flows with no auth guards.
+**Do NOT use for:**
+- ❌ Single-screen apps or apps with 2-3 screens and no auth guards — plain `Navigator.push`/`MaterialPageRoute` is enough; a declarative GoRouter route table is pure overhead here
+- ❌ Modeling the auth state itself (login/logout notifier, token refresh) — that's `dio-networking-pattern` (token storage/refresh) and `riverpod-state-pattern` (auth state); this pattern only consumes that state to decide redirects
 
 ---
 
