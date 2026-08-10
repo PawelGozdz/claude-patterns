@@ -3,7 +3,23 @@
 **Purpose**: Cross-bounded-context communication using real Project production patterns
 **Audience**: domain-application-implementer, infrastructure-testing-implementer
 **Philosophy**: Code + concise rules, NO verbose explanations
-**Reference**: ADR-0025 (Hybrid Event System - Tier 2), Real production code
+**Reference**: ADR-0025 (Hybrid Event System - Tier 2), **ADR-0082 (Outbox Classification
+Criteria)**, `transactional-outbox-pattern.md`
+
+> **Revised 2026-08-10 — the outbox is now the ONLY sanctioned transport.**
+> What changed: the former "Pattern 1 (RECOMMENDED)" and "Pattern 3 (SIMPLIFIED - MVP)" both
+> published via `eventDispatcher.dispatchEvent()`. Both are now documented as anti-patterns.
+> This doc previously contradicted ADR-0082 (which mandates the outbox for O-1/O-2) and the
+> `integration-event-fan-out-routing-contract` guardian (which treats a missing route as a bug);
+> three sources of truth gave three different answers, and that ambiguity is the root cause of
+> a 22-handler silent-loss finding (TS-INTEGRATION-EVENT-WIRING-AUDIT-001, 2026-08-09).
+>
+> **Known staleness, not yet fixed:** the long worked example below
+> (`ContextTrustDeltaIntegrationEvent`, BR-TRUST-DELTA-001, "Trust Delta Emission") is built on
+> the `trust` bounded context, which was **deleted** (TS-TRUST-BC-FULL-REMOVAL-001; replaced by
+> `reputation`, ADR-0094). The *mechanics* it illustrates — primitive-only payloads, GDPR
+> context, `fromPayload()` — remain correct; the domain it borrows is gone. Read it as a shape,
+> not as a live reference. Rewriting it onto a current domain is tracked separately.
 
 ---
 
@@ -448,32 +464,33 @@ export interface IntegrationEventMetadata {
 
 **CRITICAL**: Integration events are emitted by **HANDLERS or SERVICES**, NEVER by aggregates.
 
-### Pattern 1: Domain Event Handler → Integration Event (RECOMMENDED)
+### Pattern 1: Domain Event Handler → Outbox → Integration Event (CANONICAL)
 
-**When to use**: Complex flows, cross-context communication, async processing
+**When to use**: ALWAYS, for every cross-bounded-context integration event.
 
 **Flow**:
 ```
-Aggregate → Domain Event → Domain Event Handler → Integration Event → Cross-Context Handler
+Aggregate → Domain Event → Domain Event Handler → outbox row (SAME transaction)
+   → [COMMIT] → OutboxPoller → IntegrationEventFanOutService.fanOut()
+   → per-context queue → @Processor → commandBus
 ```
 
-**Example**: Trust Delta Emission
+**Example**: Job completion fan-out
 
 ```typescript
 // 1. Aggregate emits DOMAIN event
-export class CommentAggregate extends AggregateRoot<string> {
-  public moderate(decision: ModerationDecision): Result<void, Error> {
+export class JobRequestAggregate extends AggregateRoot<string> {
+  public complete(completedBy: ActorId): Result<void, Error> {
     // ... business logic ...
 
     // ✅ Emit DOMAIN event from aggregate
-    this.apply(new CommentModeratedEvent({
+    this.apply(new JobCompletedEvent({
       piiData: { /* ... */ },
       anonymizedData: { /* ... */ },
       businessData: {
-        commentId: this.id.value,
-        userId: this._userId.value,
-        moderationLevel: decision.level,
-        // ... other data
+        jobId: this.id.value,
+        requesterId: this._requesterId.value,
+        providerId: completedBy.value,
       },
       cryptoShredding: { /* ... */ }
     }));
@@ -482,35 +499,87 @@ export class CommentAggregate extends AggregateRoot<string> {
   }
 }
 
-// 2. Domain Event Handler emits INTEGRATION event
-@EventHandler(CommentModeratedEvent)
-export class EngagementTrustDeltaEmitterHandler {
+// 2. Domain Event Handler writes to OUTBOX — same transaction, zero external I/O
+@EventHandler(JobCompletedEvent)
+export class JobCompletedIntegrationEmitterHandler {
+  constructor(
+    @Inject(OUTBOX_SERVICE) private readonly outbox: IOutboxService
+  ) {}
+
+  async handle(event: JobCompletedEvent): Promise<void> {
+    const jobData: IntegrationEventJobData = {
+      eventName: JobCompletedIntegrationEvent.EVENT_NAME, // never a string literal
+      payload: {
+        jobId: event.getJobId(),
+        requesterId: event.getRequesterId(),
+        providerId: event.getProviderId(),
+      },
+      sourceContext: 'neighborhood-economy',
+      correlationId: event.metadata?.correlationId ?? event.eventId,
+      timestamp: new Date(),
+    };
+
+    // ✅ Outbox row commits atomically with the aggregate. The poller fans out AFTER commit.
+    await this.outbox.saveMessage(JobCompletedIntegrationEvent.EVENT_NAME, jobData);
+  }
+}
+```
+
+**Real example**: `src/contexts/neighborhood-economy/application/quick-jobs/event-handlers/job-completed-integration-emitter.handler.ts`
+
+**Every integration event published this way MUST have a matching `routingTable` entry
+AND a `case` in the target context's processor.** Missing either one is a silent-loss bug,
+not a cosmetic gap — see "Silent loss" below. The guardian test
+`integration-event-fan-out-routing-contract.spec.ts` enforces both directions.
+
+---
+
+### ❌ ANTI-PATTERN: `eventDispatcher.dispatchEvent()` for an integration event
+
+This was documented as "Pattern 1 RECOMMENDED" until 2026-08-10. It is now an anti-pattern.
+Direct in-process dispatch is what the outbox exists to replace.
+
+```typescript
+// ❌ WRONG — in-process, synchronous, no atomicity, no retry
+@EventHandler(SomeDomainEvent)
+export class SomeEmitterHandler {
   constructor(
     @Inject(UNIVERSAL_EVENT_DISPATCHER_TOKEN)
     private readonly eventDispatcher: IEventDispatcher
   ) {}
 
-  async handle(event: CommentModeratedEvent): Promise<void> {
-    // Calculate trust delta (business logic)
-    const delta = this.calculateTrustDelta(event);
-
-    // ✅ Emit INTEGRATION event from handler
-    const integrationEvent = new ContextTrustDeltaIntegrationEvent(
-      event.getUserId(),
-      'engagement', // source context
-      previousScore,
-      newScore,
-      delta,
-      'comment_moderated',
-      new Date()
-    );
-
-    await this.eventDispatcher.dispatchEvent(integrationEvent);
+  async handle(event: SomeDomainEvent): Promise<void> {
+    await this.eventDispatcher.dispatchEvent(new SomeIntegrationEvent(/* ... */));
   }
 }
 ```
 
-**Real example**: `src/contexts/engagement/application/event-handlers/engagement-trust-delta-emitter.handler.ts:256`
+**Why it is wrong** — the dispatcher resolves to ONE global `UnifiedEventBus` with no
+per-context isolation, and it does not distinguish domain from integration events. So the
+call *does* reach `@EventHandler`s in other bounded contexts, in-process and synchronously.
+It looks like it works. What you actually get:
+
+| | Outbox (Pattern 1) | `dispatchEvent` |
+|---|---|---|
+| Atomic with producer's write | yes — same transaction | no — shares caller's stack |
+| Retry / DLQ | yes (BullMQ) | no — one attempt |
+| Survives process restart | yes | no — dies with memory |
+| Consumer failure | job FAILED → retry | **swallowed in the producer's try/catch** |
+| Honors `requiresDeduplication` | yes | no |
+| Crosses process boundary (API ↔ worker) | yes | **no** |
+
+The last two rows are the ones that bite. A consumer that lives only in the worker process
+never sees an event dispatched from the API process — and the producer logs success.
+
+**Migrating an existing `dispatchEvent` call to the outbox is ATOMIC**: add the outbox write,
+add the `routingTable` entry, add the processor `case`, and DELETE the `dispatchEvent` call —
+all in one diff. Doing it in two steps causes **double processing**, because processors call
+`commandBus` directly, bypassing the dispatcher entirely. Precedent: TS-ACL-001 (UNIQUE
+violation from a duplicated role grant). Introduce consumer idempotency BEFORE the switch.
+
+Adding only the `routingTable` entry and `case` — without touching the producer — is worse
+than doing nothing: the guardian goes green, behavior is unchanged, and an armed dead `case`
+sits there waiting for whoever adds the outbox write months later.
 
 ---
 
@@ -576,50 +645,36 @@ export class ModerateCommentHandler extends BaseModerateContentHandler<CommentCr
 
 ---
 
-### Pattern 3: Command Handler → Integration Event (SIMPLIFIED - MVP)
+### ❌ ANTI-PATTERN: Command Handler emits the integration event directly
 
-**When to use**: Simple 1:1 mappings, MVP velocity, no intermediate transformation
-
-**Flow**:
-```
-Command Handler → Integration Event → Cross-Context Handler
-```
-
-**Example**: Email Verification
+Documented as "Pattern 3 (SIMPLIFIED - MVP)" until 2026-08-10. Removed — it has the dual-write
+bug by construction.
 
 ```typescript
+// ❌ WRONG
 @CommandHandler(VerifyEmailCommand)
 export class VerifyEmailHandler extends BaseCommandHandler {
-  constructor(
-    private readonly userRepository: IUserRepository,
-    @Inject(UNIVERSAL_EVENT_DISPATCHER_TOKEN)
-    private readonly eventDispatcher: IEventDispatcher
-  ) {}
-
   async executeBusinessLogic(command: VerifyEmailCommand): Promise<Result<void, Error>> {
-    // 1. Domain logic
     const user = await this.userRepository.findById(command.userId);
     const verifyResult = user.verifyEmail(command.token);
     if (verifyResult.isFailure) return Result.fail(verifyResult.error);
 
-    // 2. Save aggregate (domain events auto-emitted)
     await this.userRepository.save(user);
 
-    // 3. ✅ Emit INTEGRATION event directly from handler
-    const integrationEvent = new EmailVerifiedIntegrationEvent(
-      command.userId,
-      user.getEmail().value,
-      'email_link',
-      new Date()
-    );
-    await this.eventDispatcher.dispatchEvent(integrationEvent);
+    // ❌ A crash between the COMMIT above and this line loses the event forever.
+    await this.eventDispatcher.dispatchEvent(new EmailVerifiedIntegrationEvent(/* ... */));
 
     return Result.ok(undefined);
   }
 }
 ```
 
-**Note**: This pattern is simpler but less common in current codebase. Use Pattern 1 for consistency.
+The command handler runs `@Transactional`; publishing after `save()` puts the publish OUTSIDE
+the aggregate's atomicity. That is precisely the dual-write problem. The integration event
+belongs in a **domain event handler writing to the outbox** (Pattern 1) — the domain event is
+already emitted by the aggregate inside the transaction, so the outbox row commits with it.
+
+See `transactional-outbox-pattern.md` rules OB1–OB5.
 
 ---
 
@@ -954,9 +1009,34 @@ await this.fanOutService.fanOut(jobData);
 1. **NEVER use `eventDispatcher`** — call `commandBus.execute()` directly
 2. **Switch on `eventName`** — each processor handles all events for its context
 3. **`default:` case must NOT throw** — unknown events logged and skipped
-4. **JobId = `{eventName}:{correlationId}:{contextName}`** — idempotency via BullMQ deduplication
+4. **JobId = `{outboxMessageId}_{contextName}`** (fallback `{eventName}_{correlationId}_{contextName}`)
+   — idempotency via BullMQ deduplication. Separator is `_`, **not** `:` — BullMQ ≥5 rejects
+   `:` in custom job IDs (reserved for internal Redis keys).
 5. **Retry config**: `attempts: 5`, `backoff: { type: 'exponential', delay: 2000 }`, `removeOnFail: 200`
-6. **500ms delay** preserved — add `await new Promise(r => setTimeout(r, 500))` before processing in each processor (same FK-commit-wait rationale as old processor)
+6. **Consumers must be idempotent** — the outbox is at-least-once (OB4). Never assume exactly-once.
+
+> **The `500ms`/`200ms` commit-wait delay is obsolete.** It was a timing workaround for the
+> dual-write race, not atomicity. The outbox poller only reads rows that already committed,
+> so the race it papered over cannot occur. Do not add it to new processors.
+
+### Silent loss — the failure mode this pattern exists to prevent
+
+`fanOut()` resolves `this.routingTable[eventName] ?? []`. For an event with **no routing entry**
+that is an empty array: `Promise.allSettled([])` resolves, `failureCount === 0`, the
+"all queues failed" throw condition is false, and the poller marks the outbox row `PROCESSED`.
+
+**No queue, no error, no trace — and an audit trail that claims delivery.** For an O-1 event
+(ADR-0082: loss = irreversible GDPR violation) that outbox row is worse than no record at all,
+because it misleads anyone answering a regulator.
+
+Two consequences for anyone touching this pattern:
+
+- Publishing an integration event is a **three-part change**: producer writes to outbox,
+  `routingTable` gains an entry, target processor gains a `case`. One without the others is dead code.
+- A queue with routing entries but **no `@Processor`** is the same bug one layer out — jobs pile
+  up in Redis in `waiting` forever. BullMQ retention (`removeOnComplete`/`removeOnFail`) does
+  **not** touch `waiting` jobs, so any PII in those payloads is retained indefinitely. Deleting a
+  bounded context means deleting its routing entries and queue registration in the same change.
 
 ### Routing Table (canonical — TS-INFRA-002)
 
@@ -968,27 +1048,57 @@ SINGLE source of truth for routing — `targetContexts` field in job data is dep
 
 ## Decision Tree: When to Use Integration Events
 
+### Step 1 — Is an integration event the right construct?
+
 ```
-Is this event for cross-bounded-context communication?
-├─ YES → Does it involve trust score synchronization?
-│         ├─ YES → ContextTrustDeltaIntegrationEvent
-│         │         - Dual threshold: |delta| >= 10 OR days >= 7
-│         │         - GDPR: containsPII=false, legalBasis=legitimate_interest
-│         │         - Primitive types only
-│         │
-│         └─ NO → Does it require GDPR/Security context?
-│                  ├─ YES → Create new ProjectIntegrationEvent subclass
-│                  │         - Follow ContextTrustDelta pattern
-│                  │         - Define GDPR and security contexts
-│                  │         - Use primitive types
-│                  │
-│                  └─ NO → Use simple integration event (if no compliance needs)
+Is this event crossing a bounded-context boundary?
+├─ YES → Do I need a RESULT synchronously to continue?
+│         ├─ YES → NOT an event. Use the ACL Registry (see acl-vs-domain-events.md).
+│         └─ NO  → Integration event. Continue to Step 2.
 │
 └─ NO → Is this a domain state change?
-         ├─ YES → Domain Event (Aggregate.apply())
-         │         - See domain-event-pattern.md
-         │
-         └─ NO → System Event (technical, not business)
+         ├─ YES → Domain Event (Aggregate.apply()) — see domain-event-pattern.md
+         └─ NO  → System Event (technical, not business)
+```
+
+**A context consuming its OWN integration event is a modeling error.** Integration events pay
+the cost of primitive-only payloads and GDPR/security metadata precisely because they cross
+context boundaries. Same-context reaction belongs in a domain event.
+
+### Step 2 — Transport: there is only one
+
+```
+Publishing a cross-context integration event?
+└─ ALWAYS: domain event handler → outbox.saveMessage() → poller → fanOut → queue → processor
+
+   eventDispatcher.dispatchEvent()  → ❌ anti-pattern (see above)
+   fanOut() straight from a handler → ❌ crash window, no atomicity
+   command handler publishes         → ❌ dual-write, publish sits outside the transaction
+```
+
+Delivery criticality still matters for **review depth and alerting**, not for choosing a
+transport. ADR-0082 tiers:
+
+| Tier | Meaning | Example |
+|---|---|---|
+| **O-1** | Loss = GDPR/legal/irreversible violation | `UserDeleted`, `UserAnonymizationCompleted` |
+| **O-2** | Loss = observable revenue/feature degradation | `PaymentCompleted` |
+| **O-3** | Loss visible but self-healing | `EmailChanged`, `RoleChanged` |
+| **O-4** | Loss invisible or auto-corrected | feed rebuild triggers |
+
+O-1/O-2 additionally require an L2 test proving delivery along the **real** path
+(outbox → poller → fanOut → processor). A test that mocks the repository or hand-builds
+`job.data` proves nothing — three independent silent-loss bugs shipped past fully green
+mocked suites before this rule existed.
+
+### Step 3 — Shape of the event
+
+```
+Does the payload carry PII or need a documented legal basis?
+├─ YES → Subclass ProjectIntegrationEvent with full GDPR + security context
+│         - containsPII, legalBasis, retentionPeriod, processingPurpose
+│         - primitive types ONLY (no shared domain objects across contexts)
+└─ NO  → Subclass ProjectIntegrationEvent, minimal metadata, still primitives only
 ```
 
 ---
