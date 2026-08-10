@@ -10,6 +10,14 @@ project:
   # Available: nestjs-ddd, flutter-clean-arch, python (or omit for generic)
   stack_profile: nestjs-ddd
 
+  # ALTERNATYWA (ADR 0008, pilot TASK-BLOCKS-001): kompozycja bloków zamiast
+  # monolitycznego profilu. Lista MUSI być INLINE (yml_get/grep w setup-project.sh
+  # nie czyta list blokowych — jak przy `broadcast:` niżej). Aliasy rozwija
+  # blocks/_aliases.yml (np. `ddd` = ddd/core+cqrs+events+acl; `nestjs-ddd` =
+  # nestjs+ddd+kysely). Prefiks `./` = blok lokalny z .claude/blocks/<nazwa>.yml.
+  # Obecność pola włącza materializację .claude/config/runtime.yml (sekcja 5a).
+  # stack_blocks: [nestjs, ddd, kysely]
+
   # Language determines which rules/{language}/ to apply
   # Available: typescript, python, dart (or omit for common only)
   language: typescript

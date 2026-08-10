@@ -577,6 +577,19 @@ else
 fi
 echo ""
 
+# --- 5a. Stack blocks → runtime.yml (ADR 0008, pilot TASK-BLOCKS-001) ---
+# Obecność `project.stack_blocks` (lista INLINE) włącza materializację. Sklejanie
+# robi deterministyczny node (nie bash) — patrz scripts/materialize-runtime.mjs.
+if grep -qE '^  stack_blocks:' "$PROJECT_YML" 2>/dev/null; then
+  echo -e "${BLUE}[5a] Stack blocks → runtime.yml (ADR 0008)${NC}"
+  if node "$PATTERNS_REPO/scripts/materialize-runtime.mjs" "$PROJECT_DIR" "$PATTERNS_REPO"; then
+    echo -e "  ${GREEN}Materialized:${NC} .claude/config/runtime.yml"
+  else
+    echo -e "  ${YELLOW}FAILED:${NC} materializacja runtime.yml — popraw project.yml/bloki i uruchom ponownie"
+  fi
+  echo ""
+fi
+
 # --- 5b. Universal SH hooks (symlinked from claude-patterns/hooks/) ---
 echo -e "${BLUE}[5b/8] Universal SH hooks${NC} (symlinked, kept out of git)"
 SH_HOOKS_DIR="$PROJECT_DIR/.claude/hooks"
