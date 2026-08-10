@@ -99,6 +99,28 @@ komendy nigdy nie przestały działać.
       komendy przekazują je w wywołaniach.
 - [ ] Spot-check: zapytanie z projektu na TypeORM nie zwraca w top-N wzorców Kysely.
 
+### F5b — Canon awareness (decyzja 2026-08-10, po pilocie F4)
+
+Intencja człowieka: agenci analizy ORAZ implementacji mają mieć kanon projektu
+(docs/product, docs/strategy, docs/business, BUSINESS_RULES.yaml, ...) „z tyłu
+głowy" — wyłapywać odstępstwa i ESKALOWAĆ, nie decydować samowolnie.
+
+- [ ] Schemat: opcjonalna sekcja `canon:` w blokach i project.yml (ścieżki +
+      `when:` jak przy panelach — np. docs/business/ doczytywany tylko przy
+      taskach pricing/monetization); materializer przepuszcza do runtime.yml.
+- [ ] `/analyze`: streszczenie trafionego kanonu wstrzykiwane do panelu;
+      synteza ma obowiązek porównać rekomendacje z kanonem — każde odstępstwo
+      = BLOKUJĄCE `open_question` z cytatem źródła kanonu (nie cicha zgoda,
+      nie cicha odmowa).
+- [ ] `/orchestrate-blocks`: verifier w inner_loop dostaje digest kanonu;
+      odstępstwo w kodzie = violation z odesłaniem do kanonu → fix albo
+      ESCALATE_AND_HALT (agent nie rozstrzyga konfliktu z kanonem — człowiek).
+- [ ] Higiena tokenów: kanon wchodzi jako STRESZCZENIE trafionych sekcji
+      (trigger-scoped), nigdy całe pliki; ta sama zasada co Rule Cards.
+- [ ] Granica z CLAUDE.md („impl skills do NOT consult business strategists")
+      do zrewidowania: canon-check to weryfikacja zgodności, nie konsultacja
+      strategiczna — doprecyzować rozróżnienie w CLAUDE.md przy wdrożeniu.
+
 ### F6 — Migracja całości (osobna decyzja człowieka)
 
 - [ ] Aliasy pozostałych 5 profili; test równoważności per profil.
