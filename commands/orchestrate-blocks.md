@@ -80,6 +80,26 @@ Zasady promptów (hardening przeniesiony z /orchestrate-ddd — incydenty
 - Implementerzy dostają: spec + `decisions[]` z artefaktu + Rule Cards +
   Codebase Facts (RAG, jeśli dostępny). Verify zwraca `{verdict, violations[]}`.
 
+## 2b. Higiena kontekstu i awarie workflow (jakość > oszczędzanie)
+
+- **NIE startuj Workflow z sesji bliskiej limitu kontekstu.** Subagenci dostają
+  świeże konteksty, ale orchestrator musi mieć zapas na fix-loop, final gate
+  i raport — „będę zwięzły" w roli koordynatora to utrata jakości. Jeśli sesja
+  pokazuje ostrzeżenia o kontekście: ZATRZYMAJ SIĘ PRZED uruchomieniem Workflow
+  i wypisz „⚠ Kontekst na wyczerpaniu — otwórz świeżą sesję i odpal
+  /orchestrate-blocks {TASK-ID}; checkpoint layers_done sprawia, że wznowienie
+  jest prawie darmowe." Lepiej stracić minutę na restart niż przebieg na
+  zduszonym koordynatorze.
+- **Budżety to bezpieczniki, nie sufit ambicji**: miękki limit ratuje częściowy
+  output, twardy chroni przed klifem bez raportu. NIE zaciskaj domyślnych, żeby
+  „oszczędzać" — gdy task realnie potrzebuje więcej, podnieś `budgets:`
+  w project.yml (nadpisuje bloki bez ograniczeń, OQ3).
+- **Po awarii workflow (✘ Failed): diagnoza przed re-runem.** Przeczytaj
+  `<transcriptDir>/journal.jsonl` (realne zwroty agentów — nie zgaduj przyczyny),
+  popraw skrypt/prompt i wznów `Workflow({scriptPath, resumeFromRunId})` —
+  ukończone wywołania wracają z cache, nie płacisz za nie drugi raz. Nigdy nie
+  odpalaj od zera bez diagnozy.
+
 ## 3. Bramka końcowa i wyjście
 
 - `orchestrate.final_gate` z runtime.yml (dla ddd: `security-e2e-verifier`);
