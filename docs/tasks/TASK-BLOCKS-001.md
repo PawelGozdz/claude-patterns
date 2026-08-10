@@ -68,7 +68,12 @@ Jeden `/analyze` i jeden `/orchestrate` sterowane kompozycją bloków z `project
 
 ### F4 — Pilot na juz-ide-api-4 (właściwy test)
 
-- [ ] `project.yml` api-4: `stack_blocks: [nestjs, ddd, kysely]` + setup → runtime.yml.
+- [x] `project.yml` api-4: `stack_blocks: [nestjs, ddd, kysely]` + materializacja →
+      runtime.yml (2026-08-10, hash 82066e1e252a — identyczny z testem w repo).
+      UWAGA: project.yml api-4 jest śledzony gitem i WSPÓLNY dla bliźniaków
+      (api-1..4) — NIE commitować zmiany w czasie pilota, bo stack_blocks
+      rozpropaguje się na pozostałe instancje. runtime.yml nieśledzony
+      (rozważ wpis w .gitignore repo juz-ide-api).
 - [ ] **2-3 realne taski** pełnym cyklem `/analyze` → approval → `/orchestrate`.
 - [ ] Obserwacje do zebrania: trafność doboru panelu (aktywacje `when:`), zachowanie
       budżetów (czy miękki limit ratuje output przed klifem), koszt vs stara bramka,
