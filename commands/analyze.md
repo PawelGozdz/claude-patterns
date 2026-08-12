@@ -8,8 +8,8 @@ description: |
   blok ddd/core). NIGDY nie implementuje.
 
   Usage: /analyze <TASK-ID>
-tools: Task, Read, Write
-disallowedTools: Edit, MultiEdit, Bash, Grep, Glob, NotebookEdit
+tools: Task, Read, Write, Grep, Glob, Bash
+disallowedTools: Edit, MultiEdit, NotebookEdit
 ---
 
 # /analyze — research sterowany runtime.yml (silnik szkielet+sloty)
@@ -18,6 +18,20 @@ disallowedTools: Edit, MultiEdit, Bash, Grep, Glob, NotebookEdit
 `project-orchestration/analysis/{TASK-ID}.analysis.md` (+ warunkowo threat-model
 przez stage). Silnik nie zna żadnego stacku — wszystko, co stackowe, przychodzi
 z `runtime.yml`.
+
+**Zakres narzędzi (zmiana 2026-08-12).** `Grep`/`Glob` były wcześniej zabronione, żeby
+wymusić delegowanie wyszukiwania do tanich agentów. W praktyce dawało to odwrotny skutek:
+komenda nie umiała znaleźć pliku taska, delegowała discovery, a subagent bez tych narzędzi
+zgadywał ścieżki plików — jeden taki przebieg spalił 219k tokenów na serię „File does not
+exist". Dlatego:
+
+- `Grep`/`Glob` — do **celowanego** szukania (znajdź plik taska, sprawdź, czy symbol
+  istnieje). Szerokie przeczesywanie repo nadal deleguj do Explore — ale delegowanie
+  ma być decyzją o koszcie, nie skutkiem braku narzędzia.
+- `Bash` — **wyłącznie** do rzeczy deterministycznych i tylko-do-odczytu: uruchomienie
+  `index-decisions.mjs` (krok 0.8), `git log`/`git status`. Żadnych zapisów, żadnych
+  instalacji, żadnego uruchamiania testów — od tego jest `/orchestrate`.
+- `Edit`/`MultiEdit` pozostają zabronione: analiza nie dotyka kodu ani cudzych dokumentów.
 
 ## 0. Bramka wejścia (twarda)
 
