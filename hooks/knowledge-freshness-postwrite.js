@@ -64,7 +64,8 @@ process.stdin.on("end", () => {
     let depth = 0;
     let projectDir = null;
     while (dir !== root && depth < 20) {
-      if (fs.existsSync(path.join(dir, ".claude", "config", "knowledge.json"))) {
+      if (fs.existsSync(path.join(dir, ".claude", "config", "runtime.yml")) ||
+          fs.existsSync(path.join(dir, ".claude", "config", "knowledge.json"))) {
         projectDir = dir;
         break;
       }
@@ -77,10 +78,19 @@ process.stdin.on("end", () => {
       return;
     }
 
-    const cfg = JSON.parse(
-      fs.readFileSync(path.join(projectDir, ".claude", "config", "knowledge.json"), "utf8")
-    );
-    const collection = cfg.collection;
+    // Źródłem jest runtime.yml (single source of truth po ADR 0008); knowledge.json
+    // zostaje jako fallback dla repozytoriów jeszcze niezmigrowanych na bloki.
+    // Odczyt regexem, nie parserem YAML — hook ma być bezzależnościowy i nigdy nie blokować.
+    let collection = null;
+    const runtimePath = path.join(projectDir, ".claude", "config", "runtime.yml");
+    if (fs.existsSync(runtimePath)) {
+      const m = fs.readFileSync(runtimePath, "utf8").match(/^knowledge:\s*\n\s+collection:\s*"?([\w.-]+)"?/m);
+      if (m) collection = m[1];
+    }
+    if (!collection) {
+      const legacy = path.join(projectDir, ".claude", "config", "knowledge.json");
+      if (fs.existsSync(legacy)) collection = JSON.parse(fs.readFileSync(legacy, "utf8")).collection;
+    }
     const watchDirs = Array.isArray(cfg.watchDirs) ? cfg.watchDirs : [];
     const relFromProject = path.relative(projectDir, resolvedPath);
     const watched = watchDirs.some(

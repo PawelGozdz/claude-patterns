@@ -1,0 +1,64 @@
+# Taksonomia tagów — jeden słownik dla wzorców, ADR-ów/BDR, warstw i bloków.
+#
+# Po co jeden: dziś „co dotyczy tego taska" rozstrzygają trzy niezależne heurystyki
+# (słowa kluczowe w `patterns.triggers`, tytuły plików ADR, nazwy warstw). Wspólny
+# słownik zamienia je w jedno dopasowanie — i dopiero on pozwala zawęzić 116 ADR-ów
+# do kilku bez czytania tytułów, a wzorce dobierać po temacie zamiast po ścieżce.
+#
+# KONWENCJA: <stack>:<obszar>[:<wariant>] — zawsze w tej kolejności, zawsze w cudzysłowie
+# w YAML-u (`id: "api:tests"`), bo dwukropek bez cudzysłowu bywa czytany jako klucz.
+#
+# DWA POZIOMY WŁASNOŚCI — jak przy blokach (centralne + `./lokalne`):
+#   ten plik                       → RDZEŃ: słownictwo wspólne dla wszystkich projektów.
+#   <projekt>/.claude/taxonomy.yml → ROZSZERZENIE: obszary domenowe tego projektu
+#                                     (juz-ide: moderation, reputation; sklep: catalog, cart).
+# Rozszerzenie może tylko DODAWAĆ. Nie wolno mu przedefiniować pozycji z rdzenia —
+# gdyby projekt nadał własne znaczenie `auth`, wspólny język przestałby być wspólny,
+# a to on jest jedynym powodem, dla którego ten plik istnieje.
+#
+# KIEDY obszar awansuje z projektowego do rdzenia: gdy użyje go DRUGI projekt.
+# Ta sama reguła co przy promocji wzorców — jedno użycie to jeszcze nie uniwersalność.
+#
+# WALIDACJA: poziomy 1 i 2 są ZAMKNIĘTE — nieznana wartość to błąd, nie nowy tag.
+# Poziom 3 jest otwarty (kebab-case), ale linter wypisuje nowe warianty, żeby wyłapać
+# `jwt` obok `json-web-token`. Rozszerzanie słownika to świadoma edycja tego pliku,
+# nie efekt uboczny literówki — inaczej po roku mamy `api:auth:jwt`, `auth:jwt`
+# i `api:jwt:auth` obok siebie, znaczące to samo.
+
+# Poziom 1 — GDZIE to żyje. Nie równa się nazwie bloku: `nestjs` i `node` to oba `api`.
+stacks:
+  - any          # niezależne od platformy (proces, konwencje, guardy spójności)
+  - api          # backend HTTP/usługa serwerowa
+  - mobile       # aplikacja mobilna (Flutter)
+  - web          # frontend przeglądarkowy (Next.js, SvelteKit)
+  - lib          # publikowana biblioteka
+  - data         # pipeline'y, ETL, ML
+  - infra        # wdrożenie, konteneryzacja, CI
+
+# Poziom 2 — CZEGO dotyczy. Lista zamknięta; rośnie przez edycję tego pliku.
+areas:
+  - auth         # uwierzytelnianie, sesje, tokeny
+  - authz        # uprawnienia, role, polityki dostępu
+  - domain       # model domenowy: agregaty, VO, zdarzenia
+  - app          # warstwa aplikacji: handlery, serwisy, przypadki użycia
+  - data-access  # repozytoria, zapytania, migracje, schemat
+  - events       # zdarzenia domenowe i integracyjne, outbox, kolejki
+  - geo          # przestrzeń, PostGIS, zasięgi, promienie
+  - api-surface  # publiczne API: kontrakty HTTP, eksporty pakietu, semver
+  - ui           # widoki, komponenty, nawigacja, dostępność
+  - tests        # testy wszystkich poziomów
+  - security     # bezpieczeństwo: walidacja wejścia, limity, PII
+  - observability # logi, metryki, korelacja, audyt
+  - build        # kompilacja, bundling, publikacja
+  - economy      # płatności, cennik, rozliczenia, salda
+  - platform     # wybór frameworka, runtime, języka, biblioteki bazowej
+  - process      # proces wytwarzania: bramki, przeglądy, rejestr decyzji
+
+# Poziom 3 — wariant. OTWARTY, kebab-case. Poniżej te już używane, żeby nie mnożyć
+# synonimów; linter zgłasza każdy nowy wariant jako informację, nie błąd.
+variants_seen:
+  auth: [jwt, session, oauth, refresh]
+  tests: [unit, integration, e2e, contract, load]
+  data-access: [migration, transaction, outbox]
+  geo: [radius, teryt, polygon, discovery]
+  api-surface: [semver, deprecation, barrel]

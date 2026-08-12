@@ -3,6 +3,7 @@
 # Rdzeń cross-layer identyczny z blokiem nestjs (wzorce są stack-agnostyczne);
 # przyszły refaktor: nestjs `requires: [node]` zamiast duplikacji tych 4 pozycji.
 name: node
+axis: framework
 requires: []
 
 requires_ecc:
@@ -29,3 +30,6 @@ analyze:
         output: "docs/security/threat-models/TM-{TASK_ID}.md", skip_if_exists: true }
     - { stage: tech-analysis, agent: "ecc:architect" }
     - { stage: tech-analysis-specialist, agent: "backend-technology-expert" }
+
+overlay:
+  hooks: [check-security-considerations, check-context-isolation]

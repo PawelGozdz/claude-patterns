@@ -1,0 +1,36 @@
+# Blok: nx-monorepo — oś architektury: wiele pakietów w jednym repo Nx, z grafem
+# zależności egzekwowanym po tagach. Składalny z `ts-library` (biblioteka publikowana
+# z monorepo) albo z `node`/`nestjs` (monorepo aplikacyjne). Nie wnosi warstw
+# orchestracji — tę rolę ma oś frameworka.
+#
+# ZASADA (audyt vytches-ddd 2026-08-10): `@nx/enforce-module-boundaries` jest w tym stacku
+# regułą ESLint o poziomie `error` i sprawdza ZGODNOŚĆ importów z już zdefiniowanym grafem
+# `depConstraints` — deterministycznie, przy każdym lincie. Nie dublujemy tego agentem.
+# Poza zasięgiem lintu zostaje jedno pytanie: czy sam graf ma sens dziedzinowy — czy nowy
+# pakiet powinien istnieć jako osobna jednostka i czy tag jest właściwie przypisany.
+# Tylko na to odpowiada etap panelu, i tylko gdy `when:` faktycznie trafi.
+name: nx-monorepo
+# Oś architektury, ale bez `layers` — kształt grafu pakietów to co innego niż organizacja
+# pracy wewnątrz pakietu. Warstwy wnosi `library-layers` (albo inny blok tej osi).
+axis: architecture
+requires: []
+
+# Bez `triggers` celowo: jedyny wzorzec tego bloku jest już w `always`, więc trigger
+# na te same słowa nie dołożyłby niczego poza szumem w runtime.yml.
+patterns:
+  always:
+    - typescript-library/package-boundary-pattern.md
+
+overlay:
+  patterns: [typescript-library/]
+
+analyze:
+  panel:
+    # Wąski `when:` jest tu celowy — etap ma się NIE odpalać przy zwykłej zmianie wewnątrz
+    # istniejącego pakietu. Wtedy granice są sprawą lintu, nie panelu.
+    - { stage: boundary-analysis, agent: "ecc:architect",
+        when: "nowy pakiet|new package|granic|boundary|tag |scope:|cykl|circular|przenieś|przenosz|wydziel|extract",
+        advisory: true }
+
+budgets:
+  boundary-analysis: { max_tool_calls: 15, on_limit: emit-partial }

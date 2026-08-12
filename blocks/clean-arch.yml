@@ -10,6 +10,7 @@
 # orkiestracja wielu repozytoriów, złożona walidacja niezależna od UI) — decyzja per-task,
 # zapisywana w decisions[] zatwierdzonego artefaktu analizy.
 name: clean-arch
+axis: architecture
 requires: []
 
 patterns:

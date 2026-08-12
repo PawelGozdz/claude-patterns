@@ -52,11 +52,11 @@ Your `tools:`/`disallowedTools:` frontmatter deliberately excludes `Task`, `Grep
 even though other panel agents get them — see `presets/nestjs-ddd.yml` comment on the
 `tech-analysis-specialist` stage: this was the fix for a real delegation-loop incident, Q8 in
 `docs/tasks/TASK-RAG-002.analysis.md`). Consequence: **you cannot call any other agent, and you
-cannot Glob/Grep the codebase yourself** — not just when running inside `/analyze-ddd`'s panel, but
+cannot Glob/Grep the codebase yourself** — not just when running inside `/analyze`'s panel, but
 in every invocation.
 
 Every "consult @X" / "use @codebase-explorer to find Y" instruction below describes what the
-**caller** (usually `@project-orchestrator` or the `/analyze-ddd` panel driver) should do on your
+**caller** (usually `@project-orchestrator` or the `/analyze` panel driver) should do on your
 behalf, not something you invoke yourself. Practically: write it into your report as a request
 ("needs: existing caching implementation, business validation from @product-owner") and stop there.
 Do not guess file paths, do not invent findings to fill the gap — an incomplete-but-honest report is

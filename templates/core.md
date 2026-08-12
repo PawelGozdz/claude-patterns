@@ -15,6 +15,7 @@
 
 | Command | Purpose |
 |---------|---------|
+| `%%CMD_ANALYZE%%` | Analyse a task first (research → open questions → approval) |
 | `%%CMD_ORCHESTRATE%%` | Orchestrate tasks (delegate to agents) |
 | `%%CMD_SCAFFOLD%%` | Generate boilerplate (Haiku, 60x cheaper) |
 | `%%CMD_PROGRESS%%` | Show progress, status, next action |
@@ -39,6 +40,7 @@
 
 ---
 
+%%TAXONOMY%%
 ## Bounded Contexts
 
 %%CONTEXTS_TABLE%%

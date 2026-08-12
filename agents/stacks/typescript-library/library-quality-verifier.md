@@ -24,6 +24,27 @@ skills:
 
 ---
 
+## Step 0 — Run the repo's own gates FIRST (before reading any code)
+
+The orchestrator hands you `{CHECKS}` — the union of `checks:` from every layer that ran
+(from `orchestrate.layers` in `runtime.yml`). Run them with Bash **before** the checklists
+below. A failing script settles the verdict in one command; reading code to guess at the
+same answer costs far more and is less reliable.
+
+- Judge on the **exit code (`$?`), never on the output text.** A script can print a red
+  report and still exit 0. Two real cases in vytches-ddd: `validate:bundles`, `quality:bundle`
+  and `quality` call `process.exit` only under a `--ci` flag they never pass; `test:consumer`
+  targets a non-existent directory with `--passWithNoTests`. If a check exits 0 while its
+  output clearly reports failures, that is itself a finding — report it as
+  `gate_not_a_gate: <script>` so someone fixes the script.
+- Script missing from `package.json` → **skip it and say so** in the verdict
+  (`skipped_checks: [test:contracts — no such script]`). A missing gate must never read as
+  a passing gate.
+- Any non-zero exit → **VETO immediately**, `violations[]` = the script's output. Do not
+  continue to the manual checklists; the fix loop needs the failure, not your analysis of it.
+- All checks green → they already cover build, types and tests. Spend the remaining turns on
+  what no script can answer: the API-surface and backward-compatibility judgment below.
+
 ## Verification Gates
 
 ### Public API Integrity
@@ -77,10 +98,14 @@ skills:
 The orchestrator hands this agent a scoped `{PATTERNS}` list — treat as MUST-read.
 
 ### TypeScript library patterns
-- `.claude/knowledge/patterns/typescript-library/public-api.md` (if present — barrel files, export discipline)
-- `.claude/knowledge/patterns/typescript-library/backward-compatibility.md` (if present — semver, deprecation)
-- `.claude/knowledge/patterns/typescript-library/type-safety.md` (if present — no `any` in public API)
-- `.claude/knowledge/patterns/typescript-library/build-output.md` (if present — ESM + CJS, `.d.ts`)
+Read the `*_summary.md` rule card first — it carries the enforceable rule IDs you must
+cite when you veto. The full pattern next to it is background, not the checklist.
+
+- `.claude/knowledge/patterns/typescript-library/public-api-pattern_summary.md` — barrel files, export discipline (rules `PA*`)
+- `.claude/knowledge/patterns/typescript-library/backward-compatibility-pattern_summary.md` — semver, deprecation (rules `BC*`)
+- `.claude/knowledge/patterns/typescript-library/build-publish-pattern_summary.md` — ESM + CJS, `exports`, `.d.ts`, peer deps (rules `BP*`)
+- `.claude/knowledge/patterns/typescript-library/library-testing-pattern_summary.md` — contract tests, packed-artifact tests (rules `LT*`)
+- `.claude/knowledge/patterns/typescript-library/package-boundary-pattern_summary.md` — package graph, Nx tags (rules `PB*`) — monorepo only
 
 ### Testing
 - `.claude/knowledge/patterns/testing/testing-pyramid-pattern.md`

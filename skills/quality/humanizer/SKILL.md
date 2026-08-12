@@ -1,6 +1,6 @@
 ---
 name: humanizer
-description: "Final-pass edit that strips AI-writing tells from prose a HUMAN will read — /analyze-ddd 'Otwarte pytania'/synteza sections, ADR body, task Goal/Findings-summary, README/docs prose. Never touches YAML frontmatter, code, or machine-parsed fields. Use when finishing any human-facing write, or when asked to 'humanize this', 'make it sound less AI-written', 'this reads robotic', 'polish for a human reader'."
+description: "Final-pass edit that strips AI-writing tells from prose a HUMAN will read — /analyze 'Otwarte pytania'/synteza sections, ADR body, task Goal/Findings-summary, README/docs prose. Never touches YAML frontmatter, code, or machine-parsed fields. Use when finishing any human-facing write, or when asked to 'humanize this', 'make it sound less AI-written', 'this reads robotic', 'polish for a human reader'."
 origin: "Local reimplementation, not a vendor of blader/humanizer (MIT) — `npx skills add blader/humanizer --global` was flagged high-risk by Snyk (the installer/supply-chain path, not the skill content itself), so this recreates the same idea as a plain-Markdown skill native to this repo. Pattern catalog cross-references skills/marketing/seo-audit/references/ai-writing-detection.md (already vendored here) instead of duplicating it."
 allowed-tools: Read, Edit
 effort: low
@@ -18,7 +18,7 @@ softening or inventing anything.
 ## When to Use
 
 **Use this pass for:**
-- ✅ `/analyze-ddd` artifact prose — `## Synteza`, `## Otwarte pytania`, `## Decyzje (proponowane)`,
+- ✅ `/analyze` artifact prose — `## Synteza`, `## Otwarte pytania`, `## Decyzje (proponowane)`,
   `## Ryzyka / uwagi`. Human reads these to decide whether to approve the analysis.
 - ✅ ADR body — Context / Options Considered / Decision / Consequences.
 - ✅ Task files — `## 🎯 Goal`, `**Findings summary:**`.
@@ -90,10 +90,10 @@ engineer's voice, not a copywriter's.
 
 ## Integration Points in This Repo
 
-- `/analyze-ddd` — pass on `Synteza`, `Otwarte pytania`, `Decyzje (proponowane)`,
+- `/analyze` — pass on `Synteza`, `Otwarte pytania`, `Decyzje (proponowane)`,
   `Ryzyka / uwagi` before the artifact `Write` in step 2. Frontmatter fields
   (`open_questions[].q`, `answer`, `decisions[]`, `patterns[]`) stay untouched — those are
-  the machine gate `/orchestrate-ddd` reads.
+  the machine gate `/orchestrate` reads.
 - `/adr` (`skills/decision-frameworks/adr`) — pass on Context / Options Considered /
   Decision / Consequences before writing the file. `Status`/`Date`/`Stack` stay untouched.
 - `templates/task-standard.md` — `## 🎯 Goal` and `**Findings summary:**`.

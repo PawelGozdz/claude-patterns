@@ -4,6 +4,7 @@
 # Zdekomponowany z presets/flutter-clean-arch.yml + patterns/_stack-defaults/flutter-clean-arch.yml
 # (TASK-BLOCKS-001 F-mobile) — patrz tam po historię/uzasadnienie każdego pola.
 name: flutter
+axis: framework
 requires: []
 
 requires_ecc:

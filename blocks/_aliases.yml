@@ -6,6 +6,9 @@
 # w dniu przełączenia (ADR 0008 D7).
 
 aliases:
-  ddd: [ddd/core, ddd/cqrs, ddd/events, ddd/acl]
+  ddd: [ddd/core, ddd/layers, ddd/cqrs, ddd/events, ddd/acl]
   nestjs-ddd: [nestjs, ddd, kysely]
   flutter-clean-arch: [flutter, clean-arch]
+  # Biblioteka publikowana z monorepo Nx. Projekt z pojedynczym pakietem bierze
+  # sam `ts-library`, bez tego aliasu.
+  typescript-library: [ts-library, library-layers, nx-monorepo]

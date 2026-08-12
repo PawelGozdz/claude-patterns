@@ -84,7 +84,7 @@ User request → Claude picks a tool → PreToolUse hook runs → Tool executes 
 >   }
 > }
 > ```
-> Run the watcher alongside long `/orchestrate-ddd` runs:
+> Run the watcher alongside long `/orchestrate` runs:
 > `node scripts/workflow-watcher.js --project /path/to/project` → live `RUN-STATE.md`
 > (per-agent burn tokens, tokens-since-progress, silence) + HALT flags at 2× the spin threshold.
 > L1 eval (run on every hook change): `node tests/flow-evals/hooks/run.js`.

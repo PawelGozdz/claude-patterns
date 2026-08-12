@@ -6,14 +6,29 @@
 // Sklejanie dzieje się RAZ, tutaj — silniki /analyze i /orchestrate czytają
 // wyłącznie wynikowy runtime.yml. Reguły: unia always (dedup), konkatenacja
 // triggers, panel w kolejności bloków, exit PAUSE jeśli ktokolwiek deklaruje,
-// orchestrate z dokładnie jednego bloku, env później-wygrywa (z ostrzeżeniem),
-// budżety min-merge (OQ3; project.yml nadpisuje), ostrzeżenie >8 always (OQ4),
-// walidacja ścieżek wzorców i zależności requires (twardy błąd).
+// orchestrate z dokładnie jednego bloku osi architektury, env później-wygrywa
+// (z ostrzeżeniem), budżety min-merge (OQ3; project.yml nadpisuje), ostrzeżenie
+// >8 always (OQ4), twardy błąd przy wiszącej ścieżce wzorca i przy braku
+// wymaganego parametru bloku.
+//
+// 2026-08-11: parsowanie przeszło z regexów na prawdziwy YAML (paczka `yaml`).
+// Powód: subset-parser cicho gubił każdą sekcję, której nie znał — blok mógł
+// zadeklarować cokolwiek poza znaną listą kluczy i zniknęłoby to bez śladu.
+// Teraz nieznany klucz najwyższego poziomu daje ostrzeżenie z nazwą bloku,
+// a wejście wolno formatować dowolnie poprawnym YAML-em.
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, statSync } from 'node:fs';
 import { createHash } from 'node:crypto';
-import { dirname, join } from 'node:path';
+import { dirname, join, posix } from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+let YAML;
+try {
+  YAML = (await import('yaml')).default;
+} catch {
+  console.error('  BŁĄD: brak paczki "yaml" — odpal `npm ci` w claude-patterns i spróbuj ponownie.');
+  process.exit(1);
+}
 
 const [projectDir, repoArg] = process.argv.slice(2);
 if (!projectDir) { console.error('użycie: materialize-runtime.mjs <project_dir> [patterns_repo]'); process.exit(1); }
@@ -22,247 +37,608 @@ const REPO = repoArg ?? join(dirname(fileURLToPath(import.meta.url)), '..');
 const warn = (m) => console.error(`  UWAGA: ${m}`);
 const fail = (m) => { console.error(`  BŁĄD: ${m}`); process.exit(1); };
 
-// ── helpery parsowania (subset YAML używany przez bloki tego repo) ─────────
-const lines = (src) => src.split('\n');
-const noComment = (l) => !l.trim().startsWith('#');
+// Klucze najwyższego poziomu, które materializacja rozumie. Wszystko poza tą listą
+// jest zgłaszane — cichy klucz to najgorszy rodzaj literówki, bo setup świeci zielono.
+const BLOCK_KEYS = new Set([
+  'name', 'axis', 'requires', 'requires_ecc', 'params',
+  'patterns', 'overlay', 'env', 'analyze', 'orchestrate', 'budgets', 'ralphinho',
+  'extends',
+]);
+// Zarezerwowane na kolejne kroki planu — deklaracja przechodzi, ale mówimy wprost,
+// że nic jeszcze nie robi (lepsze niż milcząca ignorancja).
+const RESERVED_KEYS = new Set(['layer_contributions', 'tags']);
+const BLOCK_KEYS_EXTRA = 'extends';
 
-function section(src, key) {
-  const ls = lines(src);
-  const start = ls.findIndex((l) => new RegExp(`^${key}:`).test(l));
-  if (start < 0) return null;
-  const body = [];
-  for (let i = start + 1; i < ls.length; i++) {
-    if (/^[a-z_]/.test(ls[i])) break;
-    body.push(ls[i]);
-  }
-  return { header: ls[start], body };
+// Zmienne środowiskowe o wartości listowej (CSV) — scalane sumą, nie nadpisywane.
+// Konwencja nazw zamiast zgadywania z treści: `_HOOKS`, `_LIST`, `_PATHS`, `_DISABLED`.
+const LIST_ENV = [/_HOOKS$/, /_LIST$/, /_PATHS$/, /_DISABLED$/, /^ECC_DISABLED_/];
+
+// ── globy dla parametrów ścieżkowych ──────────────────────────────────────
+// Własna implementacja zamiast zależności: `*` (płasko), `**` (rekurencyjnie),
+// wykluczenia `!wzorzec`. Wynik posortowany, żeby runtime.yml był deterministyczny.
+function globToRegExp(pattern) {
+  // Bez markera-znaku w środku (poprzednia wersja używała bajtu, który robił z tego
+  // pliku „binary data" dla grep/diff): segmenty składamy jawnie.
+  const esc = (seg) => seg
+    .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+    .replace(/\*/g, '[^/]*')
+    .replace(/\?/g, '[^/]');
+  const parts = pattern.split('/');
+  let rx = '';
+  parts.forEach((seg, i) => {
+    const last = i === parts.length - 1;
+    if (seg === '**') rx += last ? '.*' : '(?:[^/]+/)*';   // ** na końcu łapie też pliki głębiej
+    else rx += esc(seg) + (last ? '' : '/');
+  });
+  return new RegExp(`^${rx}$`);
 }
 
-const inlineList = (line) => {
-  const m = line?.match(/\[([^\]]*)\]/);
-  return m && m[1].trim() ? m[1].split(',').map((s) => s.trim()) : [];
+function walkFiles(root, dir = '', acc = []) {
+  const abs = join(root, dir);
+  let entries;
+  try { entries = readdirSync(abs); } catch { return acc; }   // brak uprawnień / zniknął katalog
+  for (const entry of entries) {
+    if (entry === 'node_modules' || entry.startsWith('.')) continue;
+    const relPath = dir ? posix.join(dir, entry) : entry;
+    let isDir;
+    try { isDir = statSync(join(root, relPath)).isDirectory(); } catch { continue; }
+    if (isDir) walkFiles(root, relPath, acc);
+    else acc.push(relPath);
+  }
+  return acc;
+}
+
+const scanCache = new Map();
+function filesUnder(prefix) {
+  if (!scanCache.has(prefix)) scanCache.set(prefix, walkFiles(projectDir, prefix).map((f) => f));
+  return scanCache.get(prefix);
+}
+const globBase = (pattern) => {
+  const parts = pattern.split('/');
+  const stop = parts.findIndex((p) => /[*?]/.test(p));
+  return (stop <= 0 ? '' : parts.slice(0, stop).join('/'));
 };
 
-function listItems(body, subkey) {
-  // pozycje `- x` pod wciętym kluczem subkey:
+function resolvePathList(patterns, { param, block }) {
+  const includes = [], excludes = [];
+  for (const p of patterns) (String(p).startsWith('!') ? excludes : includes).push(String(p).replace(/^!/, ''));
+  const excludeRx = excludes.map(globToRegExp);
   const out = [];
-  let inSub = false;
-  for (const l of body.filter(noComment)) {
-    if (new RegExp(`^\\s+${subkey}:\\s*$`).test(l)) { inSub = true; continue; }
-    if (new RegExp(`^\\s+${subkey}:\\s*\\[`).test(l)) return inlineList(l);
-    if (inSub) {
-      const m = l.match(/^\s+-\s+(\S.*?)\s*$/);
-      if (m) { out.push(m[1]); continue; }
-      if (l.trim() !== '') inSub = false;
+  for (const inc of includes) {
+    if (!/[*?]/.test(inc)) {                       // zwykła ścieżka — musi istnieć
+      // Kotwica sekcji (`plik.md#5`) jest częścią wartości, ale nie istnieje na dysku —
+      // kanon zwykle wskazuje paragraf, nie cały dokument.
+      const [filePart] = inc.split('#');
+      if (!existsSync(join(projectDir, filePart)))
+        fail(`parametr "${param}" bloku "${block}": plik nie istnieje — ${filePart}`);
+      if (!excludeRx.some((rx) => rx.test(filePart))) out.push(inc);
+      continue;
     }
+    const rx = globToRegExp(inc);
+    const base = globBase(inc);
+    const hits = filesUnder(base)   // walkFiles zwraca ścieżki względem projektu, z prefiksem
+      .filter((f) => rx.test(f) && !excludeRx.some((ex) => ex.test(f)));
+    // Pusty glob to prawie zawsze literówka albo przeniesiony katalog. Cicha pustka
+    // znaczyłaby „kanon jest pusty" — czyli stage bez wsadu i analiza bez kotwicy.
+    if (!hits.length)
+      fail(`parametr "${param}" bloku "${block}": wzorzec "${inc}" nie trafił w żaden plik projektu`);
+    out.push(...hits);
   }
-  return out;
+  return [...new Set(out)].sort();
 }
 
-function triggerGroups(body) {
-  const groups = [];
-  let cur = null;
-  for (const l of body.filter(noComment)) {
-    const kw = l.match(/-\s*keywords:\s*\[([^\]]+)\]/);
-    if (kw) { cur = { keywords: kw[1].split(',').map((s) => s.trim()), include: [] }; groups.push(cur); continue; }
-    if (cur) {
-      const inc = l.match(/^\s+-\s+(\S+\.md)\s*$/);
-      if (inc) { cur.include.push(inc[1]); continue; }
-      if (/^\s{2}\w+:/.test(l)) cur = null;
-    }
-  }
-  return groups;
+// ── podstawianie ${param} w treści bloku ──────────────────────────────────
+// Działa na węzłach dokumentu (nie na zrzucie do JS), żeby panel i orchestrate
+// mogły później trafić do wyniku razem ze swoimi komentarzami.
+function substituteParams(doc, values, blockName) {
+  YAML.visit(doc, {
+    Scalar(_key, node) {
+      if (typeof node.value !== 'string' || !node.value.includes('${')) return;
+      const whole = node.value.match(/^\$\{([\w.-]+)\}$/);
+      if (whole) {
+        if (!(whole[1] in values)) fail(`blok "${blockName}": nieznany parametr \${${whole[1]}}`);
+        return doc.createNode(values[whole[1]]);      // lista podstawia się jako lista
+      }
+      node.value = node.value.replace(/\$\{([\w.-]+)\}/g, (_m, name) => {
+        if (!(name in values)) fail(`blok "${blockName}": nieznany parametr \${${name}}`);
+        const v = values[name];
+        return Array.isArray(v) ? v.join(', ') : String(v ?? '');
+      });
+    },
+  });
 }
 
-function inlineItems(body) {
-  // pozycje `- { ... }`, także wielolinijkowe (balans nawiasów)
-  const items = [];
-  let cur = null, depth = 0;
-  for (const l of body) {
-    if (!cur && /^\s*-\s*\{/.test(l)) { cur = [l]; depth = 0; }
-    else if (cur) cur.push(l);
-    if (cur) {
-      depth += (l.match(/\{/g) ?? []).length - (l.match(/\}/g) ?? []).length;
-      if (depth <= 0) { items.push(cur.join('\n')); cur = null; }
-    }
-  }
-  return items;
-}
-
-// ── wejście: project.yml → stack_blocks ────────────────────────────────────
+// ── wejście: project.yml ───────────────────────────────────────────────────
 const projectYml = join(projectDir, '.claude/config/project.yml');
 if (!existsSync(projectYml)) fail(`brak ${projectYml}`);
-const projSrc = readFileSync(projectYml, 'utf8');
-const sbLine = lines(projSrc).find((l) => /^\s{2}stack_blocks:/.test(l));
-if (!sbLine) fail('project.yml nie deklaruje project.stack_blocks (lista inline)');
-const declared = inlineList(sbLine);
-if (!declared.length) fail('stack_blocks jest puste');
+let proj;
+try { proj = YAML.parse(readFileSync(projectYml, 'utf8')) ?? {}; }
+catch (e) { fail(`project.yml nie jest poprawnym YAML-em: ${e.message}`); }
+
+const declared = proj.project?.stack_blocks;
+if (!Array.isArray(declared) || !declared.length)
+  fail('project.yml nie deklaruje project.stack_blocks (niepusta lista)');
+const blockParams = proj.project?.block_params ?? {};
 
 // ── aliasy + rozwinięcie ───────────────────────────────────────────────────
-const aliases = {};
 const aliasPath = join(REPO, 'blocks/_aliases.yml');
-if (existsSync(aliasPath))
-  for (const m of readFileSync(aliasPath, 'utf8').matchAll(/^\s{2}([\w/-]+):\s*\[([^\]]+)\]/gm))
-    aliases[m[1]] = m[2].split(',').map((s) => s.trim());
+const aliasSrc = existsSync(aliasPath) ? readFileSync(aliasPath, 'utf8') : '';
+const aliases = (aliasSrc ? YAML.parse(aliasSrc)?.aliases : null) ?? {};
 const expand = (ns) => ns.flatMap((n) => (aliases[n] ? expand(aliases[n]) : [n]));
 const expanded = [...new Set(expand(declared))];
 
+// ── taksonomia: rdzeń (claude-patterns) + rozszerzenie projektu ────────────
+// Rdzeń żyje w claude-patterns i projekt go nie widzi — bez scalenia tutaj agent
+// pracujący w repo projektu znałby wyłącznie lokalne obszary i uznałby `api:auth`
+// za nieznany tag. Wynik trafia do runtime.yml, bo to jedyny plik, który czytają
+// silniki: żadnego chodzenia po dwóch źródłach i zgadywania, gdzie leży rdzeń.
+const coreTaxPath = join(REPO, 'blocks/_taxonomy.yml');
+const coreTax = existsSync(coreTaxPath) ? (YAML.parse(readFileSync(coreTaxPath, 'utf8')) ?? {}) : {};
+const projTaxPath = join(projectDir, '.claude/config/taxonomy.yml');
+const projTax = existsSync(projTaxPath) ? (YAML.parse(readFileSync(projTaxPath, 'utf8')) ?? {}) : {};
+
+const taxonomy = { stacks: [], areas: [], variants_seen: {} };
+const taxSource = new Map();          // wartość → 'rdzeń' | 'projekt'
+for (const key of ['stacks', 'areas']) {
+  for (const v of coreTax[key] ?? []) { taxonomy[key].push(v); taxSource.set(v, 'rdzeń'); }
+  for (const v of projTax[key] ?? []) {
+    // Rozszerzenie ma tylko DODAWAĆ. Przedefiniowanie pozycji rdzenia rozjeżdża wspólny
+    // język między projektami, a on jest jedynym powodem, dla którego rdzeń istnieje.
+    if (taxonomy[key].includes(v)) {
+      warn(`.claude/config/taxonomy.yml: "${v}" jest już w rdzeniu — rozszerzenie ma tylko dodawać, pomijam`);
+      continue;
+    }
+    taxonomy[key].push(v); taxSource.set(v, 'projekt');
+  }
+}
+for (const src of [coreTax.variants_seen ?? {}, projTax.variants_seen ?? {}])
+  for (const [area, list] of Object.entries(src))
+    taxonomy.variants_seen[area] = [...new Set([...(taxonomy.variants_seen[area] ?? []), ...(list ?? [])])];
+
 // ── wczytanie bloków (centralne + lokalne ./) ──────────────────────────────
-const blocks = expanded.map((name) => {
-  const path = name.startsWith('./')
-    ? join(projectDir, '.claude/blocks', `${name.slice(2)}.yml`)
-    : join(REPO, 'blocks', `${name}.yml`);
+const blockPath = (name) => (name.startsWith('./')
+  ? join(projectDir, '.claude/blocks', `${name.slice(2)}.yml`)
+  : join(REPO, 'blocks', `${name}.yml`));
+
+function loadBlock(name) {
+  const path = blockPath(name);
   if (!existsSync(path)) fail(`blok "${name}" nie istnieje (${path})`);
-  return { name, src: readFileSync(path, 'utf8') };
-});
+  const src = readFileSync(path, 'utf8');
+  const doc = YAML.parseDocument(src);
+  if (doc.errors?.length) fail(`blok "${name}" nie jest poprawnym YAML-em: ${doc.errors[0].message}`);
+  return { name, path, src, doc };
+}
+
+// `extends:` — blok lokalny dziedziczy po centralnym i nadpisuje wybrane fragmenty.
+// Bez tego projekt chcący zmienić JEDEN stage panelu musiał forkować cały blok i
+// utrzymywać kopię, która cicho rozjeżdża się z centralą.
+//
+// Reguły scalania (baza ← lokalny):
+//   patterns/overlay/hooks   — suma, bez duplikatów
+//   analyze.panel            — pozycja lokalna o tym samym `stage` ZASTĘPUJE bazową,
+//                              nowe stage'e dochodzą na koniec; usunięcie: `drop: true`
+//   orchestrate/env/budgets/params — lokalna sekcja wygrywa w całości
+// Głębokość ograniczona do JEDNEGO poziomu: łańcuch extends robi z kompozycji labirynt,
+// a diagnozowanie „skąd wziął się ten stage" przestaje być możliwe.
+function applyExtends(block, depth = 0) {
+  const baseName = block.doc.get('extends');
+  if (!baseName) return block;
+  if (depth > 0) fail(`blok "${block.name}": łańcuch extends (dziedziczenie po bloku, który sam dziedziczy) — dozwolony jeden poziom`);
+  if (String(baseName) === block.name) fail(`blok "${block.name}" dziedziczy po samym sobie`);
+  const base = loadBlock(String(baseName));
+  if (base.doc.get('extends')) fail(`blok "${block.name}" dziedziczy po "${baseName}", który sam używa extends — dozwolony jeden poziom`);
+
+  const merged = base.doc;
+  const local = block.doc;
+
+  for (const key of ['name', 'axis', 'requires']) if (local.get(key) !== undefined) merged.set(key, local.get(key, true));
+
+  const localPatterns = local.get('patterns', true);
+  if (localPatterns) {
+    const basePatterns = merged.get('patterns', true) ?? merged.createNode({});
+    for (const sub of ['always', 'triggers']) {
+      const add = localPatterns.get(sub, true);
+      if (!add) continue;
+      const cur = basePatterns.get(sub, true);
+      if (!cur) basePatterns.set(sub, add);
+      else for (const item of add.items) cur.add(item);
+    }
+    merged.set('patterns', basePatterns);
+  }
+
+  const localAnalyze = local.get('analyze', true);
+  if (localAnalyze) {
+    const baseAnalyze = merged.get('analyze', true) ?? merged.createNode({});
+    const localPanel = localAnalyze.get('panel', true);
+    if (localPanel) {
+      const basePanel = baseAnalyze.get('panel', true) ?? merged.createNode([]);
+      for (const item of localPanel.items) {
+        const stage = String(item.get?.('stage') ?? '');
+        const idx = basePanel.items.findIndex((i) => String(i.get?.('stage') ?? '') === stage);
+        if (item.get?.('drop') === true) { if (idx > -1) basePanel.items.splice(idx, 1); continue; }
+        if (idx > -1) basePanel.items[idx] = item; else basePanel.add(item);
+      }
+      baseAnalyze.set('panel', basePanel);
+    }
+    if (localAnalyze.get('exit') !== undefined) baseAnalyze.set('exit', localAnalyze.get('exit'));
+    merged.set('analyze', baseAnalyze);
+  }
+
+  for (const key of ['orchestrate', 'env', 'budgets', 'params', 'requires_ecc', 'ralphinho']) {
+    const v = local.get(key, true);
+    if (v) merged.set(key, v);
+  }
+
+  const localOverlay = local.get('overlay', true);
+  if (localOverlay) {
+    const baseOverlay = merged.get('overlay', true) ?? merged.createNode({});
+    for (const sub of ['agents', 'patterns', 'rules', 'hooks']) {
+      const add = localOverlay.get(sub, true);
+      if (!add) continue;
+      const cur = baseOverlay.get(sub, true);
+      if (!cur) baseOverlay.set(sub, add);
+      else for (const item of add.items) if (!cur.items.some((i) => i.value === item.value)) cur.add(item);
+    }
+    merged.set('overlay', baseOverlay);
+  }
+  merged.delete('extends');
+  return { ...block, doc: merged, src: `${base.src}\n# extends ←\n${block.src}`, extendsFrom: base.name };
+}
+
+const blocks = expanded.map((name) => applyExtends(loadBlock(name)));
+
+// nieznane / zarezerwowane klucze — zgłaszane, nie połykane
+for (const b of blocks)
+  for (const item of b.doc.contents?.items ?? []) {
+    const key = String(item.key?.value ?? '');
+    if (BLOCK_KEYS.has(key)) continue;
+    if (RESERVED_KEYS.has(key)) {
+      warn(`blok "${b.name}": klucz "${key}" jest zarezerwowany, ale jeszcze nieobsługiwany — pomijam`);
+      continue;
+    }
+    warn(`blok "${b.name}": nieznany klucz najwyższego poziomu "${key}" — pomijam (literówka?)`);
+  }
 
 // requires: twardy błąd przy brakującej zależności (ADR D1)
 const present = new Set(expanded);
-for (const b of blocks) {
-  const reqLine = lines(b.src).find((l) => /^requires:/.test(l));
-  for (const r of inlineList(reqLine ?? ''))
+for (const b of blocks)
+  for (const r of b.doc.toJS()?.requires ?? [])
     if (!present.has(r)) fail(`blok "${b.name}" wymaga "${r}" — dodaj go do stack_blocks`);
+
+// ── parametry bloków (${...} → wartości z project.yml block_params) ────────
+for (const b of blocks) {
+  const spec = b.doc.toJS()?.params;
+  if (!spec) continue;
+  const given = blockParams[b.name] ?? {};
+  const values = {};
+  for (const [param, def] of Object.entries(spec)) {
+    const type = def?.type ?? 'string';
+    let value = given[param] ?? def?.default ?? null;
+    if (value === null || value === undefined || (Array.isArray(value) && !value.length)) {
+      if (def?.required)
+        fail(`blok "${b.name}" wymaga parametru "${param}" (${def?.doc ?? type}) — ` +
+          `dodaj project.block_params."${b.name}".${param} w project.yml`);
+      values[param] = type.endsWith('[]') ? [] : null;
+      continue;
+    }
+    if (type === 'path' || type === 'path[]') {
+      const list = resolvePathList(Array.isArray(value) ? value : [value], { param, block: b.name });
+      value = type === 'path' ? list[0] : list;
+    }
+    values[param] = value;
+  }
+  substituteParams(b.doc, values, b.name);
+  b.params = values;
 }
 
 // ── merge ──────────────────────────────────────────────────────────────────
+// Zrzut do JS robimy PO podstawieniu parametrów — inaczej w danych zostałyby
+// surowe `${...}`. Węzły (doc) nadal są źródłem dla panelu i orchestrate, bo
+// tylko one niosą komentarze bloku do wyniku.
+for (const b of blocks) b.data = b.doc.toJS() ?? {};
+const axisOf = (b) => b.data.axis ?? null;
+
 const always = [];           // {path, source}
 const triggers = [];         // {keywords, include, source}
-const panel = [];            // {raw, source}
+const panel = [];            // {node, source}
 let analyzeExit = null, analyzeExitSrc = null;
-let orch = null;             // {raw, source}
+let orch = null;             // {node, source}
 let ralph = null, reqEcc = null;
 const hooks = [], env = new Map(), envSrc = new Map();
 const overlay = { agents: [], patterns: [], rules: [] };
 const budgets = new Map();   // slot → {fields: Map, source}
+const paramsOut = new Map(); // blok → rozwinięte wartości (do wglądu w runtime.yml)
 
 for (const b of blocks) {
-  const pat = section(b.src, 'patterns');
-  if (pat) {
-    for (const p of listItems(pat.body, 'always'))
-      if (!always.some((a) => a.path === p)) always.push({ path: p, source: b.name });
-    for (const g of triggerGroups(pat.body)) triggers.push({ ...g, source: b.name });
-  }
-  const an = section(b.src, 'analyze');
-  if (an) {
-    for (const raw of inlineItems(an.body)) panel.push({ raw, source: b.name });
-    const ex = an.body.find((l) => /^\s+exit:/.test(l));
-    if (ex) {
-      const v = ex.trim().split(/\s+/)[1];
-      if (v === 'PAUSE' || !analyzeExit) { analyzeExit = v; analyzeExitSrc = b.name; }
-    }
-  }
-  const or = section(b.src, 'orchestrate');
-  if (or && or.body.some((l) => /^\s+layers:/.test(l))) {
-    if (orch) fail(`orchestrate.layers definiują dwa bloki: "${orch.source}" i "${b.name}" — dozwolony jeden`);
-    orch = { raw: or.body.join('\n'), source: b.name };
-  }
-  const ra = section(b.src, 'ralphinho');
-  if (ra && !ralph) ralph = { raw: ra.body.join('\n'), source: b.name };
-  const re = section(b.src, 'requires_ecc');
-  if (re && !reqEcc) reqEcc = { raw: re.body.join('\n'), source: b.name };
+  if (b.params && Object.keys(b.params).length) paramsOut.set(b.name, b.params);
 
-  const ov = section(b.src, 'overlay');
+  const pat = b.data.patterns;
+  if (pat) {
+    for (const p of pat.always ?? [])
+      if (!always.some((a) => a.path === p)) always.push({ path: p, source: b.name });
+    for (const g of pat.triggers ?? [])
+      triggers.push({ keywords: g.keywords ?? [], include: g.include ?? [], source: b.name });
+  }
+
+  const an = b.doc.get('analyze', true);
+  if (an) {
+    for (const item of an.get('panel', true)?.items ?? []) panel.push({ node: item, source: b.name });
+    const ex = an.get('exit');
+    if (ex && (ex === 'PAUSE' || !analyzeExit)) { analyzeExit = ex; analyzeExitSrc = b.name; }
+  }
+
+  const or = b.doc.get('orchestrate', true);
+  if (or?.get('layers', true)) {
+    if (orch) fail(`orchestrate.layers definiują dwa bloki: "${orch.source}" i "${b.name}" — dozwolony jeden`);
+    // Warstwy należą do osi architektury. Blok frameworka, który je wnosi, blokuje wymianę
+    // architektury pod sobą: dołożenie drugiej osi kończy się błędem "dwa bloki", więc projekt
+    // zostaje z jednym narzuconym układem katalogów. Dlatego twardy błąd, a nie ostrzeżenie —
+    // po cichu przepuszczona pomyłka ujawnia się dopiero przy próbie złożenia innego stacku.
+    if (axisOf(b) !== 'architecture')
+      fail(`blok "${b.name}" wnosi orchestrate.layers, ale ma axis: ${axisOf(b) ?? '(brak)'} — ` +
+        'warstwy może wnieść wyłącznie blok o "axis: architecture"; przenieś sekcję orchestrate ' +
+        'do osobnego bloku tej osi (wzór: blocks/library-layers.yml wydzielony z ts-library.yml)');
+    orch = { node: or, source: b.name };
+  }
+
+  const ra = b.doc.get('ralphinho', true);
+  if (ra && !ralph) ralph = { node: ra, source: b.name };
+  const re = b.doc.get('requires_ecc', true);
+  if (re && !reqEcc) reqEcc = { node: re, source: b.name };
+
+  const ov = b.data.overlay;
   if (ov) {
     for (const key of ['agents', 'patterns', 'rules'])
-      for (const v of listItems(ov.body, key) ?? [])
-        if (!overlay[key].includes(v)) overlay[key].push(v);
-    const hl = ov.body.find((l) => /^\s+hooks:/.test(l));
-    for (const h of inlineList(hl ?? '')) if (!hooks.includes(h)) hooks.push(h);
+      for (const v of ov[key] ?? []) if (!overlay[key].includes(v)) overlay[key].push(v);
+    for (const h of ov.hooks ?? []) if (!hooks.includes(h)) hooks.push(h);
   }
-  const en = section(b.src, 'env');
+
+  const en = b.data.env;
   if (en)
-    for (const l of en.body.filter(noComment)) {
-      const m = l.match(/^\s{2}([A-Z_]+):\s*(.+)$/);
-      if (!m) continue;
-      if (env.has(m[1]) && env.get(m[1]) !== m[2])
-        warn(`env ${m[1]}: wartość z bloku "${envSrc.get(m[1])}" nadpisana przez blok "${b.name}"`);
-      env.set(m[1], m[2]); envSrc.set(m[1], b.name);
-    }
-  const bu = section(b.src, 'budgets');
-  if (bu)
-    for (const l of bu.body.filter(noComment)) {
-      const m = l.match(/^\s{2}([\w-]+):\s*\{(.+)\}/);
-      if (!m) continue;
-      const slot = budgets.get(m[1]) ?? { fields: new Map(), source: b.name };
-      for (const f of m[2].matchAll(/([\w-]+):\s*([\w-]+)/g)) {
-        const num = Number(f[2]);
-        const prev = slot.fields.get(f[1]);
-        // OQ3: przy konflikcie liczb wygrywa niższa wartość
-        slot.fields.set(f[1], !isNaN(num) && prev !== undefined && !isNaN(Number(prev))
-          ? String(Math.min(num, Number(prev))) : (prev ?? f[2]));
+    for (const [k, v] of Object.entries(en)) {
+      const prev = env.get(k);
+      if (prev === undefined) { env.set(k, v); envSrc.set(k, b.name); continue; }
+      if (prev === v) continue;
+      // Zmienne listowe SUMUJEMY — inaczej blok wyłączający swoje hooki kasuje
+      // wyłączenia innego bloku. Rozpoznajemy je po NAZWIE, nie po obecności przecinka:
+      // lista jednoelementowa też jest listą, a wykrywanie „po przecinku" zamieniało
+      // ECC_DISABLED_HOOKS: "hook-a" + "hook-b" w błąd konfliktu zamiast w sumę.
+      if (LIST_ENV.some((rx) => rx.test(k))) {
+        const merged = [...new Set([...String(prev).split(','), ...String(v).split(',')].map((x) => x.trim()).filter(Boolean))];
+        env.set(k, merged.join(','));
+        envSrc.set(k, `${envSrc.get(k)} + ${b.name}`);
+        continue;
       }
-      budgets.set(m[1], slot);
+      // Skalar w konflikcie to sprzeczna konfiguracja, a nie „ostatni wygrywa":
+      // po cichu przepuszczony rozjazd ujawnia się dopiero w działaniu hooków.
+      fail(`env ${k}: blok "${envSrc.get(k)}" ustawia "${prev}", a "${b.name}" — "${v}". ` +
+        'Sprzeczne wartości skalarne; uzgodnij bloki albo nadpisz jawnie w project.yml.');
+    }
+
+  const bu = b.data.budgets;
+  if (bu)
+    for (const [slot, fields] of Object.entries(bu)) {
+      const cur = budgets.get(slot) ?? { fields: new Map(), source: b.name };
+      for (const [k, v] of Object.entries(fields ?? {})) {
+        const prev = cur.fields.get(k);
+        // OQ3: przy konflikcie liczb wygrywa niższa wartość
+        cur.fields.set(k, typeof v === 'number' && typeof prev === 'number' ? Math.min(v, prev) : (prev ?? v));
+      }
+      budgets.set(slot, cur);
     }
 }
 
+// Hooki projektu dokładane jawnie: bloki wnoszą to, czego wymaga stack, a projekt
+// dopisuje własne w project.yml (`extra_hooks`). Bez tego kanału lokalne hooki żyły
+// wyłącznie w settings.json i runtime.yml pokazywał niepełny obraz — w api-2 deklarował
+// 4 hooki, a realnie działało 8.
+for (const h of proj.project?.extra_hooks ?? []) if (!hooks.includes(h)) hooks.push(h);
+
 // project.yml może nadpisać budżety bez ograniczeń (OQ3)
-const projBud = section(projSrc, 'budgets');
-if (projBud)
-  for (const l of projBud.body.filter(noComment)) {
-    const m = l.match(/^\s{2}([\w-]+):\s*\{(.+)\}/);
-    if (!m) continue;
-    const slot = { fields: new Map(), source: 'project.yml' };
-    for (const f of m[2].matchAll(/([\w-]+):\s*([\w-]+)/g)) slot.fields.set(f[1], f[2]);
-    budgets.set(m[1], slot);
+for (const [slot, fields] of Object.entries(proj.budgets ?? {})) {
+  const cur = { fields: new Map(), source: 'project.yml' };
+  for (const [k, v] of Object.entries(fields ?? {})) cur.fields.set(k, v);
+  budgets.set(slot, cur);
+}
+
+// ── sloty panelu: model/effort muszą być rozpoznawalne ────────────────────
+// Sloty lecą do runtime.yml jako węzły (żeby zachować komentarze bloku), więc bez
+// tej kontroli literówka `modell: opus` przeszłaby cicho i silnik zignorowałby model.
+const MODELS = new Set(['opus', 'sonnet', 'haiku', 'fable', 'inherit']);
+const EFFORTS = new Set(['low', 'medium', 'high', 'xhigh', 'max']);
+for (const b of blocks) {
+  for (const slot of b.data.analyze?.panel ?? []) {
+    if (slot.model && !MODELS.has(String(slot.model)))
+      fail(`blok "${b.name}", stage "${slot.stage}": nieznany model "${slot.model}" (dozwolone: ${[...MODELS].join(', ')})`);
+    if (slot.effort && !EFFORTS.has(String(slot.effort)))
+      fail(`blok "${b.name}", stage "${slot.stage}": nieznany effort "${slot.effort}" (dozwolone: ${[...EFFORTS].join(', ')})`);
   }
+  for (const layer of b.data.orchestrate?.layers ?? [])
+    if (layer.model && !MODELS.has(String(layer.model)))
+      fail(`blok "${b.name}", warstwa "${layer.id}": nieznany model "${layer.model}"`);
+}
 
 // ── walidacje (OQ4 + ścieżki) ──────────────────────────────────────────────
 if (always.length > 8)
   warn(`suma patterns.always = ${always.length} (>8) — zdegraduj coś na triggers/MCP:\n` +
     always.map((a) => `    ${a.path}  (${a.source})`).join('\n'));
-for (const p of [...new Set([...always.map((a) => a.path), ...triggers.flatMap((t) => t.include)])])
-  if (!existsSync(join(REPO, 'patterns', p)) && !existsSync(join(projectDir, p)))
-    warn(`wisząca ścieżka wzorca: ${p}`);
+
+// Wisząca ścieżka to twardy błąd, nie ostrzeżenie. Powód z praktyki (2026-08-11):
+// literówka `convsentions-pattern.md` w bloku nestjs przeszła jako UWAGA, wylądowała
+// w runtime.yml juz-ide-api-2 i /analyze traktował ją jako pozycję listy obowiązkowej —
+// wzorzec „wczytywany" w każdym tasku, którego nikt nigdy nie przeczytał.
+const patternSources = new Map();
+for (const a of always) patternSources.set(a.path, a.source);
+for (const t of triggers) for (const p of t.include) if (!patternSources.has(p)) patternSources.set(p, t.source);
+const dangling = [...patternSources].filter(([p]) =>
+  !existsSync(join(REPO, 'patterns', p)) && !existsSync(join(projectDir, p)));
+// Wzorzec deklarujący `**Assumes**: <blok>` wymaga pojęć, których bez tego bloku
+// w projekcie nie ma (command-handler-pattern mówi o agregatach 23 razy). Bez tej
+// kontroli skład `[flat-service, ddd/cqrs]` dałby implementerowi instrukcję o modelu
+// domenowym, którego projekt nie posiada — dokładnie to niedopasowanie, przed którym
+// ADR 0008 miał chronić.
+for (const [p, src] of patternSources) {
+  const abs = existsSync(join(REPO, 'patterns', p)) ? join(REPO, 'patterns', p) : join(projectDir, p);
+  if (!existsSync(abs)) continue;
+  const m = readFileSync(abs, 'utf8').match(/^\*\*Assumes\*\*:\s*(.+)$/m);
+  if (!m) continue;
+  for (const dep of m[1].replace(/<!--[\s\S]*?-->/g, '').split(',').map((x) => x.trim().replace(/[`*]/g, '')))
+    if (dep && !present.has(dep))
+      fail(`wzorzec ${p} (wniesiony przez blok "${src}") zakłada blok "${dep}", którego nie ma w składzie.\n` +
+        `  Dodaj "${dep}" do stack_blocks albo usuń wzorzec z bloku "${src}".`);
+}
+
+if (dangling.length)
+  fail(`wiszące ścieżki wzorców (plik nie istnieje ani w ${join(REPO, 'patterns')}, ani w projekcie):\n` +
+    dangling.map(([p, src]) => `    ${p}  ← blok "${src}"`).join('\n') +
+    '\n  Popraw ścieżkę w bloku albo dodaj brakujący wzorzec.');
 
 // ── emisja runtime.yml ─────────────────────────────────────────────────────
+// Budowana przez Document API, nie sklejaniem stringów: komentarz `# source:` przy
+// każdej pozycji jest jedynym śladem, z którego bloku coś przyszło, a węzły panelu
+// i orchestrate przenoszone są z bloków razem z ich własnymi komentarzami.
 const hash = createHash('sha256')
-  .update(blocks.map((b) => b.src).join('\n') + (existsSync(aliasPath) ? readFileSync(aliasPath, 'utf8') : ''))
+  .update(blocks.map((b) => b.src).join('\n') + aliasSrc + JSON.stringify([...paramsOut]) + JSON.stringify(taxonomy))
   .digest('hex').slice(0, 12);
 
-const out = [];
-out.push('# GENERATED przez materialize-runtime.mjs (ADR 0008) — NIE edytuj ręcznie.');
-out.push('# Zmiany rób w blokach (claude-patterns/blocks/ lub .claude/blocks/) i odpal setup-project.sh.');
-out.push('schema_version: 1');
-out.push(`materialized_at: "${new Date().toISOString()}"`);
-out.push(`source_hash: "${hash}"`);
-out.push(`stack_blocks: [${expanded.join(', ')}]`);
-out.push('');
-out.push('patterns:');
-out.push('  always:');
-for (const a of always) out.push(`    - ${a.path}  # source: ${a.source}`);
-out.push('  triggers:');
-for (const t of triggers) {
-  out.push(`    - keywords: [${t.keywords.join(', ')}]  # source: ${t.source}`);
-  out.push('      include:');
-  for (const p of t.include) out.push(`        - ${p}`);
+const doc = new YAML.Document({});
+doc.commentBefore =
+  ' GENERATED przez materialize-runtime.mjs (ADR 0008) — NIE edytuj ręcznie.\n' +
+  ' Zmiany rób w blokach (claude-patterns/blocks/ lub .claude/blocks/) i odpal setup-project.sh.';
+
+const flowSeq = (arr) => { const n = doc.createNode(arr); n.flow = true; return n; };
+const quoted = (v) => { const n = doc.createNode(String(v)); n.type = 'QUOTE_DOUBLE'; return n; };
+
+// Komentarz `# source:` idzie na KLUCZ sekcji, nie na jej wartość — inaczej ląduje
+// wewnątrz mapy i wypycha komentarze, które blok napisał o sobie sam.
+// `spaceBefore` odtwarza puste linie między sekcjami: runtime.yml czyta agent, więc
+// czytelność wyniku jest funkcjonalna, nie kosmetyczna.
+const tagSection = (key, comment) => {
+  const pair = doc.contents.items.find((i) => String(i.key?.value ?? i.key) === key);
+  if (!pair) return;
+  if (typeof pair.key === 'string') pair.key = doc.createNode(key);   // klucze z .set() są zwykłymi stringami
+  if (comment) pair.key.comment = comment;
+  pair.key.spaceBefore = true;
+};
+
+doc.set('schema_version', 1);
+doc.set('materialized_at', quoted(new Date().toISOString()));
+doc.set('source_hash', quoted(hash));
+doc.set('stack_blocks', flowSeq(expanded));
+
+const patternsMap = doc.createNode({});
+const alwaysSeq = doc.createNode([]);
+for (const a of always) {
+  const n = doc.createNode(a.path);
+  n.comment = ` source: ${a.source}`;
+  alwaysSeq.add(n);
 }
-out.push('');
-out.push('analyze:');
-out.push('  panel:');
-for (const p of panel) { out.push(`    # source: ${p.source}`); out.push(p.raw); }
-if (analyzeExit) out.push(`  exit: ${analyzeExit}  # source: ${analyzeExitSrc}`);
-out.push('');
-if (orch) { out.push(`orchestrate:  # source: ${orch.source}`); out.push(orch.raw); out.push(''); }
-if (hooks.length) out.push(`hooks: [${hooks.join(', ')}]`);
+patternsMap.set('always', alwaysSeq);
+const triggersSeq = doc.createNode([]);
+for (const t of triggers) {
+  const item = doc.createNode({ keywords: t.keywords, include: t.include });
+  item.get('keywords', true).flow = true;
+  item.commentBefore = ` source: ${t.source}`;
+  triggersSeq.add(item);
+}
+patternsMap.set('triggers', triggersSeq);
+doc.set('patterns', patternsMap);
+
+const analyzeMap = doc.createNode({});
+const panelSeq = doc.createNode([]);
+for (const p of panel) {
+  p.node.commentBefore = ` source: ${p.source}`;
+  panelSeq.add(p.node);
+}
+analyzeMap.set('panel', panelSeq);
+if (analyzeExit) {
+  const exitNode = doc.createNode(analyzeExit);
+  exitNode.comment = ` source: ${analyzeExitSrc}`;
+  analyzeMap.set('exit', exitNode);
+}
+doc.set('analyze', analyzeMap);
+
+if (orch) doc.set('orchestrate', orch.node);
+if (hooks.length) doc.set('hooks', flowSeq(hooks));
 if (env.size) {
-  out.push('env:');
-  for (const [k, v] of env) out.push(`  ${k}: ${v}  # source: ${envSrc.get(k)}`);
+  const envMap = doc.createNode({});
+  for (const [k, v] of env) {
+    const node = quoted(v);
+    node.comment = ` source: ${envSrc.get(k)}`;
+    envMap.set(k, node);
+  }
+  doc.set('env', envMap);
 }
 if (Object.values(overlay).some((v) => v.length)) {
-  out.push('overlay:');
+  const ovMap = doc.createNode({});
   for (const key of ['agents', 'patterns', 'rules'])
-    if (overlay[key].length) out.push(`  ${key}: [${overlay[key].join(', ')}]`);
+    if (overlay[key].length) ovMap.set(key, flowSeq(overlay[key]));
+  doc.set('overlay', ovMap);
 }
-if (reqEcc) { out.push(`requires_ecc:  # source: ${reqEcc.source}`); out.push(reqEcc.raw); }
-if (ralph) { out.push(`ralphinho:  # source: ${ralph.source}`); out.push(ralph.raw); }
+// Kolekcja RAG mieszkała dotąd w osobnym .claude/config/knowledge.json — drugim pliku
+// konfiguracyjnym obok runtime.yml, o którym trzeba było pamiętać. Źródłem jest teraz
+// project.yml (`knowledge_collection`), a runtime.yml niesie wynik jak resztę planu.
+const knowledgeCollection = proj.project?.knowledge_collection ?? null;
+if (knowledgeCollection) {
+  const kMap = doc.createNode({ collection: knowledgeCollection });
+  doc.set('knowledge', kMap);
+}
+if (taxonomy.stacks.length || taxonomy.areas.length) {
+  const tMap = doc.createNode({});
+  for (const key of ['stacks', 'areas']) {
+    const seq = doc.createNode([]);
+    for (const v of taxonomy[key]) {
+      const n = doc.createNode(v);
+      if (taxSource.get(v) === 'projekt') n.comment = ' projekt';
+      seq.add(n);
+    }
+    tMap.set(key, seq);
+  }
+  if (Object.keys(taxonomy.variants_seen).length) {
+    const vMap = doc.createNode({});
+    for (const [area, list] of Object.entries(taxonomy.variants_seen)) vMap.set(area, flowSeq(list));
+    tMap.set('variants_seen', vMap);
+  }
+  doc.set('taxonomy', tMap);
+}
+if (paramsOut.size) {
+  // Rozwinięte parametry (globy → konkretne pliki) wchodzą do wyniku, żeby było widać,
+  // co realnie dostanie stage — a nie tylko wzorzec, z którego to policzono.
+  const pMap = doc.createNode({});
+  for (const [block, values] of paramsOut) pMap.set(block, doc.createNode(values));
+  doc.set('params', pMap);
+}
+if (reqEcc) doc.set('requires_ecc', reqEcc.node);
+if (ralph) doc.set('ralphinho', ralph.node);
 if (budgets.size) {
-  out.push('budgets:');
-  for (const [slot, s] of budgets)
-    out.push(`  ${slot}: { ${[...s.fields].map(([k, v]) => `${k}: ${v}`).join(', ')} }  # source: ${s.source}`);
+  const bMap = doc.createNode({});
+  for (const [slot, s] of budgets) {
+    const node = doc.createNode(Object.fromEntries(s.fields));
+    node.flow = true;
+    bMap.set(slot, node);
+    bMap.get(slot, true).comment = ` source: ${s.source}`;
+  }
+  doc.set('budgets', bMap);
 }
-out.push('');
+
+for (const [key, src] of [
+  ['patterns', null], ['analyze', null],
+  ['orchestrate', orch ? ` source: ${orch.source}` : null],
+  ['hooks', null], ['env', null], ['overlay', null], ['params', null],
+  ['knowledge', ' project.yml → knowledge_collection'],
+  ['taxonomy', ' rdzeń blocks/_taxonomy.yml + .claude/taxonomy.yml projektu'],
+  ['requires_ecc', reqEcc ? ` source: ${reqEcc.source}` : null],
+  ['ralphinho', ralph ? ` source: ${ralph.source}` : null],
+  ['budgets', null],
+]) tagSection(key, src);
+
+// Osie tuż pod stack_blocks — czytelniej tam niż w nagłówku pliku.
+const axesLine = `# osie: ${blocks.map((b) => `${b.name}=${axisOf(b) ?? '?'}`).join(', ')}\n`;
+const text = doc.toString({ lineWidth: 0, flowCollectionPadding: false })
+  .replace(/^(stack_blocks:.*\n)/m, `$1${axesLine}`);
 
 const dst = join(projectDir, '.claude/config/runtime.yml');
 mkdirSync(dirname(dst), { recursive: true });
-writeFileSync(dst, out.join('\n').replace(/\n{3,}/g, '\n\n'));
-console.log(`  runtime.yml: ${expanded.length} bloków [${expanded.join(', ')}], hash ${hash}`);
+writeFileSync(dst, text);
+console.log(`  runtime.yml: ${expanded.length} bloków [${expanded.join(', ')}], hash ${hash}` +
+  (paramsOut.size ? `, params: ${[...paramsOut.keys()].join(', ')}` : ''));

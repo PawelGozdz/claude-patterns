@@ -1,0 +1,74 @@
+# Blok: ts-library — oś frameworka dla PUBLIKOWANEJ biblioteki TypeScript.
+# Nie mylić z `node`/`nestjs`: tam produktem jest działająca usługa, tutaj — artefakt
+# w rejestrze npm, który ktoś inny zainstaluje. Stąd inny środek ciężkości: najgroźniejszą
+# klasą błędu nie jest bug w ścieżce żądania, tylko niezamierzona zmiana publicznego API,
+# która psuje konsumentów po `npm update`.
+#
+# NIE wnosi warstw — to oś frameworka, a `orchestrate.layers` należy do osi architektury
+# (materializacja to egzekwuje: layers tylko z bloku `axis: architecture`). Warstwy dobierz
+# osobno: `library-layers` to domyślny układ dla publikowanego pakietu, ale nic nie stoi
+# na przeszkodzie, żeby biblioteka jechała na `flat-service` albo na własnym bloku lokalnym.
+# Dla monorepo dołóż jeszcze `nx-monorepo` (granice pakietów, bez warstw).
+#
+# ZASADA DOBORU BRAMEK (ustalona przy audycie vytches-ddd 2026-08-10): warstwy wołają
+# istniejące skrypty repo, a nie stawiają obok nich agenta LLM sprawdzającego to samo „na oko".
+# api-extractor odpowiada na pytanie „czy to breaking change" taniej i wiarygodniej niż model.
+# Agent pracuje tam, gdzie skryptu nie ma: czy zmiana API jest UZASADNIONA.
+#
+# PUŁAPKA sprawdzona w praktyce: skrypt npm o nazwie brzmiącej jak bramka nie musi nią być.
+# W vytches-ddd `validate:bundles`, `quality:bundle` i `quality` wołają `process.exit` wyłącznie
+# pod flagą `--ci`, której nie przekazują — zawsze exit 0. `test:consumer` celuje w nieistniejący
+# katalog z `--passWithNoTests`. Przed wpięciem czegokolwiek do `checks` sprawdź, czy skrypt
+# faktycznie zwraca niezerowy kod wyjścia przy porażce.
+name: ts-library
+axis: framework
+requires: []
+
+requires_ecc:
+  profile: developer
+  modules: [lang:typescript, capability:orchestration]
+
+patterns:
+  always:
+    - cross-layer/conventions-pattern.md
+    - typescript-library/public-api-pattern.md
+  triggers:
+    - keywords: [breaking, semver, major, deprecat, wersj, version, migracja, migration, changeset]
+      include:
+        - typescript-library/backward-compatibility-pattern.md
+    - keywords: [build, bundle, eksport, export, publish, publikacj, esm, cjs, tarball, peer]
+      include:
+        - typescript-library/build-publish-pattern.md
+    - keywords: [test, spec, coverage, snapshot, smoke, kontrakt, contract, vitest, jest]
+      include:
+        - typescript-library/library-testing-pattern.md
+
+overlay:
+  agents: [stacks/typescript-library/]
+  patterns: [typescript-library/, testing/]
+  rules: [typescript/]
+
+# GateGuard wyłączony z tego samego powodu co w ddd/core i clean-arch: żąda uzasadnienia przy
+# pierwszym zapisie każdego nowego pliku, co w autonomicznej pętli /orchestrate-blocks zawiesza
+# implementera. Ochrona publicznego API nie stoi tutaj na GateGuardzie, tylko na warstwie
+# api-surface i bramce końcowej — te sprawdzają realny diff, nie intencję zapisu.
+env:
+  ECC_GATEGUARD: "off"
+  ECC_DISABLED_HOOKS: "pre:edit-write:gateguard-fact-force,pre:bash:gateguard-fact-force"
+
+analyze:
+  panel:
+    - { stage: tech-analysis, agent: "ecc:architect" }
+    - { stage: tech-analysis-specialist, agent: "backend-technology-expert" }
+    # api-guardian jest ADVISORY (bez Bash, bez VETO) — jego miejsce jest w analizie, nie
+    # w bramce. Odpowiada na pytanie, na które nie odpowie żaden skrypt: czy projektowana
+    # zmiana powierzchni API jest uzasadniona i czy da się jej uniknąć.
+    - { stage: api-surface-analysis, agent: "library-api-guardian",
+        when: "api|eksport|export|index\\.ts|publiczn|public|breaking|semver|deprecat|sygnatur|signature",
+        advisory: true }
+
+# Warstwy, pętla weryfikacji i bramka końcowa: `blocks/library-layers.yml` (oś architektury).
+# Zostały stąd przeniesione 2026-08-11 — patrz nagłówek tamtego bloku.
+
+budgets:
+  api-surface-analysis: { max_tool_calls: 20, on_limit: emit-partial }

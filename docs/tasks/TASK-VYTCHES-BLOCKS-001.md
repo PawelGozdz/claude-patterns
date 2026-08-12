@@ -228,6 +228,101 @@ katalogu — `code_juz_ide_api` celowo obsługuje api-1…4 jako grupę bliźnia
 kolekcję, więc oba źródła `library_reference_global` muszą być zebrane PRZED jednym
 `recreate()+add()`. Seedowanie ich osobno wyczyściłoby pierwsze.
 
+## Wyniki Fazy A + B (wykonane 2026-08-10 w `claude-patterns`)
+
+Audyt obalił dwa założenia z planu powyżej. Zostawiam oryginalny tekst nietknięty, żeby
+było widać, co się zmieniło i dlaczego.
+
+**Korekta 1 — bramką końcową jest `library-quality-verifier`, nie `library-api-guardian`.**
+F1 proponował api-guardiana. Ten agent nie ma `Bash` ani mechanizmu VETO — jest jawnie
+ADVISORY, więc jako `final_gate` mógłby najwyżej przeczytać kod i zgadywać. VETO i `Bash`
+ma quality-verifier, czyli realnie uruchomi bramki repo. Api-guardian trafił do panelu
+`/analyze` jako etap `api-surface-analysis` — tam jego doradcza rola jest właściwa.
+
+**Korekta 2 — tabela awansów 12 agentów w F2 jest w większości nieaktualna.**
+Trzej agenci (`library-api-guardian`, `library-quality-verifier`, `tech-lead`) to już
+**symlinki** do `claude-patterns`, nie kopie — rozjazd jest strukturalnie niemożliwy,
+nic z nimi nie trzeba robić. Z pozostałych dziewięciu do awansu nie kwalifikuje się
+praktycznie żaden: `architecture-guardian`, `developer-experience`, `library-expert`,
+`performance-optimizer`, `testing-excellence` mają twarde odwołania do konkretnych
+pakietów tej biblioteki, więc jako uniwersalne byłyby kłamstwem. Do naprawy lokalnie,
+nie do awansu:
+- `ddd-compliance-guardian` — w ciele pliku (linie 27-31) wklejony duplikat metadanych
+  jako zwykły tekst; odwołuje się też do agentów, których już nie ma (`strategic-vision`,
+  `enterprise-sales`, `community-growth`)
+- `security-audit` — ma `Edit, MultiEdit` bez `disallowedTools`, mimo roli audytora;
+  treść to głównie ogólny OWASP-boilerplate bez uziemienia w realnym kodzie
+- `library-expert` — `permissionMode: dontAsk` + `Edit, MultiEdit, Write` i **brak**
+  `disallowedTools`; ten sam wzorzec ryzyka
+
+Frontmatter wszystkich 12 zaczyna się poprawnie w pierwszej linii — pułapka niewidocznego
+agenta tu nie wystąpiła.
+
+**Korekta 3 (najważniejsza) — dziewięć skryptów npm wygląda na bramkę, a nią nie jest.**
+Zasada „nie dubluj skryptu agentem" zakłada, że skrypt działa. Te nie działają:
+
+| skrypt | co jest nie tak |
+|---|---|
+| `validate:bundles`, `quality:bundle`, `quality`, `quality:verbose` | `process.exit` wykonuje się **tylko pod flagą `--ci`**, której żaden z nich nie przekazuje → zawsze exit 0 mimo naruszeń |
+| `architecture:ci` | `deps:circular && quality:bundle && echo '✅ passed'` — drugi człon nigdy nie faluje, więc gate'uje wyłącznie cykle, a i tak drukuje „passed" |
+| `test:consumer` | glob celuje w `examples/playground/**`, katalog **nie istnieje**; `--passWithNoTests` daje PASS przy zerze testów |
+| `test:bundle` | woła `scripts/analyze-bundles.js`, **pliku nie ma** |
+| `test:package` | bez argumentu kończy się `exit 1` z usage, zanim cokolwiek przetestuje |
+| `test:exports` | duplikat `validate:exports` — ten sam plik, podwójny koszt |
+| `bench` | zero `expect()` w plikach bench — raport wydajności, nie bramka |
+
+Realnie działające bramki: `@nx/enforce-module-boundaries` (ESLint `error`, 16 tagów
+`scope:*`), `deps:circular`, `ddd:lint`, `validate:exports`, `validate:types`,
+`test:contracts`, `llm:verify --strict`, `docs-compile-gate:check`, `example-matrix:check`,
+`test:smoke`, `validate:api`. **api-extractor jest skonfigurowany tylko dla 4 z 19
+pakietów** (`contracts`, `events`, `value-objects`, `enterprise`) — dla pozostałych
+bramkę breaking-change częściowo łatają snapshoty `test:contracts`.
+
+Naprawa tych skryptów to osobne zadanie w `vytches-ddd` — nie mieszać z setupem bloków.
+
+**Korekta 4 — `ts-library.yml` nie zostaje osią frameworka z warstwami; warstwy
+przeniesione do nowego bloku.** Po wprowadzeniu pola `axis:` (patrz `blocks/README.md`
+i Aneks A w `docs/adr/0008-stack-blocks-composition.md`) okazało się, że
+`ts-library.yml` (oś frameworka) mimo to wnosił `orchestrate.layers` — a materializacja
+teraz twardo zabrania blokowi spoza osi architektury deklarować warstwy. Problem nie
+był teoretyczny: `stack_blocks: [ts-library, flat-service]` kończyło się błędem
+„`orchestrate.layers` definiują dwa bloki", więc biblioteki TS nie dało się złożyć z
+żadnym innym układem katalogów niż ten narzucony przez `ts-library`. Warstwy
+(`implementation → testing → api-surface`) przeniesiono do nowego bloku
+`blocks/library-layers.yml` (`axis: architecture`, `requires: [ts-library]`);
+`ts-library` wnosi teraz wyłącznie wzorce, panel analizy, overlay i env. Alias
+`typescript-library` w `blocks/_aliases.yml` ma odtąd trzy człony: `[ts-library,
+library-layers, nx-monorepo]`. Opis niżej w „Co powstało" i we fragmencie „**To ten
+blok wnosi `orchestrate.layers`**" wyżej w tym dokumencie opisuje stan **przed** tą
+korektą — celowo zostawiony bez zmian jako zapis historii.
+
+**Co powstało w `claude-patterns`** (staged, niecommitowane; stan **po** Korekcie 4):
+- `blocks/ts-library.yml` — oś frameworka; wzorce, panel api-surface-analysis, overlay,
+  env — **bez `orchestrate.layers`** (patrz Korekta 4)
+- `blocks/library-layers.yml` — oś architektury, `requires: [ts-library]`; warstwy
+  `implementation → testing → api-surface` (ostatnia opcjonalna, wchodzi gdy diff
+  rusza publiczne wejścia), `checks` wołają wyłącznie skrypty z listy działających,
+  `final_gate: library-quality-verifier`, `ECC_GATEGUARD: off`
+- `blocks/nx-monorepo.yml` — oś architektury; panel `boundary-analysis` z celowo wąskim
+  `when:`, bo zgodność importów z grafem pilnuje już ESLint — agent ma odpowiadać wyłącznie
+  na pytanie, czy sam graf ma sens dziedzinowy
+- `blocks/_aliases.yml` — alias `typescript-library: [ts-library, nx-monorepo]`
+- 5 wzorców `patterns/typescript-library/` zretrofitowanych do konwencji (`**Layer**`,
+  `**Status**`, bloki ✅/❌) + **5 nowych kart reguł `*_summary.md`** (PA, BC, PB, BP, LT)
+- `build-publish-pattern.md` uzupełniony o `nx release`, `publint`/`arethetypeswrong`,
+  subpath exports i `peerDependencies`; `library-testing-pattern.md` — o testowanie
+  spakowanego artefaktu (`npm pack` / Verdaccio), czyli tego, co konsument faktycznie dostaje
+- `library-quality-verifier.md` — naprawione cztery martwe ścieżki wzorców w sekcji
+  „Pattern Knowledge Base"; teraz wskazuje karty reguł i ich ID
+
+Materializacja zweryfikowana na atrapie projektu: `stack_blocks: [typescript-library,
+approval-gate]` → 3 bloki, `analyze.exit: PAUSE`, zero ostrzeżeń o wiszących ścieżkach.
+
+**Zostaje do zrobienia w `vytches-ddd`** (F4 + naprawy): `stack_blocks` w `project.yml`,
+materializacja, wpięcie hooka `check-approval-before-impl` do `settings.json` (materializacja
+go NIE wpina — znana luka), triage/naprawa 9 agentów lokalnych, `code_vytches_ddd`
+w Qdrancie, oraz naprawa bramek-widm z korekty 3.
+
 ## Kryteria ukończenia
 
 - [ ] `.claude/config/runtime.yml` istnieje, zmaterializowany bez ostrzeżeń

@@ -31,6 +31,10 @@ export interface Chunk {
   // means "universal" (the default for all pre-existing pattern docs, no migration needed).
   // retrieve_patterns excludes scope=="project-specific" by default so one project's derived
   // pattern doesn't get surfaced as generic guidance in an unrelated project's session.
+  // assumes: blocks whose concepts this doc depends on (the **Assumes** marker,
+  // mirrored from the materializer check) — carried into the index so a retrieval
+  // hit shows the dependency without opening the file.
+  assumes?: string[];
   scope?: "universal" | "project-specific";
   project?: string;
 }

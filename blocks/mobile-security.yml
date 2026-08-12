@@ -9,6 +9,7 @@
 # linka, oraz kontrakt Dart↔natywna (kanał bez natywnego handlera po cichu
 # raportuje „bezpiecznie").
 name: mobile-security
+axis: security
 requires: []
 
 patterns:

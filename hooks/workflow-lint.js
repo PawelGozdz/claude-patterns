@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 /**
- * workflow-lint.js — deterministyczny lint skryptu Workflow dla /orchestrate-ddd.
+ * workflow-lint.js — deterministyczny lint skryptu Workflow dla /orchestrate.
  *
  * NIE jest hookiem — to CLI. Mieszka w hooks/, bo ten katalog jest symlinkowany
  * globalnie (~/.claude/hooks/), więc każdy projekt woła:
  *   node "$HOME/.claude/hooks/workflow-lint.js" <plik-skryptu-workflow.js>
  *
- * Zamienia reguły-prozę z commands/orchestrate-ddd.md w twardą bramkę (eval L1, D7).
+ * Zamienia reguły-prozę z commands/orchestrate.md w twardą bramkę (eval L1, D7).
  * Każda reguła koduje realny incydent:
  *   WL1 (ERROR)  schema poza verify/final-gate — wf_8f8aeeb3 padł w 2 min na
  *                implement({schema}); sukces implementacji mierzy bramka git-diff.
@@ -225,7 +225,7 @@ function main() {
   const errors = findings.filter((f) => f.level === 'ERROR').length;
   process.stdout.write(errors
     ? `\n🛑 LINT FAILED (${errors} error) — NIE uruchamiaj Workflow; popraw skrypt.\n`
-    : `\n✅ LINT OK${findings.length ? ` (${findings.length} warn)` : ''} — skrypt zgodny z regułami orchestrate-ddd.\n`);
+    : `\n✅ LINT OK${findings.length ? ` (${findings.length} warn)` : ''} — skrypt zgodny z regułami orchestrate.\n`);
   process.exit(errors ? 1 : 0);
 }
 

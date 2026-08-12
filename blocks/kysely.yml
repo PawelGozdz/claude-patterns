@@ -2,6 +2,7 @@
 # Konkretna implementacja outboxa pod Kysely przyjeżdża z ddd/events + tym blokiem;
 # sam outbox jako wzorzec należy do ddd/events (OQ1).
 name: kysely
+axis: persistence
 requires: []
 
 patterns:

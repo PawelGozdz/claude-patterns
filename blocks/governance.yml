@@ -1,0 +1,65 @@
+# Blok: governance — kanon produktu, strategii i marki jako wejście do analizy.
+#
+# Po co: panel /analyze był dotąd wyłącznie techniczny (threat-model, architekt,
+# ddd-modeling, pattern-fit). Odpowiadał na pytanie „czy to jest dobrze zbudowane",
+# nigdy na „czy to w ogóle powinno powstać w tym kształcie". Obserwacja z praktyki
+# juz-ide (2026-08): wstrzyknięcie kanonu do analizy podniosło jakość wytwarzanych
+# funkcjonalności bardziej niż którakolwiek zmiana techniczna.
+#
+# MECHANIZM JEST GENERYCZNY, TREŚĆ JEST PROJEKTOWA. Blok nie wie, co jest kanonem —
+# projekt podaje ścieżki przez `block_params.governance` w project.yml. Bez
+# parametrów blok nie ma sensu i materializacja to powie (`canon` jest required).
+#
+# DWIE PÓŁKI KANONU, bo liczby tego wymagają. W juz-ide `[docs/strategy/*,
+# docs/business/*, docs/brand/*]` to 13 plików i ~284 KB — tego nie da się wkleić
+# do prompta ani raz, ani tym bardziej w każdej analizie:
+#   `canon`        — korpus DO PRZESZUKANIA. Tani model znajduje właściwe fragmenty
+#                    i zwraca cytaty z namiarami; nikt tego nie wkleja w całości.
+#   `canon_inject` — to, co małe i wchodzi ZAWSZE (np. sam paragraf o compoundingu).
+#                    Trzymaj poniżej ~20 KB, inaczej płacisz za nie w każdym tasku.
+#
+# KOSZT: głównym bezpiecznikiem jest NIE regex `when:`, tylko typ taska — sloty
+# poniżej nie wchodzą dla `type: refactor|bugfix|chore` (egzekwuje silnik /analyze).
+# `when:` jest drugim sitem, nie pierwszym.
+name: governance
+axis: process
+requires: []
+
+params:
+  canon:
+    type: "path[]"
+    required: true
+    doc: "dokumenty kanonu do przeszukania (globy dozwolone: docs/strategy/*, !docs/strategy/archive/*)"
+  canon_inject:
+    type: "path[]"
+    required: false
+    default: []
+    doc: "fragmenty wklejane do KAŻDEGO prompta governance — tylko to, co naprawdę małe"
+  classification_rules:
+    type: path
+    required: false
+    doc: "reguły klasyfikacji informacji — wymagane tylko przez stage data-classification"
+
+analyze:
+  panel:
+    # JEDEN stage na trzy pytania (zgodność z rdzeniem produktu, test monetyzacji,
+    # zasady komunikacji), a nie trzy osobne. Powód jest praktyczny: trzy stage'e
+    # to trzykrotne czytanie tych samych dokumentów przez trzy konteksty.
+    # Rozdzielimy dopiero, gdy praktyka pokaże, że jeden agent gubi wątek.
+    #
+    # model: opus — to jest ocena, nie zbieranie. Materiał (cytaty z kanonu) zbiera
+    # tani model w discovery; tutaj zapada osąd „czy ta funkcja wzmacnia rdzeń".
+    - { stage: strategy-fit, agent: "product-owner", model: opus,
+        corpus: "${canon}", inject: "${canon_inject}",
+        when: "feature|funkcj|nowy|nowa|cennik|opłat|oplat|subskrypcj|monetyz|pricing|komunikat|onboarding|pozycjonowan",
+        advisory: true }
+    # Wąski `when:` celowo: zwykła zmiana wewnętrzna nie produkuje treści wychodzącej
+    # na zewnątrz, więc nie ma czego klasyfikować.
+    - { stage: data-classification, agent: "product-owner", model: sonnet,
+        rules: "${classification_rules}",
+        when: "eksport|export|raport|publiczn|public|webhook|zewnętrzn|zewnetrzn|marketing|newsletter|udostępni|udostepni",
+        advisory: true }
+
+budgets:
+  strategy-fit: { max_tool_calls: 25, on_limit: emit-partial }
+  data-classification: { max_tool_calls: 12, on_limit: emit-partial }

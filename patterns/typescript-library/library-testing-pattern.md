@@ -1,18 +1,29 @@
-# Library Testing Pattern for TypeScript Packages
+# Pattern: Testing a Published TypeScript Library
 
-**Version**: 1.0
-**Created**: 2026-03-30
-**Purpose**: Testing strategies specific to shared npm libraries -- contract tests, export validation, type tests, and property-based testing
+**Layer**: Testing
+**Status**: production
 
----
+## What This Is
+
+Testing strategies specific to shared TypeScript/npm libraries: contract tests against
+the public API, export validation, compile-time type tests, property-based testing for
+generic utilities, and packed-artifact tests that verify what a consumer actually
+receives from the registry -- not just what `dist/` looks like on disk.
 
 ## When to Use
 
-- You maintain a shared TypeScript library consumed by other packages
-- You need to guarantee the public API contract does not break silently
-- You want compile-time type assertion tests (not just runtime)
-- You have generic utilities that need exhaustive input coverage
-- You need to verify the library works in both ESM and CJS environments
+**Use this pattern for:**
+- ✅ You maintain a shared TypeScript library consumed by other packages (internal or public npm registry)
+- ✅ You need to guarantee the public API contract does not break silently across releases
+- ✅ You want compile-time type assertion tests (not just runtime behavior)
+- ✅ You have generic utilities (value objects, pure functions) that need exhaustive/invariant input coverage
+- ✅ You need to verify the library resolves correctly in both ESM and CJS consumers, from the packed artifact, not just the source tree
+
+**Do NOT use for:**
+- ❌ Testing an end-user application's UI/HTTP behavior -- that's the general test pyramid, see `testing/testing-pyramid-pattern.md`
+- ❌ An internal package that is never published and is always consumed by source path (e.g. Nx path-mapped `libs/*` with no `npm pack` step) -- contract/export/packed-artifact tests add no value there; plain unit tests on the source suffice
+- ❌ Deciding whether a given change is SemVer-breaking -- that's `backward-compatibility-pattern.md`
+- ❌ Configuring `package.json` `exports`, bundler output, or build targets -- that's `build-publish-pattern.md`; this pattern only tests the result
 
 ---
 
@@ -429,6 +440,29 @@ describe('bundle compatibility', () => {
   });
 });
 ```
+
+### 7. Packed Artifact Testing -- What the Consumer Actually Gets
+
+Bundle tests (#6) import straight from `dist/`, which only proves the compiled output is
+correct -- it does NOT prove the *published package* is correct. `files`/`.npmignore` can
+silently exclude a file the `dist/` test never notices; `exports` map entries can resolve
+by relative path in a dist test while failing to resolve by package name for a real
+consumer. Packed artifact tests close that gap by exercising the exact tarball npm would
+publish:
+
+1. `npm pack` the library to produce the real tarball (same `files` filtering, same `exports` map as a real publish).
+2. Install that tarball into a throwaway scratch project (temp dir, its own `package.json`, `npm install ./the-tarball.tgz`).
+3. From the scratch project, import **by package name** (`import { x } from '@scope/pkg'`), never by relative path -- this is what proves `exports` resolves for a real consumer.
+4. Assert both module targets resolve: ESM `import` and CJS `require` both succeed and expose the expected members.
+5. Assert the type declarations resolve too (a `.ts` file in the scratch project importing the package should type-check against the shipped `.d.ts`, not against source).
+
+For a monorepo where packages depend on each other and need to be published together to
+be tested honestly, run a local registry (e.g. Verdaccio) instead of `npm pack` per
+package: publish the whole set to the local registry, then install and test from there --
+this catches cross-package `exports`/`peerDependencies` mismatches that a single-package
+tarball test cannot see. This is the class of test a project names `test:package`,
+`test:smoke`, or `test:consumer` -- distinct from bundle tests on `dist/` and from
+contract tests on the barrel export.
 
 ---
 

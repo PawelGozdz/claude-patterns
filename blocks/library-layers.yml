@@ -1,0 +1,48 @@
+# Blok: library-layers — oś architektury dla publikowanej biblioteki: jak zorganizowana
+# jest praca wewnątrz pakietu i czym kończy się cykl implementacji.
+#
+# Wydzielony z `ts-library.yml` (2026-08-11), bo tamten jest osią FRAMEWORKA, a warstwy
+# należą do osi architektury — tak jak `clean-arch` względem `flutter` i `ddd/core`
+# względem `nestjs`. Dopóki warstwy siedziały w bloku frameworka, biblioteki TS nie dało
+# się złożyć z żadnym innym układem katalogów: `[ts-library, flat-service]` kończyło się
+# twardym błędem „orchestrate.layers definiują dwa bloki". Teraz oś architektury jest
+# wymienialna, a `ts-library` wnosi wyłącznie wzorce, panel analizy i overlay.
+#
+# Reguła jest od tej zmiany egzekwowana przez materializację: layers może wnieść wyłącznie
+# blok o `axis: architecture`.
+name: library-layers
+axis: architecture
+# Twarda zależność, nie kosmetyka: `final_gate` używa `library-quality-verifier`, który
+# trafia do projektu przez `overlay.agents` bloku `ts-library`. Bez niego bramka wskazywałaby
+# nieistniejącego agenta. (Inaczej niż `clean-arch`, gdzie powiązanie z `flutter` zostawiono
+# aliasowi — tam blok nie sięga po agenta z cudzego overlayu.)
+requires: [ts-library]
+
+orchestrate:
+  # Warstwy = obszary pracy implementera. `checks` to deterministyczne skrypty repo,
+  # uruchamiane po warstwie; nazwy podano jako konwencja npm — projekt bez danego skryptu
+  # go pomija, a projekt o innej konwencji nadpisuje blokiem lokalnym w `.claude/blocks/`.
+  #
+  # PUŁAPKA sprawdzona w praktyce (audyt vytches-ddd 2026-08-10): skrypt npm o nazwie
+  # brzmiącej jak bramka nie musi nią być. Tam `validate:bundles`, `quality:bundle`
+  # i `quality` wołają `process.exit` wyłącznie pod flagą `--ci`, której nie przekazują —
+  # zawsze exit 0. `test:consumer` celuje w nieistniejący katalog z `--passWithNoTests`.
+  # Przed wpięciem czegokolwiek do `checks` sprawdź, czy skrypt faktycznie zwraca
+  # niezerowy kod wyjścia przy porażce.
+  layers:
+    - { id: implementation, dirs: [packages/, libs/, src/], agent: "general-purpose",
+        checks: ["lint", "validate:types", "deps:circular"] }
+    - { id: testing, dirs: [packages/, libs/, src/], agent: "general-purpose", tests: true,
+        checks: ["test", "test:contracts"] }
+    # Warstwa osobna, bo to inna klasa pracy niż kodowanie: zaktualizowanie raportu
+    # api-extractor i dopisanie changesetu jest ŚWIADOMĄ akceptacją zmiany powierzchni.
+    # Wchodzi tylko wtedy, gdy poprzednie warstwy ruszyły publiczne wejścia pakietu.
+    - { id: api-surface, dirs: [packages/, libs/], agent: "general-purpose", optional: true,
+        create_when: "diff dotyka index.ts / eksportowanych sygnatur / api-report/*.api.md",
+        checks: ["validate:exports", "validate:api"] }
+  inner_loop: { verify: "ecc:typescript-reviewer", max_attempts: 3, on_max: ESCALATE_AND_HALT }
+  # Bramka końcowa: library-quality-verifier ma jawne VETO i dostęp do Bash, więc realnie
+  # URUCHOMI bramki repo, zamiast czytać kod i zgadywać. library-api-guardian tego nie
+  # potrafi (advisory, bez Bash) — dlatego siedzi w panelu analizy bloku `ts-library`.
+  final_gate: { agent: "library-quality-verifier", on_fail: ESCALATE_AND_HALT }
+  exit: STAGE_NOT_COMMIT

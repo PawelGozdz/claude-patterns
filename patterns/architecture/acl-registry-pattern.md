@@ -1,5 +1,8 @@
 # ACL Registry Pattern
 
+**Layer**: Architecture
+**Assumes**: ddd/core   <!-- wzorzec operuje pojęciami modelu domenowego -->
+
 ## 🎯 Problem
 
 **Bounded contexts need to communicate without violating DDD isolation principles.**

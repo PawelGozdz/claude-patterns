@@ -1,6 +1,7 @@
 # Blok: nestjs — framework backendowy (bez DDD, bez konkretnej persystencji).
 # Samodzielnie wystarcza projektowi typu ../sso (NestJS + TS bez DDD).
 name: nestjs
+axis: framework
 requires: []
 
 # Czego blok oczekuje od bazy ECC (przeniesione z presets/nestjs-ddd.yml —
@@ -29,3 +30,6 @@ analyze:
         output: "docs/security/threat-models/TM-{TASK_ID}.md", skip_if_exists: true }
     - { stage: tech-analysis, agent: "ecc:architect" }
     - { stage: tech-analysis-specialist, agent: "backend-technology-expert" }
+
+overlay:
+  hooks: [check-security-considerations, check-context-isolation]

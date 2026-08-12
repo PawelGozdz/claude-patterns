@@ -1,17 +1,34 @@
-# Package Boundary Pattern for Nx Monorepos
+# Pattern: Package Boundaries in an Nx Monorepo
 
-**Version**: 1.0
-**Created**: 2026-03-30
-**Purpose**: Enforce clean package boundaries, dependency rules, and module isolation in Nx workspaces
+**Layer**: Architecture
+**Status**: production
 
----
+## What This Is
+
+A set of enforceable rules for keeping TypeScript libraries in an Nx monorepo
+decoupled: a layered, acyclic dependency graph enforced via Nx tags and
+`@nx/enforce-module-boundaries`, a shared contracts package as the only
+cross-package type-sharing surface, explicit internal-vs-public exports per
+package, and dependency injection through ports instead of direct
+cross-layer imports. The goal is a workspace where circular dependencies and
+uncontrolled coupling are structurally prevented, not just discouraged by
+convention.
 
 ## When to Use
 
-- You have multiple TypeScript libraries in an Nx monorepo
-- Teams own different packages and you need to prevent uncontrolled coupling
-- You need to share types across packages without creating circular dependencies
-- You want to enforce an acyclic dependency graph at build time
+**Use this pattern for:**
+- ✅ You have multiple TypeScript libraries in an Nx monorepo (e.g. 15-20+ packages) that need a shared, enforced layering rule
+- ✅ Different teams or contexts own different packages and you need to prevent uncontrolled coupling between them
+- ✅ You need to share types across packages without creating circular dependencies
+- ✅ You want the dependency graph to be acyclic and enforced at lint/build time, not just documented
+- ✅ You're seeing (or want to prevent) direct cross-package imports that bypass a package's public entry point
+
+**Do NOT use for:**
+- ❌ A repository with a single package — there are no boundaries to enforce; nothing to apply this pattern to
+- ❌ Deciding what a single package should export publicly — that's `public-api-pattern.md`
+- ❌ Deciding whether a change to a package's shape is breaking for its consumers — that's `backward-compatibility-pattern.md`
+- ❌ Bounded-context boundaries inside a DDD application — that's a different axis; use ACL/cross-context communication patterns, not Nx tags
+- ❌ A monorepo with only apps and no shared libraries — there's no library layer to constrain yet
 
 ---
 

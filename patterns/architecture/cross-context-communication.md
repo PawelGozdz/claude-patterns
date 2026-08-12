@@ -1,5 +1,8 @@
 # Cross-Context Communication Pattern
 
+**Layer**: Architecture
+**Assumes**: ddd/core   <!-- wzorzec operuje pojęciami modelu domenowego -->
+
 **Purpose**: Decision guide — when to use ACL, Integration Events, or dedicated queues
 **Audience**: All implementers
 **Status**: Production-proven (derived from ULS + juz-ide-api patterns)

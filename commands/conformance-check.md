@@ -59,7 +59,6 @@ komendy. Zawsze wywołuj `check.mjs` jako pojedynczą, prostą komendę z pełn�
 
 ## Kiedy używać
 - Przed sprintem / w CI — wykryć drift konwencji w 6800-plikowym DDD.
-- Zasila `@code-quality-verifier` (VETO: nie wprowadzaj rozjazdu) i `/analyze-ddd` (poznaj realne konwencje).
 - Komplement do hooków `check-ddd-patterns`/`check-domain-purity` (te per-edit; to — całe repo naraz).
 
 ## Publikacja wyniku na kanał broadcastu (ADR 0006, D10 — opcjonalne)

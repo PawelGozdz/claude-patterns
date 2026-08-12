@@ -61,6 +61,36 @@ function parseScope(content: string): { scope?: "project-specific"; project?: st
   return { scope: "project-specific", project: m[1].trim() };
 }
 
+// Taxonomy tags declared inside the doc (`**Tags**: "api:geo:radius", "api:data-access"`).
+// Path-derived tags say WHERE a pattern lives; these say WHAT it is about — the same
+// vocabulary ADRs and layers use (blocks/_taxonomy.yml), so retrieve_patterns can filter
+// by topic instead of relying on embedding similarity alone.
+const TAGS_RE = /^\*\*Tags\*\*:\s*(.+)$/m;
+// Conceptual dependency (`**Assumes**: ddd/core`) — a pattern that only makes sense when
+// the composition includes that block. Materialization already refuses such a mismatch;
+// carrying it into the index keeps the reason visible at retrieval time too.
+const ASSUMES_RE = /^\*\*Assumes\*\*:\s*(.+)$/m;
+
+function parseDeclaredTags(content: string): string[] {
+  const m = TAGS_RE.exec(content);
+  if (!m) return [];
+  return m[1]
+    .replace(/<!--[\s\S]*?-->/g, "")
+    .split(",")
+    .map((t) => t.trim().replace(/["'`*]/g, ""))
+    .filter((t) => /^[a-z0-9-]+:[a-z0-9-]+(:[a-z0-9-]+)?$/.test(t));
+}
+
+function parseAssumes(content: string): string[] {
+  const m = ASSUMES_RE.exec(content);
+  if (!m) return [];
+  return m[1]
+    .replace(/<!--[\s\S]*?-->/g, "")
+    .split(",")
+    .map((d) => d.trim().replace(/["'`*]/g, ""))
+    .filter(Boolean);
+}
+
 function pushChunk(
   acc: Chunk[],
   source: string,
@@ -76,8 +106,10 @@ function pushChunk(
 }
 
 export function chunkMarkdown(content: string, source: string): Chunk[] {
-  const tags = tagsFromPath(source);
-  const scopeInfo = parseScope(content);
+  // Path tags + declared taxonomy tags, deduplicated: retrieval can filter by either.
+  const tags = [...new Set([...tagsFromPath(source), ...parseDeclaredTags(content)])];
+  const assumes = parseAssumes(content);
+  const scopeInfo = { ...parseScope(content), ...(assumes.length ? { assumes } : {}) };
   const chunks: Chunk[] = [];
 
   for (const section of splitByHeading(content, "## ")) {

@@ -1,17 +1,34 @@
-# Backward Compatibility Pattern for TypeScript Libraries
+# Pattern: Backward Compatibility & Semantic Versioning
 
-**Version**: 1.0
-**Created**: 2026-03-30
-**Purpose**: Maintain backward compatibility in shared npm packages across semver lifecycle
+**Layer**: Architecture
+**Status**: production
 
----
+## What This Is
+
+A discipline for maintaining backward compatibility in shared npm packages across
+their semver lifecycle: strict MAJOR/MINOR/PATCH rules, safe ways to extend
+functions and interfaces, a three-phase deprecation workflow (mark, warn, remove),
+and migration helpers/codemods for the breaking changes that are genuinely
+unavoidable.
 
 ## When to Use
 
-- You maintain a shared library consumed by multiple teams or applications
-- You need to evolve APIs without breaking existing consumers
-- You are planning a major version bump and need a migration path
-- You want to add features to existing interfaces without forcing updates
+**Use this pattern for:**
+- ✅ You maintain a shared library consumed by multiple teams or applications
+- ✅ You need to evolve APIs without breaking existing consumers
+- ✅ You are planning a major version bump and need a migration path
+- ✅ You want to add features to existing interfaces without forcing updates
+- ✅ You are removing or renaming a public export and need a deprecation window
+
+**Do NOT use for:**
+- ❌ A private package in a monorepo with no external consumers, where all call
+  sites can be updated atomically in the same PR — see `package-boundary-pattern.md`
+- ❌ A package still on `0.x` before its first stable release, where semver
+  explicitly permits breaking changes in a minor bump
+- ❌ Deciding WHAT to export from a package in the first place — see
+  `public-api-pattern.md`
+- ❌ The mechanics of publishing itself (registry config, `exports` field,
+  build output shape) — see `build-publish-pattern.md`
 
 ---
 

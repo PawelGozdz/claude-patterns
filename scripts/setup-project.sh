@@ -503,13 +503,8 @@ echo -e "${BLUE}[5/8] Stack profile configs${NC}"
 STACK_PROFILE=$(yml_get "project.stack_profile")
 
 if [[ -n "$STACK_PROFILE" ]]; then
-  # Materialize preset (presets/<stack>.yml → .claude/config/preset.yml) so
-  # /analyze-ddd and /orchestrate-ddd can resolve the active preset in-project.
-  PRESET_SOURCE="$PATTERNS_REPO/presets/$STACK_PROFILE.yml"
-  if [[ -f "$PRESET_SOURCE" ]]; then
-    mkdir -p "$PROJECT_DIR/.claude/config"
-    ensure_symlink "$PROJECT_DIR/.claude/config/preset.yml" "$PRESET_SOURCE" ".claude/config/preset.yml" || true
-  fi
+  # Presety usunięte 2026-08-12 — cała konfiguracja idzie przez bloki → runtime.yml.
+  # `stack_profile` zostaje wyłącznie jako selektor szablonu CLAUDE.md.
 
   # Canonical threat-model template — SYNC from claude-patterns (SSoT) so enhancements
   # (Attack Trees, CVSS, MITRE ATT&CK, ...) propagate. COPY not symlink: docs/ is tracked,
@@ -588,6 +583,66 @@ if grep -qE '^  stack_blocks:' "$PROJECT_YML" 2>/dev/null; then
     echo -e "  ${YELLOW}FAILED:${NC} materializacja runtime.yml — popraw project.yml/bloki i uruchom ponownie"
   fi
   echo ""
+fi
+
+# --- 5a2. Punkty rozszerzeń projektu: bloki lokalne + taksonomia ---
+# Oba pliki są WŁASNOŚCIĄ PROJEKTU (nie generowane, nie symlinkowane) — setup tworzy
+# szkielet raz i nigdy go nie nadpisuje. Powód: bez szkieletu nikt nie wie, że te
+# punkty rozszerzeń w ogóle istnieją; z nadpisywaniem straciłby lokalne treści.
+if grep -qE '^  stack_blocks:' "$PROJECT_YML" 2>/dev/null; then
+  echo -e "${BLUE}[5a2] Punkty rozszerzeń projektu${NC} (bloki lokalne, taksonomia)"
+  mkdir -p "$PROJECT_DIR/.claude/blocks" "$PROJECT_DIR/.claude/config"
+
+  LOCAL_TAXONOMY="$PROJECT_DIR/.claude/config/taxonomy.yml"
+  if [[ -f "$LOCAL_TAXONOMY" ]]; then
+    echo -e "  ${YELLOW}Istnieje:${NC} .claude/config/taxonomy.yml (zostawiam bez zmian)"
+  else
+    cat > "$LOCAL_TAXONOMY" <<'TAXEOF'
+# Tag taxonomy extension for THIS project.
+# Core vocabulary (stacks + shared areas): claude-patterns/blocks/_taxonomy.yml
+#
+# Add only domain areas the core does not cover — e.g. a shop: catalog, cart,
+# fulfillment. Never repeat or redefine a core entry (auth, geo, tests …):
+# a shared language is the only reason the core exists.
+#
+# An area is promoted to the core once a SECOND project starts using it —
+# the same rule that governs pattern promotion.
+#
+# Anything added here reaches runtime.yml on the next setup run, and only then
+# becomes a legal tag for ADRs, patterns and layers.
+#
+# Validate the merged vocabulary:
+#   node <claude-patterns>/scripts/lint-patterns.mjs --project .
+
+areas: []
+  # - catalog
+  # - fulfillment
+
+variants_seen: {}
+  # auth: [magic-link]
+TAXEOF
+    echo -e "  ${GREEN}Utworzono:${NC} .claude/config/taxonomy.yml (szkielet — uzupełnij obszary domenowe)"
+  fi
+  echo -e "  ${GREEN}Gotowe:${NC} .claude/blocks/ (bloki lokalne — referencja \`./nazwa\` w stack_blocks)"
+  echo ""
+fi
+
+# --- 5a3. Hooki z runtime.yml → settings.json ---
+# Bloki deklarują, których hooków wymaga stack; szablony per stack_profile znały tylko
+# swój własny zestaw. Dopinamy brakujące, nie ruszając tego, co projekt już ma.
+if [[ -f "$PROJECT_DIR/.claude/config/runtime.yml" && -f "$PROJECT_DIR/.claude/settings.json" ]]; then
+  RT_HOOKS=$(grep -m1 '^hooks:' "$PROJECT_DIR/.claude/config/runtime.yml" | sed 's/^hooks:[[:space:]]*\[//; s/\]//; s/,/ /g')
+  MISSING_HOOKS=""
+  for h in $RT_HOOKS; do
+    grep -q "$h" "$PROJECT_DIR/.claude/settings.json" || MISSING_HOOKS="$MISSING_HOOKS $h"
+  done
+  if [[ -n "$MISSING_HOOKS" ]]; then
+    echo -e "${BLUE}[5a3] Hooki z runtime.yml${NC}"
+    echo -e "  ${YELLOW}Brakuje w settings.json:${NC}$MISSING_HOOKS"
+    echo -e "  Dodaj je do PreToolUse/PostToolUse w .claude/settings.json (ścieżka: .claude/hooks/<nazwa>.js)."
+    echo -e "  Nie robimy tego automatycznie — settings.json bywa ręcznie dostrojony i scalanie JSON-a na ślepo psuje kolejność matcherów."
+    echo ""
+  fi
 fi
 
 # --- 5b. Universal SH hooks (symlinked from claude-patterns/hooks/) ---
@@ -674,7 +729,7 @@ else
 fi
 PATTERNS_SERVER="$PATTERNS_REPO/mcp-server/server.py"
 
-# Record the collection name where /analyze-ddd, /orchestrate-ddd, and implementers read it
+# Record the collection name where /analyze, /orchestrate, and implementers read it
 # (the HTTP daemon is shared — every retrieve_code call must pass `collection` explicitly).
 mkdir -p "$PROJECT_DIR/.claude/config"
 KNOWLEDGE_CFG="$PROJECT_DIR/.claude/config/knowledge.json"

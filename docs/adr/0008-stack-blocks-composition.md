@@ -1,11 +1,13 @@
 # ADR 0008 — Kompozycja bloków stacku: jeden `/analyze` i jeden `/orchestrate`, konfiguracja per projekt
 
-**Status**: accepted (2026-08-10) — OQ1-OQ7 rozstrzygnięte z człowiekiem tego samego dnia
+**Status**: implemented (2026-08-12) — wdrożone we wszystkich 10 repozytoriach; stary tor
+(`/analyze-ddd`, `/orchestrate-ddd`, `presets/`, `patterns/_stack-defaults/`, symlinki
+`preset.yml`) usunięty tego samego dnia. Decyzje D1-D7 i OQ1-OQ7 bez zmian.
 **Context source**: dyskusja 2026-08-08/10 — pytanie o klasyfikację projektu `../sso`
 (TypeScript + NestJS, bez Kysely, bez DDD), które ujawniło, że `stack_profile` nie ma
 odpowiedzi dla projektów spoza sześciu przewidzianych kombinacji.
 
-> **Ten ADR niczego nie implementuje.** Decyzje D1-D7 zatwierdzone, pytania OQ1-OQ7
+> **Wdrożone.** Ten ADR opisuje stan obowiązujący, nie plan. Decyzje D1-D7 zatwierdzone, pytania OQ1-OQ7
 > rozstrzygnięte (sekcja na końcu). Plan wykonawczy (pilot na `juz-ide-api-4`):
 > [`docs/tasks/TASK-BLOCKS-001.md`](../tasks/TASK-BLOCKS-001.md).
 
@@ -328,3 +330,37 @@ liczba plików rośnie (kilkanaście małych YAML zamiast dwóch dużych); parso
   **Odpowiedź:** żadnego mechanizmu teraz. Unia zbiorów + obserwacja na pilocie;
   najgorszy skutek kolizji („wczytało się kilka wzorców za dużo") łapie już
   ostrzeżenie z OQ4, a naprawa leży w treści bloków (węższe keywordy), nie w silniku.
+
+## Aneks A (2026-08-11): pole `axis` i przypisanie warstw do osi architektury
+
+Decyzje D1-D7 powyżej pozostają w statusie `accepted` i bez zmian treści — ten aneks
+dokumentuje doprecyzowanie schematu bloku odkryte dopiero przy realnej kompozycji
+(`vytches-ddd`), nie cofa żadnej z nich.
+
+Blok deklaruje teraz pole `axis:` — jedną z sześciu wartości: `framework`,
+`architecture`, `persistence`, `validation`, `security`, `process`. Reguła egzekwowana
+przy materializacji (`scripts/materialize-runtime.mjs`): **`orchestrate.layers` może
+wnieść wyłącznie blok o `axis: architecture`**. Nadal obowiązuje wcześniejsza zasada
+D1/D3 — dokładnie jeden blok w całym składzie może wnieść `orchestrate.layers`; `axis`
+zawęża, *który* blok ma do tego prawo, nie zmienia liczby.
+
+Powód: `blocks/ts-library.yml` miał `axis: framework`, a mimo to wnosił
+`orchestrate.layers`. Skutek był namacalny, nie teoretyczny — skład
+`stack_blocks: [ts-library, flat-service]` kończył się błędem materializacji
+„`orchestrate.layers` definiują dwa bloki", bo `flat-service` (architektura) też
+wnosi warstwy. Efekt: biblioteki TS nie dało się złożyć z żadnym innym układem
+katalogów niż ten, który `ts-library` narzucał na sztywno — mimo że `ts-library` z
+definicji reprezentuje framework/rodzaj projektu, nie decyzję o strukturze katalogów.
+Naprawa: warstwy przeniesiono do nowego bloku `blocks/library-layers.yml`
+(`axis: architecture`, `requires: [ts-library]`); `ts-library` wnosi od tej pory
+wyłącznie wzorce, panel analizy, overlay i env. Alias `typescript-library` w
+`blocks/_aliases.yml` ma teraz trzy człony: `[ts-library, library-layers,
+nx-monorepo]`.
+
+`axis: architecture` nie jest równoznaczne z obowiązkiem deklarowania warstw —
+`ddd/cqrs`, `ddd/events`, `ddd/acl` i `nx-monorepo` są blokami osi architektury bez
+`orchestrate.layers`.
+
+Przykładowy YAML w D1 (`blocks/ddd/core.yml`) nie zawiera pola `axis:` — powstał przed
+wprowadzeniem tego pola. Aktualny schemat, łącznie z `axis:`, jest udokumentowany w
+`blocks/README.md`.

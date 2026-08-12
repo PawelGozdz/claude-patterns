@@ -46,7 +46,7 @@ Strategic Domain-Driven Design for LocalHero: bounded context modeling, aggregat
 
 ### DDD Canonical Theory (MUST - Strategic Expertise)
 - Use the task-scoped `patterns[]` list + Rule Card content already injected into your prompt
-  (selected by `/analyze-ddd` step 0.5 / `_stack-defaults/nestjs-ddd.yml` `trigger_includes`).
+  (selected by `/analyze` step 0.5 / `_stack-defaults/nestjs-ddd.yml` `trigger_includes`).
   **Do NOT self-fetch entire `.claude/knowledge/patterns/domain/` or `.../application/`** "just in
   case" — that duplicates what's already injected and re-introduces the cost this scoping exists to
   avoid. If you suspect a real gap (a pattern you need isn't in the injected list), say so as an
@@ -98,8 +98,8 @@ in this repo; the correct call is `Task(subagent_type='Explore', ...)`:
 
 **Why**: You run on Sonnet, searches on Haiku = **10x cost savings**
 
-**Exception — when invoked as the `ddd-modeling` leaf in `/analyze-ddd`'s panel**: the orchestrating
-command strips your `Task` tool there (see `commands/analyze-ddd.md` step 1 — prevents runaway
+**Exception — when invoked as the `ddd-modeling` leaf in `/analyze`'s panel**: the orchestrating
+command strips your `Task` tool there (see `commands/analyze.md` step 1 — prevents runaway
 sub-delegation across the whole panel; not specific to Explore, and not because Explore is missing).
 In that mode you cannot self-delegate at all. Work from what's already injected into your prompt
 (Rule Cards, retrieved facts, prior stage output) and record any real gap as an `open_question` for

@@ -71,7 +71,7 @@ function contractFor(agentType) {
   // research/analysis/synteza (architect, *-expert, Explore…): legalnie czytają setki tysięcy
   // tokenów i produkują artefakt DOPIERO NA KOŃCU (D6: „analysis → artefakt końcowy + limit
   // czasu") — próg spinningu ×4, inaczej watchdog strzela do własnych (pierwsza walidacja live
-  // 2026-07-02: HALT 4/4 agentów panelu /analyze-ddd po 130-260k, wszystkie pracowały uczciwie).
+  // 2026-07-02: HALT 4/4 agentów panelu /analyze po 130-260k, wszystkie pracowały uczciwie).
   return { role: 'research', progress: new Set([...IMPLEMENT_TOOLS, ...VERIFY_TOOLS]), spinMult: 4 };
 }
 

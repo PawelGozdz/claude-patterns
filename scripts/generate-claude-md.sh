@@ -50,7 +50,10 @@ yml_get() {
 # Extract list items (lines starting with "  - " under a section)
 yml_list() {
   local section="$1"
-  sed -n "/^${section}:/,/^[a-z]/p" "$PROJECT_YML" | grep '^  - ' | sed 's/^  - //' | sed 's/^"//' | sed 's/"$//'
+  # Komentarz po wartości (`- docs/x.md   # opis`) był dotąd wciągany do wartości —
+  # w CLAUDE.md dawało to linki z opisem w środku ścieżki. Ucinamy go tutaj, raz.
+  sed -n "/^${section}:/,/^[a-z]/p" "$PROJECT_YML" | grep '^  - ' \
+    | sed 's/^  - //' | sed 's/[[:space:]]*#.*$//' | sed 's/^"//' | sed 's/"$//' | sed 's/[[:space:]]*$//'
 }
 
 # --- Validate ---
@@ -88,6 +91,7 @@ PROJECT_DESC=$(yml_get "project.description")
 STACK=$(yml_get "project.stack")
 TESTING=$(yml_get "project.testing")
 
+CMD_ANALYZE=$(yml_get "entry_points.analyze")
 CMD_ORCH=$(yml_get "entry_points.orchestrate")
 CMD_SCAFF=$(yml_get "entry_points.scaffold")
 CMD_PROG=$(yml_get "entry_points.progress")
@@ -139,7 +143,15 @@ done < <(yml_list "rules")
 
 # --- Generate contexts table ---
 
-CONTEXTS_TABLE="| Context | Status | Tests | Notes |\n|---------|--------|-------|-------|\n"
+# Kolumna Tests pojawia się tylko wtedy, gdy projekt faktycznie podaje liczby —
+# pusta kolumna sugerowałaby zero testów, a brakująca mówi prawdę: nie mierzymy tego tutaj.
+if grep -qE "^[[:space:]]+tests:" "$PROJECT_YML"; then
+  CTX_HAS_TESTS=1
+  CONTEXTS_TABLE="| Context | Status | Tests | Notes |\n|---------|--------|-------|-------|\n"
+else
+  CTX_HAS_TESTS=0
+  CONTEXTS_TABLE="| Context | Status | Notes |\n|---------|--------|-------|\n"
+fi
 in_contexts=0
 ctx_name="" ctx_status="" ctx_tests="" ctx_notes=""
 
@@ -151,14 +163,22 @@ while IFS= read -r line; do
   if [[ $in_contexts -eq 1 ]]; then
     if [[ "$line" =~ ^[a-z] && "$line" != "  "* ]]; then
       if [[ -n "$ctx_name" ]]; then
-        CONTEXTS_TABLE="${CONTEXTS_TABLE}| ${ctx_name} | ${ctx_status} | ${ctx_tests} | ${ctx_notes} |\n"
+        if [[ $CTX_HAS_TESTS -eq 1 ]]; then
+          CONTEXTS_TABLE="${CONTEXTS_TABLE}| ${ctx_name} | ${ctx_status} | ${ctx_tests} | ${ctx_notes} |\n"
+        else
+          CONTEXTS_TABLE="${CONTEXTS_TABLE}| ${ctx_name} | ${ctx_status} | ${ctx_notes} |\n"
+        fi
         ctx_name=""
       fi
       break
     fi
     if [[ "$line" =~ ^"  - name: " ]]; then
       if [[ -n "$ctx_name" ]]; then
-        CONTEXTS_TABLE="${CONTEXTS_TABLE}| ${ctx_name} | ${ctx_status} | ${ctx_tests} | ${ctx_notes} |\n"
+        if [[ $CTX_HAS_TESTS -eq 1 ]]; then
+          CONTEXTS_TABLE="${CONTEXTS_TABLE}| ${ctx_name} | ${ctx_status} | ${ctx_tests} | ${ctx_notes} |\n"
+        else
+          CONTEXTS_TABLE="${CONTEXTS_TABLE}| ${ctx_name} | ${ctx_status} | ${ctx_notes} |\n"
+        fi
       fi
       ctx_name=$(echo "$line" | sed 's/^  - name: //')
       ctx_status="" ctx_tests="-" ctx_notes=""
@@ -172,7 +192,11 @@ while IFS= read -r line; do
   fi
 done < "$PROJECT_YML"
 if [[ $in_contexts -eq 1 && -n "$ctx_name" ]]; then
-  CONTEXTS_TABLE="${CONTEXTS_TABLE}| ${ctx_name} | ${ctx_status} | ${ctx_tests} | ${ctx_notes} |\n"
+  if [[ $CTX_HAS_TESTS -eq 1 ]]; then
+          CONTEXTS_TABLE="${CONTEXTS_TABLE}| ${ctx_name} | ${ctx_status} | ${ctx_tests} | ${ctx_notes} |\n"
+        else
+          CONTEXTS_TABLE="${CONTEXTS_TABLE}| ${ctx_name} | ${ctx_status} | ${ctx_notes} |\n"
+        fi
 fi
 
 # --- Generate docs list ---
@@ -264,6 +288,36 @@ CONTENT="${CONTENT//%%PROJECT_NAME%%/$PROJECT_NAME}"
 CONTENT="${CONTENT//%%PROJECT_DESCRIPTION%%/$PROJECT_DESC}"
 CONTENT="${CONTENT//%%STACK%%/$STACK}"
 CONTENT="${CONTENT//%%TESTING%%/$TESTING}"
+# --- Taksonomia tagów z runtime.yml (ADR 0008) ---
+# Słownik żyje w claude-patterns (rdzeń) + .claude/taxonomy.yml (projekt) i jest scalany
+# do runtime.yml. Tutaj trafia do CLAUDE.md, bo inaczej agent pracujący w repo projektu
+# nie ma skąd wiedzieć, że `api:geo:radius` jest poprawnym tagiem, a `geo-radius` nie.
+RUNTIME_YML="$PROJECT_DIR/.claude/config/runtime.yml"
+TAXONOMY_SECTION=""
+if [[ -f "$RUNTIME_YML" ]] && grep -q "^taxonomy:" "$RUNTIME_YML"; then
+  TAX_STACKS=$(awk '/^taxonomy:/{t=1} t&&/^  stacks:/{s=1;next} s&&/^    - /{gsub(/^    - | #.*/,"");printf "%s%s", sep, $0; sep=", "} s&&/^  [a-z]/{exit}' "$RUNTIME_YML")
+  TAX_AREAS=$(awk '/^taxonomy:/{t=1} t&&/^  areas:/{a=1;next} a&&/^    - /{gsub(/^    - | #.*/,"");printf "%s%s", sep, $0; sep=", "} a&&/^  [a-z]/{exit}' "$RUNTIME_YML")
+  TAXONOMY_SECTION=$(cat <<TAXEOF
+## Tag taxonomy
+
+Syntax: \`<stack>:<area>[:<variant>]\` — always in that order, and always quoted in YAML (\`"api:tests"\`), because an unquoted colon can be parsed as a nested key.
+
+| Level | Allowed values |
+|-------|----------------|
+| stack | ${TAX_STACKS} |
+| area | ${TAX_AREAS} |
+| variant | any kebab-case — report a new one rather than breeding synonyms (\`jwt\` vs \`json-web-token\`) |
+
+Tags go on things that are **selected per task**: ADRs/BDRs (\`tags:\` in frontmatter), patterns (\`**Tags**:\`), layers and blocks. Hooks and skills are not tagged — those are picked by file path or by description.
+
+Levels 1 and 2 are closed: a value outside the table is an error, not a new tag. Adding a project area is a deliberate two-step — put it in \`.claude/config/taxonomy.yml\`, re-run setup so it lands in \`runtime.yml\`, then use it. The core vocabulary is shared across all repositories and must not be redefined locally. Full dictionary including variants: the \`taxonomy:\` section of \`.claude/config/runtime.yml\`.
+
+---
+TAXEOF
+)
+fi
+CONTENT="${CONTENT//%%TAXONOMY%%/$TAXONOMY_SECTION}"
+CONTENT="${CONTENT//%%CMD_ANALYZE%%/${CMD_ANALYZE:-/analyze}}"
 CONTENT="${CONTENT//%%CMD_ORCHESTRATE%%/$CMD_ORCH}"
 CONTENT="${CONTENT//%%CMD_SCAFFOLD%%/$CMD_SCAFF}"
 CONTENT="${CONTENT//%%CMD_PROGRESS%%/$CMD_PROG}"

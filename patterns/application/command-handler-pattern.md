@@ -1,5 +1,9 @@
 # Command Handler Pattern
 
+**Layer**: Application
+**Status**: production
+**Assumes**: ddd/core   <!-- wzorzec operuje pojęciami modelu domenowego -->
+
 ## 🎯 Problem
 
 **Challenges with command handler implementation**:

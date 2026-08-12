@@ -24,7 +24,7 @@ patterns/
 ├── infrastructure/      # Infrastructure Layer (persistence, API) - 5 patterns
 ├── architecture/        # Cross-cutting architecture patterns - 11 patterns
 ├── testing/            # Testing patterns - 9 patterns
-├── cross-layer/        # Used everywhere (errors, logging, error handlers) - 4 patterns
+├── cross-layer/        # Used everywhere (errors, logging, error handlers, registry guards) - 5 patterns
 ├── orchestration/      # Project management and team coordination - 1 pattern
 ├── marketing/          # Marketing workflow patterns - 1 pattern
 ├── finance/            # Finance workflow patterns - 2 patterns
@@ -38,6 +38,8 @@ patterns/
 ├── python/             # Python-specific patterns - 5 patterns (per-project)
 ├── sveltekit/          # SvelteKit-specific patterns - 5 patterns (per-project)
 └── typescript-library/ # TS library-specific patterns - 5 patterns (per-project)
+                        #   public-api, backward-compat, package-boundary, build-publish,
+                        #   library-testing (+ rule-cards _summary.md, one per pattern)
 ```
 
 ---
@@ -183,6 +185,7 @@ Patterns used across all architectural layers.
 | **[logger-pattern.md](cross-layer/logger-pattern.md)** | ~500 | Production | Structured logging, PII redaction, correlation IDs | All implementers |
 | **[error-handler-chain-pattern.md](cross-layer/error-handler-chain-pattern.md)** | ~550 | Production | 9 specialized error handlers in Chain of Responsibility | infrastructure-testing-implementer |
 | **[conventions-pattern.md](cross-layer/conventions-pattern.md)** | ~400 | Production | Naming conventions, file organization, module structure | All implementers |
+| **[registry-drift-guard-pattern.md](cross-layer/registry-drift-guard-pattern.md)** | ~150 | Production | Ręczny rejestr (migracje, event map, routing, lista hooków) rozjeżdża się po cichu z plikami na dysku — generuj go albo pilnuj testem w obie strony | All implementers, verifiers |
 | **[safe-error-propagation-pattern.md](cross-layer/safe-error-propagation-pattern.md)** | ~350 | Production | 3-layer defense against infra error leakage to HTTP (TS-SEC-011) | All implementers |
 | **[security-invariants-pattern.md](cross-layer/security-invariants-pattern.md)** | — | Production | (pre-existing, previously missing from this index) | All implementers |
 | **[snapshot-incremental-review-pattern.md](cross-layer/snapshot-incremental-review-pattern.md)** | ~90 | Production | Hash-per-item snapshot + diff for cheap incremental re-review | review-panel, api-contract-sync skills |

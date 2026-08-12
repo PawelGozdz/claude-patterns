@@ -1,5 +1,7 @@
 # Pattern: Geo-Spatial Query (PostGIS)
 
+**Tags**: "api:geo:radius", "api:data-access"
+
 **Layer**: Infrastructure
 **Status**: production
 **Scope**: project-specific (juz-ide) — single-project derivation, not yet validated

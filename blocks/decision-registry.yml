@@ -1,0 +1,66 @@
+# Blok: decision-registry — rejestr decyzji projektu (ADR techniczne + BDR biznesowe)
+# jako wejście do analizy, zamiast zgadywania po nazwach plików.
+#
+# Problem, który rozwiązuje: katalog ADR rośnie do setek plików (juz-ide: 123),
+# a jego README bywa kuratorowany i niekompletny — obserwacja 2026-07-07: indeks
+# wymieniał ~20 ze ~100 wpisów. Agent bez indeksu albo listuje cały katalog (drogo),
+# albo zgaduje slug (błędnie), albo pomija rejestr (najgorzej).
+#
+# Mechanizm: `scripts/index-decisions.mjs` czyta nagłówki wszystkich plików i pisze
+# `.claude/config/decisions-index.json`. Regenerowany przy KAŻDYM /analyze, nie
+# cache'owany przy setupie — ADR-y powstają między setupami.
+#
+# CZEGO INDEKS NIE ROZSTRZYGA: zakresu uchylenia. Nagłówek „partially superseded"
+# nie mówi, która część padła (realny błąd: ADR-0076/0106 — uchylony był fixed cap
+# 5 km, nie guardrail 15 km). Wpisy z częściowym uchyleniem zostają aktywne
+# z flagą `needs_scope_check` i weryfikuje się je w kodzie, nie w nagłówku.
+#
+# Nazwa bloku celowo NIE brzmi `decisions` — w claude-patterns katalog `decisions/`
+# to karty decyzyjne DDD (aggregate-vs-entity itp.), zupełnie inna rzecz.
+name: decision-registry
+axis: process
+requires: []
+
+params:
+  adr_dir:
+    type: path
+    required: false
+    doc: "katalog ADR (decyzje techniczne), np. docs/adr"
+  bdr_dir:
+    type: path
+    required: false
+    doc: "katalog rejestru decyzji biznesowych, np. docs/decisions"
+  open_questions:
+    type: path
+    required: false
+    doc: "indeks otwartych pytań — task oparty na nierozstrzygniętym parametrze jest blokowany"
+  adr_exclude:
+    type: "string[]"
+    required: false
+    default: []
+    doc: "numery wykluczone ręcznie, np. [0015, 0018] — uwaga na duplikaty numerów w katalogu"
+  status_active:
+    type: "string[]"
+    required: false
+    default: [accepted, active, proposed]
+    doc: "statusy uznawane za obowiązujące; reszta odpada, poza wpisami częściowo uchylonymi"
+  lookup_order:
+    type: "string[]"
+    required: false
+    default: ["docs/decisions/", "docs/product/", "BUSINESS_RULES.yaml", "src/", "docs/adr/"]
+    doc: "kolejność weryfikacji wartości parametru — nagłówek ADR jest OSTATNI, nie pierwszy"
+
+analyze:
+  panel:
+    # Bez `when:` — celowo. Ten etap jest tani (haiku, czyta wygenerowany indeks
+    # i plik otwartych pytań, nie katalog) i wyłapuje najgroźniejszą klasę błędu:
+    # implementację opartą na parametrze, który czeka na decyzję albo został
+    # uchylony. `blocking: true` znaczy, że trafienie kończy się otwartym pytaniem
+    # bez odpowiedzi, czyli twardo blokuje przejście do implementacji.
+    - { stage: decision-gate, agent: "state-reader", model: haiku, blocking: true,
+        index: ".claude/config/decisions-index.json",
+        open_questions: "${open_questions}",
+        lookup_order: "${lookup_order}" }
+
+budgets:
+  decision-gate: { max_tool_calls: 12, on_limit: emit-partial }

@@ -1,0 +1,44 @@
+# Blok: ddd/layers — oś architektury dla projektu DDD: podział pracy implementacyjnej
+# na warstwy domain → application → infrastructure → testing, pętla weryfikacji i bramka
+# końcowa.
+#
+# Wydzielony z `ddd/core` (2026-08-12) — ten sam ruch, co `library-layers` względem
+# `ts-library`. Dopóki warstwy siedziały w rdzeniu DDD, nie dało się wziąć pojęć
+# domenowych bez narzuconego układu katalogów: skład `[flat-service, ddd/core]` kończył
+# się błędem „orchestrate.layers definiują dwa bloki". Teraz `ddd/core` wnosi modelowanie,
+# agentów i bramkę approval, a układ pracy dobiera się osobno.
+#
+# Co to otwiera w praktyce:
+#   [nestjs, ddd/core, ddd/layers, kysely]   — klasyczny DDD (alias `ddd`)
+#   [nestjs, flat-service, ddd/core]         — modelowanie domenowe, płaski układ katalogów
+#   [ts-library, library-layers, ddd/core]   — biblioteka z modelem domenowym w środku
+name: ddd/layers
+axis: architecture
+# Twarda zależność: warstwy wskazują agentów (`domain-application-implementer`,
+# `code-quality-verifier`, `security-e2e-verifier`), którzy trafiają do projektu przez
+# `overlay.agents` bloku ddd/core. Bez niego bramki wskazywałyby nieistniejących agentów.
+requires: [ddd/core]
+
+orchestrate:
+  # 2026-07-02: domain i application ROZDZIELONE — podwójna warstwa (15-25 plików)
+  # strukturalnie nie mieściła się w budżecie tur implementera, a fail handlera oznaczał
+  # re-implementację OBU warstw ×3. Application czyta świeży kod domeny z repo.
+  # 2026-07-09: infrastructure ROZDZIELONE od testów — pisanie kodu produkcyjnego
+  # i pisanie testów do cudzego kodu to dwa różne fachy; load-testy nie miały właściciela.
+  layers:
+    - { id: domain, dirs: [domain/], agent: "domain-application-implementer" }
+    - { id: application, dirs: [application/], agent: "domain-application-implementer" }
+    - { id: infrastructure, dirs: [infrastructure/], agent: "infrastructure-implementer" }
+    - { id: testing, dirs: [__tests__/], agent: "test-implementer", tests: true }
+  inner_loop: { verify: "code-quality-verifier", max_attempts: 3, on_max: ESCALATE_AND_HALT }
+  final_gate: { agent: "security-e2e-verifier", on_fail: ESCALATE_AND_HALT }
+  exit: STAGE_NOT_COMMIT
+
+# Seam'y Ralphinho — no-op w MVP (ADR 0002). Należą do wykonania, więc idą razem
+# z warstwami, nie z rdzeniem pojęciowym.
+ralphinho:
+  units: single
+  worktree: shared
+  fan_out: sequential
+  merge_stage: noop
+  guardrails: { push_only: "claude/*", max_attempts_per_layer: 3 }

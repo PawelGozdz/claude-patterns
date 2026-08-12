@@ -8,6 +8,10 @@
 # ciągnie (przez ten blok), a czysto persystencyjne keywordy już nie (zamierzona
 # różnica, patrz raport blocks-equivalence-check).
 name: ddd/events
+# Oś architektury, ale NIE wnosi własnych warstw do orchestrate.layers —
+# warstwy wnosi wyłącznie ddd/core. axis: architecture tu nie oznacza
+# obowiązku deklarowania layers.
+axis: architecture
 requires: [ddd/core]
 
 patterns:

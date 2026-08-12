@@ -1,18 +1,32 @@
-# Build and Publish Pattern for TypeScript Libraries
+# Pattern: Build & Publish Pipeline for TypeScript Libraries
 
-**Version**: 1.0
-**Created**: 2026-03-30
-**Purpose**: Dual ESM/CJS build configuration, npm publishing, and release workflow for Nx monorepo libraries
+**Layer**: Infrastructure
+**Status**: production
+
+## What This Is
+
+Dual ESM/CJS build configuration, npm publishing, and release workflow for
+TypeScript libraries in an Nx monorepo. Covers the `package.json` `exports`
+contract, the library-specific `tsconfig`, the Nx build targets that produce
+both module formats, and the changeset-driven CI release pipeline that turns
+a merged PR into a published npm version with a generated changelog.
 
 ---
 
 ## When to Use
 
-- You are publishing a TypeScript library to npm (public or private registry)
-- Consumers need both ESM (`import`) and CJS (`require`) support
-- You need tree-shaking, source maps, and TypeScript declarations
-- You are using Nx with pnpm for monorepo management
-- You need an automated changeset-based release workflow
+**Use this pattern for:**
+- ✅ Publishing a TypeScript library to npm (public or private registry) for external or cross-repo consumption
+- ✅ Consumers need both ESM (`import`) and CJS (`require`) support
+- ✅ You need tree-shaking, source maps, and TypeScript declaration files shipped to consumers
+- ✅ You are using Nx (with pnpm or another package manager) for monorepo management
+- ✅ You need an automated, changeset- or release-tool-driven versioning and publish workflow
+
+**Do NOT use for:**
+- ❌ An application bundled for deployment (not a library meant for consumption) — this pipeline is for publishable packages, not deploy artifacts
+- ❌ An internal monorepo package consumed only via source path, never published to a registry — no `exports`/dual-build contract is needed there, see `package-boundary-pattern.md`
+- ❌ Deciding WHAT a package should export (its public surface) — see `public-api-pattern.md`
+- ❌ Deciding whether a given change requires a major version bump — see `backward-compatibility-pattern.md`
 
 ---
 
@@ -72,6 +86,37 @@ Key decisions in this config:
 - **`"types"` inside each condition** -- TypeScript resolves declarations correctly for both module systems
 - **`"files"`** -- only ship dist, changelog, and readme; exclude source, tests, configs
 - **`"./package.json"` export** -- some tools need to read package.json at runtime
+
+#### Subpath exports
+
+`exports` is not limited to the package root (`"."`). Libraries commonly ship
+secondary entry points — e.g. `@scope/payments/testing` for test doubles, or
+`@scope/payments/react` for a framework-specific adapter — so consumers only
+pull in what they need instead of the whole package:
+
+```json
+"exports": {
+  ".": { "import": "./dist/esm/index.mjs", "require": "./dist/cjs/index.cjs" },
+  "./testing": { "import": "./dist/esm/testing.mjs", "require": "./dist/cjs/testing.cjs" }
+}
+```
+
+Each subpath needs its own `types` condition, same as the root, and its own
+entry in the build output -- treat it as a second mini-package inside the
+same `dist/`.
+
+#### peerDependencies
+
+When a library depends on a host package the consumer already provides (a
+framework, a plugin host, or another `@scope/*` library expected to be a
+singleton in the consumer's tree), declare it under `peerDependencies` rather
+than `dependencies`. This tells the package manager to resolve the version
+from the consumer's tree instead of installing a private copy, avoiding
+duplicate instances (e.g. two copies of a DI container or a class-identity
+check that silently fails across duplicated modules). Pair it with a version
+range wide enough for real consumers, and list overly strict peers as
+`peerDependenciesMeta: { optional: true }` when the dependency is only needed
+for one subpath export.
 
 ### 2. TypeScript Configuration for Libraries
 
@@ -267,6 +312,21 @@ pnpm changeset version   # Updates package.json versions + CHANGELOG.md
 pnpm changeset publish   # Publishes to npm
 ```
 
+#### Alternative: `nx release`
+
+In an Nx monorepo, `nx release` is a native alternative to
+`@changesets/cli` -- it handles conventional-commit-based (or
+changelog-file-based) versioning, changelog generation, and npm publish in
+a single Nx-integrated command, with built-in awareness of the project
+graph (so dependent packages get version-bumped together automatically).
+Prefer `@changesets/cli` when you want per-change human-authored changelog
+entries and fine-grained control over which packages are linked/fixed
+(as configured above); prefer `nx release` when you want less workflow
+ceremony and are already conventional-commits-disciplined, since it can
+derive versions and changelogs from commit history without a separate
+changeset file per change. Do not run both in the same repo -- pick one
+as the single source of truth for versioning.
+
 ### 6. CI/CD Pipeline
 
 ```yaml
@@ -324,6 +384,23 @@ jobs:
 ```
 
 ### 7. Pre-publish Validation Checklist
+
+Before writing a custom validation script, run the two standard community
+validators against the built package -- they catch the most common
+publishing mistakes without any bespoke code:
+
+- **`publint`** -- lints the published package layout itself: catches a
+  `main`/`module`/`exports` pointing at a non-existent file, missing
+  `types`, wrong `sideEffects`, and other npm-resolution footguns, run
+  against the built `dist/` (or the packed tarball) before publish, e.g.
+  `npx publint ./dist/libs/payments`.
+- **`arethetypeswrong` (attw)** -- checks that the TypeScript types
+  resolve correctly for *every* consumer resolution mode (`node16`,
+  `bundler`, CJS `require`, ESM `import`), which is exactly where dual
+  ESM/CJS packages tend to drift -- e.g. `npx attw --pack ./dist/libs/payments`.
+
+Run both as a CI step (or an `nx` target) right before `changeset publish`
+/ `nx release publish`, and fail the pipeline on either reporting an error.
 
 Add a prepublish script that validates the package before it goes to npm:
 

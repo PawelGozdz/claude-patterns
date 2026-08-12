@@ -22,7 +22,7 @@
 |---------|---------|-------|
 | `/orchestrate` | Unified orchestration (search/implement/validate/analyze/review) | Sonnet |
 | `/analyze` | Research/analiza sterowana blokami z runtime.yml (ADR 0008, pilot) | Sonnet |
-| `/orchestrate-blocks` | Implementacja sterowana blokami z runtime.yml (ADR 0008, pilot; w F6 zastąpi /orchestrate) | Sonnet |
+| `/orchestrate` | Implementacja sterowana blokami z runtime.yml (ADR 0008, pilot; w F6 zastąpi /orchestrate) | Sonnet |
 | `/plan` | Restate requirements, assess risks, create implementation plan | — |
 | `/tdd` | Test-driven development: interfaces -> tests -> minimal implementation | — |
 | `/scaffold` | Haiku template generator — fast boilerplate (60x cheaper) | Haiku |

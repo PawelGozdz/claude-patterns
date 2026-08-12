@@ -3,6 +3,7 @@
 # alternatywa dla ddd/* tam, gdzie DDD byłoby przerostem.
 # Agenci generyczni: implementacja general-purpose, verify/gate z ECC.
 name: flat-service
+axis: architecture
 requires: []
 
 orchestrate:

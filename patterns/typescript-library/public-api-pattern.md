@@ -1,19 +1,27 @@
-# Public API Surface Management for TypeScript Libraries
+# Pattern: Public API Surface Management
 
-**Version**: 1.0
-**Created**: 2026-03-30
-**Purpose**: Define explicit, type-safe public APIs for shared npm packages in Nx monorepos
+**Layer**: Architecture
+**Status**: production
 
----
+## What This Is
+
+Defines explicit, type-safe public APIs for shared TypeScript libraries (npm packages, Nx workspace libraries) — a single `index.ts` barrel that names every public export, backed by branded types, type guards, and a disciplined internal/public split. The goal is to make the public API surface an intentional, reviewable contract rather than an accident of whatever `export *` happens to leak.
 
 ## When to Use
 
-- Building a shared TypeScript library consumed by multiple apps or other libraries
-- You need to control which types, functions, and classes are visible to consumers
-- You want to prevent internal refactors from becoming breaking changes
-- The library is published to npm or used across Nx workspace boundaries
+**Use this pattern for:**
+- ✅ Building a shared TypeScript library consumed by multiple apps or other libraries
+- ✅ You need to control which types, functions, and classes are visible to consumers
+- ✅ You want to prevent internal refactors from becoming breaking changes
+- ✅ The library is published to npm or used across Nx workspace boundaries
+- ✅ Multiple external repos consume the package and need a stable, typed contract
 
----
+**Do NOT use for:**
+- ❌ End-user applications with no external consumers — there is no "public surface" to manage; apply normal module organization instead
+- ❌ Purely internal monorepo packages never published or imported across team boundaries — see `package-boundary-pattern.md` for internal module boundaries
+- ❌ Deciding whether a specific change is breaking — that's `backward-compatibility-pattern.md`, not this pattern
+- ❌ Configuring `package.json` `exports`, dual ESM/CJS builds, or bundler output — see `build-publish-pattern.md`
+- ❌ Single-file scripts or throwaway tooling with no versioned consumers
 
 ## Implementation
 

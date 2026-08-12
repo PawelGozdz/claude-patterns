@@ -2,6 +2,7 @@
 # Keyword `schema` celowo pokrywa się z blokiem kysely (unia zbiorów, OQ7):
 # task o "schema" dostaje i wzorzec walidacji, i repozytorium — oba zasadne.
 name: zod
+axis: validation
 requires: []
 
 patterns:

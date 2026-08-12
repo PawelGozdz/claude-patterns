@@ -3,7 +3,7 @@
  * check-approval-before-impl.js  (PreToolUse: Write|Edit|MultiEdit)
  *
  * Backstop dla twardej bramki research→implementacja (ADR 0002). PRIMARY gate to
- * precondition-check w /orchestrate-ddd; ten hook to drugi zamek: blokuje edycje
+ * precondition-check w /orchestrate; ten hook to drugi zamek: blokuje edycje
  * KODU ŹRÓDŁOWEGO, gdy istnieje artefakt analizy w stanie nieapprobowanym.
  *
  * Heurystyka (MVP, single-task flow): jeśli w project-orchestration/tasks/ jest
@@ -76,7 +76,7 @@ function main() {
   const msg =
     `\n${isBlock ? '🛑 BLOCKED' : '⚠️  WARN'}: APPROVAL-GATE on ${p.tool_name} ${fp}\n` +
     `    Edytujesz kod źródłowy, ale istnieje analiza NIEZATWIERDZONA:\n${list}\n\n` +
-    `    Najpierw: odpowiedz na open_questions + ustaw status: approved, potem /orchestrate-ddd <TASK>.\n` +
+    `    Najpierw: odpowiedz na open_questions + ustaw status: approved, potem /orchestrate <TASK>.\n` +
     `    Tryb: ${MODE.toUpperCase()} (ORCHESTRATE_DDD_GATE=warn|block|off; one-off: touch .analysis-ok-sentinel)\n`;
   process.stderr.write(msg);
   process.exit(isBlock ? 2 : 0);

@@ -1,8 +1,33 @@
 # Blok: ddd/core — rdzeń DDD: modelowanie domeny, agenci DDD + VETO verifiers,
-# twarda bramka approval (analyze PAUSE) i warstwowa orchestracja implementacji.
+# twarda bramka approval (analyze PAUSE). Warstwy implementacji wnosi `ddd/layers`.
 # Specyfikacje i polityki należą tutaj (OQ1). Wymagany przez wszystkie ddd/*.
+# SPRZĘŻENIE Z BIBLIOTEKĄ (stan faktyczny, zmierzony 2026-08-11): wzorce tego bloku
+# mają 68 odwołań do `@vytches/ddd` (+ ddd-messaging, repositories, domain-services,
+# contracts), a implementerzy zakładają jej klasy bazowe (AggregateRoot, ValueObject,
+# Result<T>). To NIE jest generyczny blok „DDD w ogóle" — opisuje pracę z tą biblioteką.
+#
+# Dlaczego nie rozdzielamy pojęć od biblioteki: rozbicie oznaczałoby przepisanie 68
+# miejsc pod hipotezę użycia innego frameworka DDD, a biblioteka jest nasza i jej wybór
+# jest strategiczny. Reguła „uniwersalne dopiero po drugim użyciu" działa też tutaj.
+#
+# Konsekwencja praktyczna: projekt biorący ten blok POWINIEN mieć `@vytches/ddd`
+# w zależnościach. Nazwa i minimalna wersja poniżej trafiają do runtime.yml i do
+# promptów implementerów — dzięki temu agent wie, o której bazie mówią wzorce.
 name: ddd/core
+axis: architecture
 requires: []
+
+params:
+  ddd_library:
+    type: string
+    required: false
+    default: "@vytches/ddd"
+    doc: "biblioteka bazowa modelu domenowego, do której odnoszą się wzorce tego bloku"
+  ddd_library_min_version:
+    type: string
+    required: false
+    default: null
+    doc: "minimalna wersja — ustaw, gdy wzorce zaczną zakładać API nowsze niż to, co ma projekt"
 
 patterns:
   always:
@@ -17,7 +42,7 @@ overlay:
   agents: [stacks/nestjs-ddd/]
   patterns: [domain/]
   rules: [nestjs-ddd/]
-  hooks: [check-delegation, check-patterns-read, check-subagent-pattern-reads, check-approval-before-impl]
+  hooks: [check-delegation, check-patterns-read, check-subagent-pattern-reads, check-approval-before-impl, check-ddd-patterns, check-domain-purity]
 
 # Rozbrojenie kolizji z ECC (spike S3) + wymuszenie delegacji — przeniesione
 # z presets/nestjs-ddd.yml (env należy do overlay'u DDD, nie do frameworka)
@@ -33,20 +58,5 @@ analyze:
     - { stage: pattern-fit, agent: "code-quality-verifier", advisory: true }
   exit: PAUSE
 
-orchestrate:
-  layers:
-    - { id: domain, dirs: [domain/], agent: "domain-application-implementer" }
-    - { id: application, dirs: [application/], agent: "domain-application-implementer" }
-    - { id: infrastructure, dirs: [infrastructure/], agent: "infrastructure-implementer" }
-    - { id: testing, dirs: [__tests__/], agent: "test-implementer", tests: true }
-  inner_loop: { verify: "code-quality-verifier", max_attempts: 3, on_max: ESCALATE_AND_HALT }
-  final_gate: { agent: "security-e2e-verifier", on_fail: ESCALATE_AND_HALT }
-  exit: STAGE_NOT_COMMIT
-
-# Seam'y Ralphinho — no-op w MVP (ADR 0002); przeniesione z presetu bez zmian
-ralphinho:
-  units: single
-  worktree: shared
-  fan_out: sequential
-  merge_stage: noop
-  guardrails: { push_only: "claude/*", max_attempts_per_layer: 3 }
+# Warstwy implementacji, pętla verify i bramka końcowa: `blocks/ddd/layers.yml`
+# (oś architektury). Przeniesione stąd 2026-08-12 — patrz nagłówek tamtego bloku.

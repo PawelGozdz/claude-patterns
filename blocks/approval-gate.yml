@@ -4,6 +4,7 @@
 # startu bez zatwierdzonej analizy; hook egzekwuje to także fizycznie.
 # Projekt, który świadomie NIE chce bramki, po prostu nie dodaje tego bloku.
 name: approval-gate
+axis: process
 requires: []
 
 overlay:

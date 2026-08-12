@@ -1,5 +1,8 @@
 # Integration Event Pattern
 
+**Layer**: Architecture
+**Assumes**: ddd/core   <!-- wzorzec operuje pojęciami modelu domenowego -->
+
 **Purpose**: Cross-bounded-context communication using real Project production patterns
 **Audience**: domain-application-implementer, infrastructure-testing-implementer
 **Philosophy**: Code + concise rules, NO verbose explanations

@@ -1,5 +1,8 @@
 # Transactional Outbox Pattern
 
+**Layer**: Architecture
+**Assumes**: ddd/core   <!-- wzorzec operuje pojęciami modelu domenowego -->
+
 **Purpose**: Atomic delivery of integration events — eliminates the crash window between DB commit and BullMQ dispatch.
 **Audience**: domain-application-implementer, infrastructure-testing-implementer
 **Philosophy**: Code + concise rules. Reference: TS-DR-003, ADR-0027 (Tier 1 events)
