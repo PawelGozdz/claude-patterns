@@ -1,5 +1,7 @@
 # Context Isolation Pattern - Anthropic-Inspired
 
+**Tags**: "any:process"
+
 ## Problem
 Main context przepełnia się przez:
 - Czytanie wszystkich plików (20-40K tokens)

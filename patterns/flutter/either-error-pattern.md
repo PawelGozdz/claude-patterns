@@ -1,5 +1,7 @@
 # Either Error Handling Pattern
 
+**Tags**: "mobile:domain:errors"
+
 **Layer**: Cross-Layer
 **Status**: production
 

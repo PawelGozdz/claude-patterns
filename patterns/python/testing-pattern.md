@@ -1,5 +1,7 @@
 # Python Testing Patterns
 
+**Tags**: "api:tests", "api:platform:python"
+
 ## When to Use
 
 - Every Python module with business logic, API routes, or repository implementations

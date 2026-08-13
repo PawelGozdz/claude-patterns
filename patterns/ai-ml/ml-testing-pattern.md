@@ -1,5 +1,7 @@
 # Pattern: Testing ML Services Without a GPU
 
+**Tags**: "data:tests"
+
 **Layer**: AI/ML
 **Status**: production
 

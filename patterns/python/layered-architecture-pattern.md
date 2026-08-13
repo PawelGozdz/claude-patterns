@@ -1,5 +1,7 @@
 # Python Layered Architecture Pattern
 
+**Tags**: "api:app", "api:platform:python"
+
 ## When to Use
 
 - Any Python backend service with business logic beyond simple CRUD

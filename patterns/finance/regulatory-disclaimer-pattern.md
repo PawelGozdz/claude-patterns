@@ -1,5 +1,7 @@
 # Pattern: Contextual Regulatory Disclaimer
 
+**Tags**: "any:process"
+
 **Layer**: Finance / Cross-Layer
 **Status**: production
 **Agents**: `finance-strategist` (primary), `marketing-strategist`,

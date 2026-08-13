@@ -35,7 +35,7 @@ patterns/
 │                       #   design-token, accessibility, localization (+ rule-cards _summary.md)
 ├── nextjs/             # Next.js-specific patterns - 7 patterns (per-project)
 ├── ai-ml/              # GPU inference patterns - 7 patterns (per-project)
-├── python/             # Python-specific patterns - 5 patterns (per-project)
+├── python/             # Python-specific patterns - 7 patterns (per-project)
 ├── sveltekit/          # SvelteKit-specific patterns - 5 patterns (per-project)
 └── typescript-library/ # TS library-specific patterns - 5 patterns (per-project)
                         #   public-api, backward-compat, package-boundary, build-publish,
@@ -280,6 +280,22 @@ ecosystems, jurisdiction-bound disclaimers, AGPL contamination prevention.
 - External: 30 cataloged in `skills/legal/EXTERNAL.md`
 - Agent: `@legal-strategist` (universal, consulted by `@product-owner`)
 - Command: `/legal <task>`
+
+---
+
+### Python — Data Pipeline (2 patterns, ⚠ project-specific: my-intelligence)
+
+Wyprowadzone z SENTINEL: 231 źródeł, 10-etapowy potok, pięć silników składowania
+(PostgreSQL, Qdrant, Neo4j, Redis, Elasticsearch). Wchodzą przez bloki `ml-pipeline`
+i `polyglot-store`, nie przez `stack_profile`.
+
+| Pattern | Status | Description |
+|---------|--------|-------------|
+| **polyglot-persistence-pattern** | ⚠ project-specific (my-intelligence) | Jedno źródło prawdy + projekcje; wspólny `BatchDocument`, zapis wsadowy per silnik, degradacja zamiast wywrotki |
+| **resilient-collection-pattern** | ⚠ project-specific (my-intelligence) | Bezpiecznik i checkpoint **per źródło**, definicja źródła jako dane; awaria jednego z 231 nie jest awarią przebiegu |
+
+**Companion**: bloki `blocks/python.yml`, `blocks/ml-pipeline.yml`, `blocks/polyglot-store.yml`;
+agenci `python-architecture-expert`, `python-quality-verifier`.
 
 ---
 

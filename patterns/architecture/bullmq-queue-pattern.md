@@ -1,5 +1,7 @@
 # BullMQ Queue Pattern
 
+**Tags**: "api:events:queue"
+
 ## 🎯 Problem
 
 **Inconsistent queue usage leads to runtime errors and type safety issues**:

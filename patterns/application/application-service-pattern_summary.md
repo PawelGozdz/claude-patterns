@@ -1,4 +1,6 @@
 # Application Service — Rule Card
+
+**Tags**: "api:app"
 <!-- Egzekwowalne streszczenie application-service-pattern.md. WIĄŻĄCE dla implementacji.
      Pełny wzorzec (kontekst, uzasadnienie, przykłady): application-service-pattern.md
      Verifier sprawdza KAŻDĄ regułę z ID poniżej i cytuje ją przy naruszeniu. -->

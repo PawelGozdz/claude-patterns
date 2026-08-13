@@ -1,5 +1,7 @@
 # Pattern: Product Marketing Context (Foundational Document)
 
+**Tags**: "any:process"
+
 **Layer**: Marketing / Cross-Layer
 **Status**: production
 **Origin**: vendored from [coreyhaines31/marketingskills](https://github.com/coreyhaines31/marketingskills) (MIT)

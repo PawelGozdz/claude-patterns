@@ -1,5 +1,7 @@
 # Python Async Patterns
 
+**Tags**: "api:app:async", "api:platform:python"
+
 ## When to Use
 
 - Any I/O-bound Python service: database queries, HTTP calls, file operations

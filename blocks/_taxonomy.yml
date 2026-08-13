@@ -57,8 +57,16 @@ areas:
 # Poziom 3 — wariant. OTWARTY, kebab-case. Poniżej te już używane, żeby nie mnożyć
 # synonimów; linter zgłasza każdy nowy wariant jako informację, nie błąd.
 variants_seen:
+  app: [async, batching, concurrency, cross-context, errors, external-integration, ingestion, llm, model-lifecycle]
+  api-surface: [barrel, contract, deprecation, errors, semver]
   auth: [jwt, session, oauth, refresh]
-  tests: [unit, integration, e2e, contract, load]
-  data-access: [migration, transaction, outbox]
+  data-access: [http, mapper, migration, offline, outbox, polyglot, projection, transaction]
+  domain: [aggregate, errors]
+  events: [domain, integration, outbox, queue]
   geo: [radius, teryt, polygon, discovery]
-  api-surface: [semver, deprecation, barrel]
+  observability: [audit, logging]
+  platform: [channel, gpu, nestjs, nextjs, python, svelte]
+  process: [review]
+  security: [identity, rate-limit, validation]
+  tests: [contract, e2e, fixtures, integration, load, seeding, unit]
+  ui: [accessibility, design-token, forms, i18n, navigation, state]

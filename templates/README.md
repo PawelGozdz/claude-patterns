@@ -173,4 +173,7 @@ Old CLAUDE-SLIM.md is **deprecated**. New system:
 - ✅ Dynamic project table (no empty rows)
 - ✅ Cleaner separation (core vs stack-specific)
 
-Just update `stack_profile` in your project.yml and regenerate!
+Configuration lives in `stack_blocks:` (ADR 0008) — that's what produces
+`.claude/config/runtime.yml` and drives `/analyze` and `/orchestrate`.
+`stack_profile` only selects which CLAUDE.md template sections and hook set
+`setup-project.sh` uses; change either and regenerate.

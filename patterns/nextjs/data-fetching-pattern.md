@@ -1,5 +1,7 @@
 # Data Fetching Pattern
 
+**Tags**: "web:data-access", "web:platform:nextjs"
+
 ## When to Use
 
 - Every Next.js 16 page that reads data from a database, API, or external service

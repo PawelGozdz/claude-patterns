@@ -6,17 +6,19 @@ project:
   name: my-project
   description: "Short project description"
 
-  # Stack profile determines which template sections are included
+  # KONFIGURACJA (ADR 0008): kompozycja bloków. To jedyny tor — z niej powstaje
+  # .claude/config/runtime.yml, a z runtime.yml biorą wszystko /analyze i /orchestrate.
+  # Lista MUSI być INLINE (yml_get/grep w setup-project.sh nie czyta list blokowych
+  # — tak samo jak przy `broadcast:` niżej). Aliasy rozwija blocks/_aliases.yml
+  # (np. `ddd` = ddd/core+cqrs+events+acl; `nestjs-ddd` = nestjs+ddd+kysely).
+  # Prefiks `./` = blok lokalny z .claude/blocks/<nazwa>.yml.
+  stack_blocks: [nestjs, ddd, kysely]
+
+  # SZABLON, nie konfiguracja: `stack_profile` wybiera już tylko sekcje szablonu
+  # CLAUDE.md i zestaw hooków w setup-project.sh. Nie steruje doborem wzorców,
+  # agentów ani bramek — tym zajmuje się wyłącznie kompozycja powyżej.
   # Available: nestjs-ddd, flutter-clean-arch, python (or omit for generic)
   stack_profile: nestjs-ddd
-
-  # ALTERNATYWA (ADR 0008, pilot TASK-BLOCKS-001): kompozycja bloków zamiast
-  # monolitycznego profilu. Lista MUSI być INLINE (yml_get/grep w setup-project.sh
-  # nie czyta list blokowych — jak przy `broadcast:` niżej). Aliasy rozwija
-  # blocks/_aliases.yml (np. `ddd` = ddd/core+cqrs+events+acl; `nestjs-ddd` =
-  # nestjs+ddd+kysely). Prefiks `./` = blok lokalny z .claude/blocks/<nazwa>.yml.
-  # Obecność pola włącza materializację .claude/config/runtime.yml (sekcja 5a).
-  # stack_blocks: [nestjs, ddd, kysely]
 
   # Language determines which rules/{language}/ to apply
   # Available: typescript, python, dart (or omit for common only)

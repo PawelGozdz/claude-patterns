@@ -1,5 +1,7 @@
 # Fresh Context Pattern
 
+**Tags**: "any:process"
+
 > **Category**: Architecture
 > **Layer**: Cross-Agent Coordination
 > **Version**: 1.0.0

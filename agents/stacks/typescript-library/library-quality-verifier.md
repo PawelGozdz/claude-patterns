@@ -93,22 +93,15 @@ same answer costs far more and is less reliable.
 
 ---
 
-## 📚 Pattern Knowledge Base (MUST read before verification)
+## Pattern grounding (list comes from the orchestrator)
 
-The orchestrator hands this agent a scoped `{PATTERNS}` list — treat as MUST-read.
+The orchestrator injects a scoped `{PATTERNS}` list, derived from `runtime.yml`
+(`patterns.always` + triggers matched against this task) — treat every entry as MUST-read,
+and read the `*_summary.md` rule card first: it carries the enforceable rule IDs to cite.
 
-### TypeScript library patterns
-Read the `*_summary.md` rule card first — it carries the enforceable rule IDs you must
-cite when you veto. The full pattern next to it is background, not the checklist.
-
-- `.claude/knowledge/patterns/typescript-library/public-api-pattern_summary.md` — barrel files, export discipline (rules `PA*`)
-- `.claude/knowledge/patterns/typescript-library/backward-compatibility-pattern_summary.md` — semver, deprecation (rules `BC*`)
-- `.claude/knowledge/patterns/typescript-library/build-publish-pattern_summary.md` — ESM + CJS, `exports`, `.d.ts`, peer deps (rules `BP*`)
-- `.claude/knowledge/patterns/typescript-library/library-testing-pattern_summary.md` — contract tests, packed-artifact tests (rules `LT*`)
-- `.claude/knowledge/patterns/typescript-library/package-boundary-pattern_summary.md` — package graph, Nx tags (rules `PB*`) — monorepo only
-
-### Testing
-- `.claude/knowledge/patterns/testing/testing-pyramid-pattern.md`
+**If `{PATTERNS}` is empty or missing, STOP and report it.** Do not fall back to patterns
+you remember — an unscoped list is a bug in the caller, and silently working around it is
+how ungrounded code gets written.
 
 ### Verifier output MUST include
 Per-exported-symbol: `export | patterns_checked | api_diff | verdict`.

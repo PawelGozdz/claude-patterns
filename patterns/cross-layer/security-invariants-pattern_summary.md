@@ -1,5 +1,7 @@
 # Security Invariants — Rule Card
 
+**Tags**: "api:security", "api:authz"
+
 <!-- Egzekwowalne streszczenie security-invariants-pattern.md. WIĄŻĄCE.
      Pełny wzorzec (kontekst, uzasadnienie, przykłady): security-invariants-pattern.md
      Verifier sprawdza KAŻDĄ regułę z ID poniżej i cytuje ją przy naruszeniu. -->

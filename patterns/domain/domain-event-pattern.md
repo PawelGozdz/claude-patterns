@@ -1,5 +1,7 @@
 # Domain Event Pattern
 
+**Tags**: "api:events:domain", "api:domain"
+
 ## 🎯 Problem
 
 **Challenges with domain event implementation**:

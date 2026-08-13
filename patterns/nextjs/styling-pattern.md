@@ -1,5 +1,7 @@
 # Styling Pattern
 
+**Tags**: "web:ui", "web:platform:nextjs"
+
 ## When to Use
 
 - Every Next.js 16 application that needs consistent, performant styling

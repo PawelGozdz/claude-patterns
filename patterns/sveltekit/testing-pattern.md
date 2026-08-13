@@ -1,5 +1,7 @@
 # Testing Pattern
 
+**Tags**: "web:tests", "web:platform:svelte"
+
 ## When to Use
 
 - Every SvelteKit 2 application — testing is split across three layers

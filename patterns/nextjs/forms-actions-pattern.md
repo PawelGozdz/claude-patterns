@@ -1,5 +1,7 @@
 # Forms & Server Actions Pattern
 
+**Tags**: "web:ui:forms", "web:platform:nextjs"
+
 ## When to Use
 
 - Any form submission, data mutation, or user input that writes to a database or external service

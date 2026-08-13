@@ -1,5 +1,7 @@
 # Controller & Schema Pattern
 
+**Tags**: "api:api-surface", "api:security:validation"
+
 ## 🎯 Problem
 
 **Challenges with API controller implementation**:

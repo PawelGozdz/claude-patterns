@@ -1,5 +1,7 @@
 # Server & Client Components Pattern
 
+**Tags**: "web:ui", "web:platform:nextjs"
+
 ## When to Use
 
 - Every Next.js 16 page and feature — Server Components are the **default**

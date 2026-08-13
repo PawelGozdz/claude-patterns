@@ -30,8 +30,16 @@ try {
   process.exit(1);
 }
 
-const [projectDir, repoArg] = process.argv.slice(2);
-if (!projectDir) { console.error('użycie: materialize-runtime.mjs <project_dir> [patterns_repo]'); process.exit(1); }
+// `--check` liczy hash i porównuje go z tym w runtime.yml, NIC nie zapisując. Powód:
+// `source_hash` obejmuje treść bloków, aliasy, parametry i taksonomię, więc edycja
+// dowolnego z nich unieważnia runtime.yml każdego projektu — a bez trybu sprawdzania
+// nie da się tego wykryć inaczej niż nadpisując dziesięć cudzych repozytoriów.
+// Audyt z 2026-08-12 zastał wszystkie 10 kompozycji nieaktualnych, w tym dwie
+// instancje bez bloków `decision-registry`/`governance`, czyli bez blokującego
+// stage'a `decision-gate` w panelu `/analyze`. Exit 1 przy rozjeździe — nadaje się do CI.
+const CHECK = process.argv.includes('--check');
+const [projectDir, repoArg] = process.argv.slice(2).filter((a) => !a.startsWith('--'));
+if (!projectDir) { console.error('użycie: materialize-runtime.mjs <project_dir> [patterns_repo] [--check]'); process.exit(1); }
 const REPO = repoArg ?? join(dirname(fileURLToPath(import.meta.url)), '..');
 
 const warn = (m) => console.error(`  UWAGA: ${m}`);
@@ -638,6 +646,23 @@ const text = doc.toString({ lineWidth: 0, flowCollectionPadding: false })
   .replace(/^(stack_blocks:.*\n)/m, `$1${axesLine}`);
 
 const dst = join(projectDir, '.claude/config/runtime.yml');
+
+if (CHECK) {
+  const cur = existsSync(dst)
+    ? readFileSync(dst, 'utf8').match(/^source_hash:\s*"?([a-f0-9]+)"?/m)?.[1]
+    : null;
+  if (cur === hash) {
+    console.log(`  runtime.yml aktualny (hash ${hash}, ${expanded.length} bloków)`);
+    process.exit(0);
+  }
+  console.error(cur
+    ? `  ROZJAZD: runtime.yml ma hash ${cur}, bloki dają ${hash}\n` +
+      `  → node scripts/materialize-runtime.mjs ${projectDir}`
+    : `  BRAK runtime.yml (albo bez source_hash) — bloki dają ${hash}\n` +
+      `  → node scripts/materialize-runtime.mjs ${projectDir}`);
+  process.exit(1);
+}
+
 mkdirSync(dirname(dst), { recursive: true });
 writeFileSync(dst, text);
 console.log(`  runtime.yml: ${expanded.length} bloków [${expanded.join(', ')}], hash ${hash}` +

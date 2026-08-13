@@ -68,14 +68,11 @@ Strategic Flutter architecture for Clean Architecture apps: feature-first struct
 
 ## Knowledge Base
 
-**Patterns** (via symlink): `.claude/knowledge/patterns/`
-- `clean-architecture-pattern.md`
-- `riverpod-state-pattern.md`
-- `either-error-pattern.md`
-- `navigation-pattern.md`
-- `freezed-immutability-pattern.md`
-- `dio-networking-pattern.md`
-- `testing-pattern.md`
+**Patterns**: the `{PATTERNS}` list injected for this task, scoped from `runtime.yml`
+(`patterns.always` + matched triggers). Read the `*_summary.md` rule card first.
+
+You're advisory, so you also get invoked directly, without that list. When it's missing, name
+the patterns your recommendation assumes rather than reading the whole tree to be safe.
 
 ---
 

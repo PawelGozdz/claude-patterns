@@ -1,5 +1,7 @@
 # Flutter Clean Architecture — Rule Card
 
+**Tags**: "mobile:app", "mobile:domain"
+
 <!-- Egzekwowalne streszczenie clean-architecture-pattern.md. WIĄŻĄCE.
      Pełny wzorzec (struktura feature-first, przykłady warstw): clean-architecture-pattern.md
      Verifier sprawdza KAŻDĄ regułę z ID poniżej i cytuje ją przy naruszeniu. -->

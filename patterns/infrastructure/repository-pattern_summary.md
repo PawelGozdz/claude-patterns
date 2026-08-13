@@ -1,4 +1,6 @@
 # Repository — Rule Card
+
+**Tags**: "api:data-access"
 <!-- Egzekwowalne streszczenie repository-events-pattern.md + stub repository-pattern.md. WIĄŻĄCE.
      Pełny wzorzec (kontekst, uzasadnienie, checklist, testy): repository-events-pattern.md
      Verifier sprawdza KAŻDĄ regułę z ID poniżej i cytuje ją przy naruszeniu. -->

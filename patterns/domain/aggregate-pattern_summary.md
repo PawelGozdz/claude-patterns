@@ -1,4 +1,6 @@
 # Aggregate — Rule Card
+
+**Tags**: "api:domain:aggregate"
 <!-- Egzekwowalne streszczenie aggregate-pattern.md. WIĄŻĄCE dla implementacji.
      Pełny wzorzec (kontekst, uzasadnienie, 5 przykładów): aggregate-pattern.md
      Verifier sprawdza KAŻDĄ regułę z ID poniżej i cytuje ją przy naruszeniu. -->

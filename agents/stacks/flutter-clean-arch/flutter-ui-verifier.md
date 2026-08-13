@@ -74,18 +74,15 @@ skills:
 
 ---
 
-## 📚 Pattern Knowledge Base (MUST read before verification)
+## Pattern grounding (list comes from the orchestrator)
 
-The orchestrator hands this agent a scoped `{PATTERNS}` list — treat as MUST-read.
+The orchestrator injects a scoped `{PATTERNS}` list, derived from `runtime.yml`
+(`patterns.always` + triggers matched against this task) — treat every entry as MUST-read,
+and read the `*_summary.md` rule card first: it carries the enforceable rule IDs to cite.
 
-### UI / widget patterns
-- `.claude/knowledge/patterns/flutter/widget-composition.md` (if present)
-- `.claude/knowledge/patterns/flutter/accessibility.md` (if present — semantic labels, touch targets)
-- `.claude/knowledge/patterns/flutter/localization.md` (if present — no hardcoded user-visible strings)
-- `.claude/knowledge/patterns/flutter/design-system-tokens.md` (if present)
-
-### Testing
-- `.claude/knowledge/patterns/testing/testing-pyramid-pattern.md` — widget + golden test coverage.
+**If `{PATTERNS}` is empty or missing, STOP and report it.** Do not fall back to patterns
+you remember — an unscoped list is a bug in the caller, and silently working around it is
+how ungrounded code gets written.
 
 ### Verifier output MUST include
 Per-screen/widget: `file | patterns_checked | a11y_violations | verdict`.

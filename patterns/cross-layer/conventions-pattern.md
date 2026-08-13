@@ -1,5 +1,7 @@
 # DDD Conventions & Naming Standards
 
+**Tags**: "api:domain", "any:process"
+
 **Purpose**: Naming conventions, file organization, and code style standards
 **Audience**: ALL implementers (domain, application, infrastructure)
 **Philosophy**: Consistency = Maintainability

@@ -53,16 +53,31 @@ for (const rel of walk(AGENTS).filter((f) => f.endsWith('.md'))) {
   let removedLines = 0, sectionLevel = 0, replaced = false;
   const isPatternHeading = (l) => /pattern knowledge base|pattern library|patterns you must read|required patterns/i.test(l);
 
-  for (const line of lines) {
+  // Blok nagłówka = od jego linii do następnego nagłówka tego samego lub wyższego poziomu.
+  // Potrzebny, by odróżnić podsekcję z wyliczanką ścieżek (wycinamy) od podsekcji, która
+  // trafiła pod ten sam nagłówek przy okazji — np. „### Verifier output MUST include",
+  // opisującej format werdyktu. Ta druga jest wymaganiem roli, nie doborem wzorców.
+  const blockHasPaths = (start) => {
+    const level = lines[start].match(/^(#{2,6}) /)[1].length;
+    for (let i = start + 1; i < lines.length; i++) {
+      const m = lines[i].match(/^(#{2,6}) /);
+      if (m && m[1].length <= level) break;
+      if (lines[i].includes('knowledge/patterns/')) return true;
+    }
+    return false;
+  };
+
+  for (const [idx, line] of lines.entries()) {
     const h = line.match(/^(#{2,6}) /);
     if (h) {
       const level = h[1].length;
-      // Sekcja kończy się dopiero na nagłówku tego samego lub wyższego poziomu —
-      // podsekcje `###` z listami ścieżek należą jeszcze do niej.
-      if (sectionLevel && level <= sectionLevel) sectionLevel = 0;
-      if (!sectionLevel && isPatternHeading(line)) {
+      // Sekcja kończy się na nagłówku tego samego lub wyższego poziomu — a także na
+      // podsekcji bez ani jednej ścieżki: tam zaczyna się treść, której wstrzyknięty
+      // `{PATTERNS}` niczym nie zastępuje, więc wycięcie jej to po prostu utrata wymagania.
+      if (sectionLevel && (level <= sectionLevel || !blockHasPaths(idx))) sectionLevel = 0;
+      if (!sectionLevel && isPatternHeading(line) && blockHasPaths(idx)) {
         sectionLevel = level;
-        if (!replaced) { out.push(CONTRACT); replaced = true; }
+        if (!replaced) { out.push(CONTRACT, ''); replaced = true; }
         removedLines++;
         continue;
       }

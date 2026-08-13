@@ -1,5 +1,7 @@
 # Offline-First Pattern
 
+**Tags**: "mobile:data-access:offline"
+
 **Layer**: Infrastructure
 **Status**: production
 

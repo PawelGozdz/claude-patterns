@@ -1,6 +1,8 @@
 # E2E Hybrid Fixture Pattern
 
 **Pattern Type**: Testing Pattern
+**Tags**: "api:tests:e2e"
+
 **Layer**: E2E (L3)
 **Introduced**: TS-TEST-001 Week 2 (2025-01-08)
 **Status**: ACTIVE

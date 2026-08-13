@@ -36,5 +36,5 @@ overlay:
 analyze:
   panel:
     - { stage: mobile-security-analysis, agent: "flutter-security-verifier",
-        when: "auth|token|sekret|secret|storage|biometr|pin|channel|native|deep link|redirect|cache|offline|pii",
+        when: "\\b(auth|token|sekret|secret|storage|pin|channel|native|redirect|cache|offline|pii)\\b|biometr|deep[-_ ]link",
         advisory: true }

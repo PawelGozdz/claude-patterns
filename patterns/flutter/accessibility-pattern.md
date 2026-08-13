@@ -1,5 +1,7 @@
 # Pattern: Accessibility (Flutter)
 
+**Tags**: "mobile:ui:accessibility"
+
 **Layer**: Cross-Layer
 **Status**: production
 

@@ -1,5 +1,7 @@
 # Command Handler Pattern
 
+**Tags**: "api:app"
+
 **Layer**: Application
 **Status**: production
 **Assumes**: ddd/core   <!-- wzorzec operuje pojęciami modelu domenowego -->

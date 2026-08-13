@@ -1,5 +1,7 @@
 # Repository Events Pattern
 
+**Tags**: "api:data-access", "api:events"
+
 ## 🎯 Problem
 
 **Missing domain events in repository eventMap causes runtime errors when reconstructing aggregates from database.**

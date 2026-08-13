@@ -1,0 +1,64 @@
+# Blok: ml-pipeline — architektura: pipeline zbierania i przetwarzania danych/ML
+# (kolekcja → przetwarzanie → magazyn → testy). Oś architektury, alternatywa dla
+# ddd/layers i flat-service tam, gdzie jednostką pracy jest ETAP POTOKU, nie agregat
+# ani endpoint.
+#
+# Dlaczego warstwy właśnie tak: awaria kolektora i awaria modelu to dwa różne fachy,
+# a etap „storage" (schematy, migracje, indeksy w kilku silnikach naraz) bywa większy
+# niż oba razem. Sklejenie ich w jedną warstwę daje to samo, co zlepiona warstwa
+# domain+application w ddd/layers przed rozdzieleniem 2026-07-02: fail na końcu
+# oznacza re-implementację wszystkiego.
+#
+# `dirs` to DOMYŚLNE nazwy — projekt o innym układzie katalogów nadpisuje je własnym
+# blokiem lokalnym (`./<nazwa>.yml`), a nie edycją tego pliku.
+name: ml-pipeline
+axis: architecture
+requires: []
+
+patterns:
+  triggers:
+    - keywords: [collect, collector, ingest, scrape, feed, source, crawler, rate limit,
+                 checkpoint, resume, circuit breaker, retry, backoff]
+      include:
+        - python/resilient-collection-pattern.md
+        - python/async-patterns.md
+    - keywords: [model, inference, gpu, vram, batch, embedding, llm, ollama]
+      include:
+        - ai-ml/model-lifecycle-pattern.md
+        - ai-ml/gpu-concurrency-pattern.md
+        - ai-ml/dynamic-batching-pattern.md
+    - keywords: [llm, prompt, openai, completion, ollama]
+      include:
+        - ai-ml/llm-integration-pattern.md
+    - keywords: [metric, observability, tracing, monitor, latency, drift]
+      include:
+        - ai-ml/ml-observability-pattern.md
+    - keywords: [test, pytest, fixture, mock, coverage]
+      include:
+        - ai-ml/ml-testing-pattern.md
+    - keywords: [api, endpoint, serve, inference api, mcp]
+      include:
+        - ai-ml/inference-api-pattern.md
+
+orchestrate:
+  layers:
+    # `optional: true` na etapach, których nie ma każdy pipeline — bez tego warstwa
+    # bez pracy zmusza implementera do wymyślania sobie zadania, żeby coś oddać.
+    - { id: collection, dirs: [collectors/, collector_manager/], agent: "general-purpose", optional: true }
+    - { id: processing, dirs: [intelligence/, processing/], agent: "general-purpose" }
+    - { id: storage, dirs: [infrastructure/, data/], agent: "general-purpose", optional: true }
+    - { id: testing, dirs: [tests/], agent: "general-purpose", tests: true }
+  inner_loop: { verify: "python-quality-verifier", max_attempts: 3, on_max: ESCALATE_AND_HALT }
+  final_gate: { agent: "ecc:security-reviewer", on_fail: ESCALATE_AND_HALT }
+  exit: STAGE_NOT_COMMIT
+
+analyze:
+  panel:
+    - { stage: ml-architecture, agent: "ml-inference-architect",
+        when: "\\b(inference|gpu|embedding|llm|batch)\\b|\\bmodel[ou]?\\b (ML|uczenia|inferencyjn)|ML model", advisory: true }
+    - { stage: gpu-budget, agent: "gpu-resource-verifier",
+        when: "\\b(gpu|vram|cuda|batch|throughput)\\b", advisory: true }
+
+overlay:
+  agents: [stacks/python-ml/]
+  patterns: [ai-ml/]

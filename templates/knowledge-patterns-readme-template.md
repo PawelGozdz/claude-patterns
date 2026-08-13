@@ -25,7 +25,6 @@ agents read before writing code. Patterns come from two sources:
 | Category | What it covers |
 |----------|---------------|
 | `cross-layer/` | Conventions, error handling, logger, security invariants — applies everywhere |
-| `_stack-defaults/` | Per-stack always-include lists (read by orchestrator Phase 0.5a') |
 | `architecture/` | High-level architecture patterns (transactional outbox, ACL registry, etc.) |
 | `testing/` | Testing pyramid, fixtures, mocks |
 | `orchestration/` | PM-system, task lifecycle |
@@ -44,10 +43,9 @@ agents read before writing code. Patterns come from two sources:
 
 ## MUST-READ before implementation
 
-These patterns apply to **every** task, regardless of feature scope. The
-orchestrator already includes them in `{PATTERNS}` via
-`_stack-defaults/<stack>.yml`, but if you're invoked directly (fast-path)
-read them first:
+These patterns apply to **every** task, regardless of feature scope. They come from
+`patterns.always` in `.claude/config/runtime.yml`, so the orchestrator already has them
+in `{PATTERNS}` — but if you're invoked directly (fast-path), read them first:
 
 - `cross-layer/conventions-pattern.md` — file naming, layer separation
 - `cross-layer/security-invariants-pattern.md` — 5 universal security rules
@@ -77,10 +75,10 @@ Plus any project-specific patterns under `security/`, `compliance/`, etc.
 ## How patterns enter agent prompts
 
 ```
-1. Orchestrator reads .claude/config/project.yml → stack_profile
-2. Orchestrator reads patterns/_stack-defaults/<stack>.yml → always_include + trigger_includes
-3. Orchestrator scans this directory recursively → discovers project patterns
-4. Orchestrator combines all into {PATTERNS} → passed to implementer agent
+1. Orchestrator reads .claude/config/runtime.yml (materialized from stack_blocks:)
+2. patterns.always → the shelf every task carries
+3. patterns.triggers → groups whose keywords match this task
+4. Both combine into {PATTERNS} → passed to the implementer agent
 5. PreToolUse hook check-patterns-read.js blocks Write if patterns weren't Read
 ```
 
@@ -97,11 +95,11 @@ why agents have a fallback instruction to read THIS README first when the
    (`<topic>-pattern.md` with frontmatter at top)
 3. **Update the "Project-specific" table above** so future readers/agents
    discover the new category
-4. If the patterns should be in EVERY task for this stack, add their paths
-   to `claude-patterns/patterns/_stack-defaults/<stack>.yml` `always_include`
-   list (NOTE: only if reusable across projects of this stack — for
-   project-only invariants, just having them here is enough since Phase 0.5
-   scans recursively)
+4. If a pattern belongs in EVERY task, add it to `patterns.always` in the block that
+   owns it (`claude-patterns/blocks/<block>.yml`) and re-materialize. For patterns
+   that only some tasks need, add a `patterns.triggers` group with its keywords.
+   Project-only invariants belong in the project's own `./local` block rather than
+   in a shared one — see `claude-patterns/blocks/README.md`
 
 ---
 
@@ -110,4 +108,5 @@ why agents have a fallback instruction to read THIS README first when the
 - `claude-patterns/docs/ARCHITECTURE.md` — full extension model
 - `claude-patterns/docs/adr/0001-extension-architecture.md` — design rationale
 - `claude-patterns/patterns/README.md` — global patterns catalog (38+ patterns)
-- `claude-patterns/patterns/_stack-defaults/README.md` — stack-defaults schema
+- `claude-patterns/blocks/README.md` — block composition and the `patterns:` section
+- `claude-patterns/docs/adr/0008-stack-blocks-composition.md` — why composition replaced presets

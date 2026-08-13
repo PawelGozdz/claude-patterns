@@ -2,7 +2,7 @@
 name: threat-model
 description: Interactive threat modeling workflow using STRIDE + DREAD + LINDDUN. Creates TM-{TASK-ID}.md in docs/security/threat-models/. Use before implementing any new bounded context, feature with PII processing, authentication flow, or cross-context integration.
 origin: LocalHero-patterns
-allowed-tools: Read, Write, Glob, Grep
+allowed-tools: Read, Write, Edit, Glob, Grep, Bash
 model: opus
 effort: high
 disable-model-invocation: true
@@ -308,6 +308,22 @@ GDPR obligations triggered by LINDDUN findings:
 ### 7a. Save the TM file
 
 Save the completed threat model file as `docs/security/threat-models/TM-{TASK-ID}.md`.
+
+### 7a'. Add the TM to the registry (MANDATORY when one exists)
+
+Check for a registry — `docs/security/threat-models/index.md` or whatever the project's
+security hub points at. If it exists, **add a row for this TM in the same pass**, in the
+domain group it belongs to, and update any counter in the heading.
+
+This is not bookkeeping you can defer. A registry that says 90 while 106 files sit next to
+it has stopped describing reality, and the next reader trusts it anyway — the failure mode
+`patterns/cross-layer/registry-drift-guard-pattern.md` is about. The drift is silent
+precisely because the registry stays internally consistent.
+
+If a run genuinely cannot write the row (missing permission, unreadable registry), say so in
+the output as a **blocking** item, not as a footnote — a "administrative debt, do it
+manually later" line at the end of a long report is how the 16-file gap accumulated in the
+first place.
 
 ### 7b. Update the task file with a canonical reference section (MANDATORY)
 

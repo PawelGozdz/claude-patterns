@@ -1,4 +1,6 @@
 # Backward Compatibility — Rule Card
+
+**Tags**: "lib:api-surface:semver"
 <!-- Egzekwowalne streszczenie backward-compatibility-pattern.md. WIĄŻĄCE.
      Pełny wzorzec (kontekst, uzasadnienie, decision tree): backward-compatibility-pattern.md
      Verifier sprawdza KAŻDĄ regułę z ID poniżej i cytuje ją przy naruszeniu. -->

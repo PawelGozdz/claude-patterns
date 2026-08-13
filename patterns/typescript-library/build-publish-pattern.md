@@ -1,5 +1,7 @@
 # Pattern: Build & Publish Pipeline for TypeScript Libraries
 
+**Tags**: "lib:build"
+
 **Layer**: Infrastructure
 **Status**: production
 

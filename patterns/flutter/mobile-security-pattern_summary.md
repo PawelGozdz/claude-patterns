@@ -1,4 +1,6 @@
 # Mobile Security (Flutter) — Rule Card
+
+**Tags**: "mobile:security"
 <!-- Egzekwowalne streszczenie mobile-security-pattern.md. WIĄŻĄCE.
      Pełny wzorzec (kontekst, uzasadnienie, real-code przykłady): mobile-security-pattern.md
      Verifier sprawdza KAŻDĄ regułę z ID poniżej i cytuje ją przy naruszeniu. -->

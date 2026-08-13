@@ -1,5 +1,7 @@
 # Pattern: Inference API Structure
 
+**Tags**: "data:api-surface", "data:app"
+
 **Layer**: AI/ML
 **Status**: production
 

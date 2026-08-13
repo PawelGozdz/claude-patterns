@@ -1,5 +1,7 @@
 # Pattern: Project Management System
 
+**Tags**: "any:process"
+
 **Layer**: Orchestration  
 **Status**: production  
 **Works with**: any project using claude-code  

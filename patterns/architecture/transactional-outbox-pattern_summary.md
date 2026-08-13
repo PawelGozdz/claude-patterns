@@ -1,4 +1,6 @@
 # Transactional Outbox — Rule Card
+
+**Tags**: "api:events:outbox", "api:data-access:transaction"
 <!-- Egzekwowalne streszczenie transactional-outbox-pattern.md. WIĄŻĄCE dla implementacji.
      Pełny wzorzec (kontekst, poller, przykłady): transactional-outbox-pattern.md
      Verifier sprawdza KAŻDĄ regułę z ID poniżej i cytuje ją przy naruszeniu.

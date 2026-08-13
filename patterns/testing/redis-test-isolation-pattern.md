@@ -2,6 +2,8 @@
 
 **Version**: 1.0
 **Created**: 2026-01-19
+**Tags**: "api:tests:integration"
+
 **Purpose**: Reliable Redis cache clearing to prevent race conditions and stale data in E2E tests
 **Context**: Tests use shared Redis instance, cache operations may overlap with test setup
 

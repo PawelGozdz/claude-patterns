@@ -1,5 +1,7 @@
 # Query Handler Pattern
 
+**Tags**: "api:app", "api:data-access"
+
 **Layer**: Application
 **Status**: production
 **Assumes**: ddd/core   <!-- wzorzec operuje pojęciami modelu domenowego -->

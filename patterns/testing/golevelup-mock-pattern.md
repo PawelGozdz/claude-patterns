@@ -1,5 +1,7 @@
 # @golevelup/ts-vitest Mock Pattern
 
+**Tags**: "api:tests:unit"
+
 ## 🎯 Problem
 
 **Ręczne factory functions i inline obiekty z `vi.fn()` niszczą type safety i generują boilerplate.**

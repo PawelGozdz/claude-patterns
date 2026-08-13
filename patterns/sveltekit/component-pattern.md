@@ -1,5 +1,7 @@
 # Component Architecture Pattern
 
+**Tags**: "web:ui", "web:platform:svelte"
+
 ## When to Use
 
 - Every reusable UI element in a SvelteKit 2 application

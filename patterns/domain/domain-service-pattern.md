@@ -1,5 +1,7 @@
 # DDD Domain Services Reference
 
+**Tags**: "api:domain"
+
 **Purpose**: Cross-aggregate business logic patterns
 **Audience**: domain-application-implementer
 **Philosophy**: Code + concise rules, NO verbose explanations

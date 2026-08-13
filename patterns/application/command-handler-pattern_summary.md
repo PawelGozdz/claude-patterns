@@ -1,4 +1,6 @@
 # Command Handler — Rule Card
+
+**Tags**: "api:app"
 <!-- Egzekwowalne streszczenie command-handler-pattern.md. WIĄŻĄCE dla implementacji.
      Pełny wzorzec (kontekst, uzasadnienie, przykłady): command-handler-pattern.md
      Verifier sprawdza KAŻDĄ regułę z ID poniżej i cytuje ją przy naruszeniu. -->

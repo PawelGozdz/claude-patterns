@@ -1,5 +1,7 @@
 # Structured Logging — Rule Card
 
+**Tags**: "api:observability:logging"
+
 <!-- Egzekwowalne streszczenie logger-pattern.md. WIĄŻĄCE.
      Pełny wzorzec (5 wariantów DI, 6 anty-wzorców, przykłady): logger-pattern.md
      Verifier sprawdza KAŻDĄ regułę z ID poniżej i cytuje ją przy naruszeniu. -->

@@ -1,5 +1,7 @@
 # Rule Card: Geo-Spatial Query (PostGIS)
 
+**Tags**: "api:geo:radius", "api:data-access"
+
 **Pattern**: `patterns/infrastructure/geo-spatial-query-pattern.md`
 **Layer**: Infrastructure
 **Scope**: project-specific (juz-ide)

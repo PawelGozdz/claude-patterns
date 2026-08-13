@@ -1,5 +1,7 @@
 # Transactional Pattern
 
+**Tags**: "api:data-access:transaction"
+
 ## 🎯 Problem
 
 **Command handlers need automatic transaction management with Result pattern integration.**

@@ -25,7 +25,8 @@ disallowedTools: Write, Edit, MultiEdit, Bash, NotebookEdit
 
 ## What This Does
 
-1. Reads `.agents/finance-context.md` (per-project finance context: business
+1. Reads the project finance context — `.agents/finance-context.md`, a w drugiej
+   kolejności `docs/finance/finance-context.md` (per-project finance context: business
    model, regulated jurisdiction, advisor scope) when present.
 2. Delegates to `@finance-strategist` with the user's task.
 3. The strategist picks the right plugin + skill, runs vendored Python
@@ -35,7 +36,7 @@ disallowedTools: Write, Edit, MultiEdit, Bash, NotebookEdit
 ## Steps
 
 1. **Pre-flight check**
-   - Look for `.agents/finance-context.md` in the current project — pass
+   - Look for `.agents/finance-context.md`, then `docs/finance/finance-context.md` — pass
      to strategist if found
    - Verify which finance plugins are enabled in `project.yml` (e.g.,
      `finance/core`, `finance/compliance`); flag missing dependencies

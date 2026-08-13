@@ -1,5 +1,7 @@
 # Business Rules YAML Pattern
 
+**Tags**: "api:tests", "api:domain"
+
 **Category:** Testing
 **Level:** Advanced
 **Prerequisites:** Testing Pyramid Pattern, DDD basics, Specification Pattern

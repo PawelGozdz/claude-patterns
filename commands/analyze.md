@@ -8,16 +8,34 @@ description: |
   blok ddd/core). NIGDY nie implementuje.
 
   Usage: /analyze <TASK-ID>
-tools: Task, Read, Write, Grep, Glob, Bash
-disallowedTools: Edit, MultiEdit, NotebookEdit
+tools: Task, Read, Write, Edit, Grep, Glob, Bash
+disallowedTools: MultiEdit, NotebookEdit
 ---
 
 # /analyze — research sterowany runtime.yml (silnik szkielet+sloty)
 
-**ZERO IMPLEMENTACJI.** Jedyny własny `Write` = artefakt
-`project-orchestration/analysis/{TASK-ID}.analysis.md` (+ warunkowo threat-model
-przez stage). Silnik nie zna żadnego stacku — wszystko, co stackowe, przychodzi
-z `runtime.yml`.
+**ZERO IMPLEMENTACJI.** Silnik nie zna żadnego stacku — wszystko, co stackowe,
+przychodzi z `runtime.yml`.
+
+**Co wolno zapisać — lista zamknięta.** Ograniczeniem jest ta lista, nie brak
+narzędzia:
+
+1. `project-orchestration/analysis/{TASK-ID}.analysis.md` — artefakt analizy;
+2. `docs/security/threat-models/TM-{TASK-ID}.md` — gdy odpala się stage `threat-model`;
+3. **rejestr threat-modeli** (`docs/security/threat-models/index.md` lub odpowiednik),
+   gdy projekt wymaga wiersza per TM.
+
+Nic poza tym — żadnego pliku w `src/`, żadnego taska, żadnego ADR-a.
+
+> **Dlaczego `Edit` jest dozwolony (zmiana 2026-08-12).** Był zabroniony, a `Write`
+> nie — zakaz nie chronił więc przed niczym (Writem można nadpisać dowolny plik),
+> za to blokował jedyną rzecz, której pozycja 3 wymaga: dopisania wiersza do
+> istniejącego rejestru. Realny skutek widoczny w przebiegu z 2026-08-12: TM powstał,
+> `Edit` na `index.md` odbił się o uprawnienie, a przebieg zamknął się wpisem „dług
+> administracyjny do wykonania ręcznie". Rejestr TM w `juz-ide-api-2` deklarował
+> wtedy 90 pozycji przy 106 plikach na dysku — dokładnie ten dryf, przed którym
+> ostrzega `patterns/cross-layer/registry-drift-guard-pattern.md`. Bramką jest lista
+> powyżej i zakaz implementacji, nie odebrane narzędzie.
 
 **Zakres narzędzi (zmiana 2026-08-12).** `Grep`/`Glob` były wcześniej zabronione, żeby
 wymusić delegowanie wyszukiwania do tanich agentów. W praktyce dawało to odwrotny skutek:
@@ -129,6 +147,14 @@ fragmenty (np. apex §5) wklejane wprost, zawsze.
 Iteruj `analyze.panel` W KOLEJNOŚCI z runtime.yml. Dla każdego slotu:
 
 - `when:` obecne → regex vs treść/etykiety taska; brak trafienia = pomiń slot.
+  **Zawsze wypisz, KTÓRE słowo trafiło**: `threat-model ← "auth"`. Dopasowanie idzie po
+  podłańcuchu, więc `auth` łapie `author` i `geographic-auth`, `list` łapie `specjalista`,
+  a `pin` łapie `mapping`. Gdy trafione słowo jest fragmentem innego wyrazu i sens slotu
+  do taska nie pasuje — **powiedz to i pomiń slot**, zamiast odpalać panel „bo regex".
+  Odwrotny błąd jest groźniejszy: `cross_context` z podkreśleniem NIE łapie „cross-context"
+  pisanego z dywizem. Brak trafienia nie jest dowodem, że tematu nie ma — gdy widzisz
+  w tasku ryzyko, którego żaden `when:` nie złapał, potraktuj to jak trafienie i zgłoś lukę
+  w regexie bloku.
 - `model:` / `effort:` obecne → **wywołaj agenta z tym modelem**, nadpisując jego
   frontmatter. Slot istnieje po to, żeby dało się podnieść model agentowi, którego
   definicji nie kontrolujemy (np. `ecc:*`). Gdy slot milczy, obowiązuje domyślna

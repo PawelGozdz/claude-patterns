@@ -44,7 +44,7 @@
             "command": "node \"$HOME/.claude/hooks/check-approval-before-impl.js\""
           }
         ],
-        "description": "Approval gate (ADR 0002 backstop): warn/block edits to SOURCE files when a {TASK}.analysis.md exists with status != approved (or unanswered open_questions). Primary gate is /orchestrate-ddd precondition; this is the second lock. Modes ORCHESTRATE_DDD_GATE=warn|block|off (default warn), one-off bypass .analysis-ok-sentinel."
+        "description": "Approval gate (ADR 0002 backstop): warn/block edits to SOURCE files when a {TASK}.analysis.md exists with status != approved (or unanswered open_questions). Primary gate is the /orchestrate entry precondition; this is the second lock. Modes ORCHESTRATE_DDD_GATE=warn|block|off (default warn), one-off bypass .analysis-ok-sentinel."
       }
     ],
     "PostToolUse": [

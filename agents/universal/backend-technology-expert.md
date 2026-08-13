@@ -49,8 +49,8 @@ maxTurns: 20
 ## CRITICAL: NO TASK, NO GREP/GLOB — you cannot search or delegate
 
 Your `tools:`/`disallowedTools:` frontmatter deliberately excludes `Task`, `Grep`, `Glob` (kept off
-even though other panel agents get them — see `presets/nestjs-ddd.yml` comment on the
-`tech-analysis-specialist` stage: this was the fix for a real delegation-loop incident, Q8 in
+even though other panel agents get them — see the `tech-analysis-specialist` stage comment in
+`blocks/nestjs.yml`: this was the fix for a real delegation-loop incident, Q8 in
 `docs/tasks/TASK-RAG-002.analysis.md`). Consequence: **you cannot call any other agent, and you
 cannot Glob/Grep the codebase yourself** — not just when running inside `/analyze`'s panel, but
 in every invocation.
@@ -366,11 +366,13 @@ Proposed | Accepted | Deprecated | Superseded
 
 | Document | Purpose |
 |----------|---------|
-| `.claude/knowledge/patterns/infrastructure/*` | Infrastructure patterns |
-| `.claude/knowledge/patterns/cross-layer/conventions-pattern.md` | Naming conventions |
-| `.claude/knowledge/patterns/*` | Implementation patterns |
+| the injected `{PATTERNS}` list | Canonical patterns, scoped to this task from `runtime.yml` |
 | `.claude/knowledge/learned/infrastructure-api-patterns.md` | Discovered patterns |
 | `docs/adr/` | Existing architectural decisions |
+
+When `{PATTERNS}` is absent — you're advisory, so you get invoked directly as well as through
+the orchestrator — name the patterns your recommendation assumes instead of reading the whole
+tree to be safe. An unbounded read is exactly what this scoping exists to avoid.
 
 ### Technology Stack Context
 

@@ -1,5 +1,7 @@
 # DDD Specifications & Policies Reference
 
+**Tags**: "api:domain"
+
 **Purpose**: Core patterns for business rules using PolicyBuilder and Specifications
 **Audience**: domain-application-implementer
 **Philosophy**: Code + concise rules, NO verbose explanations

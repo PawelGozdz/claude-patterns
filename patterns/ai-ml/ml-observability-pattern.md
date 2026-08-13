@@ -1,5 +1,7 @@
 # Pattern: ML Service Observability
 
+**Tags**: "data:observability"
+
 **Layer**: AI/ML
 **Status**: production
 

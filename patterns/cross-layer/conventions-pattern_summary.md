@@ -1,5 +1,7 @@
 # DDD Conventions & Naming — Rule Card
 
+**Tags**: "api:domain", "any:process"
+
 <!-- Egzekwowalne streszczenie conventions-pattern.md. WIĄŻĄCE.
      Pełny wzorzec (tabele, struktura folderów, styl kodu): conventions-pattern.md
      Verifier sprawdza KAŻDĄ regułę z ID poniżej i cytuje ją przy naruszeniu. -->

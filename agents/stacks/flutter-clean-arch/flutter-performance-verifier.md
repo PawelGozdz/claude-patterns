@@ -134,9 +134,12 @@ problemów, która zniechęca do czytania raportu.
 
 ## 📚 Baza wiedzy
 
-- `.claude/knowledge/patterns/flutter/riverpod-state-pattern.md` — granulacja providerów, `select`
-- `.claude/knowledge/patterns/flutter/clean-architecture-pattern.md` — gdzie należy praca poza UI
-- `.claude/knowledge/patterns/flutter/offline-first-pattern.md` — cache zamiast ponownego pobierania
+Orkiestrator wstrzykuje zawężoną listę `{PATTERNS}`, wyliczoną z `runtime.yml`
+(`patterns.always` + wyzwalacze dopasowane do tego taska) — każda pozycja jest obowiązkowa,
+a kartę reguł `*_summary.md` czytaj przed pełnym wzorcem: to ona niesie ID reguł do cytowania.
+
+**Gdy `{PATTERNS}` jest puste albo go nie ma, ZATRZYMAJ SIĘ i to zgłoś.** Nie sięgaj po
+wzorce z pamięci — brak zawężonej listy to błąd po stronie wywołującego.
 
 ---
 

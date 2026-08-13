@@ -1,5 +1,7 @@
 # Routing & Proxy Pattern
 
+**Tags**: "web:ui:navigation", "web:platform:nextjs"
+
 ## When to Use
 
 - Every Next.js 16 application with multiple pages, authentication, or internationalization

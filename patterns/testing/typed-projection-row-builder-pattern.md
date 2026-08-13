@@ -1,5 +1,7 @@
 # Typed Projection Row-Builder Pattern
 
+**Tags**: "api:tests:fixtures", "api:data-access:projection"
+
 ## 🎯 Problem
 
 **Tabele projekcyjne (cross-context user projections) nie mają repozytorium

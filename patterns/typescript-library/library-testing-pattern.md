@@ -1,5 +1,7 @@
 # Pattern: Testing a Published TypeScript Library
 
+**Tags**: "lib:tests"
+
 **Layer**: Testing
 **Status**: production
 

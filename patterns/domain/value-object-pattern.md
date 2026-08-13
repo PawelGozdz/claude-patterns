@@ -1,5 +1,7 @@
 # Value Object Pattern
 
+**Tags**: "api:domain"
+
 ## 🎯 Problem
 
 **Challenges with value object implementation**:

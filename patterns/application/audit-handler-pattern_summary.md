@@ -1,4 +1,6 @@
 # Audit Handler — Rule Card
+
+**Tags**: "api:app", "api:observability:audit"
 <!-- Egzekwowalne streszczenie audit-handler-pattern.md. WIĄŻĄCE dla implementacji.
      Pełny wzorzec (kontekst, uzasadnienie, anti-patterns): audit-handler-pattern.md
      Verifier sprawdza KAŻDĄ regułę z ID poniżej i cytuje ją przy naruszeniu. -->

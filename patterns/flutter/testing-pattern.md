@@ -1,5 +1,7 @@
 # Flutter Testing Pattern
 
+**Tags**: "mobile:tests"
+
 **Layer**: Testing
 **Status**: production
 

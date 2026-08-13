@@ -10,7 +10,8 @@ description: |
   (not boilerplate). Refuses to fabricate numbers, but does not refuse to
   recommend approaches based on principles, benchmarks, and observed trends.
 
-  Reads `.agents/finance-context.md` (per-project finance context: business
+  Reads the per-project finance context — `.agents/finance-context.md`, then
+  `docs/finance/finance-context.md` (business
   model, regulated jurisdiction, advisory scope, client base) when present.
   Falls back to general analysis when missing.
 
@@ -145,13 +146,22 @@ adding noise. Users notice when disclaimers are pro-forma and tune them out.
 
 ## Step 0: Read Project Context (When Present)
 
-Before deep analysis, check for:
+Before deep analysis, check for the per-project finance context, **in this
+order** (first one found wins):
 
-1. `.agents/finance-context.md` — per-project finance context (business
-   model, regulated jurisdiction, advisor scope, client base). When
-   present, summarize the 3-5 most relevant facts before proceeding.
-2. `.agents/product-marketing-context.md` — for pricing/unit-economics
-   questions, this is also useful (target audience, pricing).
+1. `.agents/finance-context.md` (current convention)
+2. `docs/finance/finance-context.md` (docs-first convention — projects that
+   keep only real agent definitions under `.claude/agents/` and treat
+   everything else, including agent-context files, as content that belongs
+   in `docs/`; @legal-strategist and @marketing-strategist do the same)
+
+Whichever is found declares business model, regulated jurisdiction, advisor
+scope and client base. Summarize the 3-5 most relevant facts before proceeding.
+
+Also check:
+- the product marketing context (`.agents/product-marketing-context.md`, then
+  `docs/business/product-marketing-context.md`) — for pricing/unit-economics
+  questions it carries target audience and pricing.
 3. `project-orchestration/TEAM-STATE.md` — strategic context if invoked
    via @product-owner during sprint/roadmap work.
 

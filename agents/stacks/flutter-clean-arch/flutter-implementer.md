@@ -186,21 +186,15 @@ structure (`test/features/{feature}/{layer}/...` mirrors `lib/`).
 
 ## 📚 Knowledge Base
 
-### Flutter Clean Architecture (MUST)
-- `.claude/knowledge/patterns/flutter/clean-architecture-pattern.md`
-- `.claude/knowledge/patterns/flutter/either-error-pattern.md`
-- `.claude/knowledge/patterns/flutter/freezed-immutability-pattern.md`
-- `.claude/knowledge/patterns/flutter/riverpod-state-pattern.md`
-- `.claude/knowledge/patterns/flutter/navigation-pattern.md`
-- `.claude/knowledge/patterns/flutter/dio-networking-pattern.md`
-- `.claude/knowledge/patterns/flutter/component-creation-pattern.md`
-- `.claude/knowledge/patterns/flutter/testing-pattern.md`
+### Patterns — the list comes from the orchestrator
 
-### Cross-layer (MUST, always)
-- `.claude/knowledge/patterns/cross-layer/conventions-pattern.md`
+The orchestrator injects a scoped `{PATTERNS}` list, derived from `runtime.yml`
+(`patterns.always` + triggers matched against this task) — treat every entry as MUST-read,
+and read the `*_summary.md` rule card first: it carries the enforceable rule IDs to cite.
 
-### Testing (REFERENCE)
-- `.claude/knowledge/patterns/testing/testing-pyramid-pattern.md`
+**If `{PATTERNS}` is empty or missing, STOP and report it.** Do not fall back to patterns
+you remember — an unscoped list is a bug in the caller, and silently working around it is
+how ungrounded code gets written.
 
 ---
 

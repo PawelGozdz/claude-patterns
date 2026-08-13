@@ -126,10 +126,25 @@ for (const f of patternFiles) {
 
   // `**Assumes**` deklaruje zależność pojęciową wzorca („zakłada model domenowy").
   // Nie zgadujemy jej z treści — sprawdzamy tylko, czy zadeklarowany blok istnieje.
-  const tags = src.match(/^\*\*Tags\*\*:\s*(.+)$/m);
-  if (tags)
-    for (const t of tags[1].replace(/<!--[\s\S]*?-->/g, '').split(',').map((x) => x.trim().replace(/[`*"']/g, '')))
+  // `**Tags**` to jedyne, po czym `retrieve_patterns` potrafi zawęzić dobór tematycznie.
+  // Brak tagów niczego nie wysypie — wzorzec po prostu wypada z każdego filtra i wraca
+  // wyłącznie przez podobieństwo embeddingów. Stąd UWAGA, nie BŁĄD, ale zgłaszana:
+  // bez niej nowy nieotagowany wzorzec jest niewidoczny także dla autora.
+  const tagLine = src.match(/^\*\*Tags\*\*:\s*(.+)$/m);
+  if (!tagLine) warnings.push(`${f}: brak **Tags** — wzorzec wypada z filtrowania po tematach`);
+  else
+    for (const t of tagLine[1].replace(/<!--[\s\S]*?-->/g, '').split(',').map((x) => x.trim().replace(/[`*"']/g, '')))
       if (t) checkTag(t, f);
+
+  // Karta reguł jest tym, co realnie wchodzi do promptów. Gdy ma inne tagi niż wzorzec,
+  // filtr tematyczny wpuszcza jedno, a odrzuca drugie — rozjazd rejestru w czystej
+  // postaci (patterns/cross-layer/registry-drift-guard-pattern.md).
+  const cardPath = join(PATTERNS, f.replace(/\.md$/, '_summary.md'));
+  if (existsSync(cardPath)) {
+    const cardTags = readFileSync(cardPath, 'utf8').match(/^\*\*Tags\*\*:\s*(.+)$/m)?.[1]?.trim();
+    if (cardTags !== tagLine?.[1]?.trim())
+      errors.push(`${f}: karta reguł ma inne **Tags** niż wzorzec — filtr tematyczny wpuści tylko jedno z nich`);
+  }
 
   const assumes = src.match(/^\*\*Assumes\*\*:\s*(.+)$/m);
   if (assumes)

@@ -1,5 +1,7 @@
 # Flutter Clean Architecture Pattern
 
+**Tags**: "mobile:app", "mobile:domain"
+
 **Layer**: Architecture
 **Status**: production
 

@@ -1,5 +1,7 @@
 # ACL Registry Pattern
 
+**Tags**: "api:app:cross-context"
+
 **Layer**: Architecture
 **Assumes**: ddd/core   <!-- wzorzec operuje pojęciami modelu domenowego -->
 

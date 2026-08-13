@@ -1,4 +1,6 @@
 # Query Handler — Rule Card
+
+**Tags**: "api:app", "api:data-access"
 <!-- Egzekwowalne streszczenie query-handler-pattern.md. WIĄŻĄCE dla implementacji.
      Pełny wzorzec (kontekst, uzasadnienie, anty-wzorce): query-handler-pattern.md
      Verifier sprawdza KAŻDĄ regułę z ID poniżej i cytuje ją przy naruszeniu. -->

@@ -1,5 +1,7 @@
 # Data Fetching & Mutations Pattern
 
+**Tags**: "web:data-access", "web:platform:svelte"
+
 ## When to Use
 
 - Fetching data for page rendering — always use load functions, not in-component fetching

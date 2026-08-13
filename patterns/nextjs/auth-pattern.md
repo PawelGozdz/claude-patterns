@@ -1,5 +1,7 @@
 # Authentication Pattern
 
+**Tags**: "web:auth", "web:platform:nextjs"
+
 ## When to Use
 
 - Any Next.js 16 application that requires user login, session management, or route protection

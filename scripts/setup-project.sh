@@ -124,19 +124,49 @@ ensure_symlink() {
   fi
 }
 
+# Remove dangling symlinks — those whose target no longer exists in claude-patterns.
+# `ensure_symlink` only ever CREATES links; nothing removed one when its target was
+# deleted or renamed centrally, so every removal left a broken link behind in every
+# project that had been set up before it. The 2026-08-12 audit found 18 of them across
+# 18 repos: `patterns/_stack-defaults` (dropped in ADR 0008) in 16 projects, and
+# `agents/infrastructure-testing-implementer.md` (split into infrastructure-implementer
+# + test-implementer on 2026-07-09) in 2 more. A broken link is worse than a missing
+# one: agents in fast-path read `patterns/README.md` to discover categories and see a
+# directory that isn't there.
+#
+# `find` runs WITHOUT `-L` on purpose. Some projects (vytches-ddd) symlink the whole
+# `knowledge/patterns` directory at claude-patterns instead of linking each category,
+# so following symlinks would walk this function straight into the central repo and
+# delete from there. Verified: pruning inside such a project is a no-op centrally.
+prune_dangling_links() {
+  local pruned=0
+  for sub in .claude/knowledge/patterns .claude/knowledge/rules .claude/knowledge/skills .claude/agents; do
+    [ -d "$PROJECT_DIR/$sub" ] || continue
+    while IFS= read -r link; do
+      [ -z "$link" ] && continue
+      echo -e "  ${YELLOW}Pruned:${NC} ${link#$PROJECT_DIR/} (target gone: $(readlink "$link"))"
+      rm "$link"; pruned=$((pruned + 1))
+    done < <(find "$PROJECT_DIR/$sub" -xtype l 2>/dev/null)
+  done
+  [ "$pruned" -eq 0 ] || echo -e "  ${GREEN}Pruned $pruned dangling symlink(s)${NC}"
+}
+
 # --- Create .claude/knowledge structure ---
 KNOWLEDGE_DIR="$PROJECT_DIR/.claude/knowledge"
 mkdir -p "$KNOWLEDGE_DIR"
+prune_dangling_links
 
 # --- 1. Patterns symlink (stack-aware) ---
 echo -e "${BLUE}[1/8] Patterns${NC}"
 PROJECT_LANGUAGE=$(yml_get "project.language")
 STACK_PROFILE=$(yml_get "project.stack_profile")
 
-# Core pattern directories shared across all stacks (stack-agnostic)
-# _stack-defaults is also shared — orchestrator reads it to discover
-# always-include patterns per stack profile.
-CORE_PATTERN_DIRS=(architecture testing cross-layer orchestration _stack-defaults)
+# Core pattern directories shared across all stacks (stack-agnostic).
+# `_stack-defaults` used to be here — dropped with ADR 0008, since the always-include
+# list now comes from `patterns.always` in runtime.yml, not from a per-profile file.
+# It stayed on this list after the directory was deleted, so every setup run recreated
+# the dangling link this script now prunes; 16 projects carried one.
+CORE_PATTERN_DIRS=(architecture testing cross-layer orchestration)
 
 # DDD-specific pattern directories (nestjs-ddd only)
 DDD_PATTERN_DIRS=(domain application infrastructure)
@@ -242,6 +272,27 @@ else
       fi
       ;;
   esac
+
+  # Extra pattern categories declared by the composition (`overlay.patterns` in
+  # runtime.yml). The case above keys off `stack_profile`, which ADR 0008 demoted to a
+  # template selector — so a block bringing its own category (ml-pipeline → ai-ml/) had
+  # no way to get it linked, and `/analyze` announced patterns the project couldn't open.
+  # Additive on purpose: the profile still decides the base set, blocks only widen it.
+  RUNTIME_YML="$PROJECT_DIR/.claude/config/runtime.yml"
+  if [[ -f "$RUNTIME_YML" ]]; then
+    OVERLAY_DIRS=$(sed -n '/^overlay:/,/^[a-z]/p' "$RUNTIME_YML" \
+      | grep -E '^\s+patterns:' | sed 's/.*\[//; s/\].*//' | tr -d ' ' | tr ',' '\n' | sed 's|/$||')
+    for subdir in $OVERLAY_DIRS; do
+      [[ -z "$subdir" ]] && continue
+      [[ -L "$KNOWLEDGE_DIR/patterns/$subdir" ]] && continue
+      if [[ -d "$GLOBAL_PATTERNS/$subdir" ]]; then
+        mkdir -p "$KNOWLEDGE_DIR/patterns"
+        ensure_symlink "$KNOWLEDGE_DIR/patterns/$subdir" "$GLOBAL_PATTERNS/$subdir" "patterns/$subdir (z overlay)"
+      else
+        echo -e "  ${YELLOW}Warning:${NC} overlay declares patterns/$subdir — brak takiego katalogu w claude-patterns"
+      fi
+    done
+  fi
 fi
 
 # Patterns README — discovery hub read by orchestrator Phase 0.5a and
@@ -288,6 +339,34 @@ if [[ ! -d "$STACK_AGENTS_DIR" ]]; then
   BASE_STACK="${STACK_PROFILE%%-*}"
   STACK_AGENTS_DIR="$PATTERNS_REPO/agents/stacks/$BASE_STACK"
 fi
+
+# Agent directories declared by the composition (`overlay.agents` in runtime.yml) —
+# same reasoning as overlay.patterns above. A block naming an agent in one of its slots
+# has to be able to deliver that agent; `stack_profile` alone can't reach a second
+# directory (ml-pipeline → agents/stacks/python-ml/), so the slot resolved to nothing.
+link_overlay_agents() {
+  local rt="$PROJECT_DIR/.claude/config/runtime.yml"
+  [[ -f "$rt" ]] || return 0
+  local dirs
+  dirs=$(sed -n '/^overlay:/,/^[a-z]/p' "$rt" | grep -E '^\s+agents:' \
+    | sed 's/.*\[//; s/\].*//' | tr -d ' ' | tr ',' '\n' | sed 's|/$||')
+  for d in $dirs; do
+    [[ -z "$d" ]] && continue
+    local src="$PATTERNS_REPO/agents/$d"
+    if [[ ! -d "$src" ]]; then
+      echo -e "  ${YELLOW}Warning:${NC} overlay declares agents/$d — brak takiego katalogu"
+      continue
+    fi
+    mkdir -p "$PROJECT_AGENTS_DIR"
+    for f in "$src"/*.md; do
+      [[ -f "$f" ]] || continue
+      local t="$PROJECT_AGENTS_DIR/$(basename "$f")"
+      [[ -L "$t" ]] && continue
+      ln -sf "$f" "$t"
+      echo -e "  ${GREEN}Linked:${NC} $(basename "$f") (overlay: $d)"
+    done
+  done
+}
 
 if [[ -d "$STACK_AGENTS_DIR" ]]; then
   mkdir -p "$PROJECT_AGENTS_DIR"
@@ -341,6 +420,8 @@ else
   echo -e "  ${YELLOW}Skipped:${NC} No stack agents for '$STACK_PROFILE'"
 fi
 echo ""
+
+link_overlay_agents
 
 # --- 3. Rules: migrate from knowledge/rules/ to native .claude/rules/ ---
 echo -e "${BLUE}[3/8] Rules (.claude/rules/ — native auto-discovery)${NC}"
@@ -520,6 +601,25 @@ if [[ -n "$STACK_PROFILE" ]]; then
     else
       cp "$TM_TEMPLATE_SRC" "$TM_TEMPLATE_DST"
       echo -e "  ${GREEN}Synced:${NC} docs/security/THREAT_MODEL_TEMPLATE.md (canonical)"
+    fi
+  fi
+
+  # Analysis-artifact template — /analyze writes {TASK-ID}.analysis.md and /orchestrate
+  # gates on its frontmatter, so the shape is a contract, not a preference. Without the
+  # template in the project, a run copies the format from whatever sibling analysis it
+  # finds; a field that drifted once then propagates by imitation. Same COPY + opt-out
+  # convention as the TM template above.
+  ANALYSIS_TEMPLATE_SRC="$PATTERNS_REPO/templates/task-analysis-template.md"
+  ANALYSIS_TEMPLATE_DST="$PROJECT_DIR/project-orchestration/analysis/TEMPLATE.md"
+  if [[ -f "$ANALYSIS_TEMPLATE_SRC" ]]; then
+    mkdir -p "$PROJECT_DIR/project-orchestration/analysis"
+    if [[ -f "$ANALYSIS_TEMPLATE_DST" ]] && grep -q "LOCAL-CUSTOMIZED" "$ANALYSIS_TEMPLATE_DST"; then
+      echo -e "  ${YELLOW}Preserved:${NC} project-orchestration/analysis/TEMPLATE.md (LOCAL-CUSTOMIZED)"
+    elif [[ -f "$ANALYSIS_TEMPLATE_DST" ]] && diff -q "$ANALYSIS_TEMPLATE_SRC" "$ANALYSIS_TEMPLATE_DST" >/dev/null 2>&1; then
+      echo -e "  ${YELLOW}Up to date:${NC} project-orchestration/analysis/TEMPLATE.md"
+    else
+      cp "$ANALYSIS_TEMPLATE_SRC" "$ANALYSIS_TEMPLATE_DST"
+      echo -e "  ${GREEN}Synced:${NC} project-orchestration/analysis/TEMPLATE.md (canonical)"
     fi
   fi
 

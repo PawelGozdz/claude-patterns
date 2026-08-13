@@ -1,5 +1,7 @@
 # Pattern: Localization (Flutter, ARB)
 
+**Tags**: "mobile:ui:i18n"
+
 **Layer**: Cross-Layer
 **Status**: production
 

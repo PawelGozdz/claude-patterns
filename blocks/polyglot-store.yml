@@ -1,0 +1,36 @@
+# Blok: polyglot-store — persystencja: kilka silników naraz, każdy do innego pytania
+# (relacyjny = źródło prawdy, wektorowy = podobieństwo, grafowy = relacje). Oś
+# persystencji, odpowiednik `kysely` po stronie systemów wielobazowych.
+#
+# Blok NIE zakłada konkretnych silników — wyzwalacze pokrywają Neo4j/Qdrant/Postgres/
+# Redis/Elasticsearch, bo taki zestaw ma pierwszy adopter (SENTINEL), ale sam wzorzec
+# jest o rozstrzygnięciu „kto jest źródłem prawdy, a kto projekcją".
+name: polyglot-store
+axis: persistence
+requires: []
+
+patterns:
+  triggers:
+    - keywords: [neo4j, graph, cypher, relacje, entity, node, edge]
+      include:
+        - python/polyglot-persistence-pattern.md
+    - keywords: [qdrant, vector, embedding, similarity, semantic, collection]
+      include:
+        - python/polyglot-persistence-pattern.md
+    - keywords: [postgres, sql, migration, schema, index, copy, upsert]
+      include:
+        - python/polyglot-persistence-pattern.md
+    - keywords: [projection, sync, rebuild, reindex, consistency, source of truth]
+      include:
+        - python/polyglot-persistence-pattern.md
+        - cross-layer/registry-drift-guard-pattern.md
+    - keywords: [batch, bulk, write, throughput]
+      include:
+        - python/polyglot-persistence-pattern.md
+
+analyze:
+  panel:
+    # Wybór silnika i kształtu projekcji to decyzja architektoniczna, nie szczegół zapisu —
+    # bez tego slotu ląduje w kodzie implementera bez śladu w artefakcie analizy.
+    - { stage: storage-fit, agent: "ecc:database-reviewer",
+        when: "\\b(neo4j|qdrant|postgres|graph|vector|embedding|projection|migration|projekcj\\w*)\\b", advisory: true }

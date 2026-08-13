@@ -1,4 +1,6 @@
 # Domain Errors — Rule Card
+
+**Tags**: "api:domain:errors"
 <!-- Egzekwowalne streszczenie domain-errors-pattern.md. WIĄŻĄCE dla implementacji.
      Pełny wzorzec (Result API, hierarchia błędów, przykłady): domain-errors-pattern.md
      Verifier sprawdza KAŻDĄ regułę z ID poniżej i cytuje ją przy naruszeniu.

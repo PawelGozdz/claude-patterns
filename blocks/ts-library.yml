@@ -49,7 +49,7 @@ overlay:
   rules: [typescript/]
 
 # GateGuard wyłączony z tego samego powodu co w ddd/core i clean-arch: żąda uzasadnienia przy
-# pierwszym zapisie każdego nowego pliku, co w autonomicznej pętli /orchestrate-blocks zawiesza
+# pierwszym zapisie każdego nowego pliku, co w autonomicznej pętli /orchestrate zawiesza
 # implementera. Ochrona publicznego API nie stoi tutaj na GateGuardzie, tylko na warstwie
 # api-surface i bramce końcowej — te sprawdzają realny diff, nie intencję zapisu.
 env:

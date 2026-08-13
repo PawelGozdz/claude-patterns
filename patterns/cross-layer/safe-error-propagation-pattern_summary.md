@@ -1,5 +1,7 @@
 # Safe Error Propagation — Rule Card
 
+**Tags**: "api:security", "api:api-surface:errors"
+
 <!-- Egzekwowalne streszczenie safe-error-propagation-pattern.md. WIĄŻĄCE.
      Pełny wzorzec (kontekst, uzasadnienie, przykłady): safe-error-propagation-pattern.md
      Verifier sprawdza KAŻDĄ regułę z ID poniżej i cytuje ją przy naruszeniu. -->

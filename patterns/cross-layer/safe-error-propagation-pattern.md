@@ -2,6 +2,8 @@
 
 **Version**: 1.0
 **Last Updated**: 2026-04-18
+**Tags**: "api:security", "api:api-surface:errors"
+
 **Status**: PRODUCTION
 **Priority**: CRITICAL
 **Primary Users**: domain-application-implementer, infrastructure-testing-implementer, code-quality-verifier, security-e2e-verifier

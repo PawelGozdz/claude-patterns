@@ -46,16 +46,14 @@ no owner at all. See `@test-implementer`'s file for the full rationale.
    `{PATTERNS}` list is canonical when present, but in fast-path you must
    discover patterns yourself.
 
-1. **Read patterns from your KB** that apply to the layer you're touching.
-   Repository → `infrastructure/repository-pattern.md`. Controller/schema →
-   `infrastructure/controller-schema-pattern.md`. Mapper →
-   `infrastructure/mapper-pattern.md`.
+1. **Read every pattern in the injected `{PATTERNS}` list.** It is already scoped to the
+   layer you're touching — that's what `runtime.yml` triggers are for. Read the
+   `*_summary.md` rule card first, then the full pattern when you need the rationale.
 
-2. **ALWAYS read** (every task touching infra):
-   - `cross-layer/conventions-pattern.md` (file naming, CQRS folder layout)
-   - `cross-layer/domain-errors-pattern.md` (Result API)
-   - `cross-layer/safe-error-propagation-pattern.md` (CRITICAL: error leakage to HTTP)
-   - `cross-layer/security-invariants-pattern.md` (CRITICAL: 5 invariants every NestJS-DDD project must respect)
+2. **The always-on shelf is part of that list**, not something you add by hand: the
+   composition's `patterns.always` puts conventions, the Result API, safe error propagation
+   and the security invariants into every task. If they're absent from `{PATTERNS}`, that's
+   a caller bug worth reporting — not a gap to fill from memory.
 
 3. **Print: `📚 Patterns read: [list]`** before any Write.
 
@@ -140,43 +138,29 @@ agent via `Task(subagent_type='Explore')` for searches.
 
 ## 📚 Knowledge Base (ONLY what you need)
 
-### Infrastructure Patterns (MUST — Your Core Expertise)
+### Patterns — the list comes from the orchestrator
 
-- `.claude/knowledge/patterns/infrastructure/controller-schema-pattern.md`
-- `.claude/knowledge/patterns/infrastructure/repository-pattern.md`
-- `.claude/knowledge/patterns/infrastructure/repository-events-pattern.md`
-- `.claude/knowledge/patterns/infrastructure/mapper-pattern.md`
-- `.claude/knowledge/patterns/infrastructure/geographic-filtering-pattern.md` (TERYT + GPS radius filters)
+The orchestrator injects a scoped `{PATTERNS}` list, derived from `runtime.yml`
+(`patterns.always` + triggers matched against this task) — treat every entry as MUST-read,
+and read the `*_summary.md` rule card first: it carries the enforceable rule IDs to cite.
 
-### Real Examples (SUPPLEMENTARY — may be stale, verify against canonical patterns above)
+**If `{PATTERNS}` is empty or missing, STOP and report it.** Do not fall back to patterns
+you remember — an unscoped list is a bug in the caller, and silently working around it is
+how ungrounded code gets written.
+
+One obligation the scoped list can't express, because it follows from what you write rather
+than from which files the task touches: **editing an error mapper or repository error
+handling** requires the safe-error-propagation pattern. If the injected list doesn't carry
+it, say so instead of reconstructing the rule from memory.
+
+### Real Examples (SUPPLEMENTARY — may be stale, verify against the injected `{PATTERNS}`)
 
 - `.claude/knowledge/learned/infrastructure-api-patterns.md`
 
-### Architecture Patterns (MUST — Cross-cutting architecture)
+### Domain / Application / Testing — not your specialty
 
-- `.claude/knowledge/patterns/architecture/dual-identity-pattern.md` (security)
-- `.claude/knowledge/patterns/architecture/transactional-pattern.md` (@Transactional)
-- `.claude/knowledge/patterns/architecture/integration-event-pattern.md` (async events)
-- `.claude/knowledge/patterns/architecture/bullmq-queue-pattern.md` (async jobs)
-- `.claude/knowledge/patterns/architecture/acl-registry-pattern.md` (cross-context)
-- `.claude/knowledge/patterns/architecture/user-projection-pattern.md` (user tables)
-
-### Cross-Layer Patterns (MUST — Error handling & logging)
-
-- `.claude/knowledge/patterns/cross-layer/logger-pattern.md` (LOGGER_SERVICE token)
-- `.claude/knowledge/patterns/cross-layer/domain-errors-pattern.md` (Result pattern)
-- `.claude/knowledge/patterns/cross-layer/safe-error-propagation-pattern.md` ← **MANDATORY: read before editing error mappers or repo error handling**
-- `.claude/knowledge/patterns/cross-layer/error-handler-chain-pattern.md` (HTTP exceptions)
-- `.claude/knowledge/patterns/cross-layer/conventions-pattern.md` (naming standards)
-
-### Domain/Application (REFERENCE — Implementer knows this)
-
-- `.claude/knowledge/patterns/domain/` (link only, not your core)
-- `.claude/knowledge/patterns/application/` (link only, not your core)
-
-### Testing (REFERENCE — @test-implementer owns this)
-
-- `.claude/knowledge/patterns/testing/` (link only — you write code, not tests)
+Domain and application work belongs to @domain-application-implementer, tests to
+@test-implementer; each gets its own scoped list from the orchestrator.
 
 ---
 
@@ -234,12 +218,12 @@ Any repository query that is more than a single-column PK lookup — joins, aggr
 `LIKE`/full-text search, geo/spatial predicates, or anything touching a table you expect to grow —
 gets reviewed BEFORE you consider the repository method done:
 
-1. **`@sql-postgres-optimizer`** (always available, part of the nestjs-ddd preset): hand it the
+1. **`@sql-postgres-optimizer`** (comes with the `nestjs` block): hand it the
    Kysely snippet or raw SQL — NOT full task context, just the query + table name. It returns a
    verdict + concrete rewrite/index recommendation, or signs off fast if the query is genuinely
    trivial.
-2. **Project-local query specialists** — check `.claude/agents/` for anything beyond the shared
-   preset (e.g. a geo/PostGIS specialist for spatial predicates). If the query touches that
+2. **Project-local query specialists** — check `.claude/agents/` for anything the project's own
+   block adds (e.g. a geo/PostGIS specialist for spatial predicates). If the query touches that
    specialist's domain (e.g. `ST_DWithin`, geography columns, TERYT lookups), consult it INSTEAD of
    `@sql-postgres-optimizer` for the spatial part — the two agents hand off non-overlapping parts of
    a mixed query to each other when needed, you don't need to route between them yourself.

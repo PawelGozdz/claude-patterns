@@ -1,5 +1,7 @@
 # Component Creation Pattern (DS-007)
 
+**Tags**: "mobile:ui"
+
 **Layer**: Cross-Layer
 **Status**: production
 

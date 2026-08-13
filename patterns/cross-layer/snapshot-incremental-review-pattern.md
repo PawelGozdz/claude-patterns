@@ -1,5 +1,7 @@
 # Pattern: Snapshot-Based Incremental Review
 
+**Tags**: "any:process:review"
+
 **Layer**: Cross-Layer
 **Status**: production
 

@@ -125,9 +125,9 @@ Czego nie dało się rozstrzygnąć z kanonu. To trafia wprost do artefaktu anal
 
 ## 📚 Baza wiedzy (MUST read przed projektowaniem)
 
-- `.claude/knowledge/patterns/flutter/design-token-pattern.md` — czym wolno operować
-- `.claude/knowledge/patterns/flutter/accessibility-pattern.md` — twarde minimum dostępności
-- `.claude/knowledge/patterns/flutter/localization-pattern.md` — jak podawać teksty i klucze
+- zawężona lista `{PATTERNS}` wstrzyknięta przez orkiestratora (z `runtime.yml`: `patterns.always`
+  + wyzwalacze dopasowane do taska) — każda pozycja obowiązkowa, karta reguł `*_summary.md` przed
+  pełnym wzorcem. Gdy listy nie ma, ZATRZYMAJ SIĘ i to zgłoś zamiast sięgać po wzorce z pamięci
 - kanon marki projektu (`BRAND.md` lub odpowiednik)
 - reguły rynkowe/kulturowe projektu, jeśli istnieją
 

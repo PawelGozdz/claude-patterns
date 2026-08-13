@@ -2,6 +2,8 @@
 
 **Version**: 1.0
 **Created**: 2026-01-19
+**Tags**: "api:tests", "api:security:rate-limit"
+
 **Purpose**: Reliable rate limit testing with concurrent requests in E2E tests
 **Context**: Test environment uses 1-second windows (production: 1 hour), IP-based rate limiting (all supertest requests = 127.0.0.1)
 

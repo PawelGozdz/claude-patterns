@@ -1,5 +1,7 @@
 # Python Typing Patterns
 
+**Tags**: "api:platform:python"
+
 ## When to Use
 
 - Every Python module in the codebase — typing is not optional

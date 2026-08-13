@@ -1,5 +1,7 @@
 # Aggregate Pattern
 
+**Tags**: "api:domain:aggregate"
+
 ## 🎯 Problem
 
 **Challenges with aggregate implementation**:

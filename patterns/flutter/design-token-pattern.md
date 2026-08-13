@@ -1,5 +1,7 @@
 # Design Token Pattern
 
+**Tags**: "mobile:ui:design-token"
+
 **Layer**: Cross-Layer
 **Status**: production
 

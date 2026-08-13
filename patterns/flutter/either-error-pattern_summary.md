@@ -1,5 +1,7 @@
 # Either / Failure Handling — Rule Card
 
+**Tags**: "mobile:domain:errors"
+
 <!-- Egzekwowalne streszczenie either-error-pattern.md. WIĄŻĄCE.
      Pełny wzorzec (hierarchia Failure, fold(), konwencja UI ERROR-UX-001): either-error-pattern.md
      Verifier sprawdza KAŻDĄ regułę z ID poniżej i cytuje ją przy naruszeniu. -->

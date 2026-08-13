@@ -1,4 +1,6 @@
 # Mapper — Rule Card
+
+**Tags**: "api:data-access:mapper"
 <!-- Egzekwowalne streszczenie mapper-pattern.md. WIĄŻĄCE dla implementacji.
      Pełny wzorzec (kontekst, uzasadnienie, anti-patterns, przykłady): mapper-pattern.md
      Verifier sprawdza KAŻDĄ regułę z ID poniżej i cytuje ją przy naruszeniu. -->

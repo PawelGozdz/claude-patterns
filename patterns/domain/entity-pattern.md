@@ -1,5 +1,7 @@
 # Entity Pattern
 
+**Tags**: "api:domain"
+
 ## 🎯 Problem
 
 **Challenges with entity implementation**:

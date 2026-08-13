@@ -1,5 +1,7 @@
 # Pattern: Mobile Security (Flutter)
 
+**Tags**: "mobile:security"
+
 **Layer**: Infrastructure
 **Status**: production
 

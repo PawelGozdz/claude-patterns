@@ -1,5 +1,7 @@
 # Testing Pattern
 
+**Tags**: "web:tests", "web:platform:nextjs"
+
 ## When to Use
 
 - Every Next.js 16 application that needs unit, integration, or end-to-end tests

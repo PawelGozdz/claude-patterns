@@ -1,5 +1,7 @@
 # User Projection Pattern
 
+**Tags**: "api:data-access:projection", "api:app:cross-context"
+
 ## 🎯 Problem
 
 **Multiple bounded contexts need user data, but cross-context JOINs violate DDD principles.**

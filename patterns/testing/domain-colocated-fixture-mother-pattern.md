@@ -1,6 +1,8 @@
 # Domain-Colocated Fixture Mother Pattern
 
 **Pattern Type**: Testing Pattern
+**Tags**: "api:tests:fixtures"
+
 **Layer**: Domain (L1 construction) + Test Infrastructure (L2/L3 persistence)
 **Introduced**: TS-TEST-FIXTURE-001 (2026-07-10)
 **Status**: ACTIVE

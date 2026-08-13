@@ -1,5 +1,7 @@
 # Freezed Immutability Pattern
 
+**Tags**: "mobile:domain"
+
 **Layer**: Domain
 **Status**: production
 

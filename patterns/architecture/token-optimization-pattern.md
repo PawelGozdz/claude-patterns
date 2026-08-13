@@ -1,5 +1,7 @@
 # Token Optimization Guide
 
+**Tags**: "any:process"
+
 Practical settings and habits to reduce token consumption, extend session quality, and get more work done within daily limits.
 
 > See also: `rules/common/performance.md` for model selection strategy, `skills/strategic-compact/` for automated compaction suggestions.

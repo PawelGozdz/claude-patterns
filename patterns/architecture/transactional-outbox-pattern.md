@@ -1,5 +1,7 @@
 # Transactional Outbox Pattern
 
+**Tags**: "api:events:outbox", "api:data-access:transaction"
+
 **Layer**: Architecture
 **Assumes**: ddd/core   <!-- wzorzec operuje pojęciami modelu domenowego -->
 

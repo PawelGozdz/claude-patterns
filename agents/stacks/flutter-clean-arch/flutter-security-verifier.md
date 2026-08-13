@@ -151,13 +151,13 @@ bezpieczeństwa; ostrzeżenie, jeśli dotyczy funkcji pomocniczej.
 
 ## 📚 Baza wzorców (MUST read przed weryfikacją)
 
-Orkiestrator zwykle podaje zawężoną listę `{PATTERNS}` — traktuj ją jako obowiązkową.
-Gdy jej nie ma, przeczytaj:
+Orkiestrator wstrzykuje zawężoną listę `{PATTERNS}`, wyliczoną z `runtime.yml`
+(`patterns.always` + wyzwalacze dopasowane do tego taska) — każda pozycja jest obowiązkowa,
+a kartę reguł `*_summary.md` czytaj przed pełnym wzorcem: to ona niesie ID reguł do cytowania.
 
-- `.claude/knowledge/patterns/flutter/mobile-security-pattern.md` — pięć filarów bezpieczeństwa mobilnego
-- `.claude/knowledge/patterns/flutter/platform-channel-pattern.md` — kontrakt Dart↔natywna, fail-closed
-- `.claude/knowledge/patterns/flutter/offline-first-pattern.md` — szyfrowanie danych lokalnych
-- `.claude/knowledge/patterns/cross-layer/security-invariants-pattern.md` — niezmienniki wspólne dla stacków
+**Gdy `{PATTERNS}` jest puste albo go nie ma, ZATRZYMAJ SIĘ i to zgłoś.** Nie sięgaj po
+wzorce z pamięci — brak zawężonej listy to błąd po stronie wywołującego, a ciche obejście
+go jest dokładnie tym, po czym powstaje weryfikacja bez oparcia.
 
 ### Wyjście weryfikatora MUSI zawierać
 Wiersz per plik: `file | patterns_checked | violations | verdict (PASS|WARN|VETO)`

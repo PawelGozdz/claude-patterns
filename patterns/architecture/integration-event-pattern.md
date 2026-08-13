@@ -1,5 +1,7 @@
 # Integration Event Pattern
 
+**Tags**: "api:events:integration", "api:data-access:outbox"
+
 **Layer**: Architecture
 **Assumes**: ddd/core   <!-- wzorzec operuje pojęciami modelu domenowego -->
 

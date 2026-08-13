@@ -1,5 +1,7 @@
 # Riverpod State Management Pattern
 
+**Tags**: "mobile:ui:state", "mobile:app"
+
 **Layer**: Cross-Layer
 **Status**: production
 

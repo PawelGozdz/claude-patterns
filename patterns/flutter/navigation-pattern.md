@@ -1,5 +1,7 @@
 # GoRouter Navigation Pattern
 
+**Tags**: "mobile:ui:navigation"
+
 **Layer**: Cross-Layer
 **Status**: production
 

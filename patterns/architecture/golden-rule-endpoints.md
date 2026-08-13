@@ -1,5 +1,7 @@
 # Golden Rule — Public/Private Endpoint Separation
 
+**Tags**: "api:api-surface", "api:authz"
+
 > ADR-0071
 
 ## 🎯 Problem

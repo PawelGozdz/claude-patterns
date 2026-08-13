@@ -1,4 +1,6 @@
 # Value Object — Rule Card
+
+**Tags**: "api:domain"
 <!-- Egzekwowalne streszczenie value-object-pattern.md. WIĄŻĄCE dla implementacji.
      Pełny wzorzec (kontekst, uzasadnienie, przykłady): value-object-pattern.md
      Verifier sprawdza KAŻDĄ regułę z ID poniżej i cytuje ją przy naruszeniu. -->

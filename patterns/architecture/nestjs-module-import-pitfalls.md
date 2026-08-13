@@ -1,5 +1,7 @@
 # NestJS Module Import Pitfalls
 
+**Tags**: "api:platform:nestjs"
+
 ## Problem 1 — Duplicate ContextsModule import causes silent startup hang
 
 ### Symptom

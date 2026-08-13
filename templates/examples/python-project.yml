@@ -4,6 +4,9 @@
 project:
   name: MyPythonAPI
   description: "FastAPI backend with async PostgreSQL"
+  # Konfiguracja (ADR 0008) — z niej powstaje .claude/config/runtime.yml:
+  stack_blocks: [python]
+  # Selektor szablonu CLAUDE.md i hooków, nie konfiguracja doboru wzorców:
   stack_profile: python
   agent_profile: backend-api
   stack: "Python 3.12, FastAPI, PostgreSQL"

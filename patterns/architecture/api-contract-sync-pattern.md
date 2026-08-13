@@ -1,5 +1,7 @@
 # Pattern: Cross-Repo API Contract Sync
 
+**Tags**: "api:api-surface:contract", "any:process"
+
 **Layer**: Architecture
 **Status**: production
 

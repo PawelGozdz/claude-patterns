@@ -1,5 +1,7 @@
 # Pattern: Layered Knowledge for Domain Skills
 
+**Tags**: "any:process"
+
 **Layer**: Finance / Cross-Layer
 **Status**: production
 **Origin**: vendored from [JoelLewis/finance_skills](https://github.com/JoelLewis/finance_skills) (MIT)

@@ -1,4 +1,6 @@
 # Localization (Flutter, ARB) — Rule Card
+
+**Tags**: "mobile:ui:i18n"
 <!-- Egzekwowalne streszczenie localization-pattern.md. WIĄŻĄCE.
      Pełny wzorzec (kontekst, uzasadnienie, real-code przykłady): localization-pattern.md
      Verifier sprawdza KAŻDĄ regułę z ID poniżej i cytuje ją przy naruszeniu. -->

@@ -12,10 +12,12 @@ description: |
   disclaimers** (not boilerplate) calibrated to 4 categories:
   educational, GDPR/privacy, contract drafting, litigation/dispute.
 
-  Reads `.agents/legal-context.md` (per-project legal context: jurisdiction
-  PL/EU/US/FR/UK, business form, regulated industry, internal counsel
-  presence) when present. Falls back to general analysis with universal
-  principles when missing.
+  Reads the per-project legal context file (jurisdiction PL/EU/US/FR/UK,
+  business form, regulated industry, internal counsel presence) when present
+  — checks `.agents/legal-context.md` first, then `docs/legal/legal-context.md`
+  (for projects that keep only real agent definitions under `.claude/agents/`
+  and everything else under `docs/`). Falls back to general analysis with
+  universal principles when neither exists.
 
   ADVISORY — does not file documents, does not represent users, does not
   call court/registry APIs. Produces analysis, drafts (always marked as
@@ -171,27 +173,34 @@ attorney" instead of answered.
 
 ## Step 0: Read Project Context (When Present)
 
-Before deep analysis, check for:
+Before deep analysis, check for the per-project legal context file, **in this
+order** (first one found wins):
 
-1. **`.agents/legal-context.md`** — per-project legal context. Should
-   declare:
-   - **Jurisdiction**: PL, EU (general), specific EU member, US (federal +
-     state), UK, FR, etc. If multi-jurisdictional, list all relevant.
-   - **Business form**: Sp. z o.o., LLC, GmbH, etc. (matters for
-     corporate law questions)
-   - **Regulated industry?**: finance (FCA/SEC), healthcare (HIPAA),
-     children's data (COPPA/UODO), etc.
-   - **Internal counsel?**: yes/no — affects how aggressive I can be in
-     drafting (yes = produce drafts; no = produce frameworks for them
-     to take to outside counsel)
-   - **Disclaimer overrides**: jurisdiction-specific phrasing (e.g.,
-     UK firm might want FCA-specific language, PL firm UODO references)
+1. `.agents/legal-context.md` (current convention)
+2. `docs/legal/legal-context.md` (docs-first convention — projects that keep
+   only real agent definitions under `.claude/agents/` and treat everything
+   else, including agent-context files, as regular content that belongs in
+   `docs/`; e.g. juz-ide-api-1 moved here 2026-08-12)
 
-2. `.agents/finance-context.md` — for compliance overlap (Reg BI, AML)
-3. `project-orchestration/TEAM-STATE.md` — strategic context if invoked
-   via @product-owner during sprint/roadmap
+Whichever is found should declare:
+- **Jurisdiction**: PL, EU (general), specific EU member, US (federal +
+  state), UK, FR, etc. If multi-jurisdictional, list all relevant.
+- **Business form**: Sp. z o.o., LLC, GmbH, etc. (matters for
+  corporate law questions)
+- **Regulated industry?**: finance (FCA/SEC), healthcare (HIPAA),
+  children's data (COPPA/UODO), etc.
+- **Internal counsel?**: yes/no — affects how aggressive I can be in
+  drafting (yes = produce drafts; no = produce frameworks for them
+  to take to outside counsel)
+- **Disclaimer overrides**: jurisdiction-specific phrasing (e.g.,
+  UK firm might want FCA-specific language, PL firm UODO references)
 
-When `legal-context.md` is missing, I:
+Also check:
+- `.agents/finance-context.md` — for compliance overlap (Reg BI, AML)
+- `project-orchestration/TEAM-STATE.md` — strategic context if invoked
+  via @product-owner during sprint/roadmap
+
+When no legal context file is found at either path, I:
 - Ask the user for jurisdiction at the start of any non-conceptual question
 - Default to **EU + general principles** for pan-European clients (since
   most users in this codebase appear to be EU-based)

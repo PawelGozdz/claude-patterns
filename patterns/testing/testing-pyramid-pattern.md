@@ -1,5 +1,7 @@
 # Testing Pyramid Pattern
 
+**Tags**: "api:tests"
+
 ## 🎯 Problem
 
 **Test suites need balanced distribution between unit, integration, and E2E tests for fast feedback and comprehensive coverage.**

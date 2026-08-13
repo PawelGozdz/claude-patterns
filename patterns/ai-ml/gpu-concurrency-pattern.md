@@ -1,5 +1,7 @@
 # Pattern: GPU Concurrency in an Async Service
 
+**Tags**: "data:app:concurrency", "data:platform:gpu"
+
 **Layer**: AI/ML
 **Status**: production
 

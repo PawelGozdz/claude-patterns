@@ -178,7 +178,8 @@ Vendored 41 marketing skills from
 **New skills folder** (`skills/marketing/`):
 - 41 skills across CRO, copy, SEO, paid, email, growth, strategy, RevOps
 - `product-marketing-context` is foundational — runs first per project,
-  creates `.agents/product-marketing-context.md`
+  creates `.agents/product-marketing-context.md` (agenci czytają też
+  `docs/business/…` — patrz niżej)
 - `UPSTREAM_VERSION` records the synced upstream commit + version
 
 **New agent** (`agents/universal/`):
@@ -193,7 +194,7 @@ Vendored 41 marketing skills from
   shared positioning document (the marketing equivalent of `BUSINESS_RULES.yaml`).
 
 **New template** (`templates/`):
-- `product-marketing-context.md` — copyable scaffold for `.agents/`.
+- `product-marketing-context.md` — copyable scaffold for `.agents/` (lub `docs/business/`).
 
 **New tools folder** (`tools/marketing/`):
 - 60 reference CLI scripts + 75+ integration guides + REGISTRY.md
@@ -250,6 +251,7 @@ tmux sessions (days/weeks) without relying on session-start hooks.
 2. Use this structure:
    ```markdown
    # Pattern: {Name}
+   **Tags**: "api:domain:aggregate", "api:events"
    **Layer**: Domain|Application|Infrastructure|Architecture|Testing|Cross-Layer|Orchestration
    **Status**: production|stable|experimental
    
@@ -263,6 +265,18 @@ tmux sessions (days/weeks) without relying on session-start hooks.
    The ✅/❌ "When to Use" bullets are REQUIRED, not optional — they're what makes a pattern
    cheap to seed and cheap to pick correctly via `retrieve_patterns` (a reader/agent can match
    their situation against 3-5 bullets far faster than re-deriving intent from prose).
+
+   **Tags** is required too, and it's the one field nothing else can reconstruct: path-derived
+   tags say WHERE a pattern lives, `**Tags**` says WHAT it is about, and it's the only thing
+   `retrieve_patterns` can filter on. The vocabulary lives in `blocks/_taxonomy.yml` — format
+   `<stack>:<area>[:<variant>]`, 1-3 tags, quoted. **A tag outside the dictionary is an error,
+   not a new tag**: levels 1-2 are closed, and when an area is genuinely missing you add it to
+   `_taxonomy.yml` deliberately (that's how `platform` and `any` got in). Level 3 (variant) is
+   open kebab-case, but the linter prints every unseen one so `jwt` and `json-web-token` don't
+   end up living side by side — list a new variant under `variants_seen` once you mean to keep it.
+   If the pattern has a rule card (`{name}_summary.md`), **copy the same `**Tags**` line into
+   it**. The card is what actually enters prompts, so different tags there mean the topic filter
+   admits one and drops the other; `lint-patterns.mjs` reports that mismatch as an error.
 3. **Is this pattern derived from ONE project's codebase and not yet seen/validated in a second
    one?** (e.g. promoted straight out of a single task like `TS-REACH-SYSTEM-001`, not yet reused
    elsewhere) — if so, add a line right after `**Status**:`:

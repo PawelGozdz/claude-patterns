@@ -1,5 +1,7 @@
 # Routing & Loading Pattern
 
+**Tags**: "web:ui:navigation", "web:platform:svelte"
+
 ## When to Use
 
 - Every SvelteKit 2 application — file-based routing is the core navigation model

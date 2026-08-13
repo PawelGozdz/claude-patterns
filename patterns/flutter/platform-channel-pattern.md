@@ -1,5 +1,7 @@
 # Pattern: Platform Channel Contract
 
+**Tags**: "mobile:platform:channel"
+
 **Layer**: Infrastructure
 **Status**: production
 

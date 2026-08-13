@@ -1,5 +1,7 @@
 # Dio Networking Pattern
 
+**Tags**: "mobile:data-access:http"
+
 **Layer**: Infrastructure
 **Status**: production
 

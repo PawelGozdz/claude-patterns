@@ -1,5 +1,7 @@
 # Pattern: Backward Compatibility & Semantic Versioning
 
+**Tags**: "lib:api-surface:semver"
+
 **Layer**: Architecture
 **Status**: production
 

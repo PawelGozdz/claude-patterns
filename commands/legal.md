@@ -25,7 +25,8 @@ disallowedTools: Write, Edit, MultiEdit, Bash, NotebookEdit
 
 ## What This Does
 
-1. Reads `.agents/legal-context.md` (jurisdiction, business form, regulated
+1. Reads the project legal context — `.agents/legal-context.md`, a w drugiej
+   kolejności `docs/legal/legal-context.md` (jurisdiction, business form, regulated
    industry, internal counsel) when present.
 2. Delegates to `@legal-strategist` with the user's task.
 3. The strategist picks the right skill, applies jurisdiction-aware
@@ -35,10 +36,10 @@ disallowedTools: Write, Edit, MultiEdit, Bash, NotebookEdit
 ## Steps
 
 1. **Pre-flight check**
-   - Look for `.agents/legal-context.md` in the current project
+   - Look for `.agents/legal-context.md`, then `docs/legal/legal-context.md`
    - If missing, surface this to the user before deep analysis:
      > "No legal context found. Strongly recommend creating
-     > `.agents/legal-context.md` with at minimum:
+     > `.agents/legal-context.md` (albo `docs/legal/legal-context.md`) with at minimum:
      > - **Jurisdiction**: PL/EU/US/FR/UK/...
      > - **Business form**: Sp. z o.o. / LLC / GmbH / ...
      > - **Regulated industry**: yes (which?) / no

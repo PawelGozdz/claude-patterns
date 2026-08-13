@@ -120,32 +120,25 @@ correctness, not just generic SQL — see "Geo/Spatial Repository Tests" below.
 
 ## 📚 Knowledge Base
 
-### Testing Patterns (MUST — Your Core Expertise)
+### Patterns — the list comes from the orchestrator
 
-- `.claude/knowledge/patterns/testing/testing-pyramid-pattern.md`
-- `.claude/knowledge/patterns/testing/schema-testing-pattern.md`
-- `.claude/knowledge/patterns/testing/context-isolation-pattern.md`
-- `.claude/knowledge/patterns/testing/test-seeding-performance-guide.md` (CRITICAL)
+The orchestrator injects a scoped `{PATTERNS}` list, derived from `runtime.yml`
+(`patterns.always` + triggers matched against this task) — treat every entry as MUST-read,
+and read the `*_summary.md` rule card first: it carries the enforceable rule IDs to cite.
+
+**If `{PATTERNS}` is empty or missing, STOP and report it.** Do not fall back to patterns
+you remember — an unscoped list is a bug in the caller, and silently working around it is
+how ungrounded code gets written.
+
+You test code you didn't write, so the list will normally carry the domain and application
+patterns too — those are what tell you what "correct" means here. One obligation it can't
+express, because it follows from what you assert rather than from which files the task
+touches: **testing an event handler** requires the audit-handler pattern. If the injected
+list lacks it, say so rather than inferring the rule.
+
+### Real Examples (SUPPLEMENTARY — may be stale, verify against the injected `{PATTERNS}`)
+
 - `.claude/knowledge/learned/testing-patterns.md`
-
-### Domain/Application Patterns (MUST — you test code you didn't write; read it to know what "correct" means)
-
-- `.claude/knowledge/patterns/domain/aggregate-pattern.md`
-- `.claude/knowledge/patterns/domain/value-object-pattern.md`
-- `.claude/knowledge/patterns/domain/domain-event-pattern.md`
-- `.claude/knowledge/patterns/application/command-handler-pattern.md`
-- `.claude/knowledge/patterns/application/query-handler-pattern.md`
-- `.claude/knowledge/patterns/application/audit-handler-pattern.md` ← **MANDATORY when testing event handlers**
-
-### Infrastructure Patterns (REFERENCE — @infrastructure-implementer owns the code, you test its contract)
-
-- `.claude/knowledge/patterns/infrastructure/` (repository-pattern.md for repo test conventions,
-  controller-schema-pattern.md for controller test conventions)
-
-### Cross-Layer Patterns (MUST)
-
-- `.claude/knowledge/patterns/cross-layer/domain-errors-pattern.md` (Result pattern — how to assert)
-- `.claude/knowledge/patterns/cross-layer/conventions-pattern.md` (naming standards)
 
 ---
 

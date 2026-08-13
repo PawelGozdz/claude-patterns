@@ -3,6 +3,8 @@
 **Version**: 2.0
 **Created**: 2026-01-06
 **Updated**: 2026-07-12
+**Tags**: "api:tests:seeding"
+
 **Purpose**: Unified guide for optimal test data seeding in Project Hybrid Fixture System
 **Principle**: **"Fixture what you DON'T test, real flow for what you DO test"**
 

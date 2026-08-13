@@ -1,5 +1,7 @@
 # Pattern: External Skills Catalog (License-Fragmented Ecosystems)
 
+**Tags**: "any:process"
+
 **Layer**: Legal / Cross-Layer
 **Status**: production
 **Sister patterns**: `legal/jurisdiction-aware-disclaimer-pattern.md`,

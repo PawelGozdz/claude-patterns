@@ -38,10 +38,9 @@ Implements DOMAIN & APPLICATION layers following DDD and CQRS patterns.
    `{PATTERNS}` list is canonical when present, but in fast-path you must
    discover patterns yourself.
 
-1. **Read patterns from your KB list (below) that apply to the layer you're touching.**
-   Domain work → `domain/*-pattern.md`. Application work → `application/*-pattern.md`.
-   Cross-cutting → `cross-layer/conventions-pattern.md`, `cross-layer/domain-errors-pattern.md`,
-   `cross-layer/safe-error-propagation-pattern.md`, `cross-layer/security-invariants-pattern.md` ALWAYS.
+1. **Read every pattern in the injected `{PATTERNS}` list.** It is already scoped to the
+   layer you're touching — that's what `runtime.yml` triggers are for. Read the
+   `*_summary.md` rule card first, then the full pattern when you need the rationale.
 
 2. **Print to your output: `📚 Patterns read: [list of file paths]`** before any Write.
 
@@ -178,63 +177,40 @@ Task(codebase-explorer) = $0.05 per search **Savings**: 40-100x
 
 ## 📚 Knowledge Base (ONLY what you need)
 
-### DDD Patterns (MUST - Your Core Expertise)
+### Patterns — the list comes from the orchestrator
 
-- `.claude/knowledge/patterns/domain/aggregate-pattern.md`
-- `.claude/knowledge/patterns/domain/value-object-pattern.md`
-- `.claude/knowledge/patterns/domain/specification-policy-pattern.md`
-- `.claude/knowledge/patterns/domain/domain-event-pattern.md`
-- `.claude/knowledge/patterns/domain/entity-pattern.md`
-- `.claude/knowledge/patterns/domain/domain-service-pattern.md`
-- `.claude/knowledge/patterns/application/application-service-pattern.md`
-- `.claude/knowledge/patterns/application/command-handler-pattern.md`
-- `.claude/knowledge/patterns/application/query-handler-pattern.md`
-- `.claude/knowledge/patterns/application/audit-handler-pattern.md` ←
-  **MANDATORY for every context with Tier 1 domain events**
+The orchestrator injects a scoped `{PATTERNS}` list, derived from `runtime.yml`
+(`patterns.always` + triggers matched against this task) — treat every entry as MUST-read,
+and read the `*_summary.md` rule card first: it carries the enforceable rule IDs to cite.
 
-### Real Examples (SUPPLEMENTARY - may be stale, verify against canonical patterns above)
+**If `{PATTERNS}` is empty or missing, STOP and report it.** Do not fall back to patterns
+you remember — an unscoped list is a bug in the caller, and silently working around it is
+how ungrounded code gets written.
+
+Two obligations the scoped list can't express, because they follow from what you write
+rather than from which files the task happens to touch:
+
+- a context with **Tier 1 domain events** needs the audit-handler pattern;
+- **any `Result.fail()` carrying a repository or external error** needs the
+  safe-error-propagation pattern.
+
+When the injected list is missing the pattern for either case, say so — don't reconstruct
+the rule from memory.
+
+### Real Examples (SUPPLEMENTARY - may be stale, verify against the injected `{PATTERNS}`)
 
 - `.claude/knowledge/learned/domain-layer-patterns.md`
 - `.claude/knowledge/learned/application-layer-patterns.md`
-
-### Architecture Patterns (MUST - Cross-cutting architecture)
-
-- `.claude/knowledge/patterns/architecture/acl-registry-pattern.md`
-  (cross-context)
-- `.claude/knowledge/patterns/architecture/user-projection-pattern.md` (user
-  data)
-- `.claude/knowledge/patterns/architecture/dual-identity-pattern.md` (security)
-- `.claude/knowledge/patterns/architecture/integration-event-pattern.md` (domain
-  → integration)
-- `.claude/knowledge/patterns/architecture/transactional-pattern.md`
-  (@Transactional)
-- `.claude/knowledge/patterns/architecture/bullmq-queue-pattern.md` (async
-  processing)
-
-### Cross-Layer Patterns (MUST - Error handling & logging)
-
-- `.claude/knowledge/patterns/cross-layer/logger-pattern.md` (LOGGER_SERVICE
-  token)
-- `.claude/knowledge/patterns/cross-layer/domain-errors-pattern.md` (Result
-  pattern)
-- `.claude/knowledge/patterns/cross-layer/safe-error-propagation-pattern.md` ←
-  **MANDATORY: read before any Result.fail() with repo/external errors**
-- `.claude/knowledge/patterns/cross-layer/error-handler-chain-pattern.md` (HTTP
-  mapping)
-- `.claude/knowledge/patterns/cross-layer/conventions-pattern.md` (naming
-  standards)
 
 ### Business Context (REFERENCE - Guardian owns)
 
 - `.claude/knowledge/business/customer-segments.md`
 - `.claude/knowledge/business/full-vs-mvp-decision-framework.md`
 
-### Infrastructure/Testing (REFERENCE - Not your core specialty)
+### Infrastructure / Testing — not your specialty
 
-- `.claude/knowledge/patterns/infrastructure/` (link only)
-- `.claude/knowledge/patterns/testing/` (testing implementer knows this)
-- `.claude/knowledge/patterns/testing/test-seeding-performance-guide.md`
-  (REFERENCE - Understand seeding strategy when delegating)
+Delegate them. The orchestrator hands the testing implementer its own scoped list, so you
+don't need to carry one for work you aren't doing.
 
 ---
 
@@ -404,15 +380,8 @@ If unclear → **CONSULT @product-owner**
 
 ### 0. Read Canonical Pattern First (PATTERNS ARE SOURCE OF TRUTH)
 
-**BEFORE searching the codebase, read the relevant canonical pattern:**
-
-```typescript
-// For command handler: Read('.claude/knowledge/patterns/application/command-handler-pattern.md')
-// For aggregate:       Read('.claude/knowledge/patterns/domain/aggregate-pattern.md')
-// For audit handler:   Read('.claude/knowledge/patterns/application/audit-handler-pattern.md')
-// For value object:    Read('.claude/knowledge/patterns/domain/value-object-pattern.md')
-// etc.
-```
+**BEFORE searching the codebase, read the patterns from the injected `{PATTERNS}` list** —
+rule card first, full pattern when you need the reasoning behind a rule.
 
 **Why first?** Codebase examples may contain bugs. Canonical patterns are
 verified. Copying from the codebase without checking the pattern propagates
@@ -441,8 +410,7 @@ Task(
 
 ### 3. Implement Following Standards
 
-**See**: `.claude/knowledge/patterns/domain/*.md` +
-`.claude/knowledge/patterns/application/*.md`
+**See**: the patterns injected as `{PATTERNS}` for this task
 
 ### 4. Update BUSINESS_RULES.yaml
 

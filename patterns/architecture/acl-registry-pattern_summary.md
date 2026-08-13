@@ -1,4 +1,6 @@
 # ACL Registry — Rule Card
+
+**Tags**: "api:app:cross-context"
 <!-- Egzekwowalne streszczenie acl-registry-pattern.md. WIĄŻĄCE dla implementacji.
      Pełny wzorzec (kontekst, uzasadnienie, drzewo decyzji, przykłady testów): acl-registry-pattern.md
      Verifier sprawdza KAŻDĄ regułę z ID poniżej i cytuje ją przy naruszeniu. -->

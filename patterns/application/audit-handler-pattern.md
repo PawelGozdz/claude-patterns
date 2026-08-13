@@ -1,5 +1,7 @@
 # Audit Handler Pattern
 
+**Tags**: "api:app", "api:observability:audit"
+
 ## 🎯 Problem
 
 **Challenges with audit logging implementation**:

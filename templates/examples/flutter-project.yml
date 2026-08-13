@@ -4,6 +4,9 @@
 project:
   name: MyFlutterApp
   description: "Cross-platform mobile app with Clean Architecture"
+  # Konfiguracja (ADR 0008) — z niej powstaje .claude/config/runtime.yml:
+  stack_blocks: [flutter]
+  # Selektor szablonu CLAUDE.md i hooków, nie konfiguracja doboru wzorców:
   stack_profile: flutter-clean-arch
   language: dart
   stack: "Flutter 3.x, Dart, Riverpod, Freezed, GoRouter, Dio"

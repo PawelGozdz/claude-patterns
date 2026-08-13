@@ -1,6 +1,7 @@
 # Product Marketing Context
 
-*Template — copy this file to `.agents/product-marketing-context.md` in your
+*Template — copy this file to `.agents/product-marketing-context.md` (albo
+`docs/business/product-marketing-context.md`, jeśli projekt trzyma treść w `docs/`) in your
 project, then run `/product-marketing-context` (or `/marketing` and let the
 strategist route there) to auto-fill from the codebase. Replace every
 `[TODO]` with real, specific content. Verbatim customer language beats

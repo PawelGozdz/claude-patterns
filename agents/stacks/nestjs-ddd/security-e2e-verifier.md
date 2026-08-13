@@ -328,30 +328,15 @@ Skill to create one: `/threat-model` (`security/threat-model` skill)
 
 ---
 
-## 📚 Pattern Knowledge Base (MUST read before verification)
+## Pattern grounding (list comes from the orchestrator)
 
-The orchestrator normally hands this agent a scoped `{PATTERNS}` list — treat
-it as MUST-read. If not supplied, read the patterns below that correspond to
-the layers under audit. Security verification is the LAST line of defense —
-cite specific patterns in every finding.
+The orchestrator injects a scoped `{PATTERNS}` list, derived from `runtime.yml`
+(`patterns.always` + triggers matched against this task) — treat every entry as MUST-read,
+and read the `*_summary.md` rule card first: it carries the enforceable rule IDs to cite.
 
-### Security-critical patterns (always read for security audit)
-- `.claude/knowledge/patterns/cross-layer/safe-error-propagation-pattern.md` — **CRITICAL**: infra error leakage to HTTP (TS-SEC-011). 3-layer defense: repo → factory → mapper. If you find `error.message` in a mapper or domain error factory accepting `details: string` → VETO.
-- `.claude/knowledge/patterns/cross-layer/domain-errors-pattern.md` — Result API (`ok(value)` / `empty()` / `fail(error)`), no thrown exceptions in domain.
-- `.claude/knowledge/patterns/cross-layer/logger-pattern.md` — structured logging, PII redaction, correlation IDs.
-
-### Architecture / integration patterns
-- `.claude/knowledge/patterns/architecture/dual-identity-pattern.md` (if present — identity separation, security)
-- `.claude/knowledge/patterns/architecture/transactional-pattern.md` — rollback on `Result.fail`, `@Transactional()` on `execute()` only.
-- `.claude/knowledge/patterns/architecture/cross-context-communication.md` — ACL registry vs domain events; no cross-context writes.
-- `.claude/knowledge/patterns/architecture/integration-event-pattern.md` — outbox, at-least-once semantics.
-
-### Infrastructure patterns
-- `.claude/knowledge/patterns/infrastructure/repository-pattern.md` — per-context `{ctx}_aggregate_versions` table, optimistic locking join.
-- `.claude/knowledge/patterns/infrastructure/controller-schema-pattern.md` — Zod validators, `commonValidators`, `PASSWORD_REQUIREMENTS`, `AuthorSnapshotDto`.
-
-### Testing patterns
-- `.claude/knowledge/patterns/testing/testing-pyramid-pattern.md` — L1/L2/L3 ratios, critical-path E2E coverage.
+**If `{PATTERNS}` is empty or missing, STOP and report it.** Do not fall back to patterns
+you remember — an unscoped list is a bug in the caller, and silently working around it is
+how ungrounded code gets written.
 
 ### Every verifier output MUST cite:
 - Which pattern was applied

@@ -1,10 +1,10 @@
 ---
 # Artefakt analizy — kontrakt handoff research → implementacja (ADR 0002).
-# Pisany przez /analyze-ddd, edytowany przez CZŁOWIEKA, czytany przez /orchestrate-ddd.
+# Pisany przez /analyze, edytowany przez CZŁOWIEKA, czytany przez /orchestrate.
 # Lokalizacja: project-orchestration/analysis/{TASK-ID}.analysis.md  (NIE tasks/ — tam tylko taski)
 task: TS-XXX-000
 status: awaiting-human          # draft | awaiting-human | approved  ← BRAMKA MASZYNOWA
-# /orchestrate-ddd ODMÓWI startu dopóki status != approved LUB jakiekolwiek answer == null.
+# /orchestrate ODMÓWI startu dopóki status != approved LUB jakiekolwiek answer == null.
 
 threat_model: null              # link do docs/security/threat-models/TM-{TASK-ID}.md (lub null jeśli nie-security)
 # Security (STRIDE/DREAD/LINDDUN) NIE tutaj — żyje w threat-models/. Tu tylko link + krótkie "Ryzyka".
@@ -33,7 +33,7 @@ units: []                       # Ralphinho seam — pusty = jeden unit (cały t
 # Analiza: {TASK-ID}
 
 ## Synteza (tech-lead)
-<co robić, w jakiej kolejności, kluczowe ryzyka — wypełnia panel /analyze-ddd>
+<co robić, w jakiej kolejności, kluczowe ryzyka — wypełnia panel /analyze>
 
 ## Otwarte pytania (DO DYSKUSJI — odpowiedz w frontmatter `answer:`)
 - **Q1**: ...
@@ -47,4 +47,4 @@ units: []                       # Ralphinho seam — pusty = jeden unit (cały t
 
 ---
 > Po wypełnieniu odpowiedzi i zatwierdzeniu decyzji: ustaw `status: approved`,
-> potem uruchom `/orchestrate-ddd {TASK-ID}`.
+> potem uruchom `/orchestrate {TASK-ID}`.

@@ -1,4 +1,6 @@
 # Domain Event — Rule Card
+
+**Tags**: "api:events:domain", "api:domain"
 <!-- Egzekwowalne streszczenie domain-event-pattern.md. WIĄŻĄCE dla implementacji.
      Pełny wzorzec (kontekst, uzasadnienie, przykłady): domain-event-pattern.md
      Verifier sprawdza KAŻDĄ regułę z ID poniżej i cytuje ją przy naruszeniu. -->

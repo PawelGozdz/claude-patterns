@@ -1,5 +1,7 @@
 # Pattern: Dynamic Request Batching
 
+**Tags**: "data:app:batching"
+
 **Layer**: AI/ML
 **Status**: production
 

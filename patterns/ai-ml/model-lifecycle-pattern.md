@@ -1,5 +1,7 @@
 # Pattern: Model Lifecycle (Lazy Load + TTL + VRAM Budget)
 
+**Tags**: "data:app:model-lifecycle", "data:platform:gpu"
+
 **Layer**: AI/ML
 **Status**: production
 

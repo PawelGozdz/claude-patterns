@@ -1,4 +1,6 @@
 # Accessibility (Flutter) — Rule Card
+
+**Tags**: "mobile:ui:accessibility"
 <!-- Egzekwowalne streszczenie accessibility-pattern.md. WIĄŻĄCE.
      Pełny wzorzec (kontekst, uzasadnienie, real-code przykłady): accessibility-pattern.md
      Verifier sprawdza KAŻDĄ regułę z ID poniżej i cytuje ją przy naruszeniu. -->

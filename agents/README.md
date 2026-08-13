@@ -37,9 +37,9 @@ Linked globally to `~/.claude/agents/` via `setup-global.sh`.
 
 | Agent | Purpose | Model | Writes Code |
 |-------|---------|-------|-------------|
-| **project-orchestrator** | Stack-aware orchestration: reads `project.yml`, resolves patterns + agent mapping per stack preset, delegates implement/validate/review sequentially, enforces Phase-4 verification gate | Opus | No |
+| **project-orchestrator** | Composition-driven orchestration: reads `.claude/config/runtime.yml` for layers, agent slots and pattern selection, runs the implement→verify loop per layer, enforces the final gate | Sonnet | No |
 
-Mirror of the `/orchestrate` skill, callable from `Task()` for async/delegated orchestration. Honors per-project overrides in `project.yml` under `project.orchestrator.overrides`.
+Mirror of the `/orchestrate` command, callable from `Task()` for async/delegated orchestration. Everything stack-specific comes from the project's `stack_blocks:` composition (ADR 0008).
 
 ### Cost-optimized utility (2)
 
@@ -188,7 +188,7 @@ cd ~/projects/claude-patterns
 
 ```bash
 ./scripts/setup-project.sh /path/to/project
-# Reads project.yml stack_profile, links matching stack agents
+# Reads stack_blocks: from project.yml, links the agents those blocks name
 ```
 
 ### Project-specific override

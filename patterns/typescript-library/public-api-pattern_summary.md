@@ -1,4 +1,6 @@
 # Public API Surface — Rule Card
+
+**Tags**: "lib:api-surface:barrel"
 <!-- Egzekwowalne streszczenie public-api-pattern.md. WIĄŻĄCE.
      Pełny wzorzec (kontekst, uzasadnienie, przykłady): public-api-pattern.md
      Verifier sprawdza KAŻDĄ regułę z ID poniżej i cytuje ją przy naruszeniu. -->

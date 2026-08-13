@@ -1,5 +1,7 @@
 # Mapper Pattern
 
+**Tags**: "api:data-access:mapper"
+
 ## 🎯 Problem
 
 **Challenges with aggregate-database mapping**:

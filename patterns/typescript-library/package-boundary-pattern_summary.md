@@ -1,4 +1,6 @@
 # Package Boundaries — Rule Card
+
+**Tags**: "lib:api-surface", "lib:build"
 <!-- Egzekwowalne streszczenie package-boundary-pattern.md. WIĄŻĄCE.
      Pełny wzorzec (kontekst, uzasadnienie, przykłady): package-boundary-pattern.md
      Verifier sprawdza KAŻDĄ regułę z ID poniżej i cytuje ją przy naruszeniu. -->

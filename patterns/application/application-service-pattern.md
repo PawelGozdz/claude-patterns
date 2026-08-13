@@ -1,5 +1,7 @@
 # DDD Application Services Reference
 
+**Tags**: "api:app"
+
 **Purpose**: Orchestration layer between API and domain
 **Audience**: domain-application-implementer
 **Philosophy**: Code + concise rules, NO verbose explanations

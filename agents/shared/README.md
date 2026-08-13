@@ -1,6 +1,6 @@
 # `agents/shared/` — Cross-stack Reusable Agents
 
-This folder is for agents used by **2+ stack presets but not all**.
+This folder is for agents used by **2+ stack blocks but not all**.
 
 ## Decision tree: where does an agent belong?
 
@@ -9,7 +9,7 @@ Is the agent useful for EVERY project regardless of stack?
 ├── YES → agents/universal/  (gets symlinked to ~/.claude/agents/, available globally)
 └── NO  → Is it bound to ONE specific stack?
          ├── YES → agents/stacks/{stack}/  (e.g., flutter-ui-verifier in flutter-clean-arch/)
-         └── NO  → agents/shared/  (this folder; symlinked into multiple stack presets)
+         └── NO  → agents/shared/  (this folder; linked in by multiple stack blocks)
 ```
 
 ## Examples

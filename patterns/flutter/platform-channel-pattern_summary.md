@@ -1,4 +1,6 @@
 # Platform Channel Contract — Rule Card
+
+**Tags**: "mobile:platform:channel"
 <!-- Egzekwowalne streszczenie platform-channel-pattern.md. WIĄŻĄCE.
      Pełny wzorzec (case study, real-code przykłady, uzasadnienie): platform-channel-pattern.md
      Verifier sprawdza KAŻDĄ regułę z ID poniżej i cytuje ją przy naruszeniu. -->

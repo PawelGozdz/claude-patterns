@@ -1,5 +1,7 @@
 # Repository Pattern (stub — see claude-patterns/patterns/infrastructure/repository-events-pattern.md)
 
+**Tags**: "api:data-access"
+
 This project uses Kysely query-repository pattern for read-side CQRS:
 - Select explicit columns in findBy* methods
 - Map rows in private mapToOwnerQueryModel / mapToPublicQueryModel helpers

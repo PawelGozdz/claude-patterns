@@ -1,4 +1,6 @@
 # Controller & Schema — Rule Card
+
+**Tags**: "api:api-surface", "api:security:validation"
 <!-- Egzekwowalne streszczenie controller-schema-pattern.md. WIĄŻĄCE dla implementacji.
      Pełny wzorzec (kontekst, uzasadnienie, 7 anti-patterns): controller-schema-pattern.md
      Verifier sprawdza KAŻDĄ regułę z ID poniżej i cytuje ją przy naruszeniu. -->

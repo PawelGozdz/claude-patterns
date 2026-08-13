@@ -1,5 +1,7 @@
 # Svelte 5 Runes Pattern
 
+**Tags**: "web:ui:state", "web:platform:svelte"
+
 ## When to Use
 
 - Every Svelte 5 component — runes are the default reactivity system

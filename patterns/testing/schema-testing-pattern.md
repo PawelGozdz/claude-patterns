@@ -1,5 +1,7 @@
 # Schema Testing Pattern
 
+**Tags**: "api:tests:contract", "api:api-surface"
+
 ## 🎯 Problem
 
 **Zod schemas need comprehensive testing to prevent security vulnerabilities and runtime errors.**

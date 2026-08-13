@@ -1,5 +1,7 @@
 # Pattern: Jurisdiction-Aware Contextual Disclaimer
 
+**Tags**: "any:process"
+
 **Layer**: Legal / Cross-Layer
 **Status**: production
 **Sister patterns**: `finance/regulatory-disclaimer-pattern.md` (6-category

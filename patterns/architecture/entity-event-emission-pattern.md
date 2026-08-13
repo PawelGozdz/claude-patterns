@@ -1,5 +1,7 @@
 # Entity Event Emission Pattern
 
+**Tags**: "api:events:domain", "api:domain"
+
 **Purpose**: Emit domain events from Entities (non-Aggregates) that cannot use `this.apply()`
 **Audience**: domain-application-implementer, infrastructure-testing-implementer
 **Philosophy**: Production code + concise rules

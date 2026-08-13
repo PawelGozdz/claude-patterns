@@ -1,5 +1,7 @@
 # Pattern: Package Boundaries in an Nx Monorepo
 
+**Tags**: "lib:api-surface", "lib:build"
+
 **Layer**: Architecture
 **Status**: production
 

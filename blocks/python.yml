@@ -1,0 +1,53 @@
+# Blok: python — framework/runtime: usługa lub pipeline w Pythonie (bez web-frameworka
+# jako założenia; FastAPI wchodzi wyzwalaczem, nie na stałe). Odpowiednik `node` po
+# stronie Pythona: wnosi wzorce, panel advisory i overlay, ale NIE warstwy — te daje
+# osobny blok osi architektury (`ml-pipeline`, `flat-service`, ...).
+name: python
+axis: framework
+requires: []
+
+requires_ecc:
+  profile: developer
+  modules: [lang:python, capability:orchestration]
+
+patterns:
+  # Półka `always` wchodzi do KAŻDEGO taska, więc trzymamy na niej tylko to, co jest
+  # naprawdę stack-agnostyczne i ma kartę reguł. `conventions`/`logger`/`domain-errors`
+  # z cross-layer celowo POMINIĘTE mimo kart: opisują nazewnictwo DDD, token
+  # LOGGER_SERVICE i Result<T> z NestJS — w Pythonie byłyby myleniem, nie regułą.
+  always:
+    - cross-layer/security-invariants-pattern.md
+    - cross-layer/safe-error-propagation-pattern.md
+  triggers:
+    - keywords: [async, await, asyncio, concurrency, coroutine, gather, semaphore]
+      include:
+        - python/async-patterns.md
+    - keywords: [type, typing, annotation, mypy, protocol, generic, dataclass]
+      include:
+        - python/typing-patterns.md
+    - keywords: [fastapi, endpoint, route, api, pydantic, request, response]
+      include:
+        - python/fastapi-patterns.md
+    - keywords: [architecture, layer, module, package, structure, refactor]
+      include:
+        - python/layered-architecture-pattern.md
+    - keywords: [test, pytest, fixture, mock, coverage, e2e]
+      include:
+        - python/testing-pattern.md
+        - testing/testing-pyramid-pattern.md
+    - keywords: [auth, authentication, authorization, permission, login, token, secret]
+      include:
+        - cross-layer/security-invariants-pattern.md
+
+analyze:
+  panel:
+    - { stage: threat-model, agent: "/threat-model", when: "\\b(auth|authn|authz|authentication|authorization|login|token|secret)\\b|\\bpii\\b|cross[-_ ]context|public[-_ ]api",
+        output: "docs/security/threat-models/TM-{TASK_ID}.md", skip_if_exists: true }
+    - { stage: tech-analysis, agent: "ecc:architect" }
+    - { stage: python-architecture, agent: "python-architecture-expert" }
+
+overlay:
+  agents: [stacks/python/]
+  patterns: [python/]
+  rules: [python/]
+  hooks: [check-security-considerations, check-context-isolation, check-patterns-read, check-python-layers, check-python-typing]

@@ -1,4 +1,6 @@
 # Entity — Rule Card
+
+**Tags**: "api:domain"
 <!-- Egzekwowalne streszczenie entity-pattern.md. WIĄŻĄCE dla implementacji.
      Pełny wzorzec (kontekst, uzasadnienie, przykłady): entity-pattern.md
      Verifier sprawdza KAŻDĄ regułę z ID poniżej i cytuje ją przy naruszeniu. -->

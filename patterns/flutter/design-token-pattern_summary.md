@@ -1,4 +1,6 @@
 # Design Tokens — Rule Card
+
+**Tags**: "mobile:ui:design-token"
 <!-- Egzekwowalne streszczenie design-token-pattern.md. WIĄŻĄCE.
      Pełny wzorzec (kontekst, uzasadnienie, kod): design-token-pattern.md
      Verifier sprawdza KAŻDĄ regułę z ID poniżej i cytuje ją przy naruszeniu. -->

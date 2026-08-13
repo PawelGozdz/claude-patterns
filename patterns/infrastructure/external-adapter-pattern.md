@@ -1,5 +1,7 @@
 # Pattern: External Adapter (Logging Placeholder)
 
+**Tags**: "api:app:external-integration"
+
 **Layer**: Infrastructure
 **Status**: production
 **Scope**: project-specific (grant-flow) — single-project derivation, not yet validated

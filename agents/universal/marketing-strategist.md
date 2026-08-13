@@ -6,9 +6,12 @@ description: |
   `skills/marketing/` and ensures the foundational `product-marketing-context`
   is loaded before any deeper analysis.
 
-  Reads `.agents/product-marketing-context.md` first (or offers to create it
-  via the `product-marketing-context` skill). Does NOT invent product, ICP, or
-  positioning facts — always asks the user or reads existing context.
+  Reads the per-project marketing context file first — `.agents/product-marketing-context.md`,
+  or `docs/business/product-marketing-context.md` for projects that keep only
+  real agent definitions under `.claude/agents/` and everything else under
+  `docs/` — or offers to create it via the `product-marketing-context` skill.
+  Does NOT invent product, ICP, or positioning facts — always asks the user or
+  reads existing context.
 
   ADVISORY — does not execute marketing campaigns, does not call external APIs,
   does not write production code. Produces analysis, recommendations, copy,
@@ -36,7 +39,9 @@ description: |
   "Pricing strategy review." "Sales enablement materials." "ICP refresh."
 
   Routing logic:
-  - Always read .agents/product-marketing-context.md first (or .claude/...)
+  - Always read the product-marketing-context file first — check
+    .agents/product-marketing-context.md, then docs/business/product-marketing-context.md,
+    then .claude/... (see Step 0 for the full order)
   - If missing, recommend running the `product-marketing-context` skill before
     proceeding (do not fabricate context)
   - Pick the most specific marketing skill from skills/marketing/ for the task
@@ -74,11 +79,15 @@ explicit playbooks the user (or another implementer agent) executes.
 ## Step 0: Load Product Marketing Context (ALWAYS)
 
 Before any marketing analysis, check for the foundational context document
-in this order:
+in this order (first one found wins):
 
 1. `.agents/product-marketing-context.md` (current convention)
-2. `.claude/product-marketing-context.md` (older convention)
-3. `templates/product-marketing-context.md` (template — repo-level only)
+2. `docs/business/product-marketing-context.md` (docs-first convention —
+   projects that keep only real agent definitions under `.claude/agents/`
+   and treat everything else, including agent-context files, as regular
+   content that belongs in `docs/`; e.g. juz-ide-api-1 moved here 2026-08-12)
+3. `.claude/product-marketing-context.md` (older convention)
+4. `templates/product-marketing-context.md` (template — repo-level only)
 
 **If missing**: do not proceed with deep analysis. Recommend running the
 `product-marketing-context` skill (located at

@@ -1,5 +1,7 @@
 # Dual Identity Pattern
 
+**Tags**: "api:security:identity", "api:authz"
+
 ## 🎯 Problem
 
 **User ID hijacking: Malicious clients can impersonate other users by sending fake userId in request body.**

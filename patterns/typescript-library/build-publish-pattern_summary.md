@@ -1,4 +1,6 @@
 # Build & Publish — Rule Card
+
+**Tags**: "lib:build"
 <!-- Egzekwowalne streszczenie build-publish-pattern.md. WIĄŻĄCE.
      Pełny wzorzec (kontekst, uzasadnienie, CI): build-publish-pattern.md
      Verifier sprawdza KAŻDĄ regułę z ID poniżej i cytuje ją przy naruszeniu. -->

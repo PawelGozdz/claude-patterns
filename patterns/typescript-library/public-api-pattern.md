@@ -1,5 +1,7 @@
 # Pattern: Public API Surface Management
 
+**Tags**: "lib:api-surface:barrel"
+
 **Layer**: Architecture
 **Status**: production
 

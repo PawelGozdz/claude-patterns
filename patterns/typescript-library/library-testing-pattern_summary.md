@@ -1,4 +1,6 @@
 # Library Testing — Rule Card
+
+**Tags**: "lib:tests"
 <!-- Egzekwowalne streszczenie library-testing-pattern.md. WIĄŻĄCE.
      Pełny wzorzec (kontekst, uzasadnienie, przykłady): library-testing-pattern.md
      Verifier sprawdza KAŻDĄ regułę z ID poniżej i cytuje ją przy naruszeniu. -->

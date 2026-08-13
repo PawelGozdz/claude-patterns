@@ -2,6 +2,8 @@
 
 **Version**: 1.0
 **Last Updated**: 2026-01-04
+**Tags**: "api:observability:logging"
+
 **Status**: PRODUCTION
 **Priority**: HIGH
 **Primary Users**: domain-application-implementer, infrastructure-testing-implementer

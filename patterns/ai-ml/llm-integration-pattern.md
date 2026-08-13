@@ -1,5 +1,7 @@
 # Pattern: LLM Integration (Ollama, OpenAI-compatible)
 
+**Tags**: "data:app:llm"
+
 **Layer**: AI/ML
 **Status**: production
 

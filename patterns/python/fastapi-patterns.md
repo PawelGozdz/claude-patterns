@@ -1,5 +1,7 @@
 # FastAPI Patterns
 
+**Tags**: "api:api-surface", "api:platform:python"
+
 ## When to Use
 
 - Any Python web service built with FastAPI

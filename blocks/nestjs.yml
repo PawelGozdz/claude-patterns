@@ -26,7 +26,7 @@ patterns:
 
 analyze:
   panel:
-    - { stage: threat-model, agent: "/threat-model", when: "auth|pii|cross_context|public_api",
+    - { stage: threat-model, agent: "/threat-model", when: "\\b(auth|authn|authz|authentication|authorization|login|sesj|session|token)\\b|\\bpii\\b|cross[-_ ]context|public[-_ ]api|publiczn\\w* endpoint",
         output: "docs/security/threat-models/TM-{TASK_ID}.md", skip_if_exists: true }
     - { stage: tech-analysis, agent: "ecc:architect" }
     - { stage: tech-analysis-specialist, agent: "backend-technology-expert" }

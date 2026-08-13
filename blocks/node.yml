@@ -32,4 +32,4 @@ analyze:
     - { stage: tech-analysis-specialist, agent: "backend-technology-expert" }
 
 overlay:
-  hooks: [check-security-considerations, check-context-isolation]
+  hooks: [check-security-considerations, check-context-isolation, check-patterns-read]
