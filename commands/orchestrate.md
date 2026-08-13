@@ -8,8 +8,8 @@ description: |
   ODMAWIA startu bez {TASK-ID}.analysis.md ze status: approved.
 
   Usage: /orchestrate <TASK-ID>
-tools: Task, Read, Write, Bash, Workflow
-disallowedTools: Edit, MultiEdit, NotebookEdit
+tools: Task, Read, Write, Edit, Bash, Workflow
+disallowedTools: MultiEdit, NotebookEdit
 ---
 
 # /orchestrate — implementacja sterowana runtime.yml
@@ -17,7 +17,33 @@ disallowedTools: Edit, MultiEdit, NotebookEdit
 **ZERO WŁASNEJ IMPLEMENTACJI.** Silnik deleguje do agentów ze slotów; sam nie
 pisze kodu produkcyjnego. Wszystko stackowe przychodzi z `runtime.yml`.
 
+Egzekwuje to hook `check-delegation` w trybie STRICT, a nie odebranie narzędzia:
+przy aktywnym znaczniku przebiegu (krok 0.0) główna sesja nie zapisze ŻADNEGO
+pliku źródłowego (`.ts/.tsx/.dart/.py/.svelte`) — także takiego, którego
+`pattern-routing` nie mapuje na wzorzec. Artefakty koordynacyjne (`.analysis.md`,
+pliki tasków, `runtime.yml`, skrypty workflow) zostają otwarte, bo prowadzenie
+ich to praca koordynatora, nie implementacja.
+
+> Do 2026-08-13 bramką było `disallowedTools: Edit`. Blokowała nie to, co trzeba:
+> koordynator nie mógł dopisać `layers_done:` do własnego artefaktu ani poprawić
+> promptu w skrypcie workflow przed `resumeFromRunId`, a `Write` (nadpisanie
+> całego pliku) zostawał otwarty — obietnicy „zero implementacji" nie egzekwowała
+> w ogóle.
+
 ## 0. Bramki wejścia (twarde, w tej kolejności)
+
+### 0.0 Znacznik przebiegu (PRZED czymkolwiek innym)
+
+Zapisz `.claude/run-state/orchestrating.json`:
+
+```json
+{ "task_id": "{TASK-ID}", "session_id": "<session_id tej sesji>", "ts": "<teraz, ISO 8601 UTC>" }
+```
+
+To on włącza STRICT w `check-delegation`. `session_id` jest po to, żeby przebieg
+w jednej instancji nie ograniczał równoległej sesji na tym samym repo (ADR 0006);
+znacznik wygasa sam po 8 h, więc przerwany przebieg nie blokuje jutrzejszej pracy.
+Usuwasz go w kroku 3 — także przy `ESCALATE_AND_HALT`.
 
 1. `Read(".claude/config/runtime.yml")`. Brak → STOP: „Projekt nie ma
    skomponowanego setupu bloków (ADR 0008) — dodaj `stack_blocks:` + setup,
@@ -95,8 +121,9 @@ między warstwami (testy zielone przed warstwą `api-surface`, czerwone po niej)
   od pierwszej spoza listy. Zaufaj zapisowi — nie re-implementuj; zamiast pełnego
   verify zrób szybki sanity check (pliki warstwy istnieją w repo/stage).
 - Po **KAŻDYM** GO warstwy silnik NATYCHMIAST dopisuje jej id do `layers_done:`
-  w artefakcie (Write po Read albo Bash; jedyna modyfikacja artefaktu przez tę
-  komendę) — to checkpoint, dzięki któremu wznowienie nie płaci za zrobione.
+  w artefakcie (`Edit` — punktowo we frontmatter; NIE `Write` całego pliku, bo
+  nadpisanie artefaktu gubi odpowiedzi na `open_questions`) — to checkpoint,
+  dzięki któremu wznowienie nie płaci za zrobione.
 - `final_gate` uruchamiaj ZAWSZE na końcu, także przy wznowieniu — obejmuje całość
   zmiany, nie ostatnią warstwę.
 
@@ -147,5 +174,17 @@ max_attempts z runtime.yml (default 3); wyczerpane → ESCALATE_AND_HALT
   `on_fail: ESCALATE_AND_HALT` — wypisz werdykt i zatrzymaj się, nie obchodź.
 - `exit: STAGE_NOT_COMMIT` → `git add` zmienionych plików, raport (warstwy,
   werdykty, pliki, koszty), **HALT — commit robi człowiek**.
-- Raport MUSI wskazać: które sloty/agenci działali (z `# source:` bloku),
-  ile prób zjadła każda warstwa, czy budżety zadziałały miękko.
+- **Usuń `.claude/run-state/orchestrating.json`** — na każdej ścieżce wyjścia,
+  także po `ESCALATE_AND_HALT` i po odmowie z bramek kroku 0. Zostawiony znacznik
+  trzyma sesję w STRICT do końca TTL: kolejna, zwykła praca w tym repo odbije się
+  od `check-delegation` bez widocznego powodu.
+- Raport ma **dwie części, w tej kolejności**:
+  1. **Co się zmieniło** — 2-4 zdania rejestrem `human_voice` z runtime.yml (domyślnie:
+     polski, biznesowy, bez nazw klas, ścieżek i numerów ADR). Co teraz działa inaczej,
+     czego użytkownik nie zobaczy, co zostało do decyzji. To czyta człowiek przed
+     commitem i na tej podstawie go robi albo nie.
+  2. **Przebieg** — które sloty/agenci działali (z `# source:` bloku), ile prób zjadła
+     każda warstwa, czy budżety zadziałały miękko, werdykty bramek, lista plików.
+- Nie zaczynaj raportu od tabeli warstw. Człowiek, który odpalił `/orchestrate` godzinę
+  temu, wraca po odpowiedź „czy to jest gotowe do commita", nie po przebieg maszyny —
+  przebieg jest dowodem dla tej odpowiedzi, więc idzie pod nią.
