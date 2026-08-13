@@ -10,17 +10,29 @@ threat_model: null              # link do docs/security/threat-models/TM-{TASK-I
 # Security (STRIDE/DREAD/LINDDUN) NIE tutaj — żyje w threat-models/. Tu tylko link + krótkie "Ryzyka".
 
 open_questions:                 # człowiek wypełnia answer; null = blokuje implementację
+  # `ask` czyta CZŁOWIEK, `q` czytają agenci i audyt. Oba obowiązkowe.
+  # Rejestr `ask` bierze się z runtime.yml `human_voice` (domyślnie: polski, biznesowy,
+  # max 2 zdania, bez nazw klas, ścieżek i numerów ADR). Bez tego rozdziału pytanie
+  # opisuje problem językiem, którym go znaleziono — i człowiek musi poprosić
+  # o tłumaczenie, zanim odpowie „tak/nie".
   - id: Q1
+    ask: >-
+      Czy potwierdzenie rejestracji ma dotrzeć do użytkownika natychmiast, czy może
+      przyjść z opóźnieniem? Natychmiast znaczy drożej i bardziej awaryjnie.
     q: "np. rejestracja confirmation email — sync czy async?"
     answer: null
   - id: Q2
+    ask: "..."
     q: "..."
     answer: null
 
 decisions:                      # propozycje z analizy; człowiek weryfikuje/poprawia
+  # `means` = co ta decyzja zmienia dla produktu albo użytkownika, tym samym rejestrem
+  # co `ask`. `rationale` zostaje techniczne — to ono uzasadnia wybór przed agentem.
   - id: D1
     topic: "np. komunikacja cross-context"
     choice: "ACL Registry (getGlobalRequired)"
+    means: "Dwa obszary systemu przestają zależeć od siebie wprost, więc awaria jednego nie zatrzymuje drugiego."
     rationale: "..."
 
 patterns:                       # grounding (z Pattern Discovery) — to samo w research i impl

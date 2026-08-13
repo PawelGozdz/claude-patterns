@@ -88,12 +88,49 @@ technical register), match that instead of generic "content" polish. Don't injec
 enthusiasm or marketing energy into a technical artifact — the target is a clear-headed
 engineer's voice, not a copywriter's.
 
+## Register Pass: Business Language, Not Layer Jargon
+
+Stripping AI tells is not enough when the reader is deciding, not reviewing. A sentence
+can be perfectly human and still unanswerable, because it names things only the codebase
+knows. This pass runs alongside the checklist above, on the fields and sections a human
+reads in order to make a call.
+
+Read the target register from `runtime.yml` `human_voice` (`language`, `register`,
+`max_sentences`, `avoid[]`). No such section (project predating it) → Polish, business
+register, 2 sentences max, no class names, file paths, or ADR/BDR numbers.
+
+The substitutions that carry most of the weight:
+
+| instead of | write |
+|---|---|
+| a class, service, or function name | what that thing does for the product |
+| a file path or layer name | the area of the system, in the user's words |
+| an ADR/BDR number | the decision it made, in one clause |
+| a pattern name (`ACL Registry`, `Specification`) | the property it buys — isolation, one place to change a rule |
+| "sync vs async" | "immediately, or with a delay" |
+| a metric with no baseline | the metric plus what hitting or missing it means |
+
+Two rules that outrank "shorter is better":
+
+1. **Keep the consequence.** A question stripped to its bare decision ("close it or leave
+   it?") is useless without the so-what: cost, delay, risk, blast radius. That clause is
+   the reason a human reads the question at all. If the source carries no consequence, say
+   so rather than inventing one.
+2. **Never trade precision for smoothness.** Same non-fabrication rule as above: if the
+   business-language version would change what is being asked, keep the technical term and
+   gloss it in a subordinate clause.
+
+Acceptance test: hand the text to someone who has never opened this repo. Can they answer?
+If their first move is "what is X", the pass is not finished.
+
 ## Integration Points in This Repo
 
 - `/analyze` — pass on `Synteza`, `Otwarte pytania`, `Decyzje (proponowane)`,
-  `Ryzyka / uwagi` before the artifact `Write` in step 2. Frontmatter fields
-  (`open_questions[].q`, `answer`, `decisions[]`, `patterns[]`) stay untouched — those are
-  the machine gate `/orchestrate` reads.
+  `Ryzyka / uwagi` before the artifact `Write` in step 2, **plus the frontmatter fields
+  written for a human**: `open_questions[].ask` and `decisions[].means` (see the register
+  pass above — they exist precisely to carry the business-language version). The
+  machine-gate fields stay untouched: `open_questions[].q`, `answer`, `status`,
+  `decisions[].choice`/`rationale`, `patterns[]` — those are what `/orchestrate` reads.
 - `/adr` (`skills/decision-frameworks/adr`) — pass on Context / Options Considered /
   Decision / Consequences before writing the file. `Status`/`Date`/`Stack` stay untouched.
 - `templates/task-standard.md` — `## 🎯 Goal` and `**Findings summary:**`.

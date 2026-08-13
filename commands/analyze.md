@@ -192,6 +192,49 @@ awaiting-human` (gdy exit=PAUSE) / `status: ready` (inaczej), `threat_model:`,
 `rag:` (0.6), `stack_blocks:` (kopia z runtime.yml — audytowalność doboru
 panelu). Odpowiedzi żyją WYŁĄCZNIE we frontmatter; body co najwyżej odsyła.
 
+### 2a. Dwa rejestry: co czyta człowiek, co czytają agenci
+
+Artefakt ma dwóch odbiorców o rozbieżnych potrzebach. Agent chce namiaru bez
+szukania: nazwy klasy, ścieżki, numeru ADR. Człowiek zatwierdzający analizę chce
+wiedzieć, o co go pytasz — te same namiary są dla niego kosztem, nie pomocą. Jeden
+tekst nie obsłuży obu, więc pola są dwa:
+
+| pole | odbiorca | reguła |
+|---|---|---|
+| `open_questions[].ask` | człowiek | pytanie, na które da się odpowiedzieć bez otwierania repo |
+| `open_questions[].q` | agent, audyt | pełny kontekst techniczny, jak dotąd |
+| `decisions[].means` | człowiek | co ta decyzja zmienia dla produktu albo użytkownika |
+| `decisions[].choice` / `rationale` | agent | wybór i jego techniczne uzasadnienie |
+
+**`ask` i `means` są obowiązkowe** — artefakt bez nich jest niekompletny tak samo
+jak bez `answer: null`. Rejestr weź z `human_voice` w runtime.yml (`language`,
+`register`, `max_sentences`, `avoid[]`). Sekcji brak (projekt sprzed tej zmiany,
+runtime.yml jeszcze nieprzeliczony) → przyjmij domyślne: polski, biznesowy, do
+2 zdań, bez nazw klas, ścieżek plików i numerów ADR/BDR.
+
+Test, czy `ask` jest napisane dobrze: **czy człowiek, który nie zna tego kodu,
+odpowie na nie sam?** Jeśli musi najpierw zapytać, co znaczy nazwa w pytaniu, to
+nie jest jeszcze `ask` — to skrócone `q`.
+
+```yaml
+# ŹLE — q przebrane za ask
+ask: "Czy zamknąć B9/B10 w rejestrze wpisem BDR, skoro ADR-0094 i AuthorTierClassifierDomainService już to rozstrzygają?"
+
+# DOBRZE — decyzja ta sama, próg wejścia żaden
+ask: >-
+  Stara decyzja z rejestru jest już rozwiązana w kodzie, ale formalnie wisi jako
+  otwarta. Zamykamy ją teraz, czy zostawiamy do osobnego przeglądu?
+```
+
+Nie chowaj w `ask` konsekwencji wyboru. „Szybciej znaczy drożej", „to opóźni
+wydanie o tydzień", „bez tego nie wyjdziemy poza jeden kraj" — to jest ta część,
+dla której człowiek w ogóle czyta pytanie.
+
+To samo dotyczy prozy w body: `## Synteza` i `## Ryzyka / uwagi` pisz rejestrem
+`human_voice`, a szczegół techniczny zostaw polom frontmattera. Przed zapisem
+przepuść te sekcje przez skill `humanizer` (`skills/quality/humanizer/`) — ma
+osobną sekcję o rejestrze biznesowym.
+
 **Sekcje są warunkowe, nie stałe.** Artefakt dostaje sekcję tylko od slotu, który
 faktycznie wszedł. Projekt bez bloku `governance` (np. biblioteka) nie ma widzieć
 nagłówka „Zgodność ze strategią: n/d" w każdej analizie. Gdy weszły sloty

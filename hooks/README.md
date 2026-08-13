@@ -25,9 +25,23 @@ User request → Claude picks a tool → PreToolUse hook runs → Tool executes 
 | **Git push reminder** | `Bash` | Reminds to review changes before `git push` | 0 (warns) |
 | **Doc file warning** | `Write` | Warns about non-standard `.md`/`.txt` files (allows README, CLAUDE, CONTRIBUTING, CHANGELOG, LICENSE, SKILL, docs/, skills/); cross-platform path handling | 0 (warns) |
 | **Strategic compact** | `Edit\|Write` | Suggests manual `/compact` at logical intervals (every ~50 tool calls) | 0 (warns) |
-| **Delegation gate** _(per-stack)_ | `Write\|Edit\|MultiEdit` | Blocks the **main agent** from implementing pattern files directly — forces delegation to a subagent / `/orchestrate`. Subagents pass through (detected via `agent_id`). Pattern files only (`lib/pattern-routing.js`). Wired in via `templates/settings/<stack>.json`, not global `hooks.json`. `DELEGATION_MODE=warn\|off`. | 2 (blocks) |
+| **Delegation gate** _(per-stack)_ | `Write\|Edit\|MultiEdit` | Blocks the **main agent** from implementing production code directly — forces delegation to a subagent / `/orchestrate`. Subagents pass through (detected via `agent_id`). Threshold: pattern files (`lib/pattern-routing.js`), widened to **any enforced source file** while an orchestration run is active (STRICT, below). Wired in via `templates/settings/<stack>.json`, not global `hooks.json`. `DELEGATION_MODE=warn\|off`. | 2 (blocks) |
 
 > **Per-stack enforcement** (`check-delegation.js`, `check-patterns-read.js`, `check-ddd-patterns.js`, `check-domain-purity.js`, …) lives in the hooks dir but is **not** registered in global `hooks.json`. It is injected per project via `templates/settings/<stack>.json` because the routing rules are stack-specific. `check-delegation.js` and `check-patterns-read.js` share their file→pattern routing through `lib/pattern-routing.js` (single source of truth).
+
+> **STRICT mode in `check-delegation.js`** (since 2026-08-13). `/orchestrate` writes
+> `<cwd>/.claude/run-state/orchestrating.json` — `{ "task_id": "TS-X-001", "session_id": "<uuid>",
+> "ts": "<ISO 8601 UTC>" }` — at gate 0 and removes it on every exit path. While that marker is
+> fresh **and belongs to the calling session**, the main agent cannot write any
+> `.ts/.tsx/.dart/.py/.svelte` file, mapped to a pattern or not. Coordination artifacts (`.md`,
+> `.yml`, `.json`, `.claude/**`, `project-orchestration/**`) stay editable — `isExempt()` clears
+> them. The `session_id` check keeps a run in one instance from gating a parallel session on the
+> same repo (ADR 0006); the 8-hour TTL keeps a crashed run from gating tomorrow's work.
+>
+> It replaced `disallowedTools: Edit` on the `/orchestrate` command, which enforced nothing real:
+> `Write` (full-file overwrite) stayed open, while the coordinator lost the ability to maintain its
+> own `.analysis.md` and to patch a workflow script before `resumeFromRunId`. Removing one write
+> tool while leaving another is a gate in appearance only.
 
 ### PostToolUse Hooks
 
@@ -39,6 +53,7 @@ User request → Claude picks a tool → PreToolUse hook runs → Tool executes 
 | **TypeScript check** | `Edit` | Runs `tsc --noEmit` after editing `.ts`/`.tsx` files |
 | **console.log warning** | `Edit` | Warns about `console.log` statements in edited files |
 | **GPU patterns** | `Edit` | ML inference: blocking calls in `async def`, `empty_cache()` without `gc.collect()`, `asyncio.gather` fan-out over GPU calls. Requires `gpu.enabled` in `python-hooks.json` — silent skip otherwise |
+| **Human voice** _(per-stack)_ | `Write\|Edit\|MultiEdit` | On `*.analysis.md`: warns when `open_questions[].ask` / `decisions[].means` are missing, empty, or still written in codebase language (file names, ADR numbers, class names, layer jargon). Register comes from `runtime.yml` `human_voice`. Wired in by the `approval-gate` block. `HUMAN_VOICE_MODE=off`. |
 
 > **Knowledge freshness** (`knowledge-freshness-postwrite.js`) lives in the hooks dir but is **not**
 > registered in global `hooks.json` — it's OPT-IN per project, since it only makes sense for

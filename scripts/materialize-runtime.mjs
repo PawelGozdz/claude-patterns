@@ -51,10 +51,35 @@ const BLOCK_KEYS = new Set([
   'name', 'axis', 'requires', 'requires_ecc', 'params',
   'patterns', 'overlay', 'env', 'analyze', 'orchestrate', 'budgets', 'ralphinho',
   'layer_contributions', 'extends',
+  // Konsumowany przez INNY generator — scripts/generate-pattern-routing.mjs buduje z niego
+  // hooks/lib/pattern-routing.generated.js. Do runtime.yml nie trafia i trafić nie ma po co:
+  // czytają go hooki (check-delegation, check-patterns-read), nie silniki komend. Stoi tutaj
+  // wyłącznie po to, żeby materializacja nie zgłaszała go jako literówki — 5 bloków
+  // deklaruje tę sekcję, więc ostrzeżenie padało przy każdym setupie i uczyło
+  // ignorowania ostrzeżeń, co jest droższe niż sam nieznany klucz.
+  'pattern_routing',
 ]);
 // Zarezerwowane na kolejne kroki planu — deklaracja przechodzi, ale mówimy wprost,
 // że nic jeszcze nie robi (lepsze niż milcząca ignorancja).
 const RESERVED_KEYS = new Set(['tags']);
+
+// Domyślny rejestr języka dla tekstu kierowanego do człowieka. Nadpisywalny w
+// project.yml (`project.human_voice`) — projekt prowadzony po angielsku ustawia
+// `language: en`, zespół chcący pełnej techniczności `register: technical`.
+//
+// Po co to w ogóle istnieje: analiza opisuje problem językiem, którym go znalazła —
+// nazwami klas, ścieżkami, numerami ADR. Dla agenta to jest zaleta (namiar bez
+// szukania), dla człowieka zatwierdzającego analizę to bariera: żeby odpowiedzieć
+// „tak/nie" musiał najpierw poprosić o tłumaczenie. `human_voice` rozdziela te dwa
+// odbiory, zamiast kazać jednemu tekstowi obsłużyć oba.
+const HUMAN_VOICE_DEFAULT = {
+  language: 'pl',
+  register: 'business',
+  max_sentences: 2,
+  // Czego NIE wstawiać do tekstu dla człowieka. Te rzeczy zostają w polach
+  // technicznych (`q:`, `rationale:`), gdzie są potrzebne.
+  avoid: ['nazwy klas i funkcji', 'ścieżki plików', 'numery ADR/BDR', 'żargon warstw i wzorców'],
+};
 const BLOCK_KEYS_EXTRA = 'extends';
 
 // Zmienne środowiskowe o wartości listowej (CSV) — scalane sumą, nie nadpisywane.
@@ -681,6 +706,18 @@ if (knowledgeCollection) {
   const kMap = doc.createNode({ collection: knowledgeCollection });
   doc.set('knowledge', kMap);
 }
+// Rejestr języka dla tekstu, który czyta CZŁOWIEK (otwarte pytania, synteza, raport
+// końcowy, uzasadnienia decyzji). NIE jest kluczem bloku: stack nie ma zdania o tym,
+// jakim językiem mówi się do użytkownika — to cecha odbiorcy, nie frameworka. Dlatego
+// default siedzi tutaj, a project.yml (`project.human_voice`) go nadpisuje.
+const humanVoice = { ...HUMAN_VOICE_DEFAULT, ...(proj.project?.human_voice ?? {}) };
+{
+  const hvMap = doc.createNode({});
+  for (const [k, v] of Object.entries(humanVoice)) {
+    hvMap.set(k, Array.isArray(v) ? flowSeq(v) : v);
+  }
+  doc.set('human_voice', hvMap);
+}
 if (taxonomy.stacks.length || taxonomy.areas.length) {
   const tMap = doc.createNode({});
   for (const key of ['stacks', 'areas']) {
@@ -724,6 +761,7 @@ for (const [key, src] of [
   ['orchestrate', orch ? ` source: ${orch.source}` : null],
   ['hooks', null], ['env', null], ['overlay', null], ['params', null],
   ['knowledge', ' project.yml → knowledge_collection'],
+  ['human_voice', ' język tekstu dla człowieka; nadpisz w project.yml → human_voice'],
   ['taxonomy', ' rdzeń blocks/_taxonomy.yml + .claude/taxonomy.yml projektu'],
   ['requires_ecc', reqEcc ? ` source: ${reqEcc.source}` : null],
   ['ralphinho', ralph ? ` source: ${ralph.source}` : null],

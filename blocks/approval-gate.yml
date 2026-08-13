@@ -8,7 +8,9 @@ axis: process
 requires: []
 
 overlay:
-  hooks: [check-approval-before-impl]
+  # check-human-voice pilnuje drugiej połowy tej samej bramki: approval ma sens tylko
+  # wtedy, gdy człowiek rozumie, co zatwierdza (`open_questions[].ask`, `decisions[].means`).
+  hooks: [check-approval-before-impl, check-human-voice]
 
 analyze:
   exit: PAUSE
