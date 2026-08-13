@@ -44,10 +44,18 @@ orchestrate:
   layers:
     # `optional: true` na etapach, których nie ma każdy pipeline — bez tego warstwa
     # bez pracy zmusza implementera do wymyślania sobie zadania, żeby coś oddać.
-    - { id: collection, dirs: [collectors/, collector_manager/], agent: "general-purpose", optional: true }
-    - { id: processing, dirs: [intelligence/, processing/], agent: "general-purpose" }
-    - { id: storage, dirs: [infrastructure/, data/], agent: "general-purpose", optional: true }
-    - { id: testing, dirs: [tests/], agent: "general-purpose", tests: true }
+    - { id: collection, dirs: [collectors/, collector_manager/], agent: "general-purpose", optional: true,
+        tags: ["data:app:ingestion"],
+        role: "Pobieranie ze źródeł zewnętrznych: bezpieczniki, checkpointy, limity zapytań." }
+    - { id: processing, dirs: [intelligence/, processing/], agent: "general-purpose",
+        tags: ["data:app"],
+        role: "Przetwarzanie pobranego materiału: wzbogacanie, embeddingi, wnioskowanie." }
+    - { id: storage, dirs: [infrastructure/, data/], agent: "general-purpose", optional: true,
+        tags: ["data:data-access"],
+        role: "Zapis do silników składowania — źródło prawdy i projekcje, patrz polyglot-persistence." }
+    - { id: testing, dirs: [tests/], agent: "general-purpose", tests: true,
+        tags: ["data:tests"],
+        role: "Testy potoku bez GPU i bez sieci — stubowanie na granicy modułu." }
   inner_loop: { verify: "python-quality-verifier", max_attempts: 3, on_max: ESCALATE_AND_HALT }
   final_gate: { agent: "ecc:security-reviewer", on_fail: ESCALATE_AND_HALT }
   exit: STAGE_NOT_COMMIT

@@ -4,7 +4,17 @@ Implementation plan for the architecture documented in
 [`docs/ARCHITECTURE.md`](ARCHITECTURE.md) and decided in
 [`docs/adr/0001-extension-architecture.md`](adr/0001-extension-architecture.md).
 
-**Status legend**: `[ ]` todo · `[~]` in progress · `[x]` done · `[-]` cancelled
+**Status legend**: `[ ]` todo · `[~]` in progress · `[x]` done · `[-]` cancelled ·
+`[-] ADR 0008` superseded by block composition
+
+> **⚠ Ten dokument jest częściowo historyczny (przegląd 2026-08-13).** Sprinty 1-5
+> powstały przed [ADR 0008](adr/0008-stack-blocks-composition.md), który zastąpił
+> presety i `_stack-defaults/` kompozycją bloków. Pozycje opisujące tamten mechanizm
+> są oznaczone `[-] ADR 0008` wraz z tym, co je zastąpiło — zostają w tekście, bo
+> uzasadnienie decyzji bywa potrzebne, ale **nie są planem pracy**.
+>
+> Aktualny stan składu: [`blocks/README.md`](../blocks/README.md).
+> Otwarte pozycje: [`docs/tasks/`](tasks/).
 
 ---
 
@@ -31,7 +41,10 @@ Implementation plan for the architecture documented in
   - Refactor to `templates/stack-presets/<stack>.yml` would clean it up
   - **Defer until adding a 7th stack profile** — current 6 work fine in bash
 
-- [ ] **1.3 Create `patterns/_stack-defaults/<stack>.yml` + orchestrator integration** ← **PRIORITY**
+- [-] **1.3 Create `patterns/_stack-defaults/<stack>.yml` + orchestrator integration**
+      **ADR 0008**: zastąpione przez `patterns.always` / `patterns.triggers` w blokach.
+      Dobór wzorców materializuje się do `.claude/config/runtime.yml`, katalog
+      `_stack-defaults/` usunięty.
   - Schema: `always_include: [list of pattern paths relative to claude-patterns/patterns/]`
   - One YAML per stack (start with nestjs-ddd, others get stub)
   - Update `/orchestrate` Phase 0.5 to read stack-defaults YAML and merge into `{PATTERNS}` list
@@ -139,32 +152,38 @@ the abstractions hold up under pressure.
 - [x] **4.2 `agents/stacks/nestjs-ddd/security-e2e-verifier.md`** (verification gate)
   - Already exists, currently being enriched in working tree
 
-- [ ] **4.3 `patterns/cross-layer/security-invariants-pattern.md`** (universal NestJS-DDD)
+- [x] **4.3 `patterns/cross-layer/security-invariants-pattern.md`** (universal NestJS-DDD)
+      Istnieje wraz z kartą reguł; na półce `always` bloków `nestjs`, `node` i `python`.
   - 5-point checklist: Zod schemas, @Auth, rate limit, error.message, PII in logger
   - Applies to every NestJS-DDD project (not LocalHero-specific)
 
-- [ ] **4.4 `patterns/_stack-defaults/nestjs-ddd.yml`** lists security-invariants in always-include
+- [-] **4.4 `patterns/_stack-defaults/nestjs-ddd.yml`** lists security-invariants in always-include
+      **ADR 0008**: cel osiągnięty inaczej — `patterns.always` w `blocks/nestjs.yml`.
   - Depends on Sprint 1.3
 
 ### juz-ide-api side (separate repo)
 
-- [ ] **4.5 `.claude/knowledge/patterns/security/`** (LocalHero-specific patterns)
+- [-] **4.5 `.claude/knowledge/patterns/security/`** (LocalHero-specific patterns)
+      Poza tym repo — treść projektowa `juz-ide-api`, nie centrali.
   - `civic-audience-invariants.md`
   - `teryt-raw-input.md`
   - `dual-identity.md`
 
-- [ ] **4.6 `.claude/knowledge/patterns/README.md`** (discovery hub)
+- [x] **4.6 `.claude/knowledge/patterns/README.md`** (discovery hub)
+      `setup-project.sh` kopiuje go z `templates/knowledge-patterns-readme-template.md`.
   - Lists all pattern categories
   - Highlights security/ as MUST-READ before controller/handler implementation
   - Quick reference table: "writing X → read Y, Z"
 
-- [ ] **4.7 One-liner update in `domain-application-implementer.md`** (in claude-patterns)
+- [x] **4.7 One-liner update in `domain-application-implementer.md`** (in claude-patterns)
+      Sekcja „Patterns — the list comes from the orchestrator" (2026-08-12).
   - Add: *"Before writing any file: read `.claude/knowledge/patterns/README.md` to discover relevant patterns, including security/."*
   - Closes fast-path gap (direct agent invocation without /orchestrate)
 
 ### Template side (claude-patterns/templates/)
 
-- [ ] **4.8 `templates/project-orchestration/.claude-knowledge-patterns-readme-template.md`**
+- [x] **4.8 szablon README wzorców**
+      Wylądował jako `templates/knowledge-patterns-readme-template.md` (inna ścieżka niż planowana).
   - Template README new projects copy as starting point for their patterns directory
   - Ensures consistency across projects
 
@@ -318,6 +337,10 @@ Stan runtime leży w `/opt/projects/.claude-swarm/`, poza wszystkimi repozytoria
 ---
 
 ## Suggested order
+
+> **Nieaktualne poza Sprintem 6.** Sprinty 1-5 są zamknięte albo zastąpione przez
+> ADR 0008 — kolejność niżej opisuje, jak planowano dojść do stanu, który już jest.
+> Bieżące priorytety trzymamy w [`docs/tasks/`](tasks/).
 
 1. **Sprint 1 first** (foundation) — 1.1 → 1.2 → 1.3 in sequence
 2. **Sprint 2** (cost wins) — 2.1 (cheapest) → 2.2 → 2.3

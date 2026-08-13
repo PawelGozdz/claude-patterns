@@ -26,10 +26,18 @@ orchestrate:
   # 2026-07-09: infrastructure ROZDZIELONE od testów — pisanie kodu produkcyjnego
   # i pisanie testów do cudzego kodu to dwa różne fachy; load-testy nie miały właściciela.
   layers:
-    - { id: domain, dirs: [domain/], agent: "domain-application-implementer" }
-    - { id: application, dirs: [application/], agent: "domain-application-implementer" }
-    - { id: infrastructure, dirs: [infrastructure/], agent: "infrastructure-implementer" }
-    - { id: testing, dirs: [__tests__/], agent: "test-implementer", tests: true }
+    - { id: domain, dirs: [domain/], agent: "domain-application-implementer",
+        tags: ["api:domain"],
+        role: "Model domenowy: agregaty, encje, VO, zdarzenia i specyfikacje. Zero I/O, zero frameworka." }
+    - { id: application, dirs: [application/], agent: "domain-application-implementer",
+        tags: ["api:app"],
+        role: "Przypadki użycia: handlery komend i zapytań orkiestrujące domenę. Bez reguł biznesowych — te należą do domeny." }
+    - { id: infrastructure, dirs: [infrastructure/], agent: "infrastructure-implementer",
+        tags: ["api:data-access", "api:api-surface"],
+        role: "Styk ze światem: repozytoria, kontrolery, mappery, adaptery. Tłumaczy między domeną a technologią." }
+    - { id: testing, dirs: [__tests__/], agent: "test-implementer", tests: true,
+        tags: ["api:tests"],
+        role: "Weryfikacja cudzego kodu: piramida L1/L2/L3. Testy dowodzą reguł, nie powtarzają implementacji." }
   inner_loop: { verify: "code-quality-verifier", max_attempts: 3, on_max: ESCALATE_AND_HALT }
   final_gate: { agent: "security-e2e-verifier", on_fail: ESCALATE_AND_HALT }
   exit: STAGE_NOT_COMMIT

@@ -90,6 +90,16 @@ for (const name of projects) {
   rows.push({ name, composed, blocks, issues });
 }
 
+// Routing hooków jest GLOBALNY (jeden plik dla całej floty), więc sprawdzamy go raz,
+// obok audytu projektów — rozjazd tutaj dotyczy każdego repo naraz.
+let routingIssue = null;
+try {
+  execFileSync('node', [join(REPO, 'scripts/generate-pattern-routing.mjs'), '--check'], { stdio: 'pipe' });
+} catch {
+  routingIssue = ['hooks/lib/pattern-routing.generated.js nie odpowiada blokom',
+    'node scripts/generate-pattern-routing.mjs'];
+}
+
 const clean = rows.filter((r) => !r.issues.length);
 const dirty = rows.filter((r) => r.issues.length);
 
@@ -101,7 +111,10 @@ for (const r of dirty) {
 if (clean.length)
   console.log(`\nbez zastrzeżeń (${clean.length}): ${clean.map((r) => r.name).join(', ')}`);
 
-console.log(dirty.length
-  ? `\n${dirty.length} projekt(ów) wymaga uwagi, znalezisk łącznie: ${dirty.reduce((n, r) => n + r.issues.length, 0)}`
+if (routingIssue) console.log(`\nGLOBALNE\n    ✗ ${routingIssue[0]}\n      → ${routingIssue[1]}`);
+
+console.log(dirty.length || routingIssue
+  ? `\n${dirty.length} projekt(ów) wymaga uwagi, znalezisk łącznie: ${
+      dirty.reduce((n, r) => n + r.issues.length, 0) + (routingIssue ? 1 : 0)}`
   : '\nwszystko aktualne');
-process.exit(dirty.length ? 1 : 0);
+process.exit(dirty.length || routingIssue ? 1 : 0);

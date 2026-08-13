@@ -50,11 +50,11 @@ const fail = (m) => { console.error(`  BŁĄD: ${m}`); process.exit(1); };
 const BLOCK_KEYS = new Set([
   'name', 'axis', 'requires', 'requires_ecc', 'params',
   'patterns', 'overlay', 'env', 'analyze', 'orchestrate', 'budgets', 'ralphinho',
-  'extends',
+  'layer_contributions', 'extends',
 ]);
 // Zarezerwowane na kolejne kroki planu — deklaracja przechodzi, ale mówimy wprost,
 // że nic jeszcze nie robi (lepsze niż milcząca ignorancja).
-const RESERVED_KEYS = new Set(['layer_contributions', 'tags']);
+const RESERVED_KEYS = new Set(['tags']);
 const BLOCK_KEYS_EXTRA = 'extends';
 
 // Zmienne środowiskowe o wartości listowej (CSV) — scalane sumą, nie nadpisywane.
@@ -351,6 +351,7 @@ const triggers = [];         // {keywords, include, source}
 const panel = [];            // {node, source}
 let analyzeExit = null, analyzeExitSrc = null;
 let orch = null;             // {node, source}
+const contributions = [];    // {match, patterns?, checks?, source} — wkłady do cudzych warstw
 let ralph = null, reqEcc = null;
 const hooks = [], env = new Map(), envSrc = new Map();
 const overlay = { agents: [], patterns: [], rules: [] };
@@ -387,6 +388,15 @@ for (const b of blocks) {
         'warstwy może wnieść wyłącznie blok o "axis: architecture"; przenieś sekcję orchestrate ' +
         'do osobnego bloku tej osi (wzór: blocks/library-layers.yml wydzielony z ts-library.yml)');
     orch = { node: or, source: b.name };
+  }
+
+  // Wkłady do CUDZYCH warstw. Warstwy wnosi wyłącznie oś architektury, więc blok
+  // walidacji czy persystencji nie miał jak dołożyć swojego wzorca ani bramki do
+  // warstwy aplikacji — musiał albo przejąć całą oś, albo zrezygnować. Celowanie
+  // po tagu rozwiązuje to bez naruszania zasady „jeden blok wnosi warstwy".
+  for (const c of b.data.layer_contributions ?? []) {
+    if (!c.match) fail(`blok "${b.name}": layer_contributions wymaga "match" (np. "*:app")`);
+    contributions.push({ ...c, source: b.name });
   }
 
   const ra = b.doc.get('ralphinho', true);
@@ -565,6 +575,86 @@ if (analyzeExit) {
   analyzeMap.set('exit', exitNode);
 }
 doc.set('analyze', analyzeMap);
+
+// ── wkłady do warstw (layer_contributions) ────────────────────────────────
+// `match` celuje w `tags` warstwy: "*:app" trafia w każdą warstwę otagowaną
+// dowolnym stackiem i obszarem `app`. Wildcard tylko na całym segmencie — "ap*"
+// nie jest wspierane celowo, bo dopasowanie po fragmencie to dokładnie ten błąd,
+// który regexy `when:` popełniały na `auth` w `author`.
+const matchesTag = (match, tag) => {
+  const m = match.split(':'), t = tag.split(':');
+  if (m.length > t.length) return false;              // "a:b:c" nie trafi w "a:b"
+  return m.every((seg, i) => seg === '*' || seg === t[i]);
+};
+
+// Tag i `match` walidujemy wobec taksonomii — literówka w "api:aplication" po cichu
+// przestałaby cokolwiek trafiać, a blok nadal twierdziłby, że wnosi wzorzec.
+const checkTagLike = (value, where, allowStar) => {
+  const parts = String(value).split(':');
+  if (parts.length < 2 || parts.length > 3)
+    fail(`${where}: "${value}" — format to <stack>:<obszar>[:<wariant>]`);
+  const [stack, area] = parts;
+  const okStack = (allowStar && stack === '*') || taxonomy.stacks.includes(stack);
+  const okArea = (allowStar && area === '*') || taxonomy.areas.includes(area);
+  if (!okStack) fail(`${where}: "${value}" — nieznany stack "${stack}" (dozwolone: ${taxonomy.stacks.join(', ')}${allowStar ? ', *' : ''})`);
+  if (!okArea) fail(`${where}: "${value}" — nieznany obszar "${area}"; dopisz go do blocks/_taxonomy.yml, jeśli naprawdę brakuje`);
+};
+
+for (const c of contributions)
+  checkTagLike(c.match, `blok "${c.source}": layer_contributions.match`, true);
+for (const layerNode of (orch?.node.get('layers', true)?.items ?? []))
+  for (const t of (layerNode.get('tags')?.toJSON?.() ?? []))
+    checkTagLike(t, `blok "${orch.source}": warstwa "${layerNode.get('id')}" tags`, false);
+
+if (orch && contributions.length) {
+  const layersNode = orch.node.get('layers', true);
+  const applied = new Set();
+  for (const layerNode of layersNode?.items ?? []) {
+    const tags = (layerNode.get('tags', false) ?? []).map?.(String)
+      ?? (layerNode.get('tags')?.toJSON?.() ?? []);
+    const id = String(layerNode.get('id') ?? '?');
+    if (!tags.length) continue;                        // warstwa bez tagów jest nieosiągalna — patrz UWAGA niżej
+
+    for (const [i, c] of contributions.entries()) {
+      if (!tags.some((t) => matchesTag(String(c.match), String(t)))) continue;
+      applied.add(i);
+      for (const [field, values] of [['patterns', c.patterns], ['checks', c.checks]]) {
+        if (!values?.length) continue;
+        const prev = layerNode.get(field, true);
+        const cur = prev?.toJSON?.() ?? [];
+        const merged = [...new Set([...cur, ...values])];
+        const node = flowSeq(merged);
+        // Ślad AKUMULUJE źródła. Nadpisywanie komentarza gubiłoby wcześniejsze wkłady:
+        // warstwa z dwoma wzorcami z dwóch bloków pokazywała tylko ten ostatni.
+        const seen = (prev?.comment ?? '').trim().replace(/^\+/, '').split(/\s*\+/).filter(Boolean);
+        node.comment = ` +${[...new Set([...seen, c.source])].join(' +')}`;
+        layerNode.set(field, node);
+      }
+    }
+  }
+  // Ostrzegamy per BLOK, nie per `match`. Blok nie wie, z jaką osią architektury
+  // zostanie złożony, więc deklarowanie kilku wariantów (`*:app` i `*:api-surface`)
+  // jest poprawne — trafi ten, który pasuje do wybranej osi. Ostrzeżenie przy każdym
+  // nietrafionym wariancie byłoby szumem na każdej materializacji, a szum uczy
+  // ignorowania ostrzeżeń. Milczy dopiero blok, z którego NIC nie weszło.
+  const bySource = new Map();
+  contributions.forEach((c, i) => {
+    const e = bySource.get(c.source) ?? { hit: false, matches: [] };
+    e.hit ||= applied.has(i);
+    e.matches.push(c.match);
+    bySource.set(c.source, e);
+  });
+  for (const [source, e] of bySource) {
+    if (e.hit) continue;
+    warn(`blok "${source}": żaden layer_contributions nie trafił w warstwę ` +
+      `(match: ${e.matches.join(', ')}; warstwy osi "${orch.source}": ${
+        (layersNode?.items ?? []).map((l) => `${l.get('id')}=[${(l.get('tags')?.toJSON?.() ?? []).join(',')}]`).join(' ') || 'BRAK TAGÓW'
+      })`);
+  }
+} else if (contributions.length && !orch) {
+  for (const c of contributions)
+    warn(`blok "${c.source}": layer_contributions "${c.match}" — kompozycja nie ma osi architektury, nie ma czego wzbogacić`);
+}
 
 if (orch) doc.set('orchestrate', orch.node);
 if (hooks.length) doc.set('hooks', flowSeq(hooks));

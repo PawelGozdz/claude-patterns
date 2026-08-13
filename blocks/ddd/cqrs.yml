@@ -15,3 +15,14 @@ patterns:
 
 overlay:
   patterns: [application/]
+
+# Routing plik → wzorzec (patrz ddd/core.yml po uzasadnienie miejsca).
+pattern_routing:
+  paths:
+    - { match: "/application/commands/", pattern: application/command-handler-pattern.md }
+    - { match: "/application/queries/", pattern: application/query-handler-pattern.md }
+    - { match: "/application/event-handlers/", pattern: application/audit-handler-pattern.md }
+    - { match: "/application/services/", pattern: application/application-service-pattern.md }
+  filenames:
+    # Goły `.handler.ts` poza `/application/**` to najczęściej handler komendy.
+    - { match: "\\.handler\\.ts$", pattern: application/command-handler-pattern.md }

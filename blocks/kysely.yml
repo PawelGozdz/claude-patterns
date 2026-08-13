@@ -13,3 +13,27 @@ patterns:
 
 overlay:
   patterns: [infrastructure/]
+
+# Wkład do warstwy dostępu do danych, którąkolwiek oś architektury ją wnosi.
+# `repository-pattern` był dotąd tylko pod wyzwalaczem — task „dodaj kolumnę X"
+# nie zawiera słowa „repository", a i tak dotyka repozytorium. Przypisanie do
+# warstwy sprawia, że implementer tej warstwy ma go ZAWSZE, niezależnie od słów
+# w opisie taska.
+layer_contributions:
+  - match: "*:data-access"
+    patterns: [infrastructure/repository-pattern.md]
+
+# Routing plik → wzorzec (patrz ddd/core.yml po uzasadnienie miejsca).
+# `.cron/.scheduler/.job` też tutaj: zadania w tle czytają i piszą przez repozytoria,
+# a regułą, którą najczęściej łamią, jest RP12/N7 z repository-pattern.
+pattern_routing:
+  paths:
+    - { match: "/domain/repositories/", pattern: infrastructure/repository-pattern.md }
+    - { match: "/infrastructure/persistence/", pattern: infrastructure/repository-pattern.md }
+    - { match: "/infrastructure/repositories/mappers/", pattern: infrastructure/mapper-pattern.md }
+  filenames:
+    - { match: "\\.repository\\.ts$", pattern: infrastructure/repository-pattern.md }
+    - { match: "\\.mapper\\.ts$", pattern: infrastructure/mapper-pattern.md }
+    - { match: "\\.cron\\.ts$", pattern: infrastructure/repository-pattern.md }
+    - { match: "\\.scheduler\\.ts$", pattern: infrastructure/repository-pattern.md }
+    - { match: "\\.job\\.ts$", pattern: infrastructure/repository-pattern.md }

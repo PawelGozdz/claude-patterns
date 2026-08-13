@@ -295,7 +295,16 @@ tmux sessions (days/weeks) without relying on session-start hooks.
    default for all pre-existing patterns — no migration needed).
 4. Update `patterns/README.md` to add it to the index
 5. Add `METADATA.yml` entry if adding to a new category
-6. **Reseed the MCP** so `retrieve_patterns` sees the change: `./scripts/reseed-patterns.sh`
+6. **Does a hook need to know which files this pattern governs?** If the pattern rules a
+   recognizable kind of file (aggregates, repositories, controllers), add a `pattern_routing:`
+   entry to the block that owns that concept — `blocks/ddd/core.yml` for domain shapes,
+   `blocks/kysely.yml` for persistence, and so on — then run
+   `node scripts/generate-pattern-routing.mjs`. That regenerates
+   `hooks/lib/pattern-routing.generated.js`, which `check-patterns-read` and
+   `check-delegation` read. Skipping this leaves the gates blind to the new pattern while
+   everything still looks correct; `--check` (also run by `audit-projects.mjs`) catches the
+   drift. Purely conceptual patterns with no file signature need no entry.
+7. **Reseed the MCP** so `retrieve_patterns` sees the change: `./scripts/reseed-patterns.sh`
    (one command — builds `knowledge-retriever`, ensures the dedicated Qdrant is up, rebuilds
    `patterns_global` + `library_reference_global` from the current `patterns/**`+`rules/**` tree).
    Purely mechanical, no LLM needed. **Easy to forget** — a new/edited pattern file is invisible

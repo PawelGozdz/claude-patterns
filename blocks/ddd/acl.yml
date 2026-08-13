@@ -12,3 +12,10 @@ patterns:
       include:
         - architecture/acl-registry-pattern.md
         - architecture/cross-context-communication.md
+
+# Routing plik → wzorzec (patrz ddd/core.yml po uzasadnienie miejsca).
+pattern_routing:
+  paths:
+    - { match: "/infrastructure/acl/", pattern: architecture/acl-registry-pattern.md }
+  filenames:
+    - { match: "\\.adapter\\.ts$", pattern: architecture/acl-registry-pattern.md }

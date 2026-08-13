@@ -10,3 +10,25 @@ patterns:
     - keywords: [validation, dto, input, request body, schema, endpoint]
       include:
         - infrastructure/controller-schema-pattern.md
+
+# Wkład do warstw wniesionych przez oś architektury. Blok walidacji nie ma własnej
+# warstwy i mieć nie powinien — schematy żyją tam, gdzie kod, który waliduje wejście.
+# Bez tego mechanizmu jedyną drogą było przejęcie całej osi architektury.
+#
+# `*:app` — dowolny stack, obszar aplikacji (ddd/layers → application, flat-service →
+# implementation, ml-pipeline → processing). `*:api-surface` — tam, gdzie definiowany
+# jest kontrakt wejścia.
+layer_contributions:
+  - match: "*:api-surface"
+    patterns: [infrastructure/controller-schema-pattern.md]
+  - match: "*:app"
+    patterns: [infrastructure/controller-schema-pattern.md]
+
+# Routing plik → wzorzec (patrz ddd/core.yml po uzasadnienie miejsca).
+# Kontroler należy do bloku walidacji, bo regułą, którą łamie najczęściej, jest
+# schemat wejścia — nie routing HTTP.
+pattern_routing:
+  paths:
+    - { match: "/infrastructure/controllers/", pattern: infrastructure/controller-schema-pattern.md }
+  filenames:
+    - { match: "\\.controller\\.ts$", pattern: infrastructure/controller-schema-pattern.md }

@@ -30,53 +30,15 @@ const EXEMPT_PATH_FRAGMENTS = [
 
 const ENFORCED_EXTENSIONS = ['.ts', '.tsx', '.dart', '.py', '.svelte'];
 
-/**
- * Path-fragment → pattern mapping. First match wins.
- * Order matters: more specific paths must come BEFORE more generic ones.
- */
-const PATH_RULES = [
-  // Domain layer
-  { match: '/domain/aggregates/',         pattern: 'domain/aggregate-pattern.md' },
-  { match: '/domain/value-objects/',      pattern: 'domain/value-object-pattern.md' },
-  { match: '/domain/entities/',           pattern: 'domain/entity-pattern.md' },
-  { match: '/domain/events/',             pattern: 'domain/domain-event-pattern.md' },
-  { match: '/domain/services/',           pattern: 'domain/domain-service-pattern.md' },
-  { match: '/domain/specifications/',     pattern: 'domain/specification-policy-pattern.md' },
-  { match: '/domain/policies/',           pattern: 'domain/specification-policy-pattern.md' },
-  { match: '/domain/repositories/',       pattern: 'infrastructure/repository-pattern.md' },
-
-  // Application layer
-  { match: '/application/commands/',      pattern: 'application/command-handler-pattern.md' },
-  { match: '/application/queries/',       pattern: 'application/query-handler-pattern.md' },
-  { match: '/application/event-handlers/',pattern: 'application/audit-handler-pattern.md' },
-  { match: '/application/services/',      pattern: 'application/application-service-pattern.md' },
-
-  // Infrastructure layer
-  { match: '/infrastructure/persistence/',          pattern: 'infrastructure/repository-pattern.md' },
-  { match: '/infrastructure/repositories/mappers/', pattern: 'infrastructure/mapper-pattern.md' },
-  { match: '/infrastructure/acl/',                  pattern: 'architecture/acl-registry-pattern.md' },
-  { match: '/infrastructure/controllers/',          pattern: 'infrastructure/controller-schema-pattern.md' },
-];
-
-/**
- * Filename-suffix → pattern mapping (fallback when path didn't match).
- */
-const FILENAME_RULES = [
-  { match: /\.aggregate\.ts$/,       pattern: 'domain/aggregate-pattern.md' },
-  { match: /\.vo\.ts$/,              pattern: 'domain/value-object-pattern.md' },
-  { match: /\.entity\.ts$/,          pattern: 'domain/entity-pattern.md' },
-  { match: /\.event\.ts$/,           pattern: 'domain/domain-event-pattern.md' },
-  { match: /\.specification\.ts$/,   pattern: 'domain/specification-policy-pattern.md' },
-  { match: /\.policy\.ts$/,          pattern: 'domain/specification-policy-pattern.md' },
-  { match: /\.repository\.ts$/,      pattern: 'infrastructure/repository-pattern.md' },
-  { match: /\.controller\.ts$/,      pattern: 'infrastructure/controller-schema-pattern.md' },
-  { match: /\.handler\.ts$/,         pattern: 'application/command-handler-pattern.md' },
-  { match: /\.mapper\.ts$/,          pattern: 'infrastructure/mapper-pattern.md' },
-  { match: /\.adapter\.ts$/,         pattern: 'architecture/acl-registry-pattern.md' },
-  { match: /\.cron\.ts$/,            pattern: 'infrastructure/repository-pattern.md' },      // RP12/N7
-  { match: /\.scheduler\.ts$/,       pattern: 'infrastructure/repository-pattern.md' },      // RP12/N7
-  { match: /\.job\.ts$/,             pattern: 'infrastructure/repository-pattern.md' },      // RP12/N7
-];
+// Reguły przychodzą z bloków (`pattern_routing:` w blocks/**.yml) przez generator
+// scripts/generate-pattern-routing.mjs. Do 2026-08-13 była tu ręczna lista 30 wpisów,
+// niepowiązana z niczym: blok mógł wnieść nowy wzorzec, a hooki dalej go nie znały.
+// Rejestr wyglądał poprawnie, bo był wewnętrznie spójny — dokładnie ten dryf, który
+// opisuje patterns/cross-layer/registry-drift-guard-pattern.md.
+//
+// Kolejność w pliku generowanym jest już posortowana od najbardziej specyficznego
+// dopasowania, więc „first match wins" niżej działa bez dodatkowych założeń.
+const { PATH_RULES, FILENAME_RULES } = require('./pattern-routing.generated.js');
 
 /**
  * True if the file should be skipped entirely (docs, tests, config, non-enforced

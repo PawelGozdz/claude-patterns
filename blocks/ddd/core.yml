@@ -60,3 +60,25 @@ analyze:
 
 # Warstwy implementacji, pętla verify i bramka końcowa: `blocks/ddd/layers.yml`
 # (oś architektury). Przeniesione stąd 2026-08-12 — patrz nagłówek tamtego bloku.
+
+# Routing plik → wzorzec dla hooków (check-patterns-read, check-delegation).
+# Mieszka tu, a nie w hooks/lib/pattern-routing.js, bo to blok modelu domenowego
+# wie, że agregat leży w `/domain/aggregates/` i rządzi nim aggregate-pattern.
+# Generowane do hooks/lib/pattern-routing.generated.js — patrz
+# scripts/generate-pattern-routing.mjs (`--check` pilnuje rozjazdu).
+pattern_routing:
+  paths:
+    - { match: "/domain/aggregates/", pattern: domain/aggregate-pattern.md }
+    - { match: "/domain/value-objects/", pattern: domain/value-object-pattern.md }
+    - { match: "/domain/entities/", pattern: domain/entity-pattern.md }
+    - { match: "/domain/events/", pattern: domain/domain-event-pattern.md }
+    - { match: "/domain/services/", pattern: domain/domain-service-pattern.md }
+    - { match: "/domain/specifications/", pattern: domain/specification-policy-pattern.md }
+    - { match: "/domain/policies/", pattern: domain/specification-policy-pattern.md }
+  filenames:
+    - { match: "\\.aggregate\\.ts$", pattern: domain/aggregate-pattern.md }
+    - { match: "\\.vo\\.ts$", pattern: domain/value-object-pattern.md }
+    - { match: "\\.entity\\.ts$", pattern: domain/entity-pattern.md }
+    - { match: "\\.event\\.ts$", pattern: domain/domain-event-pattern.md }
+    - { match: "\\.specification\\.ts$", pattern: domain/specification-policy-pattern.md }
+    - { match: "\\.policy\\.ts$", pattern: domain/specification-policy-pattern.md }

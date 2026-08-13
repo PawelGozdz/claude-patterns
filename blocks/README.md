@@ -101,6 +101,56 @@ jeden blok w całym składzie może wnieść `orchestrate.layers`.
 `ddd/events`, `ddd/acl` i `nx-monorepo` są blokami osi architektury bez `layers`;
 warstwy wnosi tylko ten jeden blok w składzie, który je faktycznie definiuje.
 
+## `layer_contributions:` — wzbogacenie CUDZEJ warstwy
+
+Warstwy wnosi wyłącznie oś `architecture`, więc blok walidacji czy persystencji nie
+miał jak dołożyć swojego wzorca ani bramki do warstwy aplikacji. Miał dwie drogi: przejąć
+całą oś architektury (blokując wymianę architektury pod sobą) albo zrezygnować. Wkłady
+rozwiązują to bez naruszania zasady „jeden blok wnosi warstwy".
+
+Warstwa deklaruje, czym jest — przez `tags:`; blok spoza osi celuje w nią przez `match:`:
+
+```yaml
+# blocks/ddd/layers.yml (oś architektury) — warstwa mówi, czym jest
+layers:
+  - { id: application, dirs: [application/], agent: "domain-application-implementer",
+      tags: ["api:app"],
+      role: "Przypadki użycia: handlery komend i zapytań orkiestrujące domenę." }
+
+# blocks/zod.yml (oś walidacji) — wkład celuje po tagu
+layer_contributions:
+  - match: "*:app"
+    patterns: [infrastructure/controller-schema-pattern.md]
+    checks: ["validate:schemas"]
+```
+
+Wynik w `runtime.yml` — warstwa `application` dostaje `patterns` i `checks` ze śladem
+pochodzenia:
+
+```yaml
+- { id: application, ..., patterns: [infrastructure/controller-schema-pattern.md] } # +zod
+```
+
+**Reguły:**
+
+- `match` ma format `<stack|*>:<obszar|*>[:<wariant|*>]`. Gwiazdka zastępuje **cały
+  segment** — `ap*` nie działa celowo, bo dopasowanie po fragmencie to dokładnie ten
+  błąd, przez który regex `auth` łapał `author`.
+- `match` krótszy niż tag trafia w jego prefiks: `*:app` trafia w `api:app` i w
+  `data:app:ingestion`. Odwrotnie nie — `*:app:async` nie trafi w `api:app`.
+- Stack i obszar są walidowane wobec `blocks/_taxonomy.yml`. Literówka w `api:aplication`
+  przerywa materializację, zamiast po cichu nic nie trafiać.
+- Scalanie to **unia** z tym, co warstwa ma już u siebie — wkład niczego nie nadpisuje.
+- Blok, z którego **żaden** wkład nie trafił, dostaje ostrzeżenie z listą dostępnych
+  tagów. Pojedynczy nietrafiony `match` jest cichy: blok nie wie, z jaką osią zostanie
+  złożony, więc deklarowanie wariantów (`*:app` i `*:api-surface`) jest poprawne.
+- Warstwa **bez** `tags:` jest nieosiągalna dla wkładów. To dopuszczalne, ale świadome —
+  jeśli piszesz nową oś architektury, otaguj warstwy.
+
+`role:` nie ma związku z celowaniem — to jedno zdanie dla implementera, wstawiane do
+jego promptu przez `/orchestrate` (sekcja 1a). `id: implementation` nie mówi agentowi
+niczego o tym, czego się od niego oczekuje.
+
 ## `extends:` — lokalny wariant bloku centralnego
 
 Blok lokalny (`.claude/blocks/*.yml`) może dziedziczyć po centralnym i zmienić tylko to,

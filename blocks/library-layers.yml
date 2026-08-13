@@ -31,13 +31,19 @@ orchestrate:
   # niezerowy kod wyjścia przy porażce.
   layers:
     - { id: implementation, dirs: [packages/, libs/, src/], agent: "general-purpose",
-        checks: ["lint", "validate:types", "deps:circular"] }
+        checks: ["lint", "validate:types", "deps:circular"],
+        tags: ["lib:app"],
+        role: "Kod pakietu za publicznym API — zmiana tutaj może być zmianą kontraktu, patrz warstwa api-surface." }
     - { id: testing, dirs: [packages/, libs/, src/], agent: "general-purpose", tests: true,
-        checks: ["test", "test:contracts"] }
+        checks: ["test", "test:contracts"],
+        tags: ["lib:tests"],
+        role: "Testy biblioteki, w tym kontraktowe — sprawdzają to, co widzi konsument, nie wnętrze." }
     # Warstwa osobna, bo to inna klasa pracy niż kodowanie: zaktualizowanie raportu
     # api-extractor i dopisanie changesetu jest ŚWIADOMĄ akceptacją zmiany powierzchni.
     # Wchodzi tylko wtedy, gdy poprzednie warstwy ruszyły publiczne wejścia pakietu.
     - { id: api-surface, dirs: [packages/, libs/], agent: "general-purpose", optional: true,
+        tags: ["lib:api-surface"],
+        role: "Świadoma akceptacja zmiany kontraktu: raport api-extractor + changeset. Nie kodowanie.",
         create_when: "diff dotyka index.ts / eksportowanych sygnatur / api-report/*.api.md",
         checks: ["validate:exports", "validate:api"] }
   inner_loop: { verify: "ecc:typescript-reviewer", max_attempts: 3, on_max: ESCALATE_AND_HALT }

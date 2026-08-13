@@ -41,11 +41,23 @@ pisze kodu produkcyjnego. Wszystko stackowe przychodzi z `runtime.yml`.
   0.5) + `patterns[]` z artefaktu analizy. Rule Cards wstrzykuj do promptów
   implementerów i verifierów.
 
-## 1a. Pola warstwy: `checks`, `optional`, `create_when`
+## 1a. Pola warstwy: `role`, `patterns`, `checks`, `optional`, `create_when`, `tags`
 
-Warstwa w `orchestrate.layers` poza `id`/`dirs`/`agent` może mieć trzy pola
-sterujące. Silnik MUSI je respektować — bez tego blok deklaruje bramki, których
-nikt nie odpala (realna dziura, znaleziona 2026-08-11 w `library-layers`).
+Warstwa w `orchestrate.layers` poza `id`/`dirs`/`agent` może mieć pola sterujące.
+Silnik MUSI je respektować — bez tego blok deklaruje bramki, których nikt nie
+odpala (realna dziura, znaleziona 2026-08-11 w `library-layers`).
+
+- **`role: "<jedno zdanie>"`** — czym ta warstwa JEST. Wstaw je do promptu
+  implementera dosłownie, zaraz przed listą wzorców. `id: implementation` nie mówi
+  agentowi niczego; „cały kod produkcyjny serwisu, bez podziału na warstwy domenowe"
+  mówi mu i czego się od niego oczekuje, i czego ma nie robić.
+- **`patterns: [...]`** — wzorce przypisane do TEJ warstwy, niezależnie od
+  `patterns.always` i wyzwalaczy. Wnoszą je inne bloki przez `layer_contributions`
+  (ślad `# +<blok>` w runtime.yml): blok walidacji nie ma własnej warstwy, ale ma coś
+  do powiedzenia warstwie aplikacji. Traktuj je jak MUST-read na równi z `{PATTERNS}`.
+- **`tags: [...]`** — po nich celują `layer_contributions`. Silnik ich nie
+  interpretuje; są w runtime.yml, żeby dało się sprawdzić, dlaczego dany wzorzec
+  trafił akurat tutaj.
 
 - **`checks: ["lint", "validate:types"]`** — deterministyczne skrypty repo
   (konwencja `npm run <nazwa>` / `pnpm <nazwa>`, wg menedżera projektu).

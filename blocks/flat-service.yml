@@ -8,8 +8,15 @@ requires: []
 
 orchestrate:
   layers:
-    - { id: implementation, dirs: [src/], agent: "general-purpose" }
-    - { id: testing, dirs: [src/, test/], agent: "general-purpose", tests: true }
+    - { id: implementation, dirs: [src/], agent: "general-purpose",
+        # Trzy tagi, bo ta warstwa NAPRAWDĘ zawiera wszystko: przypadki użycia, dostęp
+        # do danych i endpointy leżą tu obok siebie. Wkłady z osi persystencji i walidacji
+        # mają więc trafiać do niej — inaczej płaski serwis nie dostaje ich w ogóle.
+        tags: ["any:app", "any:data-access", "any:api-surface"],
+        role: "Cały kod produkcyjny serwisu — bez podziału na warstwy domenowe (to świadomy wybór tej osi)." }
+    - { id: testing, dirs: [src/, test/], agent: "general-purpose", tests: true,
+        tags: ["any:tests"],
+        role: "Testy kolokowane z kodem: jednostkowe i integracyjne." }
   inner_loop: { verify: "ecc:typescript-reviewer", max_attempts: 3, on_max: ESCALATE_AND_HALT }
   final_gate: { agent: "ecc:security-reviewer", on_fail: ESCALATE_AND_HALT }
   exit: STAGE_NOT_COMMIT
