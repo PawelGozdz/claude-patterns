@@ -12,8 +12,8 @@ description: |
 
   Usage: /incident <description of finding or symptom>
 
-tools: Read, Glob, Grep, Bash, Skill
-disallowedTools: Write, Edit, MultiEdit, NotebookEdit
+tools: Read, Write, Glob, Grep, Bash, Skill
+disallowedTools: MultiEdit, NotebookEdit
 ---
 
 # /incident — Security Incident Triage
@@ -35,6 +35,14 @@ Thin wrapper that invokes the `incident` skill from
    Before implementing: run `/analyze {slug}` (research/analysis gate, ADR
    the postmortem should point at whichever gate is actually live in that
    project.
+
+## What this command may write — closed list
+
+1. `docs/security/incidents/INC-{YYYYMMDD}-{slug}-postmortem.md` — the postmortem.
+
+Nothing else. No source file, no commit. `Write` was denied until 2026-08-14, which
+made the skill's own final step (save the postmortem) impossible — the closed list
+above is the guard, not the missing tool.
 
 ## When to use
 

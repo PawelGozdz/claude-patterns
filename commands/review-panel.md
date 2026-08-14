@@ -12,8 +12,8 @@ description: |
 
   Usage: /review-panel [--full] [--thorough] [--pr <number>]
 
-tools: Read, Glob, Grep, Bash, Skill
-disallowedTools: Write, Edit, MultiEdit, NotebookEdit
+tools: Read, Write, Edit, Glob, Grep, Bash, Task, Skill
+disallowedTools: MultiEdit, NotebookEdit
 ---
 
 # /review-panel — Multi-Agent Code Review Panel
@@ -28,6 +28,15 @@ skill performs:
 - **Synthesis**: dedupe findings, split auto-fixable vs requires-decision, severity-graded report
 - **Apply fixes** one at a time on approval (never commits/pushes)
 - **Snapshot save** so the next run on the same branch is incremental
+
+## What this command may write — closed list
+
+1. `~/.claude/review-panel-snapshots/<branch>.json` — the incremental-review snapshot;
+2. source files touched by fixes the user explicitly approved in Phase 3.
+
+Never commits, never pushes. `Write`/`Edit` were denied until 2026-08-14, which killed
+both Phase 4 (apply approved fixes) and Phase 5 (save snapshot) — incremental mode could
+never actually engage. The guard is the approval step in Phase 3, not a missing tool.
 
 ## When to use
 
