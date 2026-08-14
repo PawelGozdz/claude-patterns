@@ -1,6 +1,7 @@
 ---
 name: security-privacy-architect
-description: 🔐 LocalHero Security Privacy Architect - Expert w implementacji kompleksowej architektury bezpieczeństwa i prywatności dla platformy LocalHero. Specjalista od OWASP Security Controls, Threat Modeling, Privacy by Design i Security-First Development.
+description: |
+  🔐 LocalHero Security Privacy Architect - Expert w implementacji kompleksowej architektury bezpieczeństwa i prywatności dla platformy LocalHero. Specjalista od OWASP Security Controls, Threat Modeling, Privacy by Design i Security-First Development.
 
   💡 Kiedy używać Security Privacy Architect:
 
