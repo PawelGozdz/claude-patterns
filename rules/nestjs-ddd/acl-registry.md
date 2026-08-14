@@ -23,6 +23,17 @@
 - `throw` from an adapter method — always `Result.fail(new Error(...))`.
 - Omit `implements OnModuleInit` in the provider module — the adapter never reaches the registry.
 - Import the provider module in a consumer — import only the global `ACLModule`.
+- A persistent DB trigger/function in one bounded context's table READING another context's
+  table (e.g. a trigger on `contextA.foo` selecting from `contextB.bar`) — `dependency-cruiser`
+  scans the TypeScript import graph, not DDL, so this coupling is structurally invisible to the
+  tool the project relies on to enforce BC isolation; it is the same violation as a direct
+  cross-context `import`, one layer lower (TS-GEO-SPATIAL-QUERY-AUDIT-002 D9). Read through an
+  ACL adapter in the command handler before the write instead. **Narrow exception**: a
+  one-shot, irreversible BACKFILL migration MAY join a cross-context table, provided (a) it
+  runs exactly once and is not a standing mechanism, (b) the migration body documents the
+  precedent inline, and (c) the source-side join always carries `deleted_at IS NULL` as
+  defense-in-depth (D25) — this exception does NOT cover a permanent trigger/function that
+  fires on every write.
 
 ## Why
 Bounded contexts must stay independently deployable and free of circular
