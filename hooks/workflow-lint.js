@@ -99,6 +99,11 @@
  *                jako "naprawione", zanim złapał ją drogi code-quality-verifier w ostatniej
  *                dopuszczalnej próbie. Lek jest dalej deterministyczny, nie LLM-owy:
  *                `git diff --cached -U0 | grep -cE '^\+\s*(it|test|describe)\('`.
+ *   WL16 (WARN)  ślepy retry implementera po cichej śmierci bez diff-sondy — cichy zgon
+ *                zwykle znaczy "praca wykonana, budżet spalony na oddaniu wyniku"
+ *                (TS-TOKEN-TOPUP-001/A2, api-1, 2026-08-14: kod kompletny + typecheck pass,
+ *                a skrypt spalił drugą pełną próbę i eskalował). Po nullu: tania sonda
+ *                `git diff --name-only`, przy niepustym diffie → verify-existing (§2a′ p. 6a).
  *
  * Exit: 0 = czysto lub tylko WARN · 1 = ERROR (NIE uruchamiaj Workflow) · 2 = zły input.
  */
@@ -218,7 +223,21 @@ function lint(src) {
       let body = t;
       if (ref) {
         const def = new RegExp('(?:const|let|var)\\s+' + ref[1] + '\\s*=\\s*\\{').exec(src);
-        if (def) body = src.slice(def.index, def.index + 900);
+        if (def) {
+          // Domknięcie TEGO consta znajdź licząc głębokość nawiasów od jego otwierającego '{' —
+          // niezależnie od wcięcia i zagnieżdżenia. Historia dwóch złych podejść: sztywne okno
+          // 900 znaków połykało SĄSIEDNI schemat z legalnym `verdict:` (2026-08-14,
+          // TS-TOKEN-TOPUP-001); indexOf('\n}') naprawiał to tylko dla definicji top-level,
+          // a dla zagnieżdżonych skanował do pierwszego '}' w kolumnie 0 — czyli do końca
+          // NIEZWIĄZANEJ funkcji dalej w pliku (review 2026-08-15, empirycznie potwierdzone).
+          const open = src.indexOf('{', def.index);
+          let depth = 0, end = -1;
+          for (let i = open; i !== -1 && i < src.length && i < open + 4000; i++) {
+            if (src[i] === '{') depth++;
+            else if (src[i] === '}' && --depth === 0) { end = i; break; }
+          }
+          body = end === -1 ? src.slice(def.index, def.index + 900) : src.slice(def.index, end + 1);
+        }
       }
       if (SELF_GRADE_FIELD.test(body)) {
         findings.push({ id: 'WL1', level: 'ERROR', line: s.line, msg: 'implementer zwraca schema z polem OCENIAJĄCYM własną pracę (verdict/status/passed/...) — sukces implementacji mierzy bramka git-diff i niezależny verifier, nie self-report (incydent wf_8f8aeeb3). Schema z samymi FAKTAMI (changed_files, summary, notes) jest w porządku i zalecana — patrz WL12.' });
@@ -491,6 +510,24 @@ function lint(src) {
       if (!measuresDelta) {
         findings.push({ id: 'WL15', level: 'WARN', line: 0, msg: 'skrypt zleca dopisanie testów/kontroli, ale żadna bramka nie mierzy PRZYROSTU bloków wykonywalnych — "tsc pass + testy pass + niepusty diff" jest spełnialne samym komentarzem (wf_69187830-205: 133 dopisane linie opisujące Check D/E zamiast ich implementacji przeszły sondę i wyciekły do TECH-DEBT.md jako "naprawione"). Dodaj do sondy `git diff --cached -U0 | grep -cE \'^\\+\\s*(it|test|describe)\\(\'` i traktuj zero nowych bloków przy dużym diffie jako NO_GO (wzorzec: orchestrate.md §2a′ punkt 5)' });
       }
+    }
+  }
+
+  // WL16 — ślepy retry implementera po cichej śmierci, bez diff-sondy. Cicha śmierć
+  // (null/wyjątek bez StructuredOutput) najczęściej znaczy „praca WYKONANA, budżet spalony
+  // na oddaniu wyniku", nie „praca niezrobiona". Incydent TS-TOKEN-TOPUP-001/A2 (api-1,
+  // 2026-08-14): kod leżał kompletny w drzewie, typecheck pass, a skrypt spalił drugą pełną
+  // próbę (~40 tur) i eskalował — ratunkiem była ręczna zamiana na verify-existing.
+  // Forma błędu: pętla retry z licznikiem cichych zgonów (`++silent`/`silent >= 2`) albo
+  // null-branch z `continue`, w skrypcie wołającym implementera — bez żadnej taniej sondy
+  // stanu drzewa (--name-only/--numstat/status --short) i bez ścieżki verify-existing.
+  {
+    const retriesImplementer = /agentType\s*:\s*['"`][^'"`]*implementer/i.test(src)
+      && (/\+\+\s*silent|silent\s*>=\s*\d/.test(src) || /if\s*\(\s*!\w+\s*\)\s*\{[\s\S]{0,300}?continue/.test(src));
+    const probesDiff = /--name-only|--numstat|status --short|status -s\b|verifyExisting/i.test(src);
+    if (retriesImplementer && !probesDiff) {
+      const m = /\+\+\s*silent|silent\s*>=\s*\d|if\s*\(\s*!\w+\s*\)\s*\{/.exec(src);
+      findings.push({ id: 'WL16', level: 'WARN', line: m ? src.slice(0, m.index).split('\n').length : 0, msg: 'retry implementera po cichej śmierci bez diff-sondy — cichy zgon zwykle znaczy „praca wykonana, budżet spalony na oddaniu wyniku", a ślepa powtórka pali drugą pełną próbę na gotowym kodzie (TS-TOKEN-TOPUP-001/A2, api-1, 2026-08-14: kod kompletny + typecheck pass, a skrypt eskalował po 2 próbach). Po nullu odpal tanią sondę `git diff --name-only` (haiku, effort low) i przy niepustym diffie jednostki idź do verify-existing zamiast re-implementacji (wzorzec: orchestrate.md §2a′ punkt 6a)' });
     }
   }
 
