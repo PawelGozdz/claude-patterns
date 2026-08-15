@@ -14,6 +14,7 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import { createServer as createHttpServer } from "node:http";
 import { z } from "zod";
 import { retrieveCode, retrieveFromCollection, reload } from "./retrieve.js";
+import { CollectionNotFoundError } from "./store-qdrant.js";
 import { buildCodeIndex, reindexFile } from "./indexer.js";
 
 // Qdrant filter builder — {key,value} pairs with undefined values dropped; arrays use `any` (OR match).
@@ -50,16 +51,33 @@ function buildServer(): McpServer {
     "Semantic top-K retrieval of EXISTING project code (per-symbol: methods/functions/types) most " +
       "relevant to a task. Killer use-case: find similar existing implementations before writing new code " +
       "(avoids 'it doesn't exist' hallucinations + wrong signatures). Returns file + symbol + line range. " +
-      "IMPORTANT: this server is a SHARED daemon across projects — always pass `collection` explicitly " +
-      "(per-project name, e.g. code_juz_ide_api_1; see .claude/config/knowledge.json in the project).",
+      "IMPORTANT: this server is a SHARED daemon across projects — always pass `collection` explicitly. " +
+      "The value comes ONLY from the project's config (.claude/config/runtime.yml → knowledge.collection, " +
+      "mirrored in .claude/config/knowledge.json). NEVER derive it from the project directory name: " +
+      "twin checkouts of the same repo share ONE collection (e.g. juz-ide-api-1..4 all use code_juz_ide_api).",
     {
       query: z.string().describe("what to find in the codebase (capability/identifier/intent)"),
       k: z.number().int().positive().optional(),
-      collection: z.string().optional().describe("Qdrant collection (e.g. code_juzide1); default code_default — pass explicitly, do not rely on the default"),
+      collection: z.string().optional().describe(
+        "Qdrant collection — copy the exact value from the project's runtime.yml → knowledge.collection " +
+          "(do NOT construct it from the directory name); default code_default — pass explicitly"
+      ),
     },
     async ({ query, k, collection }) => {
-      const hits = await retrieveCode(query, k ?? 8, collection);
-      return { content: [{ type: "text", text: JSON.stringify(hits, null, 2) }] };
+      try {
+        const hits = await retrieveCode(query, k ?? 8, collection);
+        return { content: [{ type: "text", text: JSON.stringify(hits, null, 2) }] };
+      } catch (e) {
+        if (e instanceof CollectionNotFoundError) {
+          return { content: [{ type: "text", text:
+            `ERROR: collection '${e.collection}' does not exist. Available collections: [${e.available.join(", ")}]. ` +
+            `The correct name comes from the project's .claude/config/runtime.yml → knowledge.collection — ` +
+            `never derive it from the directory name (twin checkouts share ONE collection, e.g. ` +
+            `juz-ide-api-1..4 → code_juz_ide_api). Retry with the configured name; if the project is ` +
+            `genuinely unindexed, fall back to grep.` } ] };
+        }
+        throw e;
+      }
     }
   );
 
@@ -86,8 +104,16 @@ function buildServer(): McpServer {
         project ? [{ key: "scope", value: "universal" }, { key: "project", value: project }] : undefined,
         project ? undefined : [{ key: "scope", value: "project-specific" }]
       );
-      const hits = await retrieveFromCollection(query, k ?? 5, "patterns_global", { filter });
-      return { content: [{ type: "text", text: JSON.stringify(hits, null, 2) }] };
+      try {
+        const hits = await retrieveFromCollection(query, k ?? 5, "patterns_global", { filter });
+        return { content: [{ type: "text", text: JSON.stringify(hits, null, 2) }] };
+      } catch (e) {
+        if (e instanceof CollectionNotFoundError) {
+          return { content: [{ type: "text", text:
+            `ERROR: global collection 'patterns_global' is not seeded — run ./scripts/reseed-patterns.sh in claude-patterns.` } ] };
+        }
+        throw e;
+      }
     }
   );
 
@@ -116,8 +142,16 @@ function buildServer(): McpServer {
         [{ key: "level", value: level }, { key: "kind", value: kind }, { key: "lib_version", value: lib_version }],
         feature ? [{ key: "feature", value: feature }, { key: "combines", value: feature }] : undefined
       );
-      const hits = await retrieveFromCollection(query, k ?? 5, "library_reference_global", { filter });
-      return { content: [{ type: "text", text: JSON.stringify(hits, null, 2) }] };
+      try {
+        const hits = await retrieveFromCollection(query, k ?? 5, "library_reference_global", { filter });
+        return { content: [{ type: "text", text: JSON.stringify(hits, null, 2) }] };
+      } catch (e) {
+        if (e instanceof CollectionNotFoundError) {
+          return { content: [{ type: "text", text:
+            `ERROR: global collection 'library_reference_global' is not seeded — run ./scripts/reseed-patterns.sh in claude-patterns.` } ] };
+        }
+        throw e;
+      }
     }
   );
 

@@ -13,6 +13,15 @@ const URL = process.env.KR_QDRANT_URL ?? "http://localhost:6401";
 // instead of colliding with an unrelated sequential id.
 const NAMESPACE = "6ba7b810-9dad-11d1-80b4-00c04fd430c8";
 
+// Rzucany przez search() gdy kolekcja nie istnieje — handler MCP (index.ts) zamienia go na
+// tekstowy hint z listą dostępnych kolekcji, żeby agent mógł poprawić nazwę zamiast dostać ciche [].
+export class CollectionNotFoundError extends Error {
+  constructor(public readonly collection: string, public readonly available: string[]) {
+    super(`collection '${collection}' not found — available: [${available.join(", ")}]`);
+    this.name = "CollectionNotFoundError";
+  }
+}
+
 export interface SearchOpts {
   diversify?: boolean; // default true — server-side group_by:'source' caps hits-per-file
   maxPerSource?: number; // default 2
@@ -93,7 +102,12 @@ export class QdrantStore {
 
   async search(queryVec: number[], k: number, opts: SearchOpts = {}): Promise<Hit[]> {
     const { diversify = true, maxPerSource = 2, filter } = opts;
-    const exists = () => this.client.collectionExists(this.collection).then((r) => r.exists).catch(() => false);
+    // null = weryfikacja SAMA padła (najpewniej Qdrant down) — NIE mylić z „kolekcja nie
+    // istnieje". Zlanie tych stanów w `false` kończyło się CollectionNotFoundError z
+    // `available: []` przy realnej awarii infrastruktury — fałszywa diagnoza sugerująca
+    // agentowi złą nazwę zamiast „spróbuj później" (review 2026-08-15).
+    const exists = (): Promise<boolean | null> =>
+      this.client.collectionExists(this.collection).then((r) => r.exists).catch(() => null);
     try {
       if (diversify) {
         const res = await this.client.searchPointGroups(this.collection, {
@@ -111,12 +125,21 @@ export class QdrantStore {
       const res = await this.client.search(this.collection, { vector: queryVec, limit: k, with_payload: true, filter });
       return res.map(toHit);
     } catch (e) {
-      // Collection not yet seeded (project registered via .mcp.json but not indexed) → graceful empty,
-      // so retrieve_code falls back to grep instead of erroring. Re-throw genuine failures (Qdrant down).
-      if (!(await exists())) {
-        console.error(`[knowledge-retriever] collection '${this.collection}' not found — returning [] (reseed to populate)`);
-        return [];
+      // Collection missing → CollectionNotFoundError z listą istniejących kolekcji. Ciche [] było
+      // pułapką bliźniaków: agent w juz-ide-api-2/3 zgadywał 'code_juz_ide_api_2' z nazwy katalogu
+      // (zamiast wziąć 'code_juz_ide_api' z runtime.yml), dostawał pustkę i nie miał jak się
+      // poprawić (2026-08-14). Handler narzędzia zamienia ten błąd na tekstowy hint dla agenta —
+      // graceful degradation (fallback do grep) zostaje, samokorekta staje się możliwa.
+      // Re-throw genuine failures (Qdrant down).
+      if ((await exists()) === false) {
+        const available = await this.client.getCollections()
+          .then((r) => r.collections.map((c) => c.name).sort())
+          .catch(() => [] as string[]);
+        console.error(`[knowledge-retriever] collection '${this.collection}' not found — available: [${available.join(", ")}]`);
+        throw new CollectionNotFoundError(this.collection, available);
       }
+      // true (kolekcja jest, błąd z innego powodu) albo null (weryfikacja padła — Qdrant
+      // nieosiągalny): oryginalny błąd, nie fałszywe „not found".
       throw e;
     }
   }
