@@ -90,6 +90,16 @@
     ],
     "PostToolUse": [
       {
+        "matcher": "Workflow",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$HOME/.claude/hooks/workflow-metrics-postrun.js\""
+          }
+        ],
+        "description": "Workflow metrics: fire-and-forget collector of per-step metrics to ~/.claude/metrics/workflow-steps.jsonl (TASK-OBS-002)"
+      },
+      {
         "matcher": "Bash",
         "hooks": [
           {

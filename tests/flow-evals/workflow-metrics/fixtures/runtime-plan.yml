@@ -1,0 +1,8 @@
+# Fixture E3: minimalny plan orchestrate (kształt jak w wygenerowanym runtime.yml, ADR 0008).
+orchestrate:
+  layers:
+    - {id: domain, agent: "domain-impl", role: "Model domenowy (fixture)"}
+    - {id: infrastructure, agent: "infra-impl", role: "Styk ze światem (fixture)"}
+  inner_loop: {verify: "quality-verifier", max_attempts: 3, on_max: ESCALATE_AND_HALT}
+  final_gate: {agent: "final-verifier", on_fail: ESCALATE_AND_HALT}
+  exit: STAGE_NOT_COMMIT

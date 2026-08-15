@@ -1,6 +1,6 @@
 # TASK-OBS-002 — Metryki workflow per-krok: koszty, konformancja z runtime.yml, ewaluatory regresji (Filar 0, kontynuacja OBS-001)
 
-**Status: TODO (READY — brak twardych prerequisites)** · **Źródło:** sesja 2026-08-15
+**Status: IN REVIEW — implementacja 2026-08-15, staged-not-committed (commit robi user)** · **Źródło:** sesja 2026-08-15
 (rozmowa o monitorowaniu zużycia tokenów per operacja; wszystkie fakty o danych zweryfikowane
 na żywo w tej sesji) · **Poprzednik:** TASK-OBS-001 (watchdog, DONE) · **Powiązane:**
 TASK-EVAL-001 (automatyzacja evali — ten task DOKŁADA nowy korpus evali w tej samej konwencji,
@@ -60,59 +60,59 @@ danych).
 ## Zakres
 
 ### 1. Collector — `scripts/workflow-metrics-collect.mjs` (deterministyczny, zero LLM)
-- [ ] Skanuje `~/.claude/projects/*/*/workflows/wf_*.json` + journal + transkrypty subagentów;
+- [x] Skanuje `~/.claude/projects/*/*/workflows/wf_*.json` + journal + transkrypty subagentów;
       emituje **jedną linię per krok** do globalnego `~/.claude/metrics/workflow-steps.jsonl`.
-- [ ] Rekord kroku: `{ts, project, sessionId, runId, taskId, workflowName, phase, label,
+- [x] Rekord kroku: `{ts, project, sessionId, runId, taskId, workflowName, phase, label,
       agentType, model, outputTokens, inputTokens, cacheReadTokens, cacheWriteTokens,
       toolCalls, durationMs, outcome, reason, resumedFrom, costUsd, runtimeYmlHash}`.
-- [ ] **Idempotencja:** klucz `runId+agentId` — powtórne uruchomienie nie duplikuje linii
+- [x] **Idempotencja:** klucz `runId+agentId` — powtórne uruchomienie nie duplikuje linii
       (append-only + dedup przy odczycie ALBO przepisanie pliku; wybrać prostsze, opisać w README).
-- [ ] Rozbicie cache/input z transkryptu agenta (suma po wiadomościach); gdy transkrypt
+- [x] Rozbicie cache/input z transkryptu agenta (suma po wiadomościach); gdy transkrypt
       niedostępny — rekord z samym `outputTokens` z `workflowProgress` + flaga `partial: true`.
-- [ ] Rekord per-PRZEBIEG (druga linia typu `run`): totalTokens, totalToolCalls, durationMs,
+- [x] Rekord per-PRZEBIEG (druga linia typu `run`): totalTokens, totalToolCalls, durationMs,
       status, escalatedAt, agentCount, costUsd-suma.
 
 ### 2. Cennik — `~/.claude/metrics/prices.json`
-- [ ] Stawki per model × 4 rodzaje tokenów (input / output / cache write / cache read),
+- [x] Stawki per model × 4 rodzaje tokenów (input / output / cache write / cache read),
       z referencji `claude-api`. Plik z datą pobrania.
-- [ ] Raport pokazuje OBIE kolumny: `costUsd` (szacunek) i — gdy dostępny klucz —
+- [x] Raport pokazuje OBIE kolumny: `costUsd` (szacunek) i — gdy dostępny klucz —
       rozjazd % względem `/cost-report` za ten sam okres (kalibracja, nie zastąpienie).
 
 ### 3. Raport — `scripts/workflow-metrics-report.mjs`
-- [ ] `--by label|task|model|agentType|day|project` + `--since <data>`.
-- [ ] **Tryb regresji:** ten sam `label` (lub taskId+label) w kolejnych runach — delta tokenów,
+- [x] `--by label|task|model|agentType|day|project` + `--since <data>`.
+- [x] **Tryb regresji:** ten sam `label` (lub taskId+label) w kolejnych runach — delta tokenów,
       $, czasu, zmiana outcome. To jest główny use-case („czy diff-sonda pomogła").
-- [ ] Top-N najdroższych kroków + success-rate per agentType/model.
-- [ ] Wyjście: tabela do terminala + opcjonalnie `--json` (pod przyszły dashboard).
+- [x] Top-N najdroższych kroków + success-rate per agentType/model.
+- [x] Wyjście: tabela do terminala + opcjonalnie `--json` (pod przyszły dashboard).
 
 ### 4. Konformancja z runtime.yml — `scripts/workflow-conformance.mjs` (lub moduł raportu)
-- [ ] Collector przy zbieraniu zapisuje **hash + kopię** `runtime.yml` projektu
+- [x] Collector przy zbieraniu zapisuje **hash + kopię** `runtime.yml` projektu
       (`~/.claude/metrics/runtime-snapshots/<hash>.yml`) — porównujemy z planem
       obowiązującym W MOMENCIE przebiegu, nie z dzisiejszym.
-- [ ] Sprawdzenia (deterministyczne): każda warstwa z planu miała cykl implement→verify→GO?
+- [x] Sprawdzenia (deterministyczne): każda warstwa z planu miała cykl implement→verify→GO?
       agenci spoza slotów? final gate właściwym agentem? kolejność warstw? gdzie przebieg
       stanął (escalatedAt) i po ilu próbach?
-- [ ] Wynik: `conformance: OK | DEVIATIONS(n)` + lista odchyleń per przebieg.
+- [x] Wynik: `conformance: OK | DEVIATIONS(n)` + lista odchyleń per przebieg.
       (Runtime'owy odpowiednik statycznego `/conformance-check`.)
 
 ### 5. Hook — automatyczne zbieranie
-- [ ] `hooks/workflow-metrics-postrun.js`: PostToolUse na Workflow, fire-and-forget
+- [x] `hooks/workflow-metrics-postrun.js`: PostToolUse na Workflow, fire-and-forget
       (wzorzec `knowledge-freshness-postwrite.js`), zawsze exit 0, stderr na diagnostykę.
-- [ ] Wpis w `hooks/hooks.json` + `hooks/README.md`.
-- [ ] **Pułapki znane z tego repo:** hook NIE może skanować transkryptu w PreToolUse dla
+- [x] Wpis w `hooks/hooks.json` + `hooks/README.md`.
+- [x] **Pułapki znane z tego repo:** hook NIE może skanować transkryptu w PreToolUse dla
       subagentów (memory `hook-subagent-transcript-trap`); tu jesteśmy w PostToolUse głównej
       pętli, ale sprawdź `agent_id` defensywnie.
 
 ### 6. EWALUATORY — `tests/flow-evals/workflow-metrics/` (konwencja jak `retrieval/`, `watcher/`, `workflow-lint/`)
-- [ ] **E1 collector-golden:** zarchiwizowany `wf_379c0a41-ff2.json` + journal + 1-2 transkrypty
+- [x] **E1 collector-golden:** zarchiwizowany `wf_379c0a41-ff2.json` + journal + 1-2 transkrypty
       jako fixtures → collector produkuje DOKŁADNIE oczekiwane rekordy (w tym outcome
       `silent-death` dla A2-impl-1/2, koszt z 4 liczników). To jest regresyjna kotwica formatu.
-- [ ] **E2 budget-regression:** na spreparowanym `workflow-steps.jsonl` (2 runy tego samego
+- [x] **E2 budget-regression:** na spreparowanym `workflow-steps.jsonl` (2 runy tego samego
       taska) raport w trybie regresji wykrywa wzrost >50% kosztu tego samego labela i
       spadek success-rate; NIE alarmuje przy szumie <20%.
-- [ ] **E3 conformance:** fixture plan+przebieg zgodny → OK; przebieg z pominiętym verify
+- [x] **E3 conformance:** fixture plan+przebieg zgodny → OK; przebieg z pominiętym verify
       warstwy i agentem spoza slotu → DEVIATIONS z poprawną listą.
-- [ ] Uruchamianie: `node tests/flow-evals/workflow-metrics/run.js` — ręcznie, jak reszta L1
+- [x] Uruchamianie: `node tests/flow-evals/workflow-metrics/run.js` — ręcznie, jak reszta L1
       (automatyzację ogarnia TASK-EVAL-001, nie ten task).
 
 ### Anty-zakres (świadomie POZA)
@@ -132,14 +132,14 @@ danych).
 - **D5:** snapshot runtime.yml per przebieg (hash) — konformancja względem planu z momentu startu.
 
 ## Kryteria akceptacji
-- [ ] Po `node scripts/workflow-metrics-collect.mjs` rekordy z co najmniej 3 realnych
+- [x] Po `node scripts/workflow-metrics-collect.mjs` rekordy z co najmniej 3 realnych
       przebiegów (api-1/2/4 z 2026-08-14/15 są na dysku) lądują w `workflow-steps.jsonl`,
       a powtórne uruchomienie nie duplikuje.
-- [ ] Raport `--by label` pokazuje A2-impl-1/A2-impl-2 z outcome silent-death i kosztem $.
-- [ ] Konformancja dla min. 1 realnego przebiegu daje sensowny wynik z listą odchyleń.
-- [ ] Hook działa (test na małym przebiegu Workflow) i NIGDY nie blokuje (exit 0 przy każdej awarii).
-- [ ] Evale E1-E3 zielone; E1 na prawdziwych, zarchiwizowanych fixture'ach.
-- [ ] `hooks/README.md` + krótki opis formatu rekordu i użycia (sekcja w `scripts/` lub README).
+- [x] Raport `--by label` pokazuje A2-impl-1/A2-impl-2 z outcome silent-death i kosztem $.
+- [x] Konformancja dla min. 1 realnego przebiegu daje sensowny wynik z listą odchyleń.
+- [x] Hook działa (test na małym przebiegu Workflow) i NIGDY nie blokuje (exit 0 przy każdej awarii).
+- [x] Evale E1-E3 zielone; E1 na prawdziwych, zarchiwizowanych fixture'ach.
+- [x] `hooks/README.md` + krótki opis formatu rekordu i użycia (sekcja w `scripts/` lub README).
 
 ## Wskazówki wykonania (workflow tej sesji)
 - Po implementacji odpal **agenta-reviewera** (ecc:typescript-reviewer / code-reviewer) po
