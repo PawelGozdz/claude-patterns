@@ -54,6 +54,7 @@ User request → Claude picks a tool → PreToolUse hook runs → Tool executes 
 | **console.log warning** | `Edit` | Warns about `console.log` statements in edited files |
 | **GPU patterns** | `Edit` | ML inference: blocking calls in `async def`, `empty_cache()` without `gc.collect()`, `asyncio.gather` fan-out over GPU calls. Requires `gpu.enabled` in `python-hooks.json` — silent skip otherwise |
 | **Human voice** _(per-stack)_ | `Write\|Edit\|MultiEdit` | On `*.analysis.md`: warns when `open_questions[].ask` / `decisions[].means` are missing, empty, or still written in codebase language (file names, ADR numbers, class names, layer jargon). Register comes from `runtime.yml` `human_voice`. Wired in by the `approval-gate` block. `HUMAN_VOICE_MODE=off`. |
+| **Workflow metrics** | `Workflow` | TASK-OBS-002: fire-and-forget spawn of `scripts/workflow-metrics-collect.mjs` after every Workflow run — per-step tokens/$/outcome land in `~/.claude/metrics/workflow-steps.jsonl` (idempotent, key `runId+agentId`). Never blocks (always exit 0); skips subagent contexts via `agent_id`. Format + reports: `scripts/WORKFLOW-METRICS.md`. L1 eval: `node tests/flow-evals/workflow-metrics/run.js` |
 
 > **Knowledge freshness** (`knowledge-freshness-postwrite.js`) lives in the hooks dir but is **not**
 > registered in global `hooks.json` — it's OPT-IN per project, since it only makes sense for
