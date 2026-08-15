@@ -190,7 +190,7 @@ const CHECKS_SCHEMA = { type: 'object', required: ['typecheck', 'tests'], proper
 const checks = await ask(
   'Uruchom: pnpm typecheck, potem pnpm vitest run <konkretny spec>. NIC nie czytaj, ' +
   'nie analizuj, nie poprawiaj. Zwróć status i ostatnie 40 linii przy błędzie.',
-  { label: unitId + '-checks', effort: 'low', maxTurns: 8, schema: CHECKS_SCHEMA }
+  { label: unitId + '-checks', model: 'haiku', effort: 'low', maxTurns: 8, schema: CHECKS_SCHEMA }
 )
 
 // (2) TWARDE LIMITY na każdym wywołaniu — proza w prompcie nie jest budżetem.
@@ -234,8 +234,8 @@ dopiero drogi `code-quality-verifier` w trzeciej, ostatniej dopuszczalnej próbi
 //     Uwaga: legalny refaktor testów też ma zerowy przyrost — dlatego bramka dotyczy
 //     wyłącznie jednostek, których zakresem jest DODANIE kontroli, i mierzy przyrost
 //     względem stanu sprzed jednostki, nie wartość bezwzględną.
-const checks = await ask(probePrompt, { label: unitId + '-checks', effort: 'low',
-  maxTurns: 8, schema: CHECKS_SCHEMA })   // CHECKS_SCHEMA += newTestBlocks: number
+const checks = await ask(probePrompt, { label: unitId + '-checks', model: 'haiku',
+  effort: 'low', maxTurns: 8, schema: CHECKS_SCHEMA })   // CHECKS_SCHEMA += newTestBlocks: number
 
 // (6) CICHY WYJĄTEK TO INNA AWARIA NIŻ NO_GO — licz je osobno. Merytoryczne NO_GO
 //     znaczy „popraw to"; wyjątek z braku StructuredOutput znaczy „zakres nie mieści
@@ -263,6 +263,37 @@ const implPrompt = (attempt, violations, silent) => BASE
       + `Pliki mogły zostać częściowo zmodyfikowane przez poprzednią próbę — SPRAWDŹ ich `
       + `stan przed edycją, nie zakładaj czystego drzewa.` : '')
   + (violations ? `\n\nPOPRAWKA — napraw dokładnie te naruszenia:\n${violations}` : '')
+
+// (6a) DIFF-SONDA PO CICHEJ ŚMIERCI — ZANIM powtórzysz implementację. Cicha śmierć
+//     najczęściej znaczy „praca wykonana, budżet spalony na oddaniu wyniku", a NIE
+//     „praca niezrobiona". TS-TOKEN-TOPUP-001/A2 (api-1, 2026-08-14): implementer
+//     umarł 2× bez StructuredOutput, choć kod leżał KOMPLETNY w working tree i
+//     typecheck przechodził — skrypt spalił drugą pełną próbę (~40 tur) i eskalował;
+//     dopiero ręczna interwencja przełączyła na weryfikację istniejącego stanu.
+//     Po nullu z implementera: tania sonda `git diff --name-only` (haiku, effort low);
+//     jeśli pliki jednostki SĄ zmienione → idź do VERIFY-EXISTING (weryfikacja od zera
+//     + punktowe fixy naruszeń), NIE do re-implementacji. WL16 pilnuje tej formy.
+if (!impl) {
+  const probe = await ask('W repo uruchom: git diff --name-only (+ status --short). NIC więcej.',
+    { label: unitId + '-diff-probe', model: 'haiku', effort: 'low', maxTurns: 5, schema: DIFF_SCHEMA })
+  // unitTouches: dopasowanie pliku do ZAKRESU tej jednostki (np. glob/lista w UNITS[i].files
+  // albo prefiks katalogu warstwy) — NIE samo „diff niepusty": inne jednostki tego przebiegu
+  // już zmieniły drzewo, więc bez zawężenia każdy cudzy diff wyglądałby jak wykonana praca.
+  if (probe && probe.files.some(f => unitTouches(unitId, f))) {
+    return verifyExistingThenFix(unitId, probe.files)   // praca jest — zweryfikuj, nie powtarzaj
+  }
+  if (++silent >= 2) return { unitId, status: 'ESCALATE_AND_HALT', reason: '…' }
+  continue
+}
+
+// (9) ROUTING MODELI — jawnie, nie dziedziczeniem. agent() bez `model:` dziedziczy
+//     model GŁÓWNEJ pętli — na sesji z drogim modelem każda sonda i implementer
+//     liczą kontekst po najdroższej stawce (a kontekst to ~91% rachunku przebiegu).
+//     Jakość chronią weryfikatory, nie drogi implementer:
+//       sondy/probes            → model: 'haiku',  effort: 'low'
+//       implementery            → model: 'sonnet'
+//       verify per-jednostka    → model: 'sonnet' (rule-cards robią robotę, nie tier)
+//       FINAL GATE              → bez override (dziedziczy sesyjny, zwykle najmocniejszy)
 ```
 
 **Wyjątek nie jest rollbackiem.** `agent()`, które rzuciło, zostawia po sobie wszystkie

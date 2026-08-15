@@ -104,7 +104,11 @@ BLOKUJĄCE `open_question` („TM addendum: <wektory>", `answer: null`).
 
 `collection` z `runtime.yml` (`knowledge.collection` — źródłem jest
 `project.yml → knowledge_collection`; osobny `knowledge.json` był drugim configiem
-obok runtime i został zmigrowany);
+obok runtime i został zmigrowany). **NIGDY nie konstruuj nazwy z nazwy katalogu
+projektu** — bliźniacze checkouty tego samego repo współdzielą JEDNĄ kolekcję
+(juz-ide-api-1..4 → `code_juz_ide_api`; zgadnięte `code_juz_ide_api_2` = pusty
+RAG, incydent 2026-08-14). Deleguując do subagenta wstrzykuj **literalną**
+wartość do promptu, nie instrukcję „weź z runtime.yml".
 `retrieve_code(<intencja>, collection=...)` → Codebase Facts do impl-analizy;
 `retrieve_patterns(<task>)` → grounding panelu. Fallback bez MCP: statyczna
 lista z 0.5. Artefakt MUSI mieć frontmatter `rag:` — lista zapytań z liczbą
