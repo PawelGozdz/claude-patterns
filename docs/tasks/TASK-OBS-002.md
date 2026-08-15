@@ -1,6 +1,6 @@
 # TASK-OBS-002 — Metryki workflow per-krok: koszty, konformancja z runtime.yml, ewaluatory regresji (Filar 0, kontynuacja OBS-001)
 
-**Status: IN REVIEW — implementacja 2026-08-15, staged-not-committed (commit robi user)** · **Źródło:** sesja 2026-08-15
+**Status: DONE — zaimplementowane 2026-08-15, zmergowane do develop (19eb027)** · **Źródło:** sesja 2026-08-15
 (rozmowa o monitorowaniu zużycia tokenów per operacja; wszystkie fakty o danych zweryfikowane
 na żywo w tej sesji) · **Poprzednik:** TASK-OBS-001 (watchdog, DONE) · **Powiązane:**
 TASK-EVAL-001 (automatyzacja evali — ten task DOKŁADA nowy korpus evali w tej samej konwencji,
