@@ -708,6 +708,27 @@ See `commands/README.md` for full catalog.
 | Implementation, domain work | Sonnet | ~$0.10 |
 | Security VETO, architecture | Opus | ~$0.50 |
 
+#### Sprawdzanie kosztów i zużycia w terminalu (TASK-OBS-002)
+
+Wrappery `wf-*` (w `~/.local/bin`, działają z DOWOLNEGO katalogu — dane są globalne
+w `~/.claude/metrics/`, zbierane automatycznie hookiem po każdym przebiegu Workflow):
+
+```bash
+wf-metrics --sessions --since 2026-08-15   # PEŁNY dzienny obraz: $ per dzień/model/projekt
+                                           #  (poziom sesyjny z ECC costs.jsonl) + udział workflow%
+wf-metrics --by day|task|model|agentType   # zużycie kroków Workflow per wymiar + success-rate
+wf-metrics --top 15                        # najdroższe kroki (gdzie ucieka budżet)
+wf-metrics --regression                    # delta kosztu/outcome tego samego kroku między runami
+wf-conformance [--run wf_xxx]              # czy przebieg trzymał się planu runtime.yml
+wf-collect                                 # ręczne dozbieranie (normalnie robi to hook)
+/cost-report 1                             # rachunek wg Anthropic (Admin API) — źródło prawdy $
+```
+
+Trzy warstwy pomiaru: `wf-metrics` bez `--sessions` liczy TYLKO kroki wewnątrz Workflow
+(do regresji orkiestracji); `--sessions` dokłada wszystkie sesje (główna pętla, subagenci,
+komendy); prawda rozliczeniowa = `/cost-report`. Format rekordów, cennik i pułapki
+(kumulatywne wpisy costs.jsonl, dedup transkryptów): [`scripts/WORKFLOW-METRICS.md`](scripts/WORKFLOW-METRICS.md).
+
 **Full documentation**: `agents/README.md`, `commands/README.md`
 
 ---
@@ -928,6 +949,9 @@ git pull  # All projects see updates via symlinks
 | `migrate-v2.sh` | Migrate single project to v3 |
 | `migrate-all.sh` | Batch migrate all projects in `/opt/projects/` |
 | `validate-metadata.sh` | Validate all METADATA.yml files |
+| `workflow-metrics-collect.mjs` | TASK-OBS-002: collector metryk per-krok przebiegów Workflow → `~/.claude/metrics/workflow-steps.jsonl` (odpalany automatycznie hookiem po każdym Workflow) |
+| `workflow-metrics-report.mjs` | Raporty kosztów/zużycia: `--by`, `--top`, `--regression`, `--sessions`, `--calibrate`, `--json` (wrapper: `wf-metrics`) |
+| `workflow-conformance.mjs` | Zgodność przebiegu z planem `runtime.yml`: `OK` / `DEVIATIONS(n)` (wrapper: `wf-conformance`) |
 
 ---
 

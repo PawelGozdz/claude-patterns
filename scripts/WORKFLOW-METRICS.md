@@ -45,6 +45,10 @@ Rekord przebiegu (`type: "run"`, jedna linia per run): `status`, `escalatedAt`, 
 
 ## Użycie
 
+Z DOWOLNEGO katalogu przez wrappery w `~/.local/bin` (dane i tak są globalne w `~/.claude/metrics/`):
+`wf-metrics …` (= report), `wf-collect`, `wf-conformance`. Wrappery wskazują na to repo absolutną
+ścieżką — po przeniesieniu repo utwórz je na nowo.
+
 ```bash
 node scripts/workflow-metrics-collect.mjs            # zbierz (idempotentnie) wszystkie przebiegi
 node scripts/workflow-metrics-report.mjs             # przegląd per label + success-rate
@@ -55,6 +59,10 @@ node scripts/workflow-metrics-report.mjs --regression  # delta kosztu/outcome te
 node scripts/workflow-metrics-report.mjs --top 10    # najdroższe kroki
 node scripts/workflow-metrics-report.mjs --json      # pod przyszły dashboard (TASK-OBS-003?)
 node scripts/workflow-metrics-report.mjs --calibrate # rozjazd % vs /cost-report (ANTHROPIC_ADMIN_API_KEY)
+node scripts/workflow-metrics-report.mjs --sessions  # poziom SESYJNY (ECC costs.jsonl) obok workflow:
+                                                     #  $ per dzień/model/projekt + udział workflow%.
+                                                     #  Wpisy costs.jsonl są KUMULATYWNE per sesja —
+                                                     #  raport liczy deltę (naiwna suma linii kłamie)
 node scripts/workflow-conformance.mjs [--run wf_x]   # OK | DEVIATIONS(n) względem planu runtime.yml
 ```
 

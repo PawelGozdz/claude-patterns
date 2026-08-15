@@ -8,6 +8,7 @@ import crypto from 'node:crypto';
 
 export const METRICS_DIR = path.join(os.homedir(), '.claude', 'metrics');
 export const STEPS_FILE = path.join(METRICS_DIR, 'workflow-steps.jsonl');
+export const COSTS_FILE = path.join(METRICS_DIR, 'costs.jsonl'); // ECC cost-tracker (tylko odczyt)
 export const PRICES_FILE = path.join(METRICS_DIR, 'prices.json');
 export const SNAPSHOTS_DIR = path.join(METRICS_DIR, 'runtime-snapshots');
 export const PROJECTS_DIR = path.join(os.homedir(), '.claude', 'projects');

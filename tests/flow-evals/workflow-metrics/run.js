@@ -27,7 +27,7 @@ const check = (name, cond, detail = '') => {
 
 async function main() {
   const { collectRun } = await import('../../../scripts/workflow-metrics-collect.mjs');
-  const { buildRegressionReport } = await import('../../../scripts/workflow-metrics-report.mjs');
+  const { buildRegressionReport, buildSessionsReport } = await import('../../../scripts/workflow-metrics-report.mjs');
   const { checkConformance, parsePlan, unitKey, parseLabel } = await import('../../../scripts/workflow-conformance.mjs');
   const { estimateCostUsd } = await import('../../../scripts/workflow-metrics-lib.mjs');
   const YAML = (await import('yaml')).default;
@@ -104,6 +104,29 @@ async function main() {
   check('szum +10% → cisza', rowFor('verify:domain') === undefined,
     `got ${JSON.stringify(rowFor('verify:domain'))}`);
   check('delta policzona', rowFor('impl:domain')?.deltaPct === 60);
+
+  // ── E4: --sessions — delta KUMULATYWNYCH wpisów ECC costs.jsonl ─────────────
+  process.stdout.write('\nE4 sessions-delta\n');
+  const ce = (session_id, timestamp, cost, extra = {}) => ({
+    session_id, timestamp, estimated_cost_usd: cost, model: 'claude-sonnet-5',
+    transcript_path: '/home/x/.claude/projects/-opt-projects-demo/t.jsonl', ...extra,
+  });
+  const costEntries = [
+    // sesja A: kumulatywnie 1.0 → 3.0 tego samego dnia → dzień liczy 3.0 (nie 4.0)
+    ce('sesA', '2026-08-14T10:00:00Z', 1.0), ce('sesA', '2026-08-14T11:00:00Z', 3.0),
+    // sesja B przez północ: dzień1 last 2.0, dzień2 last 5.0 → 2.0 + 3.0 (delta, nie 5.0)
+    ce('sesB', '2026-08-14T23:00:00Z', 2.0), ce('sesB', '2026-08-15T01:00:00Z', 5.0),
+  ];
+  const sr = buildSessionsReport(costEntries, {});
+  const day14 = sr.days.find((d) => d.day === '2026-08-14');
+  const day15 = sr.days.find((d) => d.day === '2026-08-15');
+  check('kumulatywne wpisy → ostatni per dzień (3.0+2.0)', day14?.sessionUsd === 5.0, `got ${day14?.sessionUsd}`);
+  check('sesja przez północ → delta, nie suma (5.0-2.0)', day15?.sessionUsd === 3.0, `got ${day15?.sessionUsd}`);
+  const srSince = buildSessionsReport(costEntries, { since: '2026-08-15' });
+  check('--since tnie dni, ale delta liczona od pełnej historii sesji',
+    srSince.days.length === 1 && srSince.days[0].sessionUsd === 3.0, JSON.stringify(srSince.days));
+  check('per projekt zsumowany', sr.projects[0]?.project === '-opt-projects-demo' && sr.projects[0]?.usd === 8.0,
+    JSON.stringify(sr.projects));
 
   // ── E3: conformance (plan zgodny → OK; braki → DEVIATIONS z poprawną listą) ─
   process.stdout.write('\nE3 conformance\n');

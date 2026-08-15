@@ -11,13 +11,15 @@
 //   node scripts/workflow-metrics-report.mjs --top 10             # najdroższe kroki
 //   node scripts/workflow-metrics-report.mjs --json               # wyjście maszynowe (pod dashboard)
 //   node scripts/workflow-metrics-report.mjs --calibrate          # rozjazd % vs Admin API (/cost-report)
+//   node scripts/workflow-metrics-report.mjs --sessions           # poziom SESYJNY (ECC costs.jsonl)
+//                                                                 #  obok kosztu workflow — pełny dzienny obraz
 //
 // Sukces kroku = agent ODDAŁ wynik (ok/GO/NO_GO/cached). NO_GO to porażka weryfikowanego kodu,
 // nie kroku — verifier zrobił swoje. Porażka kroku = silent-death / not-started / unknown.
 
 import path from 'node:path';
 import url from 'node:url';
-import { STEPS_FILE, readJsonl, dedupeRecords } from './workflow-metrics-lib.mjs';
+import { STEPS_FILE, COSTS_FILE, readJsonl, dedupeRecords } from './workflow-metrics-lib.mjs';
 
 const FAILED_OUTCOMES = new Set(['silent-death', 'not-started', 'unknown']);
 export const isStepCompleted = (s) => !FAILED_OUTCOMES.has(s.outcome);
@@ -121,6 +123,69 @@ export function buildRegressionReport(steps, runs, { alarmPct = 50, noisePct = 2
   return rows.sort((a, b) => (a.flag === 'REGRESSION' ? 0 : 1) - (b.flag === 'REGRESSION' ? 0 : 1));
 }
 
+// ── poziom SESYJNY z ECC costs.jsonl (--sessions) ────────────────────────────
+// Wpisy cost-trackera ECC są KUMULATYWNE per sesja (rosnący estimated_cost_usd) — naiwna suma
+// wszystkich linii liczy tę samą sesję wielokrotnie (np. $3133 zamiast $502 za dzień).
+// Poprawnie: per sesja bierzemy OSTATNI wpis każdego dnia i liczymy deltę względem ostatniego
+// wpisu z poprzedniego dnia tej sesji — sesje przechodzące przez północ rozliczają się per dzień.
+export function buildSessionsReport(costEntries, { since = null, steps = [] } = {}) {
+  const sinceDay = since ? String(since).slice(0, 10) : null;
+  const bySession = new Map();
+  for (const r of costEntries) {
+    if (!r?.session_id || typeof r.timestamp !== 'string') continue;
+    if (!bySession.has(r.session_id)) bySession.set(r.session_id, []);
+    bySession.get(r.session_id).push(r);
+  }
+
+  const perDay = new Map();    // day → {sessions:Set, usd, byModel:Map}
+  const perProject = new Map(); // slug → {sessions:Set, usd}
+  for (const [sessionId, entries] of bySession) {
+    entries.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+    const lastByDay = new Map();
+    for (const e of entries) lastByDay.set(e.timestamp.slice(0, 10), e);
+    let prevCost = 0;
+    for (const [day, e] of [...lastByDay.entries()].sort()) {
+      const cum = Number.isFinite(e.estimated_cost_usd) ? e.estimated_cost_usd : prevCost;
+      const delta = Math.max(0, cum - prevCost); // clamp: restart licznika nie może dać ujemnej delty
+      prevCost = cum;
+      if (sinceDay && day < sinceDay) continue; // delta sprzed okna odpada, ale prevCost już przesunięty
+      if (!perDay.has(day)) perDay.set(day, { day, sessions: new Set(), usd: 0, byModel: new Map() });
+      const d = perDay.get(day);
+      d.sessions.add(sessionId);
+      d.usd += delta;
+      const model = e.model ?? '(bez modelu)';
+      d.byModel.set(model, (d.byModel.get(model) ?? 0) + delta);
+      const slug = /\/projects\/([^/]+)\//.exec(e.transcript_path ?? '')?.[1] ?? '(bez projektu)';
+      if (!perProject.has(slug)) perProject.set(slug, { project: slug, sessions: new Set(), usd: 0 });
+      perProject.get(slug).sessions.add(sessionId);
+      perProject.get(slug).usd += delta;
+    }
+  }
+
+  // koszt workflow per dzień (z rekordów kroków) — do kolumny obok
+  const wfByDay = new Map();
+  for (const s of steps) {
+    const day = (s.ts ?? '').slice(0, 10);
+    if (!day || (sinceDay && day < sinceDay)) continue;
+    if (Number.isFinite(s.costUsd)) wfByDay.set(day, (wfByDay.get(day) ?? 0) + s.costUsd);
+  }
+
+  const days = [...perDay.values()]
+    .map((d) => ({
+      day: d.day,
+      sessions: d.sessions.size,
+      sessionUsd: +d.usd.toFixed(2),
+      workflowUsd: +(wfByDay.get(d.day) ?? 0).toFixed(2),
+      workflowSharePct: d.usd > 0 ? Math.round(((wfByDay.get(d.day) ?? 0) / d.usd) * 100) : null,
+      byModel: Object.fromEntries([...d.byModel.entries()].map(([m, v]) => [m, +v.toFixed(2)])),
+    }))
+    .sort((a, b) => b.day.localeCompare(a.day));
+  const projects = [...perProject.values()]
+    .map((p) => ({ project: p.project, sessions: p.sessions.size, usd: +p.usd.toFixed(2) }))
+    .sort((a, b) => b.usd - a.usd);
+  return { days, projects };
+}
+
 export function topSteps(steps, n = 10) {
   return [...steps]
     .filter((s) => Number.isFinite(s.costUsd))
@@ -174,12 +239,15 @@ export async function main(argv = process.argv.slice(2)) {
   const json = argv.includes('--json');
   const regression = argv.includes('--regression');
   const doCalibrate = argv.includes('--calibrate');
+  const sessions = argv.includes('--sessions');
   const file = get('--file') ?? STEPS_FILE;
 
   const { steps, runs } = loadRecords({ since, file });
   const out = {};
 
-  if (regression) {
+  if (sessions) {
+    out.sessions = buildSessionsReport(readJsonl(get('--costs-file') ?? COSTS_FILE), { since, steps });
+  } else if (regression) {
     out.regression = buildRegressionReport(steps, runs);
   } else if (top) {
     out.top = topSteps(steps, parseInt(top, 10) || 10);
@@ -200,6 +268,25 @@ export async function main(argv = process.argv.slice(2)) {
 
   if (json) { console.log(JSON.stringify(out, null, 2)); return out; }
 
+  if (out.sessions) {
+    console.log(`\n🧾 Koszty per dzień — poziom SESYJNY (ECC costs.jsonl, delta wpisów kumulatywnych) vs workflow${since ? `, od ${since}` : ''}\n`);
+    console.log(table(out.sessions.days, [
+      { h: 'day', f: (d) => d.day },
+      { h: 'sesje', f: (d) => d.sessions },
+      { h: '$ sesyjny', f: (d) => d.sessionUsd },
+      { h: '$ workflow', f: (d) => d.workflowUsd },
+      { h: 'workflow%', f: (d) => d.workflowSharePct === null ? '—' : `${d.workflowSharePct}%` },
+      { h: 'per model', f: (d) => Object.entries(d.byModel).map(([m, v]) => `${m.replace(/^claude-/, '')} $${v}`).join(', ') },
+    ]));
+    console.log('\n📁 Per projekt (w oknie)\n');
+    console.log(table(out.sessions.projects, [
+      { h: 'projekt', f: (p) => p.project },
+      { h: 'sesje', f: (p) => p.sessions },
+      { h: '$ sesyjny', f: (p) => p.usd },
+    ]));
+    console.log('\nUwaga: obie kolumny $ to szacunki lokalne; prawda rozliczeniowa = /cost-report (Admin API).');
+    return out;
+  }
   if (out.regression) {
     console.log(`\n🔁 Regresje per task::label (${steps.length} kroków, ${runs.length} runów)\n`);
     console.log(table(out.regression, [

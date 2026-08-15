@@ -135,6 +135,61 @@ compile is. If your canonical builder cannot express a legitimate call site, the
 wrong — do not let the call site fork off its own inline SQL, because that fork is how you
 get back to five implementations.
 
+**As shipped in this codebase** (`src/shared/geo/`, `ADR-0112`/`ADR-0113`, closed by the
+`TS-GEO-QUERY-KERNEL-001/002/002a/002b` series, 2026-08-13 → 2026-08-15): the discriminated
+union above is not a sketch, it is `SpatialSource` (`spatial-column.types.ts`) — four
+variants (`column`+topological/metric, `column`+containment pinned to `geometry`,
+`derived-point`+metric, `derived-point`+containment pinned to `geometry`), each carrying
+`kind`/`class`/`indexable` so a caller cannot construct a combination PostGIS itself cannot
+execute (e.g. `ST_Contains` has no `geography` overload — `kind: 'geometry'` is pinned at
+the type level for containment, a compile error not a runtime SQL failure). Three functions
+consume it:
+
+```typescript
+buildSpatialPredicate(left: SpatialSource, right: SpatialSource, opts?): Expression<SqlBool>
+buildDistanceExpression(a: SpatialSource, b: SpatialSource): RawBuilder<number>   // SELECT-list value, casts both operands
+buildKnnOrderExpression(column: IndexedSpatialColumn, target: VerifiedResidencePoint): RawBuilder<unknown>  // ORDER BY <->
+```
+
+`VerifiedResidencePoint` (`toVerifiedResidencePoint`) is a branded type for the second rule
+this pattern doesn't cover on its own but the codebase learned the hard way: **who supplies
+the comparison point is as much an access-control question as the predicate shape.** A
+metric predicate built correctly (this pattern) against an operand the caller fully controls
+(any `lat`/`lng` from a request body) is an intersection/trilateration oracle regardless of
+cast correctness — three `ST_Distance` probes at different caller-chosen origins recover a
+target's exact coordinates. `VerifiedResidencePoint` can only be constructed from a
+server-resolved value, so a raw `{ lat, lng }` from user input cannot type-check into
+`buildDistanceExpression`/`buildKnnOrderExpression` without going through a resolution step
+the compiler can see. Two production incidents shipped from skipping this (`TM-TS-GEO-SPATIAL-QUERY-AUDIT-002` `-17`/`-18`, `TM-TS-GEO-QUERY-KERNEL-002` `-19`) — see AP9, which
+this type directly closes for every caller of these three functions.
+
+**Adoption (verified 2026-08-15 by grep-diff, corrected 2026-08-15 by @geo-postgres-specialist
+after checking the guardian allowlist itself, not just grepping for kernel calls):**
+`grep -rl 'buildSpatialPredicate\|buildDistanceExpression\|buildKnnOrderExpression' src/contexts/` —
+20 files across `neighborhood-economy`, `geographic-auth`, `community-communication`,
+`discovery`, `user-profile`. `discussions`, `mentions`, `engagement` have zero spatial SQL
+(not applicable — they don't query by location). `pricing`/`reputation` only reference geo
+concepts through their ACL adapter or in comments, never build SQL directly — correct
+pattern, not a gap. **Two files build raw, unmigrated spatial SQL**, found by this same
+grep-diff: `geographic-auth/infrastructure/repositories/address-point-kysely.repository.ts:184`
+(`ORDER BY ST_Distance(...) ASC`, address-lookup KNN tie-break) and
+`geographic-auth/infrastructure/services/postgis/isochrone-postgis.adapter.ts:214`
+(`ORDER BY the_geom <-> ...`, pgRouting nearest-vertex). **Both are already registered in the
+guardian's allowlist** (Rule 7,
+`src/shared/geo/__tests__/spatial-predicate-canonical-builder.guardian.spec.ts:538-547` and
+`:699-721`) — the earlier claim that neither was registered came from grep-diffing kernel
+adopters against raw-SQL hits without ever reading the allowlist contents, and was wrong.
+The isochrone file's entry already carries the "routing-graph node lookup, not a content-row
+predicate" reasoning this pattern's "Do NOT use for" section calls for — confirmed correct by
+`@geo-postgres-specialist`, no further decision pending. The address-point file's entry only
+covers its `ST_X`/`ST_Y` SELECT-projection hits, not the `ST_Distance` `ORDER BY` tie-break at
+line 184 — that hit's allowlist reason still needs extending, and the tie-break itself is a
+cheap, safe candidate for `buildDistanceExpression` (target column is
+`GEOGRAPHY(Point, 4326)`, migration 114; `gpsCoords` is unverified caller input, but
+`VerifiedResidencePoint`/AP9 does not apply here since the same query already returns the
+compared point's exact coordinates in plaintext via `ST_X`/`ST_Y` — there is no secret left to
+oracle). See `TS-GEO-GUARDIAN-ALLOWLIST-001`.
+
 ### Rule 4 — Verify against the catalogue first, the planner second
 
 Small tables lie. At 3–300 rows the planner picks a sequential scan whether or not the index
@@ -206,6 +261,15 @@ it('never casts a geometry area column to geography', () => {
 
 Pair it with an L2 that asserts `Index Cond` on a real database, and one L2 edge case with a
 point **exactly on the boundary** of the area — see Anti-Pattern 8.
+
+**As shipped**: `src/shared/geo/__tests__/spatial-predicate-canonical-builder.guardian.spec.ts`.
+Every raw `ST_*`/`<->` hit in the codebase is either migrated, or carries an ALLOWLIST entry
+with `status: 'pending-migration'` (must name an open task file — an entry with no task
+behind it is an orphaned promise) or `status: 'structural-exclusion'` (must cite the specific
+remaining hit and why migrating it is wrong, not just hard). A hit with neither status fails
+CI. This is what makes the two unmigrated files noted above a *known, closable* gap instead
+of invisible debt — the fix is registering them in this allowlist, not necessarily migrating
+them immediately.
 
 ### Rule 8 — Spatial predicates are access control: test both directions
 
@@ -303,6 +367,13 @@ relies on for context isolation. A migration in context B then breaks context A 
 compile error. **Fix**: resolve the value through the ACL adapter in the command handler
 before the write; keep triggers to the context's own tables.
 
+**Live instance, not hypothetical**: `compute_service_area()` (`neighborhood-economy`,
+migration `063`) reads `user_residences` (`geographic-auth`) directly in a DB trigger.
+Confirmed by cataloguing `pg_trigger`+`pg_proc` against the live schema — the only
+cross-context read among three residence-touching functions found. Tracked as
+`TS-GEO-TRIGGER-CROSS-CONTEXT-001`, `backlog`, needs an architectural decision
+(`@ddd-application-expert`) before any fix, not a mechanical query change.
+
 ### ❌ AP11 — Two discovery models coexisting without a decision
 
 One feed filters by a **viewer-supplied radius** while every other surface filters by the
@@ -343,3 +414,7 @@ patterns, so: enumerate readers statically first (cheap, often decisive), confir
 - [ ] L1 guardian on predicate shape; L2 with a boundary point (Rules 7–8)
 - [ ] Both visibility directions asserted — sees **and** does not see (Rule 8)
 - [ ] Documentation and ADRs corrected in the same change as the query (Rule 6)
+- [ ] Comparison point is a server-resolved `VerifiedResidencePoint`, never a raw caller
+      `lat`/`lng`, even in a correctly-cast predicate (Rule 3, AP9)
+- [ ] New raw `ST_*`/`<->` call site registered in the guardian allowlist — migrated,
+      `pending-migration` with a task, or `structural-exclusion` with a cited reason (Rule 7)
