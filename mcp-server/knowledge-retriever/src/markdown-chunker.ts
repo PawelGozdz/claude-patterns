@@ -71,6 +71,25 @@ const TAGS_RE = /^\*\*Tags\*\*:\s*(.+)$/m;
 // carrying it into the index keeps the reason visible at retrieval time too.
 const ASSUMES_RE = /^\*\*Assumes\*\*:\s*(.+)$/m;
 
+// Depth of treatment (`**Level**: core`). Same four-value taxonomy the @vytches/ddd examples
+// already use in library_reference_global (quickstart 39 / core 231 / advanced 58 /
+// exhaustive 172), so retrieve_* filters by one vocabulary across BOTH global collections
+// instead of two. Absent = "core": the everyday depth, which is what an implementer wants by
+// default. Until 2026-08-14 every one of the 1147 patterns_global points carried level: None
+// — the field was indexed and filterable, just never populated on the patterns side.
+const LEVEL_RE = /^\*\*Level\*\*:\s*(quickstart|core|advanced|exhaustive)\b/mi;
+
+function parseLevel(content: string, source: string): Chunk["level"] {
+  const m = LEVEL_RE.exec(content);
+  if (m) return m[1].toLowerCase() as Chunk["level"];
+  // Bez jawnej deklaracji poziom wynika z ROLI pliku, nie z treści: karta reguł (`_summary.md`)
+  // jest z definicji skrótem — tym, co wkleja się do promptu implementera — więc 'quickstart';
+  // pełny wzorzec jest referencją, więc 'core'. Dzięki temu 138 plików dostaje sensowny podział
+  // bez edytowania każdego z osobna, a `**Level**` w nagłówku nadpisuje default tam, gdzie
+  // wzorzec jest realnie głębszy (advanced) albo jest pełną referencją z historią (exhaustive).
+  return /_summary\.md$/.test(source) ? "quickstart" : "core";
+}
+
 function parseDeclaredTags(content: string): string[] {
   const m = TAGS_RE.exec(content);
   if (!m) return [];
@@ -98,7 +117,7 @@ function pushChunk(
   body: string,
   kind: ChunkKind,
   tags: string[],
-  scopeInfo: { scope?: "project-specific"; project?: string }
+  scopeInfo: { scope?: "project-specific"; project?: string; level?: Chunk["level"] }
 ): void {
   const text = body.trim();
   if (text.length < MIN_LEN) return;
@@ -109,7 +128,7 @@ export function chunkMarkdown(content: string, source: string): Chunk[] {
   // Path tags + declared taxonomy tags, deduplicated: retrieval can filter by either.
   const tags = [...new Set([...tagsFromPath(source), ...parseDeclaredTags(content)])];
   const assumes = parseAssumes(content);
-  const scopeInfo = { ...parseScope(content), ...(assumes.length ? { assumes } : {}) };
+  const scopeInfo = { ...parseScope(content), ...(assumes.length ? { assumes } : {}), level: parseLevel(content, source) };
   const chunks: Chunk[] = [];
 
   for (const section of splitByHeading(content, "## ")) {

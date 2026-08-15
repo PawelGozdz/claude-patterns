@@ -4,10 +4,15 @@
 
 **Pattern**: `patterns/infrastructure/geo-spatial-query-pattern.md`
 **Layer**: Infrastructure
+**Level**: core
 **Scope**: project-specific (juz-ide)
+
+## Why this card exists
 
 Spatial predicates are access control, not tuning. Wrong units publish private content;
 wrong casts silently disable the index.
+
+## Rules
 
 | ID | Rule | Failure if broken |
 |----|------|-------------------|
@@ -24,5 +29,7 @@ wrong casts silently disable the index.
 | **GEO11** | Triggers read only their own context's tables; cross-context reads go through the ACL adapter in the handler. | DDL coupling is invisible to import-graph linters |
 | **GEO12** | Pick one discovery model (creator-centric vs viewer-centric) and record every exception in the ADR, not in a comment. | An undocumented exception is indistinguishable from a bug |
 | **GEO13** | `DROP INDEX` on a spatial duplicate only after static reader enumeration **and** `pg_stat_user_indexes` from real traffic. | One-way door; the surviving index may be the unused one |
+
+## Non-negotiable
 
 **Correcting the doc that taught the bug is part of the fix, not a follow-up** (GEO5).

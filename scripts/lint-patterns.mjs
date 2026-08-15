@@ -114,6 +114,30 @@ for (const [p, blocks] of always) {
   }
 }
 
+// ── indeksowalność: bez '## ' plik NIE ISTNIEJE dla retrieve_patterns ─────
+// markdown-chunker tnie po nagłówkach '## '. Dokument mający tylko '# ' i pogrubienia daje
+// zero chunków i wypada z patterns_global po cichu — reseed kończy się "sukcesem". Tak
+// zniknęła karta geo-spatial-query-pattern_summary.md (28 linii, zero '## ') i stub
+// repository-pattern.md: leżały na dysku, były nieosiągalne dla agentów. To ERROR, nie
+// ostrzeżenie — plik niewidoczny dla wyszukiwania jest gorszy niż jego brak, bo wygląda
+// na pokrycie tematu, którego realnie nie ma.
+for (const f of allFiles.filter((x) => x.endsWith('.md') && !/(^|\/)README\.md$/i.test(x))) {
+  const src = readFileSync(join(PATTERNS, f), 'utf8');
+  if (!/^##\s+\S/m.test(src))
+    errors.push(`${f}: brak nagłówka '## ' — plik NIE trafi do patterns_global (chunker tnie po sekcjach), będzie niewidoczny dla retrieve_patterns`);
+}
+
+// ── poziom głębokości (**Level**) ─────────────────────────────────────────
+// Ta sama taksonomia, która działa w library_reference_global (quickstart/core/advanced/
+// exhaustive). Brak pola = 'core' (świadomy default), więc nie wymagamy go — ale wartość
+// spoza słownika jest błędem, bo filtr retrieve_* po prostu takiego chunka nie zwróci.
+const LEVELS = new Set(['quickstart', 'core', 'advanced', 'exhaustive']);
+for (const f of patternFiles) {
+  const m = /^\*\*Level\*\*:\s*(\S+)/mi.exec(readFileSync(join(PATTERNS, f), 'utf8'));
+  if (m && !LEVELS.has(m[1].toLowerCase().replace(/[*`"']/g, '')))
+    errors.push(`${f}: **Level**: "${m[1]}" spoza słownika (${[...LEVELS].join('|')}) — chunk z takim poziomem nie zostanie zwrócony przez filtr`);
+}
+
 // ── metadane i sekcje wymagane przez CLAUDE.md ────────────────────────────
 for (const f of patternFiles) {
   const src = readFileSync(join(PATTERNS, f), 'utf8');

@@ -247,6 +247,12 @@ tmux sessions (days/weeks) without relying on session-start hooks.
 
 ### Adding a New Pattern
 
+> **Skrót: `/add-pattern`** (skill `skills/meta/add-pattern/`) przechodzi całą tę procedurę
+> za Ciebie — generuje szkielet z wymaganymi sekcjami, waliduje tagi wobec słownika, tworzy
+> sparowaną kartę reguł i domyka lintem + reseedem. Ręcznie warto tylko wtedy, gdy robisz coś
+> nietypowego. Sam generator: `node scripts/new-pattern.mjs --name … --layer … --tags "…"`.
+> Kroki poniżej opisują, CO musi powstać (i dlaczego), niezależnie od drogi.
+
 1. Create file in the appropriate layer: `patterns/{layer}/{name}-pattern.md`
 2. Use this structure:
    ```markdown
@@ -277,6 +283,26 @@ tmux sessions (days/weeks) without relying on session-start hooks.
    If the pattern has a rule card (`{name}_summary.md`), **copy the same `**Tags**` line into
    it**. The card is what actually enters prompts, so different tags there mean the topic filter
    admits one and drops the other; `lint-patterns.mjs` reports that mismatch as an error.
+2b. **Declare `**Level**`** right under `**Tags**` when the pattern is not everyday depth:
+   ```markdown
+   **Level**: quickstart | core | advanced | exhaustive
+   ```
+   Same four values `library_reference_global` already uses, so `retrieve_*` filters by ONE
+   vocabulary across both global collections. Omit it and the level follows the file's role:
+   `_summary.md` → `quickstart` (a card is a shortcut — it is what gets pasted into an
+   implementer's prompt), full pattern → `core`. Declare it explicitly only to say
+   "this one is deeper than usual" (`advanced`) or "this is the full reference with decision
+   history" (`exhaustive`). A value outside the four is an ERROR in `lint-patterns.mjs` —
+   the retrieval filter would silently never return that chunk.
+
+2c. **Every file needs at least one `## ` heading.** `markdown-chunker` splits on `## `, so a
+   document with only `# ` and bold labels produces zero chunks and **vanishes from
+   `patterns_global` without an error** — the reseed still reports success. This is how
+   `geo-spatial-query-pattern_summary.md` (28 lines, 13 rules, zero `## `) sat on disk while
+   being unreachable for `retrieve_patterns`, during the exact task where implementers ran
+   126 greps looking for what it contained. `lint-patterns.mjs` now fails on this, and the
+   indexer prints every file that produced no chunks.
+
 3. **Is this pattern derived from ONE project's codebase and not yet seen/validated in a second
    one?** (e.g. promoted straight out of a single task like `TS-REACH-SYSTEM-001`, not yet reused
    elsewhere) — if so, add a line right after `**Status**:`:

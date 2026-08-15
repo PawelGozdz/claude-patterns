@@ -63,9 +63,23 @@ export async function buildPatternsIndex(): Promise<number> {
   walkMarkdown(join(REPO_ROOT, "rules"), files);
 
   const chunks: Chunk[] = [];
+  // Pliki, które nie dały ANI JEDNEGO chunka, raportujemy głośno. chunkMarkdown tnie po `## `,
+  // więc dokument mający tylko `# ` i pogrubienia znika z indeksu bez śladu, a reseed kończy się
+  // "sukcesem". Tak wypadła rule card geo-spatial-query (28 linii, zero `## `) — leżała na dysku
+  // i była nieosiągalna dla retrieve_patterns dokładnie wtedy, gdy implementerzy w juz-ide-api-2
+  // wykonali 126 grepów, szukając wiedzy, którą miała w środku. README-e pomijamy: są nawigacją
+  // dla człowieka, nie treścią do wyszukania.
+  const empty: string[] = [];
   for (const abs of files) {
     const rel = relative(REPO_ROOT, abs);
-    chunks.push(...chunkMarkdown(readFileSync(abs, "utf8"), rel));
+    const got = chunkMarkdown(readFileSync(abs, "utf8"), rel);
+    if (!got.length && !/(^|\/)README\.md$/i.test(rel)) empty.push(rel);
+    chunks.push(...got);
+  }
+  if (empty.length) {
+    console.error(`[global-indexer] ⚠ ${empty.length} plik(ów) NIE trafiło do patterns_global — brak nagłówka '## ' (chunker tnie po sekcjach):`);
+    for (const e of empty) console.error(`[global-indexer]     ${e}`);
+    console.error(`[global-indexer]   Napraw: dodaj sekcje '## ' albo usuń plik. 'npm run lint:patterns' zgłasza to jako ERROR.`);
   }
   if (!chunks.length) return 0;
 
