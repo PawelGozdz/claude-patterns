@@ -125,6 +125,32 @@ Task(
 
 **WAIT for results.** Study the patterns, THEN implement.
 
+### 💰 CONTEXT IS CUMULATIVE — every KB you pull in, you pay for again on every later turn
+
+Tool output does not disappear once you have read it. It stays in your context and is
+re-processed on **every subsequent turn**. A 20 KB grep result on turn 20 of 80 costs sixty
+times its own size. This is not a rounding error: measured on one real run (`wf_23029d51-3a2`,
+2026-08-14), 546 Bash calls returned 1.36 M characters, which turned into 89 M cached input
+tokens — roughly 90% of the entire run's cost — to produce 36 edits.
+
+Rules, ordered by how much they save:
+
+1. **No `ps aux`, `top`, `docker ps`, or any process/environment diagnostics.** One agent pulled
+   27.9 KB of process listing into its context. It answered nothing about the code.
+2. **`git diff` only with `--stat` or `--name-only`.** Need the actual content? `Read` that one
+   file. A bare `git diff` on a mature file returns 15-21 KB — and the same diff got re-run three
+   times in one run, tripling it.
+3. **Scope every grep**: a concrete path (never the repo root) plus `| head -40`. If your prompt
+   already names the lines (`~line 519-521`), go straight to `Read` with `offset`/`limit` — do
+   not re-discover what you were handed.
+4. **Read files with `Read`, not `sed -n`/`cat`.** `Read` takes `offset`/`limit`; a Bash pipe
+   dumps the whole file into your context whether you needed it or not.
+5. **Never re-run a command whose output you already have.** Scroll up — it is still there, and
+   that is precisely the problem.
+6. **Run tests narrowly**: one spec file per invocation, never the whole package.
+
+None of this asks you to verify less. It asks you not to pay sixty times for the same kilobyte.
+
 ### PHASE 2: Implementation (Direct Tools OK)
 
 **NOW you can implement using patterns from Phase 1:**

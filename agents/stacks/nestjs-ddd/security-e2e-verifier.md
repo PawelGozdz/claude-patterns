@@ -119,6 +119,26 @@ Grep("password", path="src/")      // DELEGATE to Explore agent (Task with subag
 
 ---
 
+### 💰 CONTEXT IS CUMULATIVE — the second half of that cost story
+
+The 2-phase protocol above fixes *who* does discovery. This fixes *what you keep*: tool output
+does not disappear once read — it stays in your context and is re-processed on **every later
+turn**. A 20 KB grep result on turn 20 of 80 costs sixty times its own size. On one measured run
+(`wf_23029d51-3a2`, 2026-08-14) 546 Bash calls returned 1.36 M characters → 89 M cached input
+tokens, ~90% of the whole run's cost, for 36 edits.
+
+- **No `ps aux` / `top` / `docker ps`** or other process diagnostics (one agent pulled in 27.9 KB
+  of process listing — it answered nothing about the code).
+- **`git diff` only with `--stat` / `--name-only`**; read content with `Read` on one file. Bare
+  diffs on mature files return 15-21 KB, and the identical diff got re-run 3× in one run.
+- **Scope every grep** to a concrete path plus `| head -40`. Given line numbers? Use `Read` with
+  `offset`/`limit` instead of re-discovering them.
+- **Never re-run a command whose output you already have.**
+- **If you are handed a deterministic gate result** (typecheck/tests already run by a probe
+  agent), treat it as fact. Spend your budget on what only you can judge: security semantics.
+
+---
+
 ## 🎯 Skill Invocation Protocol
 
 This agent has access to four security skills (declared in frontmatter).

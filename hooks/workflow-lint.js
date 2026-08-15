@@ -54,6 +54,51 @@
  *                wszystkie wywołania przez tę funkcję liczą się jako pokryte razem (nie trzeba
  *                markerów w każdym call-site z osobna) — to jest zalecany kształt, nie ręczne
  *                dopisywanie limitu per-warstwa (dokładnie to zawiodło w incydencie).
+
+ *   WL11 (ERROR) wynik parallel()/pipeline() użyty bez guardu na null (juz-ide-api-2,
+ *                2026-08-14, wf_23029d51-3a2, TS-GEO-QUERY-KERNEL-002a): `const [cat1, cat2,
+ *                fix2] = await parallel([...])` i zaraz `if (cat1.status === 'GO')` — jeden
+ *                thunk zmarł, parallel oddał na jego miejscu null, skrypt padł na
+ *                `null is not an object (evaluating 'cat1.status')` po 22,5 minutach i 9
+ *                agentach. Opis narzędzia Workflow mówi to wprost („filter with .filter(Boolean)"),
+ *                ale proza nie jest bramką. Guard albo .filter(Boolean) — zawsze.
+ *   WL12 (ERROR) agent-PRODUCENT bez schema, którego wynik jest wklejany do kolejnego promptu
+ *                (ten sam przebieg): 6 z 17 zwrotów agentów to pusty string, bo agent kończy
+ *                turę wywołaniem narzędzia, a nie tekstem. Najdroższy przypadek: konsultacja
+ *                @geo-postgres-specialist (27 wywołań narzędzi, ~9,3k output) zwróciła "" —
+ *                i ta pustka poszła do TRZECH kolejnych promptów, które miały się na niej
+ *                oprzeć. Autor skryptu obchodził to prozą („Zakoncz odpowiedz zwyklym
+ *                tekstem", 3× w różnych miejscach) — nieskutecznie. Jedyny niezawodny zwrot
+ *                to schema.
+ *   WL14 (ERROR) agent({schema}) poza blokiem try/catch (juz-ide-api-1, 2026-08-14,
+ *                wf_d4b19f61-68c, TS-TOKEN-TOPUP-001): `agent()` ZE SCHEMĄ nie zwraca null, gdy
+ *                subagent skończy bez StructuredOutput — RZUCA. Skrypt bronił się wzorowo przed
+ *                nullem (`if (!impl)`, `if (!verify)`, retry 3×, ESCALATE), miał sondy i twarde
+ *                maxTurns, i mimo to padł: implementer warstwy Domain przepracował 95 tur / 59
+ *                wywołań narzędzi bez ani jednego StructuredOutput, wyjątek poleciał na samą górę
+ *                i cały przebieg dostał status `failed` po 7,4 min — zamiast ESCALATE_AND_HALT ze
+ *                stanem częściowym. W całym pliku było ZERO `try {`. Instrukcja w prompcie („gdy
+ *                budżet się kończy, oddaj stan częściowy") tam BYŁA i nie wystarczyła — proza nie
+ *                jest siatką bezpieczeństwa. To lustrzane odbicie WL12: bez schemy agent gubi dane
+ *                po cichu, ze schemą wywraca przebieg. Obie ścieżki wymagają obsługi.
+ *   WL13 (WARN)  prompt weryfikatora każe uruchomić typecheck/testy, choć skrypt ma osobny
+ *                krok sondy (ten sam przebieg): 48 typechecków i 43 uruchomienia testów w
+ *                jednym przebiegu, bo implementer robi swoje, a verifier to samo drugi raz.
+ *                Każde `pnpm test:integration` wraca z 16-23 KB, które zostają w kontekście
+ *                i są przeliczane w każdej następnej turze. Podaj verifierowi wynik sondy
+ *                jako FAKT i zabroń ponawiania.
+
+ *   WL15 (WARN)  jednostka DOPISUJĄCA testy/kontrole, której sonda nie mierzy przyrostu
+ *                bloków wykonywalnych (juz-ide-api-4, 2026-08-14, wf_69187830-205, Faza 5):
+ *                implementer trzy razy wyczerpał budżet bez StructuredOutput, za trzecim
+ *                razem zdążył dopisać 133 linie — SAMYCH KOMENTARZY opisujących Check D i
+ *                Check E zamiast ich implementacji. Sonda przepuściła: komentarze się
+ *                kompilują (tsc pass) i nie czerwienią żadnego istniejącego testu
+ *                (605/605 pass), a diff był niepusty. Bramka "zielono + niepusty diff" jest
+ *                spełnialna prozą. Fabrykacja przeciekła do security-gaps.md i TECH-DEBT.md
+ *                jako "naprawione", zanim złapał ją drogi code-quality-verifier w ostatniej
+ *                dopuszczalnej próbie. Lek jest dalej deterministyczny, nie LLM-owy:
+ *                `git diff --cached -U0 | grep -cE '^\+\s*(it|test|describe)\('`.
  *
  * Exit: 0 = czysto lub tylko WARN · 1 = ERROR (NIE uruchamiaj Workflow) · 2 = zły input.
  */
@@ -70,8 +115,32 @@ function snippetsOf(src, marker) {
   return out;
 }
 
+// Nazwy funkcji owijających agent() — `ask`, `safeAgent`, cokolwiek. Wzorzec z
+// commands/orchestrate.md §2a (helper sprowadzający wyjątek do nulla) jest ZALECANY, ale sprawia,
+// że reguły szukające dosłownego `agent(` przestają widzieć wywołania: w skrypcie api-2
+// (2026-08-14) trzy wywołania szły przez `ask(`, jedyne `agent(` siedziało w helperze — i WL1,
+// WL4, WL10 oraz WL13 zamilkły komplet. Implementer dostał wtedy schema z polem `verdict`
+// (self-ocena, incydent wf_8f8aeeb3) i nic tego nie zgłosiło. Reguły muszą widzieć OBIE formy.
+function agentHelperNames(src) {
+  const names = [];
+  const declRe = /(?:async\s+)?function\s+([A-Za-z_$][\w$]*)\s*\(|(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:async\s*)?\(/g;
+  let m;
+  while ((m = declRe.exec(src))) {
+    const name = m[1] || m[2];
+    if (!name || name === 'agent') continue;
+    if (/\bawait\s+agent\s*\(/.test(src.slice(m.index, m.index + 600))) names.push(name);
+  }
+  return [...new Set(names)];
+}
+
 function lint(src) {
   const findings = [];
+  // Wszystkie miejsca wywołania agenta: bezpośrednie i przez owijkę.
+  const callSites = (source) => {
+    const out = snippetsOf(source, 'agent(');
+    for (const h of agentHelperNames(source)) out.push(...snippetsOf(source, h + '('));
+    return out.sort((a, b) => a.at - b.at);
+  };
 
   // WL9 — realny syntax-check, PRZED wszystkimi regexowymi regułami (incydent
   // TS-SEC-ONBEHALF-001: nieescapowany backtick w template literalu dał SyntaxError, a WL1-WL8
@@ -97,23 +166,90 @@ function lint(src) {
 
   const isVerifyish = (t) => /verif|final[_\s-]?gate|security[-_]e2e/i.test(t);
 
+  // Producent danych ≠ implementer. Rozróżnienie wprowadzone po wf_23029d51-3a2 (2026-08-14):
+  // WL1 karało KAŻDĄ schema poza verify, więc pchało autorów skryptów do zostawiania
+  // konsultantów/analityków bez schema — a to jedyna rzecz, która gwarantuje niepusty zwrot
+  // (patrz WL12). Zakaz z WL1 dotyczy SELF-OCENY („czy zrobiłem dobrze"), nie zwracania faktów
+  // („co zmieniłem"). Implementer oceniający własną pracę to wf_8f8aeeb3; implementer zwracający
+  // listę plików to zwykły, potrzebny protokół.
+  const isImplementish = (t) => /implement|impl-|scaffold|migrat|fix-|-fix|writer|autor/i.test(t);
+
+  // SONDA — tani krok, który tylko URUCHAMIA deterministyczne bramki (typecheck/testy/lint)
+  // i oddaje ich wynik przez schema. Bywa w fazie 'Verify', więc isVerifyish() klasyfikuje ją
+  // jako weryfikatora i reguły WL7/WL13 strzelają w kanoniczny kształt zamiast w błąd. Sonda
+  // NIE ocenia, więc nie podlega ani zakazowi self-oceny (WL1), ani wymogom stawianym verify.
+  // Rozpoznanie sondy musi obejmować formy, w jakich realnie występuje — inaczej reguły
+  // WL7/WL10/WL13 strzelają w kanoniczny kształt zamiast w błąd (juz-ide-api-4, 2026-08-14:
+  // sonda w helperze `async function probe(label)` z shorthandem `{ label, phase: 'Verify' }`
+  // i schematem PROBE_SCHEMA dostała dwa fałszywe alarmy — WL13 zarzucił jej uruchamianie
+  // typechecku, czyli robienie dokładnie tego, po co istnieje):
+  //   • label jawny ('foo-checks') LUB przekazany zmienną (shorthand `{ label, ... }`),
+  //   • nazwa schematu z PROBE/CHECK/DIFF (PROBE_SCHEMA, CHECKS_SCHEMA, DIFF_PROBE_SCHEMA),
+  //   • `effort: 'low'` — weryfikator nigdy nie jest tani; sonda zawsze,
+  //   • wywołanie wewnątrz funkcji o nazwie probe/check/sonda.
+  const PROBE_PROMPT = /NIC nie czytaj|nie analizuj, nie poprawiaj|do not read|nothing else/i;
+  const isProbeish = (t) => /label\s*:[^,\n]{0,80}(checks?|probe|sonda|typecheck|gate-?check)/i.test(t)
+    || /schema\s*:\s*[A-Za-z_$][\w$]*(PROBE|CHECK|DIFF)[\w$]*/i.test(t)
+    || /typecheck\s*:\s*\{/.test(t)
+    || /effort\s*:\s*['"`]low['"`]/.test(t)
+    || PROBE_PROMPT.test(t);
+
+  // Wywołanie ukryte w helperze: nazwa najbliższej wcześniejszej deklaracji funkcji.
+  const enclosingFn = (at) => {
+    const before = src.slice(0, at);
+    const m = /(?:async\s+)?function\s+([A-Za-z_$][\w$]*)|(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:async\s*)?\(/g;
+    let last = null, x;
+    while ((x = m.exec(before))) last = x[1] || x[2];
+    return last;
+  };
+  const inProbeFn = (at) => /probe|check|sonda/i.test(enclosingFn(at) || '');
+  const SELF_GRADE_FIELD = /\b(verdict|status|passed|success|ok|compliant|quality|score|approved)\s*:/i;
+
   // WL1 — schema tylko na verify/final gate. Snippet przycinamy do końca obiektu opcji ('})'),
   // inaczej połyka SĄSIEDNIE wywołania i fałszuje klasyfikację (złapane przez eval L1).
-  for (const s of snippetsOf(src, 'agent(')) {
+  for (const s of callSites(src)) {
     const end = s.text.indexOf('})');
     const t = end === -1 ? s.text : s.text.slice(0, end + 2);
-    if (/schema\s*:/.test(t) && !isVerifyish(t)) {
-      findings.push({ id: 'WL1', level: 'ERROR', line: s.line, msg: 'agent({schema}) poza verify/final-gate — implement/fix mierzy bramka git-diff, nie self-report (incydent wf_8f8aeeb3)' });
+    if (/schema\s*:/.test(t) && !isVerifyish(t) && isImplementish(t)) {
+      // Sama obecność schema już nie wystarcza — dopiero schema z polem OCENIAJĄCYM. Nazwę
+      // schematu rozwijamy do jego definicji (`schema: FOO_SCHEMA` → `const FOO_SCHEMA = {...}`),
+      // bo realne skrypty nie wstawiają obiektu inline.
+      const ref = /schema\s*:\s*([A-Za-z_$][\w$]*)/.exec(t);
+      let body = t;
+      if (ref) {
+        const def = new RegExp('(?:const|let|var)\\s+' + ref[1] + '\\s*=\\s*\\{').exec(src);
+        if (def) body = src.slice(def.index, def.index + 900);
+      }
+      if (SELF_GRADE_FIELD.test(body)) {
+        findings.push({ id: 'WL1', level: 'ERROR', line: s.line, msg: 'implementer zwraca schema z polem OCENIAJĄCYM własną pracę (verdict/status/passed/...) — sukces implementacji mierzy bramka git-diff i niezależny verifier, nie self-report (incydent wf_8f8aeeb3). Schema z samymi FAKTAMI (changed_files, summary, notes) jest w porządku i zalecana — patrz WL12.' });
+      }
     }
     if (isVerifyish(t) && !/schema\s*:/.test(t) && /agentType|code-quality|security-e2e/i.test(t)) {
       findings.push({ id: 'WL4', level: 'WARN', line: s.line, msg: 'wywołanie weryfikatora bez schema — null nie odróżni "agent umarł" od złego wyniku' });
     }
   }
 
-  // WL2 — weryfikator nigdy w parallel()
+  // WL2 — weryfikator nigdy w parallel(). Regex na treści `parallel(` łapie tylko wywołania
+  // WPISANE wprost; realny skrypt (wf_23029d51-3a2) chował verify w funkcji `runUnit(...)`
+  // wołanej z parallel() i przechodził na zielono, mając 3 równoległe verify. Dlatego najpierw
+  // zbieramy nazwy funkcji, które SAME wołają weryfikatora, i traktujemy je jak verify.
+  const verifierHelpers = [];
+  {
+    const declRe = /(?:async\s+function\s+([A-Za-z_$][\w$]*)|(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:async\s*)?\()/g;
+    let d;
+    while ((d = declRe.exec(src))) {
+      const name = d[1] || d[2];
+      if (!name) continue;
+      const body = src.slice(d.index, d.index + 4000);
+      if (/agent\s*\(/.test(body) && isVerifyish(body)) verifierHelpers.push(name);
+    }
+  }
   for (const s of snippetsOf(src, 'parallel(')) {
-    if (isVerifyish(s.text)) {
-      findings.push({ id: 'WL2', level: 'ERROR', line: s.line, msg: 'weryfikator wewnątrz parallel() — verify ZAWSZE sekwencyjnie (CONFORMANCE §3: 9/9 martwych wywołań)' });
+    const viaHelper = verifierHelpers.find((n) => new RegExp('\\b' + n + '\\s*\\(').test(s.text));
+    if (isVerifyish(s.text) || viaHelper) {
+      findings.push({ id: 'WL2', level: 'ERROR', line: s.line, msg: viaHelper
+        ? `weryfikator wewnątrz parallel() — ukryty w funkcji ${viaHelper}(), która sama woła verify; verify ZAWSZE sekwencyjnie (CONFORMANCE §3: 9/9 martwych wywołań)`
+        : 'weryfikator wewnątrz parallel() — verify ZAWSZE sekwencyjnie (CONFORMANCE §3: 9/9 martwych wywołań)' });
     }
   }
 
@@ -132,7 +268,7 @@ function lint(src) {
   for (const s of snippetsOf(src, 'git diff')) {
     const line = s.text.slice(0, s.text.indexOf('\n') !== -1 ? s.text.indexOf('\n') : 120);
     if (!/--stat|--name-only|--numstat/.test(line)) {
-      findings.push({ id: 'WL6', level: 'WARN', line: s.line, msg: 'git diff bez --stat/--name-only/--numstat — pełny tekst diffa jako input promptu przeciąża budżet tury implementera kolejnej warstwy; wstrzykuj listę plików, niech agent Read sam (incydent 2026-07-04)' });
+      findings.push({ id: 'WL6', level: 'WARN', line: s.line, msg: 'git diff bez --stat/--name-only/--numstat — pełny tekst diffa ląduje w kontekście i jest przeliczany w KAŻDEJ kolejnej turze agenta. Dotyczy obu wariantów: diffa wstrzykniętego do promptu (incydent 2026-07-04: ~3191 linii, 2× pusty wynik) i diffa, który agent zrobi sam na Twoje polecenie (wf_23029d51-3a2: `git diff -- spatial-column.types.ts` = 21 KB, ten sam diff guardiana 3× po 14,5 KB). Proś o --stat, a treść niech czyta Read na konkretnym pliku' });
     }
   }
 
@@ -140,12 +276,28 @@ function lint(src) {
   // dedykowany krok PRZED verify (incydent 2026-07-08, juz-ide-api-2: patrz komentarz nagłówka).
   {
     const tscMarkers = [...snippetsOf(src, 'tsc'), ...snippetsOf(src, 'typecheck'), ...snippetsOf(src, 'type-check')];
+    // Label sondy to zwykle konkatenacja (`label: unitId + '-checks'`), więc wzorzec „cudzysłów
+    // zaraz po label:" jej nie widzi — stąd druga, luźniejsza alternatywa i wariant po schemacie.
     const hasDedicatedStep = /label\s*:\s*['"`][^'"`]{0,60}(tsc|typecheck|type-check)/i.test(src)
-      || /phase\(\s*['"`][^'"`]{0,60}(tsc|typecheck|type-check)/i.test(src);
+      || /phase\(\s*['"`][^'"`]{0,60}(tsc|typecheck|type-check)/i.test(src)
+      || /label\s*:[^,\n]{0,80}(checks?|probe|sonda|gate-?check)/i.test(src)
+      || /typecheck\s*:\s*\{/.test(src)
+      || /(?:async\s+)?function\s+\w*(probe|check)\w*\s*\(/i.test(src)
+      || /schema\s*:\s*[A-Za-z_$][\w$]*(PROBE|CHECK)[\w$]*/i.test(src);
     if (!hasDedicatedStep) {
-      const buried = tscMarkers.filter((s) => /\n\s*\d+\.\s/.test(src.slice(Math.max(0, s.at - 300), s.at)));
+      // `(?:\n|\\n)` — w źródle skryptu prompty są jednoliniowymi literałami z ESCAPOWANYM
+      // '\n' (dwa znaki), a nie realnym końcem linii. Sam /\n/ dawał fałszywy negatyw: skrypt
+      // wf_23029d51-3a2 miał '3. pnpm typecheck.' w prozie prompta verifiera i przeszedł czysto.
+      const buried = tscMarkers.filter((s) => {
+        const before = src.slice(Math.max(0, s.at - 300), s.at);
+        // numerowana lista kryteriów ALBO proza rozkazująca („Na koniec uruchom pnpm typecheck")
+        // — wf_23029d51-3a2 używał tej drugiej formy we wszystkich 6 jednostkach i przechodził
+        // czysto, choć typecheck nigdy nie był osobnym, mierzalnym krokiem.
+        return /(?:\n|\\n)\s*\d+\.\s/.test(before)
+          || /(na\s+koniec|na\s+ko\u0144cu|uruchom|odpal)\b[^.]{0,80}$/i.test(before);
+      });
       if (buried.length) {
-        findings.push({ id: 'WL7', level: 'WARN', line: buried[0].line, msg: 'tsc/typecheck wygląda na punkt listy wewnątrz prompta implementera (proza) — dodaj osobne wywołanie agent() z label zawierającym "typecheck" PRZED verify; code-quality-verifier nie kompiluje kodu (incydent 2026-07-08, juz-ide-api-2)' });
+        findings.push({ id: 'WL7', level: 'WARN', line: buried[0].line, msg: 'tsc/typecheck jest poleceniem w prozie prompta, a nie osobnym mierzalnym krokiem — dodaj SONDĘ: agent() z label zawierającym "typecheck"/"checks", effort: low i schema {typecheck, tests, tail}, uruchamianą RAZ przed verify, a jej wynik wstrzyknij verifierowi jako fakt (patrz WL13). Proza jest nieegzekwowalna: code-quality-verifier nie kompiluje kodu (incydent 2026-07-08), a gdy kompiluje — robi to drugi raz po implementerze (wf_23029d51-3a2: 48 typechecków w jednym przebiegu)' });
       }
     }
   }
@@ -196,16 +348,149 @@ function lint(src) {
     if (!builderCovers) {
       // Okno TYLKO do następnego `agent(` (nie stały stride) — inaczej krótki prompt bez markerów
       // fałszywie "pożycza" markery z NASTĘPNEGO, niepowiązanego wywołania dalej w skrypcie.
-      const agentCalls = snippetsOf(src, 'agent(');
+      const agentCalls = callSites(src);
       agentCalls.forEach((s, i) => {
         const end = s.text.indexOf('})');
         const t = end === -1 ? s.text : s.text.slice(0, end + 2);
-        if (!(/schema\s*:/.test(t) && isVerifyish(t))) return;
+        if (!(/schema\s*:/.test(t) && isVerifyish(t)) || isProbeish(t) || inProbeFn(s.at)) return;
         const windowEnd = agentCalls[i + 1] ? agentCalls[i + 1].at : src.length;
         if (!hasBoth(src.slice(s.at, windowEnd))) {
           findings.push({ id: 'WL10', level: 'WARN', line: s.line, msg: 'agent({schema}) weryfikatora bez twardego limitu narzędzi + frazy "wydaj werdykt natychmiast gdy budżet się kończy" — verifier może wyczerpać budżet tur eksploracją i skończyć BEZ StructuredOutput (twardy Error, status: failed całego Workflow, wymaga resume). Użyj kanonicznego buildVerifierPrompt() zamiast ręcznego promptu per-warstwa (incydent TS-REP-PIPELINE-001-F3a-remediation, juz-ide-api-1, 2026-07-19)' });
         }
       });
+    }
+  }
+
+  // WL11 — wynik parallel()/pipeline() użyty bez guardu na null (wf_23029d51-3a2, 2026-08-14).
+  // parallel() NIGDY nie rzuca: thunk, który padł, zostaje w tablicy jako null. Skrypt sięgnął
+  // po `cat1.status` i wywrócił cały przebieg po 22,5 min. Dwa akceptowane kształty obrony:
+  // guard na zmiennej (`!cat1`, `cat1?.`, `cat1 &&`) albo `.filter(Boolean)` na wyniku.
+  {
+    const GUARDED = (name) => new RegExp(
+      '!\\s*' + name + '\\b'
+      + '|' + name + '\\s*\\?\\.'
+      + '|' + name + '\\s*&&'
+      + '|' + name + '\\s*(?:===|==|!==|!=)\\s*null'
+      + '|' + name + '\\s*\\?\\s'
+      + '|\\b' + name + '\\s*\\|\\|'
+    );
+    const destructRe = /const\s*\[([^\]]+)\]\s*=\s*await\s+(parallel|pipeline)\s*\(/g;
+    let m;
+    while ((m = destructRe.exec(src))) {
+      const line = src.slice(0, m.index).split('\n').length;
+      const after = src.slice(m.index);
+      for (const raw of m[1].split(',')) {
+        const name = raw.trim().replace(/^\.\.\./, '');
+        if (!/^[A-Za-z_$][\w$]*$/.test(name)) continue;
+        const dereferenced = new RegExp('\\b' + name + '\\.[A-Za-z_$]').test(after);
+        if (dereferenced && !GUARDED(name).test(after)) {
+          findings.push({ id: 'WL11', level: 'ERROR', line, msg: `\`${name}\` pochodzi z ${m[2]}() i jest dereferencjonowany bez guardu na null — thunk, który padł, wraca jako null, nie wyjątek; \`${name}.pole\` wywróci CAŁY przebieg (wf_23029d51-3a2: 22,5 min i 9 agentów w powietrze). Dodaj \`if (!${name} || ...)\` albo .filter(Boolean)` });
+        }
+      }
+    }
+    const assignRe = /const\s+([A-Za-z_$][\w$]*)\s*=\s*await\s+(parallel|pipeline)\s*\(/g;
+    while ((m = assignRe.exec(src))) {
+      const name = m[1];
+      const after = src.slice(m.index);
+      const iterated = new RegExp('\\b' + name + '\\s*\\.\\s*(map|forEach|flatMap|some|every|reduce|find)\\b').test(after);
+      const filtered = new RegExp('\\b' + name + '[\\s\\S]{0,80}?filter\\s*\\(\\s*Boolean').test(after)
+        || new RegExp('\\b' + name + '\\s*\\.\\s*filter\\s*\\(').test(after);
+      if (iterated && !filtered) {
+        findings.push({ id: 'WL11', level: 'ERROR', line: src.slice(0, m.index).split('\n').length, msg: `\`${name}\` to wynik ${m[2]}() iterowany bez .filter(Boolean) — pozycje po padniętych agentach są nullami i wysypią pierwszą operację, która ich dotknie` });
+      }
+    }
+  }
+
+  // WL12 — agent-PRODUCENT bez schema, którego wynik jest wklejany do kolejnego promptu.
+  // Bez schema zwrotem jest tekst OSTATNIEJ wiadomości agenta; agent kończący turę wywołaniem
+  // narzędzia oddaje "" (6/17 zwrotów w wf_23029d51-3a2, w tym cała konsultacja specjalisty,
+  // wklejona potem do trzech promptów). Proza w prompcie („zakończ zwykłym tekstem") tego nie
+  // egzekwuje — sprawdzone, było tam 3×.
+  {
+    const prodRe = /const\s+([A-Za-z_$][\w$]*)\s*=\s*await\s+agent\s*\(/g;
+    let m;
+    while ((m = prodRe.exec(src))) {
+      const name = m[1];
+      const call = src.slice(m.index, m.index + 3000);
+      const end = call.indexOf('})');
+      const opts = end === -1 ? call : call.slice(0, end + 2);
+      if (/schema\s*:/.test(opts)) continue;
+      const after = src.slice(m.index + m[0].length);
+      const interpolated = new RegExp('(\\+\\s*' + name + '\\b|\\$\\{\\s*' + name + '\\b|\\b' + name + '\\s*\\+)').test(after);
+      if (!interpolated) continue;
+      const feedsAgent = /agent\s*\(/.test(after);
+      if (feedsAgent) {
+        findings.push({ id: 'WL12', level: 'ERROR', line: src.slice(0, m.index).split('\n').length, msg: `\`${name}\` to zwrot agenta BEZ schema wklejany do kolejnego promptu — agent kończący turę wywołaniem narzędzia oddaje pusty string i następny etap dostaje pustkę zamiast wejścia (wf_23029d51-3a2: 6/17 zwrotów puste, w tym cała konsultacja specjalisty). Dodaj schema z polami FAKTOGRAFICZNYMI (to nie jest self-ocena z WL1)` });
+      }
+    }
+  }
+
+  // WL13 — verifier ponawia typecheck/testy, które zrobiła już sonda albo implementer.
+  // 48 typechecków i 43 uruchomienia testów w jednym przebiegu (wf_23029d51-3a2); każde
+  // `pnpm test:integration` wraca z 16-23 KB, które zostają w kontekście i są przeliczane w
+  // każdej następnej turze agenta. Wynik deterministycznej bramki podaje się jako FAKT.
+  {
+    const hasProbe = /label\s*:\s*[^,\n]{0,80}(check|gate|typecheck|probe|sonda)/i.test(src);
+    if (hasProbe) {
+      const agentCalls = callSites(src);
+      agentCalls.forEach((s2, i) => {
+        const end = s2.text.indexOf('})');
+        const t = end === -1 ? s2.text : s2.text.slice(0, end + 2);
+        if (!isVerifyish(t) || isProbeish(t) || inProbeFn(s2.at)) return;
+        const windowEnd = agentCalls[i + 1] ? agentCalls[i + 1].at : src.length;
+        const win = src.slice(s2.at, windowEnd);
+        const ordersRun = /(uruchom|odpal|run)\b[\s\S]{0,160}(typecheck|tsc|vitest|pnpm test|jest)/i.test(win);
+        const forbidsRerun = /nie\s+(uruchamiaj|odpalaj|powtarzaj)|do\s+not\s+re-?run|bez\s+ponown/i.test(win);
+        if (ordersRun && !forbidsRerun) {
+          findings.push({ id: 'WL13', level: 'WARN', line: s2.line, msg: 'prompt weryfikatora każe uruchomić typecheck/testy, choć skrypt ma osobny krok sondy — to samo polecenie wykonuje się drugi raz, a jego wyjście (16-23 KB) zostaje w kontekście i jest przeliczane w każdej kolejnej turze. Wstrzyknij wynik sondy jako fakt i dopisz „NIE uruchamiaj ich ponownie"' });
+        }
+      });
+    }
+  }
+
+  // WL14 — agent({schema}) musi być osłonięty try/catch. Ze schemą brak StructuredOutput to
+  // WYJĄTEK, nie null: guard `if (!x)` go nie złapie, a nieobsłużony wywraca cały Workflow
+  // (status: failed, wymaga resume) zamiast ESCALATE ze stanem częściowym.
+  // Parowanie try…catch tekstowo (bez AST): dla każdego `try {` bierzemy najbliższy późniejszy
+  // `catch` — zagnieżdżone try/catch w skryptach workflow praktycznie nie występują, a nadmiarowo
+  // szeroki przedział daje co najwyżej fałszywy NEGATYW (cisza), nigdy fałszywy alarm.
+  {
+    const ranges = [];
+    const tryRe = /\btry\s*\{/g;
+    let t;
+    while ((t = tryRe.exec(src))) {
+      const c = src.indexOf('catch', t.index);
+      if (c !== -1) ranges.push([t.index, c]);
+    }
+    const covered = (at) => ranges.some(([a, b]) => at > a && at < b);
+    for (const s2 of snippetsOf(src, 'agent(')) {
+      const end = s2.text.indexOf('})');
+      const t2 = end === -1 ? s2.text : s2.text.slice(0, end + 2);
+      if (!/schema\s*:/.test(t2)) continue;
+      if (covered(s2.at)) continue;
+      findings.push({ id: 'WL14', level: 'ERROR', line: s2.line, msg: 'agent({schema}) poza try/catch — ze schemą brak StructuredOutput RZUCA WYJĄTEK, nie zwraca null, więc guard `if (!wynik)` go nie złapie. Nieobsłużony kończy CAŁY Workflow jako failed zamiast ESCALATE ze stanem częściowym (wf_d4b19f61-68c: implementer przepracował 95 tur bez StructuredOutput i wywrócił przebieg po 7,4 min; w pliku było zero `try {`). Owiń w try/catch i potraktuj wyjątek jak NO_GO z powodem „brak StructuredOutput w budżecie"' });
+    }
+  }
+
+  // WL15 — jednostka dopisująca testy/kontrole bez pomiaru PRZYROSTU bloków wykonywalnych.
+  // Odpalamy tylko, gdy skrypt faktycznie zleca pisanie testów (agentType/label z 'test'
+  // albo prompt mówiący o dopisaniu describe/it) — inaczej byłby to szum na każdym skrypcie
+  // infrastrukturalnym.
+  {
+    // Sygnał musi być JEDNOZNACZNY. Pierwsza wersja używała `[^.]{0,120}`, co przeskakuje
+    // przez końce linii i łapało przypadkowe zbitki ("dodaj wpis…" + "…spec.ts" dwie linie
+    // niżej) — 5 z 7 historycznych skryptów dostawało WARN, w tym czysty final-gate bez
+    // jednego test-implementera. Teraz: rola agenta albo rozkaz dopisania testu bez
+    // przeskoku przez nową linię.
+    const writesTests = /agentType\s*:\s*['"`][^'"`]*test[^'"`]*implementer/i.test(src)
+      || /label\s*:[^,\n]{0,60}test[^,\n]{0,20}(impl|write|add)/i.test(src)
+      || /(dopisz|napisz|dodaj)\s+(?:\w+\s+){0,3}(test|testy|describe|asercj|guardian)/i.test(src);
+    if (writesTests) {
+      const measuresDelta = /grep\s+-c|newTestBlocks|assertionsAdded|newAssertions|describe\\\(|it\\\(/.test(src)
+        && /(grep|count|liczb|delta|przyrost|newTest|assertions)/i.test(src);
+      if (!measuresDelta) {
+        findings.push({ id: 'WL15', level: 'WARN', line: 0, msg: 'skrypt zleca dopisanie testów/kontroli, ale żadna bramka nie mierzy PRZYROSTU bloków wykonywalnych — "tsc pass + testy pass + niepusty diff" jest spełnialne samym komentarzem (wf_69187830-205: 133 dopisane linie opisujące Check D/E zamiast ich implementacji przeszły sondę i wyciekły do TECH-DEBT.md jako "naprawione"). Dodaj do sondy `git diff --cached -U0 | grep -cE \'^\\+\\s*(it|test|describe)\\(\'` i traktuj zero nowych bloków przy dużym diffie jako NO_GO (wzorzec: orchestrate.md §2a′ punkt 5)' });
+      }
     }
   }
 

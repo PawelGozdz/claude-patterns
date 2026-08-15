@@ -21,6 +21,15 @@
           }
         ],
         "description": "Reminder before git push"
+      },
+      {
+        "matcher": "Workflow",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$HOME/.claude/hooks/pre-workflow-lint.js\""
+          }
+        ]
       }
     ],
     "PreCompact": [

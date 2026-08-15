@@ -148,6 +148,206 @@ max_attempts z runtime.yml (default 3); wyczerpane → ESCALATE_AND_HALT
 - Implementerzy dostają: spec + `decisions[]` z artefaktu + Rule Cards +
   Codebase Facts (RAG, jeśli dostępny). Verify zwraca `{verdict, violations[]}`.
 
+### 2a. Kanoniczny kształt skryptu (kopiuj, nie wymyślaj od nowa)
+
+Elementy poniżej to reakcja na dwa realne przebiegi z 2026-08-14. `wf_23029d51-3a2`
+(juz-ide-api-2): 22 agentów, 89 M tokenów wczytanego kontekstu, 22,5 min i **crash**
+przy 36 realnych edycjach. `wf_d4b19f61-68c` (juz-ide-api-1): skrypt napisany
+wzorowo — sondy, twarde `maxTurns`, retry 3×, ESCALATE, guardy na null — i mimo to
+`failed` po 7,4 min, bo bronił się przed nullem, a przyszedł wyjątek. Wszystkie egzekwuje `hooks/workflow-lint.js`
+(WL7, WL11, WL12, WL13, WL14), więc skrypt bez nich nie przejdzie bramki.
+
+```js
+// (0) HELPER ask() — KAŻDE agent({schema}) idzie przez niego. Ze schemą brak
+//     StructuredOutput RZUCA WYJĄTEK, a nie zwraca null: guard `if (!wynik)` go NIE
+//     złapie, a nieobsłużony kończy CAŁY przebieg jako `failed`. wf_d4b19f61-68c
+//     (api-1) padł tak po 7,4 min — skrypt miał sondy, twarde maxTurns, retry 3× i
+//     guardy na null, ale zero `try {`. Helper sprowadza oba tryby awarii
+//     (martwy agent → null, brak StructuredOutput → wyjątek) do jednego: null.
+// UWAGA: nazwa helpera jest dowolna (`ask`, `safeAgent`…), ale MUSI wołać `await agent(` —
+// po tym workflow-lint go rozpoznaje i stosuje do wywołań przez niego wszystkie reguły
+// (WL1 self-ocena, WL4, WL10 limity, WL13 duplikat sondy). Owijka, która wywołuje agenta
+// pośrednio (przez zmienną, przez apply), staje się dla lintera niewidzialna i wyłącza te
+// reguły po cichu — dokładnie to zdarzyło się 2026-08-14 w api-2, zanim callSites() to naprawiło.
+async function ask(prompt, opts) {
+  try {
+    return await agent(prompt, opts)
+  } catch (e) {
+    log(`${opts.label}: brak wyniku — ${e && e.message ? e.message : String(e)}`)
+    return null
+  }
+}
+
+// (1) SONDA — deterministyczne bramki uruchamiane RAZ, tanio, bez czytania kodu.
+//     Verifier dostaje jej wynik jako FAKT i ma zakaz ponawiania. Bez tego jeden
+//     przebieg zrobił 48 typechecków i 43 uruchomienia testów, a każde wyjście
+//     (16-23 KB) zostawało w kontekście i mnożyło się przez kolejne tury.
+const CHECKS_SCHEMA = { type: 'object', required: ['typecheck', 'tests'], properties: {
+  typecheck: { type: 'string', enum: ['pass', 'fail'] },
+  tests:     { type: 'string', enum: ['pass', 'fail', 'skipped'] },
+  tail:      { type: 'string' } } }
+
+const checks = await ask(
+  'Uruchom: pnpm typecheck, potem pnpm vitest run <konkretny spec>. NIC nie czytaj, ' +
+  'nie analizuj, nie poprawiaj. Zwróć status i ostatnie 40 linii przy błędzie.',
+  { label: unitId + '-checks', effort: 'low', maxTurns: 8, schema: CHECKS_SCHEMA }
+)
+
+// (2) TWARDE LIMITY na każdym wywołaniu — proza w prompcie nie jest budżetem.
+//     Do tego miękkie ostrzeżenie w treści: „gdy budżet się kończy, oddaj stan częściowy".
+await ask(prompt, { label: unitId + '-impl', agentType: 'infrastructure-implementer', maxTurns: 40 })
+
+// (3) SCHEMA NA PRODUCENCIE DANYCH — nie tylko na verify. Agent kończący turę
+//     wywołaniem narzędzia oddaje PUSTY STRING; w tamtym przebiegu 6 z 17 zwrotów
+//     było puste, w tym cała konsultacja specjalisty wklejona potem do 3 promptów.
+//     To NIE koliduje z WL1: zakaz dotyczy self-OCENY (verdict/status), nie faktów.
+//     Uwaga — schema ma własny tryb awarii, przeciwny do pustego stringa: agent, który
+//     nie zdąży jej wypełnić, RZUCA. Dlatego (0) jest warunkiem sensowności (3).
+const advice = await ask(consultPrompt, { label: 'consult', maxTurns: 15, schema: ADVICE_SCHEMA })
+
+// (4) PIPELINE + GUARD NA NULL. parallel() nie rzuca — padnięty thunk wraca jako
+//     null. `cat1.status` na nullu wywrócił cały przebieg po 22 minutach.
+const results = await pipeline(UNITS, (u) => runUnit(u.id, u.prompt))
+const done = results.filter(Boolean)
+const failed = done.filter((r) => r.status !== 'GO')
+if (failed.length) return { escalatedAt: failed[0].unitId, results: done }
+
+```
+
+### 2a′. Wyjątek NIE cofa zapisów — trzy bramki, których brak kosztował Fazę 5
+
+`wf_69187830-205` (juz-ide-api-4, 2026-08-14): trzy kolejne wywołania implementera
+wyczerpały budżet tur bez `StructuredOutput`. Każde rzuciło wyjątek — i każde
+**zdążyło wcześniej zmodyfikować pliki**. Trzecie dopisało 133 linie. Sonda
+przepuściła je (typecheck pass, 605/605 testów pass), bo dopisane były komentarze
+opisujące Check D i Check E, a nie ich implementacja: komentarze się kompilują i nie
+czerwienią żadnego istniejącego testu. Fabrykacja przeciekła do
+`docs/security/security-gaps.md` i `TECH-DEBT.md` jako „naprawione". Wyłapał to
+dopiero drogi `code-quality-verifier` w trzeciej, ostatniej dopuszczalnej próbie.
+
+```js
+// (5) SONDA MIERZY PRZYROST, NIE TYLKO ZIELONOŚĆ. "tsc pass + testy pass + niepusty
+//     diff" jest spełnialne przez sam komentarz. Dla zadań dopisujących testy/kontrole
+//     policz nowe bloki wykonywalne — to nadal czysty grep, żadnego LLM-a:
+//       git diff --cached -U0 | grep -cE '^\+\s*(it|test|describe)\('
+//     Diff dodający >100 linii przy ZERO nowych blokach to NO_GO niezależnie od tsc.
+//     Uwaga: legalny refaktor testów też ma zerowy przyrost — dlatego bramka dotyczy
+//     wyłącznie jednostek, których zakresem jest DODANIE kontroli, i mierzy przyrost
+//     względem stanu sprzed jednostki, nie wartość bezwzględną.
+const checks = await ask(probePrompt, { label: unitId + '-checks', effort: 'low',
+  maxTurns: 8, schema: CHECKS_SCHEMA })   // CHECKS_SCHEMA += newTestBlocks: number
+
+// (6) CICHY WYJĄTEK TO INNA AWARIA NIŻ NO_GO — licz je osobno. Merytoryczne NO_GO
+//     znaczy „popraw to"; wyjątek z braku StructuredOutput znaczy „zakres nie mieści
+//     się w budżecie" i trzecia próba TEGO SAMEGO kształtu tylko dokłada śmieci do
+//     drzewa. Po DWÓCH z rzędu eskaluj zamiast powtarzać.
+let silent = 0
+for (let attempt = 1; attempt <= 3; attempt++) {
+  const impl = await ask(implPrompt(attempt, lastViolations, silent), {...})
+  if (!impl) {
+    if (++silent >= 2) return { unitId, status: 'ESCALATE_AND_HALT',
+      reason: 'dwa kolejne wyjścia bez StructuredOutput — zakres za duży na budżet, podziel jednostkę' }
+    continue
+  }
+  silent = 0
+  // ...
+}
+
+// (7) PRZEKAŻ FAKT CICHEJ AWARII DO KOLEJNEJ PRÓBY. Dziś ginie: fix-prompt dostaje
+//     tylko violations z sondy ("zero zmienionych plików"), więc implementer myśli, że
+//     to przejściowa usterka, a nie sygnał, że zadanie go przerasta.
+const implPrompt = (attempt, violations, silent) => BASE
+  + (silent ? `\n\nUWAGA: ${silent} poprzednia(e) próba(y) tej jednostki skończyły się BEZ `
+      + `wyniku — budżet tur wyczerpany. Zakres jest najpewniej za duży. Zrób NAJMNIEJSZY `
+      + `kompletny fragment i oddaj StructuredOutput, zamiast zaczynać całość od nowa. `
+      + `Pliki mogły zostać częściowo zmodyfikowane przez poprzednią próbę — SPRAWDŹ ich `
+      + `stan przed edycją, nie zakładaj czystego drzewa.` : '')
+  + (violations ? `\n\nPOPRAWKA — napraw dokładnie te naruszenia:\n${violations}` : '')
+```
+
+**Wyjątek nie jest rollbackiem.** `agent()`, które rzuciło, zostawia po sobie wszystkie
+`Edit`/`Write`, jakie subagent zdążył wykonać. „Nieudane" z perspektywy orkiestratora
+nie znaczy „bez skutków na dysku" — kolejna próba startuje na częściowo zmienionym
+drzewie. Dlatego (7) każe implementerowi sprawdzić stan plików, a nie zakładać czysty
+start, i dlatego bramka „kod istnieje" (WL3) mierzy `git diff`, nie raport agenta.
+
+### 2b′. Wstrzykiwanie kart reguł do promptów (punkt 8 wzorca)
+
+`orchestrate.md` wymaga tego od linii 148 („Implementerzy dostają: spec + decisions +
+**Rule Cards** + Codebase Facts"), a **nie robi tego żaden skrypt**. Skutek zmierzony
+2026-08-14: prompt implementera w api-1 nie zawierał ani jednego wystąpienia słowa
+`patterns`, `retrieve` czy `knowledge` — agent szukał więc tam, gdzie umiał, i skończył
+na `find / -iname "*on-conflict-builder*"`, trafiając w cudzy projekt. W api-2 prompt
+podawał ścieżki wzorców z poleceniem „przeczytaj CAŁY plik": 20-36 KB weszło do kontekstu
+i mnożyło się przez każdą turę.
+
+**Ograniczenie, które przesądza o kształcie:** skrypt Workflow **nie ma dostępu do
+filesystemu** (żadnego `readFileSync`). Kartę czyta KOORDYNATOR — przed uruchomieniem
+Workflow — i przekazuje przez `args`.
+
+```js
+// KROK 1 (koordynator, PRZED Workflow): Read na kartach z listy `patterns` warstwy
+//   z runtime.yml. Karta, nie pełny wzorzec: 8 KB kontra 20-36 KB, a treść jest ta sama
+//   w formie decyzyjnej. Jeśli karty nie ma — to sygnał, że trzeba ją napisać, nie powód,
+//   żeby wkleić pełny wzorzec.
+//   Read('patterns/infrastructure/geo-spatial-query-pattern_summary.md') → tekst
+
+// KROK 2: przekaż jako args (NIE wklejaj literałem do skryptu — args przeżywają resume
+//   i nie rozdymają pliku skryptu o 8 KB na kartę).
+Workflow({ script, args: { cards: {
+  'infra':  '<treść geo-spatial-query-pattern_summary.md>',
+  'domain': '<treść aggregate-pattern_summary.md>',
+} } })
+
+// KROK 3 (w skrypcie): wklej treść do prompta implementera i ZAMKNIJ ścieżkę eksploracji.
+const card = (args.cards || {})[layerId]
+const implPrompt = SPEC
+  + (card ? `\n\n=== KARTA REGUŁ — obowiązująca dla tej warstwy ===\n${card}\n`
+          + `=== koniec karty ===\n\n`
+          + `Masz komplet reguł POWYŻEJ. NIE czytaj pełnego wzorca, NIE grepuj repo w `
+          + `poszukiwaniu wzorca, NIE szukaj przykładów w innych projektach. Jeśli karta `
+          + `naprawdę nie rozstrzyga Twojego przypadku — napisz to w raporcie jako `
+          + `\`gap: <czego brakuje w karcie>\` i zaimplementuj najbliższy wariant zgodny `
+          + `z tym, co karta mówi. Luka w karcie to nasz błąd do naprawienia, nie Twój `
+          + `powód do eksploracji.` : '')
+```
+
+**Dlaczego to jest tańsze, a nie tylko inne.** Karta wklejona do prompta wchodzi do
+`cache_creation` **raz** i w kolejnych turach czytana jest po stawce cache read. Wzorzec
+czytany przez agenta `Read`-em wchodzi w turze N i jest przeliczany w każdej turze od N do
+końca — przy 40-90 turach implementera to ta sama treść policzona kilkadziesiąt razy.
+To jest mechanizm, który wygenerował 89 M tokenów cache read w jednym przebiegu.
+
+**Czego NIE wstrzykiwać:** pełnych wzorców (od tego są karty), treści RAG „na zapas"
+(implementer nie ma czego szukać, bo ma kartę), całych plików ADR. Jeśli karta rośnie
+powyżej ~8 KB, `lint-patterns.mjs` to zgłasza — to znak, że wzorzec potrzebuje podziału,
+nie że limit jest za mały.
+
+**Weryfikator dostaje co innego niż implementer.** Implementer: karta (`quickstart`) —
+ma pisać, nie rozważać. Weryfikator: pełny wzorzec albo poziom `core`/`exhaustive` — ocenia
+zgodność, więc potrzebuje wyjątków od reguły, których karta świadomie nie zawiera.
+
+**Pipeline, nie bariera.** `parallel()` blokuje do najwolniejszego. Jednostka B
+czekała tam na A, choć zależała wyłącznie od własnego pliku. Bariera jest
+uzasadniona tylko wtedy, gdy następny etap potrzebuje WSZYSTKICH wyników naraz
+(dedup, zliczenie, „zero znalezisk → pomiń weryfikację"). Sekwencja jest
+uzasadniona, gdy dwie jednostki dotykają TEGO SAMEGO pliku — wtedy łańcuch
+w jednym `pipeline`, nie dwa równoległe.
+
+**Czego NIE tnij** — to kupiona jakość, nie narzut: niezależny verifier zamiast
+self-reportu, 3 próby z `violations`, pełna lektura kontraktu przed edycją,
+guardian jako źródło prawdy, testy L2 widoczności, bramka końcowa.
+
+### 2c′. Po starcie czegoś w tle NIE wywołuj ScheduleWakeup
+
+`Workflow` i `Agent` uruchomione w tle **same** wracają z powiadomieniem, gdy skończą.
+Sięganie po `ScheduleWakeup`, żeby „poczekać", kończy się błędem
+`prompt is required when stop is not true` (zaobserwowane 3× w api-2 i api-4, za każdym
+razem sesja dochodziła do tego od nowa). `ScheduleWakeup` należy do trybu `/loop` —
+samodzielnego tempa iteracji — a nie do czekania na zadanie, które i tak Cię zawoła.
+
+Czekasz na przebieg? Nie rób nic. Zajmij się kolejnym krokiem albo zakończ turę.
+
 ## 2b. Higiena kontekstu i awarie workflow (jakość > oszczędzanie)
 
 - **NIE startuj Workflow z sesji bliskiej limitu kontekstu.** Subagenci dostają

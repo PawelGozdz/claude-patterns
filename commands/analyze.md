@@ -61,6 +61,27 @@ exist". Dlatego:
 - Ustal `{TASK-ID}` z argumentu; `project-orchestration/tasks/{TASK-ID}.md`
   jeśli istnieje = spec.
 
+## 0.a1 Preflight stanu drzewa (PRZED rozpisaniem jednostek pracy)
+
+Zanim podzielisz task na jednostki, sprawdź **czy praca nie jest już zrobiona**:
+
+```bash
+git status --short                    # niescommitowane zmiany na branchu
+git log --oneline -15                 # co weszło od czasu napisania taska
+```
+
+Dla każdej planowanej jednostki potwierdź grepem na KONKRETNYM pliku, że wzorzec,
+który każesz zmigrować, faktycznie tam jeszcze jest. Znalezione „już zrobione"
+odnotuj w artefakcie jako `status: already-done` z dowodem (hash commita albo
+linia z `git status`) — i **nie twórz dla niej jednostki**.
+
+Dlaczego to jest w bramce, a nie w dobrych chęciach: w przebiegu
+`wf_23029d51-3a2` (juz-ide-api-2, 2026-08-14) dwie z sześciu jednostek pracy
+odkryły dopiero po pełnym rozruchu drogiego agenta, że zmiany są już w drzewie
+(„Both migrations were found already implemented as uncommitted", „the OQ6
+premise is stale"). Każde takie odkrycie kosztuje pełny kontekst implementera —
+kilka dolarów za powtórzenie `git status`, którego nikt nie zrobił.
+
 ## 0a. Security preflight (slot warunkowy)
 
 Jeśli panel w runtime.yml zawiera stage `threat-model`: dopasuj jego `when:`
