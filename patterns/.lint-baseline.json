@@ -1,0 +1,314 @@
+{
+  "_comment": "Zastany dług formatu wzorców. Lista może TYLKO maleć — nowy wzorzec ma spełniać wymóg z CLAUDE.md, nie dopisywać się tutaj. Regeneracja: node scripts/lint-patterns.mjs --update-baseline",
+  "files": {
+    "ai-ml/dynamic-batching-pattern.md": [
+      "bullety ✅/❌"
+    ],
+    "ai-ml/gpu-concurrency-pattern.md": [
+      "bullety ✅/❌"
+    ],
+    "ai-ml/inference-api-pattern.md": [
+      "bullety ✅/❌"
+    ],
+    "ai-ml/llm-integration-pattern.md": [
+      "bullety ✅/❌"
+    ],
+    "ai-ml/ml-observability-pattern.md": [
+      "bullety ✅/❌"
+    ],
+    "ai-ml/ml-testing-pattern.md": [
+      "bullety ✅/❌"
+    ],
+    "ai-ml/model-lifecycle-pattern.md": [
+      "bullety ✅/❌"
+    ],
+    "application/application-service-pattern.md": [
+      "**Layer**",
+      "**Status**"
+    ],
+    "application/audit-handler-pattern.md": [
+      "**Layer**",
+      "**Status**",
+      "## When to Use"
+    ],
+    "application/command-handler-pattern.md": [
+      "## When to Use"
+    ],
+    "application/query-handler-pattern.md": [
+      "## When to Use"
+    ],
+    "architecture/acl-registry-pattern.md": [
+      "## When to Use"
+    ],
+    "architecture/api-contract-sync-pattern.md": [
+      "bullety ✅/❌"
+    ],
+    "architecture/bullmq-queue-pattern.md": [
+      "**Layer**",
+      "## When to Use"
+    ],
+    "architecture/dual-identity-pattern.md": [
+      "**Layer**",
+      "## When to Use"
+    ],
+    "architecture/entity-event-emission-pattern.md": [
+      "**Layer**",
+      "## When to Use"
+    ],
+    "architecture/fresh-context-pattern.md": [
+      "**Layer**"
+    ],
+    "architecture/golden-rule-endpoints.md": [
+      "**Layer**",
+      "**Status**",
+      "## When to Use"
+    ],
+    "architecture/integration-event-pattern.md": [
+      "## When to Use"
+    ],
+    "architecture/nestjs-module-import-pitfalls.md": [
+      "**Layer**",
+      "**Status**",
+      "## When to Use"
+    ],
+    "architecture/token-optimization-pattern.md": [
+      "**Layer**",
+      "**Status**",
+      "## When to Use"
+    ],
+    "architecture/transactional-outbox-pattern.md": [
+      "## When to Use"
+    ],
+    "architecture/transactional-pattern.md": [
+      "**Layer**",
+      "## When to Use"
+    ],
+    "architecture/user-projection-pattern.md": [
+      "**Layer**",
+      "## When to Use"
+    ],
+    "cross-layer/conventions-pattern.md": [
+      "**Layer**",
+      "**Status**",
+      "## When to Use"
+    ],
+    "cross-layer/domain-errors-pattern.md": [
+      "**Layer**",
+      "## When to Use"
+    ],
+    "cross-layer/error-handler-chain-pattern.md": [
+      "**Layer**",
+      "## When to Use"
+    ],
+    "cross-layer/logger-pattern.md": [
+      "**Layer**",
+      "## When to Use"
+    ],
+    "cross-layer/safe-error-propagation-pattern.md": [
+      "**Layer**",
+      "## When to Use"
+    ],
+    "cross-layer/security-invariants-pattern.md": [
+      "**Layer**",
+      "## When to Use"
+    ],
+    "cross-layer/snapshot-incremental-review-pattern.md": [
+      "bullety ✅/❌"
+    ],
+    "domain/aggregate-pattern.md": [
+      "**Layer**",
+      "**Status**",
+      "## When to Use"
+    ],
+    "domain/domain-event-pattern.md": [
+      "**Layer**",
+      "**Status**",
+      "## When to Use"
+    ],
+    "domain/domain-service-pattern.md": [
+      "**Layer**",
+      "**Status**"
+    ],
+    "domain/entity-pattern.md": [
+      "**Layer**",
+      "**Status**",
+      "## When to Use"
+    ],
+    "domain/specification-policy-pattern.md": [
+      "**Layer**",
+      "**Status**",
+      "## When to Use"
+    ],
+    "domain/value-object-pattern.md": [
+      "**Layer**",
+      "**Status**",
+      "## When to Use"
+    ],
+    "finance/layered-knowledge-pattern.md": [
+      "bullety ✅/❌"
+    ],
+    "finance/regulatory-disclaimer-pattern.md": [
+      "bullety ✅/❌"
+    ],
+    "infrastructure/controller-schema-pattern.md": [
+      "**Layer**",
+      "## When to Use"
+    ],
+    "infrastructure/mapper-pattern.md": [
+      "**Layer**",
+      "## When to Use"
+    ],
+    "infrastructure/repository-events-pattern.md": [
+      "**Layer**",
+      "## When to Use"
+    ],
+    "infrastructure/repository-pattern.md": [
+      "**Layer**",
+      "**Status**"
+    ],
+    "legal/external-skills-catalog-pattern.md": [
+      "bullety ✅/❌"
+    ],
+    "legal/jurisdiction-aware-disclaimer-pattern.md": [
+      "bullety ✅/❌"
+    ],
+    "marketing/product-marketing-context-pattern.md": [
+      "bullety ✅/❌"
+    ],
+    "nextjs/auth-pattern.md": [
+      "**Layer**",
+      "**Status**",
+      "bullety ✅/❌"
+    ],
+    "nextjs/data-fetching-pattern.md": [
+      "**Layer**",
+      "**Status**",
+      "bullety ✅/❌"
+    ],
+    "nextjs/forms-actions-pattern.md": [
+      "**Layer**",
+      "**Status**",
+      "bullety ✅/❌"
+    ],
+    "nextjs/routing-proxy-pattern.md": [
+      "**Layer**",
+      "**Status**",
+      "bullety ✅/❌"
+    ],
+    "nextjs/server-client-components-pattern.md": [
+      "**Layer**",
+      "**Status**",
+      "bullety ✅/❌"
+    ],
+    "nextjs/styling-pattern.md": [
+      "**Layer**",
+      "**Status**",
+      "bullety ✅/❌"
+    ],
+    "nextjs/testing-pattern.md": [
+      "**Layer**",
+      "**Status**",
+      "bullety ✅/❌"
+    ],
+    "orchestration/project-management-system.md": [
+      "## When to Use"
+    ],
+    "python/async-patterns.md": [
+      "**Layer**",
+      "**Status**",
+      "bullety ✅/❌"
+    ],
+    "python/fastapi-patterns.md": [
+      "**Layer**",
+      "**Status**",
+      "bullety ✅/❌"
+    ],
+    "python/layered-architecture-pattern.md": [
+      "**Layer**",
+      "**Status**",
+      "bullety ✅/❌"
+    ],
+    "python/testing-pattern.md": [
+      "**Layer**",
+      "**Status**",
+      "bullety ✅/❌"
+    ],
+    "python/typing-patterns.md": [
+      "**Layer**",
+      "**Status**",
+      "bullety ✅/❌"
+    ],
+    "sveltekit/component-pattern.md": [
+      "**Layer**",
+      "**Status**",
+      "bullety ✅/❌"
+    ],
+    "sveltekit/data-fetching-pattern.md": [
+      "**Layer**",
+      "**Status**",
+      "bullety ✅/❌"
+    ],
+    "sveltekit/routing-loading-pattern.md": [
+      "**Layer**",
+      "**Status**",
+      "bullety ✅/❌"
+    ],
+    "sveltekit/svelte5-runes-pattern.md": [
+      "**Layer**",
+      "**Status**",
+      "bullety ✅/❌"
+    ],
+    "sveltekit/testing-pattern.md": [
+      "**Layer**",
+      "**Status**",
+      "bullety ✅/❌"
+    ],
+    "testing/business-rules-yaml-pattern.md": [
+      "**Layer**",
+      "**Status**"
+    ],
+    "testing/context-isolation-pattern.md": [
+      "**Layer**",
+      "**Status**",
+      "## When to Use"
+    ],
+    "testing/domain-colocated-fixture-mother-pattern.md": [
+      "## When to Use"
+    ],
+    "testing/e2e-hybrid-fixture-pattern.md": [
+      "## When to Use"
+    ],
+    "testing/golevelup-mock-pattern.md": [
+      "**Layer**",
+      "**Status**",
+      "## When to Use"
+    ],
+    "testing/rate-limit-testing-pattern.md": [
+      "**Layer**",
+      "**Status**",
+      "## When to Use"
+    ],
+    "testing/redis-test-isolation-pattern.md": [
+      "**Layer**",
+      "**Status**",
+      "## When to Use"
+    ],
+    "testing/schema-testing-pattern.md": [
+      "**Layer**",
+      "## When to Use"
+    ],
+    "testing/test-seeding-performance-guide.md": [
+      "**Layer**",
+      "**Status**"
+    ],
+    "testing/testing-pyramid-pattern.md": [
+      "**Layer**",
+      "## When to Use"
+    ],
+    "testing/typed-projection-row-builder-pattern.md": [
+      "**Layer**",
+      "**Status**",
+      "## When to Use"
+    ]
+  }
+}

@@ -4,15 +4,16 @@
 
 **Layer**: Infrastructure
 **Status**: production
-**Scope**: project-specific (juz-ide) — single-project derivation, not yet validated
-in a second codebase. Excluded from `retrieve_patterns` by default; pass
-`project: "juz-ide"` to include it. Promote to universal once a second project adopts
-this shape.
 
-> Derived from two production audits of the same codebase (`TS-GEO-SPATIAL-QUERY-AUDIT-001`,
-> 2026-07-29, and `-002`, 2026-08) plus the incident that triggered them. Every anti-pattern
-> below was found in production code, not imagined. The headline one cost a week of
-> content over-exposure before anyone noticed.
+> Derived from two production audits (`TS-GEO-SPATIAL-QUERY-AUDIT-001`, 2026-07-29, and
+> `-002`, 2026-08) plus the `TS-GEO-QUERY-KERNEL-001/002/002a/002b` refactor series
+> (2026-08-13 → 2026-08-15) of the juz-ide codebase, and the incident that triggered them.
+> Every anti-pattern below was found in production code, not imagined. The headline one cost
+> a week of content over-exposure before anyone noticed.
+>
+> **Promoted to universal 2026-08-16** (owner decision): the rules are stack-agnostic PostGIS
+> discipline. juz-ide remains the reference implementation — the "Reference implementation"
+> callouts cite its files as evidence, not as a dependency; every rule stands without them.
 
 ---
 
@@ -61,7 +62,7 @@ Three claims hold this pattern together:
 
 ## Implementation
 
-### Rule 1 — Three predicate classes, three shapes
+### Rule 1 — Four predicate classes, four shapes
 
 Every spatial predicate belongs to exactly one class. The class determines the cast, the
 index, and the recipe. Conflating them is the root cause of most bugs in this pattern.
@@ -69,8 +70,18 @@ index, and the recipe. Conflating them is the root cause of most bugs in this pa
 | Class | Looks like | Unit | Index it needs | Cast rule |
 |---|---|---|---|---|
 | **Metric** | `ST_DWithin`, `ST_Distance` with metres | metres | functional GiST on `((col)::geography)` — or a native `geography` column | cast **both operands**, on the **column** only if a functional index exists for exactly that expression |
-| **Topological** | `ST_Intersects`, `ST_Contains`, `ST_Within` | none | native GiST on the `geometry` column | **no cast** — the predicate needs no metric, and casting destroys index usability |
+| **Topological** | `ST_Intersects` | none | native GiST on the `geometry` column | **no cast** — the predicate needs no metric, and casting destroys index usability |
+| **Containment** | `ST_Contains`, `ST_Within`, `ST_Covers` | none | native GiST on the `geometry` column | **no cast** — and none is possible: `ST_Contains`/`ST_Within` have **no `geography` overload**, so pin the operand kind to `geometry` in the type |
 | **KNN** | `ORDER BY col <-> point LIMIT n` | ordering | functional GiST on exactly the ordered expression | cast consistently on both sides; the index only helps **with `LIMIT`** |
+
+Containment earns its own class for a **correctness** reason, not a performance one:
+`ST_Contains(area, point)` returns `false` for a point exactly **on** the boundary, while
+`ST_Intersects(area, point)` returns `true` there. A lookup meant to resolve "which single
+area is this point in" written with `ST_Intersects` + `LIMIT 1` can return either of two
+adjacent areas nondeterministically; the same lookup with `ST_Contains` deliberately excludes
+the shared boundary. Choose the class by the boundary behaviour the product intends, and
+record the choice (juz-ide: ADR-0113, which added `containment` as a distinct class after
+shipping with the wrong one).
 
 ```sql
 -- METRIC: column is geometry, functional GiST exists on ((location)::geography)
@@ -107,6 +118,15 @@ ST_Intersects(
 The column side of the predicate must stay in whatever type its index speaks. Everything
 else is a constant and can be cast freely.
 
+**When the index and the query disagree, the index may be the wrong one.** If the query's
+cast is semantically required (the predicate genuinely needs metres) and the functional GiST
+was built on the bare expression, the fix is to rebuild the **index** on the cast expression —
+`DROP INDEX` + `CREATE INDEX` under the same name, since Postgres has no
+`ALTER INDEX ... SET expression` — not to strip the cast from the query, which silently turns
+metres into degrees (AP3). Reference implementation: juz-ide migration
+`266_fix_neighborhoods_centroid_gist_geography_cast` — the query casting `::geography` was
+correct; the index built without the cast was the bug.
+
 ### Rule 3 — One canonical builder, with the column type in the contract
 
 If more than one repository builds spatial predicates, they will drift. In the codebase this
@@ -135,8 +155,8 @@ compile is. If your canonical builder cannot express a legitimate call site, the
 wrong — do not let the call site fork off its own inline SQL, because that fork is how you
 get back to five implementations.
 
-**As shipped in this codebase** (`src/shared/geo/`, `ADR-0112`/`ADR-0113`, closed by the
-`TS-GEO-QUERY-KERNEL-001/002/002a/002b` series, 2026-08-13 → 2026-08-15): the discriminated
+**Reference implementation (juz-ide)** (`src/shared/geo/`, `ADR-0112`/`ADR-0113`, closed by
+the `TS-GEO-QUERY-KERNEL-001/002/002a/002b` series, 2026-08-13 → 2026-08-15): the discriminated
 union above is not a sketch, it is `SpatialSource` (`spatial-column.types.ts`) — four
 variants (`column`+topological/metric, `column`+containment pinned to `geometry`,
 `derived-point`+metric, `derived-point`+containment pinned to `geometry`), each carrying
@@ -163,8 +183,18 @@ server-resolved value, so a raw `{ lat, lng }` from user input cannot type-check
 the compiler can see. Two production incidents shipped from skipping this (`TM-TS-GEO-SPATIAL-QUERY-AUDIT-002` `-17`/`-18`, `TM-TS-GEO-QUERY-KERNEL-002` `-19`) — see AP9, which
 this type directly closes for every caller of these three functions.
 
-**Adoption (verified 2026-08-15 by grep-diff, corrected 2026-08-15 by @geo-postgres-specialist
-after checking the guardian allowlist itself, not just grepping for kernel calls):**
+The same branded-type trick covers the opposite proof obligation. Rule 2's escape hatch —
+the one call shape that legitimately **does** cast a column (`ST_DWithin` on
+`col::geography`, legal only when a functional GiST exists on exactly that expression) —
+should demand evidence, not trust. juz-ide's `buildCastGeometryMetricPredicate` accepts only
+a `VerifiedGeographyIndexedColumn`, constructible solely via
+`toVerifiedGeographyIndexedColumn`: "I checked `pg_indexes` and the functional index exists"
+becomes a value of a branded type at the call site, not a comment that goes stale when the
+index is dropped.
+
+**Adoption in the reference implementation (verified 2026-08-15 by grep-diff, corrected
+2026-08-15 by @geo-postgres-specialist after checking the guardian allowlist itself, not just
+grepping for kernel calls):**
 `grep -rl 'buildSpatialPredicate\|buildDistanceExpression\|buildKnnOrderExpression' src/contexts/` —
 20 files across `neighborhood-economy`, `geographic-auth`, `community-communication`,
 `discovery`, `user-profile`. `discussions`, `mentions`, `engagement` have zero spatial SQL
@@ -262,14 +292,17 @@ it('never casts a geometry area column to geography', () => {
 Pair it with an L2 that asserts `Index Cond` on a real database, and one L2 edge case with a
 point **exactly on the boundary** of the area — see Anti-Pattern 8.
 
-**As shipped**: `src/shared/geo/__tests__/spatial-predicate-canonical-builder.guardian.spec.ts`.
+**Reference implementation (juz-ide)**:
+`src/shared/geo/__tests__/spatial-predicate-canonical-builder.guardian.spec.ts`.
 Every raw `ST_*`/`<->` hit in the codebase is either migrated, or carries an ALLOWLIST entry
 with `status: 'pending-migration'` (must name an open task file — an entry with no task
 behind it is an orphaned promise) or `status: 'structural-exclusion'` (must cite the specific
 remaining hit and why migrating it is wrong, not just hard). A hit with neither status fails
-CI. This is what makes the two unmigrated files noted above a *known, closable* gap instead
-of invisible debt — the fix is registering them in this allowlist, not necessarily migrating
-them immediately.
+CI. This is what makes an unregistered raw hit a *known, closable* gap instead of invisible
+debt — the fix is registering it in this allowlist with a reasoned status, not assuming it's
+invisible until someone stumbles on it (as `TS-GEO-GUARDIAN-ALLOWLIST-001`, 2026-08-15, found:
+the two call sites it set out to register already had entries — the audit that spawned it
+never actually read the allowlist contents before concluding they were missing).
 
 ### Rule 8 — Spatial predicates are access control: test both directions
 
@@ -281,6 +314,136 @@ content" only catch the direction that would have reported itself anyway.
 Every spatial access path needs a paired assertion on one fixture: **sees** and **does not
 see**. In the incident behind this pattern, 121 of 125 events with declared local scope were
 visible nationwide for at least a week, and the test suite was green throughout.
+
+### Rule 9 — Geo review is mandatory for ANY SQL touching a geo column, not just repository queries
+
+Rules 1-8 exist because *reviewed* spatial predicates still go wrong in subtle ways. AP10
+(below) shipped because the review gate itself only fired for **application-layer repository
+queries** — the reviewing rule was scoped by *where the code lives* (a `.repository.ts` file),
+not by *what the code touches* (a geography/geometry column, an `ST_*` call, a residence/
+location table). A migration authoring a trigger or stored function is not a repository query,
+so it never entered the gate, and a cross-context DDL coupling (AP10) plus a wrong routing
+field (this pattern's discovery-model guidance) both shipped unreviewed in the same trigger.
+
+**The gate, corrected**: `@geo-postgres-specialist` (or this project's equivalent spatial
+reviewer) review is required BEFORE finalizing **any** of the following, not only
+`*.repository.ts` methods:
+
+- A Kysely repository method with `ST_*`, `<->`, or `&&`
+- A migration that creates or modifies a **trigger, stored function, or generated column**
+  referencing a geography/geometry column or computing one from lat/lng
+- A migration that creates or modifies a **spatial index** (GiST, functional or partial)
+- Any raw SQL string (`sql\`...\``) anywhere in the codebase containing a spatial operator
+
+The reviewer checks the same things regardless of where the SQL lives: predicate class
+(Rule 1), cast-vs-index shape (Rule 2), canonical builder usage where the call site is
+application code (Rule 3) — **and, for DDL specifically, whether the SQL reads a table
+outside its own bounded context** (AP10) and whether the routing field it reads (creator
+anchor vs viewer routing — see the ADR governing this project's discovery model) is the one
+the product actually intends, not the one that happened to be at hand when the trigger was
+written.
+
+**Enforcement, not just guidance**: the implementer role that owns migrations/repositories
+in this project (`@infrastructure-implementer` or equivalent) MUST treat this consult as a
+blocking step with the same weight as the existing "consult before finalizing a repository
+query" rule — see that agent's own file for the exact wording. A migration merged without
+this consult is not a smaller violation than a repository query merged without it; AP10 is
+the proof the DDL path is not the safer one.
+
+### Rule 10 — Private points: snap at write time, bucket at read time
+
+AP9 (the intersection/trilateration oracle) has two mitigations, and **where** each one runs
+is the rule:
+
+**Snap at write, never at read.** When a stored point must not be exactly recoverable
+(a home location, a residence), fuzz it **before it is persisted** — snap to a coarse grid in
+the write handler, and backfill existing rows in a migration so no exact value survives at
+rest. The tempting alternative — `ST_SnapToGrid` applied per-query at read time — is wrong
+three ways: the exact column stays live in the database (one forgotten call site reopens the
+oracle), every reader must remember to apply it (the N-call-sites problem Rule 3 exists to
+kill), and the per-row function call degrades the GiST index. Reference implementation
+(juz-ide): `snapToGrid` with a 0.01° grid (~1.1 km) applied in the write handler, plus
+backfill migration `267`; the read-time variant was considered and explicitly rejected.
+
+**Bucket distances for untrusted consumers.** An API that returns metric distance to a caller
+who controls the origin is a trilateration oracle even when every predicate is cast correctly
+— three probes recover exact coordinates. Return coarse ordinal buckets
+(`same_cell` / `adjacent_cell` / `beyond`) instead of metres; keep the metric value
+server-side for ordering only. Reference implementation (juz-ide): `distance-bucket.ts` —
+`buildDistanceExpression` still computes metres, but the value crossing the trust boundary is
+the bucket.
+
+The two halves compose: snap-at-write bounds what any query can leak; bucketing bounds what
+the API narrates about it. Neither replaces `VerifiedResidencePoint` (Rule 3) — that closes
+*who may supply the origin*, these close *what precision leaves the system*.
+
+### Rule 11 — Cross-context residence data: live ACL when persisted or decisional, per-context projection when merely displayed or filtered
+
+A per-context read projection of another bounded context's data (e.g. `economy_users`,
+`community_communication_users`, `engagement_users` — each synced from `geographic-auth` via
+`ResidenceRegistered`/`ActiveResidenceSwitched`/`ResidenceDeleted` integration events) is a
+legitimate, standard consumer-owned read model — **not** an ACL substitute. The two mechanisms
+answer different questions and the axis that decides between them is not "read vs write":
+
+> Live ACL (`geoAuthACL.getResidenceCoordinates(...)`) when the value will be **persisted as a
+> content anchor**, or used in an **authorization/guardrail decision** — both cases where
+> staleness produces a permanent or access-control error. Per-context projection in every other
+> case: display, cross-user discovery filtering, bulk/scheduled work — cases where staleness is
+> bounded by the next sync and the error direction is tolerable.
+
+| Case | Source | Why |
+|---|---|---|
+| CREATE — anchoring new geo content | live ACL | persisted once, permanently; a stale read cannot self-correct |
+| Explicit re-anchor command (e.g. "change my listing's location") | live ACL | this is a new anchor write, not an edit |
+| EDIT of unrelated fields | **neither** | the anchor is a snapshot from CREATE and does not move (see AP10's sibling rule in `docs/tech/geo.md`) |
+| Authz/guardrail check (e.g. `BR-GEO-CENTER-001`) | live ACL | a stale allow is a live access-control gap |
+| Discovery / list / "who's near" filtering over *other* users' content | per-context projection | eventual consistency is the correct, already-adopted trade-off (see Rule 12 for the shape it must have) |
+| Displaying the caller's own last-known data | either; ACL if read-your-own-writes matters | low stakes, cheap either way |
+| Bulk export, metrics, scheduled jobs | per-context projection | ACL here is an N+1 the freshness requirement does not justify |
+
+**Verified adoption (2026-08-16):** all three content-creation handlers in `neighborhood-economy`
+(`create-job-request`, `create-local-share`, `create-service-offering`) already call the live
+ACL for anchoring; none reads the projection for this purpose. Discovery reads in the same
+context (`local-share-query-kysely.repository.ts`, `job-offer-query-kysely.repository.ts`,
+`job-request-query-kysely.repository.ts`, `service-offering-query.kysely.repository.ts`) already
+read the projection. The rule was already the de facto convention before being written down —
+this codifies it and gives it a name so it can be reviewed for, not just imitated. Formal record:
+`ADR-0114`. Ubiquitous language name for the projection mechanism itself: **Per-Context Read
+Projection** — a fourth entry alongside ACL Registry / Integration Events / Dedicated Queue in
+`architecture/cross-context-communication.md`.
+
+### Rule 12 — A projection column used in a spatial predicate must be native and indexed, never JSONB
+
+Rule 11 says a projection is an acceptable *source*. It says nothing about *shape* — and the
+two failures are independent. A projection that is architecturally the right choice can still be
+the wrong column if it's JSONB.
+
+`jsonb_array_elements(residences)` has no functional GiST to build on: the expression unwinds a
+per-row array before any spatial operator runs, so `ST_DWithin`/`ST_Intersects` against an
+extracted element is unindexable by construction (Rule 1/Rule 4 apply — verify with
+`pg_indexes`, don't assume). At small volume this is invisible; it becomes a full sequential
+scan as the table grows, with no error and no warning.
+
+**Fix**: promote the one field the spatial predicate actually needs (the *active* residence
+point, per Rule 11's discovery-filtering row) out of the JSONB array into its own native
+`geography(Point,4326)` column with a matching GiST index, maintained by the same
+`ResidenceRegistered`/`ActiveResidenceSwitched`/`ResidenceDeleted` handlers that already
+maintain the JSONB array. This is not a new mechanism — `activity_feed_users.current_location`
+already does exactly this in the same codebase (native `geography(Point,4326)`, GiST index
+`idx_activity_feed_users_location`, DB column comment "Used for ST_DWithin feed queries") and is
+the reference shape to copy, not a hypothetical.
+
+The JSONB array is not thereby wrong to keep — it still serves non-spatial reads (display,
+`isPrimary`/`isActive` bookkeeping). The point is narrower: **the column a spatial predicate
+touches must independently satisfy Rule 1's index-shape requirement**; being "the projection" is
+not a waiver.
+
+**Live instance**: `economy_users.residences` (JSONB, no GiST) is read this way today by four
+`neighborhood-economy` query repositories (see Rule 11). `migration
+259_backfill_terc_economy_users_residences.ts` is direct evidence the copy has already drifted
+from `user_residences` in production (orphaned `residenceId` entries required a repair sweep) —
+the shape problem and the staleness problem compound, not just coexist. Tracked as part of
+`TS-GEO-TRIGGER-CROSS-CONTEXT-001`.
 
 ---
 
@@ -352,8 +515,9 @@ removing a cast with "row counts are unchanged" on a small table. Add a boundary
 
 A viewport or radius filter evaluated against a **raw** point column lets a caller binary-search
 the true coordinates by varying the viewport, even when the API never returns the point.
-Filter against the published area geometry, or fuzz the point before it becomes queryable.
-Content types that fuzz on one path and not another are the common form of this bug.
+Filter against the published area geometry, or fuzz the point before it becomes queryable —
+at **write** time, with a bucketed (never metric) distance in any untrusted-facing response
+(Rule 10). Content types that fuzz on one path and not another are the common form of this bug.
 
 ### ❌ AP10 — A trigger in one bounded context reading another context's table
 
@@ -370,9 +534,29 @@ before the write; keep triggers to the context's own tables.
 **Live instance, not hypothetical**: `compute_service_area()` (`neighborhood-economy`,
 migration `063`) reads `user_residences` (`geographic-auth`) directly in a DB trigger.
 Confirmed by cataloguing `pg_trigger`+`pg_proc` against the live schema — the only
-cross-context read among three residence-touching functions found. Tracked as
-`TS-GEO-TRIGGER-CROSS-CONTEXT-001`, `backlog`, needs an architectural decision
-(`@ddd-application-expert`) before any fix, not a mechanical query change.
+cross-context read among three residence-touching functions found (two others exist in
+application code, not DDL — `organization/auto-binding.handler.ts:281` and
+`mentions/mention-candidate-projection-kysely.repository.ts:72` — tracked separately, not part
+of this trigger's fix). Tracked as `TS-GEO-TRIGGER-CROSS-CONTEXT-001` — analysis `approved`
+(`project-orchestration/analysis/TS-GEO-TRIGGER-CROSS-CONTEXT-001.analysis.md`), fix is a
+type-enforced "Anchor Snapshot" (one residence read per command, feeding geometry + guardrail +
+denormalized columns together) — this is exactly the review gate Rule 9 exists to have caught
+before the trigger ever shipped.
+
+### ❌ AP13 — A per-context projection drifts from its source and is queried unindexed
+
+`economy_users.residences` (JSONB array, synced from `user_residences` via integration events)
+is read for spatial discovery filtering by four query repositories in `neighborhood-economy`
+without ever building an index the query could use (Rule 12) — and has already produced a
+production data-quality incident: `migration 259_backfill_terc_economy_users_residences.ts`
+exists specifically to repair `residenceId` entries in this JSONB array that no longer matched
+a row in `user_residences`. Two independent failure modes from one root cause (a materialized
+copy with no schema-enforced consistency and no index): silent staleness, and a guaranteed
+sequential scan at scale. Neither is visible in `EXPLAIN` on a small table (Rule 4) or in a
+green test suite (Rule 8) — this is the projection-mechanism analogue of AP9's "over-exposure
+generates nothing" problem. **Fix**: Rule 11 for whether the projection is the right source at
+all, Rule 12 for the column shape when it is. Tracked as part of
+`TS-GEO-TRIGGER-CROSS-CONTEXT-001`.
 
 ### ❌ AP11 — Two discovery models coexisting without a decision
 
@@ -397,14 +581,20 @@ patterns, so: enumerate readers statically first (cheap, often decisive), confir
   `sql<Type>` template literals, explicit columns)
 - `infrastructure/repository-events-pattern.md` — the guardian-test convention Rule 7 mirrors
 - `architecture/acl-registry-pattern.md` — the correct channel for the cross-context read in AP10
+- `architecture/cross-context-communication.md` — Per-Context Read Projection as a named
+  mechanism (Rule 11), alongside ACL Registry / Integration Events / Dedicated Queue
 - `cross-layer/security-invariants-pattern.md` — spatial predicates as an access-control surface
 - `testing/testing-pyramid-pattern.md` — L1 shape guardian vs L2 index assertion split
+- `ADR-0114` — formal record of the ACL-vs-projection decision rule (Rule 11)
 
 ---
 
 ## Checklist
 
-- [ ] Predicate classified: metric / topological / KNN (Rule 1)
+- [ ] Predicate classified: metric / topological / containment / KNN (Rule 1)
+- [ ] Class chosen by intended boundary behaviour — containment (`ST_Contains`) excludes the
+      boundary, topological (`ST_Intersects`) includes it; "which area is this point in"
+      lookups decided deliberately, not by habit (Rule 1)
 - [ ] Column type read from the migration and confirmed against the live schema (Rule 6)
 - [ ] Index matching the predicate expression confirmed in `pg_indexes` (Rule 4, step 0)
 - [ ] No cast applied to an indexed column unless a functional index covers that exact expression
@@ -418,3 +608,16 @@ patterns, so: enumerate readers statically first (cheap, often decisive), confir
       `lat`/`lng`, even in a correctly-cast predicate (Rule 3, AP9)
 - [ ] New raw `ST_*`/`<->` call site registered in the guardian allowlist — migrated,
       `pending-migration` with a task, or `structural-exclusion` with a cited reason (Rule 7)
+- [ ] Geo reviewer consulted BEFORE finalizing — for a migration/trigger/function/generated
+      column touching a geo column, not only for a repository query (Rule 9)
+- [ ] If this is a trigger or stored function: confirmed it reads only tables in its own
+      bounded context (Rule 9, AP10) — cross-context reads go through the ACL adapter in a
+      command handler, never in DDL
+- [ ] Private point columns snapped at write time (with a backfill for existing rows), never
+      per-query at read; distance exposed to an untrusted consumer is a bucket, not metres
+      (Rule 10, AP9)
+- [ ] Cross-context residence/location value classified: persisted anchor or authz decision →
+      live ACL; display/discovery-filter/bulk → per-context projection allowed (Rule 11)
+- [ ] If a per-context projection feeds a spatial predicate: the column is native
+      `geography`/`geometry` with a matching GiST index, never a JSONB field requiring
+      `jsonb_array_elements` — verified in `pg_indexes`, not assumed (Rule 12, AP13)

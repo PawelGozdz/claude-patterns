@@ -77,6 +77,15 @@ odpala (realna dziura, znaleziona 2026-08-11 w `library-layers`).
   implementera dosłownie, zaraz przed listą wzorców. `id: implementation` nie mówi
   agentowi niczego; „cały kod produkcyjny serwisu, bez podziału na warstwy domenowe"
   mówi mu i czego się od niego oczekuje, i czego ma nie robić.
+- **`{LAYER_SCOPE}` do prompta verify** — MUSI dostać to samo, co implementer: `id`,
+  `dirs` i `role` warstwy właśnie zaimplementowanej. Bez tego `code-quality-verifier`
+  szuka plików WSZYSTKICH warstw (jego Phase 1 discovery domyślnie skanuje domain +
+  application + infrastructure + testing naraz) — w warstwie `application` żąda więc
+  repozytoriów, których jeszcze nie ma, VETO-uje ich brak, a implementer pod presją
+  dopisuje infrastrukturę, o którą nikt nie prosił (juz-ide-api-2, 2026-08-16; kod był
+  poprawny, ale poza zakresem — i cały cykl fix→verify, który do tego doprowadził, jest
+  czystym kosztem). `{LAYER_SCOPE}` mówi verifierowi: plik spoza tych `dirs:` jest poza
+  zakresem, nie brakujący — nie VETO-uj jego nieobecności.
 - **`patterns: [...]`** — wzorce przypisane do TEJ warstwy, niezależnie od
   `patterns.always` i wyzwalaczy. Wnoszą je inne bloki przez `layer_contributions`
   (ślad `# +<blok>` w runtime.yml): blok walidacji nie ma własnej warstwy, ale ma coś

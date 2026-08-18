@@ -100,6 +100,19 @@ try {
     'node scripts/generate-pattern-routing.mjs'];
 }
 
+// Świeżość RAG też jest globalna: kolekcje `patterns_global`/`library_reference_global`
+// obsługują całą flotę, więc nieświeży chunk trafia do każdego projektu naraz. Do
+// 2026-08-16 nie pilnowało tego nic — karta reguł geo siedziała w kolekcji w wersji
+// sprzed dwóch reguł, a audyt meldował „wszystko aktualne".
+let ragIssue = null;
+try {
+  execFileSync('node', [join(REPO, 'scripts/rag-freshness.mjs')], { stdio: 'pipe' });
+} catch (e) {
+  const detail = String(e.stderr ?? '').trim().split('\n')[0].trim();
+  ragIssue = [detail || 'kolekcje RAG nie odpowiadają drzewu patterns/**+rules/**',
+    './scripts/reseed-patterns.sh'];
+}
+
 const clean = rows.filter((r) => !r.issues.length);
 const dirty = rows.filter((r) => r.issues.length);
 
@@ -111,10 +124,14 @@ for (const r of dirty) {
 if (clean.length)
   console.log(`\nbez zastrzeżeń (${clean.length}): ${clean.map((r) => r.name).join(', ')}`);
 
-if (routingIssue) console.log(`\nGLOBALNE\n    ✗ ${routingIssue[0]}\n      → ${routingIssue[1]}`);
+const globalIssues = [routingIssue, ragIssue].filter(Boolean);
+if (globalIssues.length) {
+  console.log('\nGLOBALNE');
+  for (const [what, fix] of globalIssues) console.log(`    ✗ ${what}\n      → ${fix}`);
+}
 
-console.log(dirty.length || routingIssue
+console.log(dirty.length || globalIssues.length
   ? `\n${dirty.length} projekt(ów) wymaga uwagi, znalezisk łącznie: ${
-      dirty.reduce((n, r) => n + r.issues.length, 0) + (routingIssue ? 1 : 0)}`
+      dirty.reduce((n, r) => n + r.issues.length, 0) + globalIssues.length}`
   : '\nwszystko aktualne');
-process.exit(dirty.length || routingIssue ? 1 : 0);
+process.exit(dirty.length || globalIssues.length ? 1 : 0);

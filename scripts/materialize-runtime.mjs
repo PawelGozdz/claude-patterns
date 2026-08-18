@@ -17,7 +17,7 @@
 // Teraz nieznany klucz najwyższego poziomu daje ostrzeżenie z nazwą bloku,
 // a wejście wolno formatować dowolnie poprawnym YAML-em.
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, statSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, statSync, rmSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { dirname, join, posix } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -540,8 +540,21 @@ if (dangling.length)
 // Budowana przez Document API, nie sklejaniem stringów: komentarz `# source:` przy
 // każdej pozycji jest jedynym śladem, z którego bloku coś przyszło, a węzły panelu
 // i orchestrate przenoszone są z bloków razem z ich własnymi komentarzami.
+// Do hasha wchodzi TEŻ treść tego skryptu. Powód, incydent 2026-08-16: `human_voice`
+// jest defaultką zapisaną w kodzie (HUMAN_VOICE_DEFAULT), nie w żadnym bloku — więc
+// commit d424fc5 zmienił kształt wyjścia, a hash liczony wyłącznie z bloków został ten
+// sam. `--check` meldował „aktualny" trzem projektom, którym brakowało całej sekcji
+// `human_voice:` (9920 B zamiast 10153 B), a audit-projects.mjs wpisał je do „bez
+// zastrzeżeń". Strażnik, który przegapia zmianę generatora, pilnuje połowy wejścia.
+//
+// Hashujemy plik w całości, razem z komentarzami: edycja samego komentarza wywoła
+// niepotrzebną rematerializację, ale wycinanie komentarzy z JS-a regexem jest zawodne
+// (`//` żyje w stringach i regexach), a fałszywy alarm kosztuje jedno uruchomienie
+// skryptu — fałszywy spokój kosztował trzy repozytoria bez sekcji.
+const generatorSrc = readFileSync(fileURLToPath(import.meta.url), 'utf8');
 const hash = createHash('sha256')
   .update(blocks.map((b) => b.src).join('\n') + aliasSrc + JSON.stringify([...paramsOut]) + JSON.stringify(taxonomy))
+  .update(generatorSrc)
   .digest('hex').slice(0, 12);
 
 const doc = new YAML.Document({});
@@ -795,3 +808,71 @@ mkdirSync(dirname(dst), { recursive: true });
 writeFileSync(dst, text);
 console.log(`  runtime.yml: ${expanded.length} bloków [${expanded.join(', ')}], hash ${hash}` +
   (paramsOut.size ? `, params: ${[...paramsOut.keys()].join(', ')}` : ''));
+
+// ── warstwa lokalna routingu wzorców ───────────────────────────────────────
+// hooks/lib/pattern-routing.generated.js powstaje WYŁĄCZNIE z blocks/**.yml centrali
+// (scripts/generate-pattern-routing.mjs czyta tylko REPO/blocks) i jest współdzielony
+// przez każde repo symlinkujące hooks/. Blok lokalny nie miał więc jak wnieść ani
+// jednej reguły: dla `./geo`, obecnego w czterech juz-ide-api,
+// `grep -c geo pattern-routing.generated.js` dawał 0.
+//
+// Co przez to nie działało: trigger słów kluczowych z runtime.yml owszem, bo czytają
+// go /analyze i /orchestrate — ale bramki hookowe (check-patterns-read,
+// check-delegation, check-subagent-pattern-reads) były na te pliki ślepe. Bramka
+// stała tam, gdzie agent współpracuje, i znikała tam, gdzie mógłby ją obejść.
+//
+// Reguł lokalnych nie wolno dopisać do pliku centralnego — pojechałyby do wszystkich
+// projektów. Projekt dostaje własną warstwę obok runtime.yml, a lib/pattern-routing.js
+// dokłada ją PRZED regułami centralnymi: blok lokalny opisuje ten jeden stack, więc
+// jest bardziej specyficzny z definicji.
+const localRouting = { paths: [], filenames: [] };
+const routingErrors = [];
+
+for (const b of blocks) {
+  if (!b.name.startsWith('./')) continue; // centralne obsługuje generate-pattern-routing.mjs
+  const routing = b.doc.toJS?.()?.pattern_routing;
+  if (!routing) continue;
+
+  for (const kind of ['paths', 'filenames']) {
+    for (const rule of routing[kind] ?? []) {
+      if (!rule.match || !rule.pattern) {
+        routingErrors.push(`blok "${b.name}": pattern_routing.${kind} — wpis bez "match" albo "pattern"`);
+        continue;
+      }
+      // Wisząca ścieżka to reguła, która zablokuje edycję i każe przeczytać plik,
+      // którego nie ma — gorsze niż brak reguły (ta sama kontrola co w generatorze).
+      if (!existsSync(join(REPO, 'patterns', rule.pattern)) &&
+          !existsSync(join(projectDir, '.claude/knowledge/patterns', rule.pattern)))
+        routingErrors.push(`blok "${b.name}": pattern_routing wskazuje "${rule.pattern}" — nie ma takiego wzorca`);
+      if (kind === 'filenames') {
+        try { new RegExp(rule.match); }
+        catch (e) { routingErrors.push(`blok "${b.name}": "${rule.match}" nie jest poprawnym regexem — ${e.message}`); }
+      }
+      localRouting[kind].push({ match: rule.match, pattern: rule.pattern, source: b.name });
+    }
+  }
+}
+
+if (routingErrors.length) fail('pattern_routing w bloku lokalnym:\n  ' + routingErrors.join('\n  '));
+
+// „first match wins" — dłuższe dopasowanie jest bardziej specyficzne, przy równej
+// długości alfabetycznie, żeby wynik był identyczny przy każdym uruchomieniu.
+const bySpec = (a, b) => b.match.length - a.match.length || a.match.localeCompare(b.match);
+localRouting.paths.sort(bySpec);
+localRouting.filenames.sort(bySpec);
+
+const routingDst = join(projectDir, '.claude/config/pattern-routing.local.json');
+const routingCount = localRouting.paths.length + localRouting.filenames.length;
+if (routingCount) {
+  writeFileSync(routingDst, JSON.stringify({
+    _generated_by: 'scripts/materialize-runtime.mjs — NIE edytuj ręcznie',
+    _source: 'sekcje pattern_routing: w .claude/blocks/*.yml tego projektu',
+    ...localRouting,
+  }, null, 2) + '\n');
+  console.log(`  pattern-routing.local.json: ${routingCount} reguł z bloków lokalnych`);
+} else if (existsSync(routingDst)) {
+  // Blok przestał wnosić routing — zostawienie starego pliku dałoby bramkę bez źródła,
+  // czyli dokładnie ten dryf rejestru, którego pilnujemy gdzie indziej.
+  rmSync(routingDst);
+  console.log('  pattern-routing.local.json: usunięty (bloki lokalne nie wnoszą już routingu)');
+}

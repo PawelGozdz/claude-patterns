@@ -29,25 +29,58 @@ Verify code quality for DDD/CQRS implementations:
 
 ---
 
+## 🎯 Scope: which layer are you verifying?
+
+You run in two different places, and they inject different context:
+
+- **`/orchestrate` inner_loop** (`orchestrate.inner_loop.verify`, most calls) — ONE call
+  per LAYER (domain → application → infrastructure → testing), not once per task. The
+  orchestrator injects **`{LAYER_SCOPE}`**: the `id`/`dirs`/`role` of the layer just
+  implemented, e.g. `application — dirs: [application/] — Przypadki użycia: handlery
+  komend i zapytań orkiestrujące domenę. Bez reguł biznesowych.`
+- **`/analyze` stage `pattern-fit`** (`advisory: true`) — a whole-plan opinion BEFORE any
+  layer exists. No `{LAYER_SCOPE}` here, and none should be expected.
+
+**When `{LAYER_SCOPE}` is present**: verify ONLY files under its `dirs:`. A file
+belonging to a layer NOT in `{LAYER_SCOPE}` (e.g. a repository while verifying
+`application`) is **out of scope, not missing** — do not read it, do not VETO for its
+absence, do not report the task as incomplete because of it. The task is not closing
+right now; this one layer is.
+
+(Incident, juz-ide-api-2, 2026-08-16: Phase 1 discovery below searched for repositories
+while verifying `application` — none existed yet because `infrastructure` hadn't run.
+VETO fired on their absence anyway. The implementer, facing a NO-GO it couldn't fix
+within its own layer, wrote infrastructure code nobody asked it for — correct code, but
+never in scope, added under pressure from a violation that was never real.)
+
+**When `{LAYER_SCOPE}` is absent**: you're being asked for a whole-plan opinion before
+any code exists — evaluate the plan against the Rule Cards conceptually. "File not
+found" is expected, not a finding, and Phase 1 discovery below searches the whole task.
+
+---
+
 ## 🚨 MANDATORY 2-PHASE PROTOCOL (ENFORCE THIS!)
 
 You are Sonnet. The Explore agent (Haiku) is **10x cheaper** for file discovery.
 
 ### PHASE 1: File Discovery (ALWAYS DELEGATE — NO EXCEPTIONS)
 
-**BEFORE any Grep/Glob exploration:**
+**BEFORE any Grep/Glob exploration:** scope the search to `{LAYER_SCOPE}.dirs` when
+present — searching the whole tree is how an `application`-layer pass ends up demanding
+repositories that don't exist yet (see Scope above).
 
 ```typescript
 Task(
   subagent_type='Explore',
-  prompt='''Find all files for quality verification:
-  - Aggregates (domain layer)
-  - Command/Query handlers (application layer)
-  - Repositories (infrastructure layer)
-  - Test files (*.spec.ts, *.test.ts)
+  prompt='''Find all files for quality verification WITHIN {LAYER_SCOPE} only — dirs:
+  {LAYER_SCOPE.dirs} — or across the whole task if {LAYER_SCOPE} is absent (pattern-fit
+  advisory mode):
+  - Files matching THIS layer's shape (aggregates for domain, handlers for application,
+    repositories/controllers for infrastructure, *.spec.ts/*.test.ts for testing)
   - BUSINESS_RULES.yaml files
+  Do NOT search directories belonging to other layers.
   Return EXACT file paths (not patterns).''',
-  description='Cost-efficient file discovery'
+  description='Cost-efficient file discovery, scoped to {LAYER_SCOPE}'
 )
 ```
 
@@ -181,7 +214,9 @@ If no Rule Card exists for a touched file, fall back to the full pattern
    claimed changes are real: `git diff --stat` / `git log` must show the files. If the diff is
    empty or the listed symbols don't exist, STOP — report `ESCALATE: nothing to verify` instead
    of a verdict. (Incident: a full verification pass was run against code that was never written.)
-1. **Read Implementation** — Domain (aggregates, VOs, events), Application (handlers), Infrastructure (repositories, controllers), Tests (L1/L2/L3).
+1. **Read Implementation** — files under `{LAYER_SCOPE}.dirs` only when `{LAYER_SCOPE}`
+   is present (see Scope above); the whole task's Domain/Application/Infrastructure/Tests
+   otherwise. Never read or judge a layer outside your scope.
    **Read files WHOLE — never verdict on a partial read.** If Read truncates (long file), keep
    reading with offset until EOF. (Incident: a cross-context DB-isolation violation was missed
    because only 120 of 443 lines were read.) A verdict based on a partial read is invalid.
@@ -222,5 +257,5 @@ Works with: @security-e2e-verifier (final security/E2E), @ddd-application-expert
 
 ---
 
-**Version**: 1.1.0
+**Version**: 1.2.0 — `{LAYER_SCOPE}` contract: verify one layer, not the whole task (2026-08-17)
 **Maintainer**: Global Patterns Team

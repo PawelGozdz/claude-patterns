@@ -30,6 +30,9 @@ no owner at all. See `@test-implementer`'s file for the full rationale.
 - `src/app/api/` — Controllers
 - `src/contexts/{context}/infrastructure/` — Repos, adapters
 - `src/shared/validation/schemas/` — Zod schemas
+- `src/shared/database/migrations/` (or project equivalent) — schema, triggers, functions,
+  indexes. Subject to "🔍 SQL Review" below, same as a repository query — a migration is not a
+  lower-scrutiny path just because it's DDL instead of TypeScript.
 
 **Do NOT touch** `__tests__/` — that's `@test-implementer`'s scope.
 
@@ -238,26 +241,51 @@ Domain and application work belongs to @domain-application-implementer, tests to
 
 ---
 
-## 🔍 SQL Query Review (consult BEFORE finalizing a repository query)
+## 🔍 SQL Review (consult BEFORE finalizing — repository queries AND migrations/DDL)
 
-Any repository query that is more than a single-column PK lookup — joins, aggregations, pagination,
-`LIKE`/full-text search, geo/spatial predicates, or anything touching a table you expect to grow —
-gets reviewed BEFORE you consider the repository method done:
+This gate is scoped by **what the SQL touches, not what kind of file it's in**. A repository
+query and a migration that authors a trigger, stored function, or generated column carry the
+SAME review obligation whenever either touches a table expected to grow, or a domain-specific
+column class (geo/spatial, financial, PII) a project has its own specialist for. Scoping this
+gate to "repository query" alone has a documented failure mode: on a project with a geo
+specialist, a migration authoring a cross-context trigger on a spatial column shipped
+completely unreviewed, because the review step as previously worded never fired for migration
+files — only for `*.repository.ts`.
 
-1. **`@sql-postgres-optimizer`** (comes with the `nestjs` block): hand it the
-   Kysely snippet or raw SQL — NOT full task context, just the query + table name. It returns a
-   verdict + concrete rewrite/index recommendation, or signs off fast if the query is genuinely
-   trivial.
+**In scope for review, no exceptions**:
+- Any repository query that is more than a single-column PK lookup — joins, aggregations,
+  pagination, `LIKE`/full-text search, domain-specialist-relevant predicates, anything
+  touching a growing table.
+- Any migration that creates or modifies a **trigger, stored function, or generated column** —
+  especially one computing a value from another table's data. If that table belongs to a
+  DIFFERENT bounded context, this is a hard stop (see below), not merely a review item.
+- Any migration adding an index tied to a domain-specialist's column class (e.g. GiST for geo).
+- Any raw SQL string anywhere that a project's own specialist agent would recognize as its
+  domain (check `.claude/agents/` for what the project's own block adds).
+
+**Workflow**:
+1. **`@sql-postgres-optimizer`** (comes with the `nestjs` block): hand it the Kysely snippet or
+   raw SQL — NOT full task context, just the query + table name. It returns a verdict + concrete
+   rewrite/index recommendation, or signs off fast if the query is genuinely trivial.
 2. **Project-local query specialists** — check `.claude/agents/` for anything the project's own
-   block adds (e.g. a geo/PostGIS specialist for spatial predicates). If the query touches that
-   specialist's domain (e.g. `ST_DWithin`, geography columns, TERYT lookups), consult it INSTEAD of
-   `@sql-postgres-optimizer` for the spatial part — the two agents hand off non-overlapping parts of
-   a mixed query to each other when needed, you don't need to route between them yourself.
-3. **Apply the recommendation** (rewrite the query, and if an index is recommended, add it via a
-   migration — the reviewing agent proposes the index, you own writing the migration).
-4. **Don't skip this for "it'll probably be fine"** — a query that works fine at 100 rows in dev and
-   falls over at 100k rows in production is exactly the failure mode this step exists to catch
-   BEFORE it ships, not after a slow-query alert.
+   block adds (e.g. a geo/PostGIS specialist for spatial predicates, or triggers/functions
+   touching spatial columns). If the query OR migration touches that specialist's domain,
+   consult it INSTEAD of `@sql-postgres-optimizer` for that part — the two agents hand off
+   non-overlapping parts of a mixed query to each other when needed, you don't route between
+   them yourself.
+3. **Apply the recommendation** (rewrite the query/migration, and if an index is recommended,
+   add it via a migration — the reviewing agent proposes the index, you own writing it).
+4. **Don't skip this for "it's just a trigger" or "it'll probably be fine"** — a query fine at
+   100 rows in dev that falls over at 100k in production, and a trigger that quietly reads
+   another context's table, are the same failure mode this step exists to catch before it ships.
+
+**Hard stop, not a review nit**: a trigger or stored function you are about to write/modify that
+reads a table OUTSIDE its own bounded context does not get "reviewed and shipped with caveats"
+— it does not ship. Cross-context reads happen through the ACL adapter in a command handler,
+never in DDL (`architecture/acl-registry-pattern.md`, `architecture/cross-context-communication.md`).
+If the data you need lives in another context's table, the fix is an ACL call in the handler
+before the write, not a clever trigger — even a "just reading two columns" trigger that looks
+harmless. That's exactly how the incident above shipped.
 
 ---
 

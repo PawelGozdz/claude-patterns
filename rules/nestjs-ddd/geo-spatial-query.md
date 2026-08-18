@@ -8,8 +8,11 @@ shared query builders, migrations adding spatial columns/indexes, ACL adapters g
 
 ## ALWAYS
 - Classify the predicate before writing it: **metric** (`ST_DWithin`/`ST_Distance` in metres),
-  **topological** (`ST_Intersects`/`ST_Contains`), or **KNN** (`ORDER BY col <-> point LIMIT n`).
-  The class dictates the cast and the index — they are not interchangeable.
+  **topological** (`ST_Intersects`), **containment** (`ST_Contains`/`ST_Within` — boundary
+  **excluded**, no `geography` overload, pin `geometry` in the type), or **KNN**
+  (`ORDER BY col <-> point LIMIT n`). The class dictates the cast and the index — they are
+  not interchangeable, and containment vs topological is a product decision about boundary
+  points, not a style choice.
 - Read the column's type from the **migration** and confirm it against the live schema
   (`\d+ <table>`). Docs and ADRs have been observed declaring `GEOGRAPHY` for a `geometry`
   column and generating the bug that way.
@@ -28,6 +31,8 @@ shared query builders, migrations adding spatial columns/indexes, ACL adapters g
   same convention as the `eventMap` guardian in [repository.md](./repository.md)), plus an L2
   case with a point exactly on the area boundary.
 - Assert **both** visibility directions on the same fixture: sees, and does **not** see.
+- Snap private point columns at **write** time (handler + backfill migration); expose distance
+  to an untrusted consumer as a coarse bucket, never metres.
 - Correct the doc/ADR that taught the wrong shape in the SAME change as the query fix.
 
 ## NEVER
@@ -51,6 +56,12 @@ shared query builders, migrations adding spatial columns/indexes, ACL adapters g
   undocumented — record the exception in the ADR, not in a code comment.
 - NEVER `DROP` a duplicate spatial index on static analysis alone; confirm with
   `pg_stat_user_indexes` from real traffic first. It is a one-way door.
+- NEVER "fix" an index/query cast mismatch by stripping a semantically-required cast from the
+  query — that silently turns metres into degrees. Rebuild the **index** on the cast
+  expression instead (`DROP` + `CREATE` under the same name; Postgres has no
+  `ALTER INDEX ... SET expression`).
+- NEVER apply `ST_SnapToGrid` per-query as the privacy mechanism — the exact column stays
+  live and one forgotten call site reopens the oracle. Snapping happens at write time.
 
 ## Why
 PostGIS accepts predicates no index can serve and reports no warning: the rows come back

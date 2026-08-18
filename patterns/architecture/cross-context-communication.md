@@ -16,6 +16,18 @@
 ```
 Need to communicate across bounded context boundaries?
 │
+├─ Is this a REPEATED READ of another context's data (discovery, list, display),
+│  not a one-off request-response?
+│  ├─ YES → Will THIS read's value be persisted as a content anchor, or feed an
+│  │         authz/guardrail decision?
+│  │         ├─ YES → ACL Registry (sync) — staleness here is a permanent error
+│  │         │        or an access-control gap, not a UX nuance (see Pattern 1)
+│  │         └─ NO  → Per-Context Read Projection (see Pattern 4) — eventual
+│  │                  consistency is the correct trade-off; querying ACL on every
+│  │                  list/discovery read is an unjustified N+1
+│  │
+│  └─ NO (this is a one-off action, not a standing read need) ↓ continue below
+│
 ├─ Is the result needed NOW to serve the current HTTP request?
 │  ├─ YES → Is the target operation fast (<500ms, no LLM, no heavy I/O)?
 │  │         ├─ YES → ACL Registry (sync)
@@ -32,6 +44,15 @@ Need to communicate across bounded context boundaries?
 │     └─ Fire-and-forget, no result needed?
 │        └─ YES → Integration Event (INTEGRATION_EVENTS queue)
 ```
+
+The first branch is deliberately asked before the request/response branch below: a repeated
+read (discovery feed, list, "who's near me") is a standing data-shape question, not a
+per-request action, and answering it with "is this fast enough for sync" alone misses the
+real trade-off — see `infrastructure/geo-spatial-query-pattern.md` Rule 11 (`ADR-0114`) for
+the concrete incident (`TS-GEO-TRIGGER-CROSS-CONTEXT-001`) that surfaced this gap: three
+CREATE handlers already called ACL correctly, and three discovery-query repositories already
+read a local projection correctly — the pattern existed in code before it existed in this
+document.
 
 ---
 
@@ -196,7 +217,81 @@ export class FlashcardGenerationConsumer extends BaseQueueProcessor<FlashcardGen
 
 ---
 
-## Pattern 4: Future — Per-Context Queues (juz-ide-api TS-INFRA-002)
+## Pattern 4: Per-Context Read Projection (Materialized Cross-Context View)
+
+### When to use
+- The read is **repeated**, not a one-off (discovery feed, list filtering, "near me" search)
+- The value being read will **not** be persisted as a new anchor and does **not** gate an
+  authz/guardrail decision for THIS read
+- Eventual consistency (bounded by the sync handler's own event lag) is an acceptable
+  trade-off — the failure mode of a stale read is tolerable (a list item briefly
+  under/over-inclusive), not a permanent data error or an access-control gap
+
+### When NOT to use
+- ❌ Anchoring newly-created content (CREATE-time geometry, address snapshot) — use ACL
+  (Pattern 1); a stale anchor is written once and never self-corrects
+- ❌ Authorization or guardrail checks (e.g. residence-boundary validation) — use ACL; a stale
+  "allow" is a live access-control gap, not a UX nuance
+- ❌ As a substitute for ACL "because it's cheaper" when the read is actually one of the two
+  cases above — cost is not the deciding factor, staleness tolerance is
+
+### How it differs from the other three patterns
+It is not a request-response (Pattern 1), not a fan-out notification (Pattern 2), and not an
+async unit of work with a result (Pattern 3). It is a **standing, consumer-owned read model**:
+the owning context subscribes to the source context's integration events and maintains its own
+local copy, indefinitely, for its own reads — closer to CQRS's "read model" than to any of the
+sync/async messaging patterns above, which is why it needs its own category rather than being
+squeezed into "Integration Events".
+
+### Reference implementation (juz-ide-api)
+Every consuming context maintains its own `<context>_users` projection table (`economy_users`,
+`community_communication_users`, `discussions_users`, `engagement_users`), kept in sync by
+three event handlers per context subscribing to `geographic-auth`'s
+`ResidenceRegisteredIntegrationEvent` / `ActiveResidenceSwitchedIntegrationEvent` /
+`ResidenceDeletedIntegrationEvent`. Three CREATE handlers in `neighborhood-economy`
+(`create-job-request`, `create-local-share`, `create-service-offering`) correctly bypass this
+projection and call ACL directly (Pattern 1) because they anchor new content. Three discovery
+query repositories in the same context correctly read the projection instead of calling ACL
+per row.
+
+```typescript
+// ✅ Consumer-owned projection, synced by dedicated event handlers — not a live call
+@EventHandler(ResidenceRegisteredIntegrationEvent)
+export class ResidenceRegisteredHandler {
+  async handle(event: ResidenceRegisteredIntegrationEvent): Promise<void> {
+    // appends to economy_users.residences JSONB (or a native indexed column — see caveat)
+  }
+}
+
+// ✅ Discovery read — projection, not ACL (repeated, eventual-consistency-tolerant)
+const nearby = await this.queryRepository.findByProximity(residencesProjectionColumn, ...);
+
+// ❌ WRONG — CREATE-time anchor read from the projection instead of ACL
+const coords = await this.userProjectionRepository.getResidence(userId); // stale-risk on anchor
+```
+
+### Caveat — shape matters as much as source
+Choosing this pattern only answers "may I read a local copy at all". If that copy will feed a
+**spatial predicate** (`ST_DWithin`, `ST_Intersects`, KNN), the column itself must independently
+satisfy `infrastructure/geo-spatial-query-pattern.md` Rule 12 (GEO19): native
+`geography`/`geometry` with a matching GiST index, never a JSONB array requiring
+`jsonb_array_elements` (unindexable by construction). `economy_users.residences` today is
+JSONB and has already drifted from its source once in production (migration
+`259_backfill_terc_economy_users_residences.ts`) — a live example of getting the *source*
+decision right (Pattern 4 is the correct mechanism here) while the *shape* was wrong (fixed
+under `TS-GEO-TRIGGER-CROSS-CONTEXT-001`, PR-GIST).
+
+### Consistency risk this pattern accepts
+Each consuming context implements its own copy of the same three-handler sync logic
+independently — a real, observed risk (the migration-259 drift), not hypothetical. Do not
+centralize storage across contexts to fix this (that reintroduces the coupling this pattern
+exists to avoid); instead keep the handler trio's *shape* consistent (a shared base
+handler/mixin per event type) and add a periodic consistency-check job comparing projection
+row counts/checksums against the source context.
+
+---
+
+## Pattern 5: Future — Per-Context Queues (juz-ide-api TS-INFRA-002)
 
 **Not yet implemented in ULS.** juz-ide-api has migrated to this.
 
@@ -214,9 +309,10 @@ Instead of one `INTEGRATION_EVENTS` queue with central switch processor, each co
 
 | Mechanism | Sync/Async | Consumers | Latency OK | Use case |
 |-----------|-----------|-----------|------------|----------|
-| ACL Registry | Sync | 1 | <500ms | Permission checks, profile reads, price calculation |
+| ACL Registry | Sync | 1 | <500ms | Permission checks, profile reads, price calculation, CREATE-time anchors |
 | Integration Events | Async | N | Seconds | UserRegistered, MilestoneReached, notifications |
 | Dedicated Queue | Async | 1 | Minutes | LLM generation, document processing, embedding |
+| Per-Context Read Projection | Async (standing) | 1 (self) | Sync-lag bound | Discovery/list reads, display — never CREATE anchors or authz |
 
 ---
 

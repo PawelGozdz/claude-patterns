@@ -14,7 +14,7 @@
 // Półkę `always` czytamy z bloków, nie z listy w tym pliku: to blok decyduje,
 // co wchodzi do 100% tasków, więc on wyznacza, które wzorce muszą być tanie.
 
-import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join, posix } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -59,6 +59,17 @@ for (const bf of blockFiles) {
 }
 
 const errors = [], warnings = [];
+
+// ── baseline długu formatu ────────────────────────────────────────────────
+// Lista plików, którym wolno nie mieć `**Layer**`/`**Status**`/„When to Use" —
+// zastany dług z czasów, gdy wymóg z CLAUDE.md nie był przez nic egzekwowany.
+// Nowy plik do niej nie trafia: `--update-baseline` przepisuje ją od zera, więc
+// dopisanie się do listy wymaga świadomego uruchomienia z tą flagą.
+const BASELINE_PATH = join(PATTERNS, '.lint-baseline.json');
+const UPDATE_BASELINE = process.argv.includes('--update-baseline');
+const baselineFiles = new Set(
+  existsSync(BASELINE_PATH) ? Object.keys(JSON.parse(readFileSync(BASELINE_PATH, 'utf8')).files ?? {}) : []);
+const staleBaseline = [];
 
 // ── taksonomia tagów (blocks/_taxonomy.yml) ───────────────────────────────
 const taxPath = join(BLOCKS, '_taxonomy.yml');
@@ -146,7 +157,23 @@ for (const f of patternFiles) {
   if (!/^\*\*Status\*\*/m.test(src)) miss.push('**Status**');
   if (!/##\s*When to Use/i.test(src)) miss.push('## When to Use');
   else if (!/✅/.test(src) || !/❌/.test(src)) miss.push('bullety ✅/❌');
-  if (miss.length) warnings.push(`${f}: brak ${miss.join(', ')}`);
+
+  // Baseline rozstrzyga, czy brak metadanych to BŁĄD, czy UWAGA. Powód: CLAUDE.md
+  // nazywa te bullety REQUIRED, a lint zgłaszał je jako uwagę — więc dług rósł
+  // (75 plików na 100 przy pomiarze 2026-08-16) i nikt tego nie odczuwał. Wymóg,
+  // który niczego nie zatrzymuje, nie jest wymogiem, tylko życzeniem.
+  //
+  // Plik spoza baseline (nowy albo świeżo naprawiony) musi spełniać wymóg — to zamyka
+  // dopływ długu. Plik z baseline zostaje uwagą, żeby jedna zmiana nie kazała
+  // przepisywać stu dokumentów naraz. Baseline wolno tylko SKRACAĆ.
+  if (miss.length) {
+    if (baselineFiles.has(f)) warnings.push(`${f}: brak ${miss.join(', ')}`);
+    else errors.push(`${f}: brak ${miss.join(', ')} — wymóg z CLAUDE.md, a pliku nie ma w patterns/.lint-baseline.json`);
+  } else if (baselineFiles.has(f)) {
+    // Naprawiony, a wciąż na liście długu — trzeba zdjąć, inaczej baseline przestaje
+    // mierzyć cokolwiek i za rok nikt nie wie, co jest w nim naprawdę zepsute.
+    staleBaseline.push(f);
+  }
 
   // `**Assumes**` deklaruje zależność pojęciową wzorca („zakłada model domenowy").
   // Nie zgadujemy jej z treści — sprawdzamy tylko, czy zadeklarowany blok istnieje.
@@ -189,7 +216,39 @@ console.log(`wzorców: ${patternFiles.length}` +
 if (newVariants.size)
   console.error(`\nNOWE WARIANTY (poziom 3 jest otwarty — dopisz do variants_seen, jeśli mają zostać):\n  ` +
     [...newVariants].join('\n  '));
+// `--update-baseline` przepisuje listę długu od zera z aktualnego stanu drzewa.
+// Uruchamiać świadomie: to jedyny sposób, żeby plik z brakami przestał być błędem,
+// więc ma boleć bardziej niż dopisanie brakującej sekcji.
+if (UPDATE_BASELINE) {
+  const files = {};
+  for (const f of patternFiles) {
+    const src = readFileSync(join(PATTERNS, f), 'utf8');
+    const miss = [];
+    if (!/^\*\*Layer\*\*/m.test(src)) miss.push('**Layer**');
+    if (!/^\*\*Status\*\*/m.test(src)) miss.push('**Status**');
+    if (!/##\s*When to Use/i.test(src)) miss.push('## When to Use');
+    else if (!/✅/.test(src) || !/❌/.test(src)) miss.push('bullety ✅/❌');
+    if (miss.length) files[f] = miss;
+  }
+  writeFileSync(BASELINE_PATH, JSON.stringify({
+    _comment: 'Zastany dług formatu wzorców. Lista może TYLKO maleć — nowy wzorzec ma ' +
+      'spełniać wymóg z CLAUDE.md, nie dopisywać się tutaj. Regeneracja: ' +
+      'node scripts/lint-patterns.mjs --update-baseline',
+    files,
+  }, null, 2) + '\n');
+  console.log(`  patterns/.lint-baseline.json: ${Object.keys(files).length} plików z długiem formatu`);
+  process.exit(0);
+}
+
+if (staleBaseline.length) {
+  console.error(`\nDO ZDJĘCIA Z BASELINE (${staleBaseline.length}) — plik spełnia już wymóg:`);
+  for (const f of staleBaseline) console.error(`  ${f}`);
+  console.error('  → node scripts/lint-patterns.mjs --update-baseline');
+}
 report('BŁĘDY', errors);
 report('UWAGI', warnings);
+if (baselineFiles.size)
+  console.error(`\ndług formatu: ${baselineFiles.size} plików w patterns/.lint-baseline.json ` +
+    '(uwagi, nie błędy — lista ma maleć)');
 if (!errors.length && !warnings.length) console.log('bez zastrzeżeń');
 process.exit(STRICT && errors.length ? 1 : 0);

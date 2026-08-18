@@ -102,7 +102,7 @@ Persistence, API, and technical implementation patterns.
 | **[mapper-pattern.md](infrastructure/mapper-pattern.md)** | ~600 | Production | toDomain(), toPersistence(), value object reconstruction | infrastructure-testing-implementer |
 | **[controller-schema-pattern.md](infrastructure/controller-schema-pattern.md)** | ~600 | Production | Zod validation, @CurrentUser, rate limiting, Result pattern | infrastructure-testing-implementer |
 | **[external-adapter-pattern.md](infrastructure/external-adapter-pattern.md)** | ~230 | ⚠ project-specific (grant-flow) | Logging placeholder adapter: realny port, zero I/O, fail-fast w onModuleInit, rozdzielone klasy błędów | infrastructure-testing-implementer |
-| **[geo-spatial-query-pattern.md](infrastructure/geo-spatial-query-pattern.md)** | ~300 | ⚠ project-specific (juz-ide) | PostGIS: 3 predicate classes (metric/topological/KNN), cast shape = index shape, catalogue-before-EXPLAIN verification, spatial predicate as access control | infrastructure-testing-implementer, geo-postgres-specialist |
+| **[geo-spatial-query-pattern.md](infrastructure/geo-spatial-query-pattern.md)** | ~500 | production | PostGIS: 4 predicate classes (metric/topological/containment/KNN), cast shape = index shape, catalogue-before-EXPLAIN verification, spatial predicate as access control, snap-at-write privacy, canonical typed builder (juz-ide reference impl) | infrastructure-testing-implementer, geo-postgres-specialist |
 
 **Infrastructure Layer Key Principles**:
 - Spatial queries: classify the predicate (metric/topological/KNN) BEFORE writing it; cast shape must match index shape; verify against `pg_indexes` before `EXPLAIN` (small tables cannot distinguish correct from broken)

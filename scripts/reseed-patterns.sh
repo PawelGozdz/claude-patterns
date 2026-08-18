@@ -28,6 +28,11 @@ npm run build >/dev/null
 echo -e "${BLUE}[reseed-patterns] 3/3 reseed patterns_global + library_reference_global${NC}"
 npm run seed:global -- --all 2>&1 | grep -E '^\[global-indexer\]|error|Error' || true
 
+# Zapis stanu drzewa: od tego momentu scripts/rag-freshness.mjs potrafi powiedzieć,
+# czy kolekcje odpowiadają dyskowi. Bez tego kroku rozjazd jest niewykrywalny — a to
+# on stał za incydentem z kartą geo (kolekcja z GEO17 przy dysku z GEO19).
+node "$SCRIPT_DIR/rag-freshness.mjs" --record
+
 echo -e "${GREEN}[reseed-patterns] OK${NC} — retrieve_patterns now reflects the current patterns/**+rules/** tree."
 echo -e "${YELLOW}Note:${NC} this is a full recreate() of both global collections — safe, but batch multiple"
 echo -e "pattern edits into one reseed rather than running this after every single file change."
