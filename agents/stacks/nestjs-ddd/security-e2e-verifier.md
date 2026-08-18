@@ -453,8 +453,21 @@ When any file in `src/contexts/b2g-contracts/` is in scope, run these checks in 
 
 ---
 
-**Version**: 2.0.0
 **Created**: 2026-02-05
-**Updated**: 2026-05-10
 **Maintainer**: LocalHero Security Team
-**Changelog**: v2.0 — added STRIDE/DREAD/LINDDUN gates, LocalHero-specific VETO table, B2G invariant checks, Threat Model verification step
+
+## Changelog
+
+- 2026-08-18 — migrated `**Version**`/`**Maintainer**` footer to an append-only `## Changelog` (Keep-a-Changelog format, TASK-GUARDRAILS-001 Sekcja 3); history below reconstructed from `git log -p`
+- 2026-08-15 — added context-cost discipline section (no process diagnostics, `git diff --stat` only, scoped greps, trust an upstream probe's typecheck/test result instead of re-running)
+- 2026-08-13 — replaced the static per-layer pattern list with an orchestrator-injected `{PATTERNS}` list; STOP and report if it's empty instead of falling back to memorized patterns
+- 2026-07-09 — corrected a stale `## Tools` doc: `Task` and every `mcp__zen__*` entry were never actually granted (frontmatter only ever had Read/Glob/Grep/Bash/StructuredOutput) — do OWASP/E2E/performance analysis directly, delegation and zen tools both fail
+- 2026-07-02 — added `StructuredOutput` to tools (root-cause fix for the wf_8f8aeeb3 crash), removed `mcp__zen__secaudit`/`mcp__zen__analyze`
+- 2026-06-27 — Rule Cards system references (Explore agent renamed from `@codebase-explorer`), removed `isolation: worktree`
+- 2026-05-10 — added Skill Invocation Protocol table (four security skills, distinct triggers per skill, default verification flow)
+- 2026-05-10 — Sprint 4 POC: STRIDE/DREAD/LINDDUN gates, LocalHero-specific VETO table (dual identity, rate-limit fail-closed, B2G invariants), Threat Model verification step, B2G Context additional-checks section (v1.0.0 → v2.0.0)
+- 2026-04-27 — added the full per-layer Pattern Knowledge Base section (security-critical/architecture/infrastructure/testing reading lists) and the "every verifier output MUST cite" requirement
+- 2026-03-30 — added `memory: project` to frontmatter
+- 2026-03-30 — frontmatter modernized: `cost_estimate`/`layer`/`veto_power` replaced with `permissionMode`/`effort`/`isolation`/`maxTurns`/`skills`
+- 2026-03-01 — added an explicit `tools:` frontmatter line
+- 2026-02-07 — initial version

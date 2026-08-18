@@ -261,7 +261,6 @@ Works with: @security-e2e-verifier (final security/E2E), @ddd-application-expert
 
 ## Changelog
 
-- 2026-08-18 — migrated `**Version**`/`**Maintainer**` footer to an append-only `## Changelog` (Keep-a-Changelog format, TASK-GUARDRAILS-001 Sekcja 3); history below reconstructed from `git log -p`
 - 2026-08-18 — `{LAYER_SCOPE}` contract: verify only the layer just implemented, not the whole task; Phase 1 discovery scoped to `LAYER_SCOPE.dirs` (fixes juz-ide-api-2 incident: VETO on repositories that didn't exist yet because `infrastructure` hadn't run)
 - 2026-08-15 — added context-cost discipline section (no `ps`/`docker ps`, `git diff --stat` only, scoped greps, trust an upstream `checks` probe instead of re-running tests) — root-caused 89M cached tokens, ~90% of one run's cost
 - 2026-08-13 — replaced the static per-layer pattern list with an orchestrator-injected `{PATTERNS}` list; STOP and report if it's empty instead of falling back to memorized patterns

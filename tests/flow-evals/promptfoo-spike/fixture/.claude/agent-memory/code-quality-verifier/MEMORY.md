@@ -1,0 +1,2 @@
+- [Patterns injection gap](project_patterns_injection_gap.md) — orchestrator omitted {PATTERNS}/{PATTERN_RULE_CARDS} for a demo/application verify call; STOP-and-report protocol
+- [Demo context application findings](demo_context_application_findings.md) — userId-from-command-body, missing @Inject(), missing pattern attribution in CreateWidget command/handler

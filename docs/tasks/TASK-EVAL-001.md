@@ -19,9 +19,9 @@ ten typ dyscypliny, który zawodzi (lekcja pola `rag:`: instrukcja bez wymuszeni
       (wymaga infry).
 - [ ] **`tests/flow-evals/run-all.js`** — wszystkie L1 bez retrieval, jeden exit code.
 - [ ] **git pre-commit** w claude-patterns → `run-all.js` (siatka na zmiany „przy okazji").
-- [ ] **Log wyników retrieval**: po każdym runie append JSONL
-      `{date, hit1, hit5, mrr, n, threshold, gitSha}` do `tests/flow-evals/retrieval/results.jsonl`
-      — trend po zmianach chunkera/modelu/seedu (dziś każdy run to migawka bez historii).
+- [x] **Log wyników retrieval**: zrobione w `TASK-GUARDRAILS-001` Sekcja 2 (2026-08-18) —
+      `tests/flow-evals/retrieval/run.js` dopisuje JSONL `{date, hit1, hit5, mrr, n, threshold,
+      gitSha}` do `results.jsonl` po każdym runie. Nie duplikować tutaj.
 
 ## Faza 2 — korpusy L2 (jawna luka z ADR 0004)
 - [ ] **Seeded-bugs dla `code-quality-verifier`**: pliki z celowo wstrzykniętymi naruszeniami

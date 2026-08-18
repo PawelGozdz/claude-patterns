@@ -5,9 +5,17 @@
   "//type": "NIE dodawaj \"type\": \"module\" — 47 hooków w hooks/ to CommonJS (require) i .js pod tym ustawieniem przestaje się ładować. Skrypty ESM w scripts/ mają rozszerzenie .mjs i działają niezależnie.",
   "description": "Shared patterns, agents, skills and stack blocks for claude-code projects",
   "scripts": {
-    "materialize": "node scripts/materialize-runtime.mjs"
+    "materialize": "node scripts/materialize-runtime.mjs",
+    "prepare": "npx simple-git-hooks",
+    "pre-commit": "node scripts/pre-commit-guards.mjs"
   },
   "dependencies": {
     "yaml": "^2.7.0"
+  },
+  "devDependencies": {
+    "simple-git-hooks": "^2.11.1"
+  },
+  "simple-git-hooks": {
+    "pre-commit": "node scripts/pre-commit-guards.mjs"
   }
 }

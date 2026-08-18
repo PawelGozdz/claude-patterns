@@ -18,6 +18,7 @@
 
 const path = require('path');
 const fs = require('fs');
+const { execFileSync } = require('child_process');
 const { pathToFileURL } = require('url');
 
 process.env.KR_QDRANT_URL = process.env.KR_QDRANT_URL || 'http://localhost:6401';
@@ -88,6 +89,17 @@ async function main() {
 
   const h1 = hit1 / scored, h5 = hit5 / scored, mrr = mrrSum / scored;
   process.stdout.write(`hit@1 = ${h1.toFixed(2)} · hit@${K} = ${h5.toFixed(2)} · MRR = ${mrr.toFixed(2)}  (n=${scored})\n`);
+
+  // Log trendu (TASK-GUARDRAILS-001 Sekcja 2, minimalna wersja punktu z TASK-EVAL-001
+  // Fazy 1): każdy run to dziś migawka bez historii — jedna linia JSONL pozwala zobaczyć
+  // trend po zmianach chunkera/modelu/seedu zamiast zgadywać z pamięci.
+  try {
+    const gitSha = execFileSync('git', ['rev-parse', '--short', 'HEAD'], { cwd: REPO, encoding: 'utf8' }).trim();
+    const entry = { date: new Date().toISOString().slice(0, 10), hit1: h1, hit5: h5, mrr, n: scored, threshold, gitSha };
+    fs.appendFileSync(path.join(__dirname, 'results.jsonl'), JSON.stringify(entry) + '\n');
+  } catch (e) {
+    process.stderr.write(`⚠️  log trendu pominięty: ${e.message}\n`);
+  }
   process.stdout.write(h5 >= threshold
     ? `✅ PRÓG WPIĘCIA OSIĄGNIĘTY (hit@${K} ${h5.toFixed(2)} ≥ ${threshold}) — retrieve_patterns może wejść do /analyze-ddd\n`
     : `❌ PONIŻEJ PROGU (hit@${K} ${h5.toFixed(2)} < ${threshold}) — NIE wpinać; popraw chunking/zapytania/seed\n`);

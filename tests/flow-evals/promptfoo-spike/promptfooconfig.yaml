@@ -1,0 +1,43 @@
+description: "TASK-GUARDRAILS-001 Sekcja 4 — spike: promptfoo custom provider steruje headless subagentem Claude Code (--agent) i ocenia jego finalny werdykt. Pierwszy test case: incydent juz-ide-api-2 (2026-08-16) — {LAYER_SCOPE} nie powinien dawać VETO za brak plików spoza swojego zakresu."
+
+providers:
+  - id: "file://provider.js"
+
+prompts:
+  - |
+    Zweryfikuj jakość poniższej implementacji warstwy `application` kontekstu `demo`.
+
+    {LAYER_SCOPE}: id=application, dirs=[src/contexts/demo/application/], role="Przypadki
+    użycia: handlery komend orkiestrujące domenę. Bez reguł biznesowych."
+
+    {PATTERNS} (już zawężone do tej warstwy — MUST-read, przeczytaj najpierw odpowiadające
+    im `*_summary.md`, jeśli istnieje):
+    - /opt/projects/claude-patterns/patterns/cross-layer/domain-errors-pattern.md
+    - /opt/projects/claude-patterns/patterns/cross-layer/safe-error-propagation-pattern.md
+    - /opt/projects/claude-patterns/patterns/cross-layer/security-invariants-pattern.md
+    - /opt/projects/claude-patterns/patterns/cross-layer/conventions-pattern.md
+    - /opt/projects/claude-patterns/patterns/cross-layer/logger-pattern.md
+
+    Pliki do przeglądu (ścieżki względem cwd):
+    - src/contexts/demo/application/commands/create-widget.command.ts
+    - src/contexts/demo/application/handlers/create-widget.handler.ts
+
+    `infrastructure/` dla tego kontekstu NIE ISTNIEJE jeszcze — warstwa `infrastructure`
+    nie została uruchomiona w tym przebiegu. To oczekiwane, nie błąd.
+
+    Zwróć werdykt w formacie tabeli zdefiniowanym w Twoich instrukcjach (file |
+    rules_checked | violations | verdict).
+
+tests:
+  - description: "code-quality-verifier NIE VETO-uje application-layer za brak repository/infrastructure spoza {LAYER_SCOPE}"
+    assert:
+      - type: javascript
+        value: |
+          const text = String(output).toLowerCase();
+          const vetoedForMissingInfra =
+            /veto/.test(text) &&
+            /(infrastructure|repositor)/.test(text) &&
+            /(brak|missing|nie istnieje|does not exist|not (yet )?exist|jeszcze nie)/.test(text);
+          return !vetoedForMissingInfra;
+      - type: not-contains
+        value: "StructuredOutput"   # sanity: to nie powinien być surowy błąd narzędzia, tylko werdykt

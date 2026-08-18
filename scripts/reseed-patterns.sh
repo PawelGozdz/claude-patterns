@@ -19,19 +19,26 @@ NC='\033[0m'
 
 cd "$KR_DIR"
 
-echo -e "${BLUE}[reseed-patterns] 1/3 dedicated Qdrant up (docker compose, :6401)${NC}"
+echo -e "${BLUE}[reseed-patterns] 1/4 dedicated Qdrant up (docker compose, :6401)${NC}"
 docker compose up -d qdrant >/dev/null
 
-echo -e "${BLUE}[reseed-patterns] 2/3 build${NC}"
+echo -e "${BLUE}[reseed-patterns] 2/4 build${NC}"
 npm run build >/dev/null
 
-echo -e "${BLUE}[reseed-patterns] 3/3 reseed patterns_global + library_reference_global${NC}"
+echo -e "${BLUE}[reseed-patterns] 3/4 reseed patterns_global + library_reference_global${NC}"
 npm run seed:global -- --all 2>&1 | grep -E '^\[global-indexer\]|error|Error' || true
 
 # Zapis stanu drzewa: od tego momentu scripts/rag-freshness.mjs potrafi powiedzieć,
 # czy kolekcje odpowiadają dyskowi. Bez tego kroku rozjazd jest niewykrywalny — a to
 # on stał za incydentem z kartą geo (kolekcja z GEO17 przy dysku z GEO19).
 node "$SCRIPT_DIR/rag-freshness.mjs" --record
+
+# Świeżość ≠ trafność: freshness mówi "kolekcja odpowiada dyskowi", nie "retrieval
+# nadal trafia właściwe wzorce po tej zmianie treści/chunkingu". Oba tanie do sprawdzenia
+# w tym samym miejscu, skoro Qdrant i tak już żyje z reseedu powyżej (TASK-GUARDRAILS-001
+# Sekcja 2).
+echo -e "${BLUE}[reseed-patterns] 4/4 eval retrievalu (golden-set, bramka hit@5)${NC}"
+node "$SCRIPT_DIR/../tests/flow-evals/retrieval/run.js"
 
 echo -e "${GREEN}[reseed-patterns] OK${NC} — retrieve_patterns now reflects the current patterns/**+rules/** tree."
 echo -e "${YELLOW}Note:${NC} this is a full recreate() of both global collections — safe, but batch multiple"
