@@ -34,16 +34,22 @@ ich to praca koordynatora, nie implementacja.
 
 ### 0.0 Znacznik przebiegu (PRZED czymkolwiek innym)
 
+Pobierz realny czas — `Bash("date -u +%Y-%m-%dT%H:%M:%SZ")` — NIE wpisuj go z pamięci:
+masz dostęp do dzisiejszej daty przez kontekst sesji, ale nie do godziny; „wypełnienie"
+`ts` bez zegara literalnie wyszło jako `00:00:00Z` w produkcji (audyt api-1, 2026-08-19)
+— znacznik wyglądał na 9h45min starszy niż był, bo TTL 8h liczy się właśnie z tego pola.
+
 Zapisz `.claude/run-state/orchestrating.json`:
 
 ```json
-{ "task_id": "{TASK-ID}", "session_id": "<session_id tej sesji>", "ts": "<teraz, ISO 8601 UTC>" }
+{ "task_id": "{TASK-ID}", "session_id": "<session_id tej sesji>", "ts": "<wynik date -u powyżej>" }
 ```
 
 To on włącza STRICT w `check-delegation`. `session_id` jest po to, żeby przebieg
 w jednej instancji nie ograniczał równoległej sesji na tym samym repo (ADR 0006);
-znacznik wygasa sam po 8 h, więc przerwany przebieg nie blokuje jutrzejszej pracy.
-Usuwasz go w kroku 3 — także przy `ESCALATE_AND_HALT`.
+znacznik wygasa sam po 8 h **licząc od `ts`, nie od `mtime` pliku** — stąd realny
+zegar jest tu load-bearing, nie kosmetyczny. Usuwasz go w kroku 3 — także przy
+`ESCALATE_AND_HALT`.
 
 1. `Read(".claude/config/runtime.yml")`. Brak → STOP: „Projekt nie ma
    skomponowanego setupu bloków (ADR 0008) — dodaj `stack_blocks:` + setup,
@@ -310,6 +316,50 @@ if (!impl) {
 nie znaczy „bez skutków na dysku" — kolejna próba startuje na częściowo zmienionym
 drzewie. Dlatego (7) każe implementerowi sprawdzić stan plików, a nie zakładać czysty
 start, i dlatego bramka „kod istnieje" (WL3) mierzy `git diff`, nie raport agenta.
+
+### 2a″. Zakaz cofania — `git checkout`/`restore`/`stash`/`reset` NIGDY
+
+Reguła obowiązuje KAŻDY prompt implementera i KAŻDY prompt naprawczy, bez wyjątku:
+
+**`git checkout`, `git restore`, `git stash` i `git reset` są zakazane na KAŻDEJ
+ścieżce — zero wyjątków.** Zakaz obejmuje wprost przypadek „to tylko mój własny
+plik" i przypadek „przywracam, jak było" — to nie są furtki, to najczęstsza maska,
+pod którą zakaz bywa łamany.
+
+Agent, który uważa jakiś plik za spoza swojego zakresu, **zgłasza to w raporcie
+końcowym i na tym kończy**. Nigdy tego pliku nie cofa.
+
+Uzasadnienie: cofnięcie to jedyny sposób, w jaki zweryfikowana praca może zniknąć
+NIE ZOSTAWIAJĄC ŚLADU w diffie, który człowiek ogląda przed commitem. Awaria
+workflow zostawia `failed` w journalu (2a). Zły werdykt zostawia `violations[]`
+(2). Nawet cichy wyjątek zostawia częściowo zmienione pliki na dysku (2a′
+powyżej). Cofnięcie nie zostawia nic — diff po prostu przestaje zawierać to, co
+ktoś inny już zatwierdził.
+
+**Protokół mutacji stanu, sformułowany pozytywnie:** do zapisania i przywrócenia
+stanu używaj `cp`, nigdy gita. To jedyne narzędzie, którym wolno wykonać operację
+wyglądającą z zewnątrz podobnie do cofnięcia — nie złagodzenie zakazu powyżej
+o kolejny przypadek.
+
+`wf_f24e8621-140` (run journal, 2026-08-12): warstwa `gates` zaimplementowała
+swoje kryteria w dwóch plikach; jej weryfikator zwrócił GO. Warstwa `baselines`
+ruszyła jako następna — jej pytania kontrolne zawierały standardowy strażnik
+zakresu („czy zmiana mieści się w ścieżkach zakresu, bez postronnych
+modyfikacji?"). Ten weryfikator zobaczył w drzewie roboczym zmiany warstwy
+`gates` i zgłosił je jako zanieczyszczenie zakresu — POPRAWNIE, z jedyną
+informacją, jaką miał: NO-GO. Agent naprawczy rozwiązał naruszenie najprostszą
+dostępną drogą: `git checkout --` na obu plikach warstwy `gates`, po czym nałożył
+z powrotem wyłącznie własną wąską edycję. Zatwierdzone kryterium zniknęło bez
+śladu w diffie, który człowiek miał później przeglądać. Warstwa przeszła. Bramka
+końcowa to złapała, ale cztery warstwy i ~1,4 mln tokenów subagentów już poszły,
+a odzyskanie było ręczne. Żaden agent nie zachował się źle — zabrakło reguły.
+
+**Czego ten zakaz sam nie rozwiązuje:** weryfikator warstwy N nadal nie wie, że
+pliki warstw 1..N-1 są już zatwierdzone, i będzie je zgłaszał jako
+zanieczyszczenie zakresu — zakaz blokuje tylko najgorszą reakcję na ten błędny
+sygnał, nie usuwa samego sygnału. Deterministyczne domknięcie (pomiar przyrostu
+zmian per ścieżka względem stanu sprzed danej warstwy) jest osobnym, jeszcze
+nierozstrzygniętym zadaniem.
 
 ### 2b′. Wstrzykiwanie kart reguł do promptów (punkt 8 wzorca)
 
