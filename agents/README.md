@@ -1,7 +1,7 @@
 # Global Claude Code Agents
 
 **Purpose**: Reusable specialist and advisory agents for Claude Code projects.
-**Total**: 26 universal + 15 stack-specific = 41 agents
+**Total**: 26 universal + 19 stack-specific = 45 agents
 
 ---
 
@@ -113,7 +113,7 @@ Skill: `skills/quality/review-panel/SKILL.md` · Command: `/review-panel` · Pat
 
 ---
 
-## Stack-Specific Agents (18)
+## Stack-Specific Agents (19)
 
 Linked per-project to `.claude/agents/` via `setup-project.sh`.
 
@@ -126,7 +126,7 @@ For Python ML inference services (FastAPI + PyTorch on a shared GPU).
 | **ml-inference-architect** | Model lifecycle, VRAM budget, batching strategy, serving runtime | Sonnet | No |
 | **gpu-resource-verifier** | Event-loop safety, VRAM lifecycle, thread safety, batching correctness | Sonnet | Yes |
 
-### nestjs-ddd (4)
+### nestjs-ddd (5)
 
 | Agent | Purpose | Model | VETO |
 |-------|---------|-------|------|
@@ -134,6 +134,7 @@ For Python ML inference services (FastAPI + PyTorch on a shared GPU).
 | **code-quality-verifier** | DDD/CQRS quality verification, test pyramid | Sonnet | Yes |
 | **security-e2e-verifier** | Security validation, OWASP, E2E coverage | Opus | Yes |
 | **sql-postgres-optimizer** | Repository query review — EXPLAIN-backed index/rewrite recommendations, consulted by `@infrastructure-implementer` before any non-trivial query ships | Sonnet | No |
+| **business-rules-auditor** | `@BusinessRule` decorator coverage audit (Specs/Policies mandatory, Aggregates/Handlers via litmus test) — advisory, cross-references `BUSINESS_RULES.yaml` | Sonnet | No |
 
 ### flutter-clean-arch (4)
 

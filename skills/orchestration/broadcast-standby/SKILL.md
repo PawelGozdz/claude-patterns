@@ -20,8 +20,19 @@ claude --disallowed-tools Edit Write
 a w sesji:
 
 ```
-/loop 3m /broadcast-standby
+/loop /broadcast-standby
 ```
+
+**BEZ stałego interwału — tryb dynamiczny, samo-tempujący się przez `ScheduleWakeup`.**
+`/loop 3m /broadcast-standby` (stały interwał) **NIE jest już zalecany — to była
+przyczyna realnego incydentu**: `/opt/projects/.claude-swarm/STOP` (2026-08-09T21:24,
+„koszt sesji >20 USD przy długim ciągu pustych przebiegów"). Winna nie była sama
+bramka `gate` (tania, jeden Bash) — winny był **stały interwał 3 min**, czyli ~480 tur
+modelu na dobę, każda z pełnym kosztem systemowego promptu i narzędzi, niezależnie od
+tego, czy w kanale było cokolwiek nowego. Kanał w 2-tygodniowym pilocie wyprodukował
+łącznie 6 wpisów — sygnał jest rzadki, częstotliwość odpytywania musi to odzwierciedlać,
+nie 3 minuty na sztywno. Krok 1 poniżej mówi wprost, kiedy i jak wywołać
+`ScheduleWakeup` zamiast polegać na sztywnym interwale.
 
 `--disallowed-tools Edit Write` **nie jest ozdobą** — to jedyna granica bezpieczeństwa
 tego agenta. Bez niej pomyłka stand-by potrafi zepsuć kod w repo, w którym ktoś pracuje.
@@ -45,12 +56,16 @@ Trzy możliwe wyniki i **żadnego innego zachowania**:
 
 | wynik | co robisz |
 |---|---|
-| `STOP` (opcjonalnie z powodem) | **zakończ pętlę** — powiedz jednym zdaniem, że stand-by zatrzymany i dlaczego. Nie wywołuj `/loop` ponownie |
-| `EMPTY` | **koniec tury natychmiast.** Wypisz jedną linię `[standby] HH:MM — brak nowych wpisów` i nic więcej. Zero czytania plików, zero rozumowania o tasku |
-| `NEW <bajty>` | przejdź do kroku 2 |
+| `STOP` (opcjonalnie z powodem) | **zakończ pętlę**: `ScheduleWakeup({stop: true})`. Powiedz jednym zdaniem, że stand-by zatrzymany i dlaczego. Nie planuj kolejnego obudzenia |
+| `EMPTY` | **koniec tury natychmiast** — ale nie darmo. Wypisz jedną linię `[standby] HH:MM — brak nowych wpisów`, NIC więcej (zero czytania plików, zero rozumowania o tasku), i zaplanuj kolejne obudzenie: `ScheduleWakeup({delaySeconds: 1800, noop: true, prompt: "/broadcast-standby", reason: "kanał pusty"})`. 1800s (30 min) to punkt startowy — jeśli poprzednia tura też była `EMPTY`, podwój poprzedni `delaySeconds` (cap 3600, limit narzędzia) zamiast wracać do 1800; pierwszy `NEW` zeruje odliczanie z powrotem do 1800 |
+| `NEW <bajty>` | przejdź do kroku 2, a PO kroku 5 zaplanuj kolejne obudzenie krócej niż przy `EMPTY`: `ScheduleWakeup({delaySeconds: 300, noop: false, prompt: "/broadcast-standby", reason: "świeża aktywność w kanale"})` — świeży wpis bywa początkiem wątku (pytanie→odpowiedź), więc krótszy odstęp łapie kontynuację taniej niż czekanie pełne 30 min |
 
 Pusty przebieg nie jest darmowy — to nadal tura modelu. Cała wartość tej bramki znika,
-jeśli „przy okazji" zerkniesz w taski. Nie zerkaj.
+jeśli „przy okazji" zerkniesz w taski. Nie zerkaj. **Ale sam koszt tury nie bierze się
+z bramki — bierze się z częstotliwości.** Incydent 2026-08-09 (`.claude-swarm/STOP`,
+„koszt sesji >20 USD") powstał przy stałym interwale 3 min (~480 tur/dobę), nie przy
+samej bramce — stąd `ScheduleWakeup` z narastającym backoffem zamiast sztywnego
+`/loop <N>m`.
 
 ## Krok 2 — przeczytaj wpisy
 

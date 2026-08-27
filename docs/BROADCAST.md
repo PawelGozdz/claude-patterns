@@ -277,8 +277,16 @@ claude --disallowed-tools Edit Write
 a w sesji:
 
 ```
-/loop 3m /broadcast-standby
+/loop /broadcast-standby
 ```
+
+**Bez stałego interwału — tryb dynamiczny.** `/loop 3m /broadcast-standby` (stały
+interwał, rekomendacja OQ3 z ADR-a) był w praktyce przyczyną incydentu 2026-08-09
+(`.claude-swarm/STOP`, „koszt sesji >20 USD przy długim ciągu pustych przebiegów"):
+~480 tur modelu na dobę niezależnie od tego, czy kanał miał cokolwiek nowego — a
+2-tygodniowy pilot wyprodukował łącznie 6 wpisów. Skill sam zarządza tempem przez
+`ScheduleWakeup` (backoff 30 min → 60 min przy kolejnych `EMPTY`, 5 min po `NEW`) —
+zobacz `broadcast-standby/SKILL.md` krok 1.
 
 Skill musi być **podlinkowany w tym repo** — `.claude/skills/` każdego projektu ma własną
 listę symlinków, a katalog jest gitignorowany:
@@ -309,12 +317,14 @@ Każdy tick zaczyna się od bramki `cli.js gate`:
 
 | wynik | zachowanie |
 |---|---|
-| `STOP` | pętla się kończy |
-| `EMPTY` | koniec tury natychmiast, bez czytania czegokolwiek |
-| `NEW <bajty>` | pełna ocena: read → branch + aktywny task → decyzja per wpis → `ack` |
+| `STOP` | pętla się kończy, `ScheduleWakeup({stop: true})` |
+| `EMPTY` | koniec tury natychmiast, bez czytania czegokolwiek; `ScheduleWakeup` z narastającym backoffem (30→60 min) |
+| `NEW <bajty>` | pełna ocena: read → branch + aktywny task → decyzja per wpis → `ack`; `ScheduleWakeup` krótszy (5 min) po zakończeniu |
 
-Pusty przebieg **nie jest darmowy** — to nadal tura modelu, tylko minimalna. Stąd interwał
-w minutach, nie sekundach.
+Pusty przebieg **nie jest darmowy** — to nadal tura modelu, tylko minimalna. Stąd
+dynamiczny backoff zamiast stałego interwału w minutach (patrz incydent 2026-08-09
+wyżej) — częstotliwość ma podążać za realną gęstością sygnału w kanale, nie za
+sztywnym zegarem.
 
 **Zatrzymanie** (`KILL` z `run-state/` tu nie działa — dotyczy tylko subagentów):
 
@@ -478,7 +488,7 @@ zostaje do posprzątania.**
 | `paths` | 20 pozycji | |
 | wstrzyknięcie `critical` | 2 wpisy / ~1 KB na turę | więcej niż dwie rzeczy naraz i tak nie zostanie obsłużone |
 | digest `important` | 5 najnowszych | |
-| tick stand-by | ~20 tur/h przy interwale 3 min | pusty przebieg to tura minimalna, ale nie zerowa |
+| tick stand-by | ≤2 tur/h w spoczynku (backoff do 60 min), do 12 tur/h przy świeżej aktywności (5 min) | dynamiczny `ScheduleWakeup`, nie stały interwał — stały 3 min dawał ~20 tur/h i spowodował incydent 2026-08-09 (`.claude-swarm/STOP`, >20 USD) |
 
 Odczyt (`read`, `status`, `gate`, hooki) nie kosztuje nic poza procesem `node` — to czysta
 mechanika, bez modelu. Płaci się wyłącznie za tury stand-by i za kontekst wstrzyknięć.

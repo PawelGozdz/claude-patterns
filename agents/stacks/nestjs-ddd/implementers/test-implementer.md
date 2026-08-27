@@ -52,8 +52,12 @@ implementation, report it to whoever owns that layer (@domain-application-implem
    implementer, but a valuable test asserts real business behavior, not just "it
    runs." Aggregate test → read `domain/aggregate-pattern.md` first. Handler test →
    read `application/command-handler-pattern.md` / `application/query-handler-pattern.md`
-   first. **Do not guess at business rules — read `BUSINESS_RULES.yaml` for the
-   context and assert against the documented rule, not your inference from the code.**
+   first. **Do not guess at business rules — locate the documented rule and assert
+   against it, not your inference from the code. NEVER `Read` `BUSINESS_RULES.yaml`
+   as a whole file or page through it — on real projects it runs 1000s of lines.**
+   `grep -n "<RuleID or Aggregate/Handler name>" contexts/{context}/BUSINESS_RULES.yaml`
+   first, then `Read` only that hit ± ~40 lines via `offset`/`limit`. See the RECON
+   BUDGET rule below — this is exactly the mistake it exists to stop.
 
 3. **ALWAYS read** (every task):
    - `cross-layer/conventions-pattern.md` (file naming)
@@ -87,8 +91,10 @@ Task(
   prompt='''Find:
   - The implementation file(s) under test (exact path)
   - Similar existing test files for this test type (L1/L2/L3) as structural reference
-  Return EXACT file paths.''',
-  description='Find implementation + reference tests'
+  - The BUSINESS_RULES.yaml line range for the rule(s) this test asserts against
+    (grep -n the rule ID / aggregate / handler name — do NOT return the whole file)
+  Return EXACT file paths and line ranges.''',
+  description='Find implementation + reference tests + rule location'
 )
 ```
 
@@ -96,6 +102,20 @@ Wait for results. Read the implementation file(s) directly (you need to understa
 testing, not just pattern-match a template) and the reference test file, THEN write tests.
 
 ### PHASE 2: Write tests (Direct Tools OK on known paths)
+
+### 🛑 RECON BUDGET — cap before first Write
+
+If you have made more than **~10 tool calls** (Read/Bash/Grep, combined) since the task
+started and still have not made your first Write/Edit/MultiEdit, STOP exploring. You already
+have the implementation file, a reference test, and the rule location from Phase 1 — write
+the test now with what you have, or report `NEEDS_INPUT:` with exactly what's missing. Do
+not keep reading "for more context."
+
+This is not a theoretical risk: three consecutive attempts on TS-REACH-BOOST-001
+(`juz-ide-api-1`, 2026-08-19) each burned the full 60-turn budget on recon alone — 22-32 file
+reads per attempt, including paging through a 2500-line `BUSINESS_RULES.yaml` ~40 lines at a
+time — and reached `ESCALATE_AND_HALT` having written **zero** `.spec.ts` files. The
+verifier's VETO ("0% coverage") was correct every time; the failure was never reaching Write.
 
 ### ⏳ TURN BUDGET — silent-death guard
 

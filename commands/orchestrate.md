@@ -108,6 +108,25 @@ odpala (realna dziura, znaleziona 2026-08-11 w `library-layers`).
     czerwonym raporcie NIE jest bramką (`--ci` bez przekazanej flagi,
     `--passWithNoTests` na nieistniejącym katalogu — obie pułapki spotkane
     w vytches-ddd). Werdykt opieraj na `$?`.
+  - **Uruchamiaj `checks` tak, żeby output NIGDY nie trafił do kontekstu
+    subagenta** — `<cmd> > /tmp/check-<nazwa>.log 2>&1; echo "EXIT:$?"`, i przy
+    `EXIT:0` nie czytaj pliku wcale. Samo „zwracaj tylko ogon przy błędzie" w
+    prompt-cie NIE wystarcza: agent i tak musi WYKONAĆ komendę, więc pełny
+    stdout trafia do jego kontekstu w momencie wywołania Bash, zanim zdąży
+    cokolwiek streścić. Diagnoza z dziennika przebiegu (vytches-ddd,
+    2026-08-20): sondy kosztowały 142k tokenów (15% całego przebiegu) — po
+    27-32k **za sondę**, mimo `model: haiku` + `effort: low` — bo każda w
+    pełni zmaterializowała output `nx run-many` (19 pakietów / 14 plików
+    testowych) tylko po to, by ostatecznie zwrócić „exit 0, exit 0".
+  - **Zawężaj `checks` do dotkniętego pakietu w monorepo**, nie do całego
+    workspace — `nx affected --target=test` / `pnpm --filter <pkg>... test`
+    zamiast gołego `pnpm test`. Ten sam przebieg (vytches-ddd): zmiana w
+    jednym pliku odpalała testy wszystkich 19 pakietów, i to na `checks`
+    KAŻDEJ warstwy osobno oraz na `final_gate` — koszt czasu (nie tylko
+    tokenów) mnożony przez każdą rundę fix-loopa. Gdy warstwa/`final_gate` nie
+    da się jednoznacznie zawęzić (zmiana przecina pakiety), uruchom pełny
+    zakres świadomie i odnotuj to w raporcie — nie milcz, ale nie rób tego
+    domyślnie.
   - **Skryptu nie ma w `package.json` → pomiń i ZARAPORTUJ** („check
     `test:contracts` pominięty — brak skryptu"). Cicha omisja robi z bramki
     dekorację.
