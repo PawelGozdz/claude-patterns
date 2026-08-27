@@ -16,6 +16,7 @@ import { readFileSync, existsSync, readdirSync, readlinkSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
+import YAML from 'yaml';
 
 const REPO = join(dirname(fileURLToPath(import.meta.url)), '..');
 const rootArg = process.argv.indexOf('--root');
@@ -86,6 +87,52 @@ for (const name of projects) {
   tpl('project-orchestration/analysis/TEMPLATE.md', 'templates/task-analysis-template.md', composed);
   tpl('docs/security/THREAT_MODEL_TEMPLATE.md', 'templates/THREAT_MODEL_TEMPLATE.md',
     existsSync(join(P, 'docs/security')));
+
+  // 4. Blok lokalny z `extends:` NADPISUJE sekcje w całości (nie merguje) — jeśli
+  //    nadpisuje sekcję, którą blok bazowy TEŻ ma (np. `orchestrate`), przyszłe zmiany
+  //    bazy nigdy nie dotrą do forka bez ręcznej synchronizacji, i nic tego nie
+  //    sygnalizuje (K44, TASK-KAIZEN-001 — odkryte na iam-verifiers.yml kopiującym całą
+  //    sekcję `orchestrate` z blocks/flat-service.yml). UPROSZCZONE: ostrzega zawsze,
+  //    gdy nakładanie się sekcji istnieje — nie śledzi hashów bazowego bloku w czasie
+  //    (wymagałoby stanu zapisywanego przy każdej ręcznej synchronizacji; poza zakresem
+  //    tej poprawki). Człowiek i tak musi zdecydować, czy fork nadal pasuje do bazy.
+  const localBlocksDir = join(P, '.claude/blocks');
+  if (existsSync(localBlocksDir)) {
+    for (const f of readdirSync(localBlocksDir).filter((f) => f.endsWith('.yml'))) {
+      let doc;
+      try { doc = YAML.parse(readFileSync(join(localBlocksDir, f), 'utf8')); } catch { continue; }
+      const baseName = doc?.extends;
+      if (!baseName) continue;
+      const basePath = join(REPO, 'blocks', `${baseName}.yml`);
+      if (!existsSync(basePath)) continue;
+      let baseDoc;
+      try { baseDoc = YAML.parse(readFileSync(basePath, 'utf8')); } catch { continue; }
+      const STRUCTURAL = new Set(['name', 'axis', 'requires', 'extends']);
+      const overlap = Object.keys(doc).filter((k) => !STRUCTURAL.has(k) && baseDoc && k in baseDoc);
+      if (overlap.length) {
+        issues.push([
+          `.claude/blocks/${f} ma extends: ${baseName} i nadpisuje sekcj${overlap.length > 1 ? 'e' : 'ę'} ` +
+          `[${overlap.join(', ')}] obecn${overlap.length > 1 ? 'e' : 'ą'} też w blocks/${baseName}.yml — ` +
+          `przyszłe zmiany bazy NIE trafiają tu automatycznie (extends nadpisuje sekcję w całości, nie merguje)`,
+          `porównaj ręcznie: diff blocks/${baseName}.yml .claude/blocks/${f}`,
+        ]);
+      }
+    }
+  }
+
+  // 5. verify-project-setup.mjs cyklicznie, nie tylko ręcznie po fakcie (K47,
+  //    TASK-KAIZEN-001) — łapie dokładnie klasę błędów z K02/K03/K06/K46: świeży setup,
+  //    który wygląda kompletnie, dopóki ktoś nie odpali /analyze i nie trafi na
+  //    nieosiągalny wzorzec albo brakujący agent.
+  if (composed) {
+    try {
+      execFileSync('node', [join(REPO, 'scripts/verify-project-setup.mjs'), P], { stdio: 'pipe' });
+    } catch (e) {
+      const detail = String(e.stdout ?? '').split('\n').filter((l) => l.trim().startsWith('✗') || l.includes('BRAKI')).join('; ').trim();
+      issues.push([`verify-project-setup: setup niekompletny${detail ? ` (${detail})` : ''}`,
+        `node scripts/verify-project-setup.mjs ${P} --verbose`]);
+    }
+  }
 
   rows.push({ name, composed, blocks, issues });
 }

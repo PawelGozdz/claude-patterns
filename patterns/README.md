@@ -4,9 +4,9 @@
 
 This knowledge base contains production-enforced patterns for DDD/CQRS projects. Each pattern is derived from real implementations (2-3 verified code examples) and includes comprehensive anti-patterns sections.
 
-**Version**: 3.10
-**Last Updated**: 2026-07-18
-**Status**: PRODUCTION (44 core patterns + 29 stack-specific + 1 marketing + 2 finance + 2 legal)
+**Version**: 3.11
+**Last Updated**: 2026-08-27
+**Status**: PRODUCTION (50 core patterns + 45 stack-specific + 1 marketing + 2 finance + 2 legal = 100 total)
 
 **⚠ project-specific** marker = derived from ONE project's codebase, not yet validated in a second
 one. Marked in the pattern's own `**Scope**:` line (see `CLAUDE.md` → "Adding a New Pattern"). These
@@ -114,7 +114,7 @@ Persistence, API, and technical implementation patterns.
 
 ---
 
-### Architecture Layer (12 patterns)
+### Architecture Layer (14 patterns)
 
 Cross-cutting architectural patterns spanning multiple layers.
 
@@ -132,6 +132,8 @@ Cross-cutting architectural patterns spanning multiple layers.
 | **[token-optimization-pattern.md](architecture/token-optimization-pattern.md)** | ~300 | Production | Token reduction settings, session quality, model selection strategy | All users |
 | **[fresh-context-pattern.md](architecture/fresh-context-pattern.md)** | 553 | Production | Keep orchestrator lean (~15%), subagents fresh (~100% relevant), context rot detection | project-orchestrator, all agents |
 | **[api-contract-sync-pattern.md](architecture/api-contract-sync-pattern.md)** | ~90 | Production | Cross-repo OpenAPI drift detection: backend vs mobile/web consumers, advisory-only | api-contract-sync skill |
+| **[transactional-outbox-pattern.md](architecture/transactional-outbox-pattern.md)** | 240 | Partially adopted (6/~30 handlers) | Atomic delivery of integration events — eliminates the crash window between DB commit and BullMQ dispatch | domain-application-implementer, infrastructure-testing-implementer |
+| **[nestjs-module-import-pitfalls.md](architecture/nestjs-module-import-pitfalls.md)** | 222 | Production | Duplicate module imports causing silent startup deadlocks in NestJS's module explorer — symptoms, root cause, fix | infrastructure-testing-implementer |
 
 **Architecture Layer Key Principles**:
 - ACL Registry: `aclRegistry.getGlobalRequired<T>('context-name')` for cross-context calls
@@ -280,6 +282,79 @@ ecosystems, jurisdiction-bound disclaimers, AGPL contamination prevention.
 - External: 30 cataloged in `skills/legal/EXTERNAL.md`
 - Agent: `@legal-strategist` (universal, consulted by `@product-owner`)
 - Command: `/legal <task>`
+
+---
+
+### Python (5 patterns)
+
+Stack-specific patterns for `stack_profile: python` projects (FastAPI, async, typing).
+The other 2 files in `patterns/python/` (`polyglot-persistence-pattern`,
+`resilient-collection-pattern`) are project-specific — see "Python — Data Pipeline" below.
+
+- [async-patterns.md](python/async-patterns.md)
+- [fastapi-patterns.md](python/fastapi-patterns.md)
+- [layered-architecture-pattern.md](python/layered-architecture-pattern.md)
+- [testing-pattern.md](python/testing-pattern.md)
+- [typing-patterns.md](python/typing-patterns.md)
+
+---
+
+### Flutter (14 patterns)
+
+Stack-specific patterns for `stack_profile: flutter-clean-arch` projects.
+
+- [accessibility-pattern.md](flutter/accessibility-pattern.md)
+- [clean-architecture-pattern.md](flutter/clean-architecture-pattern.md)
+- [component-creation-pattern.md](flutter/component-creation-pattern.md)
+- [design-token-pattern.md](flutter/design-token-pattern.md)
+- [dio-networking-pattern.md](flutter/dio-networking-pattern.md)
+- [either-error-pattern.md](flutter/either-error-pattern.md)
+- [freezed-immutability-pattern.md](flutter/freezed-immutability-pattern.md)
+- [localization-pattern.md](flutter/localization-pattern.md)
+- [mobile-security-pattern.md](flutter/mobile-security-pattern.md)
+- [navigation-pattern.md](flutter/navigation-pattern.md)
+- [offline-first-pattern.md](flutter/offline-first-pattern.md)
+- [platform-channel-pattern.md](flutter/platform-channel-pattern.md)
+- [riverpod-state-pattern.md](flutter/riverpod-state-pattern.md)
+- [testing-pattern.md](flutter/testing-pattern.md)
+
+---
+
+### Next.js (7 patterns)
+
+Stack-specific patterns for `stack_profile: nextjs-app` projects (App Router, RSC).
+
+- [auth-pattern.md](nextjs/auth-pattern.md)
+- [data-fetching-pattern.md](nextjs/data-fetching-pattern.md)
+- [forms-actions-pattern.md](nextjs/forms-actions-pattern.md)
+- [routing-proxy-pattern.md](nextjs/routing-proxy-pattern.md)
+- [server-client-components-pattern.md](nextjs/server-client-components-pattern.md)
+- [styling-pattern.md](nextjs/styling-pattern.md)
+- [testing-pattern.md](nextjs/testing-pattern.md)
+
+---
+
+### SvelteKit (5 patterns)
+
+Stack-specific patterns for `stack_profile: sveltekit` projects (SvelteKit 2, Svelte 5 runes).
+
+- [component-pattern.md](sveltekit/component-pattern.md)
+- [data-fetching-pattern.md](sveltekit/data-fetching-pattern.md)
+- [routing-loading-pattern.md](sveltekit/routing-loading-pattern.md)
+- [svelte5-runes-pattern.md](sveltekit/svelte5-runes-pattern.md)
+- [testing-pattern.md](sveltekit/testing-pattern.md)
+
+---
+
+### TypeScript Library (5 patterns)
+
+Stack-specific patterns for `stack_profile: typescript-library` projects (public API design, semver).
+
+- [backward-compatibility-pattern.md](typescript-library/backward-compatibility-pattern.md)
+- [build-publish-pattern.md](typescript-library/build-publish-pattern.md)
+- [library-testing-pattern.md](typescript-library/library-testing-pattern.md)
+- [package-boundary-pattern.md](typescript-library/package-boundary-pattern.md)
+- [public-api-pattern.md](typescript-library/public-api-pattern.md)
 
 ---
 

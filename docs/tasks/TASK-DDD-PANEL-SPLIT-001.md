@@ -1,3 +1,11 @@
+---
+id: TASK-DDD-PANEL-SPLIT-001
+title: "Rozbicie advisory-stage'ów panelu /analyze-ddd na węższych, równoległych specjalistów"
+type: task
+status: planned
+created_date: 2026-07-08
+---
+
 # TASK-DDD-PANEL-SPLIT-001 — Rozbicie advisory-stage'ów panelu `/analyze-ddd` na węższych, równoległych specjalistów
 
 **Status: TODO** · **Źródło:** sesja 2026-07-08 (audyt latencji `/analyze-ddd` → `/orchestrate-ddd`,

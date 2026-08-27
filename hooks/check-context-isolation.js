@@ -17,7 +17,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { isGitRepo, getGitModifiedFiles, readFile, log } = require('./lib/utils');
+const { isGitRepo, getGitModifiedFiles, readFile, log, readStdinJsonWithRaw } = require('./lib/utils');
 const { findConfig } = require('./lib/ddd-config');
 
 // Files to skip
@@ -31,28 +31,19 @@ const SKIP_PATTERNS = [
 // Match import lines
 const IMPORT_LINE = /^\s*import\s+.*from\s+['"]/;
 
-const MAX_STDIN = 1024 * 1024;
-let data = '';
-process.stdin.setEncoding('utf8');
+async function main() {
+  const { raw } = await readStdinJsonWithRaw();
 
-process.stdin.on('data', (chunk) => {
-  if (data.length < MAX_STDIN) {
-    const remaining = MAX_STDIN - data.length;
-    data += chunk.substring(0, remaining);
-  }
-});
-
-process.stdin.on('end', () => {
   try {
     if (!isGitRepo()) {
-      process.stdout.write(data);
+      process.stdout.write(raw);
       process.exit(0);
     }
 
     // Load config from cwd — no config means no checks
     const loaded = findConfig(process.cwd());
     if (!loaded || !loaded.config.contextPath) {
-      process.stdout.write(data);
+      process.stdout.write(raw);
       process.exit(0);
     }
 
@@ -112,6 +103,8 @@ process.stdin.on('end', () => {
     log(`[Hook] check-context-isolation error: ${err.message}`);
   }
 
-  process.stdout.write(data);
+  process.stdout.write(raw);
   process.exit(0);
-});
+}
+
+main();

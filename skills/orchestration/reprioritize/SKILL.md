@@ -25,7 +25,10 @@ Interactive — confirms before modifying any task files.
 
 1. **Read current state**
    - Read `project-orchestration/TEAM-STATE.md`
-   - Read all task files in `project-orchestration/tasks/`
+   - Run `node /opt/projects/claude-patterns/scripts/tasks-digest.mjs` for a triage-ready
+     id/status/priority/age table instead of reading every task file in full (K30,
+     TASK-KAIZEN-001) — open a specific task file only when reprioritizing it requires
+     detail the digest doesn't carry (dependencies, acceptance criteria, blockers)
    - Read `project-orchestration/KANBAN.md`
 
 2. **Ask user for trigger** (optional)

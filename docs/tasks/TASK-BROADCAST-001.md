@@ -1,3 +1,10 @@
+---
+id: TASK-BROADCAST-001
+title: 'Cross-instance broadcast: kanał wymiany informacji między instancjami Claude Code'
+type: task
+status: in-progress
+---
+
 # TASK-BROADCAST-001 — Cross-instance broadcast: kanał wymiany informacji między instancjami Claude Code
 
 > **▶ STATUS: PILOT W BIEGU — czeka wyłącznie na ocenę go/no-go (~2026-08-22).**

@@ -1,11 +1,11 @@
 # Global Claude Code Commands
 
 **Location**: `~/.claude/commands/` -> `~/projects/claude-patterns/commands/`
-**Commands**: 26 active
+**Commands**: 45 active
 
 ---
 
-## Project Management (6)
+## Project Management (8)
 
 | Command | Purpose | Model |
 |---------|---------|-------|
@@ -15,6 +15,8 @@
 | `/reprioritize` | Priority advisor: promote, demote, cut, or add tasks — dual agent perspective | Sonnet |
 | `/task-health` | Deep task audit: broken deps, stuck tasks, orphaned items | Sonnet |
 | `/tech-debt` | Tech debt report: aggregate, trend, prioritize, update TECH-DEBT.md | Sonnet |
+| `/adr` | Create an Architecture Decision Record for a decision just made | — |
+| `/task-tidy` | Task housekeeping: move done tasks, fix missing fields, validate YAML (non-destructive, previews first) | — |
 
 ## Orchestration & Workflow (4)
 
@@ -39,6 +41,31 @@
 | `/build-fix` | Diagnose and fix TypeScript build errors with minimal changes | — |
 | `/test-coverage` | Analyze test coverage gaps prioritized by business criticality | — |
 
+## Security (5)
+
+| Command | Purpose | Model |
+|---------|---------|-------|
+| `/security-check` | Quick ad-hoc security audit on isolated code changes (lighter than `/security-review`) | — |
+| `/security-review` | Complete STRIDE + DREAD + LINDDUN security review for NestJS-DDD code | — |
+| `/threat-model` | Interactive STRIDE + DREAD + LINDDUN threat modeling, generates `TM-{TASK-ID}.md` | — |
+| `/incident` | Incident response triage — use only when a CRITICAL issue affects deployed code | — |
+| `/conformance-check` | Deterministic AST audit of pattern conformance (hard-rule + majority-outlier), no RAG | — |
+
+## Business Strategy (3)
+
+| Command | Purpose | Model |
+|---------|---------|-------|
+| `/finance` | Entry point for finance tasks — routes to `skills/finance/` via `@finance-strategist` | Sonnet |
+| `/marketing` | Entry point for marketing tasks — routes to `skills/marketing/` via `@marketing-strategist` | Sonnet |
+| `/legal` | Entry point for legal tasks — routes to `skills/legal/` via `@legal-strategist` (jurisdiction-aware) | Sonnet |
+
+## Grant-flow Integration (2)
+
+| Command | Purpose | Model |
+|---------|---------|-------|
+| `/grantflow` | Manage grant-flow: setup credentials, list projects, map repos, history, diagnostics | — |
+| `/log-time` | Log work hours to grant-flow — use at the end of each session | — |
+
 ## Session & Progress (3)
 
 | Command | Purpose | Model |
@@ -47,7 +74,7 @@
 | `/sessions` | List and manage Claude Code session history with pagination | — |
 | `/checkpoint` | Save session state snapshot for cross-session continuity | — |
 
-## Learning System (4)
+## Learning System (7)
 
 | Command | Purpose | Model |
 |---------|---------|-------|
@@ -55,6 +82,9 @@
 | `/instinct-export` | Export instincts for sharing with teammates | — |
 | `/instinct-import` | Import instincts from teammates or other sources | — |
 | `/evolve` | Cluster related instincts into skills, commands, or agents | — |
+| `/blog` | Build-in-public blog scaffolding from git history + KANBAN.md + completed tasks | — |
+| `/capture` | Capture an insight from the current conversation as a blog draft before it disappears | — |
+| `/claude-updates` | Scan Claude Platform release notes for new features/models/deprecations since last check | — |
 
 ## Cross-instance broadcast (2)
 
@@ -66,12 +96,13 @@
 Wymaga `.claude/config/broadcast.yml` w projekcie (plik nieśledzony). Bez niego oba
 polecenia mówią wprost, że broadcast jest tu wyłączony — i to jest stan domyślny.
 
-## Infrastructure (2)
+## Infrastructure (3)
 
 | Command | Purpose | Model |
 |---------|---------|-------|
 | `/pm2` | Configure PM2 process manager for Node.js application | — |
 | `/skill-create` | Analyze git history to extract patterns and generate SKILL.md | — |
+| `/cost-report` | Pull a usage/cost report from Claude Code Analytics API (per-model spend, daily/weekly) | — |
 
 ---
 

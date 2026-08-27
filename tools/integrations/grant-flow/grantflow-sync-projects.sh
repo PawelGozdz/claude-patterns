@@ -10,6 +10,8 @@ set -euo pipefail
 CONFIG_FILE="$HOME/.grantflow"
 PROJECTS_FILE="$HOME/.grantflow-projects"
 
+# Nie source'ujemy scripts/lib/common.sh (K41) — patrz komentarz w grantflow-log-time.sh
+# (deploy jako płaska kopia do ~/.local/bin, bez towarzyszącego lib/).
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
 RED='\033[0;31m'

@@ -6,8 +6,7 @@ description: |
   Implements Infrastructure/API layer (Controllers, Schemas, Repos, External Services)
   following NestJS, Kysely, and ADR conventions. Tests are NOT written here —
   delegated to @test-implementer.
-tools:
-  Read, Write, Edit, MultiEdit, Bash, Glob, Grep, LS, Task, StructuredOutput, mcp__knowledge-retriever__retrieve_code, mcp__knowledge-retriever__retrieve_patterns, mcp__knowledge-retriever__retrieve_examples
+tools: Read, Write, Edit, MultiEdit, Bash, Glob, Grep, LS, Task, StructuredOutput, mcp__knowledge-retriever__retrieve_code, mcp__knowledge-retriever__retrieve_patterns, mcp__knowledge-retriever__retrieve_examples
 model: sonnet
 temperature: 0.3
 color: orange
@@ -354,3 +353,10 @@ implementing:
 
 **Remember**: You own INFRASTRUCTURE CODE. Testing is `@test-implementer`'s job — hand off,
 don't write tests yourself.
+
+## Changelog
+
+- 2026-08-27 — `tools:` frontmatter field normalized from multi-line to single-line YAML
+  (matches convention of every other agent in the repo); `validate-agents.js` required the
+  field non-empty and the multi-line style parsed as empty, so the file failed CI validation
+  with no functional change to the actual tool list (K11, TASK-KAIZEN-001)

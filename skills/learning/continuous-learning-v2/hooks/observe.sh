@@ -34,7 +34,7 @@
 #   }
 # }
 
-set -e
+set -euo pipefail
 
 # Hook phase from CLI argument: "pre" (PreToolUse) or "post" (PostToolUse)
 HOOK_PHASE="${1:-post}"
@@ -121,7 +121,10 @@ fi
 
 # Archive if file too large
 if [ -f "$OBSERVATIONS_FILE" ]; then
-  file_size_mb=$(du -m "$OBSERVATIONS_FILE" 2>/dev/null | cut -f1)
+  # `|| true` — `du` teoretycznie może zwrócić błąd (np. odmowa dostępu); istniejący
+  # fallback `${file_size_mb:-0}` niżej już to zakłada, ale pod pipefail samo
+  # przypisanie umarłoby przez set -e, zanim fallback zdążyłby zadziałać.
+  file_size_mb=$(du -m "$OBSERVATIONS_FILE" 2>/dev/null | cut -f1) || true
   if [ "${file_size_mb:-0}" -ge "$MAX_FILE_SIZE_MB" ]; then
     archive_dir="${CONFIG_DIR}/observations.archive"
     mkdir -p "$archive_dir"

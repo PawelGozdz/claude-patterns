@@ -8,7 +8,7 @@
 # Usage: ./generate-claude-md.sh [project-path]
 # Default: current directory
 
-set -e
+set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PATTERNS_DIR="$(dirname "$SCRIPT_DIR")"
@@ -20,14 +20,10 @@ PROJECT_DIR="$(cd "$PROJECT_DIR" && pwd)"
 CONFIG_DIR="$PROJECT_DIR/.claude/config"
 PROJECT_YML="$CONFIG_DIR/project.yml"
 LOCAL_MD="$CONFIG_DIR/CLAUDE-LOCAL.md"
+LOCAL_MD_ROOT_FALLBACK="$PROJECT_DIR/CLAUDE-LOCAL.md"
 OUTPUT="$PROJECT_DIR/CLAUDE.md"
 
-# Colors
-GREEN='\033[0;32m'
-RED='\033[0;31m'
-BLUE='\033[0;34m'
-YELLOW='\033[1;33m'
-NC='\033[0m'
+source "$SCRIPT_DIR/lib/common.sh"
 
 # --- Helpers ---
 
@@ -38,12 +34,15 @@ yml_get() {
   local section="${key%%.*}"
   local field="${key#*.}"
 
+  # `|| true` na końcu: brak dopasowania w grep (klucz opcjonalny, nieobecny w tym
+  # project.yml) jest normalnym wynikiem "pusty string", nie błędem — pod pipefail
+  # nonzero z grep zabijałby całą funkcję przez set -e na `VAR=$(yml_get ...)`.
   if [[ "$section" == "$field" ]]; then
     # Top-level key
-    grep "^${key}:" "$PROJECT_YML" | head -1 | sed 's/^[^:]*: *//' | sed 's/^"//' | sed 's/"$//'
+    { grep "^${key}:" "$PROJECT_YML" | head -1 | sed 's/^[^:]*: *//' | sed 's/^"//' | sed 's/"$//'; } || true
   else
     # Nested key: find section, then field within indented block
-    sed -n "/^${section}:/,/^[a-z]/p" "$PROJECT_YML" | grep "^  ${field}:" | head -1 | sed 's/^[^:]*: *//' | sed 's/^"//' | sed 's/"$//'
+    { sed -n "/^${section}:/,/^[a-z]/p" "$PROJECT_YML" | grep "^  ${field}:" | head -1 | sed 's/^[^:]*: *//' | sed 's/^"//' | sed 's/"$//'; } || true
   fi
 }
 
@@ -52,8 +51,9 @@ yml_list() {
   local section="$1"
   # Komentarz po wartości (`- docs/x.md   # opis`) był dotąd wciągany do wartości —
   # w CLAUDE.md dawało to linki z opisem w środku ścieżki. Ucinamy go tutaj, raz.
-  sed -n "/^${section}:/,/^[a-z]/p" "$PROJECT_YML" | grep '^  - ' \
-    | sed 's/^  - //' | sed 's/[[:space:]]*#.*$//' | sed 's/^"//' | sed 's/"$//' | sed 's/[[:space:]]*$//'
+  # `|| true` — sekcja bez elementów listy (albo nieobecna) to normalny pusty wynik.
+  { sed -n "/^${section}:/,/^[a-z]/p" "$PROJECT_YML" | grep '^  - ' \
+    | sed 's/^  - //' | sed 's/[[:space:]]*#.*$//' | sed 's/^"//' | sed 's/"$//' | sed 's/[[:space:]]*$//'; } || true
 }
 
 # --- Validate ---
@@ -231,36 +231,38 @@ fi
 # We only list them as a reference so the user knows what's available.
 
 SKILLS_IMPORTS=""
-SKILLS_LIST_ITEMS=""
+SKILLS_COUNT=0
+SKILLS_CATEGORIES_LIST=""
 
+# K34 (TASK-KAIZEN-001, 2026-08-27): dawniej ta sekcja wypisywała KAŻDY skill z osobna
+# (37 linii dla juz-ide-api-1) — czysta duplikacja tego, co Claude Code i tak dostarcza
+# modelowi natywnie przez rejestr Skill/komend (patrz komentarz wyżej: "NOT imported into
+# CLAUDE.md"). Human-facing wartość (orientacja "co tu jest") zachowana jako zwięzłe
+# podsumowanie liczby + kategorii, bez pełnego zrzutu nazw — pełna lista i tak jest
+# widoczna z poziomu `/help` i samych plików `.claude/skills/*/SKILL.md`.
 while IFS= read -r category; do
   [[ -z "$category" ]] && continue
   CATEGORY_DIR="$PATTERNS_DIR/skills/$category"
   if [[ -d "$CATEGORY_DIR" ]]; then
+    category_count=0
     for skill_dir in "$CATEGORY_DIR"/*/; do
       [[ -d "$skill_dir" ]] || continue
-      skill_name=$(basename "$skill_dir")
       skill_md="$skill_dir/SKILL.md"
-      if [[ -f "$skill_md" ]]; then
-        # Flat name — matches actual .claude/skills/<name>/ symlink + Skill(<name>) invocation
-        # (native discovery replaced the old nested .claude/knowledge/skills/<category>/<name>/
-        # layout — see setup-project.sh [4b/8]). A `category/name` listing here silently breaks
-        # every `Skill(category/name)` call a reader makes from this doc.
-        if grep -q "^disable-model-invocation: *true" "$skill_md" 2>/dev/null; then
-          # Not flat-symlinked (setup-project.sh skips these) — only reachable via its
-          # slash-command counterpart (commands/<name>.md), never via the Skill tool.
-          SKILLS_LIST_ITEMS="${SKILLS_LIST_ITEMS}- \`/${skill_name}\` (slash command only, not Skill tool)\n"
-        else
-          SKILLS_LIST_ITEMS="${SKILLS_LIST_ITEMS}- \`${skill_name}\`\n"
-        fi
-      fi
+      [[ -f "$skill_md" ]] && category_count=$((category_count + 1))
     done
+    if [[ $category_count -gt 0 ]]; then
+      SKILLS_COUNT=$((SKILLS_COUNT + category_count))
+      SKILLS_CATEGORIES_LIST="${SKILLS_CATEGORIES_LIST}, ${category} (${category_count})"
+    fi
   fi
 done < <(yml_list "skills")
 
-if [[ -n "$SKILLS_LIST_ITEMS" ]]; then
-  SKILLS_IMPORTS="## Available Skills (auto-discovered from .claude/skills/)\n\n"
-  SKILLS_IMPORTS="${SKILLS_IMPORTS}${SKILLS_LIST_ITEMS}"
+if [[ $SKILLS_COUNT -gt 0 ]]; then
+  SKILLS_IMPORTS="## Available Skills\n\n"
+  SKILLS_IMPORTS="${SKILLS_IMPORTS}${SKILLS_COUNT} skills auto-discovered from \`.claude/skills/\` "
+  SKILLS_IMPORTS="${SKILLS_IMPORTS}(native Skill-tool discovery — not listed individually here to save "
+  SKILLS_IMPORTS="${SKILLS_IMPORTS}context on every session; see \`.claude/skills/*/SKILL.md\` or \`/help\` "
+  SKILLS_IMPORTS="${SKILLS_IMPORTS}for the full list). Categories: ${SKILLS_CATEGORIES_LIST#, }.\n"
 fi
 
 # --- Load stack-specific content ---
@@ -275,6 +277,13 @@ fi
 LOCAL_CONTENT=""
 if [[ -f "$LOCAL_MD" ]]; then
   LOCAL_CONTENT=$(cat "$LOCAL_MD")
+elif [[ -f "$LOCAL_MD_ROOT_FALLBACK" ]]; then
+  # Kanoniczna lokalizacja to .claude/config/CLAUDE-LOCAL.md; fallback na root repo
+  # istnieje, bo jeden projekt (iam, 2026-08-24) trzymał plik w roocie i generator
+  # go cicho gubił — pięć krytycznych nadpisań nigdy nie trafiało do CLAUDE.md.
+  echo -e "${YELLOW}⚠${NC}  CLAUDE-LOCAL.md znaleziony w roocie projektu, nie w .claude/config/ —"
+  echo "   działa, ale rozważ przeniesienie do $LOCAL_MD (kanoniczna lokalizacja)."
+  LOCAL_CONTENT=$(cat "$LOCAL_MD_ROOT_FALLBACK")
 fi
 
 # --- Compose template: core + stack profile ---

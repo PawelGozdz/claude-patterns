@@ -37,6 +37,15 @@ try {
 // Audyt z 2026-08-12 zastał wszystkie 10 kompozycji nieaktualnych, w tym dwie
 // instancje bez bloków `decision-registry`/`governance`, czyli bez blokującego
 // stage'a `decision-gate` w panelu `/analyze`. Exit 1 przy rozjeździe — nadaje się do CI.
+if (process.argv.includes('--help') || process.argv.includes('-h')) {
+  console.log(`użycie: materialize-runtime.mjs <project_dir> [patterns_repo] [--check]
+
+  project_dir     Katalog projektu z .claude/config/runtime.yml do zmaterializowania
+  patterns_repo   Ścieżka do claude-patterns (domyślnie: katalog nadrzędny tego skryptu)
+  --check         Policz hash i porównaj z runtime.yml istniejącego projektu, nic nie zapisuj (exit 1 przy rozjeździe)`);
+  process.exit(0);
+}
+
 const CHECK = process.argv.includes('--check');
 const [projectDir, repoArg] = process.argv.slice(2).filter((a) => !a.startsWith('--'));
 if (!projectDir) { console.error('użycie: materialize-runtime.mjs <project_dir> [patterns_repo] [--check]'); process.exit(1); }
@@ -372,6 +381,7 @@ for (const b of blocks) b.data = b.doc.toJS() ?? {};
 const axisOf = (b) => b.data.axis ?? null;
 
 const always = [];           // {path, source}
+const removes = [];          // {path, source} — patterns.remove (K44, TASK-KAIZEN-001)
 const triggers = [];         // {keywords, include, source}
 const panel = [];            // {node, source}
 let analyzeExit = null, analyzeExitSrc = null;
@@ -390,6 +400,7 @@ for (const b of blocks) {
   if (pat) {
     for (const p of pat.always ?? [])
       if (!always.some((a) => a.path === p)) always.push({ path: p, source: b.name });
+    for (const p of pat.remove ?? []) removes.push({ path: p, source: b.name });
     for (const g of pat.triggers ?? [])
       triggers.push({ keywords: g.keywords ?? [], include: g.include ?? [], source: b.name });
   }
@@ -471,11 +482,31 @@ for (const b of blocks) {
     }
 }
 
+// patterns.remove (K44, TASK-KAIZEN-001): blok może jawnie wykluczyć ze zsumowanego
+// `always` wzorzec dodany przez INNY blok — użyteczne, gdy blok lokalny nadpisuje
+// centralny wzorzec swoją wersją (przykład: iam-security.yml usuwa
+// cross-layer/security-invariants-pattern.md, bo dokłada własny odpowiednik pod Fastify).
+// Zastosowanie PO całej pętli po blokach — kolejność w stack_blocks nie ma znaczenia,
+// blok deklarujący `remove` może stać przed albo po bloku, który dodał wzorzec.
+for (const r of removes) {
+  const idx = always.findIndex((a) => a.path === r.path);
+  if (idx !== -1) always.splice(idx, 1);
+}
+
 // Hooki projektu dokładane jawnie: bloki wnoszą to, czego wymaga stack, a projekt
 // dopisuje własne w project.yml (`extra_hooks`). Bez tego kanału lokalne hooki żyły
 // wyłącznie w settings.json i runtime.yml pokazywał niepełny obraz — w api-2 deklarował
 // 4 hooki, a realnie działało 8.
 for (const h of proj.project?.extra_hooks ?? []) if (!hooks.includes(h)) hooks.push(h);
+
+// `human_voice` (niżej) jest bezwarunkowym domyślnym wpisem w KAŻDYM runtime.yml,
+// niezależnie od kompozycji bloków — ale hook, który go egzekwuje (`check-human-voice`),
+// wcześniej wchodził WYŁĄCZNIE przez opcjonalny blok `approval-gate`. Projekt bez tego
+// bloku (np. juz-ide-api-1: nestjs+ddd+kysely+decision-registry+governance+./geo, zero
+// approval-gate) dostawał deklarację rejestru językowego, której nic nie mogło
+// wyegzekwować (K43, TASK-KAIZEN-001, 2026-08-27). Hook jest inertny bez plików
+// `*.analysis.md`, więc dołączenie go zawsze jest bezpieczne.
+if (!hooks.includes('check-human-voice')) hooks.push('check-human-voice');
 
 // project.yml może nadpisać budżety bez ograniczeń (OQ3)
 for (const [slot, fields] of Object.entries(proj.budgets ?? {})) {
@@ -841,8 +872,13 @@ for (const b of blocks) {
       }
       // Wisząca ścieżka to reguła, która zablokuje edycję i każe przeczytać plik,
       // którego nie ma — gorsze niż brak reguły (ta sama kontrola co w generatorze).
+      // Trzecia gałąź (K46, TASK-KAIZEN-001): wzorzec lokalny spoza symlinkowanych
+      // kategorii (`.claude/knowledge/patterns-local/…`) niesie już PEŁNĄ ścieżkę od
+      // roota projektu — ten sam przypadek co dangling-check dla patterns.always
+      // (linie ~516-517) i K02 w verify-project-setup.mjs.
       if (!existsSync(join(REPO, 'patterns', rule.pattern)) &&
-          !existsSync(join(projectDir, '.claude/knowledge/patterns', rule.pattern)))
+          !existsSync(join(projectDir, '.claude/knowledge/patterns', rule.pattern)) &&
+          !existsSync(join(projectDir, rule.pattern)))
         routingErrors.push(`blok "${b.name}": pattern_routing wskazuje "${rule.pattern}" — nie ma takiego wzorca`);
       if (kind === 'filenames') {
         try { new RegExp(rule.match); }

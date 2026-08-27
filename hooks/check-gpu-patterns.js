@@ -29,6 +29,7 @@
 const fs = require('fs');
 const path = require('path');
 const { findPythonConfig } = require('./lib/python-config');
+const { readStdinJsonWithRaw } = require('./lib/utils');
 
 const COMMENT_LINE = /^\s*#/;
 const QUALIFIED_CALL = /([\w.]+)\.(\w+)\s*\($/;
@@ -46,29 +47,21 @@ const DEFAULT_INFERENCE_CALLS = [
 ];
 
 const GC_LOOKBACK_LINES = 6;
-const MAX_STDIN = 1024 * 1024;
 
-let data = '';
-process.stdin.setEncoding('utf8');
-
-process.stdin.on('data', (chunk) => {
-  if (data.length < MAX_STDIN) {
-    data += chunk.substring(0, MAX_STDIN - data.length);
-  }
-});
-
-process.stdin.on('end', () => {
+async function main() {
+  const { raw, parsed: input } = await readStdinJsonWithRaw();
   try {
-    run();
+    run(input);
   } catch {
     // Invalid input or unreadable file — pass through silently
   }
-  process.stdout.write(data);
+  process.stdout.write(raw);
   process.exit(0);
-});
+}
 
-function run() {
-  const input = JSON.parse(data);
+main();
+
+function run(input) {
   const filePath = input.tool_input?.file_path;
   if (!filePath || !filePath.endsWith('.py')) return;
 

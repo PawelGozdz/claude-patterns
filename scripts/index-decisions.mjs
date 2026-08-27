@@ -242,10 +242,17 @@ const index = {
   query: wanted.length ? { tags: wanted, matched: matched.length } : null,
   entries: active,
   // Brief: jedna linia na wpis, bez ścieżek i pól technicznych. To ON idzie do prompta
-  // decision-gate (pełny JSON to 55 KB — pięć razy więcej niż trzeba, żeby wybrać wpis).
-  brief: active.map((d) =>
-    `${d.kind.toUpperCase()}-${d.id ?? '????'} | ${d.status}${d.needs_scope_check ? ' ⚠zakres' : ''}` +
-    `${d.tags.length ? ` | ${d.tags.join(' ')}` : ''} | ${d.summary ?? d.title}`),
+  // decision-gate (pełny JSON bywa 5-8x większy — zbyt dużo, żeby tylko wybrać wpis).
+  // `summary`/`title` ucięte do 200 znaków — kilka wpisów (np. cross-context ACL vs
+  // read-projection) miało po 500-600 znaków samego streszczenia, co przy 150 aktywnych
+  // decyzjach robiło różnicę rzędu kilkunastu KB (K34, TASK-KAIZEN-001, 2026-08-27).
+  // decision-gate cytuje `scope`/pełny wpis z `entries[]` gdy potrzebuje więcej niż to.
+  brief: active.map((d) => {
+    const text = d.summary ?? d.title ?? '';
+    const trimmed = text.length > 200 ? `${text.slice(0, 200)}…` : text;
+    return `${d.kind.toUpperCase()}-${d.id ?? '????'} | ${d.status}${d.needs_scope_check ? ' ⚠zakres' : ''}` +
+      `${d.tags.length ? ` | ${d.tags.join(' ')}` : ''} | ${trimmed}`;
+  }),
   filtered_out: all.filter((d) => !active.includes(d)).map((d) => ({ id: d.id, file: d.file, status: d.status })),
 };
 

@@ -6,15 +6,11 @@
 #   ./setup.sh ~/projects/local-hero-3            # Global + one project
 #   ./setup.sh ~/projects/local-hero-{1,2,3,4}   # Global + multiple projects
 
-set -e
+set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Colors
-GREEN='\033[0;32m'
-BLUE='\033[0;34m'
-YELLOW='\033[1;33m'
-NC='\033[0m'
+source "$SCRIPT_DIR/lib/common.sh"
 
 echo -e "${BLUE}========================================${NC}"
 echo -e "${BLUE}Claude Patterns - Master Setup${NC}"

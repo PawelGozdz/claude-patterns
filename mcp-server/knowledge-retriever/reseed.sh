@@ -2,7 +2,7 @@
 # Reseed code retrieval: ensure dedicated Qdrant up → build → reindex collections from reseed.config.json.
 # Lightweight + idempotent. Swap embed model: set KR_EMBED_PROVIDER/URL/MODEL then rerun.
 #   KR_EMBED_PROVIDER=openai KR_EMBED_URL=http://host:port/v1/embeddings KR_EMBED_MODEL=nomic-embed-text ./reseed.sh
-set -e
+set -euo pipefail
 cd "$(dirname "$0")"
 
 echo "[reseed] 1/3 dedicated Qdrant (docker-compose, :6401)"

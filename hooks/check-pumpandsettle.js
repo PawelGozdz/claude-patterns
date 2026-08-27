@@ -23,48 +23,39 @@
 const fs = require('fs');
 const path = require('path');
 const { findFlutterConfig } = require('./lib/flutter-config');
+const { readStdinJsonWithRaw } = require('./lib/utils');
 
 const COMMENT_LINE = /^\s*(\/\/|\/\*|\*)/;
 const BARE_PUMP_AND_SETTLE = /\.pumpAndSettle\(\s*\)/;
 
-const MAX_STDIN = 1024 * 1024;
-let data = '';
-process.stdin.setEncoding('utf8');
+async function main() {
+  const { raw, parsed: input } = await readStdinJsonWithRaw();
 
-process.stdin.on('data', (chunk) => {
-  if (data.length < MAX_STDIN) {
-    const remaining = MAX_STDIN - data.length;
-    data += chunk.substring(0, remaining);
-  }
-});
-
-process.stdin.on('end', () => {
   try {
-    const input = JSON.parse(data);
     const filePath = input.tool_input?.file_path;
 
     if (!filePath || !filePath.endsWith('_test.dart')) {
-      process.stdout.write(data);
+      process.stdout.write(raw);
       process.exit(0);
     }
 
     // Load project config — no config means no checks
     const loaded = findFlutterConfig(filePath);
     if (!loaded) {
-      process.stdout.write(data);
+      process.stdout.write(raw);
       process.exit(0);
     }
 
     const { config } = loaded;
     const pumpConfig = config.pumpAndSettle?.checkBareCall;
     if (!pumpConfig?.enabled) {
-      process.stdout.write(data);
+      process.stdout.write(raw);
       process.exit(0);
     }
 
     const resolvedPath = path.resolve(filePath);
     if (!fs.existsSync(resolvedPath)) {
-      process.stdout.write(data);
+      process.stdout.write(raw);
       process.exit(0);
     }
 
@@ -89,6 +80,8 @@ process.stdin.on('end', () => {
     // Invalid input — pass through
   }
 
-  process.stdout.write(data);
+  process.stdout.write(raw);
   process.exit(0);
-});
+}
+
+main();

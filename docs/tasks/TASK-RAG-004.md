@@ -1,3 +1,11 @@
+---
+id: TASK-RAG-004
+title: 'spójność retrievalu: ścieżki względne, kanoniczny ref, inwalidacja'
+type: task
+status: draft
+created_date: 2026-08-02
+---
+
 # TASK-RAG-004 — spójność retrievalu: ścieżki względne, kanoniczny ref, inwalidacja
 
 > **STATUS: draft** (2026-08-02) — plan do review, nic nie zaimplementowane.

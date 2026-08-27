@@ -19,19 +19,13 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const { readStdinJsonWithRaw } = require('./lib/utils');
 
-const MAX_STDIN = 512 * 1024;
 const DEBUG = process.env.AGENT_USAGE_DEBUG === '1';
 
 if (process.env.AGENT_USAGE_LOG === 'off') {
   process.exit(0);
 }
-
-let data = '';
-process.stdin.setEncoding('utf8');
-process.stdin.on('data', (chunk) => {
-  if (data.length < MAX_STDIN) data += chunk.substring(0, MAX_STDIN - data.length);
-});
 
 // Pricing as of 2026-06 (USD per million tokens).
 const PRICING = {
@@ -151,9 +145,10 @@ function shouldWriteDebug(dir) {
   } catch { return true; }
 }
 
-process.stdin.on('end', () => {
+async function main() {
+  const { raw } = await readStdinJsonWithRaw({ maxSize: 512 * 1024 });
   try {
-    const input = JSON.parse(data || '{}');
+    const input = JSON.parse(raw || '{}');
 
     // --- Agent name: try documented paths first, then deep search ---
     const agentName =
@@ -229,4 +224,6 @@ process.stdin.on('end', () => {
     // Silent — usage logging must never disturb the workflow
   }
   process.exit(0);
-});
+}
+
+main();

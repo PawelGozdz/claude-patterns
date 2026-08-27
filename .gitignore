@@ -49,3 +49,11 @@ mcp-server/knowledge-retriever/.knowledge/
 # Stan drzewa przy ostatnim reseedzie RAG — lokalny dla maszyny (Qdrant stoi lokalnie),
 # nie dla repozytorium. Zapisywany przez scripts/reseed-patterns.sh.
 .rag-seed-state.json
+
+# Wyniki evala retrievalu — artefakt runtime z tests/flow-evals/retrieval/run.js,
+# nadpisywany przy każdym uruchomieniu (m.in. z scripts/reseed-patterns.sh).
+tests/flow-evals/retrieval/results.jsonl
+
+# Lokalne nadpisania uprawnień/hooków tego repo jako projektu — nie dla współpracowników.
+# (globalny ~/.config/git/ignore chroni to na tej maszynie, ale nie na innych)
+.claude/settings.local.json

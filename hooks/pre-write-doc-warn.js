@@ -12,40 +12,31 @@
  */
 
 const path = require('path');
+const { readStdinJsonWithRaw } = require('./lib/utils');
 
-const MAX_STDIN = 1024 * 1024; // 1MB limit
-let data = '';
-process.stdin.setEncoding('utf8');
+async function main() {
+  const { raw, parsed: input } = await readStdinJsonWithRaw();
 
-process.stdin.on('data', chunk => {
-  if (data.length < MAX_STDIN) {
-    const remaining = MAX_STDIN - data.length;
-    data += chunk.length > remaining ? chunk.slice(0, remaining) : chunk;
-  }
-});
-
-process.stdin.on('end', () => {
   try {
-    const input = JSON.parse(data);
     const filePath = input.tool_input?.file_path || '';
 
     // Only check .md and .txt files
     if (!/\.(md|txt)$/.test(filePath)) {
-      process.stdout.write(data);
+      process.stdout.write(raw);
       return;
     }
 
     // Allow standard documentation files
     const basename = path.basename(filePath);
     if (/^(README|CLAUDE|AGENTS|CONTRIBUTING|CHANGELOG|LICENSE|SKILL)\.md$/i.test(basename)) {
-      process.stdout.write(data);
+      process.stdout.write(raw);
       return;
     }
 
     // Allow files in .claude/plans/, docs/, and skills/ directories
     const normalized = filePath.replace(/\\/g, '/');
     if (/\.claude\/plans\//.test(normalized) || /(^|\/)(docs|skills)\//.test(normalized)) {
-      process.stdout.write(data);
+      process.stdout.write(raw);
       return;
     }
 
@@ -57,5 +48,7 @@ process.stdin.on('end', () => {
     // Parse error — pass through
   }
 
-  process.stdout.write(data);
-});
+  process.stdout.write(raw);
+}
+
+main();

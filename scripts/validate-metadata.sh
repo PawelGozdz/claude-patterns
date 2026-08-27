@@ -4,14 +4,10 @@
 # Usage: ./validate-metadata.sh
 # Run from: ~/.claude-patterns/
 
-set -e  # Exit on error
+set -euo pipefail  # Exit on error, unset var, or failed pipe stage
 
-# Colors for output
-GREEN='\033[0;32m'
-BLUE='\033[0;34m'
-YELLOW='\033[1;33m'
-RED='\033[0;31m'
-NC='\033[0m' # No Color
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/lib/common.sh"
 
 echo -e "${BLUE}================================${NC}"
 echo -e "${BLUE}METADATA Validation Script v1.0${NC}"
@@ -33,8 +29,10 @@ if ! command -v python3 &> /dev/null; then
 fi
 
 # Check if PyYAML is available
-python3 -c "import yaml" 2>/dev/null
-if [ $? -ne 0 ]; then
+# (nie `cmd; if [ $? ... ]` — pod `set -e` komenda o niezerowym statusie zabija skrypt
+# TUTAJ, więc gałąź "$? -ne 0" nigdy się nie wykonuje; `if ! cmd; then` trzyma test
+# i komendę w jednej instrukcji, którą `set -e` traktuje jako całość)
+if ! python3 -c "import yaml" 2>/dev/null; then
   echo -e "${YELLOW}⚠️  Warning: PyYAML not installed${NC}"
   echo "   Install with: pip install pyyaml"
   echo "   Skipping YAML syntax validation..."
@@ -57,8 +55,7 @@ while IFS= read -r -d '' file; do
 
   # Validate YAML syntax
   if [ "$SKIP_YAML" = false ]; then
-    python3 -c "import yaml; yaml.safe_load(open('$file'))" 2>&1
-    if [ $? -eq 0 ]; then
+    if python3 -c "import yaml; yaml.safe_load(open('$file'))" 2>&1; then
       echo -e "${GREEN}  ✅ Valid YAML syntax${NC}"
 
       # Check for required fields
@@ -95,8 +92,7 @@ if [ -f "METADATA.yml" ]; then
   echo -e "${BLUE}Validating:${NC} METADATA.yml (root)"
 
   if [ "$SKIP_YAML" = false ]; then
-    python3 -c "import yaml; yaml.safe_load(open('METADATA.yml'))" 2>&1
-    if [ $? -eq 0 ]; then
+    if python3 -c "import yaml; yaml.safe_load(open('METADATA.yml'))" 2>&1; then
       echo -e "${GREEN}  ✅ Valid YAML syntax${NC}"
       valid_count=$((valid_count + 1))
     else

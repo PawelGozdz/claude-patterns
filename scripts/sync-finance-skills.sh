@@ -19,7 +19,7 @@
 #
 # Requirements: git, rsync, diff
 
-set -e
+set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 UPSTREAM_REPO="https://github.com/JoelLewis/finance_skills.git"
@@ -29,17 +29,13 @@ MODE="interactive"
 
 PLUGINS=(core wealth-management compliance advisory-practice trading-operations client-operations data-integration)
 
-GREEN='\033[0;32m'
-BLUE='\033[0;34m'
-YELLOW='\033[1;33m'
-RED='\033[0;31m'
-NC='\033[0m'
+source "$REPO_DIR/scripts/lib/common.sh"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --apply) MODE="apply"; shift ;;
     --diff)  MODE="diff";  shift ;;
-    --ref)   REF="$2";     shift 2 ;;
+    --ref)   REF="${2:?--ref wymaga wartości}"; shift 2 ;;
     -h|--help)
       grep '^#' "$0" | sed 's/^# \?//'
       exit 0

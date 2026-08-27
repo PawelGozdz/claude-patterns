@@ -17,6 +17,7 @@
 const fs = require('fs');
 const path = require('path');
 const { findConfig } = require('./lib/ddd-config');
+const { readStdinJsonWithRaw } = require('./lib/utils');
 
 const THROW_PATTERN = /^\s*throw\s+new\s/;
 const COMMENT_LINE = /^\s*(\/\/|\/\*|\*)/;
@@ -29,36 +30,26 @@ const SKIP_PATTERNS = [
   /__mocks__\//,
 ];
 
-const MAX_STDIN = 1024 * 1024;
-let data = '';
-process.stdin.setEncoding('utf8');
+async function main() {
+  const { raw, parsed: input } = await readStdinJsonWithRaw();
 
-process.stdin.on('data', (chunk) => {
-  if (data.length < MAX_STDIN) {
-    const remaining = MAX_STDIN - data.length;
-    data += chunk.substring(0, remaining);
-  }
-});
-
-process.stdin.on('end', () => {
   try {
-    const input = JSON.parse(data);
     const filePath = input.tool_input?.file_path;
 
     if (!filePath || !filePath.endsWith('.ts')) {
-      process.stdout.write(data);
+      process.stdout.write(raw);
       process.exit(0);
     }
 
     if (SKIP_PATTERNS.some((p) => p.test(filePath))) {
-      process.stdout.write(data);
+      process.stdout.write(raw);
       process.exit(0);
     }
 
     // Load project config — no config means no checks
     const loaded = findConfig(filePath);
     if (!loaded || !loaded.config.purity) {
-      process.stdout.write(data);
+      process.stdout.write(raw);
       process.exit(0);
     }
 
@@ -76,7 +67,7 @@ process.stdin.on('end', () => {
     );
 
     if (!fileLayer) {
-      process.stdout.write(data);
+      process.stdout.write(raw);
       process.exit(0);
     }
 
@@ -90,7 +81,7 @@ process.stdin.on('end', () => {
     // Read the file
     const resolvedPath = path.resolve(filePath);
     if (!fs.existsSync(resolvedPath)) {
-      process.stdout.write(data);
+      process.stdout.write(raw);
       process.exit(0);
     }
 
@@ -137,6 +128,8 @@ process.stdin.on('end', () => {
     // Invalid input — pass through
   }
 
-  process.stdout.write(data);
+  process.stdout.write(raw);
   process.exit(0);
-});
+}
+
+main();

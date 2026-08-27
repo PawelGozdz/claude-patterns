@@ -48,12 +48,22 @@ This split saves ~60% tokens vs. running tech-lead over raw task files (no need 
 
 ### Phase 1 — Extract structured task data
 
+First run `node /opt/projects/claude-patterns/scripts/tasks-digest.mjs --json` — it already
+gives id/status/priority/age per task deterministically, for free, without an agent turn
+(K30, TASK-KAIZEN-001). Pass that output into the prompt below instead of having the agent
+re-derive those fields by reading every file; the agent still needs to open the actual files
+for the fields the digest doesn't cover (`story_id`, `assignee`, `due_date`, `depends_on[]`)
+and for `has_required_fields_complete`, which needs the raw frontmatter to check completeness.
+
 ```
 Agent(subagent_type='state-reader',
-      prompt='Read all project-orchestration/tasks/*.md and return structured
-              data per task: { id, title, status, priority, story_id,
-              assignee, due_date, depends_on[], updated_date, days_since_update,
+      prompt='Digest (id/status/priority/age) already computed: {DIGEST_JSON}.
+              For each task, read project-orchestration/tasks/{id}.md and fill in the
+              remaining fields: { story_id, assignee, due_date, depends_on[],
               has_required_fields_complete, in_progress_days_if_applicable }.
+              Merge with the digest into structured data per task: { id, title, status,
+              priority, story_id, assignee, due_date, depends_on[], updated_date,
+              days_since_update, has_required_fields_complete, in_progress_days_if_applicable }.
               Also return aggregate: { total_tasks, by_status, by_priority }.
               Format: YAML.',
       description='Task data extraction (Haiku)')

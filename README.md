@@ -42,14 +42,14 @@ A **single source of truth** for production-tested software patterns and agent t
 ├── README.md                    # This file
 ├── METADATA.yml                 # Repository metadata
 ├── .gitignore                   # Git exclusions
-├── patterns/                    # Production patterns (42 core + 29 stack-specific + 1 marketing + 2 finance + 2 legal)
+├── patterns/                    # Production patterns (50 core + 45 stack-specific + 1 marketing + 2 finance + 2 legal)
 │   ├── README.md                # Pattern index & usage guide
 │   ├── domain/                  # Domain layer (6 patterns)
 │   ├── application/             # Application layer (4 patterns)
-│   ├── infrastructure/          # Infrastructure layer (4 patterns)
-│   ├── architecture/            # Architecture patterns (12 patterns)
-│   ├── testing/                 # Testing patterns (9 patterns)
-│   ├── cross-layer/             # Cross-layer patterns (6 patterns)
+│   ├── infrastructure/          # Infrastructure layer (6 patterns)
+│   ├── architecture/            # Architecture patterns (14 patterns)
+│   ├── testing/                 # Testing patterns (11 patterns)
+│   ├── cross-layer/             # Cross-layer patterns (8 patterns)
 │   ├── orchestration/           # Orchestration patterns (1 pattern)
 │   ├── marketing/               # Marketing patterns (1 pattern)
 │   ├── finance/                 # Finance patterns (2 patterns: layered-knowledge, regulatory-disclaimer)
@@ -59,7 +59,7 @@ A **single source of truth** for production-tested software patterns and agent t
 │   ├── requirements.txt         # Python dependencies
 │   ├── settings.json.example    # Example Claude settings
 │   └── README.md                # MCP setup & usage guide
-├── agents/                      # Agent definitions (26 universal + 15 stack-specific)
+├── agents/                      # Agent definitions (26 universal + 30 stack-specific)
 │   ├── README.md                # Agent setup & usage guide
 │   ├── universal/               # Stack-agnostic agents (linked to ~/.claude/agents/)
 │   │   ├── backend-technology-expert.md
@@ -70,11 +70,14 @@ A **single source of truth** for production-tested software patterns and agent t
 │   │   ├── finance-strategist.md     # Finance coordinator (investment, compliance, advisory)
 │   │   └── legal-strategist.md       # [NEW v3.5] Legal coordinator (contracts, GDPR, NDA, jurisdiction-aware)
 │   └── stacks/                  # Stack-specific agents (linked per-project)
-│       ├── nestjs-ddd/          # 3 agents (DDD expert, quality, security)
-│       ├── flutter-clean-arch/  # 3 agents (arch, quality, UI)
+│       ├── nestjs-ddd/          # 8 agents (DDD expert, quality, security, implementers)
+│       ├── flutter-clean-arch/  # 7 agents (arch, quality, UI, security, performance)
+│       ├── node-ts-claude-api/  # 3 agents (implementer, safety, architecture)
+│       ├── astro-static/        # 2 agents (content, implementer)
 │       ├── nextjs-app/          # 2 agents (arch, quality)
 │       ├── sveltekit/           # 2 agents (arch, quality)
 │       ├── python/              # 2 agents (arch, quality)
+│       ├── python-ml/           # 2 agents (ml-inference-architect, gpu-resource-verifier)
 │       └── typescript-library/  # 2 agents (API guardian, quality)
 ├── skills/                      # Skills (slash commands) by category
 │   ├── orchestration/           # Project management skills
@@ -510,9 +513,9 @@ cd ~/projects/claude-patterns
 ```
 
 **What this does**:
-- Creates per-file symlinks in `~/.claude/agents/` for 5 universal agents
-- Creates `~/.claude/commands/` symlink (22 commands)
-- Creates `~/.claude/hooks/` symlink (12 hooks)
+- Creates per-file symlinks in `~/.claude/agents/` for 26 universal agents
+- Creates `~/.claude/commands/` symlink (45 commands)
+- Creates `~/.claude/hooks/` symlink (45 hooks)
 - Idempotent — safe to run multiple times
 
 ### Step 2: Project Setup (once per project)
@@ -1053,9 +1056,9 @@ cat .claude/settings.json  # Ensure patterns path is correct
 - Production-tested patterns since 2026-01-06
 
 **Key Documentation**:
-- `patterns/README.md` — Full pattern index (67 patterns)
-- `agents/README.md` — Agent catalog (19 agents)
-- `commands/README.md` — Command catalog (22 commands)
+- `patterns/README.md` — Full pattern index (100 patterns)
+- `agents/README.md` — Agent catalog (56 agents)
+- `commands/README.md` — Command catalog (45 commands)
 - `patterns/orchestration/project-management-system.md` — PM system docs
 
 ---

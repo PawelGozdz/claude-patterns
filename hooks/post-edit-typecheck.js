@@ -12,27 +12,18 @@
 const { execFileSync } = require("child_process");
 const fs = require("fs");
 const path = require("path");
+const { readStdinJsonWithRaw } = require("./lib/utils");
 
-const MAX_STDIN = 1024 * 1024; // 1MB limit
-let data = "";
-process.stdin.setEncoding("utf8");
+async function main() {
+  const { raw, parsed: input } = await readStdinJsonWithRaw();
 
-process.stdin.on("data", (chunk) => {
-  if (data.length < MAX_STDIN) {
-    const remaining = MAX_STDIN - data.length;
-    data += chunk.substring(0, remaining);
-  }
-});
-
-process.stdin.on("end", () => {
   try {
-    const input = JSON.parse(data);
     const filePath = input.tool_input?.file_path;
 
     if (filePath && /\.(ts|tsx)$/.test(filePath)) {
       const resolvedPath = path.resolve(filePath);
       if (!fs.existsSync(resolvedPath)) {
-        process.stdout.write(data);
+        process.stdout.write(raw);
         process.exit(0);
       }
       // Find nearest tsconfig.json by walking up (max 20 levels to prevent infinite loop)
@@ -91,6 +82,8 @@ process.stdin.on("end", () => {
     // Invalid input — pass through
   }
 
-  process.stdout.write(data);
+  process.stdout.write(raw);
   process.exit(0);
-});
+}
+
+main();

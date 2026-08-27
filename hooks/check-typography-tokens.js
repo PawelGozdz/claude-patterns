@@ -20,6 +20,7 @@
 const fs = require('fs');
 const path = require('path');
 const { findFlutterConfig, matchesPattern } = require('./lib/flutter-config');
+const { readStdinJsonWithRaw } = require('./lib/utils');
 
 const COMMENT_LINE = /^\s*(\/\/|\/\*|\*)/;
 const TEXT_STYLE_START = /TextStyle\(/;
@@ -31,31 +32,21 @@ const EDGE_INSETS_CALL = /EdgeInsets\.\w+\(/g;
 const BARE_NUMERIC_ARG = /(^|[(,:?]\s*)\d/;
 const MAX_LOOKAHEAD = 15;
 
-const MAX_STDIN = 1024 * 1024;
-let data = '';
-process.stdin.setEncoding('utf8');
+async function main() {
+  const { raw, parsed: input } = await readStdinJsonWithRaw();
 
-process.stdin.on('data', (chunk) => {
-  if (data.length < MAX_STDIN) {
-    const remaining = MAX_STDIN - data.length;
-    data += chunk.substring(0, remaining);
-  }
-});
-
-process.stdin.on('end', () => {
   try {
-    const input = JSON.parse(data);
     const filePath = input.tool_input?.file_path;
 
     if (!filePath || !filePath.endsWith('.dart')) {
-      process.stdout.write(data);
+      process.stdout.write(raw);
       process.exit(0);
     }
 
     // Load project config — no config means no checks
     const loaded = findFlutterConfig(filePath);
     if (!loaded) {
-      process.stdout.write(data);
+      process.stdout.write(raw);
       process.exit(0);
     }
 
@@ -64,14 +55,14 @@ process.stdin.on('end', () => {
     // Check if token checks are enabled
     const tokensConfig = config.tokens?.checkInlineStyles;
     if (!tokensConfig?.enabled) {
-      process.stdout.write(data);
+      process.stdout.write(raw);
       process.exit(0);
     }
 
     // Skip generated/test files
     const skipPatterns = config.skipPatterns || ['_test.dart', '.g.dart', '.freezed.dart', '.mock.dart'];
     if (skipPatterns.some((pat) => filePath.endsWith(pat))) {
-      process.stdout.write(data);
+      process.stdout.write(raw);
       process.exit(0);
     }
 
@@ -81,14 +72,14 @@ process.stdin.on('end', () => {
     const matchesFile = filePatterns.some((pat) => matchesPattern(normalized, pat));
 
     if (!matchesFile) {
-      process.stdout.write(data);
+      process.stdout.write(raw);
       process.exit(0);
     }
 
     // Read the file
     const resolvedPath = path.resolve(filePath);
     if (!fs.existsSync(resolvedPath)) {
-      process.stdout.write(data);
+      process.stdout.write(raw);
       process.exit(0);
     }
 
@@ -131,9 +122,11 @@ process.stdin.on('end', () => {
     // Invalid input — pass through
   }
 
-  process.stdout.write(data);
+  process.stdout.write(raw);
   process.exit(0);
-});
+}
+
+main();
 
 // Collect the text between an opening paren at (lines[startLine], openCol)
 // and its matching closing paren, across at most maxLines lines. Bounded

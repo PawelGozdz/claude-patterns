@@ -24,6 +24,7 @@ const fs = require('fs');
 
 const manifestLib = require('./lib/broadcast/manifest');
 const paths = require('./lib/broadcast/paths');
+const { readStdinJson } = require('./lib/utils');
 
 /** D11: `critical` maks. 2 wpisy / ~1 KB — więcej niż dwie rzeczy naraz i tak nie zostanie obsłużone. */
 const MAX_CRITICAL = 2;
@@ -33,20 +34,17 @@ const MAX_IMPORTANT = 5;
 
 const INBOX_MARKER = /^<!-- broadcast:([0-9A-HJKMNP-TV-Z]{26}) severity=(\w+) ts=(\S+) -->$/;
 
-const MAX_STDIN = 512 * 1024;
-let data = '';
-process.stdin.setEncoding('utf8');
-process.stdin.on('data', (chunk) => {
-  if (data.length < MAX_STDIN) data += chunk.substring(0, MAX_STDIN - data.length);
-});
-process.stdin.on('end', () => {
+async function main() {
+  await readStdinJson({ maxSize: 512 * 1024 });
   try {
     run();
   } catch (err) {
     console.error(`[broadcast] inbox-inject: ${err.message}`);
   }
   process.exit(0);
-});
+}
+
+main();
 
 function run() {
   const loaded = manifestLib.load(process.cwd());

@@ -2,7 +2,7 @@
 name: reviewer-nitpicker
 description: Style and consistency advocate who catches naming inconsistency, formatting drift, dead code, import ordering, and comment quality. Deliberately low-severity — findings are almost never blocking.
 tools: Read, Glob, Grep, Bash, WebFetch
-model: sonnet
+model: haiku
 effort: medium
 ---
 
@@ -152,3 +152,10 @@ If the author previously responded to this nit:
 
 False positives about "inconsistency" are annoying, and doubly so for a persona whose whole job
 is low-stakes findings — get them right or don't raise them. Verify before claiming.
+
+## Changelog
+
+- 2026-08-27 — `model: sonnet` → `haiku` (K32, TASK-KAIZEN-001): this reviewer is explicitly
+  low-severity/mechanical (naming, formatting, dead code, import order) — a good fit for a
+  cheaper model; `reviewer-newbie` was left on sonnet since assessing readability needs more
+  judgment than style-checking

@@ -1,3 +1,11 @@
+---
+id: TASK-EVAL-001
+title: 'Automatyzacja evali L1 + korpusy L2 (kontynuacja D7 / ADR 0004)'
+type: task
+status: planned
+created_date: 2026-07-02
+---
+
 # TASK-EVAL-001 — Automatyzacja evali L1 + korpusy L2 (kontynuacja D7 / ADR 0004)
 
 **Status: TODO** · **Źródło:** ADR 0004 (eval modularny) + sesja 2026-07-02 (pytanie: „czy muszę wywoływać evale ręcznie?")

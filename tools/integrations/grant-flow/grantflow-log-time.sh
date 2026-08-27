@@ -23,6 +23,9 @@ PROJECTS_FILE="$HOME/.grantflow-projects"
 TOKEN_TTL=2999  # sekundy (~50 min) — margin przed wygaśnięciem 1h
 
 # --- Kolory ---
+# Nie source'ujemy scripts/lib/common.sh (K41) — ten plik jest deployowany jako
+# płaska kopia do ~/.local/bin/grantflow-log-time (patrz README instalacji), bez
+# towarzyszącego katalogu lib/; source po ścieżce względnej by tam nie zadziałał.
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -72,6 +75,20 @@ except:
   fi
 }
 
+# E-mail i hasło przez zmienne środowiskowe, NIE argv — `curl -d "...$password..."` trzymał
+# hasło w gołym tekście w argumentach procesu przez cały czas requestu, widoczne w `ps aux`
+# każdemu userowi na współdzielonej maszynie; `--data @-` + env usuwa oba wektory (K23).
+json_build_login_payload() {
+  if command -v jq &>/dev/null; then
+    jq -n '{email: env.GRANTFLOW_LOGIN_EMAIL, password: env.GRANTFLOW_LOGIN_PASSWORD}'
+  else
+    python3 -c "
+import os, json
+print(json.dumps({'email': os.environ['GRANTFLOW_LOGIN_EMAIL'], 'password': os.environ['GRANTFLOW_LOGIN_PASSWORD']}))
+"
+  fi
+}
+
 json_array_len() {
   local json="$1"
   if command -v jq &>/dev/null; then
@@ -113,14 +130,15 @@ check_health() {
 
 # --- Autentykacja ---
 do_login() {
-  local url="$GRANTFLOW_URL" email="$GRANTFLOW_EMAIL" password="$GRANTFLOW_PASSWORD"
-  local response http_code
+  local url="$GRANTFLOW_URL"
+  local response http_code payload
+  payload=$(GRANTFLOW_LOGIN_EMAIL="$GRANTFLOW_EMAIL" GRANTFLOW_LOGIN_PASSWORD="$GRANTFLOW_PASSWORD" json_build_login_payload)
 
   response=$(curl -sf -w "\n%{http_code}" -X POST \
     -H "Content-Type: application/json" \
-    -d "{\"email\":\"$email\",\"password\":\"$password\"}" \
+    --data @- \
     --connect-timeout 10 \
-    "$url/api/auth/login" 2>/dev/null) || {
+    "$url/api/auth/login" <<< "$payload" 2>/dev/null) || {
     echo -e "${RED}ERROR:${NC} grant-flow nie odpowiada pod $url" >&2
     exit 1
   }
@@ -457,13 +475,17 @@ cmd_setup() {
   fi
   echo -e " ${GREEN}✓${NC}"
 
-  # Zapisz konfigurację
+  # Zapisz konfigurację. `umask 077` PRZED zapisem, nie `chmod 600` po nim — inaczej jest
+  # okno (rzędu ms, ale realne) w którym plik z hasłem w czystym tekście istnieje z
+  # uprawnieniami z domyślnego umask (K23).
+  local old_umask; old_umask=$(umask)
+  umask 077
   cat > "$CONFIG_FILE" << EOF
 GRANTFLOW_URL=$url
 GRANTFLOW_EMAIL=$email
 GRANTFLOW_PASSWORD=$password
 EOF
-  chmod 600 "$CONFIG_FILE"
+  umask "$old_umask"
 
   # Testuj login
   echo -n "Testuję login..."

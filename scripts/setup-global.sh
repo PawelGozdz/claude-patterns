@@ -11,15 +11,12 @@
 #
 # Usage: ./scripts/setup-global.sh
 
-set -e
+set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 USER_CLAUDE_DIR="$HOME/.claude"
 
-GREEN='\033[0;32m'
-BLUE='\033[0;34m'
-YELLOW='\033[1;33m'
-NC='\033[0m'
+source "$REPO_DIR/scripts/lib/common.sh"
 
 echo -e "${BLUE}================================${NC}"
 echo -e "${BLUE}Global Setup v3.0${NC}"
@@ -128,7 +125,9 @@ echo ""
 for resource in agents commands hooks; do
   if [ -L "$USER_CLAUDE_DIR/$resource" ]; then
     target=$(readlink "$USER_CLAUDE_DIR/$resource")
-    count=$(find "$target" -maxdepth 3 \( -name "*.md" -o -name "*.json" -o -name "*.js" \) ! -name "README.md" 2>/dev/null | wc -l)
+    # `|| count=0` — pod pipefail błąd `find` (np. odmowa dostępu do podkatalogu) zabiłby
+    # to przypisanie przez set -e, mimo że `wc -l` policzył to, co find zdążył wypisać.
+    count=$(find "$target" -maxdepth 3 \( -name "*.md" -o -name "*.json" -o -name "*.js" \) ! -name "README.md" 2>/dev/null | wc -l) || count=0
     echo -e "${GREEN}$resource${NC} → $target ($count files)"
   fi
 done

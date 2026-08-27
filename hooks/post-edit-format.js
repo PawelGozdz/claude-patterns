@@ -13,17 +13,7 @@
 const { execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
-
-const MAX_STDIN = 1024 * 1024; // 1MB limit
-let data = '';
-process.stdin.setEncoding('utf8');
-
-process.stdin.on('data', chunk => {
-  if (data.length < MAX_STDIN) {
-    const remaining = MAX_STDIN - data.length;
-    data += chunk.substring(0, remaining);
-  }
-});
+const { readStdinJsonWithRaw } = require('./lib/utils');
 
 function findProjectRoot(startDir) {
   let dir = startDir;
@@ -71,9 +61,10 @@ function getFormatterCommand(formatter, filePath) {
   return null;
 }
 
-process.stdin.on('end', () => {
+async function main() {
+  const { raw, parsed: input } = await readStdinJsonWithRaw();
+
   try {
-    const input = JSON.parse(data);
     const filePath = input.tool_input?.file_path;
 
     if (filePath && /\.(ts|tsx|js|jsx)$/.test(filePath)) {
@@ -97,6 +88,8 @@ process.stdin.on('end', () => {
     // Invalid input — pass through
   }
 
-  process.stdout.write(data);
+  process.stdout.write(raw);
   process.exit(0);
-});
+}
+
+main();

@@ -205,6 +205,47 @@ function findFiles(dir, pattern, options = {}) {
  *   Prevents hooks from hanging indefinitely if stdin never closes.
  * @returns {Promise<object>} Parsed JSON object, or empty object if stdin is empty
  */
+/**
+ * Like readStdinJson(), but also returns the raw string — most PreToolUse/PostToolUse
+ * hooks in this repo must echo the ORIGINAL stdin back via `process.stdout.write(raw)`
+ * (the tool call's contract, not a hook decision), which readStdinJson() alone cannot
+ * support since it only returns the parsed object. Added K40 (TASK-KAIZEN-001, 2026-08-27)
+ * instead of forcing ~25 hooks with a passthrough requirement onto the raw-discarding
+ * variant, which would have silently broken that contract.
+ * @returns {Promise<{raw: string, parsed: object}>}
+ */
+async function readStdinJsonWithRaw(options = {}) {
+  const { timeoutMs = 5000, maxSize = 1024 * 1024 } = options;
+  return new Promise((resolve) => {
+    let data = '';
+    let settled = false;
+
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      let parsed = {};
+      try { parsed = data.trim() ? JSON.parse(data) : {}; } catch { parsed = {}; }
+      resolve({ raw: data, parsed });
+    };
+
+    const timer = setTimeout(() => {
+      process.stdin.removeAllListeners('data');
+      process.stdin.removeAllListeners('end');
+      process.stdin.removeAllListeners('error');
+      if (process.stdin.unref) process.stdin.unref();
+      finish();
+    }, timeoutMs);
+
+    process.stdin.setEncoding('utf8');
+    process.stdin.on('data', (chunk) => {
+      if (data.length < maxSize) data += chunk.substring(0, maxSize - data.length);
+    });
+    process.stdin.on('end', finish);
+    process.stdin.on('error', finish);
+  });
+}
+
 async function readStdinJson(options = {}) {
   const { timeoutMs = 5000, maxSize = 1024 * 1024 } = options;
 
@@ -518,6 +559,7 @@ module.exports = {
 
   // Hook I/O
   readStdinJson,
+  readStdinJsonWithRaw,
   log,
   output,
 

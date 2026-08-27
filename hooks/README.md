@@ -272,6 +272,49 @@ Async hooks run in the background. They cannot block tool execution.
 }
 ```
 
+## Additional Hooks (quick reference, K42)
+
+31 hooks not covered by name in the prose sections above (added over time, not backfilled here).
+One line per file, from its own header comment — see the file itself for full detail.
+
+| File | Event | Purpose |
+|------|-------|---------|
+| `check-approval-before-impl.js` | PreToolUse | Backstop for the research→implementation hard gate (ADR 0002) |
+| `check-clean-arch.js` | PostToolUse | Flutter domain/application layer purity after editing |
+| `check-context-isolation.js` | Stop | Detect cross-context imports in modified TypeScript files |
+| `check-debugprint-guard.js` | PostToolUse | `debugPrint()`/`print()` without `kDebugMode` guard (Flutter) |
+| `check-design-tokens.js` | PostToolUse | Visual literals used instead of design tokens |
+| `check-flutter-imports.js` | Stop | Detect cross-feature imports in modified Dart files |
+| `check-l10n-hardcoded.js` | PostToolUse | Hardcoded UI text instead of localization keys |
+| `check-pumpandsettle.js` | PostToolUse | Warn on bare `pumpAndSettle()` (no `Duration`) in Flutter tests |
+| `check-python-layers.js` | PostToolUse | Python domain/service layer purity after editing |
+| `check-python-typing.js` | PostToolUse | Detect missing type hints in Python functions |
+| `check-riverpod-patterns.js` | PostToolUse | Detect `ref.read()` inside `build()` methods (Flutter/Riverpod) |
+| `check-security-considerations.js` | PostToolUse | Security-aware task file analysis |
+| `check-subagent-pattern-reads.js` | SubagentStop | Closes the gap left when `check-patterns-read.js` passes all subagents |
+| `check-typography-tokens.js` | PostToolUse | Inline `TextStyle(fontSize:...)`/`EdgeInsets.*()` literals |
+| `cost-optimizer.sh` | — | Tool-restriction enforcement (renamed from `enforce-tool-restrictions.sh`) |
+| `evaluate-session.js` | — | Continuous Learning — session evaluator |
+| `pm-task-check.js` | PostToolUse | PM health check when `project-orchestration/` task files change |
+| `pm-task-housekeeping.js` | PostToolUse | Auto-housekeeping for task files marked `status: done` |
+| `post-edit-console-warn.js` | PostToolUse | Warn about `console.log` statements after edits |
+| `post-edit-format.js` | PostToolUse | Auto-format JS/TS files after edits |
+| `pre-compact.js` | PreCompact | Save state before context compaction |
+| `pre-workflow-lint.js` | — | Thin wrapper around `workflow-lint.js`'s hardcoded rule set |
+| `pre-write-doc-warn.js` | PreToolUse | Warn about non-standard documentation files |
+| `security-impl-feedback.js` | PostToolUse | Security implementation feedback |
+| `session-monitor.sh` | — | Merges `session-summary.sh` + `periodic-visual-feedback.sh` + `post-tool-use-feedback.sh` |
+| `session-start-pm.js` | SessionStart | Auto-load `TEAM-STATE.md` for projects with a PM system |
+| `state-manager.sh` | — | Merges `auto-state-manager.sh` + `ensure-state-saved.sh` + `state-banner.sh` |
+| `statusline-pm.js` | statusLine | PM-aware status bar |
+| `subagent-stop-cost-log.js` | SubagentStop | Append per-agent token usage to the cost log |
+| `workflow-metrics-postrun.js` | PostToolUse | Fire-and-forget metrics collection after each `Workflow` run |
+| `agent-memory-size-guard.js` | SubagentStop | Warn when an agent's `MEMORY.md` grows past 10 KB (K35, `TASK-KAIZEN-001`) |
+
+`workflow-lint.js` is **not a hook** — it's a CLI tool that lives in `hooks/` because this
+directory is what gets symlinked into satellite projects; see `tests/flow-evals/workflow-lint/`
+for its eval and `commands/orchestrate.md` for how it's invoked.
+
 ## Cross-Platform Notes
 
 All hooks in this plugin use Node.js (`node -e` or `node script.js`) for maximum compatibility across Windows, macOS, and Linux. Avoid bash-specific syntax in hooks.

@@ -1,3 +1,12 @@
+---
+id: TASK-GUARDRAILS-001
+title: 'Pre-commit lokalny, rozszerzenie evala retrievalu, dyscyplina zmian promptów agentów, regresja promptfoo'
+type: task
+status: done
+created_date: 2026-08-17
+updated_date: 2026-08-18
+---
+
 # TASK-GUARDRAILS-001 — Pre-commit lokalny, rozszerzenie evala retrievalu, dyscyplina zmian promptów agentów, regresja promptfoo
 
 **Status: DONE (2026-08-18)** — Sekcje 1-3 w pełni zamknięte; Sekcja 4 spike wypalił,

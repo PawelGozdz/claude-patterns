@@ -4,17 +4,12 @@
 # Usage: ./setup-project.sh /path/to/project
 # Run from: anywhere
 
-set -e
-
-# Colors for output
-GREEN='\033[0;32m'
-BLUE='\033[0;34m'
-YELLOW='\033[1;33m'
-RED='\033[0;31m'
-NC='\033[0m' # No Color
+set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PATTERNS_REPO="$(dirname "$SCRIPT_DIR")"
+
+source "$SCRIPT_DIR/lib/common.sh"
 
 echo -e "${BLUE}================================${NC}"
 echo -e "${BLUE}Project Setup v3.0${NC}"
@@ -33,6 +28,16 @@ INTERACTIVE=false
 
 for arg in "$@"; do
   case "$arg" in
+    -h|--help)
+      cat <<'EOF'
+Usage: setup-project.sh [PROJECT_DIR] [--with-broadcast] [--interactive]
+
+  PROJECT_DIR         Project to set up (default: current directory)
+  --with-broadcast     Enable the broadcast section (ADR 0006) without asking
+  --interactive        Prompt for optional add-ons (broadcast); never affects core setup
+EOF
+      exit 0
+      ;;
     --with-broadcast) WITH_BROADCAST=true ;;
     --interactive)    INTERACTIVE=true ;;
     --*)
@@ -78,17 +83,19 @@ yml_get() {
 
   if [[ ! -f "$PROJECT_YML" ]]; then return; fi
 
+  # `|| true` — brak dopasowania (pole opcjonalne) to oczekiwany pusty wynik; pod
+  # pipefail nonzero z grep zabiłby VAR=$(yml_get ...) przez set -e.
   if [[ "$section" == "$field" ]]; then
-    grep "^${key}:" "$PROJECT_YML" | head -1 | sed 's/^[^:]*: *//' | sed 's/^"//' | sed 's/"$//'
+    { grep "^${key}:" "$PROJECT_YML" | head -1 | sed 's/^[^:]*: *//' | sed 's/^"//' | sed 's/"$//'; } || true
   else
-    sed -n "/^${section}:/,/^[a-z]/p" "$PROJECT_YML" | grep "^  ${field}:" | head -1 | sed 's/^[^:]*: *//' | sed 's/^"//' | sed 's/"$//'
+    { sed -n "/^${section}:/,/^[a-z]/p" "$PROJECT_YML" | grep "^  ${field}:" | head -1 | sed 's/^[^:]*: *//' | sed 's/^"//' | sed 's/"$//'; } || true
   fi
 }
 
 yml_list() {
   local section="$1"
   if [[ ! -f "$PROJECT_YML" ]]; then return; fi
-  sed -n "/^${section}:/,/^[a-z]/p" "$PROJECT_YML" | grep '^  - ' | sed 's/^  - //' | sed 's/^"//' | sed 's/"$//'
+  { sed -n "/^${section}:/,/^[a-z]/p" "$PROJECT_YML" | grep '^  - ' | sed 's/^  - //' | sed 's/^"//' | sed 's/"$//'; } || true
 }
 
 # --- Helper: create or verify a symlink ---
@@ -280,8 +287,10 @@ else
   # Additive on purpose: the profile still decides the base set, blocks only widen it.
   RUNTIME_YML="$PROJECT_DIR/.claude/config/runtime.yml"
   if [[ -f "$RUNTIME_YML" ]]; then
+    # `|| true` — większość runtime.yml nie ma `overlay: patterns:`; brak dopasowania
+    # w grep to oczekiwany pusty wynik, nie błąd (pod pipefail zabiłby to przypisanie).
     OVERLAY_DIRS=$(sed -n '/^overlay:/,/^[a-z]/p' "$RUNTIME_YML" \
-      | grep -E '^\s+patterns:' | sed 's/.*\[//; s/\].*//' | tr -d ' ' | tr ',' '\n' | sed 's|/$||')
+      | grep -E '^\s+patterns:' | sed 's/.*\[//; s/\].*//' | tr -d ' ' | tr ',' '\n' | sed 's|/$||') || true
     for subdir in $OVERLAY_DIRS; do
       [[ -z "$subdir" ]] && continue
       [[ -L "$KNOWLEDGE_DIR/patterns/$subdir" ]] && continue
@@ -348,8 +357,9 @@ link_overlay_agents() {
   local rt="$PROJECT_DIR/.claude/config/runtime.yml"
   [[ -f "$rt" ]] || return 0
   local dirs
+  # `|| true` — brak `overlay: agents:` w tym runtime.yml to normalny pusty wynik.
   dirs=$(sed -n '/^overlay:/,/^[a-z]/p' "$rt" | grep -E '^\s+agents:' \
-    | sed 's/.*\[//; s/\].*//' | tr -d ' ' | tr ',' '\n' | sed 's|/$||')
+    | sed 's/.*\[//; s/\].*//' | tr -d ' ' | tr ',' '\n' | sed 's|/$||') || true
   for d in $dirs; do
     [[ -z "$d" ]] && continue
     local src="$PATTERNS_REPO/agents/$d"
@@ -528,6 +538,24 @@ echo -e "${BLUE}[4b/8] Native skills discovery${NC} (flat .claude/skills/<name>/
 NATIVE_SKILLS_DIR="$PROJECT_DIR/.claude/skills"
 mkdir -p "$NATIVE_SKILLS_DIR"
 
+# K45 (TASK-KAIZEN-001, 2026-08-27): `disable-model-invocation: true` means "the model
+# shouldn't pick this skill on its own from the listing" — it does NOT mean "no project
+# ever needs this skill available." An agent that explicitly names the skill in its own
+# `skills:` frontmatter (e.g. security-e2e-verifier.md -> security/security-review) has a
+# real dependency on it; the flag alone was silently dropping the symlink, leaving that
+# reference dangling for every project. Collect required skill names from agents already
+# linked to THIS project (.claude/agents/*.md) before filtering by the flag.
+REQUIRED_BY_AGENTS=()
+if [[ -d "$PROJECT_AGENTS_DIR" ]]; then
+  for agent_file in "$PROJECT_AGENTS_DIR"/*.md; do
+    [[ -f "$agent_file" ]] || continue
+    while IFS= read -r skill_ref; do
+      [[ -z "$skill_ref" ]] && continue
+      REQUIRED_BY_AGENTS+=("$(basename "$skill_ref")")
+    done < <(sed -n '/^skills:/,/^[a-z]/p' "$agent_file" | grep '^\s*-\s' | sed 's/^\s*-\s*//')
+  done
+fi
+
 # Collect every skill name we expose, for stale cleanup at the end
 EXPOSED_SKILL_NAMES=()
 
@@ -546,9 +574,14 @@ for category in "${CONFIGURED_SKILLS[@]}"; do
     # Must contain SKILL.md to be exposable
     [[ -f "$skill_dir/SKILL.md" ]] || continue
 
-    # Skip skills that explicitly opt-out of auto-discovery (have command counterpart)
+    # Skip skills that explicitly opt-out of auto-discovery (have command counterpart) —
+    # UNLESS an agent linked to this project explicitly depends on it (K45).
     if grep -q "^disable-model-invocation:\s*true" "$skill_dir/SKILL.md" 2>/dev/null; then
-      continue
+      required=false
+      for req in "${REQUIRED_BY_AGENTS[@]:-}"; do
+        [[ "$req" == "$skill_name" ]] && { required=true; break; }
+      done
+      [[ "$required" == "false" ]] && continue
     fi
 
     EXPOSED_SKILL_NAMES+=("$skill_name")
@@ -731,7 +764,9 @@ fi
 # Bloki deklarują, których hooków wymaga stack; szablony per stack_profile znały tylko
 # swój własny zestaw. Dopinamy brakujące, nie ruszając tego, co projekt już ma.
 if [[ -f "$PROJECT_DIR/.claude/config/runtime.yml" && -f "$PROJECT_DIR/.claude/settings.json" ]]; then
-  RT_HOOKS=$(grep -m1 '^hooks:' "$PROJECT_DIR/.claude/config/runtime.yml" | sed 's/^hooks:[[:space:]]*\[//; s/\]//; s/,/ /g')
+  # `|| true` — `hooks:` może nie być w stylu flow (`[a, b]`) na jednej linii w tym
+  # runtime.yml; brak dopasowania to pusty wynik, nie błąd zabijający cały setup.
+  RT_HOOKS=$(grep -m1 '^hooks:' "$PROJECT_DIR/.claude/config/runtime.yml" | sed 's/^hooks:[[:space:]]*\[//; s/\]//; s/,/ /g') || true
   MISSING_HOOKS=""
   for h in $RT_HOOKS; do
     grep -q "$h" "$PROJECT_DIR/.claude/settings.json" || MISSING_HOOKS="$MISSING_HOOKS $h"
@@ -987,8 +1022,8 @@ echo ""
 
 # Count patterns (patterns/ is now a directory with per-subdir symlinks, not a single symlink)
 if [ -d "$KNOWLEDGE_DIR/patterns" ]; then
-  PATTERN_COUNT=$(find -L "$KNOWLEDGE_DIR/patterns" -name "*.md" -not -name "README.md" -not -name "METADATA.yml" 2>/dev/null | wc -l)
-  PATTERN_DIRS=$(find "$KNOWLEDGE_DIR/patterns" -mindepth 1 -maxdepth 1 -type l 2>/dev/null | wc -l)
+  PATTERN_COUNT=$(find -L "$KNOWLEDGE_DIR/patterns" -name "*.md" -not -name "README.md" -not -name "METADATA.yml" 2>/dev/null | wc -l) || true
+  PATTERN_DIRS=$(find "$KNOWLEDGE_DIR/patterns" -mindepth 1 -maxdepth 1 -type l 2>/dev/null | wc -l) || true
   echo -e "${GREEN}Patterns:${NC} $PATTERN_COUNT (${PATTERN_DIRS} categories)"
 fi
 
@@ -996,16 +1031,22 @@ fi
 RULE_COUNT=0
 for dir in "$NATIVE_RULES_DIR"/*/; do
   [[ -d "$dir" ]] || continue
-  count=$(find "$dir" -name "*.md" 2>/dev/null | wc -l)
+  count=$(find "$dir" -name "*.md" 2>/dev/null | wc -l) || true
   RULE_COUNT=$((RULE_COUNT + count))
 done
 echo -e "${GREEN}Rules:${NC} $RULE_COUNT (language: ${PROJECT_LANGUAGE:-none})"
 
 # Count skills
+# `SKILLS_DIR` (bez prefiksu) nie istnieje w tym skrypcie — zmienna faktycznie
+# wypełniana wyżej to `NATIVE_SKILLS_DIR` (linia 533). Pod set -u to natychmiastowy,
+# głośny błąd "unbound variable"; bez -u `$SKILLS_DIR` cicho rozwijał się do pustego
+# stringa, więc `for dir in ""/*/` globował `/*/ ` — CAŁY root systemu plików — i ta
+# pętla liczyła SKILL.md ze wszystkich katalogów na dysku, nie z projektu (odkryte
+# przy K12, TASK-KAIZEN-001, dzięki `-u`; bez niej fałszywy wynik nigdy się nie ujawnił).
 SKILL_COUNT=0
-for dir in "$SKILLS_DIR"/*/; do
+for dir in "$NATIVE_SKILLS_DIR"/*/; do
   [[ -d "$dir" ]] || continue
-  count=$(find "$dir" -name "SKILL.md" 2>/dev/null | wc -l)
+  count=$(find "$dir" -name "SKILL.md" 2>/dev/null | wc -l) || true
   SKILL_COUNT=$((SKILL_COUNT + count))
 done
 echo -e "${GREEN}Skills:${NC} $SKILL_COUNT (categories: ${#CONFIGURED_SKILLS[@]})"
@@ -1019,7 +1060,7 @@ done
 
 # Check PM system
 if [[ -d "$PROJECT_DIR/project-orchestration" ]]; then
-  TASK_COUNT=$(find "$PROJECT_DIR/project-orchestration/tasks" -name "*.md" 2>/dev/null | wc -l)
+  TASK_COUNT=$(find "$PROJECT_DIR/project-orchestration/tasks" -name "*.md" 2>/dev/null | wc -l) || true
   echo -e "${GREEN}PM System:${NC} active ($TASK_COUNT tasks)"
 fi
 

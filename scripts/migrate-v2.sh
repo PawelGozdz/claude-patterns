@@ -10,16 +10,12 @@
 # Usage: ./migrate-v2.sh /path/to/project
 # Safe to run multiple times (idempotent)
 
-set -e
+set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PATTERNS_REPO="$(dirname "$SCRIPT_DIR")"
 
-GREEN='\033[0;32m'
-BLUE='\033[0;34m'
-YELLOW='\033[1;33m'
-RED='\033[0;31m'
-NC='\033[0m'
+source "$SCRIPT_DIR/lib/common.sh"
 
 PROJECT_DIR="${1:-.}"
 PROJECT_DIR=$(cd "$PROJECT_DIR" && pwd)
@@ -48,10 +44,12 @@ yml_get() {
   local key="$1"
   local section="${key%%.*}"
   local field="${key#*.}"
+  # `|| true` — brak dopasowania (pole opcjonalne, nieobecne) jest oczekiwanym pustym
+  # wynikiem; pod pipefail nonzero z grep zabiłby VAR=$(yml_get ...) przez set -e.
   if [[ "$section" == "$field" ]]; then
-    grep "^${key}:" "$PROJECT_YML" | head -1 | sed 's/^[^:]*: *//' | sed 's/^"//' | sed 's/"$//'
+    { grep "^${key}:" "$PROJECT_YML" | head -1 | sed 's/^[^:]*: *//' | sed 's/^"//' | sed 's/"$//'; } || true
   else
-    sed -n "/^${section}:/,/^[a-z]/p" "$PROJECT_YML" | grep "^  ${field}:" | head -1 | sed 's/^[^:]*: *//' | sed 's/^"//' | sed 's/"$//'
+    { sed -n "/^${section}:/,/^[a-z]/p" "$PROJECT_YML" | grep "^  ${field}:" | head -1 | sed 's/^[^:]*: *//' | sed 's/^"//' | sed 's/"$//'; } || true
   fi
 }
 

@@ -19,18 +19,13 @@
 
 const fs = require('fs');
 const path = require('path');
+const { parseFrontmatter } = require('./lib/pm-tasks');
+const { readStdinJsonWithRaw } = require('./lib/utils');
 
-const MAX_STDIN = 512 * 1024;
-let data = '';
-process.stdin.setEncoding('utf8');
+async function main() {
+  const { raw, parsed: input } = await readStdinJsonWithRaw({ maxSize: 512 * 1024 });
 
-process.stdin.on('data', (chunk) => {
-  if (data.length < MAX_STDIN) data += chunk.substring(0, MAX_STDIN - data.length);
-});
-
-process.stdin.on('end', () => {
   try {
-    const input = JSON.parse(data);
     const filePath = input.tool_input?.file_path || input.tool_input?.path || '';
 
     // Only act on project-orchestration task files
@@ -40,14 +35,14 @@ process.stdin.on('end', () => {
       normalized.includes('/project-orchestration/completed-tasks/');
 
     if (!isTaskFile) {
-      process.stdout.write(data);
+      process.stdout.write(raw);
       process.exit(0);
     }
 
     // Find project-orchestration/tasks/ directory
     const tasksDirMatch = normalized.match(/^(.*\/project-orchestration)\//);
     if (!tasksDirMatch) {
-      process.stdout.write(data);
+      process.stdout.write(raw);
       process.exit(0);
     }
 
@@ -55,7 +50,7 @@ process.stdin.on('end', () => {
     const tasksDir = path.join(orchRoot, 'tasks');
 
     if (!fs.existsSync(tasksDir)) {
-      process.stdout.write(data);
+      process.stdout.write(raw);
       process.exit(0);
     }
 
@@ -170,46 +165,9 @@ process.stdin.on('end', () => {
     // Silent on errors — never break the workflow
   }
 
-  process.stdout.write(data);
+  process.stdout.write(raw);
   process.exit(0);
-});
-
-/**
- * Parse YAML frontmatter between --- delimiters.
- * Minimal implementation — handles string and array values.
- * Returns null if no frontmatter found.
- */
-function parseFrontmatter(content) {
-  const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
-  if (!match) return null;
-
-  const result = {};
-  const lines = match[1].split('\n');
-
-  for (const line of lines) {
-    const kv = line.match(/^(\w[\w_-]*):\s*(.*)$/);
-    if (!kv) continue;
-
-    const key = kv[1];
-    let value = kv[2].trim();
-
-    // Strip quotes
-    if ((value.startsWith("'") && value.endsWith("'")) ||
-        (value.startsWith('"') && value.endsWith('"'))) {
-      value = value.slice(1, -1);
-    }
-
-    // Parse inline arrays [a, b, c]
-    if (value.startsWith('[') && value.endsWith(']')) {
-      value = value
-        .slice(1, -1)
-        .split(',')
-        .map((v) => v.trim().replace(/^['"]|['"]$/g, ''))
-        .filter(Boolean);
-    }
-
-    result[key] = value;
-  }
-
-  return result;
 }
+
+main();
+

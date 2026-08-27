@@ -17,7 +17,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node -e \"let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{const i=JSON.parse(d);const cmd=i.tool_input?.command||'';if(/git push/.test(cmd)){console.error('[Hook] Review changes before push...')}}catch{}console.log(d)})\""
+            "command": "node \"$HOME/.claude/hooks/git-push-reminder.js\""
           }
         ],
         "description": "Reminder before git push"
@@ -104,7 +104,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node -e \"let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{const i=JSON.parse(d);const cmd=i.tool_input?.command||'';if(/gh pr create/.test(cmd)){const out=i.tool_output?.output||'';const m=out.match(/https:\\/\\/github.com\\/[^/]+\\/[^/]+\\/pull\\/\\d+/);if(m){console.error('[Hook] PR created: '+m[0])}}}catch{}console.log(d)})\""
+            "command": "node \"$HOME/.claude/hooks/pr-url-logger.js\""
           }
         ],
         "description": "Log PR URL after creation"
@@ -166,7 +166,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node -e \"let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{const i=JSON.parse(d);console.error('[Subagent] Started: '+(i.agent_name||'?')+' ('+(i.model||'?')+')')}catch{}console.log(d)})\"",
+            "command": "node \"$HOME/.claude/hooks/subagent-start-log.js\"",
             "async": true
           }
         ],
@@ -179,7 +179,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node -e \"let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{const i=JSON.parse(d);console.error('[Subagent] Stopped: '+(i.agent_name||'?')+' ('+(i.duration_ms?Math.round(i.duration_ms/1000)+'s':'?')+')')}catch{}console.log(d)})\"",
+            "command": "node \"$HOME/.claude/hooks/subagent-stop-log.js\"",
             "async": true
           }
         ],
@@ -195,6 +195,17 @@
           }
         ],
         "description": "Append per-agent token usage to ~/.claude/logs/agent-usage.jsonl. Disable with AGENT_USAGE_LOG=off."
+      },
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$HOME/.claude/hooks/agent-memory-size-guard.js\"",
+            "async": true
+          }
+        ],
+        "description": "Warn (stderr, non-blocking) when an agent's .claude/agent-memory/<agent>/MEMORY.md exceeds 10 KB. Disable with AGENT_MEMORY_SIZE_GUARD=off."
       }
     ],
     "WorktreeCreate": [
@@ -203,7 +214,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node -e \"let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{const i=JSON.parse(d);const wt=i.worktree_path||'';if(wt){const fs=require('fs');const p=require('path');['.env','.env.local','.env.development','.env.test'].forEach(f=>{const s=p.resolve(process.cwd(),f);const d2=p.join(wt,f);if(fs.existsSync(s)&&!fs.existsSync(d2)){fs.copyFileSync(s,d2);console.error('[Hook] Copied '+f+' to worktree')}})}}catch{}console.log(d)})\""
+            "command": "node \"$HOME/.claude/hooks/worktree-env-copy.js\""
           }
         ],
         "description": "Copy .env files to worktree on creation"

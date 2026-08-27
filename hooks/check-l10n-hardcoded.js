@@ -28,40 +28,32 @@
 const fs = require('fs');
 const path = require('path');
 const { findFlutterConfig, matchesPattern } = require('./lib/flutter-config');
+const { readStdinJsonWithRaw } = require('./lib/utils');
 
 const COMMENT_LINE = /^\s*(\/\/|\/\*|\*)/;
 // Literał zawierający znak charakterystyczny dla polszczyzny — sygnał, że to
 // tekst dla człowieka, a nie identyfikator techniczny.
 const NATURAL_LANGUAGE_LITERAL = /'[^']*[ąćęłńóśźżĄĆĘŁŃÓŚŹŻ][^']*'/;
 
-const MAX_STDIN = 1024 * 1024;
-let data = '';
-process.stdin.setEncoding('utf8');
-
-process.stdin.on('data', (chunk) => {
-  if (data.length < MAX_STDIN) {
-    data += chunk.substring(0, MAX_STDIN - data.length);
-  }
-});
-
 function stripTrailingComment(line) {
   const idx = line.indexOf('//');
   return idx >= 0 ? line.slice(0, idx) : line;
 }
 
-process.stdin.on('end', () => {
+async function main() {
+  const { raw, parsed: input } = await readStdinJsonWithRaw();
+
   try {
-    const input = JSON.parse(data);
     const filePath = input.tool_input?.file_path;
 
     if (!filePath || !filePath.endsWith('.dart')) {
-      process.stdout.write(data);
+      process.stdout.write(raw);
       process.exit(0);
     }
 
     const loaded = findFlutterConfig(filePath);
     if (!loaded) {
-      process.stdout.write(data);
+      process.stdout.write(raw);
       process.exit(0);
     }
 
@@ -69,19 +61,19 @@ process.stdin.on('end', () => {
 
     const l10nConfig = config.l10n;
     if (!l10nConfig?.enabled) {
-      process.stdout.write(data);
+      process.stdout.write(raw);
       process.exit(0);
     }
 
     const check = l10nConfig.checkHardcodedStrings;
     if (!check) {
-      process.stdout.write(data);
+      process.stdout.write(raw);
       process.exit(0);
     }
 
     const skipPatterns = config.skipPatterns || ['_test.dart', '.g.dart', '.freezed.dart', '.mock.dart'];
     if (skipPatterns.some((pat) => filePath.endsWith(pat))) {
-      process.stdout.write(data);
+      process.stdout.write(raw);
       process.exit(0);
     }
 
@@ -90,13 +82,13 @@ process.stdin.on('end', () => {
     // Katalog samych tłumaczeń jest z natury pełen tekstu — nie sprawdzamy go
     const l10nDirs = check.excludePaths || ['/l10n/', '/generated/'];
     if (l10nDirs.some((p) => normalized.includes(p))) {
-      process.stdout.write(data);
+      process.stdout.write(raw);
       process.exit(0);
     }
 
     const resolvedPath = path.resolve(filePath);
     if (!fs.existsSync(resolvedPath)) {
-      process.stdout.write(data);
+      process.stdout.write(raw);
       process.exit(0);
     }
 
@@ -171,6 +163,8 @@ process.stdin.on('end', () => {
     // Nieprawidłowe wejście — przepuść bez zmian
   }
 
-  process.stdout.write(data);
+  process.stdout.write(raw);
   process.exit(0);
-});
+}
+
+main();

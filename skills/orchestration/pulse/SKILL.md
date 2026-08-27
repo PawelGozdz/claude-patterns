@@ -64,7 +64,11 @@ shared briefing, so they don't need to re-Glob/grep the same data.
    - Update `Last sync` date at the top
 
 4. **Regenerate KANBAN.md**
-   - Read all files in `project-orchestration/tasks/`
+   - Run `node /opt/projects/claude-patterns/scripts/tasks-digest.mjs --json` for
+     id/status/priority/age per task instead of reading every file in
+     `project-orchestration/tasks/` in full — the digest is exactly the fields KANBAN.md
+     needs (K30, TASK-KAIZEN-001). Open a specific task file only when its status/labels
+     are ambiguous in the digest output.
    - Group by priority (P0/P1/P2/P3) and status
    - Write updated KANBAN.md
 

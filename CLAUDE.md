@@ -24,12 +24,12 @@ symlinks. Think carefully before removing or renaming anything.
 ## What's In This Repo
 
 ```
-patterns/       72 production patterns (38 core + 29 stack-specific + 1 marketing + 2 finance + 2 legal)
-agents/         11 universal + 14 stack-specific agents
-skills/         167 skills across 21 categories (5 PM + 41 marketing + 84 finance + 12 legal + others)
-hooks/          19 hooks + pm-task-check.js (PM, per-project)
+patterns/       100 production patterns (50 core + 45 stack-specific + 1 marketing + 2 finance + 2 legal)
+agents/         26 universal + 30 stack-specific agents
+skills/         190 skills across 24 categories (42 marketing + 84 finance + 12 legal + others)
+hooks/          45 hooks (42 js + 3 sh, incl. pm-task-check.js — PM, per-project)
 templates/      Stack presets + project-orchestration/ + product-marketing-context.md
-commands/       25 global commands (PM, orchestration, quality, learning, marketing, finance, legal)
+commands/       45 global commands (PM, orchestration, quality, learning, marketing, finance, legal)
 tools/          External tool reference (vendored): marketing/ (CLIs + integrations)
 tests/          Eval frameworks (vendored): finance-evals/ (grade_responses.py + iterations)
 rules/          Language-specific coding rules

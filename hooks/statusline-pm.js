@@ -65,36 +65,40 @@ function gitBranch(cwd) {
   }
 }
 
-function countActiveBlocked(projectRoot) {
-  const tasksDir = path.join(projectRoot, 'project-orchestration', 'tasks');
-  if (!fs.existsSync(tasksDir)) return { active: 0, blocked: 0 };
-  let active = 0, blocked = 0;
-  try {
-    for (const entry of fs.readdirSync(tasksDir)) {
-      if (!entry.endsWith('.md')) continue;
-      const filePath = path.join(tasksDir, entry);
-      try {
-        const content = fs.readFileSync(filePath, 'utf8');
-        const fmMatch = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
-        if (!fmMatch) continue;
-        const status = (fmMatch[1].match(/^status:\s*(.+)$/m) || [])[1] || '';
-        const s = status.trim().toLowerCase().replace(/['"]/g, '');
-        if (s === 'done' || s === 'completed' || s === 'deferred') continue;
-        active++;
-        if (s === 'blocked') blocked++;
-      } catch {}
+// K33 (TASK-KAIZEN-001, 2026-08-27): dawniej `countActiveBlocked()` i `readActiveTask()`
+// każda osobno robiła `readdirSync` + `readFileSync` KAŻDEGO pliku w tasks/ — do 2 pełnych
+// odczytów treści wszystkich tasków na jedno odświeżenie statusline (uruchamiane bardzo
+// często). Jeden przelot zbiera wszystko naraz: liczniki active/blocked ORAZ pierwszy task
+// in-progress (fallback, gdy TEAM-STATE.md nie wskazuje aktywnego taska).
+function scanTasksDir(tasksDir) {
+  let entries = [];
+  try { entries = fs.readdirSync(tasksDir).filter((f) => f.endsWith('.md')); } catch {}
+  let active = 0, blocked = 0, firstInProgress = null;
+  for (const entry of entries) {
+    const filePath = path.join(tasksDir, entry);
+    let content;
+    try { content = fs.readFileSync(filePath, 'utf8'); } catch { continue; }
+    const fmMatch = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+    if (!fmMatch) continue;
+    const status = (fmMatch[1].match(/^status:\s*(.+)$/m) || [])[1] || '';
+    const s = status.trim().toLowerCase().replace(/['"]/g, '');
+    if (s !== 'done' && s !== 'completed' && s !== 'deferred') {
+      active++;
+      if (s === 'blocked') blocked++;
     }
-  } catch {}
-  return { active, blocked };
+    if (!firstInProgress && /in-progress|in_progress|active/i.test(status)) {
+      const id = (fmMatch[1].match(/^id:\s*(.+)$/m) || [])[1] || entry.replace(/\.md$/, '');
+      firstInProgress = { id: id.trim().replace(/['"]/g, ''), filePath };
+    }
+  }
+  return { tasksDir, entries, active, blocked, firstInProgress };
 }
 
-function readActiveTask(projectRoot) {
-  // Returns { id, filePath } for the active in-progress task, or { id } if
-  // only a TEAM-STATE reference is found, or null.
-  const tasksDir = path.join(projectRoot, 'project-orchestration', 'tasks');
+function resolveActiveTask(projectRoot, scan) {
+  // Returns { id, filePath } for the active in-progress task, or { id, filePath: null } if
+  // only a TEAM-STATE reference is found without a matching file, or null.
   const teamStatePath = path.join(projectRoot, 'project-orchestration', 'TEAM-STATE.md');
 
-  // 1. Look up id from TEAM-STATE first
   let foundId = null;
   try {
     const content = fs.readFileSync(teamStatePath, 'utf8');
@@ -104,37 +108,10 @@ function readActiveTask(projectRoot) {
     if (m) foundId = m[1];
   } catch {}
 
-  // 2. Fallback: first in-progress task in tasks/
-  if (!foundId && fs.existsSync(tasksDir)) {
-    try {
-      for (const entry of fs.readdirSync(tasksDir)) {
-        if (!entry.endsWith('.md')) continue;
-        const fp = path.join(tasksDir, entry);
-        const content = fs.readFileSync(fp, 'utf8');
-        const fmMatch = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
-        if (!fmMatch) continue;
-        const status = (fmMatch[1].match(/^status:\s*(.+)$/m) || [])[1] || '';
-        if (/in-progress|in_progress|active/i.test(status)) {
-          const id = (fmMatch[1].match(/^id:\s*(.+)$/m) || [])[1] || entry.replace(/\.md$/, '');
-          return { id: id.trim().replace(/['"]/g, ''), filePath: fp };
-        }
-      }
-    } catch {}
-  }
+  if (!foundId) return scan.firstInProgress || null;
 
-  // 3. Resolve filePath for foundId by scanning tasks dir
-  if (foundId && fs.existsSync(tasksDir)) {
-    try {
-      for (const entry of fs.readdirSync(tasksDir)) {
-        if (entry.startsWith(foundId) && entry.endsWith('.md')) {
-          return { id: foundId, filePath: path.join(tasksDir, entry) };
-        }
-      }
-    } catch {}
-    return { id: foundId, filePath: null };
-  }
-
-  return null;
+  const entry = scan.entries.find((e) => e.startsWith(foundId));
+  return { id: foundId, filePath: entry ? path.join(scan.tasksDir, entry) : null };
 }
 
 // Detect security level from manual override or first label heuristic.
@@ -312,8 +289,10 @@ function main() {
   if (branch) parts.push(`🌿 ${branch}`);
 
   if (project.hasPM) {
-    const activeTask = readActiveTask(project.root);
-    const { blocked } = countActiveBlocked(project.root);
+    const tasksDir = path.join(project.root, 'project-orchestration', 'tasks');
+    const scan = scanTasksDir(tasksDir);
+    const activeTask = resolveActiveTask(project.root, scan);
+    const { blocked } = scan;
     if (activeTask) {
       parts.push(`🎯 ${activeTask.id}`);
 

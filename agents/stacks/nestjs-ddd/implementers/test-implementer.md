@@ -10,8 +10,7 @@ description: |
   (domain aggregates, application handlers) requires real domain awareness, which
   is why this agent's Knowledge Base treats domain/application patterns as
   near-core, not "link only."
-tools:
-  Read, Write, Edit, MultiEdit, Bash, Glob, Grep, LS, Task, StructuredOutput, mcp__knowledge-retriever__retrieve_code, mcp__knowledge-retriever__retrieve_patterns, mcp__knowledge-retriever__retrieve_examples
+tools: Read, Write, Edit, MultiEdit, Bash, Glob, Grep, LS, Task, StructuredOutput, mcp__knowledge-retriever__retrieve_code, mcp__knowledge-retriever__retrieve_patterns, mcp__knowledge-retriever__retrieve_examples
 model: sonnet
 temperature: 0.3
 color: purple
@@ -345,3 +344,10 @@ actual files yourself rather than expecting them pasted into your prompt.
 **Remember**: You own TEST QUALITY across every layer — not just infrastructure. A test that
 doesn't verify real business behavior is worse than no test; read the pattern and the business
 rule before you assert anything.
+
+## Changelog
+
+- 2026-08-27 — `tools:` frontmatter field normalized from multi-line to single-line YAML
+  (matches convention of every other agent in the repo); `validate-agents.js` required the
+  field non-empty and the multi-line style parsed as empty, so the file failed CI validation
+  with no functional change to the actual tool list (K11, TASK-KAIZEN-001)

@@ -18,7 +18,7 @@
 #
 # Requirements: git, rsync
 
-set -e
+set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 EVOLSB_REPO="https://github.com/evolsb/claude-legal-skill.git"
@@ -45,11 +45,7 @@ LAWVABLE_VENDORED=(
   security-review-openai
 )
 
-GREEN='\033[0;32m'
-BLUE='\033[0;34m'
-YELLOW='\033[1;33m'
-RED='\033[0;31m'
-NC='\033[0m'
+source "$REPO_DIR/scripts/lib/common.sh"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -95,13 +91,16 @@ echo -e "${BLUE}[2/5]${NC} Verifying licenses..."
 LICENSE_REPORT=$(mktemp)
 
 # evolsb single skill
-EVOLSB_LIC=$(grep -E "^License|^MIT License" "$WORK_EVOLSB/LICENSE" 2>/dev/null | head -1 | head -c 40)
+EVOLSB_LIC=$(grep -E "^License|^MIT License" "$WORK_EVOLSB/LICENSE" 2>/dev/null | head -1 | head -c 40) || true
 echo "evolsb/contract-review: ${EVOLSB_LIC}" > "$LICENSE_REPORT"
 
 # lawvable per-skill
 LAWVABLE_DRIFT=()
 for s in "${LAWVABLE_VENDORED[@]}"; do
-  meta=$(grep -E "^\s*license:" "$WORK_LAWVABLE/skills/$s/SKILL.md" 2>/dev/null | head -1 | sed 's/.*license: *//' | tr -d '"' | head -c 40)
+  # `|| true` — brak metadanych licencji jest OBSŁUGIWANĄ gałęzią niżej (NO LICENSE
+  # METADATA), nie błędem; pod pipefail nonzero z grep zabiłby to przypisanie
+  # przez set -e, zanim gałąź "brak metadanych" w ogóle by się wykonała.
+  meta=$(grep -E "^\s*license:" "$WORK_LAWVABLE/skills/$s/SKILL.md" 2>/dev/null | head -1 | sed 's/.*license: *//' | tr -d '"' | head -c 40) || true
   if [[ -z "$meta" ]]; then
     echo "lawvable/$s: ⚠️  NO LICENSE METADATA" >> "$LICENSE_REPORT"
     LAWVABLE_DRIFT+=("$s (missing metadata)")

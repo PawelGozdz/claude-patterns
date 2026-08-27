@@ -4,16 +4,12 @@
 # Usage: ./migrate-all.sh [projects-root]
 # Default: /opt/projects
 
-set -e
+set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECTS_ROOT="${1:-/opt/projects}"
 
-GREEN='\033[0;32m'
-BLUE='\033[0;34m'
-YELLOW='\033[1;33m'
-RED='\033[0;31m'
-NC='\033[0m'
+source "$SCRIPT_DIR/lib/common.sh"
 
 echo -e "${BLUE}========================================${NC}"
 echo -e "${BLUE}Batch Migration to v2${NC}"
@@ -44,6 +40,9 @@ for project_dir in "$PROJECTS_ROOT"/*/; do
   fi
 
   echo -e "${BLUE}Migrating:${NC} $project_name"
+  # pipefail: `if` już był odporny na set -e (warunek if jest wyłączony spod niego), ale
+  # BEZ pipefail status if-a to status sed'a (prawie zawsze 0) — realna awaria migrate-v2.sh
+  # była dotąd cicho liczona jako "Migrated". Z pipefail if poprawnie widzi awarię migracji.
   if bash "$SCRIPT_DIR/migrate-v2.sh" "$project_dir" 2>&1 | sed 's/^/  /'; then
     MIGRATED=$((MIGRATED + 1))
   else

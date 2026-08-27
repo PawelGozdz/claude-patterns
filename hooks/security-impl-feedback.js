@@ -22,12 +22,11 @@
 
 const fs = require('fs');
 const path = require('path');
+const { readStdinJson } = require('./lib/utils');
 
 if (process.env.AGENT_SECURITY_IMPL_FEEDBACK === 'off') {
   process.exit(0);
 }
-
-const MAX_STDIN = 256 * 1024;
 
 // Source file patterns that warrant security feedback
 const SOURCE_PATTERNS = [
@@ -147,15 +146,9 @@ function readChecklistProgress(taskFilePath) {
   return { hasPreAnalysis, checked, total, missing };
 }
 
-let data = '';
-process.stdin.setEncoding('utf8');
-process.stdin.on('data', (chunk) => {
-  if (data.length < MAX_STDIN) data += chunk.substring(0, MAX_STDIN - data.length);
-});
-
-process.stdin.on('end', () => {
+async function main() {
+  const input = await readStdinJson({ maxSize: 256 * 1024 });
   try {
-    const input = JSON.parse(data || '{}');
     const filePath = input.tool_input?.file_path || input.tool_input?.path || '';
     if (!shouldProcess(filePath)) process.exit(0);
 
@@ -191,4 +184,6 @@ process.stdin.on('end', () => {
     // Silent — feedback hook must never disturb workflow
   }
   process.exit(0);
-});
+}
+
+main();

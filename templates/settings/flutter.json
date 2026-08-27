@@ -1,5 +1,19 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "deny": [
+      "Read(.env)",
+      "Read(.env.*)",
+      "Read(**/secrets/**)",
+      "Read(**/*.key)",
+      "Read(**/*.pem)",
+      "Bash(curl --upload:*)",
+      "Bash(wget --post:*)",
+      "Bash(rm -rf *)",
+      "Bash(git push --force*)",
+      "Bash(git reset --hard*)"
+    ]
+  },
   "worktree": {
     "symlinkDirectories": [".dart_tool", "build"]
   },
@@ -45,6 +59,46 @@
           }
         ],
         "description": "Flutter: Riverpod ref.read() inside build() detection"
+      },
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$HOME/.claude/hooks/check-design-tokens.js\""
+          }
+        ],
+        "description": "Flutter: visual literals used instead of design tokens (K43, TASK-KAIZEN-001)"
+      },
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$HOME/.claude/hooks/check-typography-tokens.js\""
+          }
+        ],
+        "description": "Flutter: inline TextStyle(fontSize:...)/EdgeInsets.*() literals (K43, TASK-KAIZEN-001)"
+      },
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$HOME/.claude/hooks/check-l10n-hardcoded.js\""
+          }
+        ],
+        "description": "Flutter: hardcoded UI text instead of localization keys (K43, TASK-KAIZEN-001)"
+      },
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$HOME/.claude/hooks/check-debugprint-guard.js\""
+          }
+        ],
+        "description": "Flutter: debugPrint()/print() without kDebugMode guard (K43, TASK-KAIZEN-001)"
       }
     ],
     "Stop": [

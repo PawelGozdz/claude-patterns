@@ -1,3 +1,11 @@
+---
+id: TASK-ACL-PORT-001
+title: 'reguła ACL: port vs inline, stałe kluczy, synchronizacja rule card'
+type: task
+status: blocked
+created_date: 2026-07-20
+---
+
 # TASK-ACL-PORT-001 — reguła ACL: port vs inline, stałe kluczy, synchronizacja rule card
 
 > **STATUS: BLOCKED** — czeka na `ADR-0108` w `juz-ide-api-2`. Nie edytować plików

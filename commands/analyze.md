@@ -148,11 +148,21 @@ Czytając indeks pamiętaj, czego on NIE rozstrzyga:
 - `problems.missing_status` — brak czytelnego statusu ≠ nieaktualny; te wpisy
   wchodzą jako aktywne i wymagają ostrożności.
 
-Stage `decision-gate` (`blocking: true`) dostaje indeks + `open_questions` i
-odpowiada na jedno pytanie: czy task opiera się na parametrze czekającym na
+Stage `decision-gate` (`blocking: true`) NIE dostaje surowego pliku ani całej
+tablicy `entries[]` (98 KB przy 150 aktywnych decyzjach w juz-ide — to właśnie ten
+budżet miał chronić). Wstrzyknij do jego prompta:
+- `brief[]` — jedna linia na wpis (kind/id/status/tagi/streszczenie do 200 znaków),
+  pole istnieje w indeksie dokładnie po to (`index-decisions.mjs`, komentarz przy
+  `brief:`); to jest pierwszy przebieg — "czy COKOLWIEK tu dotyczy taska".
+- `entries[]` **przefiltrowane do `needs_scope_check: true`** (zwykle kilkanaście
+  z kilkuset) — to jedyne wpisy, gdzie `scope` faktycznie trzeba zacytować (patrz
+  bullet wyżej); resztę `entries` pomiń, `brief` już je pokrył.
+- `problems` w całości (małe, strukturalne) i `open_questions`.
+
+Stage odpowiada na jedno pytanie: czy task opiera się na parametrze czekającym na
 decyzję albo uchylonym. Trafienie → **blokujące** `open_question` (`answer: null`)
 w artefakcie, cytujące wpis i miejsce sporu. Stage jest tani (haiku, czyta JSON
-i jeden plik), nie ma `when:` i nie wolno go pomijać.
+tej wielkości, nie cały indeks), nie ma `when:` i nie wolno go pomijać.
 
 ## 0.9. Filtr kosztu dla slotów governance
 

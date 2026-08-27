@@ -1,7 +1,7 @@
 # Global Claude Code Agents
 
 **Purpose**: Reusable specialist and advisory agents for Claude Code projects.
-**Total**: 26 universal + 19 stack-specific = 45 agents
+**Total**: 26 universal + 30 stack-specific = 56 agents
 
 ---
 
@@ -113,7 +113,7 @@ Skill: `skills/quality/review-panel/SKILL.md` · Command: `/review-panel` · Pat
 
 ---
 
-## Stack-Specific Agents (19)
+## Stack-Specific Agents (30)
 
 Linked per-project to `.claude/agents/` via `setup-project.sh`.
 
@@ -126,7 +126,7 @@ For Python ML inference services (FastAPI + PyTorch on a shared GPU).
 | **ml-inference-architect** | Model lifecycle, VRAM budget, batching strategy, serving runtime | Sonnet | No |
 | **gpu-resource-verifier** | Event-loop safety, VRAM lifecycle, thread safety, batching correctness | Sonnet | Yes |
 
-### nestjs-ddd (5)
+### nestjs-ddd (8)
 
 | Agent | Purpose | Model | VETO |
 |-------|---------|-------|------|
@@ -135,8 +135,11 @@ For Python ML inference services (FastAPI + PyTorch on a shared GPU).
 | **security-e2e-verifier** | Security validation, OWASP, E2E coverage | Opus | Yes |
 | **sql-postgres-optimizer** | Repository query review — EXPLAIN-backed index/rewrite recommendations, consulted by `@infrastructure-implementer` before any non-trivial query ships | Sonnet | No |
 | **business-rules-auditor** | `@BusinessRule` decorator coverage audit (Specs/Policies mandatory, Aggregates/Handlers via litmus test) — advisory, cross-references `BUSINESS_RULES.yaml` | Sonnet | No |
+| **implementers/domain-application-implementer** | Auto-triggered for aggregate/value-object/domain-event/command-handler/CQRS keywords — implements domain + application layers | Sonnet | No |
+| **implementers/infrastructure-implementer** | Implements Infrastructure/API layer (controllers, Zod schemas, repos, external adapters); hands tests to `@test-implementer` | Sonnet | No |
+| **implementers/test-implementer** | Owns the entire test pyramid (L1/L2/L3) across ALL layers, not just its own code, plus load/performance test authoring | Sonnet | No |
 
-### flutter-clean-arch (4)
+### flutter-clean-arch (7)
 
 | Agent | Purpose | Model | VETO |
 |-------|---------|-------|------|
@@ -144,6 +147,28 @@ For Python ML inference services (FastAPI + PyTorch on a shared GPU).
 | **flutter-architecture-expert** | Clean architecture, Riverpod patterns | Sonnet | No |
 | **flutter-quality-verifier** | Flutter quality, layer purity | Sonnet | Yes |
 | **flutter-ui-verifier** | UI/UX patterns, widget testing | Sonnet | Yes |
+| **flutter-ux-designer** | Designs the screen BEFORE code exists — advisory, `/analyze` panel participant, produces a screen spec (structure, states, a11y) | Sonnet | No |
+| **flutter-security-verifier** | Mobile-specific security: secret storage, certificate pinning, and related mobile attack surface | Sonnet | Yes |
+| **flutter-performance-verifier** | Widget rebuild scope, Riverpod provider granularity, build() cost, main-thread work — advisory, no VETO | Sonnet | No |
+
+### node-ts-claude-api (3)
+
+For messaging-agnostic Node.js/TypeScript bot architectures (core/ + mcp-servers/ separation).
+
+| Agent | Purpose | Model | VETO |
+|-------|---------|-------|------|
+| **ts-implementer** | Implements core/ modules: router, safety, memory, personas, observability | Sonnet | No |
+| **safety-reviewer** | Enforces the 7 non-negotiable safety invariants before merge | Sonnet | Yes |
+| **architecture-verifier** | Enforces the core architectural boundary — `core/` and `mcp-servers/` must never cross improperly | Haiku | Yes |
+
+### astro-static (2)
+
+For Astro 5 static blog / AI-first content projects.
+
+| Agent | Purpose | Model | VETO |
+|-------|---------|-------|------|
+| **astro-implementer** | Content Collections schema updates, Astro components, static blog implementation | Sonnet | No |
+| **content-reviewer** | Blog content review: Zod frontmatter schema compliance, brand voice rules | Haiku | No |
 
 ### nextjs-app (2)
 
@@ -217,6 +242,6 @@ maxTurns: 15
 
 ---
 
-**Version**: 3.1.0
-**Last Updated**: 2026-04-03
-**Agent Count**: 19 (5 universal + 14 stack-specific)
+**Version**: 3.6.0
+**Last Updated**: 2026-08-27
+**Agent Count**: 56 (26 universal + 30 stack-specific)

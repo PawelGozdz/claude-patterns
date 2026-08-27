@@ -14,8 +14,9 @@ import { fileURLToPath } from 'node:url';
 
 const YAML = (await import('yaml')).default;
 const REPO = join(dirname(fileURLToPath(import.meta.url)), '..');
-const [projectDir] = process.argv.slice(2);
-if (!projectDir) { console.error('użycie: verify-project-setup.mjs <project_dir>'); process.exit(1); }
+const VERBOSE = process.argv.includes('--verbose');
+const [projectDir] = process.argv.slice(2).filter((a) => !a.startsWith('--'));
+if (!projectDir) { console.error('użycie: verify-project-setup.mjs <project_dir> [--verbose]'); process.exit(1); }
 
 const ok = [], bad = [], warnings = [];
 const brokenLinks = [];
@@ -37,9 +38,18 @@ for (const l of rt.orchestrate?.layers ?? []) if (l.agent) agentNames.add(l.agen
 for (const k of ['inner_loop', 'final_gate'])
   for (const v of [rt.orchestrate?.[k]?.verify, rt.orchestrate?.[k]?.agent]) if (v) agentNames.add(v);
 
+// K47 (TASK-KAIZEN-001): findAgent już sprawdzał obie lokalizacje, ale zwracał gołą
+// ścieżkę — komunikat sukcesu nie mówił, z KTÓREGO źródła agent pochodzi. Panel, który
+// polega WYŁĄCZNIE na symlinku globalnym (~/.claude/agents/), wygląda identycznie jak
+// panel z agentem we własnym repo — na czystej maszynie bez globalnego setupu ten
+// pierwszy cicho się wywali, a "setup kompletny" niczego nie ostrzegało.
 const findAgent = (name) => {
-  if (name.startsWith('ecc:') || name === 'general-purpose') return 'wbudowany';
-  for (const root of [join(projectDir, '.claude/agents'), join(process.env.HOME, '.claude/agents')]) {
+  if (name.startsWith('ecc:') || name === 'general-purpose') return { path: null, source: 'wbudowany' };
+  const roots = [
+    { dir: join(projectDir, '.claude/agents'), source: 'lokalny' },
+    { dir: join(process.env.HOME, '.claude/agents'), source: 'globalny, ~/.claude/agents/' },
+  ];
+  for (const { dir: root, source } of roots) {
     const stack = [root];
     while (stack.length) {
       const dir = stack.pop();
@@ -52,7 +62,7 @@ const findAgent = (name) => {
         // weryfikację całego projektu.
         try { st = statSync(full); } catch { brokenLinks.push(full); continue; }
         if (st.isDirectory()) stack.push(full);
-        else if (e === `${name}.md`) return full;
+        else if (e === `${name}.md`) return { path: full, source };
       }
     }
   }
@@ -63,7 +73,7 @@ for (const a of agentNames) {
   // orchestrator wybiera jednego wg kontekstu, więc obecność którejkolwiek wystarczy.
   const options = String(a).split('|').map((x) => x.trim()).filter(Boolean);
   const found = options.map((o) => [o, findAgent(o)]).filter(([, f]) => f);
-  if (found.length) ok.push(`agent ${found.map(([o]) => o).join(' / ')}`);
+  if (found.length) ok.push(`agent ${found.map(([o, f]) => `${o} (${f.source})`).join(' / ')}`);
   else bad.push(`agent "${a}" — nie ma definicji w .claude/agents/ ani ~/.claude/agents/`);
 }
 
@@ -81,19 +91,34 @@ for (const slot of commandSlots) {
   else bad.push(`slot panelu wskazuje komendę "${slot}" — nie ma jej ani w .claude/commands/, ani globalnie`);
 }
 
-// ── wzorce: runtime wskazuje ścieżki repo, agent czyta je pod .claude/knowledge/patterns ──
+// ── wzorce: dwie konwencje ścieżek żyją obok siebie, jak w materialize-runtime.mjs
+// (dangling-check, linie ~516-517) — wzorzec współdzielony (`architecture/foo.md`)
+// jest symlinkowany pod .claude/knowledge/patterns/<kategoria>/; wzorzec lokalny
+// wniesiony przez blok projektu (np. `.claude/knowledge/patterns-local/foo.md`) już
+// zawiera pełną ścieżkę od roota projektu. Sprawdzanie WYŁĄCZNIE pierwszej konwencji
+// dawało fałszywy ENOENT na drugiej — ścieżka `.claude/knowledge/patterns-local/…`
+// doklejona pod `.claude/knowledge/patterns/` dawała podwojony, nieistniejący prefiks
+// (`.claude/knowledge/patterns/.claude/knowledge/patterns-local/…`), mimo że plik
+// realnie istniał tam, gdzie blok go zadeklarował (iam-security.yml, 2026-08-27).
+const resolvePattern = (p) => {
+  const shared = join(projectDir, '.claude/knowledge/patterns', p);
+  if (existsSync(shared)) return shared;
+  const localFull = join(projectDir, p);
+  if (existsSync(localFull)) return localFull;
+  return null;
+};
 const patterns = [
   ...(rt.patterns?.always ?? []),
   ...(rt.patterns?.triggers ?? []).flatMap((t) => t.include ?? []),
 ];
 for (const p of new Set(patterns)) {
-  const local = join(projectDir, '.claude/knowledge/patterns', p);
-  (existsSync(local) ? ok : bad).push(existsSync(local)
+  const resolved = resolvePattern(p);
+  (resolved ? ok : bad).push(resolved
     ? `wzorzec ${p}`
-    : `wzorzec "${p}" niedostępny lokalnie (${local}) — overlay nie symlinkuje tej kategorii`);
+    : `wzorzec "${p}" niedostępny lokalnie (sprawdzono .claude/knowledge/patterns/${p} i ${p}) — overlay nie symlinkuje tej kategorii`);
   // Karta reguł to wersja, która realnie wchodzi do promptów.
   const card = p.replace(/\.md$/, '_summary.md');
-  if ((rt.patterns?.always ?? []).includes(p) && !existsSync(join(projectDir, '.claude/knowledge/patterns', card)))
+  if ((rt.patterns?.always ?? []).includes(p) && !resolvePattern(card))
     warnings.push(`brak karty reguł dla wzorca z półki always: ${card}`);
 }
 
@@ -164,6 +189,10 @@ if (brokenLinks.length)
     ' — usuń je albo odpal setup-project.sh');
 console.log(`\n${projectDir}\n  bloki: [${(rt.stack_blocks ?? []).join(', ')}]`);
 console.log(`  sprawdzone OK: ${ok.length}`);
+// K47 (TASK-KAIZEN-001): bez tego adnotacja źródła agenta (lokalny/globalny) była
+// obliczana, ale nigdy niepokazywana — sam licznik nie mówi, że setup /analyze cicho
+// zależy od agentów spoza repo (~/.claude/agents/), których czysta maszyna nie ma.
+if (VERBOSE) ok.forEach((o) => console.log(`    ✓ ${o}`));
 if (warnings.length) { console.log(`\n  UWAGI (${warnings.length}):`); warnings.forEach((w) => console.log(`    ${w}`)); }
 if (bad.length) { console.error(`\n  BRAKI (${bad.length}):`); bad.forEach((b) => console.error(`    ${b}`)); }
 console.log(bad.length ? '\n  ✗ setup niekompletny' : '\n  ✓ setup kompletny — /analyze i /orchestrate mają wszystko, na co wskazuje runtime.yml');

@@ -20,36 +20,27 @@
 const fs = require('fs');
 const path = require('path');
 const { findFlutterConfig, matchesPattern } = require('./lib/flutter-config');
+const { readStdinJsonWithRaw } = require('./lib/utils');
 
 const COMMENT_LINE = /^\s*(\/\/|\/\*|\*)/;
 const BUILD_METHOD = /\bbuild\s*\(/;
 const REF_READ = /\bref\.read\s*\(/;
 
-const MAX_STDIN = 1024 * 1024;
-let data = '';
-process.stdin.setEncoding('utf8');
+async function main() {
+  const { raw, parsed: input } = await readStdinJsonWithRaw();
 
-process.stdin.on('data', (chunk) => {
-  if (data.length < MAX_STDIN) {
-    const remaining = MAX_STDIN - data.length;
-    data += chunk.substring(0, remaining);
-  }
-});
-
-process.stdin.on('end', () => {
   try {
-    const input = JSON.parse(data);
     const filePath = input.tool_input?.file_path;
 
     if (!filePath || !filePath.endsWith('.dart')) {
-      process.stdout.write(data);
+      process.stdout.write(raw);
       process.exit(0);
     }
 
     // Load project config — no config means no checks
     const loaded = findFlutterConfig(filePath);
     if (!loaded) {
-      process.stdout.write(data);
+      process.stdout.write(raw);
       process.exit(0);
     }
 
@@ -58,14 +49,14 @@ process.stdin.on('end', () => {
     // Check if riverpod checks are enabled
     const riverpodConfig = config.riverpod?.checkRefRead;
     if (!riverpodConfig?.enabled) {
-      process.stdout.write(data);
+      process.stdout.write(raw);
       process.exit(0);
     }
 
     // Skip generated/test files
     const skipPatterns = config.skipPatterns || ['_test.dart', '.g.dart', '.freezed.dart', '.mock.dart'];
     if (skipPatterns.some((pat) => filePath.endsWith(pat))) {
-      process.stdout.write(data);
+      process.stdout.write(raw);
       process.exit(0);
     }
 
@@ -75,14 +66,14 @@ process.stdin.on('end', () => {
     const matchesFile = filePatterns.some((pat) => matchesPattern(normalized, pat));
 
     if (!matchesFile) {
-      process.stdout.write(data);
+      process.stdout.write(raw);
       process.exit(0);
     }
 
     // Read the file
     const resolvedPath = path.resolve(filePath);
     if (!fs.existsSync(resolvedPath)) {
-      process.stdout.write(data);
+      process.stdout.write(raw);
       process.exit(0);
     }
 
@@ -147,6 +138,8 @@ process.stdin.on('end', () => {
     // Invalid input — pass through
   }
 
-  process.stdout.write(data);
+  process.stdout.write(raw);
   process.exit(0);
-});
+}
+
+main();

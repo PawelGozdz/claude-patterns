@@ -34,6 +34,7 @@
 const fs = require('fs');
 const path = require('path');
 const { findFlutterConfig } = require('./lib/flutter-config');
+const { readStdinJsonWithRaw } = require('./lib/utils');
 
 const COMMENT_LINE = /^\s*(\/\/|\/\*|\*)/;
 
@@ -60,34 +61,25 @@ const RULES = [
   },
 ];
 
-const MAX_STDIN = 1024 * 1024;
-let data = '';
-process.stdin.setEncoding('utf8');
-
-process.stdin.on('data', (chunk) => {
-  if (data.length < MAX_STDIN) {
-    data += chunk.substring(0, MAX_STDIN - data.length);
-  }
-});
-
 function stripTrailingComment(line) {
   const idx = line.indexOf('//');
   return idx >= 0 ? line.slice(0, idx) : line;
 }
 
-process.stdin.on('end', () => {
+async function main() {
+  const { raw, parsed: input } = await readStdinJsonWithRaw();
+
   try {
-    const input = JSON.parse(data);
     const filePath = input.tool_input?.file_path;
 
     if (!filePath || !filePath.endsWith('.dart')) {
-      process.stdout.write(data);
+      process.stdout.write(raw);
       process.exit(0);
     }
 
     const loaded = findFlutterConfig(filePath);
     if (!loaded) {
-      process.stdout.write(data);
+      process.stdout.write(raw);
       process.exit(0);
     }
 
@@ -95,13 +87,13 @@ process.stdin.on('end', () => {
 
     const tokensConfig = config.designTokens;
     if (!tokensConfig?.enabled) {
-      process.stdout.write(data);
+      process.stdout.write(raw);
       process.exit(0);
     }
 
     const skipPatterns = config.skipPatterns || ['_test.dart', '.g.dart', '.freezed.dart', '.mock.dart'];
     if (skipPatterns.some((pat) => filePath.endsWith(pat))) {
-      process.stdout.write(data);
+      process.stdout.write(raw);
       process.exit(0);
     }
 
@@ -110,7 +102,7 @@ process.stdin.on('end', () => {
     // Pliki definiujące tokeny — jedyne miejsce, gdzie literał jest poprawny
     const definitionPaths = tokensConfig.definitionPaths || [];
     if (definitionPaths.some((p) => normalized.includes(p))) {
-      process.stdout.write(data);
+      process.stdout.write(raw);
       process.exit(0);
     }
 
@@ -118,13 +110,13 @@ process.stdin.on('end', () => {
     // check-debugprint-guard.js: matchesPattern() psuje `**` przy zagnieżdżeniu.
     const pathContains = tokensConfig.pathContains || ['/lib/'];
     if (!pathContains.some((frag) => normalized.includes(frag))) {
-      process.stdout.write(data);
+      process.stdout.write(raw);
       process.exit(0);
     }
 
     const resolvedPath = path.resolve(filePath);
     if (!fs.existsSync(resolvedPath)) {
-      process.stdout.write(data);
+      process.stdout.write(raw);
       process.exit(0);
     }
 
@@ -167,6 +159,8 @@ process.stdin.on('end', () => {
     // Nieprawidłowe wejście — przepuść bez zmian
   }
 
-  process.stdout.write(data);
+  process.stdout.write(raw);
   process.exit(0);
-});
+}
+
+main();

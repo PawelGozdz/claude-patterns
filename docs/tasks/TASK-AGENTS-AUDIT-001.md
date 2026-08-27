@@ -1,3 +1,11 @@
+---
+id: TASK-AGENTS-AUDIT-001
+title: 'Audyt aktualności istniejących agentów i skilli'
+type: task
+status: planned
+created_date: 2026-07-07
+---
+
 # TASK-AGENTS-AUDIT-001 — Audyt aktualności istniejących agentów i skilli
 
 **Status: TODO** · **Źródło:** sesja 2026-07-07 (przy okazji budowy panelu code-review —

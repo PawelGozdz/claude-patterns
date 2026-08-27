@@ -15,14 +15,11 @@ set -euo pipefail
 
 STATE_FILE=".claude/STATE.md"
 
-# Colors
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-CYAN='\033[0;36m'
-RED='\033[0;31m'
-BOLD='\033[1m'
-NC='\033[0m'
+# `hooks/` is often reached through a symlinked directory (~/.claude/hooks -> this repo);
+# `cd -P` resolves the physical path so the relative `source` below still finds
+# scripts/lib/common.sh regardless of which path this script was invoked through.
+SCRIPT_DIR="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../scripts/lib/common.sh"
 
 # ============================================================================
 # SHOW: Display state banner at session start

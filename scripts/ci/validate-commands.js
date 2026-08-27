@@ -79,20 +79,31 @@ function validateCommands() {
     // Skip lines that describe hypothetical output (e.g., "→ Creates: `/new-table`")
     // Process line-by-line so ALL command refs per line are captured
     // (previous anchored regex /^.*`\/...`.*$/gm only matched the last ref per line)
+    //
+    // `/<nazwa>` w tym harnessie wywołuje albo komendę (commands/*.md), albo skill przez
+    // Skill tool — obie formy są prawidłowe wejściem użytkownika. Sprawdzanie WYŁĄCZNIE
+    // przeciw validCommands dawało fałszywe błędy na `/return-calculations`, `/historical-risk`
+    // (finance.md), `/contract-review`, `/nda-triage-anthropic`, `/compliance-anthropic`
+    // (legal.md), `/copywriting`, `/seo-audit` (marketing.md) — wszystkie to realne katalogi
+    // pod skills/, tylko niezarejestrowane jako osobne pliki w commands/ (K11, 2026-08-27).
+    const HARNESS_NATIVE_SKILLS = new Set(['loop']); // skille wbudowane w harness, spoza skills/ tego repo
     for (const line of contentNoCodeBlocks.split('\n')) {
       if (/creates:|would create:/i.test(line)) continue;
       const lineRefs = line.matchAll(/`\/([a-z][-a-z0-9]*)`/g);
       for (const match of lineRefs) {
         const refName = match[1];
-        if (!validCommands.has(refName)) {
+        if (!validCommands.has(refName) && !validSkills.has(refName) && !HARNESS_NATIVE_SKILLS.has(refName)) {
           console.error(`ERROR: ${file} - references non-existent command /${refName}`);
           hasErrors = true;
         }
       }
     }
 
-    // Check agent references (e.g., "agents/planner.md" or "`planner` agent")
-    const agentPathRefs = contentNoCodeBlocks.matchAll(/agents\/([a-z][-a-z0-9]*)\.md/g);
+    // Check agent references (e.g., "agents/planner.md" or "`planner` agent").
+    // Negative lookbehind na `.` — `.agents/<name>-context.md` to konwencja per-projektowego
+    // pliku kontekstu (finance/legal/marketing), NIE referencja do agents/ tego repo; bez
+    // lookbeada regex łapał ją jako podciąg i zgłaszał fałszywy "non-existent agent" (K11, 2026-08-27).
+    const agentPathRefs = contentNoCodeBlocks.matchAll(/(?<!\.)agents\/([a-z][-a-z0-9]*)\.md/g);
     for (const match of agentPathRefs) {
       const refName = match[1];
       if (!validAgents.has(refName)) {

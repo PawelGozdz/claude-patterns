@@ -20,37 +20,28 @@
 const fs = require('fs');
 const path = require('path');
 const { findPythonConfig, matchesPattern } = require('./lib/python-config');
+const { readStdinJsonWithRaw } = require('./lib/utils');
 
 const COMMENT_LINE = /^\s*#/;
 // Match function defs: def foo(params) or def foo(params) -> RetType:
 const FUNC_DEF = /^\s*(?:async\s+)?def\s+(\w+)\s*\(([^)]*)\)/;
 const HAS_RETURN_TYPE = /->\s*\S+/;
 
-const MAX_STDIN = 1024 * 1024;
-let data = '';
-process.stdin.setEncoding('utf8');
+async function main() {
+  const { raw, parsed: input } = await readStdinJsonWithRaw();
 
-process.stdin.on('data', (chunk) => {
-  if (data.length < MAX_STDIN) {
-    const remaining = MAX_STDIN - data.length;
-    data += chunk.substring(0, remaining);
-  }
-});
-
-process.stdin.on('end', () => {
   try {
-    const input = JSON.parse(data);
     const filePath = input.tool_input?.file_path;
 
     if (!filePath || !filePath.endsWith('.py')) {
-      process.stdout.write(data);
+      process.stdout.write(raw);
       process.exit(0);
     }
 
     // Load project config — no config means no checks
     const loaded = findPythonConfig(filePath);
     if (!loaded) {
-      process.stdout.write(data);
+      process.stdout.write(raw);
       process.exit(0);
     }
 
@@ -59,7 +50,7 @@ process.stdin.on('end', () => {
     // Check if typing checks are enabled
     const typingConfig = config.typing?.checkUntyped;
     if (!typingConfig?.enabled) {
-      process.stdout.write(data);
+      process.stdout.write(raw);
       process.exit(0);
     }
 
@@ -67,7 +58,7 @@ process.stdin.on('end', () => {
     const skipPatterns = config.skipPatterns || ['test_', '_test.py', 'conftest.py', '__pycache__', '.venv'];
     const basename = path.basename(filePath);
     if (skipPatterns.some((pat) => basename.startsWith(pat) || basename.endsWith(pat) || filePath.includes(pat))) {
-      process.stdout.write(data);
+      process.stdout.write(raw);
       process.exit(0);
     }
 
@@ -77,14 +68,14 @@ process.stdin.on('end', () => {
     const matchesFile = filePatterns.some((pat) => matchesPattern(normalized, pat));
 
     if (!matchesFile) {
-      process.stdout.write(data);
+      process.stdout.write(raw);
       process.exit(0);
     }
 
     // Read the file
     const resolvedPath = path.resolve(filePath);
     if (!fs.existsSync(resolvedPath)) {
-      process.stdout.write(data);
+      process.stdout.write(raw);
       process.exit(0);
     }
 
@@ -114,6 +105,8 @@ process.stdin.on('end', () => {
     // Invalid input — pass through
   }
 
-  process.stdout.write(data);
+  process.stdout.write(raw);
   process.exit(0);
-});
+}
+
+main();

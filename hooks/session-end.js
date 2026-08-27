@@ -20,8 +20,9 @@ const {
   readFile,
   writeFile,
   replaceInFile,
-  log
-} = require('../lib/utils');
+  log,
+  readStdinJsonWithRaw
+} = require('./lib/utils');
 
 /**
  * Extract a meaningful summary from the session transcript.
@@ -103,29 +104,18 @@ function extractSessionSummary(transcriptPath) {
 }
 
 // Read hook input from stdin (Claude Code provides transcript_path via stdin JSON)
-const MAX_STDIN = 1024 * 1024;
-let stdinData = '';
-process.stdin.setEncoding('utf8');
-
-process.stdin.on('data', chunk => {
-  if (stdinData.length < MAX_STDIN) {
-    const remaining = MAX_STDIN - stdinData.length;
-    stdinData += chunk.substring(0, remaining);
-  }
+readStdinJsonWithRaw().then(({ raw }) => {
+  runMain(raw);
 });
 
-process.stdin.on('end', () => {
-  runMain();
-});
-
-function runMain() {
-  main().catch(err => {
+function runMain(stdinData) {
+  main(stdinData).catch(err => {
     console.error('[SessionEnd] Error:', err.message);
     process.exit(0);
   });
 }
 
-async function main() {
+async function main(stdinData) {
   // Parse stdin JSON to get transcript_path
   let transcriptPath = null;
   try {

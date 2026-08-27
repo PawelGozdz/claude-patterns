@@ -2,14 +2,14 @@
 
 version: "3.6.0"
 created: "2026-02-05"
-last_updated: "2026-07-31"
+last_updated: "2026-08-27"  # K13 (TASK-KAIZEN-001): liczniki wyrównane do realnego stanu drzewa
 author: "LocalHero Team"
 source_project: "LocalHero v3"
 license: "MIT"
 
 description: |
   Production-tested software patterns, universal agents, skills, a project
-  management system, and three vendored skill toolkits (marketing 41,
+  management system, and three vendored skill toolkits (marketing 42,
   finance 84, legal 12) for Claude Code projects.
   Extracted from LocalHero (1355+ tests, 6 production contexts) and
   augmented with vendored marketing (coreyhaines31), finance (JoelLewis,
@@ -72,24 +72,24 @@ repository:
   remote: null
 
 patterns:
-  core_count: 38
-  stack_specific_count: 36
+  core_count: 50
+  stack_specific_count: 45
   marketing_count: 1
   finance_count: 2
   legal_count: 2
-  total_count: 80
+  total_count: 100
   core_categories:
     domain: 6
     application: 4
-    infrastructure: 5   # +external-adapter-pattern (scope: project-specific, grant-flow)
-    architecture: 11
-    testing: 8
-    cross-layer: 4
+    infrastructure: 6   # +external-adapter-pattern (scope: project-specific, grant-flow)
+    architecture: 14
+    testing: 11
+    cross-layer: 8
     orchestration: 1
   stack_categories:
-    flutter: 7
+    flutter: 14
     nextjs: 7
-    python: 5
+    python: 7
     ai-ml: 7
     sveltekit: 5
     typescript-library: 5
@@ -100,7 +100,8 @@ patterns:
   legal_categories:
     legal: 2      # jurisdiction-aware-disclaimer-pattern, external-skills-catalog-pattern
 
-  maturity:
+  maturity:  # NIE zweryfikowane przez count-assets.mjs (K13) — wymaga odczytu **Status**:
+             # per plik, nie prostego liczenia; liczby poniżej sprzed korekty total_count.
     production: 79
     stable: 0
     experimental: 0
@@ -108,7 +109,7 @@ patterns:
 
 agents:
   universal: 26
-  stack_specific: 16
+  stack_specific: 30
   categories:
     universal:
       - backend-technology-expert
@@ -138,16 +139,25 @@ agents:
       - reviewer-champion                      # v3.6
       - reviewer-professor                      # v3.6
     stacks:
-      - nestjs-ddd (3)
-      - flutter-clean-arch (3)
+      - nestjs-ddd (8)
+      - flutter-clean-arch (7)
+      - node-ts-claude-api (3)
+      - astro-static (2)
       - nextjs-app (2)
       - python (2)
       - python-ml (2)
+      - sveltekit (2)
       - typescript-library (2)
 
 commands:
-  total: 25
-  categories:
+  total: 45
+  categories:  # NIE zweryfikowane przez count-assets.mjs (K13) — przypisanie komendy do
+               # kategorii wymaga czytania treści, nie prostego liczenia; suma poniżej (26)
+               # nie sumuje się do total: 45, bo lista nie nadążyła za nowymi komendami
+               # (adr, blog, capture, claude-updates, conformance-check, cost-report,
+               # finance, grantflow, incident, legal, log-time, marketing, security-check,
+               # security-review, task-tidy, threat-model i inne — 16 z nich brakuje też
+               # w commands/README.md, patrz K42).
     orchestration: 5  # pulse, pm-status, sprint, task-health, tech-debt
     quality: 4        # verify, code-review, build-fix, test-coverage
     workflow: 4       # plan, tdd, orchestrate, scaffold
@@ -160,8 +170,8 @@ commands:
     meta: 1           # skill-create
 
 skills:
-  total_categories: 22
-  total_skills: 170  # 33 internal + 41 vendored marketing + 84 vendored finance + 12 vendored legal
+  total_categories: 24
+  total_skills: 190  # 52 internal + 42 vendored marketing + 84 vendored finance + 12 vendored legal
   orchestration_skills:
     - pulse
     - pm-status
@@ -264,9 +274,7 @@ skills:
     jurisdictions_supported: ["PL", "EU general", "US", "UK", "FR (limited)"]
 
 hooks:
-  total: 20
-  global: 19  # registered in hooks.json or available as stack hooks
-  pm_specific: 1  # pm-task-check.js (per-project, not in hooks.json)
+  total: 51  # 48 .js + 3 .sh, płasko w hooks/ (lib/ to kod dzielony, nie osobne hooki)
 
 templates:
   stack_presets: 10

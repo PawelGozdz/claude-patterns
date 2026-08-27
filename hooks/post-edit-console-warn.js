@@ -9,27 +9,17 @@
  * before committing.
  */
 
-const { readFile } = require('../lib/utils');
+const { readFile, readStdinJsonWithRaw } = require('./lib/utils');
 
-const MAX_STDIN = 1024 * 1024; // 1MB limit
-let data = '';
-process.stdin.setEncoding('utf8');
+async function main() {
+  const { raw, parsed: input } = await readStdinJsonWithRaw();
 
-process.stdin.on('data', chunk => {
-  if (data.length < MAX_STDIN) {
-    const remaining = MAX_STDIN - data.length;
-    data += chunk.substring(0, remaining);
-  }
-});
-
-process.stdin.on('end', () => {
   try {
-    const input = JSON.parse(data);
     const filePath = input.tool_input?.file_path;
 
     if (filePath && /\.(ts|tsx|js|jsx)$/.test(filePath)) {
       const content = readFile(filePath);
-      if (!content) { process.stdout.write(data); process.exit(0); }
+      if (!content) { process.stdout.write(raw); process.exit(0); }
       const lines = content.split('\n');
       const matches = [];
 
@@ -49,6 +39,8 @@ process.stdin.on('end', () => {
     // Invalid input — pass through
   }
 
-  process.stdout.write(data);
+  process.stdout.write(raw);
   process.exit(0);
-});
+}
+
+main();

@@ -1,3 +1,11 @@
+---
+id: TASK-BLOCKS-001
+title: 'System kompozycji bloków stacku: pilot na juz-ide-api-4'
+type: task
+status: ready
+created_date: 2026-08-10
+---
+
 # TASK-BLOCKS-001 — System kompozycji bloków stacku: pilot na juz-ide-api-4
 
 > **▶ STATUS: READY — ADR 0008 zaakceptowany 2026-08-10 (OQ1-OQ7 rozstrzygnięte).**

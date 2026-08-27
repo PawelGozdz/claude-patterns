@@ -25,6 +25,7 @@
 const fs = require('fs');
 const path = require('path');
 const { findFlutterConfig } = require('./lib/flutter-config');
+const { readStdinJsonWithRaw } = require('./lib/utils');
 
 const COMMENT_LINE = /^\s*(\/\/|\/\*|\*)/;
 const KDEBUG = /\bkDebugMode\b/;
@@ -32,35 +33,26 @@ const DEBUG_PRINT = /\bdebugPrint\s*\(/;
 // `print(` ale nie `debugPrint(`, `sprint(`, `obj.print(`
 const BARE_PRINT = /(?<![\w.])print\s*\(/;
 
-const MAX_STDIN = 1024 * 1024;
-let data = '';
-process.stdin.setEncoding('utf8');
-
-process.stdin.on('data', (chunk) => {
-  if (data.length < MAX_STDIN) {
-    data += chunk.substring(0, MAX_STDIN - data.length);
-  }
-});
-
 /** Ucina komentarz liniowy, żeby `// debugPrint(x)` nie liczyło się jako kod. */
 function stripTrailingComment(line) {
   const idx = line.indexOf('//');
   return idx >= 0 ? line.slice(0, idx) : line;
 }
 
-process.stdin.on('end', () => {
+async function main() {
+  const { raw, parsed: input } = await readStdinJsonWithRaw();
+
   try {
-    const input = JSON.parse(data);
     const filePath = input.tool_input?.file_path;
 
     if (!filePath || !filePath.endsWith('.dart')) {
-      process.stdout.write(data);
+      process.stdout.write(raw);
       process.exit(0);
     }
 
     const loaded = findFlutterConfig(filePath);
     if (!loaded) {
-      process.stdout.write(data);
+      process.stdout.write(raw);
       process.exit(0);
     }
 
@@ -68,13 +60,13 @@ process.stdin.on('end', () => {
 
     const loggingConfig = config.logging?.checkDebugPrintGuard;
     if (!loggingConfig?.enabled) {
-      process.stdout.write(data);
+      process.stdout.write(raw);
       process.exit(0);
     }
 
     const skipPatterns = config.skipPatterns || ['_test.dart', '.g.dart', '.freezed.dart', '.mock.dart'];
     if (skipPatterns.some((pat) => filePath.endsWith(pat))) {
-      process.stdout.write(data);
+      process.stdout.write(raw);
       process.exit(0);
     }
 
@@ -83,7 +75,7 @@ process.stdin.on('end', () => {
     // Pliki jawnie zwolnione (np. własny wrapper loggera, który sam osłania kDebugMode)
     const allowList = loggingConfig.allowFiles || [];
     if (allowList.some((pat) => normalized.includes(pat))) {
-      process.stdout.write(data);
+      process.stdout.write(raw);
       process.exit(0);
     }
 
@@ -93,13 +85,13 @@ process.stdin.on('end', () => {
     // katalog. Prosty `includes` jest tu przewidywalny i wystarczający.
     const pathContains = loggingConfig.pathContains || ['/lib/'];
     if (!pathContains.some((frag) => normalized.includes(frag))) {
-      process.stdout.write(data);
+      process.stdout.write(raw);
       process.exit(0);
     }
 
     const resolvedPath = path.resolve(filePath);
     if (!fs.existsSync(resolvedPath)) {
-      process.stdout.write(data);
+      process.stdout.write(raw);
       process.exit(0);
     }
 
@@ -162,6 +154,8 @@ process.stdin.on('end', () => {
     // Nieprawidłowe wejście — przepuść bez zmian
   }
 
-  process.stdout.write(data);
+  process.stdout.write(raw);
   process.exit(0);
-});
+}
+
+main();

@@ -18,26 +18,17 @@
 
 const fs = require('fs');
 const path = require('path');
+const { parseFrontmatter: parseFrontmatterShared } = require('./lib/pm-tasks');
+const { readStdinJsonWithRaw } = require('./lib/utils');
 
 const MAX_STDIN = 512 * 1024;
 const AUTO_MOVE = process.env.PM_NO_AUTO_HOUSEKEEPING !== 'true';
 
+// parseArrays: false — pierwotna wersja tego pliku nie parsowała inline-tablic
+// `[a, b, c]` (w przeciwieństwie do pm-task-check.js); zachowane celowo, nie
+// ujednolicone cichcem (K40, TASK-KAIZEN-001).
 function parseFrontmatter(content) {
-  const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
-  if (!match) return null;
-
-  const result = {};
-  for (const line of match[1].split('\n')) {
-    const kv = line.match(/^(\w[\w_-]*):\s*(.*)$/);
-    if (!kv) continue;
-    let value = kv[2].trim();
-    if ((value.startsWith("'") && value.endsWith("'")) ||
-        (value.startsWith('"') && value.endsWith('"'))) {
-      value = value.slice(1, -1);
-    }
-    result[kv[1]] = value;
-  }
-  return result;
+  return parseFrontmatterShared(content, { parseArrays: false });
 }
 
 function ensureKanbanEntry(projectRoot, taskId, frontmatter) {
@@ -95,15 +86,10 @@ function findProjectRoot(filePath) {
   return null;
 }
 
-let data = '';
-process.stdin.setEncoding('utf8');
-process.stdin.on('data', (chunk) => {
-  if (data.length < MAX_STDIN) data += chunk.substring(0, MAX_STDIN - data.length);
-});
-
-process.stdin.on('end', () => {
+async function main() {
+  const { raw } = await readStdinJsonWithRaw({ maxSize: MAX_STDIN });
   try {
-    const input = JSON.parse(data || '{}');
+    const input = JSON.parse(raw || '{}');
     const filePath = input.tool_input?.file_path || input.tool_input?.path || '';
 
     const normalized = filePath.replace(/\\/g, '/');
@@ -169,4 +155,6 @@ process.stdin.on('end', () => {
     console.error(`[pm-housekeeping] error: ${err.message}`);
   }
   process.exit(0);
-});
+}
+
+main();

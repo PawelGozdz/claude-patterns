@@ -18,30 +18,15 @@
 const fs = require("fs");
 const path = require("path");
 const { spawn } = require("child_process");
+const { readStdinJsonWithRaw } = require("./lib/utils");
 
-const MAX_STDIN = 1024 * 1024; // 1MB
-let data = "";
-process.stdin.setEncoding("utf8");
+async function main() {
+  const { raw, parsed: input } = await readStdinJsonWithRaw();
 
-process.stdin.on("data", (chunk) => {
-  if (data.length < MAX_STDIN) {
-    data += chunk.substring(0, MAX_STDIN - data.length);
-  }
-});
-
-process.stdin.on("end", () => {
   const finish = () => {
-    process.stdout.write(data);
+    process.stdout.write(raw);
     process.exit(0);
   };
-
-  let input;
-  try {
-    input = JSON.parse(data);
-  } catch {
-    finish();
-    return;
-  }
 
   try {
     // Tylko narzędzie Workflow, tylko główna pętla (defensywny check agent_id).
@@ -70,4 +55,6 @@ process.stdin.on("end", () => {
     console.error("[workflow-metrics] pominięto:", err.message);
   }
   finish();
-});
+}
+
+main();

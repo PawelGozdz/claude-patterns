@@ -19,26 +19,21 @@ const path = require('path');
 
 const manifestLib = require('./lib/broadcast/manifest');
 const paths = require('./lib/broadcast/paths');
+const { readStdinJsonWithRaw } = require('./lib/utils');
 
-const MAX_STDIN = 512 * 1024;
-let data = '';
-process.stdin.setEncoding('utf8');
-process.stdin.on('data', (chunk) => {
-  if (data.length < MAX_STDIN) data += chunk.substring(0, MAX_STDIN - data.length);
-});
+async function main() {
+  const { raw, parsed: input } = await readStdinJsonWithRaw({ maxSize: 512 * 1024 });
 
-process.stdin.on('end', () => {
   try {
-    run();
+    run(input);
   } catch {
     // cisza — hook przypominający nigdy nie psuje workflow
   }
-  process.stdout.write(data);
+  process.stdout.write(raw);
   process.exit(0);
-});
+}
 
-function run() {
-  const input = JSON.parse(data);
+function run(input) {
   const filePath = (input.tool_input?.file_path || input.tool_input?.path || '').replace(/\\/g, '/');
   if (!filePath.includes('/project-orchestration/tasks/') || !filePath.endsWith('.md')) return;
 
@@ -139,3 +134,5 @@ function safeRead(filePath) {
     return null;
   }
 }
+
+main();

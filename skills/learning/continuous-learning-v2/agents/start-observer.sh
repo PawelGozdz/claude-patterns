@@ -9,7 +9,7 @@
 #   start-observer.sh stop   # Stop running observer
 #   start-observer.sh status # Check if observer is running
 
-set -e
+set -euo pipefail
 
 CONFIG_DIR="${HOME}/.claude/homunculus"
 PID_FILE="${CONFIG_DIR}/.observer.pid"

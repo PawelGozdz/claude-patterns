@@ -1,3 +1,11 @@
+---
+id: TASK-RAG-001
+title: 'knowledge-retriever MCP server (Advanced RAG, MVP)'
+type: task
+status: done
+created_date: 2026-06-29
+---
+
 # TASK-RAG-001 — knowledge-retriever MCP server (Advanced RAG, MVP)
 
 **Branch:** feat/rag-knowledge-retriever · **Design:** `docs/rag-design.md` · **Decyzja:** `docs/DECISIONS-LOG.md` (2026-06-29)
