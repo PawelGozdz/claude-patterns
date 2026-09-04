@@ -414,7 +414,12 @@ const implPrompt = SPEC
   + (card ? `\n\n=== KARTA REGUŁ — obowiązująca dla tej warstwy ===\n${card}\n`
           + `=== koniec karty ===\n\n`
           + `Masz komplet reguł POWYŻEJ. NIE czytaj pełnego wzorca, NIE grepuj repo w `
-          + `poszukiwaniu wzorca, NIE szukaj przykładów w innych projektach. Jeśli karta `
+          + `poszukiwaniu wzorca, NIE szukaj przykładów w innych projektach. Gdy brakuje `
+          + `Ci PRZYKŁADU istniejącej implementacji (jak coś JEST u nas zrobione — `
+          + `sygnatura helpera, użycie biblioteki, referencyjny handler), zamiast serii `
+          + `Grep/Read zadaj JEDNO celowane zapytanie mcp__knowledge-retriever__`
+          + `retrieve_code lub retrieve_examples (łącznie max 2 na cały Twój przebieg; `
+          + `zero, jeśli karta wystarcza). Jeśli karta `
           + `naprawdę nie rozstrzyga Twojego przypadku — napisz to w raporcie jako `
           + `\`gap: <czego brakuje w karcie>\` i zaimplementuj najbliższy wariant zgodny `
           + `z tym, co karta mówi. Luka w karcie to nasz błąd do naprawienia, nie Twój `
@@ -432,6 +437,20 @@ To jest mechanizm, który wygenerował 89 M tokenów cache read w jednym przebie
 powyżej ~8 KB, `lint-patterns.mjs` to zgłasza — to znak, że wzorzec potrzebuje podziału,
 nie że limit jest za mały.
 
+**Celowany retrieval TAK, „RAG na zapas" nadal NIE.** Pierwotny zakaz eksploracji w
+KROKU 3 domykał ścieżkę Grep/Read, ale przy okazji domykał też najtańszą alternatywę:
+implementer jednostki NE1 (api-3, 2026-09-01, TS-ARCH-HANDLER-CONTRACT-001) spalił ~25
+z 45 tur na ręczny research Read/Grep, mając narzędzia retrievalu w definicji agenta i
+nie wywołując żadnego — w całej historii przebiegów Workflow ZERO wywołań retrievalu.
+Reguła jest kosztowa, nie ideologiczna. Karta odpowiada na „jak MA być" i jest
+wstrzyknięta z góry — retrieval po reguły to marnotrawstwo. Na „jak JEST u nas
+zrobione" (istniejąca implementacja referencyjna, sygnatura helpera, użycie biblioteki
+w naszym kodzie) najtańsze jest jedno zapytanie `retrieve_code`/`retrieve_examples`:
+zwraca top-k gotowych wycinków (kilka KB raz), gdy seria Grep + Read pełnych plików to
+dziesiątki KB przeliczane w każdej kolejnej turze. Stąd limit wpisany do prompta w
+KROKU 3: max 2 zapytania na przebieg agenta, zero gdy karta wystarcza — i zero to
+nadal najlepszy wynik, nie wskaźnik do podbijania.
+
 **Weryfikator dostaje co innego niż implementer.** Implementer: karta (`quickstart`) —
 ma pisać, nie rozważać. Weryfikator: pełny wzorzec albo poziom `core`/`exhaustive` — ocenia
 zgodność, więc potrzebuje wyjątków od reguły, których karta świadomie nie zawiera.
@@ -442,6 +461,19 @@ uzasadniona tylko wtedy, gdy następny etap potrzebuje WSZYSTKICH wyników naraz
 (dedup, zliczenie, „zero znalezisk → pomiń weryfikację"). Sekwencja jest
 uzasadniona, gdy dwie jednostki dotykają TEGO SAMEGO pliku — wtedy łańcuch
 w jednym `pipeline`, nie dwa równoległe.
+
+**Zadeklarowany rozłączny zakres to nie to samo co wymuszony.** Prompt jednostki
+może mówić „dotykaj wyłącznie X" — to nie gwarantuje, że implementer się tego
+trzyma; werdykt to złapie, ale dopiero PO fakcie, gdy zapis już wylądował na
+współdzielonym working tree obok zapisów innych równoległych jednostek (incydent
+TS-SEC-TRUSTED-PROXY-001, api-2, 2026-08-31: jednostka wyszła poza zakres i
+dotknęła `main.ts` + webhook należące do dwóch INNYCH, równolegle piszących
+jednostek — werdykty GO dla tamtych stały się niepewne, bo mogły weryfikować
+stan zanieczyszczony konkurencyjnym zapisem). Gdy 2+ równoległe jednostki mogą
+w praktyce dotknąć wspólnego pliku wejściowego (bootstrap, DI wiring, współdzielony
+config) — nie ufaj samej dyscyplinie promptu: albo `isolation: 'worktree'` dla
+tych jednostek (drogie, ale to dokładnie przypadek, do którego jest — patrz opis
+`Agent`), albo sekwencja w jednym `pipeline`, jak wyżej.
 
 **Czego NIE tnij** — to kupiona jakość, nie narzut: niezależny verifier zamiast
 self-reportu, 3 próby z `violations`, pełna lektura kontraktu przed edycją,
@@ -476,6 +508,18 @@ Czekasz na przebieg? Nie rób nic. Zajmij się kolejnym krokiem albo zakończ tu
   popraw skrypt/prompt i wznów `Workflow({scriptPath, resumeFromRunId})` —
   ukończone wywołania wracają z cache, nie płacisz za nie drugi raz. Nigdy nie
   odpalaj od zera bez diagnozy.
+- **Po `ESCALATE_AND_HALT`: diagnozę rób sam albo daj forkowi jawny zakaz Agent/Workflow.**
+  Diagnoza (czytanie diffa/journala po eskalacji) to dobry kandydat na fork —
+  oszczędza kontekst koordynatora. Ale „ZERO edycji plików, tylko raport" NIE
+  wystarcza jako mandat: to zakaz edycji, nie zakaz WYWOŁANIA narzędzi, które same
+  edytują. Fork z pełnym dostępem do narzędzi (dziedziczy go po Tobie) może
+  wywołać `Agent`/`Workflow`/`Task` i odpalić pełną kontynuację implementacji
+  bez Twojego przeglądu (incydent TS-SEC-TRUSTED-PROXY-001, api-2, 2026-08-31:
+  fork poproszony wyłącznie o raport sam uruchomił drugi `Workflow` — wave2 +
+  testy + bramka końcowa — bez autoryzacji). Prompt forka diagnostycznego MUSI
+  jawnie wymieniać zakaz: „NIE wywołuj Agent, Workflow ani Task — Twoim JEDYNYM
+  dozwolonym wyjściem jest raport tekstowy do mnie." I: żaden kolejny `Workflow`
+  nie startuje na podstawie diagnozy, której nie przejrzałeś Ty (lub człowiek).
 
 ## 3. Bramka końcowa i wyjście
 

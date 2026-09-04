@@ -211,6 +211,60 @@ try {
 } catch (e) { log('NO_GO: brak StructuredOutput w budżecie'); return { escalated: true } }
 `;
 
+// Regresja 2026-09-01 (TS-ARCH-HANDLER-CONTRACT-001 faza 5, juz-ide-api-3): celowo
+// SEKWENCYJNY skrypt blokowany trzema fałszywymi alarmami — WL2 na KOMENTARZU „zero
+// parallel()/pipeline()", WL2 na 7-liniowym helperze implementera (okno 4000 znaków
+// „ciała" połykało następne funkcje z verify), WL4 na weryfikatorze, którego `schema:`
+// siedziała za promptem dłuższym niż 600-znakowy snippet (prompt zawiera też '})'
+// w \${JSON.stringify(...)}), które dawne przycinanie brało za koniec opcji).
+const SEQUENTIAL_COMMENT_MENTIONS_PARALLEL = `
+export const meta = { name: 'impl-seqcomment', description: 'x', phases: [] }
+// Caly skrypt jest CELOWO sekwencyjny - zero parallel()/pipeline(). Jednostki
+// biegna po kolei, verify po kazdej jednostce, we wspolnym drzewie roboczym.
+async function runImplementAgent(prompt, opts) {
+  try { return await agent(prompt, opts) } catch (e) { log('impl padl'); return null }
+}
+phase('Domain')
+const impl = await runImplementAgent('zbuduj warstwe domain wg decision cards', { label: 'impl:domain' })
+const diff = await agent('run: git diff --stat', { label: 'gate:code-exists' })
+if (!diff || !diff.trim()) { log('ESCALATE: implementer nie zmienil plikow'); return { escalated: true } }
+phase('Verify')
+let v
+try {
+  v = await agent(\`=== WERYFIKACJA JEDNOSTKI domain ===
+Zakres WYLACZNIE: src/a.ts, src/b.ts. Pliki innych jednostek tej samej fali moga byc juz
+zmienione w working tree (fala biegnie sekwencyjnie) - to zamierzone, nie zanieczyszczenie
+zakresu. Sprawdz: (1) klasa bazowa NIE zostala zmieniona, (2) override w kazdym handlerze
+wola wylacznie stack.unwind() (lub jest trywialny), (3) niezmienniki TCC1-8 zachowane,
+(4) semantyka bledow (kody, Result.fail vs throw) identyczna z przed - tresc czytaj Readem
+na konkretnym pliku, (5) zero git checkout/restore/reset/stash w historii tej sesji.
+Wyniki sondy przyjmij jako fakt (checks: \${JSON.stringify(checks)}) i NIE uruchamiaj ich
+ponownie. LIMIT: budżet ok. 8 wywołań narzędzi — gdy się kończy, natychmiast wydaj werdykt.\`,
+    { label: 'verify:domain', agentType: 'code-quality-verifier', schema: VERDICT })
+} catch (e) { log('NO_GO: brak StructuredOutput w budżecie'); return { escalated: true } }
+if (v == null) { log('ESCALATE: verifier padł'); return { escalated: true } }
+`;
+
+// Kontr-przypadek chroniący pierwotny incydent WL2 (wf_23029d51-3a2): verify NAPRAWDĘ
+// ukryte w helperze wołanym z parallel() ma dalej blokować — realne ciało funkcji
+// (fnBodyAt) zawiera wywołanie weryfikatora, więc runUnit klasyfikuje się jako
+// verifier-helper mimo braku „verify" w samym wywołaniu parallel().
+const WL2_VERIFY_HIDDEN_IN_HELPER = `
+export const meta = { name: 'impl-wl2helper', description: 'x', phases: [] }
+async function runUnit(unit) {
+  const impl = await agent('zbuduj jednostke ' + unit, { label: 'impl:' + unit })
+  let v
+  try {
+    v = await agent('oceń jednostke (limit: 8 wywołań; jeśli budżet się kończy, natychmiast wydaj werdykt)', { label: 'verify:' + unit, agentType: 'code-quality-verifier', schema: VERDICT })
+  } catch (e) { return null }
+  return v
+}
+const results = await parallel(UNITS.map((u) => () => runUnit(u)))
+const okUnits = results.filter(Boolean)
+const diff = await agent('run: git diff --stat', { label: 'gate:code-exists' })
+if (!diff || !diff.trim()) { log('ESCALATE'); return { escalated: true } }
+`;
+
 const CASES = [
   { name: 'good-script-passes', src: GOOD, expectErrors: [], expectWarns: [] },
   { name: 'bad-script-wl1-wl2-wl3', src: BAD, expectErrors: ['WL1', 'WL2', 'WL3'], expectWarns: ['WL5'] },
@@ -227,6 +281,8 @@ const CASES = [
   { name: 'verify-via-builder-no-wl10', src: WL10_VIA_BUILDER, expectErrors: [], expectWarns: [] },
   { name: 'unwrapped-schema-errors-wl14', src: WL14_UNWRAPPED_SCHEMA, expectErrors: ['WL14', 'WL14'], expectWarns: [] },
   { name: 'no-delta-measure-warns-wl15', src: WL15_NO_DELTA_MEASURE, expectErrors: [], expectWarns: ['WL15'] },
+  { name: 'sequential-comment-mentions-parallel-passes', src: SEQUENTIAL_COMMENT_MENTIONS_PARALLEL, expectErrors: [], expectWarns: [] },
+  { name: 'verify-hidden-in-helper-errors-wl2', src: WL2_VERIFY_HIDDEN_IN_HELPER, expectErrors: ['WL2'], expectWarns: [] },
 ];
 
 let failed = 0;

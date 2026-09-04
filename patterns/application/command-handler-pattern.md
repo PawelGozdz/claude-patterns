@@ -33,6 +33,7 @@
 - `executeBusinessLogic()` implementation - ONLY orchestration
 - Dual Identity Pattern: Extract userId from `RequestContextService`, NEVER from command
 - `@Transactional()` on execute() method (inherited from BaseCommandHandler)
+- Optional `prepare(command): Promise<TPrepared>` hook — runs BEFORE `@Transactional()` opens, for I/O that must complete outside the transaction boundary (ADR-0117)
 - Result pattern: ALL methods return `Result<T, Error>`
 - ACL Registry for cross-context calls
 - LOGGER_SERVICE injection for structured logging
@@ -236,6 +237,161 @@ export class PostCommentHandler extends BaseCommandHandler<
 
 ---
 
+### Pre-Transaction Hook: `prepare()` (ADR-0117)
+
+**Problem**: some I/O must complete BEFORE the transaction opens — e.g. a cross-context ACL call resolving geo/reach data, where a timeout / `Promise.race()` cannot actually cancel a hung request. Calling that I/O from inside `executeBusinessLogic()` runs it *inside* the open `@Transactional()` block, holding a DB connection for the duration of an external call. An earlier ad-hoc fix (override `execute()` + cache the ACL result in a `WeakMap`/CLS key) shipped two incompatible caching mechanisms across contexts and a silent fallback that let the ACL re-enter mid-transaction — it produced a real bug in `create-event` and was rejected in review.
+
+**Solution**: `BaseCommandHandler<TCommand, TResult, TPrepared = void>` exposes an optional `prepare(command): Promise<TPrepared>` hook. It runs inside `runWithContext()` (so `RequestContextService` is available) but BEFORE `executeTransactional()` — the only method carrying `@Transactional()`. Its return value is passed as the second argument to `executeBusinessLogic(command, prepared)`. Default implementation is a no-op returning `undefined`, so the ~40 existing handlers with single-argument `executeBusinessLogic(command)` are unaffected (`TPrepared` defaults to `void`).
+
+```typescript
+// TPrepared shape (abridged — see create-local-share/handler.ts for the full type)
+type PreparedGeography = Result<
+  {
+    // ...pola geo... (category, shareLatitude, shareLongitude, city,
+    // isNonResidentPosting, nonResidentFee, resolvedLocation)
+    tokenReservationId: string | null; // ✅ seeded null by prepare() — see compensate() below
+    compensationReason: string | null; // ✅ seeded null by prepare() — see compensate() below
+  },
+  LocalSharesDomainError
+>;
+
+export class CreateLocalShareHandler extends BaseCommandHandler<
+  CreateLocalShareCommand,
+  Result<LocalShareDto, LocalSharesDomainError>,
+  PreparedGeography // ✅ TPrepared
+> {
+  // ✅ Runs BEFORE the transaction opens
+  protected async prepare(command: CreateLocalShareCommand): Promise<PreparedGeography> {
+    // ACL call to geographic-auth / pricing — outside the tx boundary
+    const geoResult = await this.resolveGeography(command);
+    if (geoResult.isFailure) return geoResult;
+    // tokenReservationId/compensationReason start null — nothing reserved yet
+    return Result.ok({ ...geoResult.value, tokenReservationId: null, compensationReason: null });
+  }
+
+  // ✅ Receives the already-resolved value, never re-calls the ACL itself
+  public async executeBusinessLogic(
+    command: CreateLocalShareCommand,
+    prepared: PreparedGeography
+  ): Promise<Result<LocalShareDto, LocalSharesDomainError>> {
+    if (prepared.isFailure) {
+      return Result.fail(prepared.error); // ✅ propagate, do NOT retry the ACL here
+    }
+    // ... aggregate creation using prepared.value
+  }
+}
+```
+
+**MUST**:
+- Use `prepare()` for I/O that has to finish before the transaction opens (typically an ACL Registry call whose failure mode can't be safely retried mid-transaction)
+- `executeBusinessLogic()` MUST consume the value `prepare()` already resolved — NEVER call the same ACL again inside the transaction "just in case"
+
+**MUST NOT**:
+- NEVER put transactional persistence logic in `prepare()` — it runs outside `@Transactional()`, so writes there are NOT rolled back on failure
+- NEVER silently swallow a `prepare()` failure — propagate it as `Result.fail()` from `executeBusinessLogic()`
+
+**Reference implementations**: `create-local-share/handler.ts`, `create-job-request/handler.ts` (neighborhood-economy); `create-group/handler.ts`, `update-group/handler.ts`, `set-group-reach/handler.ts`, `create-event/handler.ts`, `create-group-event/handler.ts`, `publish-event/handler.ts` (community-communication). **Known exception**: `publish-event/handler.ts` documents a fallback for a `prepare()`/`executeBusinessLogic()` race window — read ADR-0117's "Watch" section before copying that shape elsewhere. **UPDATE-shape reference**: `boost-local-share/handler.ts` (neighborhood-economy) — a deliberately NARROW `prepare()` (zero I/O) that only initializes the compensation carrier; see "Post-Rollback Compensation Hook" and "UPDATE-shape" below.
+
+**Full rationale + rejected alternatives**: ADR-0117.
+
+---
+
+### Post-Rollback Compensation Hook: `compensate()` (ADR-0118, B4)
+
+**Problem**: side effects that live OUTSIDE the `@Transactional()` boundary — most commonly a token-economy reservation made via a synchronous ACL call — do NOT roll back automatically when the transaction does. `@Transactional()` only undoes the DB writes inside `executeBusinessLogic()`; a token reservation confirmed/left dangling by an external service needs its own, explicit release.
+
+**Mechanism**: `BaseCommandHandler.compensate(command, prepared, error)` is called from `executeWithContext()`'s catch block, AFTER the transaction has already rolled back — and ONLY when `prepare()` itself ran to completion (tracked internally via a `prepareCompleted` flag, not "prepared is truthy", since `TPrepared` may legitimately be `void`). A failure INSIDE `prepare()` has nothing to compensate — nothing was reserved yet — so `compensate()` is skipped in that case. The only channel `compensate()` has to learn what happened during the transaction is the SAME `prepared` object `prepare()` returned and `executeBusinessLogic()` mutated — there is no other parameter carrying state forward.
+
+**Key consequence (falsified during Faza 2/3, drives a new rule)**: because `compensate()` is never invoked when `prepare()` itself fails, any operation that would need compensation on ITS OWN failure (e.g. reserving tokens) MUST run inside `executeBusinessLogic()` (the transactional core), never in `prepare()` — even when it's a pure ACL call with no DB access of its own. Putting it in `prepare()` would create a reservation with no way to release it if that very call is what fails. This is the new rule **CH12/N9** below.
+
+**Reference implementation** (`boost-local-share/handler.ts` — simpler than `create-local-share/handler.ts`, which additionally has a `CONFIRM_FAILED` exception path, see below):
+
+```typescript
+interface PreparedBoost {
+  tokenReservationId: string | null;
+  compensationReason: string | null;
+}
+
+protected override async prepare(_command: BoostLocalShareCommand): Promise<PreparedBoost> {
+  return { tokenReservationId: null, compensationReason: null };
+}
+
+// ...in executeBusinessLogic(), after each failure that follows a successful reservation:
+//   prepared.compensationReason = 'DOMAIN_VALIDATION_FAILED'; // (or another specific reason)
+//   return Result.fail(...);
+
+protected override async compensate(
+  _command: BoostLocalShareCommand,
+  prepared: PreparedBoost,
+  _error: Error
+): Promise<void> {
+  const { tokenReservationId: reservationId, compensationReason: reason } = prepared;
+  if (!reservationId || !reason) return;
+  await this.tokenReservationService.releaseReservation({
+    reservationId,
+    actionType: TOKEN_ACTION_TYPE,
+    radiusBucket: TOKEN_RESERVATION_BUCKET_SENTINEL,
+    reason,
+  });
+}
+```
+
+**Known exception**: `create-local-share/handler.ts` has one path (`CONFIRM_FAILED`) where compensation is done MANUALLY instead of going through this hook — it has a hard ordering requirement with a Tier-2 audit entry (the audit call must happen AFTER the reservation is released but BEFORE the rollback; `compensate()` by definition runs AFTER the rollback, which is too late for that ordering). Read that handler's `CONFIRM_FAILED` branch as the documented boundary of this pattern before assuming `compensate()` covers every release path.
+
+**MUST**:
+- Seed the mutable `prepared` carrier's compensation fields (e.g. `tokenReservationId`, `compensationReason`) to `null`/unset in `prepare()`
+- Set `compensationReason` (or equivalent) in EVERY `executeBusinessLogic()` failure branch that follows a successful external reservation
+- Keep `compensate()`'s scope to ONLY what this handler itself called directly — never a queue/fan-out/event publish (that consumer owns its own retry semantics)
+
+**MUST NOT**:
+- NEVER reserve an external resource that needs compensation-on-failure inside `prepare()` — see CH12/N9 below
+- NEVER let a `compensate()` error shadow the original business failure already being returned — log and continue, as `BaseCommandHandler` does
+
+---
+
+### CREATE-shape vs. UPDATE-shape (ADR-0118 A2–A4)
+
+The three-phase split (`prepare()` / `executeBusinessLogic()` / `compensate()`) looks different depending on whether the handler creates a NEW aggregate or mutates an EXISTING one. Deciding which phase an operation belongs to comes down to one question: **does it need an ID created inside this transaction, or does it have to roll back together with the save?** Yes → the transactional core. No → `prepare()`.
+
+#### CREATE-shape
+
+`prepare()` is typically NON-EMPTY: it resolves I/O that has to finish before the transaction opens — geo/pricing ACL calls, target-area geometry, non-resident eligibility — because none of that depends on an aggregate ID that doesn't exist yet. `executeBusinessLogic()` then builds a brand-new aggregate from the already-resolved bundle. **Reference**: `create-local-share/handler.ts`.
+
+A CREATE-shape handler with more than one input path (e.g. explicit `command.location` vs. a server-synthesized default) is exactly where "Branch Side-Effect Parity" (below) applies — and where branching is legitimate vs. where it's a hidden duplication bug depends on WHY the branch exists. Four recurring classes, each with its own resolution:
+
+| Class | Example | Resolution |
+|---|---|---|
+| 1. Optional input | `if (command.location)` | A resolver that returns the SAME type in both cases; assign the result to a variable, don't fork the flow |
+| 2. Disjoint union | `actingAs.type === 'SP' \| 'ORGANIZATION'` | An exhaustive `switch` returning a shared shape + a `const x: never` default to catch an unhandled case at compile time |
+| 3. Aggregate state | `if (event.isPublished)` | An aggregate method that itself rejects the disallowed transition — never an `if` in the handler |
+| 4. Product policy | organization vs. individual actor | A NAMED policy with an explicit variant (`PolicyBuilder`/`.forActor(...)`), never an inline conditional scattered across the handler |
+
+A conditional **value** (one decision, one variable, used identically afterward) is fine anywhere, including inside the transaction. A conditional **flow** (two branches each with their own `create`/`save`/side-effects/`return`) is what "Branch Side-Effect Parity" exists to catch.
+
+#### UPDATE-shape
+
+`prepare()` is typically EMPTY or NARROW — an empty `prepare()` is CORRECT here, not a gap to fill. Do NOT add a "preview" read just to satisfy the general "I/O before the transaction" instinct; there is nothing to resolve before the transaction when the operation's only job is to mutate an aggregate that already exists. The mutated aggregate is ALWAYS loaded WITH a lock (`findByIdWithLock()`) INSIDE the transactional core — NEVER in `prepare()`, which has no lock semantics and would let a concurrent write race the load. When the handler also needs a compensable side effect (e.g. a token reservation for a paid update), `prepare()` stays narrow: it seeds the mutable compensation carrier (`{ tokenReservationId: null, compensationReason: null }`) with zero I/O — see `compensate()` above for why the reservation call itself still has to happen inside `executeBusinessLogic()`. **Reference**: `boost-local-share/handler.ts` — the lock (`findByIdWithLock`) happens BEFORE the pricing quote/reservation, and both live inside the transactional core.
+
+---
+
+### Branch Side-Effect Parity
+
+**Problem**: a handler with more than one code path that creates/finalizes the SAME aggregate (e.g. `if (command.location) { ... } else { ... }` for an explicit vs. a server-synthesized location) duplicates the entire creation flow across both branches instead of sharing one. When a mandatory side-effect is added later — a repository side-channel write (`setTag`, `setCategorySlug`), an audit call, an event emission, a token confirm/release — it is easy to add it to only the branch under active edit and forget the other. This is not hypothetical: `create-local-share/handler.ts`'s `setTag()` call (BR-LS-TAG-001 — "every local share carries EXACTLY ONE transaction-type tag") was added to the explicit-location branch only, and survived 39 subsequent commits — including one that later restructured the OTHER branch without noticing the gap — because nothing in the review chain (implementer scope, `code-quality-verifier`'s structural checklist, test coverage) ever compared the two branches' side-effects against each other. Neither branch had a test asserting `setTag` was called at all (found 2026-08-29, `juz-ide-api-3`).
+
+**Solution**: when a handler has multiple branches that create/finalize the same aggregate, either (a) unify them into one shared finalization path so there is structurally only one place to add a side-effect, or — if the branches must stay separate for now — (b) enumerate every mandatory side-effect (repo side-channel writes, audit calls, event emissions, token confirm/release) and verify it is present, at the equivalent point in the lifecycle, in EVERY branch. Reading one branch at a time cannot catch this — it requires reading the branches side-by-side and diffing their side-effects, and a test per side-effect per branch (not just per branch's happy path).
+
+**MUST**:
+- When adding a mandatory side-effect (audit call, tag/side-channel repo write, event emission, token confirm/release) to one branch of a multi-branch aggregate-creation handler, add the SAME call to every other branch that creates/finalizes the same aggregate
+- Prefer extracting a shared private/collaborator finalization method once ≥2 branches need to stay in sync, so there's structurally only one place left to edit
+
+**MUST NOT**:
+- NEVER treat "the branch I'm currently editing" as the full scope when the change enforces a mandatory business invariant (`BR-*`) rather than a branch-local detail
+- NEVER consider a multi-branch handler's test coverage complete without at least one test per branch asserting each mandatory side-effect was called (not just that the branch returns success)
+
+**Reference incident**: `create-local-share/handler.ts` (`juz-ide-api-3`), BR-LS-TAG-001 — residence-default branch never called `setTag()`; fixed as a `TS-SEC-MAP-PIN-001` follow-up, 2026-08-29.
+
+---
+
 ## 📋 Rules
 
 ### MUST
@@ -248,8 +404,10 @@ export class PostCommentHandler extends BaseCommandHandler<
 6. **Result pattern**: `executeBusinessLogic()` returns `Result<DTO, Error>`
 7. **Orchestration ONLY**: Load data, call aggregate methods, persist - NO business rules
 8. **ACL Registry**: Cross-context calls via `aclRegistry.getGlobalRequired<T>()`
-9. **@Transactional**: Inherited from BaseCommandHandler, auto-commit on success, auto-rollback on error
+9. **@Transactional**: Inherited from BaseCommandHandler, auto-commit on success, auto-rollback on error. Pre-transaction I/O (e.g. ACL calls) belongs in `prepare()`, which runs before the transaction opens (ADR-0117) — NEVER inside `executeBusinessLogic()`
 10. **Error handling**: Return `Result.fail(error)`, NEVER throw exceptions
+11. **Branch side-effect parity**: if `executeBusinessLogic()`/`prepare()` has multiple branches that create/finalize the same aggregate, every mandatory side-effect (audit call, side-channel repo write, event emission, token confirm/release) MUST be present in EVERY branch, at the equivalent lifecycle point — see "Branch Side-Effect Parity" above
+12. **External operation needing compensation-on-failure belongs in `executeBusinessLogic()`**: a reservation of an external resource (e.g. a token-economy reservation) that would need `compensate()` to release it on failure MUST be made inside `executeBusinessLogic()` (the transactional core), NEVER in `prepare()` — `compensate()` is never invoked when `prepare()` itself fails (ADR-0118 B4), so nothing reserved there has any way to be released if that same call is what fails — see "Post-Rollback Compensation Hook" above
 
 ### MUST NOT
 
@@ -260,6 +418,9 @@ export class PostCommentHandler extends BaseCommandHandler<
 5. **NEVER direct context imports** - use ACL Registry for cross-context calls
 6. **NEVER manual transaction management** - @Transactional handles it
 7. **NEVER forget correlation ID** - auto-added by BaseCommandHandler
+8. **NEVER re-run pre-transaction I/O inside `executeBusinessLogic()`** - if it must finish before the transaction opens, it belongs in `prepare()`, and its result is consumed, not re-fetched (ADR-0117)
+9. **NEVER add a mandatory side-effect to only the branch you're editing** - a multi-branch aggregate-creation handler needs the same audit/tag/event/token call in every branch that creates the aggregate, not just the one under active change
+10. **NEVER reserve an external resource that needs `compensate()` on failure inside `prepare()`** - there is no channel to release it if THAT reservation is what fails, since `compensate()` only runs when `prepare()` completed (ADR-0118 B4)
 
 ---
 
@@ -706,6 +867,8 @@ describe('CreateUserProfileHandler (L2)', () => {
 - **ADR-0012**: CQRS Structure - Command/Query separation
 - **ADR-0013**: Hybrid Error Handling - Result pattern in application layer
 - **ADR-0021**: Validation Layer Separation - Format validation at API, business rules in domain
+- **ADR-0117**: Pre-Transaction `prepare()` Hook - I/O that must complete before the transaction boundary opens
+- **ADR-0118**: Command Handler Lifecycle Contract - `compensate()` post-rollback hook (B4), CREATE-shape/UPDATE-shape (A2-A4)
 
 ### Implementation Files
 - `src/contexts/engagement/application/commands/post-comment/handler.ts` (~250L)
@@ -713,12 +876,12 @@ describe('CreateUserProfileHandler (L2)', () => {
 - `src/shared/application/base/base-command-handler.ts` (base class)
 
 ### Related Patterns
-- **aggregate-pattern.md** - Aggregates handle business rules
-- **dual-identity-pattern.md** - userId from RequestContext, NEVER command
-- **transactional-pattern.md** - @Transactional for transaction management
-- **acl-registry-pattern.md** - Cross-context calls via ACL Registry
-- **domain-errors-pattern.md** - ProjectErrorCode for errors
-- **query-handler-pattern.md** - Read-side CQRS handlers
+- [aggregate-pattern.md](../domain/aggregate-pattern.md) - Aggregates handle business rules
+- [dual-identity-pattern.md](../architecture/dual-identity-pattern.md) - userId from RequestContext, NEVER command
+- [transactional-pattern.md](../architecture/transactional-pattern.md) - @Transactional for transaction management
+- [acl-registry-pattern.md](../architecture/acl-registry-pattern.md) - Cross-context calls via ACL Registry
+- [domain-errors-pattern.md](../cross-layer/domain-errors-pattern.md) - ProjectErrorCode for errors
+- [query-handler-pattern.md](query-handler-pattern.md) - Read-side CQRS handlers
 
 ---
 
@@ -746,11 +909,32 @@ describe('CreateUserProfileHandler (L2)', () => {
 
 ---
 
-**Version**: 2.0
+**Version**: 2.3
 **Created**: 2026-01-04
-**Last Updated**: 2026-02-05
+**Last Updated**: 2026-08-31
 **Maintained By**: @project-orchestrator
 **Primary Users**: domain-application-implementer, code-quality-verifier
+
+**v2.3 Changes** (2026-08-31):
+- Added "CREATE-shape vs. UPDATE-shape" subsection (ADR-0118 A2–A4) — prepare()/executeBusinessLogic()/compensate() phase assignment criterion, plus the 4-class branch taxonomy table (optional input / disjoint union / aggregate state / product policy) for handlers with multiple aggregate-creation paths
+- Added "Post-Rollback Compensation Hook: `compensate()`" subsection (ADR-0118 B4) — mechanism, `prepareCompleted` gating, and the reference `boost-local-share/handler.ts` implementation
+  - New MUST rule 12 and MUST NOT rule 10: an external operation needing compensation-on-failure MUST live in `executeBusinessLogic()`, NEVER `prepare()` — `compensate()` is never invoked when `prepare()` itself fails
+  - Corresponding Rule Card ID `CH12`/`N9` added to `command-handler-pattern_summary.md`
+- Refreshed the `prepare()` code example to the current (post-Faza-2) `PreparedGeography` shape — `tokenReservationId`/`compensationReason` fields, abridged type
+- Added `boost-local-share/handler.ts` (neighborhood-economy) to "Reference implementations" as the UPDATE-shape example — narrow `prepare()`, lock-before-quote/reserve inside the transactional core
+- Added ADR-0118 to References
+
+**v2.2 Changes** (2026-08-29):
+- Added "Branch Side-Effect Parity" subsection — a multi-branch aggregate-creation handler must apply every mandatory side-effect (audit, side-channel repo write, event emission, token confirm/release) identically across ALL branches, not just the one being edited
+  - New MUST rule 11 and MUST NOT rule 9
+  - Root-caused from a real incident: `create-local-share/handler.ts` (`juz-ide-api-3`) never called `setTag()` on its residence-default branch, silently violating BR-LS-TAG-001 for every share created without an explicit location — survived 39 commits because no reviewer or test ever diffed the two branches' side-effects
+  - Corresponding Rule Card ID `CH11` added to `command-handler-pattern_summary.md`
+
+**v2.1 Changes** (2026-08-29):
+- Documented the `prepare()` pre-transaction hook (`TPrepared` generic on `BaseCommandHandler`) — ADR-0117, introduced in `TS-REACH-GEOMETRY-002`
+  - New "Pre-Transaction Hook: `prepare()`" subsection with MUST/MUST NOT and reference implementations
+  - Added corresponding MUST/MUST NOT entries in Rules, referenced ADR-0117 in References
+  - Fixed `transactional-pattern.md` reference to a real relative link (`../architecture/transactional-pattern.md`)
 
 **v2.0 Changes** (2026-02-05):
 - **MAJOR**: Module Registration section rewritten for `@CommandHandler` auto-discovery

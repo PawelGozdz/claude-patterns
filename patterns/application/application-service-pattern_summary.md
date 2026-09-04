@@ -19,6 +19,11 @@
 - **AS7** — cross-context: integracja z innymi kontekstami WYŁĄCZNIE przez `IntegrationEventBus` lub ACL Registry — nigdy bezpośrednie wywołanie serwisu innego kontekstu.
 - **AS8** — saga z kompensatą: przy multi-step gromadź `compensations[]` i wywołaj `compensate()` przy błędzie (odwrócona kolejność).
 - **AS9** — prosty CRUD (jeden command/query) — użyj handlera bezpośrednio, BEZ dodatkowego serwisu aplikacyjnego.
+- **AS10** — ≥3 handlery w JEDNYM kontekście dzielą wieloetapowy PROTOKÓŁ ZE STANEM (np. reserve→confirm/release, TCC) — wydziel serwis aplikacyjny per kontekst (ADR-0118 C2, próg z audytu handlerów). Referencja: `TokenReservationService` (`neighborhood-economy/application/services/token-reservation.service.ts`).
+
+**Uwaga (nie mylić)**: `compensations[]`/`compensate()` z tej karty (AS8) to saga na poziomie
+serwisu aplikacyjnego, BEZ jednej transakcji DB. To INNY mechanizm niż `BaseCommandHandler.compensate()`
+(`command-handler-pattern.md`) — hak NA HANDLERZE, wołany PO rollbacku JEDNEJ transakcji DB.
 
 ## MUST NOT
 - **N1** — ❌ `throw` — zawsze `Result.fail(new XxxError(...))` lub przepuść błąd przez `if (result.isFailure) return Result.fail(result.error)`.

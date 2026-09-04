@@ -34,6 +34,12 @@ patterns:
     description: "Audit handlers with method-level @EventHandler (v2.0)"
     version: "2.0"
 
+  - name: try-confirm-cancel-pattern.md
+    stacks: [typescript]
+    maturity: experimental
+    last_verified: 2026-08-31
+    description: "Per-context application service for a reserve->confirm/release (TCC) protocol once it appears in >=3 handlers; generic params, one generic error type, per-caller translation"
+
 notes: |
   Handler patterns (v2.0) use decorator-based auto-discovery.
   No manual registration in module providers required.

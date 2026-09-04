@@ -4,9 +4,9 @@
 
 This knowledge base contains production-enforced patterns for DDD/CQRS projects. Each pattern is derived from real implementations (2-3 verified code examples) and includes comprehensive anti-patterns sections.
 
-**Version**: 3.11
-**Last Updated**: 2026-08-27
-**Status**: PRODUCTION (50 core patterns + 45 stack-specific + 1 marketing + 2 finance + 2 legal = 100 total)
+**Version**: 3.13
+**Last Updated**: 2026-08-31
+**Status**: PRODUCTION (54 core patterns + 45 stack-specific + 1 marketing + 2 finance + 2 legal = 104 total)
 
 **⚠ project-specific** marker = derived from ONE project's codebase, not yet validated in a second
 one. Marked in the pattern's own `**Scope**:` line (see `CLAUDE.md` → "Adding a New Pattern"). These
@@ -19,7 +19,7 @@ to opt in. Promote to plain "Production" once a second project adopts the same s
 
 ```
 patterns/
-├── domain/              # Domain Layer (core business logic) - 6 patterns
+├── domain/              # Domain Layer (core business logic) - 7 patterns
 ├── application/         # Application Layer (CQRS handlers) - 4 patterns
 ├── infrastructure/      # Infrastructure Layer (persistence, API) - 5 patterns
 ├── architecture/        # Cross-cutting architecture patterns - 11 patterns
@@ -46,7 +46,7 @@ patterns/
 
 ## 📋 Pattern Index
 
-### Domain Layer (6 patterns)
+### Domain Layer (8 patterns)
 
 Core business logic patterns following DDD principles.
 
@@ -58,6 +58,8 @@ Core business logic patterns following DDD principles.
 | **[entity-pattern.md](domain/entity-pattern.md)** | ~550 | Production | Entities with identity-based equality, NO domain events, simple CRUD | domain-application-implementer |
 | **[specification-policy-pattern.md](domain/specification-policy-pattern.md)** | 319 | Production | PolicyBuilder.must() pattern, Specifications as single source of truth | domain-application-implementer |
 | **[domain-service-pattern.md](domain/domain-service-pattern.md)** | 320 | Production | Cross-aggregate business logic, stateless services, pure domain (NO infrastructure) | domain-application-implementer |
+| **[moderated-edit-buffer-pattern.md](domain/moderated-edit-buffer-pattern.md)** | ~230 | ⚠ project-specific (juz-ide-api-1) | Edit buffer VO for editing already-approved live moderated content without hiding it; revision-fencing extension for manual (human) moderation decisions | domain-application-implementer |
+| **[named-policy-pattern.md](domain/named-policy-pattern.md)** | ~180 | experimental | One named `createXxxPolicy()` composing the specifications that gate one class of content/action; handler calls it once, variant behavior resolved at construction not at the call site | domain-application-implementer |
 
 **Domain Layer Key Principles**:
 - Factory methods: `create()` vs `reconstituteFromPersistence()`
@@ -70,7 +72,7 @@ Core business logic patterns following DDD principles.
 
 ---
 
-### Application Layer (4 patterns)
+### Application Layer (5 patterns)
 
 CQRS command and query handlers, application services for complex workflows.
 
@@ -80,6 +82,7 @@ CQRS command and query handlers, application services for complex workflows.
 | **[query-handler-pattern.md](application/query-handler-pattern.md)** | ~400 | Production | Read-side CQRS, pagination, user context, read models; self-scoped queries read userId from RequestContextService (ARCH-D001) | domain-application-implementer |
 | **[application-service-pattern.md](application/application-service-pattern.md)** | 375 | Production | Multi-step workflows, saga pattern, integration events, cross-context orchestration | domain-application-implementer |
 | **[audit-handler-pattern.md](application/audit-handler-pattern.md)** | ~450 | Production | GDPR audit logging, tier classification, BaseAuditHandler extension | domain-application-implementer, infrastructure-testing-implementer |
+| **[try-confirm-cancel-pattern.md](application/try-confirm-cancel-pattern.md)** | ~220 | experimental | Per-context application service for a reserve→confirm/release (TCC) protocol once it appears in ≥3 handlers; generic params, one generic error type, per-caller translation | domain-application-implementer |
 
 **Application Layer Key Principles**:
 - Dual Identity Pattern: userId from `RequestContextService`, NEVER from command
@@ -177,7 +180,7 @@ Testing strategies and patterns for all levels of the test pyramid.
 
 ---
 
-### Cross-Layer Patterns (6 patterns)
+### Cross-Layer Patterns (7 patterns)
 
 Patterns used across all architectural layers.
 
@@ -191,6 +194,7 @@ Patterns used across all architectural layers.
 | **[safe-error-propagation-pattern.md](cross-layer/safe-error-propagation-pattern.md)** | ~350 | Production | 3-layer defense against infra error leakage to HTTP (TS-SEC-011) | All implementers |
 | **[security-invariants-pattern.md](cross-layer/security-invariants-pattern.md)** | — | Production | (pre-existing, previously missing from this index) | All implementers |
 | **[snapshot-incremental-review-pattern.md](cross-layer/snapshot-incremental-review-pattern.md)** | ~90 | Production | Hash-per-item snapshot + diff for cheap incremental re-review | review-panel, api-contract-sync skills |
+| **[dto-mapper-pattern.md](cross-layer/dto-mapper-pattern.md)** | ~170 | experimental | One named `toXxxResult()` assembling a command handler's response DTO; consolidates any derived field (e.g. a computed boolean) to a single rule instead of one per return path | domain-application-implementer |
 
 **Cross-Layer Key Principles**:
 - Domain Errors: ErrorCode enum as single source of truth, Result<T> pattern everywhere
@@ -448,6 +452,59 @@ hook `check-gpu-patterns.js`.
 ---
 
 ## 🔄 Pattern Updates
+
+**Version 3.13** (2026-08-31):
+- Added application/try-confirm-cancel-pattern.md + rule card. Derived from
+  `TS-ARCH-HANDLER-CONTRACT-001` rule C2 and the real reserve→confirm/release protocol in
+  `neighborhood-economy`'s `token-reservation.service.ts` (referenced by
+  `create-local-share`/`boost-local-share` handlers). Documents the ≥3-handler threshold for
+  promoting a stateful multi-step protocol out of individual handlers into a per-context
+  application service, and the key property that keeps that service reusable: it is generic
+  over `feature`/`actionType`/`radiusBucket`/`contextEntityId` (caller-supplied), raises one
+  generic `TokenReservationError{kind, code}`, and leaves translation to each caller's own
+  domain error — the service itself never knows which context called it.
+- Added cross-layer/dto-mapper-pattern.md + rule card. Derived from rule E2 of the same task
+  and `create-local-share-result.mapper.ts`'s `toCreateLocalShareResult()`. Motivating
+  anti-pattern: before the refactor, `paymentRequired` was computed by two different rules in
+  one handler (one branch hardcoded `false`, another derived it from fee) — the mapper
+  consolidates response assembly to one named function with one rule per derived field.
+- Added domain/named-policy-pattern.md + rule card. Derived from the same task's "Nazwana
+  polityka per klasa treści" section. Motivating anti-pattern: `BR-QJ-QUOTA-001` was cited in
+  two `BUSINESS_RULES.yaml` files while hanging on a dead specification the production code
+  path never executes — a symptom of gates being an ad-hoc sequence of calls scattered through
+  the handler instead of one named, composed object. Establishes the policy-is-a-gate-not-a-
+  router rule (handler reacts to the verdict only via early return; variant behavior is
+  resolved when the policy is *constructed*, e.g. `.forActor(marketClass)`, never at the call
+  site) and the VO/aggregate/policy decision test: can the answer change later without
+  invalidating the object? Yes → policy (a snapshot of the moment of action); no → invariant
+  (aggregate/VO, checked there even if a policy also checks it earlier — the double check is
+  intentional).
+- These 3 patterns land in the same working tree as `domain/moderated-edit-buffer-pattern.md`
+  (added in Version 3.12 above, from the unrelated `TS-CC-EVT-MOD-VISIBILITY-001` /
+  juz-ide-api-1 task) — the two changes are independent and were authored by different units of
+  work; this entry covers only the 3 patterns above. Combined with 3.12, domain goes from 6 to
+  8 patterns (+moderated-edit-buffer, +named-policy), not +1.
+  Total patterns: 104 (was 101).
+
+**Version 3.12** (2026-08-31):
+- Added domain/moderated-edit-buffer-pattern.md + rule card. Extracted from
+  `GroupPostPendingEdit`/`GroupPostAggregate` (the only working reference at the time)
+  while designing the same mechanism for `EventAggregate` (`TS-CC-EVT-MOD-VISIBILITY-001`):
+  editing already-approved, live moderated content must go into a separate buffer instead
+  of resetting the live moderation status and hiding the item from everyone but the owner.
+  Documents two variants (full-content copy vs field-level `Partial`) plus a **revision
+  fencing** extension that is mandatory the moment a human moderator (not just an
+  automated consumer) can decide on the buffer — without it, a stale decision can approve
+  content the reviewer never saw (TOCTOU), carrying their signature. Writing this pattern
+  surfaced a real, unresolved gap in the reference implementation itself:
+  `GroupPostAggregate.applyModerationDecision()` has a manual-decision code path
+  (`moderatorId`) but no revision counter and no fencing at all — flagged as
+  Anti-Pattern 1 and tracked as `GAP-GROUPS-PENDING-EDIT-FENCING-001` in
+  `docs/security/security-gaps.md` (juz-ide-api-1), not fixed here (out of scope for the
+  events task that prompted this pattern).
+  Marked `project-specific (juz-ide-api-1)` — only one project has built this shape twice
+  (group posts, events) inside itself; promote once a second, independent project adopts it.
+  Total patterns: 101 (was 100).
 
 **Version 3.11** (2026-08-10):
 - Added infrastructure/geo-spatial-query-pattern.md + rule card + `rules/nestjs-ddd/geo-spatial-query.md`.

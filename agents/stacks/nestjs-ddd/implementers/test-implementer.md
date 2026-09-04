@@ -316,6 +316,15 @@ actual files yourself rather than expecting them pasted into your prompt.
   `{context}-core.e2e.spec.ts` and `{context}-security.e2e.spec.ts`.
 - **Never mock what you're testing** — mock collaborators/dependencies, not the unit under test.
 - **`safeRun` test helper + L1/L2/L3 examples** → `testing/testing-pyramid-pattern.md`.
+- **NEVER run `pnpm test:e2e -- <file...>` or `pnpm test:integration -- <file...>` with a
+  literal `--`** — pnpm forwards it straight into the underlying vitest command's argv,
+  which silently drops the file filter and runs the ENTIRE suite (e2e: often hundreds of
+  files, ~1h) instead of your target file(s). Always `pnpm test:e2e <file...>` /
+  `pnpm test:integration <file...>`, no `--`. This has caused real incidents — accidentally
+  holding a shared per-repo heavy-test flock for the whole run, blocking every other
+  session/agent in that repo (see also "HARD RULE: anything that emits SQL is L2" above).
+  Applies regardless of how you were invoked — a fresh/bare invocation without this file's
+  context is not an excuse to improvise pnpm flags on these two scripts.
 
 ---
 
@@ -347,6 +356,7 @@ rule before you assert anything.
 
 ## Changelog
 
+- 2026-09-04 — HARD RULE: nigdy `pnpm test:e2e -- <file>` / `pnpm test:integration -- <file>` z literalnym `--` (pnpm przekazuje je do vitest, filtr plików znika i leci cały suite ~1h, trzymając współdzielony flock repo); zawsze bez `--`
 - 2026-08-27 — `tools:` frontmatter field normalized from multi-line to single-line YAML
   (matches convention of every other agent in the repo); `validate-agents.js` required the
   field non-empty and the multi-line style parsed as empty, so the file failed CI validation

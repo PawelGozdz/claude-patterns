@@ -20,6 +20,8 @@
 - **CH8** — transakcja obsługiwana przez `@Transactional` dziedziczone z `BaseCommandHandler` — auto-commit i auto-rollback.
 - **CH9** — telemetria: `getOperationName()` i `getBoundedContext()` muszą być zaimplementowane.
 - **CH10** — handler dodany do tablicy `providers` w module — wystarczy do auto-discovery przez `VytchesExplorerService`.
+- **CH11** — jeśli `executeBusinessLogic()`/`prepare()` ma WIĘCEJ NIŻ JEDNĄ gałąź warunkową tworzącą/finalizującą TEN SAM agregat (np. `if (command.location) {...} else {...}`), każdy obowiązkowy side-effect (audit call, side-channel repo write typu `setTag`, event emission, token confirm/release) MUSI wystąpić w KAŻDEJ gałęzi, w tym samym miejscu cyklu życia. Weryfikuj przez zestawienie side-effectów obu gałęzi obok siebie — czytanie jednej gałęzi osobno tego nie złapie (real incident: `create-local-share/handler.ts`, BR-LS-TAG-001, `setTag()` brakujące w gałęzi residence-default przez 39 commitów).
+- **CH12** — operacja zewnętrzna wymagająca kompensacji na porażkę (np. rezerwacja tokenów) MUSI wykonać się w `executeBusinessLogic()` (rdzeń transakcyjny), NIGDY w `prepare()` (ADR-0118 B4). `compensate(command, prepared, error)` — hak wołany PO rollbacku — nigdy się nie odpala, gdy porażka jest WEWNĄTRZ `prepare()`, więc nic zarezerwowanego tam nie ma kanału do zwolnienia.
 
 ## MUST NOT
 - **N1** — ❌ `userId` w klasie Command — userId pochodzi z JWT (RequestContext), nie z body (luka bezpieczeństwa, ADR-0021).
@@ -29,6 +31,8 @@
 - **N5** — ❌ bezpośredni import z innego kontekstu (`@contexts/other-context/...`) — wymagane ACL Registry.
 - **N6** — ❌ ręczne `commandBus.register()` ani injekcja `CommandBus` w module — auto-discovery przez `@CommandHandler`.
 - **N7** — ❌ brak `@Inject()` przy dowolnej zależności konstruktora.
+- **N8** — ❌ dodanie obowiązkowego side-effectu (audit, tag, event, token confirm/release) tylko do gałęzi aktualnie edytowanej, gdy handler ma ≥2 gałęzie tworzące/finalizujące ten sam agregat — patrz CH11.
+- **N9** — ❌ rezerwacja zasobu zewnętrznego wymagającego `compensate()` na porażkę, wywołana WEWNĄTRZ `prepare()` — brak kanału do jej cofnięcia, gdy TA konkretna rezerwacja zawiedzie (patrz CH12).
 
 ## Minimal correct skeleton
 ```ts
@@ -112,5 +116,7 @@ export class XxxHandler extends BaseCommandHandler<
 | brak `@CommandHandler(CommandClass)` lub `@Injectable()` | CH2 |
 | handler nie rozszerza `BaseCommandHandler` | CH1 |
 | brak `getOperationName()` lub `getBoundedContext()` | CH9 |
+| ≥2 gałęzie tworzące ten sam agregat, side-effect (setTag/audit/event/token confirm) obecny tylko w jednej | CH11 / N8 |
+| rezerwacja/side-effect-do-kompensacji wołane wewnątrz `prepare()` | CH12 / N9 |
 
 **Pełny wzorzec**: [`command-handler-pattern.md`](./command-handler-pattern.md)

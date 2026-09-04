@@ -224,6 +224,19 @@ Tier 1 events (GDPR Art.32 compliance) MUST use outbox:
 
 ---
 
+## Rollback survival taxonomy (ADR-0118 B4)
+
+| Mechanism | When | Survives rollback? |
+|---|---|---|
+| Domain event → in-process handler | before commit, same tx, awaited | No — rolls back together |
+| `outboxService.saveMessage` | before commit, same tx | No — atomic (by design) |
+| Direct `queue.add`/`fanOut()` | before commit, Redis | Yes, unconditionally |
+
+A domain event handler is allowed to make ONLY two kinds of call: DB writes and
+`outboxService.saveMessage` — NEVER a direct `queue.add`/`fanOut()` (see Anti-Pattern 1/2 above).
+`compensate()` (`command-handler-pattern.md`) covers ONLY what the handler itself called
+directly — never a side effect some OTHER event handler produced downstream of it.
+
 ## 📚 References
 
 - ADR-0027: Audit Event Selection (3-tier GDPR-compliant logging)

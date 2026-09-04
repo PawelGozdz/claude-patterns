@@ -18,6 +18,7 @@
 - **ACL7** — metody adaptera zwracają `Result<T, Error>` — hybrid error handling, nigdy wyjątek.
 - **ACL8** — moduł konsumenta importuje tylko `ACLModule` (globalny), nie moduł dostawcy.
 - **ACL9** — adapter pobierany wewnątrz metody (nie w konstruktorze) — gwarancja kolejności inicjalizacji.
+- **ACL10** — fail-closed default: `aclRegistry.getGlobalRequired()`, NIGDY `getGlobal()`, gdy operacja jest już wyceniona/obiecana/kosztuje użytkownika (ADR-0118 B1).
 
 ## MUST NOT
 - **N1** — ❌ `import { XxxModule } from '@contexts/xxx/xxx.module'` w innym kontekście — tworzy circular dep i łamie izolację BC.
@@ -25,6 +26,7 @@
 - **N3** — ❌ `this.adapter = this.aclRegistry.getGlobalRequired(...)` w konstruktorze — adapter może nie być jeszcze zarejestrowany.
 - **N4** — ❌ `throw` z metody adaptera — zawsze `Result.fail(new Error(...))`.
 - **N5** — ❌ `implements OnModuleInit` pominięte w module dostawcy — adapter nigdy nie trafi do rejestru.
+- **N6** — ❌ połykanie błędu ACL bez klasyfikacji infra (5xx) vs. odmowa domenowa (4xx) przed zwróceniem go dalej (ADR-0118 B2).
 
 ## Minimal correct skeleton
 ```ts

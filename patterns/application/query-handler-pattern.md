@@ -194,6 +194,12 @@ export class GetCommentsForTargetHandler extends BaseQueryHandler<
 
 ## 📋 Rules
 
+**Note**: Query handlers do NOT get a `prepare()`/`compensate()` hook (ADR-0118) — that is
+exclusively a `BaseCommandHandler` mechanism. Caveat: `BaseQueryHandler.execute()` today is NOT
+wrapped in `runWithContext()`, unlike the command side — a potential issue when a query handler
+is invoked directly in an integration test, noted here as a fact for a separate check under
+TS-ARCH-HANDLER-CONTRACT-001, out of scope for this change.
+
 ### MUST
 
 1. **Extend `BaseQueryHandler<Query, Result<DTO, Error>>`**

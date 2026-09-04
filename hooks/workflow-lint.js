@@ -105,19 +105,115 @@
  *                a skrypt spalił drugą pełną próbę i eskalował). Po nullu: tania sonda
  *                `git diff --name-only`, przy niepustym diffie → verify-existing (§2a′ p. 6a).
  *
+ * 2026-09-01 (TS-ARCH-HANDLER-CONTRACT-001 faza 5, juz-ide-api-3): trzy fałszywe alarmy na
+ * celowo SEKWENCYJNYM skrypcie, dwa blokujące — (a) WL2 strzelił w KOMENTARZ „zero
+ * parallel()/pipeline()"; (b) WL2 uznał runImplementAgent() (7 linii ciała) za
+ * verifier-helper, bo „ciałem" funkcji było sztywne okno 4000 znaków połykające NASTĘPNE
+ * funkcje w pliku; (c) WL4 nie widział `schema:` schowanej za promptem dłuższym niż
+ * 600-znakowy snippet. Od tej zmiany: reguły regexowe działają na źródle z WYMAZANYMI
+ * komentarzami (stripComments — WL9 parsuje oryginał), ciało funkcji wyznacza parowanie
+ * nawiasów (fnBodyAt), a call-site agent()/helpera obejmuje CAŁE wywołanie (exactCall).
+ *
  * Exit: 0 = czysto lub tylko WARN · 1 = ERROR (NIE uruchamiaj Workflow) · 2 = zły input.
  */
 
 const fs = require('fs');
 
-function snippetsOf(src, marker) {
+function snippetsOf(src, marker, len = 600) {
   const out = [];
   let idx = 0;
   while ((idx = src.indexOf(marker, idx)) !== -1) {
-    out.push({ at: idx, text: src.slice(idx, idx + 600), line: src.slice(0, idx).split('\n').length });
+    out.push({ at: idx, text: src.slice(idx, idx + len), line: src.slice(0, idx).split('\n').length });
     idx += marker.length;
   }
   return out;
+}
+
+// Wymazuje komentarze (// i /* */) SPACJAMI — długość i numery linii bez zmian, stringi
+// i template literale (wraz z zagnieżdżeniem ${}) nietknięte. Reguły WL1-WL16 to regexy na
+// tekście: komentarz „zero parallel()" w sekwencyjnym skrypcie blokował przebieg (WL2,
+// juz-ide-api-3, 2026-09-01). Świadome ograniczenie: literały regexowe nie są rozpoznawane —
+// gołe `//` wewnątrz klasy znaków regexa wymazałoby resztę linii; w skryptach workflow ten
+// kształt praktycznie nie występuje, a skutkiem byłaby co najwyżej cisza reguły (fail-open).
+function stripComments(src) {
+  const out = src.split('');
+  let i = 0;
+  let quote = null; // null = kod · '"' `'` '`' = wnętrze literału
+  const tmplBraces = []; // głębokość klamr per otwarte ${…} (powrót do template przy 0)
+  while (i < src.length) {
+    const c = src[i], d = src[i + 1];
+    if (quote === null) {
+      if (c === '/' && d === '/') {
+        while (i < src.length && src[i] !== '\n') out[i++] = ' ';
+        continue;
+      }
+      if (c === '/' && d === '*') {
+        while (i < src.length && !(src[i] === '*' && src[i + 1] === '/')) {
+          if (src[i] !== '\n') out[i] = ' ';
+          i++;
+        }
+        if (i < src.length) { out[i] = ' '; out[i + 1] = ' '; i += 2; }
+        continue;
+      }
+      if (c === '"' || c === "'" || c === '`') { quote = c; i++; continue; }
+      if (tmplBraces.length) {
+        if (c === '{') tmplBraces[tmplBraces.length - 1]++;
+        else if (c === '}') {
+          if (tmplBraces[tmplBraces.length - 1] === 0) { tmplBraces.pop(); quote = '`'; i++; continue; }
+          tmplBraces[tmplBraces.length - 1]--;
+        }
+      }
+      i++;
+      continue;
+    }
+    if (c === '\\') { i += 2; continue; }
+    if (quote === '`' && c === '$' && d === '{') { tmplBraces.push(0); quote = null; i += 2; continue; }
+    if (c === quote) quote = null;
+    i++;
+  }
+  return out.join('');
+}
+
+// Rzeczywiste ciało funkcji od indeksu jej deklaracji: sparuj nawiasy parametrów, potem
+// klamry ciała. Zastępuje sztywne okna (600/4000 znaków), które „ciałem" krótkiej funkcji
+// czyniły także NASTĘPNE funkcje w pliku — tak runImplementAgent() został verifier-helperem
+// (WL2, juz-ide-api-3, 2026-09-01). null przy niedomkniętych nawiasach/przekroczonym capie —
+// wołający wraca wtedy do starego okna (fałszywy alarm możliwy, ale nie gorszy niż dotąd).
+function fnBodyAt(src, declIndex, cap = 20000) {
+  const paren = src.indexOf('(', declIndex);
+  if (paren === -1) return null;
+  let depth = 0, i = paren;
+  for (; i < src.length && i < paren + 2000; i++) {
+    if (src[i] === '(') depth++;
+    else if (src[i] === ')' && --depth === 0) break;
+  }
+  if (depth !== 0) return null;
+  const braceZone = src.slice(i, i + 40);
+  const rel = braceZone.indexOf('{');
+  if (rel === -1) {
+    const nl = src.indexOf('\n', i); // arrow z ciałem-wyrażeniem: do końca linii
+    return src.slice(declIndex, nl === -1 ? src.length : nl);
+  }
+  const open = i + rel;
+  depth = 0;
+  for (let j = open; j < src.length && j < open + cap; j++) {
+    if (src[j] === '{') depth++;
+    else if (src[j] === '}' && --depth === 0) return src.slice(declIndex, j + 1);
+  }
+  return null;
+}
+
+// Pełny tekst wywołania od `name(` do sparowanego `)`. null, gdy nawiasy się nie domykają
+// w capie (np. nadmiar ')' w prozie prompta) — wołający zostaje przy przyciętym snippecie.
+function exactCall(src, at, cap = 6000) {
+  const open = src.indexOf('(', at);
+  if (open === -1) return null;
+  let depth = 0;
+  for (let i = open; i < src.length && i < open + cap; i++) {
+    if (src[i] === '(') depth++;
+    else if (src[i] === ')' && --depth === 0) return src.slice(at, i + 1);
+  }
+  return null;
 }
 
 // Nazwy funkcji owijających agent() — `ask`, `safeAgent`, cokolwiek. Wzorzec z
@@ -133,7 +229,8 @@ function agentHelperNames(src) {
   while ((m = declRe.exec(src))) {
     const name = m[1] || m[2];
     if (!name || name === 'agent') continue;
-    if (/\bawait\s+agent\s*\(/.test(src.slice(m.index, m.index + 600))) names.push(name);
+    const body = fnBodyAt(src, m.index) || src.slice(m.index, m.index + 600);
+    if (/\bawait\s+agent\s*\(/.test(body)) names.push(name);
   }
   return [...new Set(names)];
 }
@@ -144,7 +241,19 @@ function lint(src) {
   const callSites = (source) => {
     const out = snippetsOf(source, 'agent(');
     for (const h of agentHelperNames(source)) out.push(...snippetsOf(source, h + '('));
+    for (const s of out) {
+      const exact = exactCall(source, s.at);
+      if (exact) { s.text = exact; s.exact = true; }
+    }
     return out.sort((a, b) => a.at - b.at);
+  };
+  // Tekst wywołania do klasyfikacji: pełne wywołanie (exactCall — schema po długim prompcie
+  // JEST widoczna), a przy niedomkniętych nawiasach stare zachowanie: snippet przycięty do
+  // pierwszego '})', żeby nie połykał sąsiednich wywołań.
+  const callText = (s) => {
+    if (s.exact) return s.text;
+    const end = s.text.indexOf('})');
+    return end === -1 ? s.text : s.text.slice(0, end + 2);
   };
 
   // WL9 — realny syntax-check, PRZED wszystkimi regexowymi regułami (incydent
@@ -168,6 +277,11 @@ function lint(src) {
     // zwróć od razu zamiast ryzykować myślące-że-to-OK WARN/ERROR na złamanym skrypcie.
     return findings;
   }
+
+  // Od tego miejsca reguły widzą źródło BEZ komentarzy (pozycje i numery linii bez zmian) —
+  // komentarz to nie kod i nie ma prawa triggerować reguły (incydent 2026-09-01: WL2 na
+  // „zero parallel()" w nagłówku sekwencyjnego skryptu). WL9 wyżej parsował oryginał.
+  src = stripComments(src);
 
   const isVerifyish = (t) => /verif|final[_\s-]?gate|security[-_]e2e/i.test(t);
 
@@ -210,11 +324,11 @@ function lint(src) {
   const inProbeFn = (at) => /probe|check|sonda/i.test(enclosingFn(at) || '');
   const SELF_GRADE_FIELD = /\b(verdict|status|passed|success|ok|compliant|quality|score|approved)\s*:/i;
 
-  // WL1 — schema tylko na verify/final gate. Snippet przycinamy do końca obiektu opcji ('})'),
-  // inaczej połyka SĄSIEDNIE wywołania i fałszuje klasyfikację (złapane przez eval L1).
+  // WL1 — schema tylko na verify/final gate. callText() daje pełne wywołanie (bez sąsiadów);
+  // dawne przycinanie do '})' na 600-znakowym snippecie gubiło `schema:` za długim promptem
+  // i WL4 fałszywie alarmował (juz-ide-api-3, 2026-09-01).
   for (const s of callSites(src)) {
-    const end = s.text.indexOf('})');
-    const t = end === -1 ? s.text : s.text.slice(0, end + 2);
+    const t = callText(s);
     if (/schema\s*:/.test(t) && !isVerifyish(t) && isImplementish(t)) {
       // Sama obecność schema już nie wystarcza — dopiero schema z polem OCENIAJĄCYM. Nazwę
       // schematu rozwijamy do jego definicji (`schema: FOO_SCHEMA` → `const FOO_SCHEMA = {...}`),
@@ -259,7 +373,10 @@ function lint(src) {
     while ((d = declRe.exec(src))) {
       const name = d[1] || d[2];
       if (!name) continue;
-      const body = src.slice(d.index, d.index + 4000);
+      // Realne ciało (parowanie klamr), nie sztywne okno — okno 4000 znaków robiło
+      // z 7-liniowego runImplementAgent() verifier-helpera, bo połykało NASTĘPNE
+      // funkcje z verify w środku (juz-ide-api-3, 2026-09-01).
+      const body = fnBodyAt(src, d.index) || src.slice(d.index, d.index + 4000);
       if (/agent\s*\(/.test(body) && isVerifyish(body)) verifierHelpers.push(name);
     }
   }
@@ -369,8 +486,7 @@ function lint(src) {
       // fałszywie "pożycza" markery z NASTĘPNEGO, niepowiązanego wywołania dalej w skrypcie.
       const agentCalls = callSites(src);
       agentCalls.forEach((s, i) => {
-        const end = s.text.indexOf('})');
-        const t = end === -1 ? s.text : s.text.slice(0, end + 2);
+        const t = callText(s);
         if (!(/schema\s*:/.test(t) && isVerifyish(t)) || isProbeish(t) || inProbeFn(s.at)) return;
         const windowEnd = agentCalls[i + 1] ? agentCalls[i + 1].at : src.length;
         if (!hasBoth(src.slice(s.at, windowEnd))) {
@@ -430,9 +546,12 @@ function lint(src) {
     let m;
     while ((m = prodRe.exec(src))) {
       const name = m[1];
-      const call = src.slice(m.index, m.index + 3000);
-      const end = call.indexOf('})');
-      const opts = end === -1 ? call : call.slice(0, end + 2);
+      let opts = exactCall(src, m.index);
+      if (!opts) {
+        const call = src.slice(m.index, m.index + 3000);
+        const end = call.indexOf('})');
+        opts = end === -1 ? call : call.slice(0, end + 2);
+      }
       if (/schema\s*:/.test(opts)) continue;
       const after = src.slice(m.index + m[0].length);
       const interpolated = new RegExp('(\\+\\s*' + name + '\\b|\\$\\{\\s*' + name + '\\b|\\b' + name + '\\s*\\+)').test(after);
@@ -453,8 +572,7 @@ function lint(src) {
     if (hasProbe) {
       const agentCalls = callSites(src);
       agentCalls.forEach((s2, i) => {
-        const end = s2.text.indexOf('})');
-        const t = end === -1 ? s2.text : s2.text.slice(0, end + 2);
+        const t = callText(s2);
         if (!isVerifyish(t) || isProbeish(t) || inProbeFn(s2.at)) return;
         const windowEnd = agentCalls[i + 1] ? agentCalls[i + 1].at : src.length;
         const win = src.slice(s2.at, windowEnd);
@@ -483,8 +601,9 @@ function lint(src) {
     }
     const covered = (at) => ranges.some(([a, b]) => at > a && at < b);
     for (const s2 of snippetsOf(src, 'agent(')) {
-      const end = s2.text.indexOf('})');
-      const t2 = end === -1 ? s2.text : s2.text.slice(0, end + 2);
+      const exact = exactCall(src, s2.at);
+      if (exact) { s2.text = exact; s2.exact = true; }
+      const t2 = callText(s2);
       if (!/schema\s*:/.test(t2)) continue;
       if (covered(s2.at)) continue;
       findings.push({ id: 'WL14', level: 'ERROR', line: s2.line, msg: 'agent({schema}) poza try/catch — ze schemą brak StructuredOutput RZUCA WYJĄTEK, nie zwraca null, więc guard `if (!wynik)` go nie złapie. Nieobsłużony kończy CAŁY Workflow jako failed zamiast ESCALATE ze stanem częściowym (wf_d4b19f61-68c: implementer przepracował 95 tur bez StructuredOutput i wywrócił przebieg po 7,4 min; w pliku było zero `try {`). Owiń w try/catch i potraktuj wyjątek jak NO_GO z powodem „brak StructuredOutput w budżecie"' });

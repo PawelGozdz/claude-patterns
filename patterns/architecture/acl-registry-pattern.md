@@ -192,6 +192,8 @@ export class AuthorizationContextAPI implements IACLAdapter<any, any, any> {
 - ✅ **MUST** handle adapter retrieval failures gracefully
 - ✅ **MUST** batch a cross-context call that would otherwise repeat per unit of work — one
   adapter method taking a list/array in, one round trip out; see Anti-Pattern 4
+- ✅ **MUST** fail closed by default — use `aclRegistry.getGlobalRequired()`, NEVER `getGlobal()`,
+  when the operation is already priced/promised/costs the user something (ADR-0118 B1)
 
 ### MUST NOT
 
@@ -202,6 +204,8 @@ export class AuthorizationContextAPI implements IACLAdapter<any, any, any> {
 - ❌ **MUST NOT** throw exceptions from adapter methods (use Result pattern)
 - ❌ **MUST NOT** call a per-item ACL method in a loop when the caller already knows the full
   set of items up front (N+1 across a bounded context boundary — see Anti-Pattern 4)
+- ❌ **MUST NOT** swallow an ACL error without classifying it as infra failure (5xx) vs. domain
+  denial (4xx) before returning it further (ADR-0118 B2)
 
 ## ⚠️ Anti-Patterns
 

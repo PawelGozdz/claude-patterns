@@ -45,6 +45,20 @@ patterns:
     last_verified: 2026-02-05
     description: "Domain services for cross-aggregate operations"
 
+  - name: moderated-edit-buffer-pattern.md
+    stacks: [typescript]
+    maturity: experimental
+    scope: project-specific
+    project: juz-ide-api-1
+    last_verified: 2026-08-31
+    description: "Edit buffer VO for already-moderated live content, with revision fencing for manual moderation decisions"
+
+  - name: named-policy-pattern.md
+    stacks: [typescript]
+    maturity: experimental
+    last_verified: 2026-08-31
+    description: "One named createXxxPolicy() composing the specifications gating one class of content/action; variant behavior resolved at construction, not at the call site"
+
 notes: |
   Domain patterns are highly transferable across languages.
   TypeScript examples use NestJS + @vytches/ddd library.

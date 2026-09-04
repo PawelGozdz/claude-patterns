@@ -61,7 +61,7 @@ variants_seen:
   api-surface: [barrel, contract, deprecation, errors, semver]
   auth: [jwt, session, oauth, refresh]
   data-access: [http, mapper, migration, offline, outbox, polyglot, projection, transaction]
-  domain: [aggregate, errors]
+  domain: [aggregate, errors, moderation-buffer]
   events: [domain, integration, outbox, queue]
   geo: [radius, teryt, polygon, discovery]
   observability: [audit, logging]

@@ -172,6 +172,7 @@ If no Rule Card exists for a touched file, fall back to the full pattern
 - [ ] Handler decorators present (command-handler **CH2**, query-handler **QH**)
 - [ ] Handler registration verified
 - [ ] @Transactional on write operations (command-handler **CH8**)
+- [ ] If the handler has ≥2 branches creating/finalizing the same aggregate, every mandatory side-effect (audit, side-channel repo write, event emission, token confirm/release) is present in EVERY branch, at the equivalent lifecycle point (command-handler **CH11**) — list each branch's side-effects side-by-side, do not verdict from reading one branch at a time
 
 ### Testing
 - [ ] Test pyramid ratios: L1 ~50%, L2 ~30%, L3 ~20%
@@ -220,6 +221,21 @@ If no Rule Card exists for a touched file, fall back to the full pattern
    **Read files WHOLE — never verdict on a partial read.** If Read truncates (long file), keep
    reading with offset until EOF. (Incident: a cross-context DB-isolation violation was missed
    because only 120 of 443 lines were read.) A verdict based on a partial read is invalid.
+   **For a handler with ≥2 branches creating/finalizing the same aggregate, read both branches
+   and diff their side-effects (audit calls, side-channel repo writes, event emissions, token
+   confirm/release) against each other — do not verify each branch in isolation.** (Incident,
+   `juz-ide-api-3`, 2026-08-29: `create-local-share/handler.ts`'s `setTag()` call existed only
+   in the explicit-location branch; the residence-default branch silently violated BR-LS-TAG-001
+   for 39 commits because no verifier pass ever compared the two branches' side-effects — each
+   branch, read alone, looked individually correct. See command-handler-pattern **CH11**.)
+   **Whenever the diff calls `resolveTargetArea(`, check in the SAME scope (same file/handler)
+   for a matching call to `checkResidenceGuardrail(`. Missing = NO-GO.** (ADR-0118 D1/D2: the
+   guardrail applies to the CLASS of content, not the code path — skipping the gate in one
+   branch is a gap until there's a written rule for it; the verifier's job is to confirm the
+   check's PRESENCE, not just its source. Known, already-logged exception: `create-service-
+   offering/handler.ts` — missing guardrail, tracked in `docs/security/security-gaps.md`
+   `SEC-GEO-GUARDRAIL-SVCOFFER-001`, separate fix task — do NOT paper over it via a silent
+   carve-out in this rule.)
 2. **Run Verification Gates** — DDD patterns, CQRS, test pyramid
 3. **Report Findings** — ✅ Pass / ⚠️ Warning (proceed) / ❌ VETO (BLOCK)
 4. **Delegate if Needed** — Complex DDD → @ddd-application-expert; Architecture → @backend-technology-expert; Security → @security-e2e-verifier
@@ -261,6 +277,9 @@ Works with: @security-e2e-verifier (final security/E2E), @ddd-application-expert
 
 ## Changelog
 
+- 2026-09-04 — scommitowano zaległe zmiany z 08-29/08-31 (parity side-effectów między gałęziami handlera **CH11**, check D1/D2 `resolveTargetArea(`→`checkResidenceGuardrail(`); bez zmian treści względem wpisów poniżej
+- 2026-08-31 - dodano check D1/D2 (ADR-0118, TS-ARCH-HANDLER-CONTRACT-001): resolveTargetArea( wymaga checkResidenceGuardrail( w tym samym zakresie, znany wyjatek create-service-offering (SEC-GEO-GUARDRAIL-SVCOFFER-001, sledzony osobno w docs/security/security-gaps.md)
+- 2026-08-29 — added branch side-effect parity check: CQRS checklist bullet + Verification Workflow step 1 instruction to diff side-effects across a handler's branches instead of reading each in isolation, tied to new command-handler-pattern rule **CH11**/**N8** (root-caused from `create-local-share/handler.ts` missing `setTag()` on one branch for 39 commits, `juz-ide-api-3`, BR-LS-TAG-001)
 - 2026-08-18 — migrated `**Version**`/`**Maintainer**` footer to an append-only `## Changelog` (Keep-a-Changelog format, TASK-GUARDRAILS-001 Sekcja 3); history below reconstructed from `git log -p`
 - 2026-08-18 — `{LAYER_SCOPE}` contract: verify only the layer just implemented, not the whole task; Phase 1 discovery scoped to `LAYER_SCOPE.dirs` (fixes juz-ide-api-2 incident: VETO on repositories that didn't exist yet because `infrastructure` hadn't run)
 - 2026-08-15 — added context-cost discipline section (no `ps`/`docker ps`, `git diff --stat` only, scoped greps, trust an upstream `checks` probe instead of re-running tests) — root-caused 89M cached tokens, ~90% of one run's cost

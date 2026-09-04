@@ -27,6 +27,14 @@
 | Saga pattern (multi-step transaction) | YES |
 | Integration events (cross-context) | YES |
 | Multiple infrastructure operations | YES |
+| >=3 handlers in ONE context share a multi-step STATEFUL PROTOCOL (e.g. reserve->confirm/release, TCC) | YES - extract one application service per context (ADR-0118 C2, threshold from the handler audit). Reference implementation: `TokenReservationService` (`neighborhood-economy/application/services/token-reservation.service.ts`) — first consumer `create-local-share` (CREATE-shape), second `boost-local-share` (UPDATE-shape), added without changing the first consumer's behavior (optional parameters, not a new branch in the service) |
+
+**Not the same `compensate()`**: this file's own `compensations[]`/`compensate()` mechanism (Saga
+Pattern section below) is a multi-step, application-service-level saga — a workflow with NO
+single DB transaction wrapping every step. It is a DIFFERENT mechanism from
+`BaseCommandHandler.compensate()` (`command-handler-pattern.md`), which is a hook ON A COMMAND
+HANDLER that fires AFTER a SINGLE DB transaction has already rolled back. Do not conflate the two
+when reading either pattern.
 
 ---
 

@@ -188,6 +188,16 @@ border: Border.all(width: LocalHeroDesignTokens.borderMedium)
 
 ---
 
+## Podział ról: core/design/components (V1) vs core/ui + core/widgets
+
+`core/ui/` i `core/widgets/` to sankcjonowana warstwa ogólnych utili (avatar, loading
+state, error state, kontekstowa pomoc, elderly-friendly button) — NIE migrować mechanicznie
+do V1. `core/design/components/` (V1, `v1_*.dart`) jest zarezerwowany dla komponentów
+card/feed/badge/detail-screen-specific. Decyzja: `UX-POLISH-001-FOLLOWUPS-020`
+(`completed-tasks/`, 2026-09-04).
+
+---
+
 ## Enforced by
 
 - `check-clean-arch.js` hook — forbidden imports in domain/application
