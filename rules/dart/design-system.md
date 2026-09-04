@@ -202,5 +202,8 @@ card/feed/badge/detail-screen-specific. Decyzja: `UX-POLISH-001-FOLLOWUPS-020`
 
 - `check-clean-arch.js` hook — forbidden imports in domain/application
 - `check-riverpod-patterns.js` hook — ref.read() inside build()
+- `check-focus-wrapper.js` hook (UX-POLISH-001-FOLLOWUPS-022 pkt 3, 2026-09-04) — goły
+  `GestureDetector` w pliku `presentation/**` bez `Focus()`/`SoftPressable`/
+  `FocusableActionDetector` gdziekolwiek w tym samym pliku — ostrzega, nie blokuje
 - `flutter-quality-verifier` agent — weryfikuje AppTypography, AppIcons, interactive states
 - `flutter-ui-verifier` agent — weryfikuje WCAG, focus ring, tap targets
