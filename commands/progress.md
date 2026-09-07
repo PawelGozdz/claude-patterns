@@ -2,7 +2,7 @@
 name: progress
 description: |
   Visual progress tracking - show current task status, recent completions, and next actions.
-  Reads STATE.md, task files, and git history to generate comprehensive progress report.
+  Reads TEAM-STATE.md, KANBAN.md, task files and git history to generate a progress report.
 tools: Read, Bash, Grep, Glob
 model: haiku
 temperature: 0.2
@@ -19,17 +19,22 @@ temperature: 0.2
 
 When user invokes `/progress`:
 
-### Step 1: Read STATE.md
+### Step 1: Read the living project state
 
 ```bash
-Read(.claude/STATE.md)
+Read(project-orchestration/TEAM-STATE.md)   # header + latest pulse only (first ~80 lines)
+Read(project-orchestration/KANBAN.md)       # first table = current scope/order
 ```
 
 Extract:
-- Active Task
-- Current Phase
-- Progress percentage
-- Next Action
+- Next milestone and date (TEAM-STATE header)
+- Tasks currently `in_progress` / `ready` at the top of the board (KANBAN)
+- Blockers named in the latest pulse
+- Next Action = first not-done row of the top KANBAN table
+
+Do NOT read `.claude/STATE.md` or `.claude/SESSION_STATE.md` — those files are
+either removed or git-ignored session scratch (`/checkpoint handoff`), never
+project state.
 
 ### Step 2: Get Recent Completed Tasks
 
@@ -88,7 +93,7 @@ Bash(.claude/analytics/token-efficiency-tracker.sh report 2>/dev/null | tail -30
 **Phase**: [Current phase description]
 
 **Next Action**:
-→ [Clear next step from STATE.md]
+→ [First not-done row of the top KANBAN table]
 
 **Blockers**: [None] or:
 - [Active blocker 1]
@@ -118,7 +123,7 @@ Bash(.claude/analytics/token-efficiency-tracker.sh report 2>/dev/null | tail -30
 
 ## Suggested Next Steps
 
-1. **Immediate** (Do Now): [from STATE.md]
+1. **Immediate** (Do Now): [from KANBAN top table / latest pulse]
 2. **Follow-Up**: [logical next step]
 3. **Verification**: [quality gates needed]
 ```

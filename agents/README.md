@@ -208,21 +208,6 @@ For Astro 5 static blog / AI-first content projects.
 cd ~/projects/claude-patterns
 ./scripts/setup-global.sh
 # Creates per-file symlinks in ~/.claude/agents/
-```
-
-### Per-project (stack agents)
-
-```bash
-./scripts/setup-project.sh /path/to/project
-# Reads stack_blocks: from project.yml, links the agents those blocks name
-```
-
-### Project-specific override
-
-Create `.claude/agents/agent-name.md` in your project to override a global agent.
-Use case: add VETO power to `product-owner` for a specific project.
-
----
 
 ## Agent Frontmatter Schema
 
@@ -239,6 +224,17 @@ memory: project
 maxTurns: 15
 ---
 ```
+
+## Memory discipline
+
+Every agent with `memory: project` carries a mandatory „Memory discipline" section
+(added 2026-09-06 after the juz-ide-api-3 audit: 207 memory files / 14 285 lines, of
+which 146 were per-task status notes about tasks already closed). Rule of thumb:
+memory holds only what the next run **cannot derive from the repo** — `feedback` on
+how to work here, cross-cutting `project` facts not written anywhere else,
+`reference` pointers. Never task status, verification results or findings lists.
+One note ≤ 15 lines, `MEMORY.md` ≤ 40 lines. `hooks/agent-memory-size-guard.js`
+warns when a memory directory starts looking like a run log.
 
 ---
 

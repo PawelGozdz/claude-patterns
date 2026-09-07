@@ -309,7 +309,7 @@ One line per file, from its own header comment — see the file itself for full 
 | `statusline-pm.js` | statusLine | PM-aware status bar |
 | `subagent-stop-cost-log.js` | SubagentStop | Append per-agent token usage to the cost log |
 | `workflow-metrics-postrun.js` | PostToolUse | Fire-and-forget metrics collection after each `Workflow` run |
-| `agent-memory-size-guard.js` | SubagentStop | Warn when an agent's `MEMORY.md` grows past 10 KB (K35, `TASK-KAIZEN-001`) |
+| `agent-memory-size-guard.js` | SubagentStop | Warn when an agent's memory looks like a run log: `MEMORY.md` > 4 KB, > 20 note files, files named like task statuses (`project_ts_*_status`), or > 40 KB total (K35, `TASK-KAIZEN-001`; tightened 2026-09-06) |
 
 `workflow-lint.js` is **not a hook** — it's a CLI tool that lives in `hooks/` because this
 directory is what gets symlinked into satellite projects; see `tests/flow-evals/workflow-lint/`

@@ -71,8 +71,12 @@ Typical checkpoint flow:
 
 ## Handoff Mode
 
-`/checkpoint handoff` creates or updates `.claude/SESSION_STATE.md` — a human-readable
-document for cross-session continuity. Different from `create`: no git stash, just a
+`/checkpoint handoff` creates or updates `.claude/work/SESSION_STATE.md` — a human-readable
+note for cross-session continuity. **It is a scratch note, not a project document:**
+`.claude/work/` is git-ignored (add it to `.gitignore` if it is not), so a stale handoff
+never gets committed and never gets read as project state months later. Project state
+lives in `project-orchestration/TEAM-STATE.md` and `KANBAN.md`; decisions in
+`docs/decisions/`. Different from `create`: no git stash, just a
 prose snapshot of where you are so the next session can pick up without reconstructing
 context from git log.
 
@@ -86,7 +90,7 @@ When running handoff mode:
    - **Environment state** — pending migrations, services that need to be running
    - **Resume command** — exact command(s) for next session start
    - **Notes for next Claude** — gotchas, in-progress decisions, what NOT to touch
-3. Write `.claude/SESSION_STATE.md` using `templates/SESSION_STATE.md.template` format:
+3. Write `.claude/work/SESSION_STATE.md` using `templates/SESSION_STATE.md.template` format:
 
 ```markdown
 # Session State — {project name}
@@ -130,7 +134,7 @@ When running handoff mode:
 {notes}
 ```
 
-4. Report: `SESSION_STATE.md updated — {N} remaining items, resume with: {command}`
+4. Report: `.claude/work/SESSION_STATE.md updated — {N} remaining items, resume with: {command}`
 
 ## Arguments
 
@@ -139,4 +143,4 @@ $ARGUMENTS:
 - `verify <name>` - Verify against named checkpoint
 - `list` - Show all checkpoints
 - `clear` - Remove old checkpoints (keeps last 5)
-- `handoff` - Write/update `.claude/SESSION_STATE.md` for cross-session continuity
+- `handoff` - Write/update `.claude/work/SESSION_STATE.md` (git-ignored scratch) for cross-session continuity

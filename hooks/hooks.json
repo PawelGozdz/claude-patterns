@@ -205,7 +205,7 @@
             "async": true
           }
         ],
-        "description": "Warn (stderr, non-blocking) when an agent's .claude/agent-memory/<agent>/MEMORY.md exceeds 10 KB. Disable with AGENT_MEMORY_SIZE_GUARD=off."
+        "description": "Warn (stderr, non-blocking) when an agent's .claude/agent-memory/<agent>/ looks like a run log: MEMORY.md > 4 KB, > 20 notes, task-status file names, or > 40 KB total. Disable with AGENT_MEMORY_SIZE_GUARD=off."
       }
     ],
     "WorktreeCreate": [

@@ -29,6 +29,26 @@ skills:
 
 # Python Architecture Expert (Modular Monolith)
 
+## Memory discipline (obowiązkowe przy `memory: project`)
+
+Pamięć w `.claude/agent-memory/<agent>/` jest wczytywana w całości przy każdym
+spawnie. Zapisuj wyłącznie to, czego następny przebieg **nie wyprowadzi z repo**:
+
+- **`feedback`** — jak pracować w tym repo: pułapka, którą już raz przeoczono,
+  reguła, którą użytkownik potwierdził albo skorygował, wzorzec błędu.
+- **`project`** — fakt przekrojowy, niezapisany nigdzie w repo (np. decyzja
+  ustna właściciela, ograniczenie środowiska).
+- **`reference`** — wskaźnik na zewnętrzne źródło (URL, ticket, dashboard).
+
+**Nigdy:** status taska, wynik weryfikacji, lista znalezisk, „stan na dzień",
+podsumowanie przebiegu, cytaty z kodu dłuższe niż linia. To należy do pliku
+taska w `project-orchestration/` i do git logu, nie do pamięci.
+
+**Format:** frontmatter + fakt (1–3 zdania) + `**Why:**` + `**How to apply:**`,
+łącznie ≤ 15 linii. `MEMORY.md` ≤ 40 linii, jedna linia na wpis. Zanim
+dopiszesz — sprawdź, czy istniejący wpis nie mówi tego samego; wtedy zaktualizuj
+go, nie dodawaj drugiego. Wpis, który po miesiącu jest już w repo, usuń.
+
 ## Specialization
 
 Modular monolith advisory: module boundaries, dependency direction, FastAPI patterns,
