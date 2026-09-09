@@ -6,7 +6,7 @@ This knowledge base contains production-enforced patterns for DDD/CQRS projects.
 
 **Version**: 3.13
 **Last Updated**: 2026-08-31
-**Status**: PRODUCTION (55 core patterns + 45 stack-specific + 1 marketing + 2 finance + 2 legal = 105 total)
+**Status**: PRODUCTION (56 core patterns + 45 stack-specific + 1 marketing + 2 finance + 2 legal = 106 total)
 
 **⚠ project-specific** marker = derived from ONE project's codebase, not yet validated in a second
 one. Marked in the pattern's own `**Scope**:` line (see `CLAUDE.md` → "Adding a New Pattern"). These
@@ -24,7 +24,7 @@ patterns/
 ├── infrastructure/      # Infrastructure Layer (persistence, API) - 8 patterns
 ├── architecture/        # Cross-cutting architecture patterns - 13 patterns
 ├── testing/            # Testing patterns - 10 patterns
-├── cross-layer/        # Used everywhere (errors, logging, error handlers, registry guards) - 10 patterns
+├── cross-layer/        # Used everywhere (errors, logging, error handlers, registry guards) - 11 patterns
 ├── orchestration/      # Project management and team coordination - 1 pattern
 ├── marketing/          # Marketing workflow patterns - 1 pattern
 ├── finance/            # Finance workflow patterns - 2 patterns
@@ -180,14 +180,15 @@ Testing strategies and patterns for all levels of the test pyramid.
 
 ---
 
-### Cross-Layer Patterns (10 patterns)
+### Cross-Layer Patterns (11 patterns)
 
 Patterns used across all architectural layers.
 
 | Pattern | Lines | Status | Description | Primary Users |
 |---------|-------|--------|-------------|---------------|
 | **[domain-errors-pattern.md](cross-layer/domain-errors-pattern.md)** | ~600 | Production | ErrorCode enum, Result pattern, hybrid error handling | All implementers |
-| **[logger-pattern.md](cross-layer/logger-pattern.md)** | ~500 | Production | Structured logging, PII redaction, correlation IDs | All implementers |
+| **[logger-pattern.md](cross-layer/logger-pattern.md)** | ~500 | Production | Structured logging, PII redaction, correlation IDs (NestJS DI variant — see logger-pattern-plain.md for non-DI stacks) | All implementers |
+| **[logger-pattern-plain.md](cross-layer/logger-pattern-plain.md)** | ~120 | Production | Module-level pino singleton + named children, no DI container (Fastify/Express/worker/CLI) | node/flat-service implementers |
 | **[error-handler-chain-pattern.md](cross-layer/error-handler-chain-pattern.md)** | ~550 | Production | 9 specialized error handlers in Chain of Responsibility | infrastructure-testing-implementer |
 | **[conventions-pattern.md](cross-layer/conventions-pattern.md)** | ~400 | Production | Naming conventions, file organization, module structure | All implementers |
 | **[registry-drift-guard-pattern.md](cross-layer/registry-drift-guard-pattern.md)** | ~150 | Production | Ręczny rejestr (migracje, event map, routing, lista hooków) rozjeżdża się po cichu z plikami na dysku — generuj go albo pilnuj testem w obie strony | All implementers, verifiers |

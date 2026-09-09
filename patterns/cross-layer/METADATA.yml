@@ -7,7 +7,7 @@ maturity: production
 last_verified: 2026-09-04
 stack: "TypeScript, NestJS, @vytches/ddd; konwencje i logowanie stack-agnostyczne w warstwie zasad"
 source_projects: "LocalHero v3, juz-ide-api-1"
-patterns_count: 10
+patterns_count: 11
 description: >-
   Wzorce przecinające wszystkie warstwy: konwencje nazewnicze, katalog błędów
   domenowych i łańcuch ich mapowania, bezpieczna propagacja błędów, logger,

@@ -1,7 +1,12 @@
 # Blok: node — framework/runtime: czysty serwis Node/TS (ESM), bez NestJS.
 # Drugi adopter tego kształtu obok ai-os-bot: iam (Fastify + Kysely + Zitadel).
-# Rdzeń cross-layer identyczny z blokiem nestjs (wzorce są stack-agnostyczne);
-# przyszły refaktor: nestjs `requires: [node]` zamiast duplikacji tych 4 pozycji.
+#
+# UWAGA (2026-09-09, znalezisko z /orchestrate TS-SSO-044 w iam): `conventions-pattern.md`
+# i `safe-error-propagation-pattern.md` są w praktyce stack-agnostyczne, ale `logger-pattern.md`
+# NIE JEST — cały zbudowany wokół tokenu DI `LOGGER_SERVICE` (NestJS). Projekt bez kontenera DI
+# (iam) dostawał kartę każącą pisać `@Inject(LOGGER_SERVICE)`, czego fizycznie nie da się
+# zastosować. Zamiast wspólnego wzorca ten blok wnosi teraz jego odpowiednik bez DI
+# (`logger-pattern-plain.md`); `blocks/nestjs.yml` zatrzymuje oryginał.
 name: node
 axis: framework
 requires: []
@@ -15,7 +20,7 @@ patterns:
     - cross-layer/conventions-pattern.md
     - cross-layer/security-invariants-pattern.md
     - cross-layer/safe-error-propagation-pattern.md
-    - cross-layer/logger-pattern.md
+    - cross-layer/logger-pattern-plain.md
   triggers:
     - keywords: [auth, authentication, authorization, permission, login]
       include:
