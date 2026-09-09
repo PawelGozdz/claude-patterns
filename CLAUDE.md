@@ -26,7 +26,7 @@ symlinks. Think carefully before removing or renaming anything.
 ## What's In This Repo
 
 ```
-patterns/       106 production patterns (56 core + 45 stack-specific + 1 marketing + 2 finance + 2 legal)
+patterns/       108 production patterns (58 core + 45 stack-specific + 1 marketing + 2 finance + 2 legal)
 agents/         24 universal + 30 stack-specific agents
 skills/         194 skills across 23 categories (42 marketing + 91 finance + 12 legal + others)
 hooks/          42 hooks (39 js + 3 sh, incl. pm-task-check.js — PM, per-project)
@@ -117,7 +117,7 @@ and [`docs/adr/`](docs/adr/). The four that come up most often:
 | `docs/adr/` | Architecture Decision Records (rationale + alternatives rejected) |
 | `docs/ROADMAP.md` | Implementation plan (sprintwise, status-tracked) |
 | `agents/README.md` | Agent catalog + setup guide |
-| `patterns/README.md` | Pattern index (106 patterns) |
+| `patterns/README.md` | Pattern index (108 patterns) |
 | `blocks/README.md` | Composition blocks — what each one contributes |
 | `hooks/hooks.json` | Global hook registry — applied to `~/.claude/settings.json` by `scripts/sync-global-hooks.mjs` (called from `setup-global.sh`; audit: `--check`). The `~/.claude/hooks/` symlink alone registers nothing. Per-project hooks take another route: blocks → `runtime.yml` → `scripts/sync-runtime-hooks.mjs` |
 | `scripts/setup-global.sh` | Global setup (agents, commands, hooks) |

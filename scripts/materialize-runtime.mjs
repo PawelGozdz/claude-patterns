@@ -483,15 +483,34 @@ for (const b of blocks) {
     }
 }
 
-// patterns.remove (K44, TASK-KAIZEN-001): blok może jawnie wykluczyć ze zsumowanego
-// `always` wzorzec dodany przez INNY blok — użyteczne, gdy blok lokalny nadpisuje
-// centralny wzorzec swoją wersją (przykład: iam-security.yml usuwa
+// patterns.remove (K44, TASK-KAIZEN-001; rozszerzone 2026-09-09 o triggers/layer_contributions —
+// patrz iam/TS-SSO-044): blok może jawnie wykluczyć ze zsumowanej kompozycji wzorzec dodany
+// przez INNY blok — użyteczne, gdy blok lokalny (albo centralny, jak node.yml wobec
+// kysely.yml/zod.yml) nadpisuje cudzy wzorzec swoją wersją (przykład: iam-security.yml usuwa
 // cross-layer/security-invariants-pattern.md, bo dokłada własny odpowiednik pod Fastify).
 // Zastosowanie PO całej pętli po blokach — kolejność w stack_blocks nie ma znaczenia,
 // blok deklarujący `remove` może stać przed albo po bloku, który dodał wzorzec.
+//
+// Trzy miejsca, bo wzorzec wchodzi do kompozycji trzema niezależnymi drogami: `always`
+// (bezwarunkowo), `triggers[].include` (po słowie kluczowym) i `layer_contributions[].patterns`
+// (do warstwy po tagu). `remove` filtrujący tylko `always` naprawiał logger-pattern.md (node.yml
+// `always`), ale zostawiał identyczny problem dla repository-pattern.md/controller-schema-
+// -pattern.md — te wchodzą wyłącznie przez triggers/layer_contributions (kysely.yml/zod.yml).
+// Pusty `include`/`patterns` po usunięciu zostaje pustą tablicą, nie jest kasowany: trigger
+// nadal pasuje na słowo kluczowe, po prostu nic już nie dokłada — nieszkodliwe, a kasowanie
+// całego triggera przez usunięcie JEDNEGO wzorca zgubiłoby inne wzorce w tym samym `include`.
 for (const r of removes) {
   const idx = always.findIndex((a) => a.path === r.path);
   if (idx !== -1) always.splice(idx, 1);
+  for (const t of triggers) {
+    const ti = t.include.indexOf(r.path);
+    if (ti !== -1) t.include.splice(ti, 1);
+  }
+  for (const c of contributions) {
+    if (!c.patterns) continue;
+    const ci = c.patterns.indexOf(r.path);
+    if (ci !== -1) c.patterns.splice(ci, 1);
+  }
 }
 
 // Hooki projektu dokładane jawnie: bloki wnoszą to, czego wymaga stack, a projekt

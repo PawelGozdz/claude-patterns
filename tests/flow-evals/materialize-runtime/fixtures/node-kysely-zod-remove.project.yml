@@ -1,0 +1,18 @@
+# Fixture kompozycji: node + kysely + zod + flat-service — reprodukuje iam (Fastify, zero DI, zero
+# DDD; realny iam dochodzi do flat-service przez extends w bloku lokalnym ./iam-verifiers).
+# Sprawdza rozszerzone patterns.remove (2026-09-09, znalezisko TS-SSO-044): node.yml musi usunąć
+# infrastructure/repository-pattern.md i infrastructure/controller-schema-pattern.md z WSZYSTKICH
+# trzech kanałów, którymi wchodzą — always, triggers[].include (kysely) i layer_contributions[]
+# .patterns (kysely "*:data-access", zod "*:api-surface"/"*:app", oba trafiające w tag
+# "any:app"/"any:data-access"/"any:api-surface" jedynej warstwy flat-service) — i wstawić w ich
+# miejsce warianty -plain przez always. flat-service jest tu wyłącznie po to, żeby
+# layer_contributions miało warstwę do wzbogacenia — bez osi architektury ten kanał nigdy się nie
+# odpala (materialize-runtime.mjs ostrzega i pomija). Kontrastowa kompozycja BEZ node
+# (nestjs-ddd-kysely.project.yml) musi zachować oryginalne, Nest-flavored wzorce — remove
+# z node.yml nie odpala się bez node.
+project:
+  name: eval-node-kysely-zod
+  description: "Fixture ewaluacyjny — kompozycja node+kysely+zod+flat-service, patterns.remove rozszerzony"
+  stack_blocks: [node, kysely, zod, flat-service]
+  stack_profile: node-ts-claude-api
+  language: typescript

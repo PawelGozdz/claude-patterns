@@ -72,16 +72,16 @@ repository:
   remote: null
 
 patterns:
-  core_count: 56
+  core_count: 58
   stack_specific_count: 45
   marketing_count: 1
   finance_count: 2
   legal_count: 2
-  total_count: 106
+  total_count: 108
   core_categories:
     domain: 8   # +moderated-edit-buffer-pattern (scope: project-specific, juz-ide-api-1), +named-policy-pattern
     application: 5   # +try-confirm-cancel-pattern
-    infrastructure: 6   # +external-adapter-pattern (scope: project-specific, grant-flow)
+    infrastructure: 8   # +external-adapter-pattern (scope: project-specific, grant-flow), +repository-pattern-plain, +controller-schema-pattern-plain
     architecture: 14
     testing: 11
     cross-layer: 11   # +dto-mapper-pattern, +temporary-copy-to-consumer-pattern, +logger-pattern-plain

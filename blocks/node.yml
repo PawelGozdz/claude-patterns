@@ -2,11 +2,18 @@
 # Drugi adopter tego kształtu obok ai-os-bot: iam (Fastify + Kysely + Zitadel).
 #
 # UWAGA (2026-09-09, znalezisko z /orchestrate TS-SSO-044 w iam): `conventions-pattern.md`
-# i `safe-error-propagation-pattern.md` są w praktyce stack-agnostyczne, ale `logger-pattern.md`
-# NIE JEST — cały zbudowany wokół tokenu DI `LOGGER_SERVICE` (NestJS). Projekt bez kontenera DI
-# (iam) dostawał kartę każącą pisać `@Inject(LOGGER_SERVICE)`, czego fizycznie nie da się
-# zastosować. Zamiast wspólnego wzorca ten blok wnosi teraz jego odpowiednik bez DI
-# (`logger-pattern-plain.md`); `blocks/nestjs.yml` zatrzymuje oryginał.
+# i `safe-error-propagation-pattern.md` są w praktyce stack-agnostyczne, ale `logger-pattern.md`,
+# `infrastructure/repository-pattern.md` i `infrastructure/controller-schema-pattern.md` NIE SĄ —
+# zbudowane wokół tokenu DI `LOGGER_SERVICE`, `BaseKyselyRepository`/agregatów DDD i
+# `@Controller`/`ICommandBus`/`IQueryBus` (wszystkie trzy — NestJS). Projekt bez kontenera DI i bez
+# warstwy domenowej (iam) dostawał karty każące pisać kod w architekturze, której fizycznie nie ma.
+# `logger-pattern.md`/`repository-pattern.md`/`controller-schema-pattern.md` wchodzą tu przez trzy
+# różne kanały (odpowiednio: `always` tego bloku; `layer_contributions`+trigger `kysely.yml`;
+# trigger+`layer_contributions` `zod.yml`) — `remove` niżej usuwa wszystkie trzy z KAŻDEGO kanału
+# (rozszerzenie materialize-runtime.mjs o remove dla triggers/layer_contributions, 2026-09-09),
+# `always` tego bloku wstawia w ich miejsce warianty bez DI/DDD. `blocks/nestjs.yml`,
+# `blocks/kysely.yml` i `blocks/zod.yml` same NIE są zmieniane — projekt, który komponuje `nestjs`/
+# `ddd/core` obok `kysely`/`zod` (bez `node`), nadal dostaje oryginalne, Nest-flavored wzorce.
 name: node
 axis: framework
 requires: []
@@ -21,6 +28,11 @@ patterns:
     - cross-layer/security-invariants-pattern.md
     - cross-layer/safe-error-propagation-pattern.md
     - cross-layer/logger-pattern-plain.md
+    - infrastructure/repository-pattern-plain.md
+    - infrastructure/controller-schema-pattern-plain.md
+  remove:
+    - infrastructure/repository-pattern.md
+    - infrastructure/controller-schema-pattern.md
   triggers:
     - keywords: [auth, authentication, authorization, permission, login]
       include:

@@ -6,7 +6,7 @@ This knowledge base contains production-enforced patterns for DDD/CQRS projects.
 
 **Version**: 3.13
 **Last Updated**: 2026-08-31
-**Status**: PRODUCTION (56 core patterns + 45 stack-specific + 1 marketing + 2 finance + 2 legal = 106 total)
+**Status**: PRODUCTION (58 core patterns + 45 stack-specific + 1 marketing + 2 finance + 2 legal = 108 total)
 
 **⚠ project-specific** marker = derived from ONE project's codebase, not yet validated in a second
 one. Marked in the pattern's own `**Scope**:` line (see `CLAUDE.md` → "Adding a New Pattern"). These
@@ -21,7 +21,7 @@ to opt in. Promote to plain "Production" once a second project adopts the same s
 patterns/
 ├── domain/              # Domain Layer (core business logic) - 8 patterns
 ├── application/         # Application Layer (CQRS handlers) - 5 patterns
-├── infrastructure/      # Infrastructure Layer (persistence, API) - 8 patterns
+├── infrastructure/      # Infrastructure Layer (persistence, API) - 10 patterns
 ├── architecture/        # Cross-cutting architecture patterns - 13 patterns
 ├── testing/            # Testing patterns - 10 patterns
 ├── cross-layer/        # Used everywhere (errors, logging, error handlers, registry guards) - 11 patterns
@@ -94,16 +94,18 @@ CQRS command and query handlers, application services for complex workflows.
 
 ---
 
-### Infrastructure Layer (8 patterns)
+### Infrastructure Layer (10 patterns)
 
 Persistence, API, and technical implementation patterns.
 
 | Pattern | Lines | Status | Description | Primary Users |
 |---------|-------|--------|-------------|---------------|
 | **[repository-pattern.md](infrastructure/repository-pattern.md)** | ~1000 | Production | BaseKyselyRepository, CQRS separation, optimistic locking, upsert | infrastructure-testing-implementer |
+| **[repository-pattern-plain.md](infrastructure/repository-pattern-plain.md)** | ~160 | Production | Plain Kysely query functions/classes, no aggregates/DI — counterpart for `node` block projects (iam) | general-purpose |
 | **[repository-events-pattern.md](infrastructure/repository-events-pattern.md)** | ~410 | Production | 3-layer event protection (imports, eventMap, verification test) | infrastructure-testing-implementer |
 | **[mapper-pattern.md](infrastructure/mapper-pattern.md)** | ~600 | Production | toDomain(), toPersistence(), value object reconstruction | infrastructure-testing-implementer |
 | **[controller-schema-pattern.md](infrastructure/controller-schema-pattern.md)** | ~740 | Production | Controller shape: @CurrentUser from JWT, @AuthEndpointSchema, orchestration-only, Result<z.infer<…>> responses | infrastructure-testing-implementer |
+| **[controller-schema-pattern-plain.md](infrastructure/controller-schema-pattern-plain.md)** | ~180 | Production | Fastify route handler + Zod `.safeParse()`, no controller class/command bus — counterpart for `node` block projects (iam) | general-purpose |
 | **[zod-schema-validation-pattern.md](infrastructure/zod-schema-validation-pattern.md)** | ~390 | Production | Request/response schemas at the API boundary: `.strict()`, UUID ids, safe-text/XSS, shared `commonValidators`, `AuthorSnapshotDto` | infrastructure-testing-implementer |
 | **[rate-limit-guard-pattern.md](infrastructure/rate-limit-guard-pattern.md)** | ~160 | Production | @RateLimit per endpoint, per-context `*.rate-limits.ts`, blockDuration on auth endpoints | infrastructure-testing-implementer, security-e2e-verifier |
 | **[external-adapter-pattern.md](infrastructure/external-adapter-pattern.md)** | ~230 | ⚠ project-specific (grant-flow) | Logging placeholder adapter: realny port, zero I/O, fail-fast w onModuleInit, rozdzielone klasy błędów | infrastructure-testing-implementer |

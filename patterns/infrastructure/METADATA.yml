@@ -7,7 +7,7 @@ maturity: production
 last_verified: 2026-08-16
 stack: "TypeScript, NestJS, Kysely, PostgreSQL + PostGIS, Zod"
 source_projects: "LocalHero v3, juz-ide-api-1, grant-flow"
-patterns_count: 8
+patterns_count: 10
 description: >-
   Warstwa infrastruktury: repozytoria (porty domenowe, mappery, dispatch
   zdarzeń w save(), optimistic locking), mappery domena ↔ persystencja,
