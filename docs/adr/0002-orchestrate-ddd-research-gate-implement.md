@@ -1,6 +1,7 @@
 # ADR 0002 — /orchestrate-ddd: research → human gate → implement
 
-**Status**: accepted (2026-06) · **Branch**: refactor/ecc-overlay
+**Status**: superseded (2026-08-12) · **Superseded-by**: [ADR 0008](0008-stack-blocks-composition.md)
+· pierwotnie accepted (2026-06) · **Branch**: refactor/ecc-overlay
 **Context source**: konsultacje @backend-technology-expert + @tech-lead; spike Faza 0 (GO).
 
 ## Kontekst
@@ -8,6 +9,13 @@ Budujemy automatyzację implementacji DDD na bazie pluginu ECC (Workflow tool, /
 `ecc:*`, loop-operator). Wymóg użytkownika #1: **twarda granica między fazą research/analizy
 a implementacją**, z dyskusją człowieka po środku (często wychodzą rzeczy do przedyskutowania).
 Nasz moat: pattern-grounding hooks + VETO verifiers (GO/NO-GO) + 72 patterns DDD.
+
+> **⚠ Zastąpiony przez [ADR 0008](0008-stack-blocks-composition.md) (2026-08-12).** D1 (dwie
+> osobne komendy jako fizyczna granica) i D2 (Workflow jako silnik, nie `/goal`) **obowiązują
+> nadal** — zmieniły się tylko nazwy i źródło konfiguracji: `/analyze` + `/orchestrate`
+> sterowane kompozycją bloków z `.claude/config/runtime.yml`, zamiast `/analyze-ddd` +
+> `/orchestrate-ddd` sterowanych presetem. Bramka `analyze.exit: PAUSE` to ta sama granica,
+> wniesiona przez blok `ddd/core`. Zachowany dla uzasadnienia decyzji.
 
 ## Decyzja
 Trzy decyzje kształtujące implementację:

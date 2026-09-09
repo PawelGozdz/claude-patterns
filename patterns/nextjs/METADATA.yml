@@ -1,7 +1,17 @@
+# Next.js Patterns — metadane katalogu.
+# Schemat: jeden dla całego patterns/** (K84, TASK-KAIZEN-002). Walidator:
+# node scripts/validate-metadata.mjs
 category: nextjs
-version: 1.0.0
+version: "1.0.1"
 maturity: production
 last_verified: 2026-03-31
-stack: Next.js 16, React 19.2, TypeScript, Tailwind CSS 4, Turbopack
+stack: "Next.js 16, React 19.2, TypeScript, Tailwind CSS 4, Turbopack"
+source_projects: "juz-ide-pl, juz-ide-blog"
 patterns_count: 7
-description: Next.js 16 App Router patterns with Cache Components, proxy.ts, and React 19.2
+description: >-
+  Wzorce Next.js 16 App Router: Cache Components i 'use cache', granica
+  server/client components, proxy.ts zamiast middleware.ts, Server Actions dla
+  mutacji, pobieranie danych, formularze, auth, style i testy na Vitest.
+
+layer: cross-layer
+stack_support: [typescript]

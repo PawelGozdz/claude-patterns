@@ -1,30 +1,11 @@
 ---
 name: reg-bi
-description: "Analyze broker-dealer recommendations under SEC Regulation Best Interest's four obligations: Disclosure, Care, Conflict of Interest, and Compliance. Use when the user asks whether a recommendation satisfies Reg BI, what triggers the 'recommendation' standard, how to evaluate reasonably available alternatives, rollover recommendation compliance, dual-registrant capacity disclosure, share class or account type recommendations, or Reg BI examination preparation. Also trigger when users mention 'best interest standard for brokers', 'is this a Reg BI recommendation', 'care obligation documentation', 'sales contest elimination requirement', 'Form CRS delivery', or ask how Reg BI differs from suitability or fiduciary duty."
+description: "Analyze the broker-dealer standard of conduct under SEC Regulation Best Interest's four obligations: Disclosure, Care, Conflict of Interest, and Compliance. Owns what triggers a 'recommendation' under Reg BI and the canonical comparison of Reg BI vs FINRA suitability vs IA fiduciary duty. Use when the user asks whether a broker-dealer recommendation satisfies Reg BI, how to evaluate reasonably available alternatives, rollover recommendation compliance, dual-registrant capacity disclosure, share class or account type recommendations, or Reg BI examination preparation. Also trigger when users mention 'best interest standard for brokers', 'is this a Reg BI recommendation', 'care obligation documentation', 'sales contest elimination requirement', or ask how Reg BI differs from suitability or fiduciary duty. (For the IA fiduciary duty itself and DOL rules, use fiduciary-standards.)"
 ---
 
 # SEC Regulation Best Interest (Reg BI)
 
-## Purpose
-Analyze broker-dealer recommendations and compliance obligations under SEC Regulation Best Interest (17 CFR 240.15l-1). This skill covers the four component obligations (Disclosure, Care, Conflict of Interest, Compliance), the scope of what constitutes a "recommendation," how Reg BI compares to FINRA suitability and IA fiduciary duty, rollover guidance, dual-registrant considerations, and SEC examination priorities.
-
-## Layer
-9 — Compliance & Regulatory Guidance
-
-## Direction
-prospective
-
-## When to Use
-- Evaluating whether a broker-dealer recommendation satisfies Reg BI obligations
-- Determining whether an interaction constitutes a "recommendation" triggering Reg BI
-- Assessing compliance of share class or account type recommendations
-- Analyzing rollover recommendations from employer-sponsored plans to IRAs
-- Evaluating whether a dual-registrant has properly disclosed capacity (BD vs IA)
-- Reviewing conflict of interest identification, disclosure, and mitigation procedures
-- Building or auditing written supervisory procedures for Reg BI compliance
-- Comparing the Reg BI standard to FINRA suitability or IA fiduciary duty
-- Preparing for or responding to SEC Reg BI examinations
-- Assessing whether "reasonably available alternatives" were adequately considered
+Regulatory status current as of June 2026 — verify effective dates, dollar thresholds, and pending rulemakings against current SEC/FINRA/FinCEN sources before advising.
 
 ## Core Concepts
 
@@ -126,7 +107,7 @@ Many firms and individuals are registered as both broker-dealers and investment 
 ### SEC Staff Bulletins on Reg BI
 The SEC Division of Examinations and Staff have issued a series of interpretive bulletins providing practical guidance:
 
-- **Staff Bulletin on the Care Obligation (2022):** Clarified that cost is an important factor; when two products are comparable but differ in cost, the firm needs a reasonable basis for recommending the more expensive one. Emphasized that a "series of recommendations" must be evaluated holistically — individually suitable recommendations can collectively violate the care obligation.
+- **Staff Bulletin on the Care Obligation (April 2023):** Clarified that cost is an important factor; when two products are comparable but differ in cost, the firm needs a reasonable basis for recommending the more expensive one. Emphasized that a "series of recommendations" must be evaluated holistically — individually suitable recommendations can collectively violate the care obligation.
 - **Staff Bulletin on Conflicts of Interest (2022):** Clarified that disclosure alone is not sufficient for material conflicts that incentivize the associated person to put their interest ahead of the customer. Firms must mitigate such conflicts through compensation adjustments, enhanced supervision, or other structural measures.
 - **Staff Bulletin on Account Recommendations (2022):** Addressed rollovers, account type recommendations, and the factors to consider when recommending a brokerage vs advisory account. Emphasized that "reasonably available alternatives" includes remaining in the existing arrangement.
 
@@ -191,9 +172,10 @@ The care obligation requires considering reasonably available alternatives, but 
 - Treating the compliance obligation as a one-time exercise rather than an ongoing requirement to maintain and enforce policies and procedures
 
 ## Cross-References
-- **investment-suitability** (Layer 9): FINRA suitability framework that Reg BI replaced and enhanced for retail customers
-- **fiduciary-standards** (Layer 9): IA fiduciary duty under the Advisers Act — the parallel standard for investment advisers
-- **conflicts-of-interest** (Layer 9): Detailed conflict identification, disclosure, and mitigation frameworks applicable across regulatory regimes
-- **fee-disclosure** (Layer 9): Fee transparency requirements that support the Disclosure Obligation
-- **advice-standards** (Layer 9): Broader standards of conduct for financial professionals across BD and IA channels
-- **client-disclosures** (Layer 9): Form CRS requirements and other client-facing disclosure obligations
+- **investment-suitability** (compliance plugin): FINRA suitability framework that Reg BI replaced and enhanced for retail customers
+- **fiduciary-standards** (compliance plugin): IA fiduciary duty under the Advisers Act — the parallel standard for investment advisers
+- **conflicts-of-interest** (compliance plugin): Detailed conflict identification, disclosure, and mitigation frameworks applicable across regulatory regimes
+- **fee-disclosure** (compliance plugin): Fee transparency requirements that support the Disclosure Obligation
+- **advice-standards** (compliance plugin): Broader standards of conduct for financial professionals across BD and IA channels
+- **client-disclosures** (compliance plugin): Form CRS requirements and other client-facing disclosure obligations
+- **private-placements** (compliance plugin): exempt offering framework and investor-eligibility rules underlying Care Obligation analysis of private placement recommendations

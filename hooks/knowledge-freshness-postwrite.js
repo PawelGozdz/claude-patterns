@@ -87,7 +87,10 @@ async function main() {
     }
 
     const port = process.env.KR_HTTP_PORT || 6403;
-    const payload = JSON.stringify({ file: resolvedPath, collection });
+    // repoRoot jest OBOWIĄZKOWY od TASK-RAG-004 R1: chunki mają `source` względny wobec korzenia
+    // repo, a deleteBySource dopasowuje dokładną wartość. Bez tego pola daemon dostałby ścieżkę
+    // absolutną, nie skasowałby niczego i dołożył drugą kopię chunków przy każdym zapisie pliku.
+    const payload = JSON.stringify({ file: resolvedPath, collection, repoRoot: projectDir });
     let settled = false;
     const complete = () => {
       if (settled) return;

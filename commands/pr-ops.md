@@ -36,7 +36,7 @@ directly or ECC's `pr`/`review-pr` commands.
 ## Related
 
 - `/review-panel` — run the reviewer-persona panel on a PR's diff (`--pr <n>`)
-- `/code-review` — quick single-agent review
+- `/ecc:code-review` — quick single-agent review (ECC)
 - Skill source: `skills/vcs/pr-ops/SKILL.md`
 
 ---

@@ -12,6 +12,8 @@ to risk.
 Part of Layer 4 (Portfolio Construction) in the finance skills framework.
 """
 
+import argparse
+import sys
 import numpy as np
 
 
@@ -197,14 +199,17 @@ class DiversificationAnalyzer:
         return rc / port_vol
 
     def minimum_variance_weights(self) -> np.ndarray:
-        """Compute the minimum variance portfolio weights (long-only unconstrained).
+        """Compute the unconstrained minimum variance portfolio weights.
+
+        This is the closed-form solution with only the full-investment
+        constraint (weights sum to 1). There is no long-only constraint,
+        so weights may be negative (short positions).
 
         Returns
         -------
         np.ndarray
             w_mv = Sigma^(-1) * 1 / (1' * Sigma^(-1) * 1).
-            The portfolio with the lowest possible volatility. Weights may
-            be negative (short positions) if no constraints are applied.
+            The portfolio with the lowest possible volatility.
         """
         ones = np.ones(self.n_assets)
         inv_cov = np.linalg.inv(self.cov_matrix)
@@ -253,7 +258,7 @@ def build_covariance_matrix(
     return np.outer(vols, vols) * corr
 
 
-if __name__ == "__main__":
+def _demo() -> None:
     # ----------------------------------------------------------------
     # Demo: Diversification analysis on a 4-asset portfolio
     # ----------------------------------------------------------------
@@ -338,3 +343,58 @@ if __name__ == "__main__":
     print("\n" + "=" * 60)
     print("Demo complete.")
     print("=" * 60)
+
+def _check(failures: list, name: str, actual: float, expected: float, tol: float) -> None:
+    """Record a verification check result."""
+    ok = abs(actual - expected) <= tol
+    status = "PASS" if ok else "FAIL"
+    print(f"  [{status}] {name}: actual={actual:.6g}, expected={expected:.6g}, tol={tol:.2g}")
+    if not ok:
+        failures.append(name)
+
+def _verify() -> None:
+    """Verify key outputs against the SKILL.md worked examples."""
+    failures: list = []
+
+    # SKILL.md Example 1: two-asset portfolio (60% stock @ 20% vol, 40% bond @ 5% vol, rho=0.2)
+    cov = build_covariance_matrix(np.array([0.20, 0.05]),
+                                  np.array([[1.0, 0.2], [0.2, 1.0]]))
+    analyzer = DiversificationAnalyzer(weights=np.array([0.60, 0.40]), cov_matrix=cov)
+    _check(failures, "Ex1 portfolio volatility", analyzer.portfolio_volatility(), 0.1255, 1e-4)
+    _check(failures, "Ex1 weighted avg volatility", analyzer.weighted_average_volatility(), 0.14, 1e-12)
+    _check(failures, "Ex1 diversification benefit", analyzer.diversification_benefit(), 0.0145, 1e-4)
+
+    # SKILL.md Example 2: diversification ratio definition (DR = wavg vol / port vol)
+    _check(failures, "Ex2 diversification ratio formula", 0.1575 / 0.105, 1.50, 1e-12)
+    _check(failures, "Ex1 implied diversification ratio", analyzer.diversification_ratio(),
+           0.14 / 0.125539, 1e-4)
+
+    if failures:
+        print(f"\n{len(failures)} check(s) FAILED: {', '.join(failures)}")
+        sys.exit(1)
+    print("\nAll checks passed.")
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description=__doc__.strip().splitlines()[2] if __doc__ else "",
+        epilog=(
+            "Provides: DiversificationAnalyzer, build_covariance_matrix. "
+            "For programmatic use, import this module (diversification) instead of running it. "
+            "Bare run executes a demo whose printed values match the SKILL.md worked examples; "
+            "--verify asserts those values and exits nonzero on mismatch."
+        ),
+    )
+    parser.add_argument(
+        "--verify",
+        action="store_true",
+        help="run the verification checks against the SKILL.md worked-example values",
+    )
+    args = parser.parse_args()
+    if args.verify:
+        _verify()
+    else:
+        _demo()
+
+
+if __name__ == "__main__":
+    main()

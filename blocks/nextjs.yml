@@ -1,0 +1,68 @@
+# Blok: nextjs — framework/runtime: Next.js 16 App Router (React 19.2, TypeScript,
+# Tailwind 4, Turbopack). Oś frameworka, więc BEZ `orchestrate.layers` — układ katalogów
+# aplikacji Next.js (app/, components/, lib/) wnosi osobny blok osi architektury, gdy
+# powstanie. Do tego czasu projekt składa się z samego `nextjs` i jedzie /orchestrate
+# bez warstw.
+#
+# K88 (TASK-KAIZEN-002, 2026-09-07): powód powstania. `templates/examples/nextjs-project.yml`
+# deklarował `stack_blocks: [nextjs]` od miesięcy, a bloku nie było — każdy, kto skopiował
+# przykład, dostawał twardy błąd materializacji (`materialize-runtime.mjs`: „blok nie
+# istnieje"). Drugi skutek: dwaj agenci z `agents/stacks/nextjs-app/` byli osiągalni
+# wyłącznie przez `@mention`, bo nic ich nie wnosiło do panelu `/analyze`.
+name: nextjs
+axis: framework
+requires: []
+
+requires_ecc:
+  profile: developer
+  modules: [lang:typescript, capability:orchestration]
+
+patterns:
+  # Półka `always` CELOWO PUSTA (nie ma jej w ogóle). Wchodzi do KAŻDEGO taska, więc
+  # ma sens tylko dla wzorca z kartą reguł — a żaden wzorzec z `patterns/nextjs/` karty
+  # nie ma, natomiast karty z `cross-layer/` są nestjsowe co do treści:
+  # `security-invariants` mówi o dekoratorze `@Auth()` metody kontrolera (SI2/N2),
+  # `conventions`/`logger` o nazewnictwie DDD i tokenie LOGGER_SERVICE. Wstawienie ich
+  # tutaj byłoby myleniem implementera, nie regułą (ta sama decyzja i to samo
+  # uzasadnienie co w `blocks/python.yml`).
+  triggers:
+    - keywords: [server component, client component, "use client", "use cache", rsc, hydrat]
+      include:
+        - nextjs/server-client-components-pattern.md
+    - keywords: [fetch, dane, data, cache, revalidat, suspense, streaming]
+      include:
+        - nextjs/data-fetching-pattern.md
+    - keywords: [formularz, form, action, mutacj, mutation, "server action"]
+      include:
+        - nextjs/forms-actions-pattern.md
+    - keywords: [routing, route, proxy, middleware, redirect, layout, nawigacj]
+      include:
+        - nextjs/routing-proxy-pattern.md
+    - keywords: [auth, logowanie, login, sesj, session, token, uprawnien, permission]
+      include:
+        - nextjs/auth-pattern.md
+    - keywords: [styl, style, tailwind, css, theme, motyw]
+      include:
+        - nextjs/styling-pattern.md
+    - keywords: [test, vitest, playwright, "testing library", coverage, e2e]
+      include:
+        - nextjs/testing-pattern.md
+        - testing/testing-pyramid-pattern.md
+
+analyze:
+  panel:
+    - { stage: threat-model, agent: "/threat-model",
+        when: "\\b(auth|authn|authz|authentication|authorization|login|sesj|session|token)\\b|\\bpii\\b|public[-_ ]api|\"use server\"|server[-_ ]action",
+        output: "docs/security/threat-models/TM-{TASK_ID}.md", skip_if_exists: true }
+    - { stage: tech-analysis, agent: "nextjs-architecture-expert" }
+    - { stage: impl-analysis, agent: "nextjs-quality-verifier", advisory: true }
+
+overlay:
+  agents: [stacks/nextjs-app/]
+  patterns: [nextjs/, testing/]
+  rules: [typescript/, tsx/]
+  # `check-patterns-read` pilnuje, że implementer faktycznie przeczytał wstrzyknięte
+  # wzorce. Bez `pattern_routing:` w tym bloku bramka działa na wzorcach z wyzwalaczy,
+  # nie na mapowaniu plik→wzorzec — routing dopiszemy, gdy ustali się jeden układ
+  # katalogów aplikacji Next.js między projektami (dziś każdy ma swój).
+  hooks: [check-patterns-read]

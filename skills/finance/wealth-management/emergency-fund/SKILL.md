@@ -5,24 +5,6 @@ description: "Size and structure an emergency fund based on individual circumsta
 
 # Emergency Fund Planning
 
-## Purpose
-Size and structure an emergency fund appropriately based on individual circumstances, income stability, and expense profile. This skill covers expense-based and income-replacement approaches, tiered fund structures, vehicle selection, and guidelines for when to use and replenish the fund.
-
-## Layer
-6 — Personal Finance
-
-## Direction
-prospective
-
-## When to Use
-- Determining how much to hold in an emergency fund based on personal circumstances
-- Choosing where to hold emergency reserves (vehicle selection across liquidity tiers)
-- Adjusting emergency fund sizing for variable or seasonal income
-- Building a tiered emergency fund structure for optimal yield and access
-- Evaluating the opportunity cost of holding excess cash
-- Setting guidelines for appropriate emergency fund use
-- Planning replenishment after a drawdown
-
 ## Core Concepts
 
 ### Rule of Thumb
@@ -145,8 +127,8 @@ After using the emergency fund:
 **Calculate:** Optimal tiered allocation.
 **Solution:**
 1. **Tier 1 — Checking account: $4,500 (1 month).** Immediate access for sudden expenses (car repair, medical co-pay). Earning ~0.01% but provides instant liquidity.
-2. **Tier 2 — High-yield savings account: $13,500 (3 months).** Core emergency reserves. Earning ~4.5% APY (current HYSA rates). Available in 1-2 business days via transfer.
-3. **Tier 3 — T-bill ladder: $9,000 (2 months).** Three $3,000 T-bills maturing at 4-week, 8-week, and 13-week intervals. Earning ~4.8% (current T-bill rates). At least one tranche matures every ~4 weeks.
+2. **Tier 2 — High-yield savings account: $13,500 (3 months).** Core emergency reserves. Earning ~4.5% APY (illustrative, in the ~4-5% range seen as of 2026 — check current HYSA rates). Available in 1-2 business days via transfer.
+3. **Tier 3 — T-bill ladder: $9,000 (2 months).** Three $3,000 T-bills maturing at 4-week, 8-week, and 13-week intervals. Earning ~4.8% (illustrative, in the ~4-5% range seen as of 2026 — check current T-bill rates). At least one tranche matures every ~4 weeks.
 4. **Blended yield:** (4,500 × 0.01% + 13,500 × 4.5% + 9,000 × 4.8%) / 27,000 ≈ **3.85% weighted average.**
 5. **vs all checking (0.01%):** Earning ~$1,040/year more with the tiered approach — effectively free money for modest complexity.
 
@@ -161,12 +143,20 @@ After using the emergency fund:
 - Treating the emergency fund as an investment account rather than an insurance policy
 
 ## Cross-References
-- **liquidity-management** (wealth-management plugin, Layer 6): emergency fund is the foundation of the personal liquidity tier structure
-- **savings-goals** (wealth-management plugin, Layer 6): emergency fund is typically the highest priority savings goal
-- **debt-management** (wealth-management plugin, Layer 6): adequate emergency fund prevents taking on new high-interest debt during crises
-- **lending** (wealth-management plugin, Layer 6): emergency reserves are a factor in mortgage qualification
-- **investment-policy** (wealth-management plugin, Layer 5): emergency fund size feeds the liquidity constraint in an IPS
-- **financial-planning-workflow** (advisory-practice plugin, Layer 10): emergency fund adequacy is assessed early in the comprehensive financial planning process
+- **liquidity-management** (wealth-management plugin): emergency fund is the foundation of the personal liquidity tier structure
+- **savings-goals** (wealth-management plugin): emergency fund is typically the highest priority savings goal
+- **debt-management** (wealth-management plugin): adequate emergency fund prevents taking on new high-interest debt during crises
+- **lending** (wealth-management plugin): emergency reserves are a factor in mortgage qualification
+- **investment-policy** (wealth-management plugin): emergency fund size feeds the liquidity constraint in an IPS
+- **financial-planning-workflow** (advisory-practice plugin): emergency fund adequacy is assessed early in the comprehensive financial planning process
+- **insurance-planning** (wealth-management plugin): emergency fund size supports higher deductibles and longer disability elimination periods in the risk retention decision
+- **retirement-decumulation** (wealth-management plugin): the cash-reserve discipline extends into retirement as bucket one of a bucket withdrawal strategy
+## Running the Script
 
-## Reference Implementation
-See `scripts/emergency_fund.py` for computational helpers.
+```bash
+uv run scripts/emergency_fund.py            # run the demo (uses PEP 723 inline deps)
+uv run scripts/emergency_fund.py --verify   # check demo outputs against the worked examples (exit 1 on mismatch)
+python3 scripts/emergency_fund.py            # alternative (requires: pip install numpy)
+```
+
+The demo prints the calculations covered above; its values match the worked examples in this skill. Run `--help` for a list of the classes and functions. For programmatic use, import the module rather than running it — the demo only executes under `python emergency_fund.py`.

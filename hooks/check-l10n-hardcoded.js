@@ -25,83 +25,31 @@
  * Zawsze tylko ostrzega (exit 0) — nigdy nie blokuje agenta.
  */
 
-const fs = require('fs');
-const path = require('path');
-const { findFlutterConfig, matchesPattern } = require('./lib/flutter-config');
-const { readStdinJsonWithRaw } = require('./lib/utils');
+const { matchesPattern } = require('./lib/flutter-config');
+const { runRuleScanner, reportFindings, stripTrailingComment, COMMENT_LINE_C } = require('./lib/rule-scanner');
 
-const COMMENT_LINE = /^\s*(\/\/|\/\*|\*)/;
 // Literał zawierający znak charakterystyczny dla polszczyzny — sygnał, że to
 // tekst dla człowieka, a nie identyfikator techniczny.
 const NATURAL_LANGUAGE_LITERAL = /'[^']*[ąćęłńóśźżĄĆĘŁŃÓŚŹŻ][^']*'/;
 
-function stripTrailingComment(line) {
-  const idx = line.indexOf('//');
-  return idx >= 0 ? line.slice(0, idx) : line;
-}
-
-async function main() {
-  const { raw, parsed: input } = await readStdinJsonWithRaw();
-
-  try {
-    const filePath = input.tool_input?.file_path;
-
-    if (!filePath || !filePath.endsWith('.dart')) {
-      process.stdout.write(raw);
-      process.exit(0);
-    }
-
-    const loaded = findFlutterConfig(filePath);
-    if (!loaded) {
-      process.stdout.write(raw);
-      process.exit(0);
-    }
-
-    const { config } = loaded;
-
-    const l10nConfig = config.l10n;
-    if (!l10nConfig?.enabled) {
-      process.stdout.write(raw);
-      process.exit(0);
-    }
-
-    const check = l10nConfig.checkHardcodedStrings;
-    if (!check) {
-      process.stdout.write(raw);
-      process.exit(0);
-    }
-
-    const skipPatterns = config.skipPatterns || ['_test.dart', '.g.dart', '.freezed.dart', '.mock.dart'];
-    if (skipPatterns.some((pat) => filePath.endsWith(pat))) {
-      process.stdout.write(raw);
-      process.exit(0);
-    }
-
-    const normalized = filePath.replace(/\\/g, '/');
-
+runRuleScanner({
+  extensions: '.dart',
+  configFinder: 'flutter',
+  section: (config) => (config.l10n?.enabled && config.l10n.checkHardcodedStrings ? config.l10n.checkHardcodedStrings : null),
+  skipStyle: 'flutter',
+  scope: ({ normalized, section }) => {
     // Katalog samych tłumaczeń jest z natury pełen tekstu — nie sprawdzamy go
-    const l10nDirs = check.excludePaths || ['/l10n/', '/generated/'];
-    if (l10nDirs.some((p) => normalized.includes(p))) {
-      process.stdout.write(raw);
-      process.exit(0);
-    }
-
-    const resolvedPath = path.resolve(filePath);
-    if (!fs.existsSync(resolvedPath)) {
-      process.stdout.write(raw);
-      process.exit(0);
-    }
-
-    const lines = fs.readFileSync(resolvedPath, 'utf8').split('\n');
-    const basename = path.basename(filePath);
+    const excluded = section.excludePaths || ['/l10n/', '/generated/'];
+    return !excluded.some((p) => normalized.includes(p));
+  },
+  // Własny skaner: dwa różne zestawy reguł na dwóch różnych zakresach ścieżek
+  // (prezentacja vs domena), a jedna lista `findings` na wspólny raport.
+  scan: ({ lines, basename, normalized, section: check }) => {
+    const findings = [];
 
     // ── Sprawdzenie 1: teksty w warstwie prezentacji (kontrakt z configu) ──
     const uiPatterns = check.filePatterns || ['**/presentation/**/*.dart'];
-    const isUiFile = uiPatterns.some((pat) => matchesPattern(normalized, pat));
-
-    const findings = [];
-
-    if (isUiFile) {
+    if (uiPatterns.some((pat) => matchesPattern(normalized, pat))) {
       const forbidden = (check.forbiddenPatterns || []).map((p) => {
         try {
           return new RegExp(p);
@@ -111,10 +59,8 @@ async function main() {
       });
 
       for (let i = 0; i < lines.length; i++) {
-        const raw = lines[i];
-        if (COMMENT_LINE.test(raw)) continue;
-        const line = stripTrailingComment(raw);
-
+        if (COMMENT_LINE_C.test(lines[i])) continue;
+        const line = stripTrailingComment(lines[i]);
         if (forbidden.some((re) => re && re.test(line))) {
           findings.push({
             line: i + 1,
@@ -130,10 +76,8 @@ async function main() {
       const domainPatterns = domainCheck.filePatterns || ['**/domain/**/*.dart'];
       if (domainPatterns.some((pat) => matchesPattern(normalized, pat))) {
         for (let i = 0; i < lines.length; i++) {
-          const raw = lines[i];
-          if (COMMENT_LINE.test(raw)) continue;
-          const line = stripTrailingComment(raw);
-
+          if (COMMENT_LINE_C.test(lines[i])) continue;
+          const line = stripTrailingComment(lines[i]);
           if (NATURAL_LANGUAGE_LITERAL.test(line)) {
             findings.push({
               line: i + 1,
@@ -146,25 +90,13 @@ async function main() {
       }
     }
 
-    if (findings.length) {
-      const shown = findings.slice(0, 10);
-      for (const f of shown) {
-        console.error(`[Hook] Flutter l10n: ${basename}:${f.line} — ${f.msg}`);
-      }
-      if (findings.length > shown.length) {
-        console.error(`[Hook] Flutter l10n: ...i jeszcze ${findings.length - shown.length} w tym pliku`);
-      }
-      if (check.allowedImport) {
-        console.error(`[Hook] Użyj lokalizacji z: ${check.allowedImport}`);
-      }
-      console.error('[Hook] Wzorzec: patterns/flutter/localization-pattern.md');
-    }
-  } catch {
-    // Nieprawidłowe wejście — przepuść bez zmian
-  }
-
-  process.stdout.write(raw);
-  process.exit(0);
-}
-
-main();
+    reportFindings(findings, {
+      prefix: '[Hook] Flutter l10n:',
+      basename,
+      footers: [
+        check.allowedImport ? `[Hook] Użyj lokalizacji z: ${check.allowedImport}` : null,
+        '[Hook] Wzorzec: patterns/flutter/localization-pattern.md',
+      ],
+    });
+  },
+});

@@ -38,3 +38,12 @@ Dashboardy są świeżo zescaffoldowane z szablonu i zawierają **placeholdery, 
 Pierwsze `/pulse` je wypełni. Nie wpisuj do nich liczb ręcznie „na oko" — patrz incydent
 z metryką `B2C 68% / B2B 12%` (przykład z promptu agenta skopiowany jako fakt
 i raportowany przez miesiące, wykryty 2026-08-01).
+
+## Dashboardy są celowo puste
+
+`TEAM-STATE.md`, `KANBAN.md` i `TECH-DEBT.md` w tym katalogu nie opisują stanu —
+to szablony referencyjne. Backlog claude-patterns żyje w `docs/tasks/`, a `/pulse`
+nigdy nie był tu odpalony i nie musi być: repo utrzymuje system PM dla innych
+projektów, ale samo się nim nie prowadzi. Do 2026-09-07 stały tu placeholdery
+`{PROJECT_NAME}` ze wzorca, przez co wyglądały jak dashboard, o którym ktoś
+zapomniał (K112).

@@ -3,6 +3,7 @@
 **Version**: 1.0
 **Last Updated**: 2026-01-04
 **Tags**: "api:app:errors", "api:api-surface"
+**Level**: exhaustive
 
 **Status**: PRODUCTION
 **Priority**: CRITICAL

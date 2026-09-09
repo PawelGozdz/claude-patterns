@@ -5,25 +5,6 @@ description: "Determine how to distribute capital across asset classes using str
 
 # Asset Allocation
 
-## Purpose
-Provides frameworks for determining how to distribute capital across asset classes and strategies. Covers strategic and tactical allocation, mean-variance optimization, Black-Litterman, risk parity, glide paths, and practical implementation approaches. Asset allocation is the primary driver of long-term portfolio performance and risk.
-
-## Layer
-4 — Portfolio Construction
-
-## Direction
-both
-
-## When to Use
-- Setting long-term strategic asset allocation targets
-- Making tactical allocation decisions based on market views
-- Running mean-variance optimization with constraints
-- Implementing Black-Litterman to blend market equilibrium with investor views
-- Building risk parity or equal risk contribution portfolios
-- Designing glide paths for target-date or lifecycle strategies
-- Evaluating core-satellite portfolio structures
-- Matching assets to liabilities for pensions or insurance portfolios
-
 ## Core Concepts
 
 ### Strategic Asset Allocation (SAA)
@@ -139,39 +120,38 @@ Covariance matrix:
 
 MVO with lambda=4 (solving numerically or via quadratic programming):
 
-Optimal weights (approximate):
-- US Equity: 35%
-- Int'l Equity: 15%
-- US Bonds: 50%
+Optimal weights (long-only):
+- US Equity: 51.9%
+- Int'l Equity: 0%
+- US Bonds: 48.1%
 
-Portfolio: expected return = 5.25%, volatility = 7.8%
+Portfolio: expected return = 5.60%, volatility = 8.71%
 
-Note: The high bond allocation results from the optimization penalizing variance heavily (lambda=4). Reducing lambda or adding a minimum equity constraint would shift toward equities.
+Note: International equity is driven to zero — it is highly correlated with US equity (0.75) but has a lower expected return, so the optimizer sees no reason to hold it. This is classic MVO behavior: small input differences produce corner solutions. Adding a maximum-weight or minimum-allocation constraint would force diversification. The high bond allocation reflects the heavy variance penalty (lambda=4); reducing lambda shifts toward equities.
 
-### Example 2: Black-Litterman with a View on Emerging Markets
-**Given:**
-- Market-cap weights: US 55%, Developed Ex-US 30%, EM 15%
-- Equilibrium returns (from Pi = lambda*Sigma*w_mkt): US 6.5%, Dev Ex-US 5.8%, EM 7.2%
-- Investor view: EM will outperform US by 2% (medium confidence)
-- tau = 0.05
+### Example 2: Black-Litterman with a Relative View
+**Given:** The same three assets and covariance matrix as Example 1.
+- Market-cap weights: US Equity 55%, Int'l Equity 30%, US Bonds 15%
+- Risk aversion lambda = 2.5, tau = 0.05
+- Investor view: Int'l Equity will outperform US Bonds by 3% (view uncertainty Omega = [0.001]; lower = higher confidence)
 
-**Calculate:** Posterior expected returns and implied weight shift
+**Calculate:** Equilibrium and posterior expected returns
 
 **Solution:**
 
-View specification:
-- P = [-1, 0, 1] (EM minus US)
-- Q = [2%] (EM outperforms US by 2%)
-- Omega = [0.001] (medium confidence; lower = higher confidence)
+Step 1 — Equilibrium returns, Pi = lambda × Sigma × w_mkt:
+- US Equity: 5.16%
+- Int'l Equity: 5.41%
+- US Bonds: 0.18%
 
-After applying the Black-Litterman formula:
+Step 2 — View specification: P = [0, 1, -1], Q = [3%].
 
-Posterior expected returns (approximate):
-- US: 6.2% (decreased from 6.5%)
-- Dev Ex-US: 5.9% (slight increase due to correlation effects)
-- EM: 7.8% (increased from 7.2%)
+The equilibrium already implies Int'l beats Bonds by 5.23%, so a 3% view is *bearish* relative to equilibrium. Applying the Black-Litterman posterior formula:
+- US Equity: 4.28% (pulled down via its 0.75 correlation with Int'l)
+- Int'l Equity: 4.07% (down from 5.41%)
+- US Bonds: 0.23% (up slightly)
 
-The posterior tilts returns toward the view. When these posterior returns are fed into MVO, the resulting weights shift from market-cap weights toward EM and away from US, but the shift is moderate and proportional to confidence, avoiding the extreme concentrations that raw MVO can produce.
+The posterior tilts returns toward the view in proportion to confidence. Fed into MVO, these returns shift weights away from equities and toward bonds relative to market-cap weights — moderately, avoiding the extreme corner solutions that raw MVO produces (compare Example 1). Note that views are always evaluated relative to what equilibrium already implies, not in isolation.
 
 ## Common Pitfalls
 - MVO is highly sensitive to expected return inputs and has been called an "error maximizer" — small changes in returns produce large changes in weights
@@ -184,12 +164,20 @@ The posterior tilts returns toward the view. When these posterior returns are fe
 - Over-reliance on historical covariance matrices that may not reflect future relationships
 
 ## Cross-References
-- **historical-risk** (wealth-management plugin, Layer 1a): volatility and correlation inputs for mean-variance optimization
-- **forward-risk** (wealth-management plugin, Layer 1b): expected return forecasts and scenario analysis for portfolio optimization
-- **diversification** (wealth-management plugin, Layer 4): diversification principles underpin all allocation frameworks
-- **bet-sizing** (wealth-management plugin, Layer 4): position sizing within the allocated asset classes
-- **rebalancing** (wealth-management plugin, Layer 4): maintaining allocation targets over time
-- **quantitative-valuation** (wealth-management plugin, Layer 3): valuation signals can inform TAA decisions
+- **historical-risk** (wealth-management plugin): volatility and correlation inputs for mean-variance optimization
+- **forward-risk** (wealth-management plugin): expected return forecasts and scenario analysis for portfolio optimization
+- **diversification** (wealth-management plugin): diversification principles underpin all allocation frameworks
+- **bet-sizing** (wealth-management plugin): position sizing within the allocated asset classes
+- **rebalancing** (wealth-management plugin): maintaining allocation targets over time
+- **quantitative-valuation** (wealth-management plugin): valuation signals can inform TAA decisions
+- **retirement-decumulation** (wealth-management plugin): decumulation-phase glide paths and the sequence-of-returns risk that allocation choices must manage
+- **factor-investing** (wealth-management plugin): sizing factor tilts as deliberate, survivable deviations from the policy portfolio
+## Running the Script
 
-## Reference Implementation
-See `scripts/asset_allocation.py` for computational helpers.
+```bash
+uv run scripts/asset_allocation.py            # run the demo (uses PEP 723 inline deps)
+uv run scripts/asset_allocation.py --verify   # check demo outputs against the worked examples (exit 1 on mismatch)
+python3 scripts/asset_allocation.py            # alternative (requires: pip install numpy scipy)
+```
+
+The demo prints the calculations covered above; its values match the worked examples in this skill. Run `--help` for a list of the classes and functions. For programmatic use, import the module rather than running it — the demo only executes under `python asset_allocation.py`.

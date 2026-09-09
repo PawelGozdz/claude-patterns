@@ -14,7 +14,7 @@
   wywołujący sprawdza `isFailure` i mapuje `result.error`. NIGDY `throw` w domenie.
 - **DE2** — Każdy błąd domenowy ma **stabilny `code`** z enuma kodów projektu (np.
   `ProjectErrorCode.XXX`) — nie ad-hoc string, nie sama klasa bez kodu.
-- **DE3 (KRYTYCZNA — łamana w ~90% przypadków; 72 klasy w 8/11 kontekstów, audyt 2026-07)** —
+- **DE3 (KRYTYCZNA; audyt 2026-07, sprzed backstopu: 72 klasy bez mapowania w 8/11 kontekstów)** —
   **NOWY kod błędu ⇒ wpis w kontekstowym error-mapperze (`IDomainErrorMapper`) W TYM SAMYM
   PR/diffie.** Błąd bez mapowania NIE daje 500 — realnie ląduje na generycznym 422 z
   `GlobalFallbackErrorMapper` (`ERROR_HTTP_STATUS` nie jest niezawodną siatką bezpieczeństwa, patrz

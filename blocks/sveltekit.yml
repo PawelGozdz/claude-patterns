@@ -1,0 +1,54 @@
+# Blok: sveltekit — framework/runtime: SvelteKit 2 na runach Svelte 5 (TypeScript,
+# Tailwind, Vite). Oś frameworka, więc BEZ `orchestrate.layers` — układ katalogów
+# (routes/, lib/) wnosi osobny blok osi architektury, gdy powstanie.
+#
+# K88 (TASK-KAIZEN-002, 2026-09-07): powód powstania — dwaj agenci z
+# `agents/stacks/sveltekit/` byli osiągalni wyłącznie przez `@mention`, bo żaden blok
+# ich nie wnosił, a pięć wzorców z `patterns/sveltekit/` nie miało jak trafić do prompta
+# przez mechanizm wymuszony.
+name: sveltekit
+axis: framework
+requires: []
+
+requires_ecc:
+  profile: developer
+  modules: [lang:typescript, capability:orchestration]
+
+patterns:
+  # Półka `always` CELOWO PUSTA — uzasadnienie jak w `blocks/nextjs.yml` i
+  # `blocks/python.yml`: `always` ma sens tylko dla wzorca z kartą reguł, a karty
+  # z `cross-layer/` opisują konwencje NestJS/DDD (dekorator `@Auth()`, LOGGER_SERVICE),
+  # więc w SvelteKicie byłyby myleniem, nie regułą.
+  triggers:
+    - keywords: [rune, "$state", "$derived", "$effect", reaktywn, reactive, store]
+      include:
+        - sveltekit/svelte5-runes-pattern.md
+    - keywords: [komponent, component, prop, slot, snippet]
+      include:
+        - sveltekit/component-pattern.md
+    - keywords: [routing, route, layout, nawigacj, "+page", "+layout", redirect]
+      include:
+        - sveltekit/routing-loading-pattern.md
+    - keywords: [load, fetch, dane, data, "form action", formularz, invalidate]
+      include:
+        - sveltekit/data-fetching-pattern.md
+    - keywords: [test, vitest, playwright, "testing library", coverage, e2e]
+      include:
+        - sveltekit/testing-pattern.md
+        - testing/testing-pyramid-pattern.md
+
+analyze:
+  panel:
+    - { stage: threat-model, agent: "/threat-model",
+        when: "\\b(auth|authn|authz|authentication|authorization|login|sesj|session|token)\\b|\\bpii\\b|public[-_ ]api|\\+server\\.ts|form[-_ ]action",
+        output: "docs/security/threat-models/TM-{TASK_ID}.md", skip_if_exists: true }
+    - { stage: tech-analysis, agent: "sveltekit-architecture-expert" }
+    - { stage: impl-analysis, agent: "sveltekit-quality-verifier", advisory: true }
+
+overlay:
+  agents: [stacks/sveltekit/]
+  patterns: [sveltekit/, testing/]
+  rules: [typescript/]
+  # Patrz komentarz w `blocks/nextjs.yml`: bramka groundingu działa na wzorcach
+  # z wyzwalaczy, `pattern_routing:` dopiszemy przy ustabilizowanym układzie katalogów.
+  hooks: [check-patterns-read]

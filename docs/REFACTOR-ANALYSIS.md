@@ -4,6 +4,13 @@
 > Cel: ocena obecnego setupu vs ECC (affaan-m/ECC, 211K★), wskazanie kierunku
 > refaktoru ze skłonieniem ku ECC, oraz wprowadzenie konceptu **loops**.
 
+> **⚠ ARCHIWUM — opisuje stan sprzed [ADR 0008](adr/0008-stack-blocks-composition.md)**
+> (2026-08-12: kompozycja bloków zamiast presetów, `/analyze` + `/orchestrate` zamiast
+> `/analyze-ddd` + `/orchestrate-ddd`). Aktualny opis architektury:
+> [`docs/ARCHITECTURE.md`](ARCHITECTURE.md), ADR 0008,
+> [ADR 0009](adr/0009-wynik-spike-fazy-0-i-lista-retire.md) (wiążąca lista RETIRE/KEEP
+> zamiast §8 tego pliku). Zachowany dla historii decyzji.
+
 ---
 
 ## 1. Stan obecny — claude-patterns (v3.5)
@@ -361,6 +368,12 @@ wyłączyć (`ECC_DISABLED_HOOKS`), a które nasze zostawić dla plików wzorcow
 ---
 
 ## 8. Dyspozycja obecnego dobytku (RETIRE → ECC / KEEP → overlay / AUDIT)
+
+> **Rozstrzygnięte w [ADR 0009](adr/0009-wynik-spike-fazy-0-i-lista-retire.md) (2026-09-07);
+> poniższa lista jest historyczna.** Spike Fazy 0 poprawił ją w trzech miejscach:
+> finance/legal/marketing to KEEP (nie AUDIT), `adr`/`blog`/`capture`/`claude-updates` to KEEP
+> (nie RETIRE), a `rules/nestjs-ddd/` trzeba NAPISAĆ — to luka u obu stron, nie retire.
+> Do wykonania bierz tabele z ADR 0009, nie stąd.
 
 > Zasada: generyczne → ECC, domenowe/moat → overlay. **Żelazna kolejność: NIE kasować przed
 > potwierdzeniem pokrycia ECC w Fazie 0.** AUDIT = do empirycznego potwierdzenia.

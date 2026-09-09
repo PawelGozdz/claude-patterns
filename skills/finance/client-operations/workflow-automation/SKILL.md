@@ -1,36 +1,9 @@
 ---
 name: workflow-automation
-description: "Design and implement workflow automation with task routing approval chains and SLA monitoring for securities operations. Use when building a new operational workflow for account opening maintenance transfers or corporate actions, implementing task routing logic based on type priority or capacity, designing multi-level approval chains with dollar thresholds and delegation of authority, defining escalation rules for aging work items approaching SLA breach, selecting a workflow engine or BPM platform like Camunda Pega or ServiceNow, modeling an operational process as a state machine with defined transitions, adding audit trail and logging for SEC Rule 17a-3 or FINRA supervisory obligations, migrating from email-and-spreadsheet tracking to a structured workflow system, or measuring cycle time throughput queue depth and rework rate."
+description: "Design human-in-the-loop workflow orchestration for securities operations: task routing, approval chains, and SLA monitoring. Use when building multi-level approval chains with dollar thresholds and delegation of authority, enforcing four-eyes (maker-checker) controls, defining escalation rules for aging work items approaching SLA breach, designing human-in-the-loop gates, selecting a workflow engine or BPM platform (Camunda, Pega, ServiceNow), modeling a process as a state machine, adding audit trails for SEC Rule 17a-3/17a-4 or FINRA supervisory obligations, or migrating from email-and-spreadsheet tracking. For zero-touch automation rates and STP measurement, see stp-automation."
 ---
 
 # Workflow Automation
-
-## Purpose
-
-Guide the design and implementation of workflow automation for securities operations. Covers business process management (BPM) fundamentals, task routing and assignment strategies, multi-level approval chains with delegation of authority, escalation rules and SLA monitoring, process orchestration patterns (sequential, parallel, conditional, event-driven), workflow engine selection for financial services, audit trail requirements for regulatory compliance, and workflow effectiveness measurement. Enables building or improving operations workflows that route work correctly, enforce approval controls, meet service-level commitments, and produce defensible audit trails.
-
-## Layer
-
-12 — Client Operations (Account Lifecycle & Servicing)
-
-## Direction
-
-prospective
-
-## When to Use
-
-- Designing a new operational workflow for account opening, maintenance, transfers, or corporate actions
-- Implementing task routing logic that assigns work items to the correct team or individual based on type, priority, or capacity
-- Building multi-level approval chains with dollar thresholds, risk tiers, and delegation of authority
-- Defining escalation rules for aging work items that are approaching or have breached SLA targets
-- Selecting or evaluating a workflow engine or BPM platform for securities operations (Camunda, Pega, ServiceNow, or custom-built)
-- Adding SLA monitoring and management reporting to an existing manual or semi-automated process
-- Designing human-in-the-loop gates for exception items that require judgment before automated processing continues
-- Implementing audit trail and logging requirements to satisfy SEC Rule 17a-3/17a-4 recordkeeping and FINRA supervisory review obligations
-- Modeling an operational process as a state machine with defined states, transitions, and guard conditions
-- Measuring workflow effectiveness through cycle time, throughput, queue depth, SLA compliance rate, and rework rate
-- Orchestrating sub-processes across multiple systems (CRM, portfolio management, custodian portals, compliance screening) into a unified workflow
-- Migrating from email-and-spreadsheet-based tracking to a structured workflow system
 
 ## Core Concepts
 
@@ -40,11 +13,7 @@ Business process management (BPM) is the discipline of modeling, executing, moni
 
 **Process modeling.** A workflow begins as a process model — a formal representation of the steps, decision points, roles, and data flows in an operational process. The model serves three purposes: (1) it documents how the process works for training, audit, and examination purposes, (2) it provides the blueprint for automation, and (3) it establishes the baseline for measurement and improvement.
 
-**BPMN notation basics.** Business Process Model and Notation (BPMN 2.0) is the industry standard for process modeling. Key elements relevant to securities operations:
-- **Tasks** — individual work units (e.g., "Verify client identity," "Submit account to custodian," "Review reconciliation break").
-- **Gateways** — decision points. Exclusive gateways (XOR) route to exactly one path based on a condition. Parallel gateways (AND) split into multiple concurrent paths and synchronize when all complete. Inclusive gateways (OR) route to one or more paths.
-- **Events** — triggers that start, interrupt, or end a process. Start events (new account request received), intermediate events (timer fires, message arrives from custodian), and end events (account opened successfully, request rejected).
-- **Swim lanes** — horizontal bands representing organizational roles or systems. A swim lane for "Operations Analyst," another for "Compliance," another for "Custodian System." Tasks are placed in the lane of the responsible party, making handoffs visible.
+**Process modeling notation.** BPMN 2.0 is the industry standard for process modeling; model operational processes with tasks, decision gateways, start/intermediate/end events, and swim lanes per responsible role so that handoffs between operations, compliance, and external systems are explicit and visible.
 
 **Process decomposition.** Complex operations workflows are decomposed into sub-processes. An account opening workflow decomposes into: data collection, KYC verification, document review, custodian submission, confirmation processing, and account activation. Each sub-process can be modeled, automated, and measured independently while the parent process orchestrates the sequence.
 
@@ -64,7 +33,7 @@ Task routing determines which person or team receives a work item when it enters
 
 **Queue management.** When tasks cannot be immediately assigned (because all qualified team members are at capacity), they enter a queue. Queue management includes: priority ordering within the queue (SLA deadline, dollar value, client tier), visibility into queue depth and wait time for management, and automatic re-routing if a queue exceeds a defined depth or wait-time threshold.
 
-**Capacity planning.** Historical data on task volumes, processing times, and SLA targets feeds capacity models that determine how many staff are needed for each role. Workflow systems capture the data needed for capacity planning: arrival rate (tasks per hour/day), service rate (average processing time per task), and queue wait time. Little's Law (queue depth = arrival rate times average time in system) provides the theoretical foundation.
+**Capacity planning.** Historical data on task volumes, processing times, and SLA targets feeds capacity models that determine how many staff are needed for each role. Workflow systems capture the data needed for capacity planning: arrival rate (tasks per hour/day), service rate (average processing time per task), and queue wait time.
 
 ### 3. Approval Chains and Authorization
 
@@ -204,108 +173,8 @@ Quantitative measurement is essential to identify bottlenecks, justify investmen
 
 ## Worked Examples
 
-### Example 1: Designing an Approval Workflow for High-Value Account Transfers
 
-**Scenario:** A mid-size broker-dealer processes approximately 300 account transfers per month. Management has identified that high-value transfers (over $500,000) lack a consistent approval process — some receive supervisory review, others do not, depending on which analyst processes them. The compliance department has flagged this as a FINRA Rule 3110 supervisory concern. The firm needs a structured approval workflow for all account transfers, with additional controls for high-value and high-risk transfers.
-
-**Design Considerations:**
-- FINRA Rule 11870 imposes strict timelines (3 business days for validation, 6 total for completion), so the approval workflow cannot add significant delay.
-- The firm processes three transfer types: full ACAT, partial ACAT, and non-ACAT (journals, wire transfers, DTC deliveries).
-- Transfer risk varies by type, dollar value, and circumstances (e.g., transfers to third-party accounts, transfers from elderly clients, transfers initiated shortly after an advisor change).
-- The firm has 12 operations analysts, 3 team leads, and an operations manager. Compliance has one dedicated surveillance analyst for operations reviews.
-
-**Analysis:**
-
-Define the approval matrix:
-
-| Transfer Type | Value / Risk | Approvals Required | SLA Impact |
-|---|---|---|---|
-| Full ACAT (standard) | Under $500K | Operations analyst (self-review) + automated supervisory log | No added delay |
-| Full ACAT (high-value) | $500K - $2M | Operations analyst + team lead review | Add 4 hours max |
-| Full ACAT (very high value) | Over $2M | Operations analyst + team lead + operations manager | Add 8 hours max |
-| Transfer to third-party account | Any value | Operations analyst + team lead + compliance review | Add 1 business day max |
-| Transfer from client age 65+ | Over $100K | Operations analyst + team lead (senior investor protection review) | Add 4 hours max |
-| Non-ACAT wire transfer | Over $50K | Operations analyst + team lead + verbal callback confirmation | Add 2 hours max |
-
-Model the workflow as a state machine with states: Received, Validated, Pending Approval (Tier 1), Pending Approval (Tier 2), Pending Approval (Tier 3), Approved, Submitted to ACATS/Custodian, In Progress, Completed, Rejected. Guard conditions on each transition enforce the approval matrix — the system evaluates transfer value, transfer type, client age, and destination account ownership to determine which approval tiers are required.
-
-Implement timeout escalation on each approval tier. If a Tier 1 approval (team lead) is not acted upon within 2 hours, send a reminder. If not acted upon within 4 hours, escalate to the operations manager for either direct approval or reassignment. These timeouts are calibrated to keep the total approval cycle within the FINRA Rule 11870 timelines.
-
-For the compliance review tier (transfers to third-party accounts), the compliance analyst receives a structured review package: client identity verification, relationship between the client and the third-party recipient, source of the transfer instruction (client-initiated vs. advisor-initiated), and any recent account activity that may indicate exploitation or unauthorized transactions. The compliance review SLA is 1 business day, with escalation to the Chief Compliance Officer if the deadline is approaching.
-
-The audit trail captures every approval decision: approver identity, timestamp, decision (approve/reject/request more information), and any comments or justification. This audit trail is the firm's evidence of supervisory review for FINRA Rule 3110 examination purposes.
-
-### Example 2: Building SLA Monitoring for Account Maintenance Requests
-
-**Scenario:** An RIA with $6 billion in AUM processes approximately 800 account maintenance requests per month, including name changes, address updates, beneficiary changes, account re-registrations, and fee schedule adjustments. The firm has no formal SLA tracking — requests are managed through a shared email inbox and a spreadsheet. Advisors frequently complain that requests "disappear" or take too long. The head of operations wants to implement SLA monitoring with real-time visibility for both operations staff and advisors.
-
-**Design Considerations:**
-- The firm uses Salesforce as its CRM and wants to leverage Salesforce's workflow capabilities rather than introducing a new platform.
-- Different maintenance types have different complexity and urgency. A simple address change should complete in 1 business day. A trust re-registration may require 5-7 business days due to document collection and custodian processing.
-- The firm custodies with two custodians (Schwab and Fidelity), and each custodian has different processing times and submission methods for maintenance requests.
-- Advisors need visibility into request status without calling the operations team.
-
-**Analysis:**
-
-Step 1 — Define SLA targets per maintenance type:
-
-| Maintenance Type | SLA Target | Rationale |
-|---|---|---|
-| Address change | 1 business day | Simple, no documentation required beyond client confirmation |
-| Name change (marriage, divorce) | 3 business days | Requires supporting documents (marriage certificate, court order) and custodian processing |
-| Beneficiary change | 2 business days | Requires signed beneficiary designation form; advisor review recommended |
-| Account re-registration (individual to trust) | 5 business days | Requires trust documentation, custodian re-titling, cost basis continuity verification |
-| Fee schedule adjustment | 2 business days | Requires advisor approval, billing system update, and confirmation |
-| Account closure | 3 business days | Requires asset disposition (transfer or liquidation) and custodian close-out |
-
-Step 2 — Build the workflow in Salesforce. Create a custom object (or use Salesforce Case) for maintenance requests. Each request captures: request type, requesting advisor, client account, date received, SLA deadline (auto-calculated from request type), assigned analyst, current status (Received, In Progress, Pending Documentation, Submitted to Custodian, Completed, Cancelled), and custodian.
-
-Implement routing rules: requests are auto-assigned to the next available analyst using workload-based assignment. Complex request types (re-registrations, closures) are routed to senior analysts with the appropriate skill tag.
-
-Step 3 — Implement SLA monitoring. Salesforce Process Builder (or Flow) evaluates each open request against its SLA deadline on a scheduled basis (every hour during business hours). The aging thresholds:
-- Green: more than 50% of SLA remaining.
-- Yellow: 20-50% of SLA remaining. The assigned analyst sees a yellow indicator on their dashboard.
-- Red: less than 20% of SLA remaining. The team lead receives an automated notification.
-- Breached: SLA exceeded. The operations manager receives a breach notification. The request is flagged for root cause documentation.
-
-Step 4 — Advisor visibility. Build a Salesforce Experience Cloud portal (or a custom Lightning component accessible to advisors) that displays: all open requests for the advisor's clients, current status and assigned analyst, SLA deadline and color-coded aging indicator, and a comment thread for advisor-operations communication. This eliminates the need for advisors to email or call operations for status updates.
-
-Step 5 — Management reporting. A weekly SLA dashboard displays: total requests received and completed, SLA compliance rate by maintenance type, average cycle time by maintenance type, breach count and root causes, and analyst-level throughput. The operations manager reviews the dashboard in the weekly team meeting and assigns process improvement actions for any maintenance type with SLA compliance below 90%.
-
-### Example 3: Implementing Escalation Rules for Aging Corporate Action Elections
-
-**Scenario:** A broker-dealer processes voluntary corporate action elections for approximately 4,000 client accounts. The firm has experienced two incidents in the past year where election deadlines were missed, resulting in clients receiving the default election on tender offers instead of their instructed election. In both cases, the root cause was a combination of late client notification and insufficient escalation when elections were not returned in time. The COO has mandated a formal escalation framework for corporate action elections.
-
-**Design Considerations:**
-- The election deadline chain runs: DTC deadline (hard deadline), custodian deadline (1 business day before DTC), firm internal deadline (2 business days before custodian), client notification (at least 5 business days before firm internal deadline).
-- Election types vary in complexity: simple tender offers (tender or do not tender), mandatory with choice (cash or stock), complex events (Dutch auctions, exchange offers with multiple alternatives).
-- The firm has 8 corporate actions analysts, a corporate actions manager, and a senior operations VP who oversees all processing.
-- Some clients (particularly institutional accounts) require internal committee approval before submitting elections, adding time to the response cycle.
-
-**Analysis:**
-
-Define the escalation timeline working backward from the DTC deadline. Assume a typical tender offer with a DTC deadline of Day 0 (expressed as business days before the DTC deadline):
-
-| Day (Before DTC Deadline) | Action | Owner |
-|---|---|---|
-| Day -10 | Event announced, validated, and set up in system. Client notification generated. | Corporate actions analyst |
-| Day -9 | Notification sent to all affected clients and advisors via email and portal. | Automated |
-| Day -5 | First follow-up to clients/advisors who have not responded. Yellow status assigned. | Automated notification, analyst monitors |
-| Day -4 | Second follow-up with direct call to advisor for accounts above $100K in affected position. Team lead notified of non-responses. | Analyst (calls), automated (team lead alert) |
-| Day -3 | Firm internal deadline. All received elections aggregated for submission. Non-respondents receive default election unless override is approved. | Corporate actions analyst + team lead review |
-| Day -2.5 | Escalation to corporate actions manager for any account where the advisor disputes the default and requests a late election. Manager decides whether to attempt late submission. | Corporate actions manager |
-| Day -2 | Elections submitted to custodian. | Corporate actions analyst |
-| Day -1 | Custodian deadline. Confirm custodian has accepted the firm's election submission. Escalate to manager immediately if custodian rejects or flags any issues. | Corporate actions analyst + manager (if issues) |
-| Day 0 | DTC deadline. Verify final settlement. Any issues escalated to senior VP. | Corporate actions manager + senior VP (if issues) |
-
-Implement monitoring controls:
-- A daily corporate actions dashboard shows all open voluntary events, the number of accounts requiring election, the response rate, and the days remaining until each deadline.
-- Automated alerts fire at each escalation milestone. If the response rate is below 70% at Day -5, the team lead is alerted. If below 85% at Day -4, the corporate actions manager is alerted. If below 95% at Day -3 (firm internal deadline), the manager and senior VP are alerted.
-- For institutional accounts requiring committee approval, the escalation timeline starts earlier — notification at Day -12 instead of Day -10 — to accommodate the approval process.
-
-Post-event review: after each voluntary corporate action settles, the team logs the response rate, any elections that missed the internal deadline, whether late submissions were attempted and accepted, and any client impact from default elections. This data feeds a monthly review that identifies patterns (specific advisors who consistently respond late, event types that require longer lead times, clients who need proactive outreach) and drives process improvements.
-
-Audit trail requirements: every notification, follow-up, escalation, and election submission is logged with timestamps and responsible parties. If a client later disputes that they received the default election, the firm can produce the complete communication and escalation history demonstrating that the client was notified, reminded, and escalated through the defined process. This audit trail satisfies FINRA Rule 3110 supervisory obligations and provides examination-ready documentation.
+Three worked examples — a high-value account transfer approval matrix ($500K/$2M tiers, third-party and senior-investor triggers), Salesforce-based SLA monitoring for account maintenance requests, and a Day -10 through Day 0 escalation timeline for corporate action elections — are in [references/examples.md](references/examples.md); load it when designing a concrete approval chain, SLA program, or escalation framework.
 
 ## Common Pitfalls
 
@@ -324,11 +193,11 @@ Audit trail requirements: every notification, follow-up, escalation, and electio
 
 ## Cross-References
 
-- **stp-automation** (Layer 12, client-operations) — STP is the end goal of operations automation; workflow automation handles the exceptions and human-in-the-loop steps that STP cannot yet cover.
-- **account-opening-workflow** (Layer 12, client-operations) — Account opening is a primary domain for workflow automation, with multi-step approval chains, conditional routing by account type, and custodian submission orchestration.
-- **account-maintenance** (Layer 12, client-operations) — Maintenance requests (name changes, beneficiary updates, re-registrations) are routed, tracked, and SLA-monitored through workflow systems.
-- **account-transfers** (Layer 12, client-operations) — Transfers require multi-step approval workflows with dollar-based thresholds, FINRA-mandated timelines, and escalation for aging items.
-- **corporate-actions** (Layer 12, client-operations) — Voluntary corporate actions have deadline-driven workflows for client notification, election collection, escalation, and DTC submission.
-- **reconciliation** (Layer 12, client-operations) — Reconciliation break resolution follows escalation workflows with aging thresholds, priority routing, and management reporting.
-- **operational-risk** (Layer 11, trading-operations) — Workflow controls (approval chains, four-eyes principle, SLA monitoring) are operational risk mitigations that reduce processing errors and missed deadlines.
-- **books-and-records** (Layer 9, compliance) — Workflow audit trails are regulatory records subject to SEC Rule 17a-3/17a-4 preservation requirements and FINRA examination review.
+- **stp-automation** (client-operations plugin) — STP is the end goal of operations automation; workflow automation handles the exceptions and human-in-the-loop steps that STP cannot yet cover.
+- **account-opening-workflow** (client-operations plugin) — Account opening is a primary domain for workflow automation, with multi-step approval chains, conditional routing by account type, and custodian submission orchestration.
+- **account-maintenance** (client-operations plugin) — Maintenance requests (name changes, beneficiary updates, re-registrations) are routed, tracked, and SLA-monitored through workflow systems.
+- **account-transfers** (client-operations plugin) — Transfers require multi-step approval workflows with dollar-based thresholds, FINRA-mandated timelines, and escalation for aging items.
+- **corporate-actions** (client-operations plugin) — Voluntary corporate actions have deadline-driven workflows for client notification, election collection, escalation, and DTC submission.
+- **reconciliation** (client-operations plugin) — Reconciliation break resolution follows escalation workflows with aging thresholds, priority routing, and management reporting.
+- **operational-risk** (trading-operations plugin) — Workflow controls (approval chains, four-eyes principle, SLA monitoring) are operational risk mitigations that reduce processing errors and missed deadlines.
+- **books-and-records** (compliance plugin) — Workflow audit trails are regulatory records subject to SEC Rule 17a-3/17a-4 preservation requirements and FINRA examination review.

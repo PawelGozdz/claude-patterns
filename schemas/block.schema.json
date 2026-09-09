@@ -1,0 +1,272 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/claude-patterns/schemas/block.schema.json",
+  "title": "Stack block (blocks/*.yml)",
+  "description": "A composition block per ADR 0008. scripts/materialize-runtime.mjs reads these and produces .claude/config/runtime.yml. The top-level key list here mirrors BLOCK_KEYS in that script (materialize-runtime.mjs:60-73); a key not listed there is warned about and dropped, so adding one here without adding it there produces a schema that validates files the engine silently ignores.",
+  "type": "object",
+  "required": ["name"],
+  "additionalProperties": false,
+
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Block id as referenced from project.yml stack_blocks. A project-local block under .claude/blocks/ is referenced as './name'.",
+      "minLength": 1
+    },
+
+    "axis": {
+      "type": "string",
+      "description": "Which dimension of the stack this block occupies. Two blocks on the same axis conflict. Only a block with axis 'architecture' may contribute orchestrate.layers (materialize-runtime.mjs:424).",
+      "enum": ["architecture", "framework", "persistence", "process", "security", "validation"]
+    },
+
+    "requires": {
+      "type": "array",
+      "description": "Blocks that must also be present in stack_blocks. A missing one is a hard failure, not a warning (materialize-runtime.mjs:349).",
+      "items": { "type": "string" }
+    },
+
+    "requires_ecc": {
+      "type": "object",
+      "description": "Declares the block's dependency on the ECC plugin explicitly, rather than leaving it to guesswork.",
+      "additionalProperties": false,
+      "properties": {
+        "profile": { "type": "string" },
+        "modules": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+
+    "extends": {
+      "type": "string",
+      "description": "Inherit from another block. Exactly one level — a base that itself extends is rejected (materialize-runtime.mjs:272)."
+    },
+
+    "params": {
+      "type": "object",
+      "description": "Parameters the block expects from project.yml block_params.<name>. Values substitute into ${...} placeholders in the rest of the block.",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["type"],
+        "additionalProperties": false,
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "A trailing '[]' marks a list; an empty list counts as absent when checking 'required'.",
+            "pattern": "^[a-z_]+(\\[\\])?$"
+          },
+          "required": { "type": "boolean" },
+          "default": {},
+          "doc": { "type": "string" }
+        }
+      }
+    },
+
+    "patterns": {
+      "type": "object",
+      "description": "Which pattern files this block puts in front of agents.",
+      "additionalProperties": false,
+      "properties": {
+        "always": {
+          "type": "array",
+          "description": "Paths relative to patterns/, always injected.",
+          "items": { "type": "string" }
+        },
+        "remove": {
+          "type": "array",
+          "description": "Paths another block added that this block withdraws.",
+          "items": { "type": "string" }
+        },
+        "triggers": {
+          "type": "array",
+          "description": "Keyword-gated pattern inclusion.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "keywords": { "type": "array", "items": { "type": "string" } },
+              "include": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        }
+      }
+    },
+
+    "overlay": {
+      "type": "object",
+      "description": "Extra assets linked into the project on setup.",
+      "additionalProperties": false,
+      "properties": {
+        "agents": { "type": "array", "items": { "type": "string" } },
+        "hooks": { "type": "array", "items": { "type": "string" } },
+        "patterns": { "type": "array", "items": { "type": "string" } },
+        "rules": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+
+    "env": {
+      "type": "object",
+      "description": "Environment variables written into runtime.yml. Two blocks setting the same key to different values is a hard failure (materialize-runtime.mjs:469).",
+      "additionalProperties": { "type": ["string", "number", "boolean"] }
+    },
+
+    "analyze": {
+      "type": "object",
+      "description": "The /analyze phase: the advisory panel and how the phase ends.",
+      "additionalProperties": false,
+      "properties": {
+        "exit": {
+          "type": "string",
+          "description": "PAUSE makes approval a hard gate and wins over any other value contributed by another block (materialize-runtime.mjs:413).",
+          "enum": ["PAUSE", "CONTINUE"]
+        },
+        "panel": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["stage"],
+            "properties": {
+              "stage": { "type": "string" },
+              "agent": { "type": "string" },
+              "model": { "type": "string", "enum": ["opus", "sonnet", "haiku", "fable", "inherit"] },
+              "when": { "type": "string", "description": "Condition gating this panel slot." },
+              "advisory": { "type": "boolean" },
+              "blocking": { "type": "boolean" },
+              "skip_if_exists": { "type": "boolean" },
+              "corpus": { "type": "string" },
+              "index": { "type": "string" },
+              "inject": { "type": "string" },
+              "lookup_order": { "type": "string" },
+              "open_questions": { "type": "string" },
+              "output": { "type": "string" },
+              "rules": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+
+    "orchestrate": {
+      "type": "object",
+      "description": "The /orchestrate phase. Only one block in a composition may define 'layers' (materialize-runtime.mjs:418).",
+      "additionalProperties": false,
+      "properties": {
+        "exit": { "type": "string" },
+        "layers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id"],
+            "additionalProperties": false,
+            "properties": {
+              "id": { "type": "string" },
+              "agent": { "type": "string" },
+              "model": { "type": "string", "enum": ["opus", "sonnet", "haiku", "fable", "inherit"] },
+              "role": { "type": "string" },
+              "dirs": { "type": "array", "items": { "type": "string" } },
+              "tags": { "type": "array", "items": { "type": "string" } },
+              "checks": { "type": "array", "items": { "type": "string" } },
+              "tests": { "type": "boolean" },
+              "optional": { "type": "boolean" },
+              "create_when": { "type": "string" }
+            }
+          }
+        },
+        "inner_loop": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "verify": { "type": "string" },
+            "max_attempts": { "type": "integer", "minimum": 1 },
+            "on_max": { "type": "string" }
+          }
+        },
+        "final_gate": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "agent": { "type": "string" },
+            "on_fail": { "type": "string" }
+          }
+        }
+      }
+    },
+
+    "layer_contributions": {
+      "type": "array",
+      "description": "Adds patterns to layers another block owns. 'match' is required (materialize-runtime.mjs:435).",
+      "items": {
+        "type": "object",
+        "required": ["match"],
+        "additionalProperties": false,
+        "properties": {
+          "match": { "type": "string", "description": "Layer selector, e.g. '*:app'." },
+          "patterns": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+
+    "budgets": {
+      "type": "object",
+      "description": "Per-stage tool-call ceilings. Keyed by stage name.",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "max_tool_calls": { "type": "integer", "minimum": 1 },
+          "on_limit": { "type": "string" }
+        }
+      }
+    },
+
+    "ralphinho": {
+      "type": "object",
+      "description": "Parallel fan-out execution settings. First block to declare it wins (materialize-runtime.mjs:440).",
+      "additionalProperties": false,
+      "properties": {
+        "units": { "type": "string" },
+        "fan_out": { "type": "string" },
+        "worktree": { "type": "string" },
+        "merge_stage": { "type": "string" },
+        "guardrails": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "max_attempts_per_layer": { "type": "integer", "minimum": 1 },
+            "push_only": { "type": "string" }
+          }
+        }
+      }
+    },
+
+    "pattern_routing": {
+      "type": "object",
+      "description": "Consumed by a DIFFERENT generator — scripts/generate-pattern-routing.mjs builds hooks/lib/pattern-routing.generated.js from it. Never reaches runtime.yml; it is listed in BLOCK_KEYS only so materialization does not report it as a typo.",
+      "additionalProperties": false,
+      "properties": {
+        "paths": { "$ref": "#/$defs/routingRules" },
+        "filenames": { "$ref": "#/$defs/routingRules" }
+      }
+    },
+
+    "tags": {
+      "type": "array",
+      "description": "RESERVED — declaring it passes validation but nothing consumes it yet (materialize-runtime.mjs:74).",
+      "items": { "type": "string" }
+    }
+  },
+
+  "$defs": {
+    "routingRules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["match", "pattern"],
+        "additionalProperties": false,
+        "properties": {
+          "match": { "type": "string", "description": "A regex; an invalid one fails materialization (materialize-runtime.mjs:948)." },
+          "pattern": { "type": "string", "description": "Path under patterns/. A pattern that does not exist fails materialization (materialize-runtime.mjs:945)." }
+        }
+      }
+    }
+  }
+}

@@ -6,7 +6,7 @@
 |------|-------|-------|
 | Advisory | ddd-application-expert | Sonnet |
 | Advisory | backend-technology-expert | Opus |
-| Advisory | security-privacy-architect | Opus |
+| Advisory | `ecc:security-reviewer` (ECC) | — |
 | Verification | code-quality-verifier (VETO) | Sonnet |
 | Verification | security-e2e-verifier (VETO) | Opus |
 

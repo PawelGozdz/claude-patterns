@@ -5,25 +5,6 @@ description: "Analyze alternative investments including hedge funds, private equ
 
 # Alternatives
 
-## Purpose
-Analyze alternative investments including hedge funds, private equity, and venture capital. This skill covers strategy classification, fee structure analysis, performance metrics unique to alternatives (IRR, TVPI, DPI), the J-curve effect, illiquidity premiums, and the critical due diligence considerations for evaluating alternative investment managers.
-
-## Layer
-2 — Asset Classes
-
-## Direction
-both
-
-## When to Use
-- User asks about hedge funds or hedge fund strategies
-- User asks about private equity, buyouts, or growth equity
-- User asks about venture capital investing or VC metrics
-- User asks about alternative investment fee structures (2-and-20, carry, hurdle rates)
-- User asks about IRR, TVPI, DPI, or other PE performance metrics
-- User asks about the J-curve effect in private equity
-- User asks about illiquidity premiums or lock-up periods
-- User asks about hedge fund replication or factor-based alternatives
-
 ## Core Concepts
 
 ### Hedge Fund Strategies
@@ -42,7 +23,7 @@ The standard hedge fund fee is "2-and-20" — 2% annual management fee on AUM pl
 - **Clawback:** Mechanism to recover performance fees if subsequent losses erode earlier gains (more common in PE).
 
 ### Private Equity Metrics
-- **IRR (Internal Rate of Return):** The discount rate that sets the NPV of all cash flows (capital calls and distributions) to zero. Time-weighted, accounts for the timing of cash flows.
+- **IRR (Internal Rate of Return):** The discount rate that sets the NPV of all cash flows (capital calls and distributions) to zero. The canonical money-weighted return — it is sensitive to the timing and size of cash flows, unlike the time-weighted returns used for public market funds.
 - **TVPI (Total Value to Paid-In):** (Distributions + Remaining Value) / Total Capital Called. A multiple of invested capital.
 - **DPI (Distributions to Paid-In):** Distributions / Total Capital Called. Measures realized returns only — the "cash-on-cash" multiple.
 - **RVPI (Residual Value to Paid-In):** Remaining Value / Total Capital Called. Measures unrealized value. TVPI = DPI + RVPI.
@@ -77,7 +58,7 @@ Key areas: operational risk (back-office, custody, valuation practices), strateg
 | TVPI | (Distributions + NAV) / Paid-In Capital | Total return multiple |
 | DPI | Distributions / Paid-In Capital | Realized return multiple |
 | RVPI | NAV / Paid-In Capital | Unrealized return multiple |
-| IRR | Rate r: sum CF_t/(1+r)^t = 0 | Time-adjusted return |
+| IRR | Rate r: sum CF_t/(1+r)^t = 0 | Money-weighted return |
 
 ## Worked Examples
 
@@ -87,8 +68,7 @@ Key areas: operational risk (back-office, custody, valuation practices), strateg
 **Solution:**
 Management fee = $10M × 2% = $200,000
 Gross profit = $10M × 8% = $800,000
-Performance fee = ($800,000 - $200,000 is NOT how it works; fees are typically calculated independently)
-Performance fee = 20% × $800,000 = $160,000
+Performance fee = 20% × $800,000 = $160,000 (charged on gross profits; under this fee structure the management fee is calculated independently and is not deducted first — some funds instead charge the incentive fee net of the management fee, which would give 20% × $600,000 = $120,000; always check the fund documents)
 Total fees = $200,000 + $160,000 = $360,000
 Net return = ($800,000 - $360,000) / $10,000,000 = 4.4%
 Fee drag = 8.0% - 4.4% = 3.6 percentage points
@@ -105,7 +85,7 @@ DPI = $21M / $10M = 2.1x
 TVPI = (21M + 0) / $10M = 2.1x (no residual, so TVPI = DPI)
 
 Cash flows for IRR: Year 1: -$2M, Year 2: -$2M, Year 3: -$2M, Year 4: -$2M + $1M = -$1M, Year 5: -$2M + $3M = +$1M, Year 6: +$5M, Year 7: +$8M, Year 8: +$4M
-Solving for IRR numerically yields approximately 18-20%.
+Solving for IRR numerically yields approximately 23%.
 
 The J-curve is visible: negative net cash flows in years 1-4, turning positive in year 5, with the bulk of value returned in years 6-7.
 
@@ -116,7 +96,8 @@ The J-curve is visible: negative net cash flows in years 1-4, turning positive i
 - Comparing PE IRR directly to public market time-weighted returns — use PME (Public Market Equivalent) for an apples-to-apples comparison
 
 ## Cross-References
-- **historical-risk** (wealth-management plugin, Layer 1a): return measurement and risk-adjusted performance
-- **equities** (wealth-management plugin, Layer 2): long/short equity strategies and factor exposures
-- **fixed-income-corporate** (wealth-management plugin, Layer 2): private credit and leveraged loan markets
-- **performance-attribution** (wealth-management plugin, Layer 5): evaluating manager alpha vs factor beta
+- **historical-risk** (wealth-management plugin): return measurement and risk-adjusted performance
+- **equities** (wealth-management plugin): long/short equity strategies and factor exposures
+- **fixed-income-corporate** (wealth-management plugin): private credit and leveraged loan markets
+- **performance-attribution** (wealth-management plugin): evaluating manager alpha vs factor beta
+- **private-placements** (compliance plugin): the regulatory eligibility and exempt-offering compliance side of investing in private funds

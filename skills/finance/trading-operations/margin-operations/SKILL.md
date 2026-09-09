@@ -1,31 +1,9 @@
 ---
 name: margin-operations
-description: "Guide margin lending, margin requirements, and margin call operations for brokerage and advisory accounts. Use when calculating Reg T initial margin or buying power, determining maintenance margin or house requirements, evaluating portfolio margin eligibility under OCC TIMS, generating or resolving margin calls (fed call, house call, exchange call, day-trade call), designing forced liquidation waterfall logic, structuring securities-backed lines of credit (SBLOC), computing margin interest impact on returns, assessing concentrated position margin, understanding pattern day trader rules, or reviewing FINRA 4210 and Reg U requirements. Also covers SMA calculations and short margin mechanics."
+description: "Guide margin lending, margin requirements, and margin call operations for brokerage and advisory accounts. Use when calculating Reg T initial margin or buying power, determining maintenance margin or house requirements, evaluating portfolio margin eligibility under OCC TIMS, generating or resolving margin calls (fed call, house call, exchange call, day-trade call), designing forced liquidation waterfall logic, structuring securities-backed lines of credit (SBLOC), computing margin interest impact on returns, assessing concentrated position margin, understanding pattern day trader rules, or reviewing FINRA 4210 and Reg U requirements. Also covers SMA calculations and short margin mechanics. For OTC derivatives margin (variation/initial margin, CSAs, SIMM) see counterparty-risk."
 ---
 
 # Margin Operations
-
-## Purpose
-Guide the understanding and management of margin lending, margin requirements, and margin call operations in brokerage and advisory settings. Covers Regulation T initial margin, FINRA/exchange maintenance margin, portfolio margin methodology, margin call types and procedures, forced liquidation processes, securities-backed lines of credit (SBLOC), and margin risk management. Enables building or evaluating margin systems and understanding margin impact on portfolio management and client accounts.
-
-## Layer
-11 — Trading Operations (Order Lifecycle & Execution)
-
-## Direction
-both
-
-## When to Use
-- Calculating initial margin requirements and buying power for new trades
-- Determining maintenance margin and house requirements for existing positions
-- Evaluating portfolio margin eligibility and benefits for an account
-- Generating, tracking, or resolving margin calls (fed calls, house calls, exchange calls)
-- Designing or reviewing forced liquidation procedures and waterfall logic
-- Structuring or evaluating securities-backed lines of credit (SBLOC or non-purpose loans)
-- Stress testing margin exposure across portfolio scenarios
-- Computing margin interest charges and their impact on investment returns
-- Assessing concentrated position margin requirements and risk
-- Understanding day-trade margin rules for pattern day traders
-- Reviewing margin-related regulatory requirements (Reg T, Reg U, FINRA 4210)
 
 ## Core Concepts
 
@@ -37,7 +15,7 @@ The Federal Reserve's Regulation T establishes the initial margin requirement fo
 - **Special Memorandum Account (SMA):** A bookkeeping entry that tracks the client's excess Reg T equity. SMA increases when: the account has excess equity above 50%, securities are sold, dividends or cash are deposited. SMA decreases when used to purchase securities or withdraw cash. SMA is a high-water mark — it does not decrease when market values decline (unless used).
 - **Reg T extension procedures:** When a client fails to meet the initial margin requirement by settlement date, the broker-dealer must request an extension from a self-regulatory organization (SRO). Extensions are typically granted for 1-5 business days. Failure to meet the call results in forced liquidation and a 90-day freeze (restricted account).
 - **Exempt securities:** U.S. government bonds, municipal bonds, and certain agency securities are exempt from Reg T margin requirements — they can be purchased with lower or no initial margin.
-- **Day-trade margin:** FINRA Rule 4210 provides pattern day traders (4+ day trades in 5 business days) with 4:1 intraday buying power (25% margin) but requires a minimum equity of $25,000. Overnight positions revert to standard 2:1 Reg T buying power.
+- **Day-trade margin:** FINRA Rule 4210 provides pattern day traders (4+ day trades in 5 business days) with 4:1 intraday buying power (25% margin) but requires a minimum equity of $25,000 — day-trade buying power = (equity - $25,000 minimum) × 4. Overnight positions revert to standard 2:1 Reg T buying power.
 
 ### Maintenance Margin
 After the initial purchase, ongoing maintenance margin requirements determine the minimum equity the account must maintain:
@@ -45,7 +23,7 @@ After the initial purchase, ongoing maintenance margin requirements determine th
 - **FINRA Rule 4210 minimum:** 25% equity for long positions. Account equity = market value of securities minus debit balance. If equity falls below 25% of market value, a maintenance margin call is triggered.
 - **House maintenance requirements:** Most broker-dealers impose requirements above the FINRA minimum, typically 30-40% for diversified accounts. House requirements vary by firm and may change based on market conditions.
 - **Concentrated position margin:** Single-stock positions exceeding a threshold (e.g., 40-60% of account value) face elevated margin requirements, often 50-75% or higher. This discourages excessive concentration in margin accounts.
-- **Long margin formula:** Maintenance call triggered when equity / market value < maintenance requirement. Equivalently, a call is triggered when market value falls to: debit balance / (1 - maintenance requirement).
+- **Long margin formula:** Maintenance call triggered when equity / market value < maintenance requirement, where account equity = market value - debit balance. Equivalently, a call is triggered when market value falls to: debit balance / (1 - maintenance requirement). The call amount due is (maintenance requirement × market value) - equity.
 - **Short margin requirements:** Short positions require initial margin of 50% (Reg T) and maintenance of 30% of market value (FINRA minimum). Short account equity = credit balance - market value of short securities. A short squeeze (rising prices) increases the maintenance requirement.
 - **Options margin:** Options strategies have specific margin requirements under FINRA Rule 4210 and exchange rules. Covered calls require no additional margin (shares serve as collateral). Naked short options require substantial margin — typically the greater of: (a) option premium + 20% of underlying value - out-of-the-money amount, or (b) option premium + 10% of underlying value. Spreads have defined-risk margin equal to the maximum loss.
 
@@ -119,10 +97,10 @@ Lending products that use an investment portfolio as collateral, distinct from t
 ### Margin Risk Management
 Ongoing monitoring and management of margin-related risks across the firm and client accounts:
 
-- **Portfolio-level margin monitoring:** The firm's risk management system continuously monitors aggregate margin exposure, identifying accounts approaching margin call thresholds, concentrated positions, and correlated risks across the client base. Real-time intraday monitoring supplements end-of-day calculations.
+- **Portfolio-level margin monitoring:** The firm's risk management system continuously monitors aggregate margin exposure, identifying accounts approaching margin call thresholds, concentrated positions, and correlated risks across the client base. Real-time intraday monitoring supplements end-of-day calculations. FINRA Rule 4521 requires member firms to report aggregate margin balances and related data to FINRA.
 - **Stress testing margin requirements:** The firm should stress test margin exposure under adverse scenarios — market declines of 10-20%, sector-specific shocks, volatility spikes, and correlation breakdowns. Stress tests reveal accounts and portfolios that would face large margin calls under stressed conditions.
 - **Concentrated position risk:** Positions that represent a large percentage of account value or a large percentage of a security's outstanding shares create elevated margin risk. Firms typically impose higher margin requirements and may impose position limits or require diversification plans.
-- **Margin impact on investment returns:** Margin amplifies both gains and losses. A 50% margin (2:1 leverage) doubles the percentage gain or loss:
+- **Margin impact on investment returns:** Margin amplifies both gains and losses — return on equity = (portfolio return × leverage) - (interest rate × (leverage - 1)). A 50% margin (2:1 leverage) doubles the percentage gain or loss:
   - Unleveraged: $100K invested, market +10% = $10K gain (10% return)
   - Leveraged at 2:1: $200K invested with $100K equity, market +10% = $20K gain minus interest = ~18% return on equity
   - Leveraged at 2:1: $200K invested with $100K equity, market -10% = $20K loss plus interest = ~-22% return on equity
@@ -130,201 +108,16 @@ Ongoing monitoring and management of margin-related risks across the firm and cl
   - Daily interest = debit balance x (annual rate / 360)
   - Interest is typically charged monthly (sum of daily accruals)
   - Rates are tiered by debit balance size: larger balances receive lower rates
-  - Example rate schedule: <$25K = broker call rate + 1.5%; $25K-$100K = call rate + 1.0%; >$100K = call rate + 0.5%
+  - Illustrative rate schedule: <$25K = broker call rate + 1.5%; $25K-$100K = call rate + 1.0%; >$100K = call rate + 0.5% (spreads and the call rate itself vary by firm and rate environment)
 - **Tax treatment of margin interest:** Margin interest is deductible as investment interest expense on Schedule A (Form 1040), but only up to the amount of net investment income. Excess margin interest can be carried forward. Investment interest does not include qualified dividends or long-term capital gains unless the taxpayer elects to treat them as ordinary income. This deduction requires itemizing.
-
-## Key Formulas
-
-| Formula | Expression | Use Case |
-|---------|-----------|----------|
-| Reg T buying power | SMA x 2 | Maximum purchase amount |
-| Initial margin requirement | Purchase price x 50% | Cash/equity deposit required |
-| Account equity (long) | Market value - debit balance | Current equity in account |
-| Maintenance call trigger (long) | Debit balance / (1 - maintenance %) | Price at which call is triggered |
-| Maintenance call amount | (Maintenance % x market value) - equity | Dollar amount due |
-| Short account equity | Credit balance - market value (short) | Equity in short positions |
-| Margin interest (daily) | Debit balance x (annual rate / 360) | Daily interest accrual |
-| Leveraged return | (Portfolio return x leverage) - (interest x (leverage - 1)) | Return on equity with margin |
-| SBLOC borrowing capacity | Sum(collateral value x LTV by type) | Maximum loan amount |
-| Day-trade buying power | (Equity - $25,000 minimum) x 4 | Intraday purchasing power |
 
 ## Worked Examples
 
-### Example 1: Calculating margin requirements and buying power for a diversified brokerage account
-
-**Given:** A client opens a new margin account and deposits $150,000 in cash. The client wants to build a diversified portfolio.
-
-**Step 1 — Determine Reg T buying power:**
-- Cash deposit: $150,000
-- SMA: $150,000 (initial cash deposit establishes the SMA)
-- Reg T buying power: $150,000 x 2 = **$300,000**
-
-**Step 2 — Client purchases a diversified portfolio:**
-- $120,000 in large-cap equity ETF (VTI)
-- $60,000 in international equity ETF (VXUS)
-- $40,000 in investment-grade bond ETF (BND)
-- $30,000 in REIT ETF (VNQ)
-- Total purchases: $250,000
-
-**Step 3 — Post-purchase account status:**
-- Market value: $250,000
-- Debit balance: $250,000 - $150,000 = $100,000
-- Account equity: $250,000 - $100,000 = $150,000
-- Equity percentage: $150,000 / $250,000 = **60%** (above 50% Reg T requirement)
-- Remaining SMA: $150,000 - ($250,000 x 50%) = $150,000 - $125,000 = $25,000
-- Remaining buying power: $25,000 x 2 = **$50,000**
-
-**Step 4 — Determine maintenance call trigger (assuming 30% house requirement):**
-- House maintenance: 30%
-- Call triggered when: equity / market value < 30%
-- Equivalently: market value falls to debit balance / (1 - 0.30) = $100,000 / 0.70 = **$142,857**
-- This represents a decline of ($250,000 - $142,857) / $250,000 = **42.9%** from current value
-
-**Step 5 — Margin interest cost estimate:**
-- Debit balance: $100,000
-- Assume margin rate: broker call rate (6.50%) + 0.75% = 7.25%
-- Annual interest: $100,000 x 7.25% = $7,250
-- Monthly interest: approximately $604
-- This cost must be offset by portfolio returns exceeding 7.25% (on the borrowed portion) to add value through leverage
-
-**Step 6 — Impact of a 15% market decline:**
-- New market value: $250,000 x 0.85 = $212,500
-- Debit balance unchanged: $100,000
-- New equity: $212,500 - $100,000 = $112,500
-- Equity percentage: $112,500 / $212,500 = **52.9%** (still above 30% house requirement; no margin call)
-- New SMA: remains at $25,000 (SMA is a high-water mark; does not decrease with market decline)
-
-### Example 2: Managing a margin call sequence from generation through resolution
-
-**Given:** An existing margin account with the following position prior to market decline:
-- Market value: $400,000 (80% equities, 20% bonds)
-- Debit balance: $160,000
-- Equity: $240,000 (60%)
-- House maintenance requirement: 35%
-
-**Day 1 — Market decline triggers a margin call:**
-- Equities decline 18% over several days; bonds flat
-- New equity market value: $320,000 x 0.82 = $262,400
-- New bond market value: $80,000
-- New total market value: $262,400 + $80,000 = $342,400
-- Debit balance unchanged: $160,000
-- New equity: $342,400 - $160,000 = $182,400
-- Equity percentage: $182,400 / $342,400 = **53.3%** (above 35%; no call yet)
-
-**Day 5 — Further decline triggers the call:**
-- Additional equity decline of 10% from Day 1 levels
-- New equity market value: $320,000 x 0.72 = $230,400
-- New bond market value: $80,000
-- New total market value: $230,400 + $80,000 = $310,400
-- Debit balance: $160,000
-- New equity: $310,400 - $160,000 = $150,400
-- Equity percentage: $150,400 / $310,400 = **48.5%** (above 35%; still no call)
-
-**Day 8 — Continued decline and call is triggered:**
-- Equities now down 35% total from original; bonds down 3%
-- New equity market value: $320,000 x 0.65 = $208,000
-- New bond market value: $80,000 x 0.97 = $77,600
-- New total market value: $208,000 + $77,600 = $285,600
-- Debit balance: $160,000
-- New equity: $285,600 - $160,000 = $125,600
-- Equity percentage: $125,600 / $285,600 = **43.98%** (above 35%; still no call)
-
-**Day 12 — Severe decline triggers call:**
-- Equities now down 45% total from original; bonds down 5%
-- New equity market value: $320,000 x 0.55 = $176,000
-- New bond market value: $80,000 x 0.95 = $76,000
-- New total market value: $176,000 + $76,000 = $252,000
-- Debit balance: $160,000
-- New equity: $252,000 - $160,000 = $92,000
-- Equity percentage: $92,000 / $252,000 = **36.5%** (above 35%, but very close)
-
-**Day 14 — Call triggered:**
-- Equities down 48% total; bonds down 5%
-- New equity market value: $320,000 x 0.52 = $166,400
-- New bond market value: $76,000
-- New total market value: $166,400 + $76,000 = $242,400
-- Debit balance: $160,000
-- New equity: $242,400 - $160,000 = $82,400
-- Equity percentage: $82,400 / $242,400 = **34.0%** — **below 35% house requirement**
-- **House margin call generated** at end of day
-
-**Margin call amount calculation:**
-- Required equity: 35% x $242,400 = $84,840
-- Current equity: $82,400
-- **Call amount: $84,840 - $82,400 = $2,440**
-
-**Day 14 — Notification and communication:**
-- Automated margin call alert sent via system notification and email
-- Margin department places phone call to client
-- Notification states: $2,440 due by Day 19 (T+5 business days)
-- Options presented: deposit cash, deposit marginable securities (at loan value), or liquidate positions
-
-**Day 16 — Client responds:**
-- Client deposits $5,000 cash (exceeds call amount to provide buffer)
-- New debit balance: $160,000 - $5,000 = $155,000
-- Assuming market unchanged: equity = $242,400 - $155,000 = $87,400
-- Equity percentage: $87,400 / $242,400 = **36.1%** (above 35%)
-- **Margin call satisfied**
-
-**Alternative resolution — Partial liquidation:**
-- If client cannot deposit, sell $7,000 of bond ETF
-- Proceeds reduce debit balance: $160,000 - $7,000 = $153,000
-- New market value: $242,400 - $7,000 = $235,400
-- New equity: $235,400 - $153,000 = $82,400
-- Equity percentage: $82,400 / $235,400 = **35.0%** (at the requirement; call met but no buffer)
-- Better approach: sell more to create a buffer above the requirement
-
-### Example 3: Evaluating portfolio margin benefits for an active options trader
-
-**Given:** An experienced options trader maintains the following portfolio:
-- Account equity: $500,000
-- Long 2,000 shares SPY at $450 = $900,000
-- Long 20 SPY 420 puts (protective puts, 3-month expiry), premium paid $8 per contract = $16,000
-- Short 20 SPY 480 calls (covered calls, 3-month expiry), premium received $5 per contract = $10,000
-- Net portfolio delta: reduced from 2,000 to approximately 1,400 (hedged)
-
-**Step 1 — Calculate Reg T margin requirement:**
-Under Reg T, margin is calculated position-by-position:
-- Long 2,000 shares SPY at $450: 50% initial margin = $450,000
-- Long 20 SPY 420 puts: fully paid (no margin required; cost $16,000 already paid)
-- Short 20 SPY 480 calls: covered by long shares (no additional margin required)
-- **Total Reg T margin requirement: $450,000**
-- Account equity: $500,000
-- Excess equity: $500,000 - $450,000 = $50,000
-- The protective puts and covered calls provide risk reduction, but Reg T does not recognize the hedge
-
-**Step 2 — Calculate portfolio margin requirement:**
-Under portfolio margin (OCC TIMS), the entire position is evaluated as a unit under stress scenarios:
-- The key stress scenario is SPY -15% (worst case for this long-biased portfolio):
-  - SPY drops from $450 to $382.50
-  - Long stock loss: 2,000 x ($450 - $382.50) = -$135,000
-  - Long 420 puts gain: puts move deep in-the-money; approximate gain: 20 x 100 x ($420 - $382.50 - $8) = +$59,000
-  - Short 480 calls gain: calls expire worthless; gain: 20 x 100 x $5 = +$10,000
-  - **Net portfolio loss under -15% stress: -$135,000 + $59,000 + $10,000 = -$66,000**
-- Additional stress scenarios (+15%, +/-5%, +/-10%) produce smaller losses for this position
-- **Portfolio margin requirement: approximately $66,000** (the largest loss across all scenarios)
-
-**Step 3 — Compare Reg T vs portfolio margin:**
-
-| Metric | Reg T | Portfolio Margin |
-|--------|-------|-----------------|
-| Margin requirement | $450,000 | $66,000 |
-| Equity required | $450,000 | $66,000 |
-| Excess equity | $50,000 | $434,000 |
-| Additional buying power | $100,000 | $868,000 |
-| Margin as % of market value | 50% | 7.3% |
-| Leverage ratio | 1.8x | 13.6x (available, not necessarily used) |
-
-**Step 4 — Assess the implications:**
-- Portfolio margin reduces the requirement by **85%** because it recognizes the protective puts and covered calls as risk-reducing hedges
-- The trader can deploy excess capital to additional strategies or maintain a larger cash buffer
-- **Risk consideration:** The 13.6x available leverage is dangerous if fully utilized. The trader should maintain a self-imposed margin buffer well above the minimum — targeting no more than 50-60% utilization of portfolio margin capacity
-- **Stress test beyond the model:** If SPY gaps down 25% overnight (beyond the 15% stress scenario), the portfolio loss would be approximately $100,000 — still within the $500,000 equity but illustrating that the OCC TIMS scenarios do not capture tail risk. The trader should run their own stress tests at more extreme levels
-- **Qualification check:** The account meets the $100,000 minimum equity requirement. The trader must have appropriate options approval and complete the firm's portfolio margin agreement
+Three worked examples are in [references/examples.md](references/examples.md) — load for an end-to-end scenario: (1) calculating margin requirements and buying power for a new diversified account, (2) managing a margin call sequence from generation through resolution, (3) evaluating portfolio margin vs Reg T for an active options trader.
 
 ## Common Pitfalls
 - Confusing SMA with account equity — SMA is a high-water mark that does not decline with market value drops, leading clients to believe they have more cushion than they do
-- Failing to account for margin interest as a drag on returns — at 7-8% margin rates, the hurdle rate for margined positions is substantial
+- Failing to account for margin interest as a drag on returns — at the 7-8% margin rates typical of recent rate environments, the hurdle rate for margined positions is substantial
 - Relying on Reg T buying power without monitoring maintenance levels — a position can be purchased within buying power but quickly trigger a maintenance call after a decline
 - Assuming portfolio margin is always more favorable — concentrated, unhedged positions may receive similar or higher margin under portfolio margin stress tests
 - Not planning for margin call deadlines — margin calls arrive during market stress when the client is least likely to have available cash
@@ -335,25 +128,14 @@ Under portfolio margin (OCC TIMS), the entire position is evaluated as a unit un
 - Assuming the firm must contact the client before liquidation — the firm has the right to liquidate margin-deficient accounts without prior notice or client consent
 - Overlooking the purpose/non-purpose distinction in SBLOCs — using non-purpose loan proceeds to buy securities violates Regulation U and can result in regulatory action
 
-## Regulatory Reference Summary
-
-| Regulation / Rule | Authority | Scope |
-|-------------------|-----------|-------|
-| Regulation T | Federal Reserve | Initial margin for broker-dealer credit |
-| Regulation U | Federal Reserve | Credit by banks secured by margin stock |
-| FINRA Rule 4210 | FINRA | Maintenance margin, portfolio margin, day-trade margin |
-| SEC Rule 15c3-3 | SEC | Customer protection, segregation of funds |
-| FINRA Rule 4521 | FINRA | Margin reporting requirements to FINRA |
-| OCC TIMS | OCC | Theoretical pricing model for portfolio margin |
-
 ## Cross-References
-- **order-lifecycle** (Layer 11): Margin requirements are checked as part of the order validation and pre-trade process
-- **trade-execution** (Layer 11): Forced liquidation requires best execution compliance even under time pressure
-- **settlement-clearing** (Layer 11): Margin is settled as part of the trade settlement process; fails can trigger margin obligations
-- **lending** (Layer 6): SBLOC products overlap with personal lending analysis; HELOC vs SBLOC comparison
-- **liquidity-management** (Layer 6): Margin calls create sudden liquidity demands that must be anticipated in cash flow planning
-- **pre-trade-compliance** (Layer 9): Pre-trade margin checks prevent orders that would exceed margin capacity
-- **operational-risk** (Layer 9): Margin system failures, forced liquidation errors, and call processing breakdowns are key operational risks
-- **counterparty-risk** (Layer 3): Margin lending creates counterparty exposure between the firm and the client
-- **investment-suitability** (Layer 9): Margin accounts and leverage strategies require suitability assessment
-- **diversification** (Layer 4): Concentrated position margin requirements reinforce diversification principles
+- **order-lifecycle** (trading-operations plugin): Margin requirements are checked as part of the order validation and pre-trade process
+- **trade-execution** (trading-operations plugin): Forced liquidation requires best execution compliance even under time pressure
+- **settlement-clearing** (trading-operations plugin): Margin is settled as part of the trade settlement process; fails can trigger margin obligations
+- **lending** (wealth-management plugin): SBLOC products overlap with personal lending analysis; HELOC vs SBLOC comparison
+- **liquidity-management** (wealth-management plugin): Margin calls create sudden liquidity demands that must be anticipated in cash flow planning
+- **pre-trade-compliance** (trading-operations plugin): Pre-trade margin checks prevent orders that would exceed margin capacity
+- **operational-risk** (trading-operations plugin): Margin system failures, forced liquidation errors, and call processing breakdowns are key operational risks
+- **counterparty-risk** (trading-operations plugin): Margin lending creates counterparty exposure between the firm and the client
+- **investment-suitability** (compliance plugin): Margin accounts and leverage strategies require suitability assessment
+- **diversification** (wealth-management plugin): Concentrated position margin requirements reinforce diversification principles

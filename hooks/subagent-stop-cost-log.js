@@ -10,20 +10,29 @@
  * falls back to a recursive deep-search through the entire payload for any
  * object containing `input_tokens` and `output_tokens`.
  *
+ * The payload carries NEITHER `usage` NOR `model` (verified against
+ * agent-usage-debug.jsonl — 14 top-level keys, none of them usage). It does carry
+ * `agent_transcript_path`, and the transcript holds both. So when the payload
+ * search comes up empty we fall back to counting the transcript (K77) with the
+ * same implementation scripts/workflow-metrics-lib.mjs uses.
+ *
  * Debug: set AGENT_USAGE_DEBUG=1 to write raw payload to agent-usage-debug.jsonl
  * (auto-enables for the first 5 entries that have no usage data found).
  *
- * Disable: AGENT_USAGE_LOG=off
+ * Disable: AGENT_USAGE_LOG_MODE=off (`AGENT_USAGE_LOG=off` is the DEPRECATED spelling,
+ * still honoured so satellite projects that set it keep working — K106).
  */
 
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { readStdinJsonWithRaw } = require('./lib/utils');
+const { readTranscriptUsage, toSnakeCaseUsage } = require('./lib/transcript-usage');
 
 const DEBUG = process.env.AGENT_USAGE_DEBUG === '1';
 
-if (process.env.AGENT_USAGE_LOG === 'off') {
+// AGENT_USAGE_LOG_MODE=off wyłącza log; AGENT_USAGE_LOG=off — alias deprecated.
+if ((process.env.AGENT_USAGE_LOG_MODE ?? process.env.AGENT_USAGE_LOG) === 'off') {
   process.exit(0);
 }
 
@@ -151,7 +160,10 @@ async function main() {
     const input = JSON.parse(raw || '{}');
 
     // --- Agent name: try documented paths first, then deep search ---
+    // SubagentStop payload carries `agent_type` (verified against
+    // ~/.claude/logs/agent-usage-debug.jsonl, K50); the older keys are kept as fallbacks.
     const agentName =
+      input.agent_type ||
       input.subagent_type ||
       input.agent_name ||
       input.tool_input?.subagent_type ||
@@ -159,7 +171,7 @@ async function main() {
       'unknown';
 
     // --- Usage: try known paths, then deep recursive search ---
-    const usage =
+    const payloadUsage =
       (input.usage && input.usage.input_tokens != null ? input.usage : null) ||
       (input.tool_output?.usage?.input_tokens != null ? input.tool_output.usage : null) ||
       (input.result?.usage?.input_tokens != null ? input.result.usage : null) ||
@@ -168,7 +180,7 @@ async function main() {
       null;
 
     // --- Model: try known paths, then deep recursive search ---
-    const model =
+    const payloadModel =
       input.model ||
       input.tool_output?.model ||
       input.result?.model ||
@@ -181,6 +193,28 @@ async function main() {
       input.tool_output?.duration_ms ||
       input.tool_response?.duration_ms ||
       null;
+
+    // --- Fallback: count the subagent's own transcript (K77) ---
+    // This is the normal path, not the exception: today's SubagentStop payload
+    // has no usage/model at all, so without this every row is 0 tokens / null model.
+    // ONLY agent_transcript_path. `transcript_path` is the MAIN session transcript —
+    // using it here would bill the whole session to a single subagent.
+    const transcriptPath = input.agent_transcript_path || null;
+
+    let usage = payloadUsage;
+    let model = payloadModel;
+    let usageSource = payloadUsage ? 'payload' : null;
+    let truncated = false;
+
+    if ((!usage || !model) && transcriptPath) {
+      const t = readTranscriptUsage(transcriptPath);
+      if (!usage && t.usage) {
+        usage = toSnakeCaseUsage(t.usage);
+        usageSource = 'transcript';
+        truncated = t.truncated;
+      }
+      if (!model && t.model) model = t.model;
+    }
 
     const cost = estimateCost(usage, model);
     const cwd = process.cwd();
@@ -199,6 +233,8 @@ async function main() {
       duration_ms: durationMs,
       project,
       branch,
+      usage_source: usageSource,                        // 'payload' | 'transcript' | null
+      ...(truncated ? { usage_truncated: true } : {}),  // partial count, not a full one
     };
 
     const dir = logsDir();

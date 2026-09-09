@@ -1,0 +1,18 @@
+# Legal Patterns — metadane katalogu.
+# Schemat: jeden dla całego patterns/** (K84, TASK-KAIZEN-002). Walidator:
+# node scripts/validate-metadata.mjs
+category: legal
+version: "1.0.0"
+maturity: stable
+last_verified: 2026-05-07
+stack: "Claude Code (12 skilli prawnych zvendorowanych, 30 skatalogowanych w EXTERNAL.md)"
+source_projects: "claude-patterns"
+patterns_count: 2
+description: >-
+  Zastrzeżenia świadome jurysdykcji (4 kategorie + warstwa jurysdykcji, siostra
+  wzorca finansowego) oraz katalogowanie ekosystemu skilli o niekompatybilnych
+  licencjach: vendorujemy to, co wolno, resztę katalogujemy z ostrzeżeniem
+  licencyjnym, a sync z --verify-licenses łapie zmianę licencji u źródła.
+
+layer: cross-layer
+stack_support: [generic]

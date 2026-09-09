@@ -5,9 +5,31 @@
 
 **Layer**: Domain (L1 construction) + Test Infrastructure (L2/L3 persistence)
 **Introduced**: TS-TEST-FIXTURE-001 (2026-07-10)
-**Status**: ACTIVE
+**Status**: production
+**Scope**: project-specific (juz-ide-api-1) — single-project derivation, not yet validated
+in a second codebase. Excluded from `retrieve_patterns` by default; pass
+`project: "juz-ide-api-1"` to include it. Promote to universal once a second project adopts
+this shape.
+
 **Version**: 1.0
 **Created**: 2026-07-12
+
+## When to Use
+
+**Use this pattern for:**
+- ✅ building an aggregate for a test through its public `create()`, colocated in `domain/**/__fixtures__/` next to what it builds
+- ✅ L2/L3 tests that need a real row plus real events — the Mother builds, `repository.save()` persists, both through the production path
+- ✅ cross-context tests that need "a user to exist" including its projections — the composite fixture (Mother + save + typed row-builders)
+- ✅ replacing a monolithic fixture class that persists by raw `INSERT` and therefore proves nothing about the real pipeline
+
+**Do NOT use for:**
+- ❌ picking between Mother, repository fixture, composite and row-builder by guesswork — the "Kiedy używać czego" table decides that, and it is the part worth reading first
+- ❌ a test that only needs a projection row and no backing aggregate — the typed row-builder alone (`typed-projection-row-builder-pattern.md`)
+- ❌ mutating a row the SUT itself created over HTTP — DB helpers, since the Mother builds from scratch
+- ❌ bulk seeding at k6 VU scale — `SeederRunner` in `test/load/`, a permanent Category 4 exception, not unmigrated debt
+- ❌ importing `@shared/database` into `domain/` to make a Mother persist — `.dependency-cruiser.js` blocks it; move persistence to `test/`
+
+---
 
 ## Problem
 

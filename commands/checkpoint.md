@@ -1,73 +1,18 @@
 ---
-description: Save session state snapshot for cross-session continuity
+name: checkpoint
+description: Write or refresh `.claude/work/SESSION_STATE.md` — the handoff note for the next session. Git checkpoints live in `/ecc:checkpoint`.
+allowed-tools: Read, Write, Edit, Bash, Glob
 ---
 
-# Checkpoint Command
-
-Create or verify a checkpoint in your workflow.
+# Checkpoint Command (handoff only)
 
 ## Usage
 
-`/checkpoint [create|verify|list] [name]`
+`/checkpoint handoff` — the only mode this command has.
 
-## Create Checkpoint
-
-When creating a checkpoint:
-
-1. Run `/verify quick` to ensure current state is clean
-2. Create a git stash or commit with checkpoint name
-3. Log checkpoint to `.claude/checkpoints.log`:
-
-```bash
-echo "$(date +%Y-%m-%d-%H:%M) | $CHECKPOINT_NAME | $(git rev-parse --short HEAD)" >> .claude/checkpoints.log
-```
-
-4. Report checkpoint created
-
-## Verify Checkpoint
-
-When verifying against a checkpoint:
-
-1. Read checkpoint from log
-2. Compare current state to checkpoint:
-   - Files added since checkpoint
-   - Files modified since checkpoint
-   - Test pass rate now vs then
-   - Coverage now vs then
-
-3. Report:
-```
-CHECKPOINT COMPARISON: $NAME
-============================
-Files changed: X
-Tests: +Y passed / -Z failed
-Coverage: +X% / -Y%
-Build: [PASS/FAIL]
-```
-
-## List Checkpoints
-
-Show all checkpoints with:
-- Name
-- Timestamp
-- Git SHA
-- Status (current, behind, ahead)
-
-## Workflow
-
-Typical checkpoint flow:
-
-```
-[Start] --> /checkpoint create "feature-start"
-   |
-[Implement] --> /checkpoint create "core-done"
-   |
-[Test] --> /checkpoint verify "core-done"
-   |
-[Refactor] --> /checkpoint create "refactor-done"
-   |
-[PR] --> /checkpoint verify "feature-start"
-```
+Tryby `create` / `verify` / `list` / `clear` (stash + `.claude/checkpoints.log`) przeszły
+do ECC: **`/ecc:checkpoint`**. Zostaje tu wyłącznie `handoff`, bo ECC nie ma równoważnika —
+patrz [ADR 0009](../docs/adr/0009-wynik-spike-fazy-0-i-lista-retire.md).
 
 ## Handoff Mode
 
@@ -76,7 +21,7 @@ note for cross-session continuity. **It is a scratch note, not a project documen
 `.claude/work/` is git-ignored (add it to `.gitignore` if it is not), so a stale handoff
 never gets committed and never gets read as project state months later. Project state
 lives in `project-orchestration/TEAM-STATE.md` and `KANBAN.md`; decisions in
-`docs/decisions/`. Different from `create`: no git stash, just a
+`docs/decisions/`. Different from `/ecc:checkpoint create`: no git stash, just a
 prose snapshot of where you are so the next session can pick up without reconstructing
 context from git log.
 
@@ -139,8 +84,5 @@ When running handoff mode:
 ## Arguments
 
 $ARGUMENTS:
-- `create <name>` - Create named git checkpoint
-- `verify <name>` - Verify against named checkpoint
-- `list` - Show all checkpoints
-- `clear` - Remove old checkpoints (keeps last 5)
-- `handoff` - Write/update `.claude/work/SESSION_STATE.md` (git-ignored scratch) for cross-session continuity
+- `handoff` (default) — write/update `.claude/work/SESSION_STATE.md` (git-ignored scratch)
+- anything else — powiedz użytkownikowi, że ten tryb jest w `/ecc:checkpoint`, i nie rób nic

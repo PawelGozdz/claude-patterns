@@ -390,7 +390,7 @@ how ungrounded code gets written.
 
 **Works with**:
 - @code-quality-verifier - Code quality validation (runs first)
-- @security-privacy-architect - Security design questions
+- @ecc:security-reviewer - Security design questions
 - @ddd-application-expert - Domain security patterns
 
 **Reports to**:
@@ -478,6 +478,7 @@ When any file in `src/contexts/b2g-contracts/` is in scope, run these checks in 
 
 ## Changelog
 
+- 2026-09-07 — repointed `@security-privacy-architect` to `@ecc:security-reviewer`: the agent is retired (K97, ADR 0009 — generic OWASP/GDPR advisory is covered by ECC; the VETO verifiers stay ours)
 - 2026-08-18 — migrated `**Version**`/`**Maintainer**` footer to an append-only `## Changelog` (Keep-a-Changelog format, TASK-GUARDRAILS-001 Sekcja 3); history below reconstructed from `git log -p`
 - 2026-08-15 — added context-cost discipline section (no process diagnostics, `git diff --stat` only, scoped greps, trust an upstream probe's typecheck/test result instead of re-running)
 - 2026-08-13 — replaced the static per-layer pattern list with an orchestrator-injected `{PATTERNS}` list; STOP and report if it's empty instead of falling back to memorized patterns

@@ -116,4 +116,6 @@ export class XxxController {
 | `organizerId`, `organizerName` jako płaskie pola w response | CS11 |
 | Brak `.strict()` na body schema | CS1 |
 
-**Pełny wzorzec**: [`controller-schema-pattern.md`](./controller-schema-pattern.md)
+**Pełny wzorzec**: [`controller-schema-pattern.md`](./controller-schema-pattern.md).
+Szczegóły schematów (CS1, CS10, CS11): [`zod-schema-validation-pattern.md`](./zod-schema-validation-pattern.md).
+Szczegóły limitów (CS3): [`rate-limit-guard-pattern.md`](./rate-limit-guard-pattern.md).

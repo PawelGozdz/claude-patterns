@@ -6,3 +6,41 @@ marketplace_version: 1.10.0
 synced_at: 2026-05-07T00:00:00Z
 synced_by: initial-vendoring (manual)
 license: MIT
+
+# --- sync blocked, 2026-09-07 ---------------------------------------------
+# Upstream is at 2.11.1 (commit 906c2fb… below is 1.9.0). The gap is not a
+# content refresh: upstream renamed 20 of the 42 skills we vendor, changing
+# both the folder name and the `name:` field, so nothing matches by identity.
+# `product-marketing-context` became `product-marketing` and now writes
+# `.agents/product-marketing.md` instead of `.agents/product-marketing-context.md`.
+#
+# Running the sync today would delete those 20 directories and leave dangling
+# references in agents/universal/marketing-strategist.md, commands/marketing.md,
+# skills/marketing/README.md and patterns/marketing/. Doing it right means
+# renaming on our side and rewriting those routing tables in the same change.
+#
+# Rename map (ours -> upstream 2.11.1):
+#   ab-test-setup            -> ab-testing
+#   analytics-tracking       -> analytics
+#   aso-audit                -> aso
+#   competitor-alternatives  -> competitors
+#   email-sequence           -> emails
+#   form-cro                 -> cro
+#   free-tool-strategy       -> free-tools
+#   launch-strategy          -> launch
+#   onboarding-cro           -> onboarding
+#   page-cro                 -> cro
+#   paid-ads                 -> ads
+#   paywall-upgrade-cro      -> paywalls
+#   popup-cro                -> popups
+#   pricing-strategy         -> pricing
+#   product-marketing-context-> product-marketing  (output path changes too)
+#   referral-program         -> referrals
+#   schema-markup            -> schema
+#   signup-flow-cro          -> signup
+#   social-content           -> social
+#   dev-blog-generator       -> (none; ours, marked LOCAL in its SKILL.md)
+#
+# New upstream skills with no local counterpart: attribution, events,
+# influencer-marketing, marketing-council, marketing-loops, marketing-plan,
+# offers, prospecting, public-relations, sms.

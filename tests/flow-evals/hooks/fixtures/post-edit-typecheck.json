@@ -1,0 +1,108 @@
+[
+  {
+    "name": "typecheck-cooldown-second-call-is-silent",
+    "hook": "post-edit-typecheck.js",
+    "payload": {
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "src/a.ts"
+      }
+    },
+    "setup": {
+      "cwd": true,
+      "files": {
+        "tsconfig.json": "{ \"compilerOptions\": { \"strict\": true } }\n",
+        "src/a.ts": "export const a = 1;\n"
+      },
+      "typecheckCooldown": {
+        "ageMs": 5000
+      }
+    },
+    "expect": "pass",
+    "expect_silent": true,
+    "expect_typecheck_ran": false
+  },
+  {
+    "name": "typecheck-cooldown-expired-runs-again",
+    "hook": "post-edit-typecheck.js",
+    "env": {
+      "TYPECHECK_COOLDOWN_MS": "1"
+    },
+    "payload": {
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "src/a.ts"
+      }
+    },
+    "setup": {
+      "cwd": true,
+      "files": {
+        "tsconfig.json": "{ \"compilerOptions\": { \"strict\": true } }\n",
+        "src/a.ts": "export const a = 1;\n"
+      },
+      "typecheckCooldown": {
+        "ageMs": 5000
+      }
+    },
+    "expect": "pass",
+    "expect_typecheck_ran": true
+  },
+  {
+    "name": "typecheck-mode-off-is-silent",
+    "hook": "post-edit-typecheck.js",
+    "env": {
+      "TYPECHECK_MODE": "off"
+    },
+    "payload": {
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "src/a.ts"
+      }
+    },
+    "setup": {
+      "cwd": true,
+      "files": {
+        "tsconfig.json": "{ \"compilerOptions\": { \"strict\": true } }\n",
+        "src/a.ts": "export const a = 1;\n"
+      }
+    },
+    "expect": "pass",
+    "expect_silent": true
+  },
+  {
+    "name": "typecheck-no-tsconfig-is-silent",
+    "hook": "post-edit-typecheck.js",
+    "payload": {
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "src/a.ts"
+      }
+    },
+    "setup": {
+      "cwd": true,
+      "files": {
+        "src/a.ts": "export const a = 1;\n"
+      }
+    },
+    "expect": "pass",
+    "expect_silent": true
+  },
+  {
+    "name": "typecheck-non-ts-file-is-silent",
+    "hook": "post-edit-typecheck.js",
+    "payload": {
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "README.md"
+      }
+    },
+    "setup": {
+      "cwd": true,
+      "files": {
+        "README.md": "# x\n"
+      }
+    },
+    "expect": "pass",
+    "expect_silent": true
+  }
+]

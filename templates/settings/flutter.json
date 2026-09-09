@@ -95,6 +95,16 @@
         "hooks": [
           {
             "type": "command",
+            "command": "node \"$HOME/.claude/hooks/check-focus-wrapper.js\""
+          }
+        ],
+        "description": "Flutter: bare GestureDetector without Focus/SoftPressable wrapper (WCAG 2.4.7)"
+      },
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
             "command": "node \"$HOME/.claude/hooks/check-debugprint-guard.js\""
           }
         ],

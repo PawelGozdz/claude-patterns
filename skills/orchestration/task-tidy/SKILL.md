@@ -46,6 +46,17 @@ labels: [area, type]
 ---
 ```
 
+### Extended Fields (optional — these are what make the PM commands useful)
+
+```yaml
+due_date: YYYY-MM-DD
+mobile_impact: none|low|medium|high
+tech_debt: none|minor|major
+dependencies: [TS-AAA, TS-BBB]
+blocks: [TS-CCC]
+story_id: US-XXX
+```
+
 ### Folder Rules
 
 - `tasks/` — active (planned, ready, in-progress, blocked)
@@ -62,8 +73,14 @@ Agent(subagent_type='state-reader',
               every .md file extract YAML frontmatter. Report per file:
               { path, id, status, priority, has_all_required_fields[],
                 missing_fields[], wrong_folder (true if status=done but in
-                tasks/ or vice versa), stale (updated_date >30d ago),
-                invalid_values[] }. Format: YAML.
+                tasks/ or vice versa — deferred belongs in
+                _archive/), stale (updated_date >14d ago and status is not
+                done), invalid_values[] (status outside
+                planned|ready|in-progress|blocked|done|deferred, priority
+                outside P0|P1|P2|P3, any date not matching YYYY-MM-DD),
+                filename_id_mismatch (filename stem != id field),
+                broken_refs[] (IDs in dependencies:/blocks: that exist in
+                neither tasks/ nor completed-tasks/) }. Format: YAML.
               Required fields: id, title, status, priority, story_points,
               created_date, updated_date, assignee, labels.',
       description='Task scan (Haiku)')
@@ -71,15 +88,50 @@ Agent(subagent_type='state-reader',
 
 ### Phase 2 — Preview, confirm, apply (main session)
 
-1. Group findings: moves (wrong folder), missing fields, stale, invalid
-2. Display preview to user
-3. Confirm Y/N/selective
-4. Apply: write missing fields with defaults below; move via Bash; update `updated_date`
+1. Group findings into four buckets: **moves** (wrong folder), **field fixes**
+   (missing required fields), **warnings** (stale, invalid values, filename/id
+   mismatch, broken `dependencies:`/`blocks:` refs), **clean**.
+2. Display the preview:
+
+   ```
+   [TASK-TIDY] Scanned {N} tasks
+
+   WILL MOVE ({N} files):
+     tasks/TS-XXX.md → completed-tasks/ (status: done)
+     tasks/TS-YYY.md → _archive/ (status: deferred)
+
+   WILL FIX ({N} fields):
+     TS-AAA: +priority: P2, +updated_date: {today}
+
+   WARNINGS ({N} issues):
+     TS-CCC: updated_date is {N} days old (stale)
+     TS-DDD: depends on TS-ZZZ which doesn't exist
+     TS-EEE: filename 'old-name.md' doesn't match id 'TS-EEE'
+
+   NO CHANGES NEEDED: {N} tasks are clean
+   ```
+
+   Warnings are reported, never auto-fixed — every one of them needs a human
+   to decide what the right value is.
+3. Ask: "Apply {N} moves and {N} field fixes? (Y / N / selective)"
+   — **selective** lets the user name which fixes to take.
+4. Apply: write missing fields with the defaults below (`mv` for moves, `Edit`
+   for frontmatter), then set `updated_date` to today on every file touched.
+5. Close with:
+
+   ```
+   [TASK-TIDY] Done
+     Moved: {N} files ({N} → completed-tasks/, {N} → _archive/)
+     Fixed: {N} fields across {N} tasks
+     Warnings: {N} (manual review needed)
+   ```
 
 ## Auto-Fix Defaults
 
 | Missing Field | Default |
 |---------------|---------|
+| id | derived from the filename (stem, `.md` stripped) |
+| title | the id — and flag it for manual review |
 | status | `planned` |
 | priority | `P2` |
 | created_date | today |
@@ -93,4 +145,5 @@ Agent(subagent_type='state-reader',
 - Never delete files — only move between folders
 - Never change status, title, id, or description
 - Never modify files in completed-tasks/ (immutable)
+- Only add or fix metadata fields — never remove one
 - Always preview before applying

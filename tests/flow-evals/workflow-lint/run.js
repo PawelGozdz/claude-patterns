@@ -4,6 +4,7 @@
  * Uruchom przy każdej zmianie lint-a: node tests/flow-evals/workflow-lint/run.js
  */
 
+const fs = require('fs');
 const path = require('path');
 const { lint } = require(path.resolve(__dirname, '..', '..', '..', 'hooks', 'workflow-lint.js'));
 
@@ -265,7 +266,44 @@ const diff = await agent('run: git diff --stat', { label: 'gate:code-exists' })
 if (!diff || !diff.trim()) { log('ESCALATE'); return { escalated: true } }
 `;
 
+// WL6 dwukierunkowo (K93, 2026-09-07). Diff PRZEPUSZCZONY PRZEZ LICZNIK oddaje liczbę, nie
+// treść — to kanoniczna sonda przyrostu z orchestrate.md §2a′ punkt 5, wymagana przez WL15.
+// Ten sam diff bez `-c` wypisuje LINIE i musi dalej alarmować; oba przypadki są tu obok
+// siebie, żeby zawężenie reguły nie mogło po cichu urosnąć do „każdy potok jest OK".
+const WL6_DIFF_PIPED_TO_COUNTER = `
+export const meta = { name: 'impl-count', description: 'x', phases: [] }
+const impl = await agent('dopisz testy jednostkowe do handlera', { label: 'impl:testing', agentType: 'test-implementer' })
+let probe
+try {
+  probe = await agent("uruchom: git diff --cached -U0 | grep -cE '^\\\\+\\\\s*(it|test|describe)\\\\(' i zwróć newTestBlocks", { label: 'testing-checks', effort: 'low', schema: CHECKS_SCHEMA })
+} catch (e) { probe = null }
+const diff = await agent('run: git diff --name-only', { label: 'gate:code-exists' })
+if (!diff) { log('ESCALATE'); return { escalated: true } }
+`;
+
+const WL6_DIFF_PIPED_TO_GREP_WITHOUT_COUNT = `
+export const meta = { name: 'impl-grepraw', description: 'x', phases: [] }
+const impl = await agent('dopisz testy jednostkowe do handlera', { label: 'impl:testing', agentType: 'test-implementer' })
+let probe
+try {
+  probe = await agent("uruchom: git diff --cached -U0 | grep -E '^\\\\+' i zwróć newTestBlocks", { label: 'testing-checks', effort: 'low', schema: CHECKS_SCHEMA })
+} catch (e) { probe = null }
+const diff = await agent('run: git diff --name-only', { label: 'gate:code-exists' })
+if (!diff) { log('ESCALATE'); return { escalated: true } }
+`;
+
+// Kanoniczny skrypt (K93) jako fixture „musi przejść". To on jest dziś jedynym skryptem
+// Workflow, który /orchestrate uruchamia — regresja jego kształtu ma być widoczna tutaj,
+// a nie dopiero w przebiegu za kilkadziesiąt dolarów.
+const CANONICAL = fs.readFileSync(
+  path.resolve(__dirname, '..', '..', '..', 'scripts', 'workflow', 'orchestrate.template.mjs'),
+  'utf8',
+);
+
 const CASES = [
+  { name: 'canonical-orchestrate-script-passes-clean', src: CANONICAL, expectErrors: [], expectWarns: [] },
+  { name: 'wl6-diff-piped-to-counter-passes', src: WL6_DIFF_PIPED_TO_COUNTER, expectErrors: [], expectWarns: [] },
+  { name: 'wl6-diff-piped-to-grep-without-count-warns', src: WL6_DIFF_PIPED_TO_GREP_WITHOUT_COUNT, expectErrors: [], expectWarns: ['WL6'] },
   { name: 'good-script-passes', src: GOOD, expectErrors: [], expectWarns: [] },
   { name: 'bad-script-wl1-wl2-wl3', src: BAD, expectErrors: ['WL1', 'WL2', 'WL3'], expectWarns: ['WL5'] },
   { name: 'verify-without-schema-warns-wl4', src: GOOD.replace(', schema: VERDICT })', ' })'), expectErrors: [], expectWarns: ['WL4'] }, // replace = tylko 1. wystąpienie

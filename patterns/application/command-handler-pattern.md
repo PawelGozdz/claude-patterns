@@ -1,6 +1,7 @@
 # Command Handler Pattern
 
 **Tags**: "api:app"
+**Level**: exhaustive
 
 **Layer**: Application
 **Status**: production
@@ -885,7 +886,7 @@ describe('CreateUserProfileHandler (L2)', () => {
 
 ---
 
-## 🎯 When to Use
+## When to Use
 
 ### Use Command Handlers When
 

@@ -2,9 +2,27 @@
 
 **Tags**: "any:process"
 
+**Layer**: Architecture
+**Status**: Reference (Claude Code session/settings guidance, not an enforced code pattern)
+
 Practical settings and habits to reduce token consumption, extend session quality, and get more work done within daily limits.
 
 > See also: `rules/common/performance.md` for model selection strategy, `skills/strategic-compact/` for automated compaction suggestions.
+
+## When to Use
+
+**Use this pattern for:**
+- ✅ Setting up `~/.claude/settings.json` defaults for a new machine/project (model, thinking
+  budget, autocompact threshold, subagent model).
+- ✅ A session is burning tokens fast and you need concrete levers (compact timing, MCP server
+  count, model choice per task type).
+- ✅ Deciding whether a multi-step task should run as subagents vs. one long main-context session.
+
+**Do NOT use for:**
+- ❌ A one-off model choice for a single message — use `/model` directly, no need to change
+  defaults.
+- ❌ Correctness/architecture decisions — this guide only addresses cost/token consumption, not
+  code quality or design.
 
 ---
 

@@ -1,0 +1,31 @@
+# Testing Layer Patterns — metadane katalogu.
+# Schemat: jeden dla całego patterns/** (K84, TASK-KAIZEN-002). Walidator:
+# node scripts/validate-metadata.mjs
+category: testing
+version: "1.0.0"
+maturity: production
+last_verified: 2026-08-31
+stack: "TypeScript, Jest/Vitest, Kysely, PostgreSQL, Redis, Zod"
+source_projects: "LocalHero v3, juz-ide-api-1"
+patterns_count: 10
+description: >-
+  Piramida testów (L1/L2/L3) i wzorce ją utrzymujące: BUSINESS_RULES.yaml jako
+  źródło prawdy dla reguł, fixture'y kolokowane z domeną, hybrydowe fixture'y
+  e2e, mocki golevelup, izolacja Redisa, testy schematów i
+  rate-limitu, buildery wierszy projekcji. Liczba obejmuje jeden przewodnik
+  (test-seeding-performance-guide.md), który chunker traktuje tak samo jak
+  wzorzec.
+
+layer: testing
+stack_support: [typescript]
+
+patterns:
+  - file: domain-colocated-fixture-mother-pattern.md
+    maturity: production
+    last_verified: 2026-08-31
+    scope: project-specific
+    project: juz-ide-api-1
+    description: >-
+      Fixture Mother kolokowana z agregatem, budowana przez realny pipeline
+      domenowy zamiast raw INSERT (K85 — dziennik migracji
+      TS-TEST-FIXTURE-001..008 jednego repo)

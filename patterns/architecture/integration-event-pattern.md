@@ -1,8 +1,10 @@
 # Integration Event Pattern
 
-**Tags**: "api:events:integration", "api:data-access:outbox"
+**Tags**: "api:events:integration", "api:events:outbox"
 
 **Layer**: Architecture
+**Status**: production
+**Level**: exhaustive
 **Assumes**: ddd/core   <!-- wzorzec operuje pojęciami modelu domenowego -->
 
 **Purpose**: Cross-bounded-context communication using real Project production patterns
@@ -19,282 +21,59 @@ Criteria)**, `transactional-outbox-pattern.md`
 > three sources of truth gave three different answers, and that ambiguity is the root cause of
 > a 22-handler silent-loss finding (TS-INTEGRATION-EVENT-WIRING-AUDIT-001, 2026-08-09).
 >
-> **Known staleness, not yet fixed:** the long worked example below
-> (`ContextTrustDeltaIntegrationEvent`, BR-TRUST-DELTA-001, "Trust Delta Emission") is built on
-> the `trust` bounded context, which was **deleted** (TS-TRUST-BC-FULL-REMOVAL-001; replaced by
-> `reputation`, ADR-0094). The *mechanics* it illustrates — primitive-only payloads, GDPR
-> context, `fromPayload()` — remain correct; the domain it borrows is gone. Read it as a shape,
-> not as a live reference. Rewriting it onto a current domain is tracked separately.
+>
+> **2026-09-07**: the long `ContextTrustDeltaIntegrationEvent` worked example (built on the deleted
+> `trust` context) was removed rather than left as a live-looking reference — see git history at
+> `c4e12c4`.
+
+---
+
+## When to Use
+
+**Use this pattern for:**
+- ✅ a fact one bounded context must tell another about — user registered, payment completed, role changed
+- ✅ anything that must survive a process restart or reach a consumer living in a different process (API ↔ worker)
+- ✅ messages carrying pseudonymised identifiers that still need a declared legal basis and retention period
+- ✅ deciding the ADR-0082 tier (O-1..O-4) of a cross-context message, which sets review depth and whether an L2 delivery test is mandatory
+
+**Do NOT use for:**
+- ❌ anything inside one bounded context — that is a domain event (`domain-event-pattern.md`); an integration event never fires within its own context
+- ❌ background work whose consumer lives in the producing context (moderation, notifications) — plain BullMQ, see `bullmq-queue-pattern.md`
+- ❌ the outbox table, poller and CLS transaction mechanics themselves — that is `transactional-outbox-pattern.md`
+- ❌ synchronous cross-context reads where the caller needs an answer — that is the ACL registry (`acl-registry-pattern.md`), not an event
 
 ---
 
 ## 🎯 Problem
 
-**Challenges with cross-context communication**:
-- Context isolation → Trust scores calculated in one context need global aggregation
-- No shared state → Each context has independent view of user trust
-- Event spam → Small trust changes (±1 point) would flood system
-- Stale global scores → Without periodic updates, global view becomes outdated
-- GDPR compliance → Must track data processing legal basis and retention
-- Type coupling → Cross-context events with complex types create dependencies
-- Missing audit trail → Cannot trace which context emitted trust delta
+Bounded contexts hold independent views of the same subject, and something has to reconcile them —
+one context computes a score from location verification, another from content quality, a third
+needs the global sum. Doing that by import couples the contexts; doing it by shared table couples
+their schemas.
 
-**Real-world example from Project**:
-- **Geographic-Auth context** calculates trust from location verification (+15 points)
-- **Engagement context** calculates trust from comment quality (-5 points)
-- **Authorization context** needs GLOBAL trust score (sum of all context scores)
-- **Challenge**: How to communicate trust deltas WITHOUT coupling contexts?
+What makes this hard is not the messaging, it is what leaks along with it:
 
----
+- complex domain types in the payload recreate the coupling the boundary existed to prevent
+- personal data crosses a boundary with no declared legal basis or retention
+- no correlation id, so a cross-context failure cannot be traced back to its cause
+- delivery that is not atomic with the producer's write loses events on crash — invisibly
 
 ## ✅ Solution
 
-**Integration Event pattern with Project-specific features**:
-- **Primitive types only**: NO complex objects → prevents type coupling
-- **GDPR context**: containsPII, legalBasis, retentionPeriod, processingPurpose
-- **Security context**: issuedBy, requiresDeduplication, securityLevel, encryptionRequired
-- **Integration metadata**: correlationId, causationId, occurredAt
-- **Dual Threshold Pattern**: Emit if |delta| >= 10 points OR daysSinceLastEmit >= 7 days
-- **Flexible metadata**: Record<string, unknown> for context-specific data
-- **Factory method**: fromPayload() for reconstruction from storage
-- **Business logic methods**: meetsPointThreshold(), meetsTimeThreshold()
+An integration event is a deliberately impoverished message: primitive-only payload, an explicit
+`GDPRIntegrationContext` (containsPII, legalBasis, retention, purpose), a `SecurityIntegrationContext`
+(deduplication, encryption, security level), correlation/causation metadata, a static dot-notation
+`EVENT_NAME`, and a `fromPayload()` factory so a consumer can rebuild it from job data. It is
+written to the outbox in the producer's transaction and delivered by the poller after commit —
+never dispatched in-process.
 
 ---
 
-## 🔧 Real Production Example: ContextTrustDeltaIntegrationEvent
-
-### File Structure
-
-**Location**: `src/shared/domain/integration-events/context-trust-delta.integration-event.ts`
-
-**Use Case**: Geographic-Auth context emits trust score change, Authorization context updates global score
-
-**Business Rule**: BR-TRUST-DELTA-001 (Dual Threshold Pattern)
-
-### Complete Implementation
-
-```typescript
-import { ProjectIntegrationEvent } from './base/project-integration-event';
-import {
-  GDPRIntegrationContext,
-  IntegrationEventMetadata,
-  SecurityIntegrationContext,
-} from './types/integration-event.types';
-
-/**
- * Integration event published when a context-specific trust score changes
- *
- * DUAL THRESHOLD PATTERN (BR-TRUST-DELTA-001):
- * Events are emitted when EITHER condition is met:
- * - Score delta >= 10 points (prevents event spam for small changes)
- * - Time since last emission >= 7 days (prevents stale global scores)
- *
- * GDPR Context:
- * - containsPII: false (userId is pseudonymized identifier)
- * - legalBasis: legitimate_interest (trust score calculation)
- * - retentionPeriod: 90 days
- *
- * Cross-Context Autonomy:
- * - Uses PRIMITIVE TYPES only (no shared domain objects)
- * - sourceContext as string (not enum) for bounded context independence
- * - Flexible metadata for context-specific extensions
- *
- * Example Flow:
- * 1. Geographic-Auth: User verifies home address → +15 trust points
- * 2. Geographic-Auth: Emits ContextTrustDeltaIntegrationEvent (delta: +15)
- * 3. Authorization: Receives event, updates global trust score
- * 4. Authorization: Re-evaluates verification level if threshold crossed
- */
-export interface ContextTrustDeltaIntegrationPayload {
-  /** Pseudonymized user identifier (NOT email/name) */
-  userId: string;
-
-  /** Source bounded context (primitive string for independence) */
-  sourceContext: string; // 'geographic-auth', 'engagement', 'community-communication'
-
-  /** Previous trust score in source context */
-  previousScore: number;
-
-  /** New trust score in source context */
-  newScore: number;
-
-  /** Delta (newScore - previousScore) */
-  delta: number;
-
-  /** Human-readable reason for trust change */
-  reason: string; // 'home_address_verified', 'quality_comment_posted', 'spam_reported'
-
-  /** When the trust change occurred */
-  occurredAt: Date;
-
-  /** Optional context-specific metadata (flexible extension) */
-  metadata?: Record<string, unknown>;
-}
-
-export class ContextTrustDeltaIntegrationEvent extends ProjectIntegrationEvent {
-  /** Event name for routing and handler registration */
-  public static readonly eventName = 'integration.trust.context-delta';
-
-  /** Event version for schema evolution */
-  public static readonly VERSION = '1.0.0';
-
-  /**
-   * GDPR Context (default for all trust delta events)
-   *
-   * - containsPII: false (userId is pseudonymized)
-   * - legalBasis: legitimate_interest (Art. 6(1)(f) GDPR)
-   * - retentionPeriod: 90 days (operational necessity)
-   * - processingPurpose: Trust score calculation across contexts
-   */
-  private static readonly DEFAULT_GDPR_CONTEXT: GDPRIntegrationContext = {
-    containsPII: false,
-    legalBasis: 'legitimate_interest',
-    retentionPeriod: 90,
-    processingPurpose: 'Trust score calculation and distribution across bounded contexts',
-  };
-
-  /**
-   * Security Context (default for all trust delta events)
-   *
-   * - issuedBy: Source context (overridden in constructor)
-   * - requiresDeduplication: true (prevent duplicate processing)
-   * - securityLevel: internal (Project system only)
-   * - encryptionRequired: false (no PII, no sensitive data)
-   */
-  private static readonly DEFAULT_SECURITY_CONTEXT: SecurityIntegrationContext = {
-    issuedBy: 'trust',
-    requiresDeduplication: true,
-    securityLevel: 'internal',
-    encryptionRequired: false,
-  };
-
-  constructor(
-    /** User identifier (pseudonymized) */
-    public readonly userId: string,
-
-    /** Source bounded context (override from base class) */
-    public override readonly sourceContext: string,
-
-    /** Previous trust score in source context */
-    public readonly previousScore: number,
-
-    /** New trust score in source context */
-    public readonly newScore: number,
-
-    /** Delta (newScore - previousScore) */
-    public readonly delta: number,
-
-    /** Reason for trust change */
-    public readonly reason: string,
-
-    /** When the change occurred (defaults to now) */
-    occurredAt: Date = new Date(),
-
-    /** Optional context-specific metadata */
-    public readonly eventMetadata?: Record<string, unknown>,
-
-    /** Optional correlation ID for request tracing */
-    correlationId?: string,
-
-    /** Optional causation ID for event chain tracking */
-    causationId?: string
-  ) {
-    super(
-      ContextTrustDeltaIntegrationEvent.eventName,
-      {
-        userId,
-        sourceContext,
-        previousScore,
-        newScore,
-        delta,
-        reason,
-        occurredAt: occurredAt.toISOString(),
-        metadata: eventMetadata,
-      },
-      sourceContext,
-      ContextTrustDeltaIntegrationEvent.DEFAULT_GDPR_CONTEXT,
-      {
-        ...ContextTrustDeltaIntegrationEvent.DEFAULT_SECURITY_CONTEXT,
-        issuedBy: sourceContext,
-      },
-      {
-        correlationId,
-        causationId,
-        occurredAt,
-      }
-    );
-  }
-
-  /**
-   * Factory method: Reconstruct event from payload
-   *
-   * Used by:
-   * - Outbox processor when reading from database
-   * - Queue consumer when receiving from BullMQ
-   * - Test fixtures for consistent test data
-   */
-  static fromPayload(
-    payload: ContextTrustDeltaIntegrationPayload,
-    metadata?: { correlationId?: string; causationId?: string }
-  ): ContextTrustDeltaIntegrationEvent {
-    return new ContextTrustDeltaIntegrationEvent(
-      payload.userId,
-      payload.sourceContext,
-      payload.previousScore,
-      payload.newScore,
-      payload.delta,
-      payload.reason,
-      payload.occurredAt,
-      payload.metadata,
-      metadata?.correlationId,
-      metadata?.causationId
-    );
-  }
-
-  /**
-   * Business Logic: Check if delta meets point threshold
-   *
-   * BR-TRUST-DELTA-001 (Condition 1):
-   * Emit event if |delta| >= 10 points
-   *
-   * Rationale:
-   * - Small changes (±1, ±2) would spam the system
-   * - 10 points represents SIGNIFICANT trust change
-   * - Examples: Home verification (+15), Spam report (-20)
-   */
-  meetsPointThreshold(): boolean {
-    return Math.abs(this.delta) >= 10;
-  }
-
-  /**
-   * Business Logic: Check if event meets time threshold
-   *
-   * BR-TRUST-DELTA-001 (Condition 2):
-   * Emit event if daysSinceLastEmit >= 7 days
-   *
-   * Rationale:
-   * - Even small deltas accumulate over time
-   * - Global score becomes stale without periodic updates
-   * - 7 days = weekly trust score sync
-   *
-   * @param lastEmittedAt Date of last emitted trust delta event
-   */
-  meetsTimeThreshold(lastEmittedAt: Date): boolean {
-    const daysSinceLastEmit = this.daysSince(lastEmittedAt);
-    return daysSinceLastEmit >= 7;
-  }
-
-  /**
-   * Helper: Calculate days between two dates
-   */
-  private daysSince(pastDate: Date): number {
-    const now = new Date();
-    const diffMs = now.getTime() - pastDate.getTime();
-    const diffDays = diffMs / (1000 * 60 * 60 * 24);
-    return Math.floor(diffDays);
-  }
-}
-```
+> **Removed 2026-09-07**: the long worked example that used to sit here
+> (`ContextTrustDeltaIntegrationEvent`, BR-TRUST-DELTA-001) was built on the `trust` bounded
+> context, deleted in `TS-TRUST-BC-FULL-REMOVAL-001` and replaced by `reputation` (ADR-0094). Its
+> mechanics were correct, but it read as a live reference to code that no longer exists. The full
+> 237-line original is in git history at `c4e12c4`.
 
 ---
 
@@ -302,53 +81,15 @@ export class ContextTrustDeltaIntegrationEvent extends ProjectIntegrationEvent {
 
 **Location**: `src/shared/domain/integration-events/base/project-integration-event.ts`
 
-**Key Features**:
-- **eventId**: Unique identifier (UUID)
-- **eventName**: Static routing key
-- **payload**: Primitive types only
-- **sourceContext**: Origin bounded context
-- **gdprContext**: GDPR compliance metadata
-- **securityContext**: Security and deduplication settings
-- **integrationMetadata**: correlationId, causationId, occurredAt
-
 ```typescript
-import { randomUUID } from 'crypto';
-import {
-  GDPRIntegrationContext,
-  IntegrationEventMetadata,
-  SecurityIntegrationContext,
-} from '../types/integration-event.types';
-
-/**
- * Base class for ALL Project integration events
- *
- * Features:
- * - GDPR compliance (containsPII, legalBasis, retention)
- * - Security context (deduplication, encryption)
- * - Integration metadata (correlation, causation)
- * - Primitive types only (NO complex domain objects)
- */
 export abstract class ProjectIntegrationEvent {
-  /** Unique event identifier */
-  public readonly eventId: string;
-
-  /** Event name for routing (e.g., 'integration.trust.context-delta') */
-  public readonly eventName: string;
-
-  /** Event payload (primitive types ONLY) */
-  public readonly payload: Record<string, unknown>;
-
-  /** Source bounded context */
-  public readonly sourceContext: string;
-
-  /** GDPR compliance context */
+  public readonly eventId: string;                              // UUID, per emission
+  public readonly eventName: string;                            // dot-notation routing key
+  public readonly payload: Record<string, unknown>;             // primitives ONLY
+  public readonly sourceContext: string;                        // origin bounded context
   public readonly gdprContext: GDPRIntegrationContext;
-
-  /** Security and deduplication context */
   public readonly securityContext: SecurityIntegrationContext;
-
-  /** Integration metadata (correlation, causation) */
-  public readonly integrationMetadata: IntegrationEventMetadata;
+  public readonly integrationMetadata: IntegrationEventMetadata; // correlation, causation, occurredAt
 
   protected constructor(
     eventName: string,
@@ -356,11 +97,7 @@ export abstract class ProjectIntegrationEvent {
     sourceContext: string,
     gdprContext: GDPRIntegrationContext,
     securityContext: SecurityIntegrationContext,
-    metadata: {
-      correlationId?: string;
-      causationId?: string;
-      occurredAt?: Date;
-    }
+    metadata: { correlationId?: string; causationId?: string; occurredAt?: Date },
   ) {
     this.eventId = randomUUID();
     this.eventName = eventName;
@@ -376,91 +113,50 @@ export abstract class ProjectIntegrationEvent {
   }
 
   /**
-   * Validate that payload contains NO PII
-   *
-   * CRITICAL: Integration events MUST NOT contain PII
-   * - Use pseudonymized IDs (userId, aggregateId)
-   * - NEVER email, phone, name, address
-   * - Hash sensitive data if needed (ipAddressHash)
+   * Integration events carry pseudonymised ids (userId, aggregateId) — never email, phone,
+   * name or address. Hash anything sensitive that must travel (ipAddressHash).
+   * Declaring `containsPII: true` without `encryptionRequired: true` is a contradiction,
+   * so this throws rather than returning false: a silent `false` gets logged and ignored.
    */
   public validateNoPII(): boolean {
-    if (!this.gdprContext.containsPII) {
-      return true; // GDPR context declares no PII
-    }
-
-    // If containsPII: true, check encryption requirement
-    if (this.securityContext.encryptionRequired) {
-      return true; // PII must be encrypted
-    }
-
+    if (!this.gdprContext.containsPII) return true;
+    if (this.securityContext.encryptionRequired) return true;
     throw new Error(
       `Integration event ${this.eventName} contains PII but encryption not required. ` +
-      `Either remove PII or set encryptionRequired: true.`
+      `Either remove PII or set encryptionRequired: true.`,
     );
   }
 }
 ```
 
 ---
-
 ## Integration Event Types
 
 **Location**: `src/shared/domain/integration-events/types/integration-event.types.ts`
 
 ```typescript
-/**
- * GDPR compliance context for integration events
- */
 export interface GDPRIntegrationContext {
-  /** Does payload contain personally identifiable information? */
   containsPII: boolean;
-
-  /** Legal basis for processing (GDPR Art. 6) */
-  legalBasis:
-    | 'consent'
-    | 'contract'
-    | 'legal_obligation'
-    | 'vital_interests'
-    | 'public_task'
-    | 'legitimate_interest';
-
-  /** Retention period in days */
-  retentionPeriod: number;
-
-  /** Purpose of data processing */
+  legalBasis:                       // GDPR Art. 6
+    | 'consent' | 'contract' | 'legal_obligation'
+    | 'vital_interests' | 'public_task' | 'legitimate_interest';
+  retentionPeriod: number;          // days
   processingPurpose: string;
 }
 
-/**
- * Security context for integration events
- */
 export interface SecurityIntegrationContext {
-  /** Bounded context that issued the event */
-  issuedBy: string;
-
-  /** Prevent duplicate processing? */
-  requiresDeduplication: boolean;
-
-  /** Security level for routing decisions */
+  issuedBy: string;                 // bounded context that emitted it
+  requiresDeduplication: boolean;   // honoured by the outbox, ignored by dispatchEvent
   securityLevel: 'public' | 'internal' | 'confidential' | 'restricted';
-
-  /** Encrypt payload before storage/transmission? */
   encryptionRequired: boolean;
 }
 
-/**
- * Integration metadata for event tracing
- */
 export interface IntegrationEventMetadata {
-  /** Correlation ID for request tracing across contexts */
-  correlationId: string;
-
-  /** Causation ID for event chain tracking (optional) */
-  causationId?: string;
-
-  /** When the event occurred */
+  correlationId: string;            // traces one request across contexts
+  causationId?: string;             // the event that caused this one
   occurredAt: Date;
 }
+```
 ```
 
 ---
@@ -483,33 +179,14 @@ Aggregate → Domain Event → Domain Event Handler → outbox row (SAME transac
 **Example**: Job completion fan-out
 
 ```typescript
-// 1. Aggregate emits DOMAIN event
-export class JobRequestAggregate extends AggregateRoot<string> {
-  public complete(completedBy: ActorId): Result<void, Error> {
-    // ... business logic ...
+```typescript
+// 1. The aggregate emits a DOMAIN event — it never knows about integration events.
+//    (shape: aggregate-pattern.md, domain-event-pattern.md)
 
-    // ✅ Emit DOMAIN event from aggregate
-    this.apply(new JobCompletedEvent({
-      piiData: { /* ... */ },
-      anonymizedData: { /* ... */ },
-      businessData: {
-        jobId: this.id.value,
-        requesterId: this._requesterId.value,
-        providerId: completedBy.value,
-      },
-      cryptoShredding: { /* ... */ }
-    }));
-
-    return Result.ok(undefined);
-  }
-}
-
-// 2. Domain Event Handler writes to OUTBOX — same transaction, zero external I/O
+// 2. A domain event handler writes the OUTBOX row — same transaction, zero external I/O.
 @EventHandler(JobCompletedEvent)
 export class JobCompletedIntegrationEmitterHandler {
-  constructor(
-    @Inject(OUTBOX_SERVICE) private readonly outbox: IOutboxService
-  ) {}
+  constructor(@Inject(OUTBOX_SERVICE) private readonly outbox: IOutboxService) {}
 
   async handle(event: JobCompletedEvent): Promise<void> {
     const jobData: IntegrationEventJobData = {
@@ -524,11 +201,16 @@ export class JobCompletedIntegrationEmitterHandler {
       timestamp: new Date(),
     };
 
-    // ✅ Outbox row commits atomically with the aggregate. The poller fans out AFTER commit.
+    // ✅ Commits atomically with the aggregate. The poller fans out AFTER commit.
     await this.outbox.saveMessage(JobCompletedIntegrationEvent.EVENT_NAME, jobData);
   }
 }
 ```
+
+The CLS transaction propagation that makes this write atomic, the step-by-step migration of an
+existing handler, and the rollback-survival taxonomy live in
+[`transactional-outbox-pattern.md`](./transactional-outbox-pattern.md) — that is the outbox's own
+pattern; this section only shows where an integration event enters it.
 
 **Real example**: `src/contexts/neighborhood-economy/application/quick-jobs/event-handlers/job-completed-integration-emitter.handler.ts`
 
@@ -590,66 +272,22 @@ sits there waiting for whoever adds the outbox write months later.
 
 ### Pattern 2: Domain Event Handler → BullMQ Job (ASYNC Processing)
 
-**When to use**: Async processing (moderation, notifications), background jobs
+**When to use**: background work that stays INSIDE the producing context — moderation, notification
+fan-out, thumbnail generation. This is not an integration event at all: nothing crosses a context
+boundary, so there is no outbox row and no routing entry.
 
-**Flow**:
 ```
-Aggregate → Domain Event → Domain Event Handler → BullMQ Job → Consumer
+Aggregate → Domain Event → Domain Event Handler → queue.add() → @Processor (same context)
 ```
 
-**Example**: Content Moderation
-
-```typescript
-// 1. Aggregate emits DOMAIN event
-export class CommentAggregate extends AggregateRoot<string> {
-  public static create(/* ... */): Result<CommentAggregate, Error> {
-    const comment = new CommentAggregate(/* ... */);
-
-    // ✅ Emit DOMAIN event from aggregate
-    comment.apply(new CommentCreatedEvent({
-      piiData: { contentHash: '...' },
-      anonymizedData: { contentLength: 150 },
-      businessData: {
-        commentId: id.value,
-        userId: userId.value,
-        content: 'First 100 chars...',
-      },
-      cryptoShredding: { /* ... */ }
-    }));
-
-    return Result.ok(comment);
-  }
-}
-
-// 2. Domain Event Handler enqueues BullMQ job
-@EventHandler(CommentCreatedEvent)
-export class ModerateCommentHandler extends BaseModerateContentHandler<CommentCreatedEvent> {
-  constructor(
-    @InjectQueue('moderation') private readonly moderationQueue: Queue
-  ) {}
-
-  protected getJobName(): string {
-    return 'moderate.comment';
-  }
-
-  protected extractModerationData(event: CommentCreatedEvent): ModerationData | null {
-    return {
-      contentId: event.getCommentId(),
-      userId: event.getUserId(),
-      content: event.getContentPreview(),
-      metadata: { /* ... */ }
-    };
-  }
-
-  // ✅ Base class enqueues job to BullMQ
-  // Job processed asynchronously by ModerationConsumer
-}
-```
+The producer/consumer mechanics — typed job data, enum queue names, why the handler must catch and
+the processor must throw, module registration — are in
+[`bullmq-queue-pattern.md`](./bullmq-queue-pattern.md). The only rule that belongs here: if the
+consumer lives in a **different** bounded context, this is the wrong pattern; use Pattern 1.
 
 **Real example**: `src/contexts/engagement/application/event-handlers/moderate-comment.handler.ts`
 
 ---
-
 ### ❌ ANTI-PATTERN: Command Handler emits the integration event directly
 
 Documented as "Pattern 3 (SIMPLIFIED - MVP)" until 2026-08-10. Removed — it has the dual-write
@@ -713,160 +351,19 @@ export class UserAggregate extends AggregateRoot<string> {
 
 ---
 
-## Usage Example: Emission from Domain Service
+## Emission and Consumption — where the code lives
 
-**File**: `src/contexts/geographic-auth/domain/services/trust-delta-emitter.service.ts`
+Emission never happens in an aggregate and never happens through the dispatcher. A domain event
+handler writes the outbox row (Pattern 1 above); the poller fans out after commit. Consumption
+happens in the target context's `@Processor`, which switches on `eventName` and calls
+`commandBus.execute()` — see "BullMQ Per-Context Consumer Pattern" below for both halves.
 
-**Scenario**: User verifies home address → +15 trust points
+> The worked emitter/consumer pair that used to sit here (`TrustDeltaEmitterService` and an
+> `@EventsHandler(ContextTrustDeltaIntegrationEvent)` consumer) was built on the deleted `trust`
+> bounded context, and its consumer shape — an `@EventsHandler` on an integration event — is the
+> pre-TS-INFRA-002 mechanism this pattern replaced. Removed 2026-09-07; read it in git history at
+`c4e12c4` if you need the original wording.
 
-```typescript
-import { Injectable } from '@nestjs/common';
-import { Result } from '@vytches/ddd';
-import { ContextTrustDeltaIntegrationEvent } from '@shared/domain/integration-events';
-
-@Injectable()
-export class TrustDeltaEmitterService {
-  constructor(
-    private readonly integrationEventPublisher: IntegrationEventPublisher,
-    private readonly trustDeltaRepository: ITrustDeltaRepository
-  ) {}
-
-  /**
-   * Emit trust delta if dual threshold met
-   *
-   * BR-TRUST-DELTA-001:
-   * - Emit if |delta| >= 10 points OR
-   * - Emit if daysSinceLastEmit >= 7 days
-   */
-  async emitTrustDeltaIfThresholdMet(
-    userId: string,
-    previousScore: number,
-    newScore: number,
-    reason: string
-  ): Promise<Result<void>> {
-    const delta = newScore - previousScore;
-
-    // Create event
-    const event = new ContextTrustDeltaIntegrationEvent(
-      userId,
-      'geographic-auth', // Source context
-      previousScore,
-      newScore,
-      delta,
-      reason,
-      new Date(),
-      {
-        verificationType: 'home_address',
-        verificationMethod: 'postGIS_boundary_check'
-      }
-    );
-
-    // Check POINT threshold (Condition 1)
-    if (event.meetsPointThreshold()) {
-      return await this.publishEvent(event);
-    }
-
-    // Check TIME threshold (Condition 2)
-    const lastEmittedAt = await this.trustDeltaRepository.getLastEmissionTime(userId);
-    if (lastEmittedAt && event.meetsTimeThreshold(lastEmittedAt)) {
-      return await this.publishEvent(event);
-    }
-
-    // Neither threshold met - skip emission
-    return Result.empty();
-  }
-
-  private async publishEvent(
-    event: ContextTrustDeltaIntegrationEvent
-  ): Promise<Result<void>> {
-    // Publish to outbox (transactional)
-    const publishResult = await this.integrationEventPublisher.publish(event);
-
-    if (publishResult.isFailure) {
-      return Result.fail(publishResult.error);
-    }
-
-    // Record emission timestamp for time threshold
-    await this.trustDeltaRepository.recordEmission(
-      event.userId,
-      event.integrationMetadata.occurredAt
-    );
-
-    return Result.empty();
-  }
-}
-```
-
----
-
-## Usage in Event Handler (Consumption)
-
-**File**: `src/contexts/authorization/application/event-handlers/context-trust-delta.handler.ts`
-
-**Scenario**: Authorization context receives trust delta, updates global score
-
-```typescript
-import { EventsHandler, IEventHandler } from '@nestjs/cqrs';
-import { ContextTrustDeltaIntegrationEvent } from '@shared/domain/integration-events';
-import { Result } from '@vytches/ddd';
-
-@EventsHandler(ContextTrustDeltaIntegrationEvent)
-export class ContextTrustDeltaHandler implements IEventHandler<ContextTrustDeltaIntegrationEvent> {
-  constructor(
-    private readonly globalTrustRepository: IGlobalTrustRepository,
-    private readonly verificationLevelService: VerificationLevelService,
-    private readonly logger: ILogger
-  ) {}
-
-  async handle(event: ContextTrustDeltaIntegrationEvent): Promise<void> {
-    this.logger.info('Processing trust delta', {
-      userId: event.userId,
-      sourceContext: event.sourceContext,
-      delta: event.delta,
-      correlationId: event.integrationMetadata.correlationId,
-    });
-
-    try {
-      // 1. Update global trust score (sum of all context scores)
-      const updateResult = await this.globalTrustRepository.applyDelta(
-        event.userId,
-        event.sourceContext,
-        event.delta
-      );
-
-      if (updateResult.isFailure) {
-        throw new Error(updateResult.error.message);
-      }
-
-      // 2. Check if verification level threshold crossed
-      const newGlobalScore = updateResult.value;
-      await this.verificationLevelService.reevaluateVerificationLevel(
-        event.userId,
-        newGlobalScore
-      );
-
-      // 3. Log successful processing
-      this.logger.info('Trust delta processed successfully', {
-        userId: event.userId,
-        newGlobalScore,
-        correlationId: event.integrationMetadata.correlationId,
-      });
-
-    } catch (error) {
-      this.logger.error('Failed to process trust delta', {
-        userId: event.userId,
-        error: (error as Error).message,
-        correlationId: event.integrationMetadata.correlationId,
-      });
-      throw error; // Retry mechanism will handle
-    }
-  }
-}
-```
-
----
-
----
 
 ## BullMQ Per-Context Consumer Pattern (TS-INFRA-002)
 
@@ -876,18 +373,10 @@ export class ContextTrustDeltaHandler implements IEventHandler<ContextTrustDelta
 
 ### Problem with the old pattern
 
-```
-// ❌ OLD: Single shared queue + eventDispatcher (BROKEN)
-// - eventDispatcher.dispatchEvent() only calls @EventHandler-decorated handlers
-// - 4 contexts (CC, NE, Engagement, GeoAuth) had no @EventHandler → never called
-// - One retry = ALL contexts retry (no independent failure isolation)
-@Processor(QueueName.INTEGRATION_EVENTS)
-export class IntegrationEventsQueueProcessor extends WorkerHost {
-  async process(job): Promise<void> {
-    await this.eventDispatcher.dispatchEvent(integrationEvent); // ❌ broken
-  }
-}
-```
+A single shared `IntegrationEventsQueueProcessor` dispatched through `eventDispatcher`, which only
+reaches `@EventHandler`-decorated classes — four contexts had none and were never called at all.
+One retry also retried every context, so no context could fail independently. Both faults are
+structural, which is why the replacement is per-context queues rather than a bug fix.
 
 ### New pattern: IntegrationEventFanOutService + Per-Context Processors
 
@@ -983,31 +472,16 @@ export class GeoAuthIntegrationProcessor extends WorkerHost {
 }
 ```
 
-**Step 3 — Register processor in context module**
+**Step 3 — Register the processor in the context module**
 
-```typescript
-// src/contexts/geographic-auth/geographic-auth.module.ts
-@Module({
-  imports: [
-    BullModule.registerQueue({ name: QueueName.INTEGRATION_GEOGRAPHIC_AUTH }),
-  ],
-  providers: [
-    GeoAuthIntegrationProcessor, // ← add to providers
-    // ... other providers
-  ],
-})
-export class GeographicAuthModule {}
-```
+`BullModule.registerQueue({ name: QueueName.INTEGRATION_<CONTEXT> })` in `imports`, the processor
+class in `providers`. The registration rules (global vs local `registerQueue()`, enum instead of
+string literal, what breaks when a globally-registered queue is re-registered locally) are in
+[`bullmq-queue-pattern.md`](./bullmq-queue-pattern.md) — they are the same for every queue, not
+specific to integration events.
 
-**Step 4 — Emitters use IntegrationEventFanOutService instead of direct queue**
+**Step 4 — Emitters call `fanOutService.fanOut(jobData)`**, never `queue.add()` directly.
 
-```typescript
-// ❌ OLD:
-await this.integrationEventsQueue.add('user-registered', jobData, { attempts: 3 });
-
-// ✅ NEW:
-await this.fanOutService.fanOut(jobData);
-```
 
 ### Key rules for per-context processors
 
@@ -1284,40 +758,29 @@ export class MyIntegrationEvent extends ProjectIntegrationEvent {
 }
 ```
 
-### ❌ Business Logic in Handler
+### ❌ Filtering Logic in the Consumer
 
 ```typescript
-// ❌ WRONG: Business logic in handler
-@EventsHandler(ContextTrustDeltaIntegrationEvent)
-export class ContextTrustDeltaHandler implements IEventHandler {
-  async handle(event: ContextTrustDeltaIntegrationEvent): Promise<void> {
-    // ❌ Business rule in handler
-    if (Math.abs(event.delta) < 10) {
-      return; // Skip small deltas
-    }
-    // Process event...
-  }
-}
+// ❌ WRONG: the consumer decides whether the event mattered
+case UserTrustScoreUpdatedIntegrationEvent.EVENT_NAME:
+  if (Math.abs(payload.delta as number) < 10) return;   // ❌ threshold lives here
+  await this.commandBus.execute(new ApplyScoreDeltaCommand(/* ... */));
+  break;
 
-// ✅ CORRECT: Business logic in event class
-@EventsHandler(ContextTrustDeltaIntegrationEvent)
-export class ContextTrustDeltaHandler implements IEventHandler {
-  async handle(event: ContextTrustDeltaIntegrationEvent): Promise<void> {
-    // ✅ Business rule in event class
-    // Handler only processes events that SHOULD be emitted
-    await this.globalTrustRepository.applyDelta(
-      event.userId,
-      event.sourceContext,
-      event.delta
-    );
-  }
-}
-
-// Emission logic checks thresholds BEFORE publishing
-if (event.meetsPointThreshold() || event.meetsTimeThreshold(lastEmit)) {
-  await this.integrationEventPublisher.publish(event);
-}
+// ✅ CORRECT: the producer decides whether to emit at all; the consumer applies
+case UserTrustScoreUpdatedIntegrationEvent.EVENT_NAME:
+  await this.commandBus.execute(new ApplyScoreDeltaCommand(
+    payload.userId as string,
+    payload.sourceContext as string,
+    payload.delta as number,
+  ));
+  break;
 ```
+
+A threshold in the consumer is invisible to the producer and to every other consumer of the same
+event — two contexts silently disagree about which events "count", and the emission rate you see
+in metrics stops matching what was actually processed. Decide at emission, or make the threshold
+part of the payload so every consumer reads the same number.
 
 ### ❌ Class-name string jako klucz routingu lub switch case (INCYDENT PRODUKCYJNY)
 
@@ -1421,20 +884,13 @@ const event = MyIntegrationEvent.fromPayload(
 | **Storage** | integration_events_outbox | domain_events |
 | **Retention** | Per GDPR context (e.g., 90 days) | 7 years (Polish law) |
 | **Processing** | Async via queue/outbox | Sync/Async via EventDispatcher |
-| **Examples** | ContextTrustDelta | UserResidenceVerified |
+| **Examples** | `UserRegisteredIntegrationEvent` | `UserResidenceVerifiedEvent` |
 
 ---
 
-**Real Production Code**: `src/shared/domain/integration-events/context-trust-delta.integration-event.ts`
-
-**Business Rule**: BR-TRUST-DELTA-001 (Dual Threshold Pattern)
-
-**References**:
-- ADR-0025 (Hybrid Event System)
-- `.claude/knowledge/patterns/domain/domain-event-pattern.md`
-- ContextTrustDeltaIntegrationEvent (real production code)
-- ProjectIntegrationEvent base class
-
-**Status**: ✅ PRODUCTION - Pattern actively used in Geographic-Auth and Authorization contexts
-
-**Pattern Version**: 2.0 (2026-01-04) - Replaced fictional examples with real production code
+**References**
+- ADR-0025 (Hybrid Event System, Tier 2), ADR-0082 (Outbox Classification Criteria), ADR-0094 (`trust` → `reputation`)
+- [`transactional-outbox-pattern.md`](./transactional-outbox-pattern.md) — outbox table, poller, CLS transaction
+- [`bullmq-queue-pattern.md`](./bullmq-queue-pattern.md) — queue producer/consumer mechanics
+- [`domain-event-pattern.md`](../domain/domain-event-pattern.md) — the in-context counterpart
+- `TS-INFRA-002` (per-context fan-out), `TS-INFRA-EVENT-NAMES-001` (dot-notation), `TS-INTEGRATION-EVENT-WIRING-AUDIT-001` (22-handler silent loss)

@@ -50,9 +50,11 @@ Routes to the `dev-blog-generator` skill which operates in three modes:
    context — the skill outputs research notes adapted to the project's
    language).
 
-4. **Invoke the skill**: load
-   `~/.claude/skills/marketing/dev-blog-generator/SKILL.md` and execute the
-   appropriate mode workflow.
+4. **Invoke the skill**: `dev-blog-generator` (source:
+   `skills/marketing/dev-blog-generator/SKILL.md`; in a set-up project it is
+   symlinked flat as `.claude/skills/dev-blog-generator/` — there is no
+   `~/.claude/skills/` tree, global skills were removed in favour of
+   per-project exposure). Execute the mode workflow the arguments selected.
 
 5. **Report results**: short tabular summary of what was generated/updated
    and the recommended next step.

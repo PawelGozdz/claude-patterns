@@ -5,7 +5,7 @@
 | Role | Agent | Model |
 |------|-------|-------|
 | Advisory | backend-technology-expert | Opus |
-| Advisory | security-privacy-architect | Opus |
+| Advisory | `ecc:security-reviewer` (ECC) | — |
 
 **Stack agents** (auto-linked via `setup-project.sh`):
 

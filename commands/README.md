@@ -1,7 +1,7 @@
 # Global Claude Code Commands
 
-**Location**: `~/.claude/commands/` -> `~/projects/claude-patterns/commands/`
-**Commands**: 45 active
+**Location**: `~/.claude/commands/` -> `/opt/projects/claude-patterns/commands/`
+**Commands**: 33 active
 
 ---
 
@@ -18,28 +18,28 @@
 | `/adr` | Create an Architecture Decision Record for a decision just made | — |
 | `/task-tidy` | Task housekeeping: move done tasks, fix missing fields, validate YAML (non-destructive, previews first) | — |
 
-## Orchestration & Workflow (4)
+## Orchestration & Workflow (3)
 
 | Command | Purpose | Model |
 |---------|---------|-------|
-| `/orchestrate` | Unified orchestration (search/implement/validate/analyze/review) | Sonnet |
-| `/analyze` | Research/analiza sterowana blokami z runtime.yml (ADR 0008, pilot) | Sonnet |
-| `/orchestrate` | Implementacja sterowana blokami z runtime.yml (ADR 0008, pilot; w F6 zastąpi /orchestrate) | Sonnet |
-| `/plan` | Restate requirements, assess risks, create implementation plan | — |
-| `/tdd` | Test-driven development: interfaces -> tests -> minimal implementation | — |
+| `/analyze` | Research/analiza sterowana blokami z runtime.yml (ADR 0008) | Sonnet |
+| `/orchestrate` | Implementacja sterowana blokami z runtime.yml (ADR 0008) | Sonnet |
 | `/scaffold` | Haiku template generator — fast boilerplate (60x cheaper) | Haiku |
 
-## Quality & Review (7)
+Planowanie i TDD idą do ECC: `/ecc:plan`, skill `ecc:tdd-workflow` (plus `ecc:<lang>-test`
+dla konkretnego języka) — patrz [ADR 0009](../docs/adr/0009-wynik-spike-fazy-0-i-lista-retire.md).
+
+## Quality & Review (4)
 
 | Command | Purpose | Model |
 |---------|---------|-------|
-| `/verify` | Run quality gates: typecheck, lint, test, build, coverage | — |
-| `/code-review` | Structured code review with severity levels | — |
 | `/review-panel` | Multi-persona reviewer panel (16 agents), severity-graded report, incremental re-review | Sonnet |
 | `/pr-ops` | List/triage open PRs, classify comments blocking/question/resolved (read-only) | Sonnet |
 | `/api-schema-sync` | Cross-repo OpenAPI drift check: backend vs mobile/web consumers | Sonnet |
 | `/build-fix` | Diagnose and fix TypeScript build errors with minimal changes | — |
-| `/test-coverage` | Analyze test coverage gaps prioritized by business criticality | — |
+
+Bramki jakości, przegląd jednoprzebiegowy i pokrycie testami idą do ECC:
+`/ecc:quality-gate` (skill `ecc:verification-loop`), `/ecc:code-review`, `/ecc:test-coverage`.
 
 ## Security (5)
 
@@ -66,35 +66,23 @@
 | `/grantflow` | Manage grant-flow: setup credentials, list projects, map repos, history, diagnostics | — |
 | `/log-time` | Log work hours to grant-flow — use at the end of each session | — |
 
-## Session & Progress (3)
+## Session & Progress (2)
 
 | Command | Purpose | Model |
 |---------|---------|-------|
 | `/progress` | Visual progress tracking — task status, completions, next actions | Haiku |
-| `/sessions` | List and manage Claude Code session history with pagination | — |
-| `/checkpoint` | Save session state snapshot for cross-session continuity | — |
+| `/checkpoint` | Handoff only: write `.claude/work/SESSION_STATE.md` for the next session | — |
 
-## Learning System (7)
+Historia sesji i checkpointy gitowe idą do ECC: `/ecc:sessions` (`/ecc:save-session`,
+`/ecc:resume-session`) oraz `/ecc:checkpoint` dla trybów `create`/`verify`/`list`.
+
+## Learning System (3)
 
 | Command | Purpose | Model |
 |---------|---------|-------|
-| `/instinct-status` | Show all learned instincts with confidence levels | — |
-| `/instinct-export` | Export instincts for sharing with teammates | — |
-| `/instinct-import` | Import instincts from teammates or other sources | — |
-| `/evolve` | Cluster related instincts into skills, commands, or agents | — |
 | `/blog` | Build-in-public blog scaffolding from git history + KANBAN.md + completed tasks | — |
 | `/capture` | Capture an insight from the current conversation as a blog draft before it disappears | — |
 | `/claude-updates` | Scan Claude Platform release notes for new features/models/deprecations since last check | — |
-
-## Cross-instance broadcast (2)
-
-| Command | Purpose | Model |
-|---------|---------|-------|
-| `/broadcast` | Nadaj/przeczytaj wpis w kanale między instancjami, ACK, claim (ADR 0006) | Haiku |
-| `/broadcast-status` | Raport kanału: wpisy bez claimu, martwe topiki, rozjazd manifestów (~$0) | Haiku |
-
-Wymaga `.claude/config/broadcast.yml` w projekcie (plik nieśledzony). Bez niego oba
-polecenia mówią wprost, że broadcast jest tu wyłączony — i to jest stan domyślny.
 
 ## Infrastructure (3)
 
@@ -115,14 +103,13 @@ polecenia mówią wprost, że broadcast jest tu wyłączony — i to jest stan d
 /sprint                         # plan next sprint (~$0.20)
 /reprioritize                   # what to promote/demote/cut (~$0.20)
 
-# Development workflow
-/plan implement auth module     # plan before coding
-/tdd UserService                # test-first development
-/verify                         # run all quality gates
+# Development workflow (ECC)
+/ecc:plan implement auth module # plan before coding
+/ecc:quality-gate               # run all quality gates
 
 # Orchestration
-/orchestrate find all aggregates      # search mode
-/orchestrate implement UserProfile    # implement mode
+/analyze TASK-123                     # analiza sterowana blokami
+/orchestrate TASK-123                 # implementacja sterowana blokami
 /scaffold dto CreateUser auth         # generate boilerplate
 ```
 
@@ -134,5 +121,5 @@ polecenia mówią wprost, że broadcast jest tu wyłączony — i to jest stan d
 
 ---
 
-**Version**: 3.1.0
-**Last Updated**: 2026-04-03
+**Version**: 3.6.0
+**Last Updated**: 2026-09-07

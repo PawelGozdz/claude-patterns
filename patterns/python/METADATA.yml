@@ -1,10 +1,31 @@
+# Python Patterns — metadane katalogu.
+# Schemat: jeden dla całego patterns/** (K84, TASK-KAIZEN-002). Walidator:
+# node scripts/validate-metadata.mjs
 category: python
-version: 1.0.0
+version: "1.0.1"
 maturity: production
 last_verified: 2026-08-12
-stack: Python 3.11+, FastAPI, SQLAlchemy, pytest; pipeline: PostgreSQL + Qdrant + Neo4j
-source_projects: my-intelligence, pcu
+stack: "Python 3.11+, FastAPI, SQLAlchemy, pytest; pipeline: PostgreSQL + Qdrant + Neo4j"
+source_projects: "my-intelligence, pcu"
 patterns_count: 7
-description: Production-tested Python layered architecture patterns, plus
-  multi-engine persistence and resilient multi-source collection
-  (both scope=project-specific: my-intelligence)
+description: >-
+  Wzorce architektury warstwowej w Pythonie (moduły, typowanie, async,
+  FastAPI, testy) plus dwa wzorce pipeline'owe wyprowadzone z jednego repo:
+  persystencja wielosilnikowa i odporne zbieranie z wielu źródeł.
+
+layer: architecture
+stack_support: [python]
+
+patterns:
+  - file: polyglot-persistence-pattern.md
+    maturity: production
+    last_verified: 2026-08-12
+    scope: project-specific
+    project: my-intelligence
+    description: "Persystencja wielosilnikowa: PostgreSQL + Qdrant + Neo4j za jednym portem"
+  - file: resilient-collection-pattern.md
+    maturity: production
+    last_verified: 2026-08-12
+    scope: project-specific
+    project: my-intelligence
+    description: "Odporne zbieranie z wielu źródeł: retry, degradacja, budżet czasu"

@@ -2,6 +2,8 @@
 
 **Tags**: "api:data-access:projection", "api:app:cross-context"
 
+**Layer**: Architecture
+
 ## 🎯 Problem
 
 **Multiple bounded contexts need user data, but cross-context JOINs violate DDD principles.**
@@ -364,7 +366,7 @@ async handle(event: UserRegisteredIntegrationEvent) {
 ### Reference Documentation
 - `.claude/knowledge/learned/user-projection-matrix.md` - Complete matrix of all context projections
 
-## 🎯 When to Use
+## When to Use 🎯
 
 **Use User Projection Pattern when:**
 

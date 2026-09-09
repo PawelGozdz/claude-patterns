@@ -5,24 +5,6 @@ description: "Model, forecast, and interpret volatility using time-series models
 
 # Volatility Modeling
 
-## Purpose
-Model, forecast, and interpret volatility using time-series models and options-implied measures. This skill covers EWMA and GARCH(1,1) for volatility forecasting, implied volatility extraction, volatility smile/skew/surface construction, the volatility term structure, the realized-vs-implied volatility gap (volatility risk premium), and the VIX index. These tools are foundational for options pricing, risk management, and trading strategy development.
-
-## Layer
-1b — Forward-Looking Risk
-
-## Direction
-Prospective
-
-## When to Use
-- Forecasting future volatility for risk management or position sizing
-- Building EWMA or GARCH models to capture volatility clustering and mean reversion
-- Extracting implied volatility from option prices using Black-Scholes or other models
-- Constructing or interpreting volatility smiles, skews, and surfaces
-- Analyzing the volatility term structure across different maturities
-- Comparing realized (historical) volatility to implied volatility to assess the volatility risk premium
-- Understanding VIX and its relationship to market sentiment and expected risk
-
 ## Core Concepts
 
 ### EWMA (Exponentially Weighted Moving Average)
@@ -242,9 +224,20 @@ A systematic vol-selling strategy would sell this option, expecting to profit fr
 - **Lambda selection for EWMA:** The choice of lambda significantly affects responsiveness. lambda = 0.94 responds quickly to shocks (effective window approximately 17 days); lambda = 0.97 is smoother (effective window approximately 33 days). The choice should match the application's horizon.
 
 ## Cross-References
-- **historical-risk** (wealth-management plugin, Layer 1a): Close-to-close, Parkinson, and Yang-Zhang volatility estimators provide the realized volatility benchmarks against which GARCH forecasts and implied volatility are compared.
-- **forward-risk** (wealth-management plugin, Layer 1b): Volatility forecasts from EWMA and GARCH are direct inputs to parametric and Monte Carlo VaR calculations.
-- **performance-metrics** (wealth-management plugin, Layer 1a): Volatility estimates affect the denominators of Sharpe, Sortino, and other risk-adjusted ratios. Using forward-looking (GARCH) volatility can produce conditional performance ratios.
+- **historical-risk** (wealth-management plugin): Close-to-close, Parkinson, and Yang-Zhang volatility estimators provide the realized volatility benchmarks against which GARCH forecasts and implied volatility are compared.
+- **forward-risk** (wealth-management plugin): Volatility forecasts from EWMA and GARCH are direct inputs to parametric and Monte Carlo VaR calculations.
+- **performance-metrics** (wealth-management plugin): Volatility estimates affect the denominators of Sharpe, Sortino, and other risk-adjusted ratios. Using forward-looking (GARCH) volatility can produce conditional performance ratios.
 
-## Reference Implementation
-See `scripts/volatility_modeling.py` for computational helpers.
+## Running the script
+
+```
+uv run scripts/volatility_modeling.py
+```
+
+The PEP 723 header resolves the numpy and scipy dependencies automatically. Alternatively run `python3 scripts/volatility_modeling.py` after `pip install numpy scipy`.
+
+- Bare run prints a demo on synthetic GARCH-dynamics returns: EWMA volatility, GARCH(1,1) estimation and multi-step forecasts, realized and Parkinson volatility, term structure, and a volatility cone.
+- `--verify` re-runs the key computations and asserts the outputs match this skill's worked examples (prints PASS/FAIL, nonzero exit on mismatch).
+- `--help` lists the available class and methods.
+
+The file is primarily meant to be imported as a module, e.g. `from volatility_modeling import VolatilityModeling`.

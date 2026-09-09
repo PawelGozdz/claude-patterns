@@ -1,6 +1,9 @@
 # Value Object Pattern
 
 **Tags**: "api:domain"
+**Level**: exhaustive
+**Layer**: Domain
+**Status**: production
 
 ## 🎯 Problem
 
@@ -817,7 +820,7 @@ content1.equals(content2); // True if same hash ✅
 
 ---
 
-## 🎯 When to Use
+## When to Use
 
 ### Use Value Objects When
 

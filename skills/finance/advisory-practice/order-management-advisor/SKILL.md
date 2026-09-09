@@ -5,28 +5,6 @@ description: "Manage the advisor trade lifecycle from order entry through settle
 
 # Order Management — Advisor
 
-## Purpose
-Provides comprehensive guidance on order management systems and trade workflows for registered investment advisers and advisory practices. Covers the full trade lifecycle from investment decision through settlement, including order types and time-in-force instructions, block trading and fair allocation, pre-trade compliance checks, custodian integration and order routing, model-driven trading at scale, cash management in the trading workflow, trade error handling and correction, and audit trail and recordkeeping requirements. This skill enables the design, evaluation, and operation of advisory trading infrastructure that is efficient, compliant, and scalable.
-
-## Layer
-10 — Advisory Practice (Front Office)
-
-## Direction
-prospective
-
-## When to Use
-- Designing or evaluating an order management system for an RIA or advisory practice
-- Executing a model portfolio change across hundreds or thousands of client accounts
-- Structuring block trades and determining fair allocation methodology
-- Configuring pre-trade compliance rules including restricted lists, concentration limits, and client-specific restrictions
-- Routing orders across multiple custodians and evaluating best execution
-- Managing cash flows within the trading workflow — investing new cash, raising cash for withdrawals, handling dividends
-- Handling trade errors including same-day and post-settlement corrections
-- Building or auditing the trade audit trail for SEC and FINRA examination readiness
-- Evaluating OMS platforms for advisory firms (Orion Trading, Tamarac Trading, Schwab iRebal, Fidelity trading tools)
-- Understanding the differences between mutual fund and ETF order handling
-- Implementing systematic trading processes driven by model portfolio changes
-
 ## Core Concepts
 
 ### Order Management System (OMS) in Advisory Context
@@ -49,21 +27,7 @@ The OMS sits between the PMS (which generates trades) and the custodian (which e
 Common advisory OMS platforms include Orion Trading (integrated with Orion Portfolio Solutions), Tamarac Trading (part of the Envestnet ecosystem), Schwab iRebal (now part of Schwab Advisor Services, widely used by RIAs custodying at Schwab), and Fidelity's trading tools (available to advisors on the Fidelity Institutional platform). Many of these platforms combine OMS and rebalancing functionality, blurring the line between PMS and OMS.
 
 ### Order Types and Time-in-Force
-Advisors use a range of order types depending on the security, market conditions, and client objectives.
-
-**Standard order types:**
-
-- **Market order:** An order to buy or sell immediately at the best available price. Market orders guarantee execution but not price. Appropriate when execution certainty is more important than price precision — for example, liquidating a position to fund a client withdrawal. Risk: in volatile or illiquid markets, the execution price may differ significantly from the quoted price (slippage).
-- **Limit order:** An order to buy at or below a specified price, or sell at or above a specified price. Limit orders guarantee price but not execution. Appropriate when the advisor wants to control the entry or exit price — for example, adding to a position only if it reaches a target valuation level. Risk: the order may not fill if the market does not reach the limit price.
-- **Stop order (stop-loss):** An order that becomes a market order when a specified price (the stop price) is reached. Used to limit losses on existing positions. A sell stop is placed below the current market price. Risk: once triggered, the order executes at the next available price, which may be significantly below the stop price in a gap-down scenario.
-- **Stop-limit order:** An order that becomes a limit order (not a market order) when the stop price is reached. Provides more price control than a stop order but adds the risk that the order may not fill if the market gaps through the limit price.
-
-**Time-in-force instructions:**
-
-- **Day:** The order expires at the end of the trading day if not filled. The default for most advisory orders.
-- **GTC (good-til-canceled):** The order remains active until filled or explicitly canceled. Custodians typically impose a maximum duration (often 60 or 90 calendar days). Appropriate for limit orders where the advisor is willing to wait for a target price.
-- **IOC (immediate-or-cancel):** The order must be filled immediately, in whole or in part. Any unfilled portion is canceled. Used when partial execution is acceptable but the advisor does not want the order to remain open.
-- **FOK (fill-or-kill):** The order must be filled in its entirety immediately or canceled entirely. No partial fills are accepted. Rarely used in advisory contexts but relevant for block orders where partial fills would create allocation complications.
+Standard order types (market, limit, stop, stop-limit) and time-in-force instructions (day, GTC, IOC, FOK) carry their usual meanings; the advisory-specific considerations are below. Two operational notes: custodians typically cap GTC duration at 60 or 90 calendar days, and FOK is rarely used in advisory trading except for block orders where partial fills would create allocation complications.
 
 **NAV-sensitive orders (mutual funds):**
 
@@ -138,7 +102,7 @@ The end-to-end trade lifecycle in an advisory firm proceeds through a defined se
 
 **Stage 9 — Confirmation generation:** The OMS generates trade confirmations for each client account reflecting the allocated execution details. Confirmations are delivered to clients per SEC Rule 10b-10 requirements.
 
-**Stage 10 — Settlement:** Securities and cash are exchanged between counterparties. As of May 28, 2024, the standard settlement cycle for U.S. equities is T+1 (one business day after trade date). Mutual funds generally settle at T+1 as well, though certain fund types may have different settlement cycles. Government securities settle T+1. Options settle T+1 as of May 2024.
+**Stage 10 — Settlement:** Securities and cash are exchanged between counterparties. Since May 28, 2024, the standard settlement cycle for U.S. equities is T+1 (one business day after trade date). Mutual funds generally settle at T+1 as well, though certain fund types may have different settlement cycles. Government securities settle T+1. Listed options were already settling T+1 before the 2024 equity-cycle change and continue to do so.
 
 **Status tracking:** The OMS maintains real-time status for each order: pending (awaiting compliance check), approved (compliance passed, awaiting submission), submitted (sent to custodian), partially filled, filled, allocated, confirmed, and settled. Exception statuses include rejected (by custodian or compliance), canceled, and error.
 
@@ -274,82 +238,7 @@ Every trade in an advisory practice must be supported by a complete and accessib
 
 ## Worked Examples
 
-### Example 1: Model Change Across 800 Accounts with Multi-Custodian Routing and Restrictions
-**Scenario:** An RIA managing $1.2 billion across 800 client accounts decides to replace iShares Russell 1000 Value ETF (IWD) with Vanguard Value ETF (VTV) across its Large-Cap Value model portfolio. The 800 accounts are custodied at three custodians: 500 accounts at Schwab, 200 at Fidelity, and 100 at Pershing. The firm discovers that 50 of the 800 accounts have client-specific restrictions that prevent the trade: 30 accounts have tax restrictions (holding IWD shares with very low cost basis that the client has instructed not to sell), 15 accounts have ESG restrictions that exclude VTV due to its holdings in certain energy companies, and 5 accounts are in estate settlement with a trading freeze.
-
-**Design Considerations:**
-
-The trade workflow proceeds as follows:
-
-The PMS generates 800 sell-IWD orders and 800 buy-VTV orders. For each account, the system calculates the exact share quantity based on the account's current IWD position and the target VTV allocation.
-
-Pre-trade compliance screening flags the 50 restricted accounts: the 30 tax-restricted accounts receive hard blocks on the IWD sell (the client instruction to retain low-basis shares overrides the model change); the 15 ESG-restricted accounts receive hard blocks on the VTV buy (VTV fails the ESG screen); and the 5 estate accounts receive hard blocks on both sides (trading freeze). These 50 accounts are excluded from the trade list, and the portfolio manager is notified to determine alternative treatment — the tax-restricted accounts will retain IWD, the ESG-restricted accounts may receive an alternative ESG-compatible value ETF, and the estate accounts will be addressed after the trading freeze is lifted.
-
-The remaining 750 accounts proceed to block aggregation. The OMS creates three custodian-level sub-blocks for each side of the trade: Schwab block (450 accounts, sell approximately 120,000 shares of IWD and buy approximately 150,000 shares of VTV), Fidelity block (200 accounts, sell approximately 55,000 shares of IWD and buy approximately 68,000 shares of VTV), and Pershing block (100 accounts, sell approximately 28,000 shares of IWD and buy approximately 35,000 shares of VTV).
-
-Tax-lot selection for the IWD sell must be specified at the account level before aggregation. The firm's default method is specific identification with a tax-efficient priority: sell highest-cost-basis lots first, then short-term lots (to minimize the net gain), then long-term lots. For accounts with only low-basis lots and no tax restriction, the lots are sold per the default method. The OMS records the specific lot selection for each account as part of the pre-trade allocation documentation.
-
-Each custodian sub-block is routed via FIX to the respective custodian. The IWD sell blocks are executed first to generate cash for the VTV purchases. Given the aggregate size (approximately 203,000 shares of IWD, representing roughly 2-3% of IWD's average daily volume), the trading desk elects to execute the IWD sells using a VWAP algorithm over two hours to minimize market impact. The VTV buys are executed after the IWD sells are confirmed, also via VWAP.
-
-**Analysis:**
-
-Post-execution, the OMS allocates fills to individual accounts using pro-rata allocation at the average execution price within each custodian sub-block. Each account at Schwab receives the same average price for its IWD sell and the same average price for its VTV buy. Because the three custodian sub-blocks may execute at slightly different average prices (due to timing differences and market movement), accounts at different custodians may receive slightly different prices. This is acceptable — fair allocation requires consistency within each block, not identical pricing across custodians.
-
-The 50 excluded accounts are documented with the reason for exclusion and the alternative treatment plan. The compliance department reviews the exclusion list to confirm that each restriction was properly identified and applied. The portfolio manager signs off on the alternative treatment for each group of restricted accounts.
-
-The entire process — from model change decision to allocation completion — should be documented in the OMS with timestamps, decision records, compliance check results, routing details, execution data, and allocation records. This audit trail satisfies SEC Rule 204-2 and provides the documentation needed for best execution review and supervisory oversight.
-
-### Example 2: Trade Error Discovery and Correction
-**Scenario:** On Tuesday afternoon, an operations analyst reviewing the daily trade blotter notices that an advisor entered a sell order for 1,000 shares of Johnson & Johnson (JNJ) in a client account. The account held 1,000 shares of JNJ, and the trade was executed at $158.50 per share (total proceeds: $158,500). However, the advisor intended to sell 1,000 shares of JPMorgan Chase (JPM), which the account also held, to raise cash for a planned withdrawal. The JNJ sale has already settled (the error is discovered on Wednesday, one day after the T+1 settlement). Meanwhile, JNJ has risen to $160.00 and JPM has fallen from $195.00 to $193.00.
-
-**Design Considerations:**
-
-The error correction process follows these steps:
-
-First, the error is documented immediately: the operations analyst records the nature of the error (wrong security — JNJ sold instead of JPM), the account affected, the trade details, the person who entered the order, and the financial impact.
-
-Second, the corrective trades are determined. To restore the client's account to its intended position:
-- Buy back 1,000 shares of JNJ to restore the position. Current market price is $160.00, so the repurchase costs approximately $160,000 — a loss of $1,500 versus the $158,500 in sale proceeds ($160,000 - $158,500).
-- Sell 1,000 shares of JPM to raise the cash the advisor originally intended. Current price is $193.00, versus $195.00 when the original trade should have been executed — a $2,000 opportunity cost ($195,000 - $193,000).
-
-Third, the corrective trades are executed through the firm's error account. The JNJ repurchase at $160.00 and the JPM sale at $193.00 flow through the error account. The net cost to the firm is: the $1,500 loss on JNJ (bought back higher than sold) plus the $2,000 shortfall on JPM (sold at a lower price than was available when the original trade should have occurred), totaling approximately $3,500. The client's account is made whole — it ends up holding the same securities it would have held if the correct trade had been executed, and the cash raised is $193,000 (the JPM proceeds) rather than the $195,000 that would have been available on Tuesday, but the firm absorbs this difference.
-
-Fourth, the client is notified. The advisor calls the client to explain the error, the correction, and that the client has been made whole. A written confirmation follows.
-
-**Analysis:**
-
-The firm should investigate how the error occurred and what controls could prevent it. Potential OMS enhancements include: (1) security validation that requires the advisor to confirm the security name in addition to the ticker symbol before submission — displaying "Johnson & Johnson (JNJ)" prominently on the order confirmation screen would help catch ticker confusion; (2) a warning when an order would liquidate an entire position, prompting the advisor to confirm intent; (3) a reconciliation check that compares the security being sold against the stated purpose of the trade (if the advisor flagged the trade as "cash raise for withdrawal," the system could verify that the selected security aligns with the cash-raise priority methodology).
-
-The error, correction, and associated costs are logged in the firm's error account records and reported to compliance. If the firm is a dual registrant with a broker-dealer, the error may need to be evaluated under FINRA Rule 4530 for reportability. The error account activity is subject to supervisory review and regulatory examination.
-
-Over time, the firm should analyze error patterns. If wrong-security errors are recurring, it may indicate systemic issues with the OMS interface, training gaps, or workflow problems that need to be addressed.
-
-### Example 3: Multi-Custodian Best Execution Review
-**Scenario:** A mid-size RIA custodies client assets at three custodians — Schwab (60% of AUM), Fidelity (30% of AUM), and Pershing (10% of AUM). The firm's compliance committee has tasked the trading desk with conducting the annual best execution review to evaluate execution quality across all three custodians and document findings for the firm's fiduciary records.
-
-**Design Considerations:**
-
-The best execution review should follow a structured methodology:
-
-Data collection: The OMS maintains execution records for all trades at each custodian. The trading desk extracts 12 months of trade data including: security, order type, order size, execution price, National Best Bid and Offer (NBBO) at time of execution, execution venue, fill time (time from order submission to execution), price improvement or disimprovement versus NBBO, and effective spread (the difference between the execution price and the midpoint of the NBBO at the time of order entry). This data is segmented by custodian, security type (equity, ETF, mutual fund, fixed income), order size, and market conditions.
-
-Evaluation criteria: The review evaluates each custodian across multiple dimensions:
-- **Price improvement:** What percentage of orders received price improvement (executed at a better price than the NBBO)? What is the average price improvement in cents per share? Schwab, Fidelity, and Pershing each publish their own price improvement statistics, but the firm should independently verify using its own trade data.
-- **Effective spread:** The average effective spread (execution price minus midpoint) across all trades. A lower effective spread indicates better execution quality.
-- **Fill rate:** What percentage of limit orders were filled? What is the average time to fill?
-- **Rejection rate:** What percentage of orders were rejected by the custodian, and what were the reasons?
-- **Market impact:** For larger orders, did the execution move the market price? What is the average implementation shortfall (the difference between the decision price and the average execution price)?
-- **Execution venue analysis:** Where are orders being routed — to the custodian's internal execution desk, to external market makers, or to exchanges? Are there any concerns about payment for order flow affecting execution quality?
-
-Comparative analysis: The trading desk compares execution quality metrics across the three custodians using standardized measures. For example, if Schwab provides average price improvement of 1.2 cents per share on equity orders while Fidelity provides 0.8 cents and Pershing provides 1.0 cent, this difference is documented. However, best execution is not determined by a single metric — the review must consider the totality of factors including execution speed, reliability, order handling capabilities, and the overall cost of the custodial relationship.
-
-**Analysis:**
-
-The review findings are documented in a written report that includes: the methodology used, the data period and sample size, the metrics evaluated, the results for each custodian, a comparative analysis, and conclusions. If the review identifies material execution quality concerns at any custodian — for example, consistently poor price improvement or high rejection rates — the report should include recommended actions such as engaging the custodian to discuss execution practices, modifying order routing preferences, or in extreme cases considering a custodian change for affected accounts.
-
-The report is presented to the compliance committee and retained as part of the firm's books and records. SEC and FINRA examiners routinely request best execution review documentation. The review should reference the firm's best execution policy, which establishes the frequency of reviews (at least annually), the metrics to be evaluated, the responsible parties, and the escalation process for identified deficiencies.
-
-The OMS facilitates this process by maintaining comprehensive execution data in a structured, queryable format. Firms without adequate OMS reporting capabilities may need to supplement with data from custodian execution quality reports (Rule 605 reports, formerly Rule 11Ac1-5) and Transaction Cost Analysis (TCA) services provided by third-party vendors.
+See [references/examples.md](references/examples.md) for three end-to-end worked examples — a model change across 800 accounts with multi-custodian routing and restrictions, a wrong-security trade error discovered post-settlement, and a multi-custodian best execution review. Load it when the user needs a full scenario walkthrough.
 
 ## Common Pitfalls
 - Failing to establish and document a pre-trade allocation methodology for block trades — allocating after execution results are known creates the appearance of cherry-picking even if the allocation is fair
@@ -366,10 +255,10 @@ The OMS facilitates this process by maintaining comprehensive execution data in 
 - Not testing the OMS compliance rule engine when new restrictions are added — a rule that is configured but does not fire correctly provides false confidence
 
 ## Cross-References
-- **portfolio-management-systems** (Layer 10, advisory-practice): The PMS generates the trade proposals that flow into the OMS for compliance checking, aggregation, and execution. The PMS-OMS integration is the most critical data interface in the advisory trading workflow.
-- **fee-billing** (Layer 10, advisory-practice): Trade activity directly affects billing calculations. Wrap-fee accounts include trading costs in the advisory fee, while transaction-based accounts incur separate commissions. The OMS must track trade counts and costs for billing reconciliation.
-- **sales-practices** (Layer 9, compliance): Supervision of trading activity is a core FINRA requirement under Rule 3110. The OMS audit trail provides the data that supervisors review when fulfilling their oversight obligations.
-- **books-and-records** (Layer 9, compliance): Trade records generated by the OMS — order tickets, execution records, allocation records, confirmations — are subject to SEC Rule 17a-3/17a-4 and Rule 204-2 retention requirements.
-- **reg-bi** (Layer 9, compliance): Trade recommendations must satisfy the Reg BI care obligation and conflict of interest obligation. Pre-trade compliance checks in the OMS can enforce suitability and best interest constraints at the point of order entry.
-- **conflicts-of-interest** (Layer 9, compliance): Block allocation fairness is a conflict management issue. Advisers must demonstrate that no account is systematically advantaged or disadvantaged by the allocation methodology, particularly when accounts have different fee structures.
-- **investment-suitability** (Layer 9, compliance): Pre-trade compliance checks enforce suitability constraints including concentration limits, risk tolerance alignment, and investment policy compliance at the account level before orders are submitted.
+- **portfolio-management-systems** (advisory-practice plugin): The PMS generates the trade proposals that flow into the OMS for compliance checking, aggregation, and execution. The PMS-OMS integration is the most critical data interface in the advisory trading workflow.
+- **fee-billing** (advisory-practice plugin): Trade activity directly affects billing calculations. Wrap-fee accounts include trading costs in the advisory fee, while transaction-based accounts incur separate commissions. The OMS must track trade counts and costs for billing reconciliation.
+- **sales-practices** (compliance plugin): Supervision of trading activity is a core FINRA requirement under Rule 3110. The OMS audit trail provides the data that supervisors review when fulfilling their oversight obligations.
+- **books-and-records** (compliance plugin): Trade records generated by the OMS — order tickets, execution records, allocation records, confirmations — are subject to SEC Rule 17a-3/17a-4 and Rule 204-2 retention requirements.
+- **reg-bi** (compliance plugin): Trade recommendations must satisfy the Reg BI care obligation and conflict of interest obligation. Pre-trade compliance checks in the OMS can enforce suitability and best interest constraints at the point of order entry.
+- **conflicts-of-interest** (compliance plugin): Block allocation fairness is a conflict management issue. Advisers must demonstrate that no account is systematically advantaged or disadvantaged by the allocation methodology, particularly when accounts have different fee structures.
+- **investment-suitability** (compliance plugin): Pre-trade compliance checks enforce suitability constraints including concentration limits, risk tolerance alignment, and investment policy compliance at the account level before orders are submitted.

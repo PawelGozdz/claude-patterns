@@ -11,6 +11,8 @@ computation, volatility-scaled position sizing, and drawdown-based sizing.
 Part of Layer 4 (Portfolio Construction) in the finance skills framework.
 """
 
+import argparse
+import sys
 import numpy as np
 
 
@@ -296,7 +298,7 @@ class PositionSizer:
         return weights
 
 
-if __name__ == "__main__":
+def _demo() -> None:
     # ----------------------------------------------------------------
     # Demo: Bet sizing toolkit
     # ----------------------------------------------------------------
@@ -388,3 +390,58 @@ if __name__ == "__main__":
     print("\n" + "=" * 60)
     print("Demo complete.")
     print("=" * 60)
+
+def _check(failures: list, name: str, actual: float, expected: float, tol: float) -> None:
+    """Record a verification check result."""
+    ok = abs(actual - expected) <= tol
+    status = "PASS" if ok else "FAIL"
+    print(f"  [{status}] {name}: actual={actual:.6g}, expected={expected:.6g}, tol={tol:.2g}")
+    if not ok:
+        failures.append(name)
+
+def _verify() -> None:
+    """Verify key outputs against the SKILL.md worked examples."""
+    failures: list = []
+
+    # SKILL.md Example 1: discrete Kelly, p=0.55, even money
+    _check(failures, "Ex1 discrete Kelly f*", KellyCriterion.discrete_kelly(0.55, 1.0), 0.10, 1e-12)
+    # Script clamps negative-edge bets to zero (documented in SKILL.md)
+    _check(failures, "negative edge clamped to 0", KellyCriterion.discrete_kelly(0.40, 1.0), 0.0, 1e-12)
+
+    # SKILL.md Example 2: continuous Kelly, 8% excess / 20% vol
+    kelly = KellyCriterion(0.08, 0.20)
+    _check(failures, "Ex2 full Kelly", kelly.continuous_kelly(), 2.0, 1e-12)
+    _check(failures, "Ex2 half Kelly", kelly.fractional_kelly(0.5), 1.0, 1e-12)
+    _check(failures, "Ex2 max growth rate", kelly.max_growth_rate(), 0.08, 1e-12)
+    _check(failures, "Ex2 growth at half Kelly (f=1.0)", kelly.growth_rate(1.0), 0.06, 1e-12)
+    _check(failures, "Ex2 growth at quarter Kelly (f=0.5)", kelly.growth_rate(0.5), 0.035, 1e-12)
+
+    if failures:
+        print(f"\n{len(failures)} check(s) FAILED: {', '.join(failures)}")
+        sys.exit(1)
+    print("\nAll checks passed.")
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description=__doc__.strip().splitlines()[2] if __doc__ else "",
+        epilog=(
+            "Provides: KellyCriterion, PositionSizer. "
+            "For programmatic use, import this module (bet_sizing) instead of running it. "
+            "Bare run executes a demo whose printed values match the SKILL.md worked examples; "
+            "--verify asserts those values and exits nonzero on mismatch."
+        ),
+    )
+    parser.add_argument(
+        "--verify",
+        action="store_true",
+        help="run the verification checks against the SKILL.md worked-example values",
+    )
+    args = parser.parse_args()
+    if args.verify:
+        _verify()
+    else:
+        _demo()
+
+
+if __name__ == "__main__":
+    main()

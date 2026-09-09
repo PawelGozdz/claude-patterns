@@ -3,11 +3,18 @@
 #
 # Creates symlinks in ~/.claude/ pointing to claude-patterns repo:
 #   agents/  → universal specialists + verifiers (with permissionMode, memory, isolation)
-#   commands/ → global slash commands (/plan, /tdd, /scaffold, etc.)
-#   hooks/   → universal hooks only (stack-specific hooks are per-project)
+#   commands/ → global slash commands (/analyze, /orchestrate, /scaffold, etc.)
+#   hooks/   → the hook FILES (universal ones; stack-specific hooks are per-project)
 #
-# Stack-specific hooks (DDD, Flutter, Python) are NOT global.
-# They are injected into per-project .claude/settings.json by setup-project.sh.
+# Symlinking hooks/ only makes the files reachable — it does NOT register a single
+# hook. Registration lives in ~/.claude/settings.json, and step [3/4] does it by
+# running scripts/sync-global-hooks.mjs --apply (adds only what is missing, never
+# touches existing entries or their order). Until 2026-09-07 nothing ran that step,
+# so hooks.json declared 22 hooks while settings.json carried two.
+#
+# Stack-specific hooks (DDD, Flutter, Python) are NOT global. They reach a project's
+# .claude/settings.json through setup-project.sh (scripts/sync-runtime-hooks.mjs,
+# driven by the blocks the project composes).
 #
 # Usage: ./scripts/setup-global.sh
 
@@ -55,7 +62,7 @@ setup_symlink() {
 }
 
 # --- Global agents (universal only — stack-specific are per-project) ---
-echo -e "${BLUE}[1/3] Agents${NC} (universal specialists — stack agents are per-project)"
+echo -e "${BLUE}[1/4] Agents${NC} (universal specialists — stack agents are per-project)"
 
 # Remove old symlink if it pointed to entire agents/ dir
 if [ -L "$USER_CLAUDE_DIR/agents" ]; then
@@ -93,12 +100,20 @@ if [[ -d "$REPO_DIR/agents/integrations" ]]; then
 fi
 echo ""
 
-echo -e "${BLUE}[2/3] Commands${NC} (slash commands: /plan, /tdd, /scaffold, etc.)"
+echo -e "${BLUE}[2/4] Commands${NC} (slash commands: /plan, /tdd, /scaffold, etc.)"
 setup_symlink "commands" "$REPO_DIR/commands"
 echo ""
 
 echo -e "${BLUE}[3/4] Hooks${NC} (universal only — stack hooks are per-project)"
 setup_symlink "hooks" "$REPO_DIR/hooks"
+
+# Symlink = pliki są osiągalne. Rejestracja = wpis w ~/.claude/settings.json.
+# Bez tego kroku hooks.json był rejestrem, którego nikt nie stosował.
+if command -v node >/dev/null 2>&1; then
+  node "$REPO_DIR/scripts/sync-global-hooks.mjs" --apply 2>&1 | sed 's/^/  /'
+else
+  echo -e "  ${YELLOW}Skipped:${NC} node not in PATH — hooks.json not applied to settings.json"
+fi
 echo ""
 
 echo -e "${BLUE}[4/4] Output Styles${NC} (strategist voice presets)"
@@ -134,13 +149,17 @@ done
 
 echo ""
 echo -e "${BLUE}Hook architecture:${NC}"
-echo -e "  Global (hooks.json):     session lifecycle, formatting, console.log, git push, subagent monitoring"
-echo -e "  Per-project (settings):  DDD patterns, Flutter clean arch, Python layers/typing"
+echo -e "  Global:       hooks/hooks.json → ~/.claude/settings.json (sync-global-hooks.mjs, step [3/4])"
+echo -e "                session lifecycle, formatting, console.log, git push, subagent monitoring"
+echo -e "  Per-project:  blocks → runtime.yml → <project>/.claude/settings.json (sync-runtime-hooks.mjs)"
+echo -e "                DDD patterns, Flutter clean arch, Python layers/typing"
+echo -e "  Audit:        node scripts/sync-global-hooks.mjs --check"
 echo ""
 echo -e "${GREEN}Global setup complete!${NC}"
 echo ""
 echo -e "Next steps:"
-echo -e "  New project:       ${BLUE}./scripts/setup-project.sh /path/to/project${NC}"
-echo -e "  Migrate existing:  ${BLUE}./scripts/migrate-v2.sh /path/to/project${NC}"
-echo -e "  Migrate all:       ${BLUE}./scripts/migrate-all.sh${NC}"
+# migrate-v2.sh / migrate-all.sh to ścieżka LEGACY sprzed ADR 0008 (settings.json po
+# stack_profile) — od 2026-09-07 obie są zabramkowane. Jedna ścieżka: setup-project.sh.
+echo -e "  New or existing project:  ${BLUE}./scripts/setup-project.sh /path/to/project${NC}"
+echo -e "  Fleet status:             ${BLUE}node scripts/audit-projects.mjs${NC}"
 echo ""

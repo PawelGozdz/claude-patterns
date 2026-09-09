@@ -37,6 +37,19 @@ patterns:
       include:
         - domain/aggregate-pattern.md
         - domain/value-object-pattern.md
+    # K86 (TASK-KAIZEN-002): karta `named-policy` nie występowała w `always`,
+    # `triggers` ani `pattern_routing` żadnego bloku — jedyną drogą do prompta było
+    # podobieństwo embeddingów. Osobna grupa, nie dopisek do listy wyżej: NP1 włącza
+    # się dopiero przy SKŁADANIU ≥2 specyfikacji w jedną bramkę, więc wyzwalają ją
+    # inne słowa niż samo „specification" (to jest wzorzec o kompozycji, nie o
+    # pisaniu pojedynczej specyfikacji).
+    #
+    # Bez `pattern_routing`: `/domain/specifications/` i `/domain/policies/` rządzi
+    # `specification-policy-pattern.md` i to jest poprawne — polityka złożona nie ma
+    # własnego katalogu ani sufiksu pliku, poznaje się ją po kształcie fabryki.
+    - keywords: [polityk, policy, guardrail, bramka, gate, "business rule", "reguła biznesowa", uprawnien, kompozycj]
+      include:
+        - domain/named-policy-pattern.md
 
 overlay:
   agents: [stacks/nestjs-ddd/]

@@ -3,6 +3,15 @@
 > Status: PLAN (do zatwierdzenia przed wykonaniem). Wejście: spike Faza 0 = GO (live).
 > Powiązane: `docs/REFACTOR-ANALYSIS.md`, `docs/spike-faza-0-plan.md`, `/opt/projects/_spike/notes/`.
 
+> **⚠ ARCHIWUM — opisuje stan sprzed [ADR 0008](adr/0008-stack-blocks-composition.md)**
+> (2026-08-12: kompozycja bloków zamiast presetów, `/analyze` + `/orchestrate` zamiast
+> `/analyze-ddd` + `/orchestrate-ddd`). Krok „preset-materializer" wykonano jako
+> `scripts/materialize-runtime.mjs` + `blocks/`, nie jako presety. Lista retire z tego
+> planu jest zastąpiona przez
+> [ADR 0009](adr/0009-wynik-spike-fazy-0-i-lista-retire.md). Aktualny opis:
+> [`docs/ARCHITECTURE.md`](ARCHITECTURE.md), ADR 0008. Zachowany dla historii decyzji —
+> zasada bezpieczeństwa („buduj obok, migruj pojedynczo, tnij na końcu") nadal obowiązuje.
+
 ## Zasada bezpieczeństwa (najważniejsza)
 Symlinki = natychmiastowa propagacja = **cięcie globalne łamie WSZYSTKIE projekty naraz**.
 Dlatego sekwencja: **buduj nowe OBOK starego → udowodnij na JEDNYM projekcie → migruj projekty

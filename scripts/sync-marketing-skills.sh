@@ -14,7 +14,7 @@
 #   ./scripts/sync-marketing-skills.sh --diff      # only show diff, do not change anything
 #   ./scripts/sync-marketing-skills.sh --ref v1.10.0  # pin to a specific tag
 #
-# Requirements: git, rsync, diff
+# Requirements: git, diff (rsync used when available, otherwise a cp fallback)
 
 set -euo pipefail
 
@@ -25,6 +25,81 @@ REF="main"
 MODE="interactive"
 
 source "$REPO_DIR/scripts/lib/common.sh"
+
+# --- rsync-free mirroring --------------------------------------------------
+# These scripts assumed rsync. It is not installed everywhere (this repo's own
+# dev box has none, and no root to add it), and the failure mode was the bad
+# one: the script died at the *apply* step, after already copying part of the
+# tree. `sync_tree` uses rsync when present and falls back to a find+cp mirror
+# with the same semantics: drop what upstream no longer has, copy the rest,
+# honour excludes. Exclude patterns follow rsync's rule — a bare pattern
+# matches a basename at any depth, a leading `/` anchors it to the tree root.
+_sync_excluded() {
+  local rel="$1"; shift
+  local base="${rel##*/}" p
+  for p in "$@"; do
+    if [[ "$p" == /* ]]; then
+      [[ "$rel" == "${p#/}" || "$rel" == "${p#/}"/* ]] && return 0
+    else
+      [[ "$base" == $p ]] && return 0
+    fi
+  done
+  return 1
+}
+
+_mirror_dir() {
+  local src="${1%/}" dst="${2%/}"; shift 2
+  local -a excl=(); local a rel
+  for a in "$@"; do excl+=("${a#--exclude=}"); done
+  mkdir -p "$dst"
+
+  # 1. drop entries upstream no longer has
+  while IFS= read -r rel; do
+    [[ -z "$rel" ]] && continue
+    _sync_excluded "$rel" "${excl[@]}" && continue
+    [[ -e "$src/$rel" ]] || rm -rf "${dst:?}/$rel"
+  done < <(cd "$dst" && find . -mindepth 1 -depth -printf '%P\n' 2>/dev/null)
+
+  # 2. copy in everything upstream does have
+  while IFS= read -r rel; do
+    [[ -z "$rel" ]] && continue
+    _sync_excluded "$rel" "${excl[@]}" && continue
+    if [[ -d "$src/$rel" ]]; then
+      mkdir -p "$dst/$rel"
+    else
+      mkdir -p "$dst/$(dirname "$rel")"
+      rm -rf "${dst:?}/$rel"
+      cp -a "$src/$rel" "$dst/$rel"
+    fi
+  done < <(cd "$src" && find . -mindepth 1 -printf '%P\n' 2>/dev/null)
+}
+
+sync_tree() {  # sync_tree SRC/ DST/ [--exclude=PATTERN]...
+  local src="$1" dst="$2"; shift 2
+  if command -v rsync >/dev/null 2>&1; then
+    rsync -a --delete "$@" "$src" "$dst"
+  else
+    _mirror_dir "$src" "$dst" "$@"
+  fi
+}
+
+# --- LOCAL-file protection -------------------------------------------------
+# `--exclude=LOCAL-*` only covers the filename convention. CLAUDE.md actually
+# teaches a *marker* convention — a skill we wrote ourselves carries
+# `<!-- LOCAL — not synced from upstream -->` right under its frontmatter.
+# Without this, `rsync --delete` silently wipes those skills on the next sync.
+# Emits one `--exclude=/<top-level-entry>` per marked file, so the whole
+# skill folder survives, not just the marked file.
+local_excludes() {
+  local root="$1"
+  [[ -d "$root" ]] || return 0
+  grep -rlZ --include='*.md' -e 'LOCAL — not synced from upstream' \
+       -e 'LOCAL - not synced from upstream' "$root" 2>/dev/null \
+    | while IFS= read -r -d '' f; do
+        local rel="${f#"$root"/}"
+        printf -- '--exclude=/%s\n' "${rel%%/*}"
+      done | sort -u
+}
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -97,19 +172,22 @@ if [[ "$MODE" == "interactive" ]]; then
   fi
 fi
 
-echo -e "${BLUE}[4/4]${NC} Applying with rsync..."
+echo -e "${BLUE}[4/4]${NC} Applying..."
 # Preserve our local meta files (README.md, UPSTREAM_VERSION, anything marked
 # local-only). --delete removes everything else not present upstream.
-rsync -a --delete \
-  --exclude='README.md' \
-  --exclude='UPSTREAM_VERSION' \
+mapfile -t SKILL_LOCAL < <(local_excludes "$REPO_DIR/skills/marketing")
+[[ ${#SKILL_LOCAL[@]} -gt 0 ]] && printf 'Protecting local skills: %s\n' "${SKILL_LOCAL[*]}"
+sync_tree "$WORK_DIR/skills/" "$REPO_DIR/skills/marketing/" \
+  --exclude='/README.md' \
+  --exclude='/UPSTREAM_VERSION' \
   --exclude='LOCAL-*' \
-  "$WORK_DIR/skills/" "$REPO_DIR/skills/marketing/"
+  "${SKILL_LOCAL[@]}"
 
-rsync -a --delete \
-  --exclude='README.md' \
+mapfile -t TOOLS_LOCAL < <(local_excludes "$REPO_DIR/tools/marketing")
+sync_tree "$WORK_DIR/tools/" "$REPO_DIR/tools/marketing/" \
+  --exclude='/README.md' \
   --exclude='LOCAL-*' \
-  "$WORK_DIR/tools/"  "$REPO_DIR/tools/marketing/"
+  "${TOOLS_LOCAL[@]}"
 
 # Drop a NOTICE so the version is auditable
 cat > "$REPO_DIR/skills/marketing/UPSTREAM_VERSION" <<EOF

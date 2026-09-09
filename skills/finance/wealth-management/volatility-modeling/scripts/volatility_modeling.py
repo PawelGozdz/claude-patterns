@@ -12,6 +12,10 @@ construction, and volatility cones.
 Part of Layer 1b (Forward-Looking Risk) in the finance skills framework.
 """
 
+import argparse
+import math
+import sys
+
 import numpy as np
 from scipy import optimize
 
@@ -473,10 +477,8 @@ class VolatilityModeling:
         return cone
 
 
-if __name__ == "__main__":
-    # ----------------------------------------------------------------
-    # Demo: Volatility modeling on synthetic daily returns
-    # ----------------------------------------------------------------
+def _demo() -> None:
+    """Run the demonstration calculations (bare-run default)."""
     np.random.seed(42)
 
     # Generate 2 years of synthetic daily returns with volatility clustering
@@ -593,3 +595,90 @@ if __name__ == "__main__":
     print("\n" + "=" * 60)
     print("Demo complete.")
     print("=" * 60)
+
+
+def _verify() -> None:
+    """Assert key computations against the SKILL.md worked examples."""
+    checks: list[tuple[str, float, float]] = []
+
+    # SKILL.md Example 1: EWMA update with sigma^2 = 0.0004, r = -3%, lambda = 0.94
+    vm = VolatilityModeling(np.array([-0.03, 0.0]), periods_per_year=252)
+    variances = vm.ewma_variance(lam=0.94, initial_var=0.0004)
+    checks.append(("Example 1 EWMA variance", float(variances[1]), 0.000430))
+    checks.append(("Example 1 EWMA daily vol", math.sqrt(variances[1]), 0.02074))
+    checks.append((
+        "EWMA effective window (lambda=0.94)",
+        VolatilityModeling.ewma_effective_window(0.94),
+        1.0 / 0.06,
+    ))
+
+    # SKILL.md Example 2: GARCH(1,1) with omega=0.000002, alpha=0.08, beta=0.91
+    omega, alpha, beta = 0.000002, 0.08, 0.91
+    long_run_var = float(
+        VolatilityModeling.garch11_forecast(
+            current_var=0.0004, omega=omega, alpha=alpha, beta=beta,
+            horizons=[100_000],
+        )[0]
+    )
+    checks.append(("Example 2 long-run daily variance", long_run_var, 0.0002))
+    checks.append((
+        "Example 2 long-run daily vol",
+        math.sqrt(long_run_var),
+        0.01414,
+    ))
+    checks.append((
+        "Example 2 long-run annualized vol",
+        math.sqrt(long_run_var) * math.sqrt(252),
+        0.2245,
+    ))
+    checks.append((
+        "Example 2 half-life (days)",
+        VolatilityModeling.garch11_half_life(alpha, beta),
+        68.97,
+    ))
+
+    failures = 0
+    for name, got, expected in checks:
+        ok = math.isclose(got, expected, rel_tol=1e-3)
+        print(f"{'PASS' if ok else 'FAIL'}: {name}: got {got:.6g}, expected {expected:.6g}")
+        failures += 0 if ok else 1
+    if failures:
+        print(f"FAIL: {failures} of {len(checks)} checks failed.")
+        sys.exit(1)
+    print(f"PASS: all {len(checks)} checks passed.")
+
+
+def _build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="volatility_modeling.py",
+        description=(
+            "Volatility modeling reference implementation. Main class: "
+            "VolatilityModeling, with methods ewma_variance, "
+            "ewma_volatility, ewma_effective_window, garch11_fit, "
+            "garch11_variance_series, garch11_forecast, garch11_half_life, "
+            "realized_volatility, parkinson_volatility, "
+            "volatility_term_structure, volatility_cone."
+        ),
+        epilog=(
+            "Primarily intended to be imported as a module: "
+            "from volatility_modeling import VolatilityModeling. "
+            "Run with no arguments to print a demo on synthetic returns."
+        ),
+    )
+    parser.add_argument(
+        "--verify",
+        action="store_true",
+        help=(
+            "run the key computations and assert outputs match the "
+            "SKILL.md worked examples (exits nonzero on mismatch)"
+        ),
+    )
+    return parser
+
+
+if __name__ == "__main__":
+    args = _build_parser().parse_args()
+    if args.verify:
+        _verify()
+    else:
+        _demo()

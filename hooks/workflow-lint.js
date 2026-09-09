@@ -17,7 +17,8 @@
  *   WL4 (WARN)   verify bez schema — null przestaje odróżniać „agent umarł"
  *                od złego wyniku (ślepe retry).
  *   WL5 (WARN)   brak ESCALATE w skrypcie — pętla bez jawnej eskalacji wisi.
- *   WL6 (WARN)   `git diff` bez --stat/--name-only/--numstat — pierwszy live end-to-end
+ *   WL6 (WARN)   `git diff` bez --stat/--name-only/--numstat (i bez potoku do licznika
+ *                `| grep -c` / `| wc -l`, którego wyjściem jest liczba, nie treść) — pierwszy live end-to-end
  *                przebieg (juz-ide-api-1, 2026-07-04): pełny diff Domain (~3191 linii)
  *                wklejony w całości do promptu implementera Application zjadł budżet tury,
  *                2× pusty wynik z rzędu. Wstrzykuj tylko listę plików, niech agent Read sam.
@@ -401,9 +402,17 @@ function lint(src) {
 
   // WL6 — pełny `git diff` (bez --stat/--name-only/--numstat) wstrzyknięty do promptu warstwy N
   // (incydent 2026-07-04: diff ~3191 linii przeciążył budżet tury implementera, 2× pusty wynik)
+  //
+  // Wyjątek (K93, 2026-09-07): diff PRZEPUSZCZONY PRZEZ LICZNIK (`| grep -c`, `| wc -l`) nie
+  // materializuje ani jednej linii zmian — jego wyjściem jest liczba. Reguła strzelała
+  // w kanoniczny kształt sondy przyrostu z orchestrate.md §2a′ punkt 5
+  // (`git diff --cached -U0 | grep -cE '^\+\s*(it|test|describe)\('`), czyli w dokładnie tę
+  // bramkę, której WYMAGA WL15 — dwie reguły nie mogą żądać rzeczy wzajemnie sprzecznych.
+  // Zawężenie jest wąskie celowo: `| grep` BEZ `-c` nadal alarmuje, bo wypisuje treść linii.
+  const COUNTS_ONLY = /\|\s*(grep\s+(-[A-Za-z]*c[A-Za-z]*\s|--count)|wc\s+-l)/;
   for (const s of snippetsOf(src, 'git diff')) {
     const line = s.text.slice(0, s.text.indexOf('\n') !== -1 ? s.text.indexOf('\n') : 120);
-    if (!/--stat|--name-only|--numstat/.test(line)) {
+    if (!/--stat|--name-only|--numstat/.test(line) && !COUNTS_ONLY.test(line)) {
       findings.push({ id: 'WL6', level: 'WARN', line: s.line, msg: 'git diff bez --stat/--name-only/--numstat — pełny tekst diffa ląduje w kontekście i jest przeliczany w KAŻDEJ kolejnej turze agenta. Dotyczy obu wariantów: diffa wstrzykniętego do promptu (incydent 2026-07-04: ~3191 linii, 2× pusty wynik) i diffa, który agent zrobi sam na Twoje polecenie (wf_23029d51-3a2: `git diff -- spatial-column.types.ts` = 21 KB, ten sam diff guardiana 3× po 14,5 KB). Proś o --stat, a treść niech czyta Read na konkretnym pliku' });
     }
   }

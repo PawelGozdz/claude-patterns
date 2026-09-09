@@ -188,7 +188,7 @@ oraz — gdy dotyczy — osobną tabelę kanałów: `channel | dart_usage | nati
 ## Współpraca
 
 - @flutter-quality-verifier — architektura i wzorce (oddaje security tobie)
-- @security-privacy-architect — modelowanie zagrożeń, decyzje projektowe
+- @ecc:security-reviewer — modelowanie zagrożeń, decyzje projektowe
 - `/threat-model` — gdy zadanie wprowadza nową powierzchnię ataku
 - Człowiek — ostateczna decyzja GO/NO-GO
 
@@ -199,3 +199,7 @@ wiadomości końcowej, **BEZ WERDYKTU**. Batchuj wywołania (równoległe Read/G
 i licz tury. Przy ~80% budżetu ZATRZYMAJ się i wypuść werdykt TERAZ, z jawną
 listą `unverified_scope:` — uczciwe wyjście częściowe zawsze bije milczenie;
 orkiestrator dośle zawężony przebieg.
+
+## Changelog
+
+- 2026-09-08 — `@security-privacy-architect` → `@ecc:security-reviewer`: agent wycofany (K97, ADR 0009 — advisory OWASP/GDPR pokrywa ECC, VETO zostaje po naszej stronie)

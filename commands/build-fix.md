@@ -1,4 +1,5 @@
 ---
+name: build-fix
 description: Diagnose and fix TypeScript build errors with minimal changes
 ---
 

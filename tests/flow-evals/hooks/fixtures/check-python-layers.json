@@ -1,0 +1,58 @@
+[
+  {
+    "name": "python-layers-infra-import-in-domain-warns",
+    "hook": "check-python-layers.js",
+    "payload": {
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "src/domain/orders.py"
+      }
+    },
+    "setup": {
+      "cwd": true,
+      "files": {
+        "python-hooks.json": "{\"layerPath\": \"src\", \"purity\": {\"noInfraImportLayers\": [\"domain\", \"services\"], \"forbiddenImports\": [\"fastapi\", \"sqlalchemy\", \"alembic\", \"redis\", \"celery\", \"httpx\", \"requests\", \"boto3\", \"aiohttp\"]}, \"typing\": {\"checkUntyped\": {\"enabled\": true, \"filePatterns\": [\"**/domain/**/*.py\", \"**/services/**/*.py\", \"**/api/**/*.py\"]}}, \"skipPatterns\": [\"test_\", \"_test.py\", \"conftest.py\", \"__pycache__\", \".venv\"]}",
+        "src/domain/orders.py": "import fastapi\n\n\nclass Order:\n    pass\n"
+      }
+    },
+    "expect": "pass",
+    "expect_stderr": "[Ff]orbidden"
+  },
+  {
+    "name": "python-layers-pure-domain-silent",
+    "hook": "check-python-layers.js",
+    "payload": {
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "src/domain/orders.py"
+      }
+    },
+    "setup": {
+      "cwd": true,
+      "files": {
+        "python-hooks.json": "{\"layerPath\": \"src\", \"purity\": {\"noInfraImportLayers\": [\"domain\", \"services\"], \"forbiddenImports\": [\"fastapi\", \"sqlalchemy\", \"alembic\", \"redis\", \"celery\", \"httpx\", \"requests\", \"boto3\", \"aiohttp\"]}, \"typing\": {\"checkUntyped\": {\"enabled\": true, \"filePatterns\": [\"**/domain/**/*.py\", \"**/services/**/*.py\", \"**/api/**/*.py\"]}}, \"skipPatterns\": [\"test_\", \"_test.py\", \"conftest.py\", \"__pycache__\", \".venv\"]}",
+        "src/domain/orders.py": "from dataclasses import dataclass\n\n\n@dataclass\nclass Order:\n    pass\n"
+      }
+    },
+    "expect": "pass",
+    "expect_silent": true
+  },
+  {
+    "name": "python-layers-no-config-silent",
+    "hook": "check-python-layers.js",
+    "payload": {
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "src/domain/orders.py"
+      }
+    },
+    "setup": {
+      "cwd": true,
+      "files": {
+        "src/domain/orders.py": "import fastapi\n\n\nclass Order:\n    pass\n"
+      }
+    },
+    "expect": "pass",
+    "expect_silent": true
+  }
+]

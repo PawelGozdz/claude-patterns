@@ -11,6 +11,8 @@ portfolio, Black-Litterman model, risk parity, and glide path generation.
 Part of Layer 4 (Portfolio Construction) in the finance skills framework.
 """
 
+import argparse
+import sys
 import numpy as np
 from scipy.optimize import minimize
 
@@ -73,6 +75,12 @@ class MeanVarianceOptimizer:
             bounds=bounds,
             constraints=constraints,
         )
+        if not result.success:
+            raise RuntimeError(
+                f"Mean-variance optimization failed to converge: {result.message}. "
+                "Check that the covariance matrix is positive semi-definite and "
+                "the constraints are feasible."
+            )
         return result.x
 
     def minimum_variance_weights(self, long_only: bool = True) -> np.ndarray:
@@ -105,6 +113,11 @@ class MeanVarianceOptimizer:
             bounds=bounds,
             constraints=constraints,
         )
+        if not result.success:
+            raise RuntimeError(
+                f"Minimum-variance optimization failed to converge: {result.message}. "
+                "Check that the covariance matrix is positive semi-definite."
+            )
         return result.x
 
     def efficient_frontier(
@@ -157,6 +170,12 @@ class MeanVarianceOptimizer:
                 bounds=bounds,
                 constraints=constraints,
             )
+            if not result.success:
+                raise RuntimeError(
+                    f"Efficient frontier optimization failed at target return "
+                    f"{target:.4%}: {result.message}. The target may be "
+                    "infeasible under the given constraints."
+                )
 
             all_weights[i] = result.x
             risks[i] = np.sqrt(result.x @ self.cov_matrix @ result.x)
@@ -365,6 +384,12 @@ class RiskParity:
             bounds=bounds,
             constraints=constraints,
         )
+        if not result.success:
+            raise RuntimeError(
+                f"Risk parity optimization failed to converge: {result.message}. "
+                "Check that the covariance matrix is positive semi-definite and "
+                "well-conditioned."
+            )
         return result.x
 
 
@@ -411,7 +436,7 @@ def glide_path(
     return equity
 
 
-if __name__ == "__main__":
+def _demo() -> None:
     # ----------------------------------------------------------------
     # Demo: Asset allocation toolkit on a 3-asset universe
     # ----------------------------------------------------------------
@@ -507,3 +532,70 @@ if __name__ == "__main__":
     print("\n" + "=" * 60)
     print("Demo complete.")
     print("=" * 60)
+
+def _check(failures: list, name: str, actual: float, expected: float, tol: float) -> None:
+    """Record a verification check result."""
+    ok = abs(actual - expected) <= tol
+    status = "PASS" if ok else "FAIL"
+    print(f"  [{status}] {name}: actual={actual:.6g}, expected={expected:.6g}, tol={tol:.2g}")
+    if not ok:
+        failures.append(name)
+
+def _verify() -> None:
+    """Verify key outputs against the SKILL.md worked examples."""
+    failures: list = []
+    expected_returns = np.array([0.08, 0.07, 0.03])
+    vols = np.array([0.16, 0.18, 0.04])
+    corr = np.array([[1.0, 0.75, 0.10], [0.75, 1.0, 0.05], [0.10, 0.05, 1.0]])
+    cov = np.outer(vols, vols) * corr
+
+    # SKILL.md Example 1: MVO with lambda=4
+    mvo = MeanVarianceOptimizer(expected_returns, cov, risk_aversion=4.0)
+    w = mvo.optimal_weights(long_only=True)
+    stats = mvo.portfolio_stats(w)
+    _check(failures, "Ex1 weight US Equity", w[0], 0.519, 0.01)
+    _check(failures, "Ex1 weight Intl Equity", w[1], 0.0, 0.01)
+    _check(failures, "Ex1 weight US Bonds", w[2], 0.481, 0.01)
+    _check(failures, "Ex1 expected return", stats["expected_return"], 0.0560, 5e-4)
+    _check(failures, "Ex1 volatility", stats["volatility"], 0.0871, 5e-4)
+
+    # SKILL.md Example 2: Black-Litterman
+    bl = BlackLitterman(cov, np.array([0.55, 0.30, 0.15]), risk_aversion=2.5, tau=0.05)
+    pi = bl.equilibrium_returns()
+    _check(failures, "Ex2 equilibrium US", pi[0], 0.0516, 1e-4)
+    _check(failures, "Ex2 equilibrium Intl", pi[1], 0.0541, 1e-4)
+    _check(failures, "Ex2 equilibrium Bonds", pi[2], 0.0018, 1e-4)
+    post = bl.posterior_returns(np.array([[0.0, 1.0, -1.0]]), np.array([0.03]), np.array([0.001]))
+    _check(failures, "Ex2 posterior US", post[0], 0.0428, 1e-4)
+    _check(failures, "Ex2 posterior Intl", post[1], 0.0407, 1e-4)
+    _check(failures, "Ex2 posterior Bonds", post[2], 0.0023, 1e-4)
+
+    if failures:
+        print(f"\n{len(failures)} check(s) FAILED: {', '.join(failures)}")
+        sys.exit(1)
+    print("\nAll checks passed.")
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description=__doc__.strip().splitlines()[2] if __doc__ else "",
+        epilog=(
+            "Provides: MeanVarianceOptimizer, BlackLitterman, RiskParity, glide_path. "
+            "For programmatic use, import this module (asset_allocation) instead of running it. "
+            "Bare run executes a demo whose printed values match the SKILL.md worked examples; "
+            "--verify asserts those values and exits nonzero on mismatch."
+        ),
+    )
+    parser.add_argument(
+        "--verify",
+        action="store_true",
+        help="run the verification checks against the SKILL.md worked-example values",
+    )
+    args = parser.parse_args()
+    if args.verify:
+        _verify()
+    else:
+        _demo()
+
+
+if __name__ == "__main__":
+    main()

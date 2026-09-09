@@ -10,7 +10,7 @@ description: |
   2. "How to structure this component with $state and $derived?"
   3. "Form action vs API endpoint for this mutation?"
   4. "How to share state across routes?"
-tools: Read, mcp__zen__thinkdeep, mcp__zen__planner, mcp__zen__analyze, StructuredOutput
+tools: Read, StructuredOutput
 disallowedTools: Grep, Glob, Write, Edit, MultiEdit, NotebookEdit, Task, WebFetch
 model: sonnet
 permissionMode: plan
@@ -93,3 +93,9 @@ Is it a user-facing mutation (create, update, delete)?
 - $effect() for derived state (use $derived instead)
 - Data fetching in components (use load functions)
 - Secrets in +page.ts (use +page.server.ts)
+
+---
+
+## Changelog
+
+- 2026-09-08 — removed `mcp__zen__thinkdeep`, `mcp__zen__planner`, `mcp__zen__analyze` from `tools` (K56, TASK-KAIZEN-002): no satellite project has a `zen` MCP server in `.mcp.json`, so every such call failed; do the analysis directly with the remaining tools

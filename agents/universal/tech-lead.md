@@ -33,7 +33,7 @@ description: |
 
 tools: Read, Glob, Grep
 disallowedTools: Write, Edit, MultiEdit, Bash, Task, WebSearch, WebFetch
-model: haiku
+model: sonnet
 effort: medium
 memory: project
 maxTurns: 25
@@ -280,3 +280,9 @@ value forward as if it were current.
 - **Debt compounds**: flag when major debt items are accumulating without resolution
 - **Mobile is a first-class concern**: don't let mobile_impact: high tasks drift
 - **Short memory = blind spots**: stale tasks are forgotten tasks
+
+---
+
+## Changelog
+
+- 2026-09-08 — `model: haiku` → `sonnet` (K54, TASK-KAIZEN-002). The fabricated-metrics fix (commit `4e2bc58`) moved `product-owner` to Sonnet but left this agent on Haiku while it writes to the same `TEAM-STATE.md`; `agents/README.md` already declared Sonnet

@@ -2,7 +2,7 @@
 name: sprint
 description: "Sprint planning: @tech-lead + @product-owner (this skill explicitly asks it to consult @marketing-strategist + @finance-strategist + @legal-strategist when relevant) propose sprint scope"
 origin: LocalHero
-allowed-tools: Read, Glob, Grep, Write, Agent
+allowed-tools: Read, Glob, Grep, Write, Edit, Agent
 model: opus
 effort: high
 disable-model-invocation: true
@@ -42,6 +42,8 @@ strategist sub-calls + iteration)
 
 3. **Run @tech-lead**:
    "Given {sprint_days} days and current task state, propose a sprint backlog.
+   Available capacity: roughly {sprint_days × 6}h (6 productive hours per day)
+   minus whatever the user named as a capacity constraint.
    Consider: blocked tasks that could be unblocked, debt items that unblock
    other work, critical path items. Estimate effort in hours, not SP.
    Flag: tasks that look small but have hidden complexity."
@@ -85,9 +87,14 @@ strategist sub-calls + iteration)
     ```
 
 6. **Confirm with user**: adjust scope, then write sprint plan to
-   `project-orchestration/sprints/SPRINT-{name}-{date}.md`
+   `project-orchestration/sprints/SPRINT-{name}-{date}.md`, and update the
+   `Sprint Focus` section of `project-orchestration/TEAM-STATE.md` to match
+   the agreed scope (that section is what `/pm-status` reads back).
 
 ## Output Example
+
+Illustration of the *shape* only — never copy these tasks, hours or numbers
+into a real plan.
 
 ```
 [SPRINT PLANNING] 2026-04-03 — 10 days

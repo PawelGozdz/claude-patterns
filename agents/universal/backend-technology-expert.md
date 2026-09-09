@@ -37,7 +37,7 @@ description: |
   - NestJS internals and patterns
   - PostgreSQL/Redis optimization strategies
 
-tools: Read, WebFetch, WebSearch, mcp__zen__chat, mcp__zen__thinkdeep, mcp__zen__analyze
+tools: Read, WebFetch, WebSearch
 disallowedTools: Grep, Glob, Write, Edit, MultiEdit, NotebookEdit, Task
 model: opus
 permissionMode: plan
@@ -601,3 +601,9 @@ Step 4: Report and delegate
 **Reports to**: @project-orchestrator
 **Philosophy**: "Simple, proven, bootstrap-friendly solutions over cutting-edge complexity"
 **Last Updated**: 2026-01-03
+
+---
+
+## Changelog
+
+- 2026-09-08 — removed `mcp__zen__chat`, `mcp__zen__thinkdeep`, `mcp__zen__analyze` from `tools` (K56, TASK-KAIZEN-002): no satellite project has a `zen` MCP server in `.mcp.json`, so every such call failed; do the analysis directly with the remaining tools

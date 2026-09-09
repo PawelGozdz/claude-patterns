@@ -1,28 +1,11 @@
 ---
 name: investment-suitability
-description: "Assess investment suitability obligations under FINRA Rules 2111 and 2090 across all three suitability prongs. Use when the user asks about reasonable-basis, customer-specific, or quantitative suitability, product-specific concerns for complex products, leveraged ETFs, variable annuities, or alternatives, household-level suitability, hold recommendations, or the institutional suitability exemption. Also trigger when users mention 'is this investment suitable', 'turnover ratio is too high', 'cost-to-equity ratio', 'churning metrics', 'suitability questionnaire design', 'complex product due diligence', 'customer refused to provide their risk tolerance', or ask whether a recommendation fits a customer's profile."
+description: "Assess investment suitability obligations under FINRA Rules 2111 and 2090 across all three suitability prongs. Use when the user asks about reasonable-basis, customer-specific, or quantitative suitability, product-specific concerns for complex products, leveraged ETFs, variable annuities, or alternatives, household-level suitability and concentration analysis, hold recommendations, or the institutional suitability exemption. Also trigger when users mention 'is this investment suitable', 'suitability questionnaire design', 'complex product due diligence', 'concentrated position in a client account', 'customer refused to provide their risk tolerance', or ask whether a recommendation fits a customer's profile. (For churning, turnover-ratio, and excessive-trading enforcement triggers, use sales-practices.)"
 ---
 
 # Investment Suitability
 
-## Purpose
-Guide the assessment of investment suitability obligations under FINRA rules and related standards. This skill covers the three suitability obligations, the required customer profile elements, product-specific suitability concerns, household-level considerations, and enforcement patterns — enabling a user or agent to identify where suitability problems may arise in recommendation workflows.
-
-## Layer
-9 — Compliance & Regulatory Guidance
-
-## Direction
-prospective
-
-## When to Use
-- Evaluating whether a recommendation is suitable for a specific customer
-- Designing recommendation engines, suitability questionnaires, or account review processes
-- Assessing product-specific suitability concerns (complex products, alternatives, leveraged ETFs, variable annuities)
-- Reviewing account-level vs household-level suitability
-- Understanding where Reg BI has raised the bar beyond traditional suitability
-- Evaluating hold recommendations or account type recommendations for suitability
-- Assessing institutional suitability exemption applicability
-- Reviewing for quantitative suitability (excessive trading) concerns
+Regulatory status current as of June 2026 — verify effective dates, dollar thresholds, and pending rulemakings against current SEC/FINRA/FinCEN sources before advising.
 
 ## Core Concepts
 
@@ -38,7 +21,7 @@ The firm or associated person must perform reasonable diligence to understand th
 The recommendation must be suitable for the particular customer based on that customer's investment profile. The investment profile includes, but is not limited to: age, other investments, financial situation and needs, tax status, investment objectives, investment experience, investment time horizon, liquidity needs, risk tolerance, and any other information the customer discloses.
 
 **3. Quantitative Suitability (Rule 2111.05(c))**
-A person with actual or de facto control over a customer account must have a reasonable basis for believing that a series of recommended transactions, even if each is individually suitable, is not excessive and unsuitable when taken together in light of the customer's investment profile. Key metrics: turnover ratio (annualized), cost-to-equity ratio, and use of in-and-out trading patterns. Generally, turnover ratios above 6 and cost-to-equity ratios above 20% raise presumptive concerns.
+The firm or associated person must have a reasonable basis for believing that a series of recommended transactions, even if each is individually suitable, is not excessive and unsuitable when taken together in light of the customer's investment profile. The former requirement that the broker have "actual or de facto control" over the account was removed by FINRA's 2020 amendments to Rule 2111 (Regulatory Notice 20-18; SR-FINRA-2020-007, effective June 30, 2020), aligning the obligation with Reg BI's Care Obligation — quantitative suitability now turns on the recommendations alone, without any control element. Key metrics: turnover ratio (annualized), cost-to-equity ratio, and use of in-and-out trading patterns. Generally, turnover ratios above 6 and cost-to-equity ratios above 20% raise presumptive concerns.
 
 ### FINRA Rule 2090 — Know Your Customer
 Requires every member to use reasonable diligence to know and retain the essential facts concerning every customer and the authority of each person acting on the customer's behalf. This is the foundation that feeds suitability analysis — you cannot assess suitability without first knowing the customer. Essential facts include identity, financial status, investment objectives, and the nature and type of account.
@@ -73,7 +56,7 @@ A customer may decline to provide profile information, but the firm must documen
 Suitability is assessed at the customer level, not the account level, but household context matters. A concentrated position in one account may be suitable if diversified across the household. However, firms must have a reasonable basis for knowing the household context — relying on assumptions about held-away assets without verification creates risk. FINRA expects firms to consider a customer's overall financial picture to the extent it is known or reasonably discoverable.
 
 ### The Hold Recommendation
-Since the 2020 amendment to Rule 2111, an explicit recommendation to hold a security is a recommendation subject to suitability obligations. This closed a longstanding gap where representatives could avoid suitability review by recommending inaction. A hold recommendation on a concentrated or illiquid position must be evaluated against the customer's current profile.
+Since the 2012 adoption of Rule 2111 (which extended suitability to recommended "investment strategies involving securities," including explicit recommendations to hold), a hold recommendation is subject to suitability obligations. This closed a longstanding gap under predecessor NASD Rule 2310, where representatives could avoid suitability review by recommending inaction. A hold recommendation on a concentrated or illiquid position must be evaluated against the customer's current profile.
 
 ### Institutional Suitability Exemption (Rule 2111.07)
 The customer-specific suitability obligation may be modified for institutional accounts (as defined in FINRA Rule 4512(c)) if: (1) the firm has a reasonable basis to believe the institutional customer is capable of evaluating investment risks independently, and (2) the institutional customer affirmatively indicates it is exercising independent judgment. Both conditions must be met — the exemption is not automatic for all institutional clients.
@@ -104,8 +87,8 @@ FINRA disciplinary actions frequently target:
 
 ### Example 3: Excessive trading in a discretionary account
 **Scenario:** A representative with discretionary authority over a client's $200,000 account executes 150 trades over 12 months, generating $46,000 in commissions. The account's annualized turnover ratio is 8.2 and the cost-to-equity ratio is 23%. The client's objective is "growth" with a "moderate-to-aggressive" risk tolerance.
-**Compliance Issues:** Quantitative suitability violation. The turnover ratio (8.2 > 6 threshold) and cost-to-equity ratio (23% > 20% threshold) both exceed presumptive thresholds for excessive trading. The representative has de facto control through discretionary authority.
-**Analysis:** Even though individual trades may have been suitable, the pattern of trading is excessive in the aggregate. The account must generate returns exceeding 23% just to break even after costs — an unreasonable hurdle. FINRA would examine control (established through discretion), excessive activity (quantitative metrics), and scienter (representative's awareness that trading was excessive). The firm's supervision system should have flagged this through exception reporting on turnover and cost-to-equity ratios.
+**Compliance Issues:** Quantitative suitability violation. The turnover ratio (8.2 > 6 threshold) and cost-to-equity ratio (23% > 20% threshold) both exceed presumptive thresholds for excessive trading. Since the 2020 amendments, no showing of control is required under Rule 2111.05(c) — the recommended (here, discretionary) transactions alone are evaluated.
+**Analysis:** Even though individual trades may have been suitable, the pattern of trading is excessive in the aggregate. The account must generate returns exceeding 23% just to break even after costs — an unreasonable hurdle. FINRA would examine the excessive activity itself (quantitative metrics); control and scienter remain relevant only if regulators also pursue fraud-based churning charges under Rule 10b-5. The firm's supervision system should have flagged this through exception reporting on turnover and cost-to-equity ratios.
 
 ## Common Pitfalls
 - Treating suitability as a one-time assessment at account opening — it must be reassessed with each recommendation and when circumstances change
@@ -120,10 +103,13 @@ FINRA disciplinary actions frequently target:
 - Failing to consider tax status — recommending tax-deferred products (VAs) in already tax-deferred accounts (IRAs) without justification
 
 ## Cross-References
-- **reg-bi** (Layer 9): Higher standard for BD recommendations to retail customers; supersedes suitability for retail
-- **know-your-customer** (Layer 9): KYC obligations provide the customer profile that feeds suitability analysis
-- **fiduciary-standards** (Layer 9): IA fiduciary duty parallel; different standard, similar customer-interest focus
-- **investment-policy** (Layer 5): IPS constraints (time horizon, risk tolerance, liquidity) map directly to suitability factors
-- **sales-practices** (Layer 9): Churning/excessive trading enforcement overlaps with quantitative suitability
-- **conflicts-of-interest** (Layer 9): Compensation conflicts can drive unsuitable recommendations
-- **tax-loss-harvesting** (wealth-management plugin, Layer 5): replacement securities selected during TLH must still satisfy suitability requirements
+- **reg-bi** (compliance plugin): Higher standard for BD recommendations to retail customers; supersedes suitability for retail
+- **know-your-customer** (compliance plugin): KYC obligations provide the customer profile that feeds suitability analysis
+- **fiduciary-standards** (compliance plugin): IA fiduciary duty parallel; different standard, similar customer-interest focus
+- **investment-policy** (wealth-management plugin): IPS constraints (time horizon, risk tolerance, liquidity) map directly to suitability factors
+- **sales-practices** (compliance plugin): Churning/excessive trading enforcement overlaps with quantitative suitability
+- **conflicts-of-interest** (compliance plugin): Compensation conflicts can drive unsuitable recommendations
+- **tax-loss-harvesting** (wealth-management plugin): replacement securities selected during TLH must still satisfy suitability requirements
+- **insurance-planning** (wealth-management plugin): variable insurance products and annuity exchanges recommended in planning trigger Reg BI and FINRA Rule 2330 obligations
+- **private-placements** (compliance plugin): Reg D eligibility gates (accredited/qualified purchaser) and FINRA 5122/5123 filings that precede the suitability analysis for private offerings
+- **equity-compensation** (wealth-management plugin): concentrated employer stock and insider status inform suitability of diversification, hedging, and lending recommendations

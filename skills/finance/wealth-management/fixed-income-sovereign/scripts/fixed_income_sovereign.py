@@ -11,6 +11,8 @@ yield-to-maturity (Newton's method), forward rates, and DV01.
 Part of Layer 2 (Asset Classes) in the finance skills framework.
 """
 
+import argparse
+import sys
 import numpy as np
 from scipy.optimize import brentq
 
@@ -281,38 +283,50 @@ class YieldCurve:
     def _bootstrap(self) -> np.ndarray:
         """Bootstrap zero-coupon spot rates from par yields.
 
+        Spot rates are semi-annually compounded (bond-equivalent yields).
+        Each par bond pays coupons every six months, so intermediate coupon
+        dates generally fall *between* curve nodes. Those coupons are
+        discounted at spot rates linearly interpolated between the
+        already-bootstrapped nodes and the (unknown) spot at the current
+        maturity, which is solved with a root-finder so the par bond
+        reprices exactly to 1.0.
+
         Returns
         -------
         np.ndarray
-            Spot rates (annual, decimal) for each maturity.
+            Spot rates (annual, semi-annually compounded) for each maturity.
         """
-        spots = np.zeros_like(self.par_yields)
+        spots: list[float] = []
+        known_maturities: list[float] = []
 
-        for i, (mat, par_y) in enumerate(zip(self.maturities, self.par_yields)):
-            n_periods = int(mat * 2)  # semi-annual
-            coupon = par_y / 2.0  # semi-annual coupon rate per $1 face
+        for mat, par_y in zip(self.maturities, self.par_yields):
+            n_periods = int(round(mat * 2))  # semi-annual
+            coupon = par_y / 2.0  # semi-annual coupon per $1 face
+            times = np.arange(1, n_periods + 1) * 0.5
 
-            if n_periods == 1:
-                # Single cash flow: 1 + c = 1 / (1 + s/2)^1 doesn't apply.
-                # For a 6-month par bond: price = (1 + c) / (1 + s/2)
-                # At par: 1 = (1 + c) / (1 + s/2) -> s = par_y
-                spots[i] = par_y
-            else:
-                # PV of intermediate coupons using already-derived spot rates
-                pv_coupons = 0.0
-                for j in range(i):
-                    n_j = int(self.maturities[j] * 2)
-                    pv_coupons += coupon / (1.0 + spots[j] / 2.0) ** n_j
+            def par_pricing_error(s_candidate: float) -> float:
+                curve_mats = np.array(known_maturities + [mat])
+                curve_spots = np.array(spots + [s_candidate])
+                s_t = np.interp(times, curve_mats, curve_spots)
+                dfs = (1.0 + s_t / 2.0) ** -(2.0 * times)
+                pv = coupon * np.sum(dfs[:-1]) + (1.0 + coupon) * dfs[-1]
+                return pv - 1.0
 
-                # Solve for the final spot rate:
-                # 1 = pv_coupons + (1 + coupon) / (1 + s_n/2)^n_periods
-                remaining = 1.0 - pv_coupons
-                spots[i] = 2.0 * ((1.0 + coupon) / remaining) ** (1.0 / n_periods) - 2.0
+            s_i = brentq(par_pricing_error, -0.5, 1.0, xtol=1e-12)
+            spots.append(float(s_i))
+            known_maturities.append(float(mat))
 
-        return spots
+        return np.array(spots)
 
     def forward_rate(self, t1: float, t2: float) -> float:
         """Compute the implied forward rate between two future dates.
+
+        Consistent with the bootstrapped curve, spot rates are treated as
+        semi-annually compounded. The forward is derived from discount
+        factors and returned on the same semi-annual (bond-equivalent)
+        convention:
+
+            f(t1,t2) = 2 * [ (DF(t1)/DF(t2))^(1/(2*(t2-t1))) - 1 ]
 
         Parameters
         ----------
@@ -324,22 +338,21 @@ class YieldCurve:
         Returns
         -------
         float
-            f(t1,t2) = [(1+s_t2)^t2 / (1+s_t1)^t1]^(1/(t2-t1)) - 1
-            Annual rate.
+            Annualized forward rate (semi-annually compounded).
         """
         if t2 <= t1:
             raise ValueError(f"t2 ({t2}) must be greater than t1 ({t1}).")
 
-        # Interpolate spot rates for t1 and t2
-        s1 = float(np.interp(t1, self.maturities, self.spot_rates))
-        s2 = float(np.interp(t2, self.maturities, self.spot_rates))
-
-        # Use continuous-style compounding based on semi-annual convention
-        fwd = ((1.0 + s2) ** t2 / (1.0 + s1) ** t1) ** (1.0 / (t2 - t1)) - 1.0
+        df1 = self.discount_factor(t1)
+        df2 = self.discount_factor(t2)
+        fwd = 2.0 * ((df1 / df2) ** (1.0 / (2.0 * (t2 - t1))) - 1.0)
         return float(fwd)
 
     def discount_factor(self, t: float) -> float:
         """Compute the discount factor for a given maturity.
+
+        Uses the semi-annual compounding convention of the bootstrapped
+        spot curve.
 
         Parameters
         ----------
@@ -349,10 +362,34 @@ class YieldCurve:
         Returns
         -------
         float
-            DF = 1 / (1 + s_t)^t
+            DF = 1 / (1 + s_t/2)^(2t)
         """
         s = float(np.interp(t, self.maturities, self.spot_rates))
-        return float(1.0 / (1.0 + s) ** t)
+        return float(1.0 / (1.0 + s / 2.0) ** (2.0 * t))
+
+    def price_par_bond(self, maturity: float, par_yield: float) -> float:
+        """Price a semi-annual par-coupon bond off the bootstrapped curve.
+
+        Used as a sanity check: pricing each input par bond should return
+        approximately 1.0 (par).
+
+        Parameters
+        ----------
+        maturity : float
+            Bond maturity in years.
+        par_yield : float
+            Annual coupon rate (decimal) of the par bond.
+
+        Returns
+        -------
+        float
+            Price per $1 face.
+        """
+        n_periods = int(round(maturity * 2))
+        coupon = par_yield / 2.0
+        times = np.arange(1, n_periods + 1) * 0.5
+        dfs = np.array([self.discount_factor(t) for t in times])
+        return float(coupon * np.sum(dfs[:-1]) + (1.0 + coupon) * dfs[-1])
 
     def summary(self) -> dict:
         """Return the bootstrapped curve data.
@@ -369,7 +406,7 @@ class YieldCurve:
         }
 
 
-if __name__ == "__main__":
+def _demo() -> None:
     # ----------------------------------------------------------------
     # Demo: Sovereign bond analytics and yield curve bootstrapping
     # ----------------------------------------------------------------
@@ -426,8 +463,16 @@ if __name__ == "__main__":
         df = curve.discount_factor(mat)
         print(f"  {mat:6.1f}y    {par_y*100:6.3f}%     {spot*100:6.3f}%     {df:.6f}")
 
+    # Sanity check: every input par bond should reprice to ~1.0 off the curve
+    reprice_errors = [
+        abs(curve.price_par_bond(m, py) - 1.0)
+        for m, py in zip(maturities, par_yields)
+    ]
+    print(f"\n  Bootstrap sanity check: max par-bond repricing error = "
+          f"{max(reprice_errors):.2e} (should be ~0)")
+
     # Forward rates
-    print("\n  Selected Forward Rates:")
+    print("\n  Selected Forward Rates (semi-annual convention):")
     forwards = [(0.5, 1.0), (1.0, 2.0), (2.0, 3.0), (3.0, 5.0), (5.0, 10.0)]
     for t1, t2 in forwards:
         fwd = curve.forward_rate(t1, t2)
@@ -443,3 +488,66 @@ if __name__ == "__main__":
     print("\n" + "=" * 60)
     print("Demo complete.")
     print("=" * 60)
+
+def _check(failures: list, name: str, actual: float, expected: float, tol: float) -> None:
+    """Record a verification check result."""
+    ok = abs(actual - expected) <= tol
+    status = "PASS" if ok else "FAIL"
+    print(f"  [{status}] {name}: actual={actual:.6g}, expected={expected:.6g}, tol={tol:.2g}")
+    if not ok:
+        failures.append(name)
+
+def _verify() -> None:
+    """Verify key outputs against the SKILL.md worked examples."""
+    failures: list = []
+
+    # SKILL.md Example 1: 5y 4% semi-annual bond at 5% YTM prices at 956.24
+    bond = SovereignBond(face=1000.0, coupon_rate=0.04, maturity_years=5.0, frequency=2)
+    price = bond.price(0.05)
+    _check(failures, "Ex1 bond price", price, 956.24, 0.01)
+    _check(failures, "YTM solver round trip", bond.ytm(price), 0.05, 1e-8)
+
+    # SKILL.md Example 2 pattern: duration/convexity price-change estimate is close to actual
+    est = bond.price_change_estimate(0.05, 0.005)
+    actual = bond.price(0.055)
+    _check(failures, "Ex2 duration+convexity estimate vs actual reprice",
+           est["estimated_new_price"], actual, 0.05)
+
+    # Bootstrap sanity check: input par bonds reprice to par off the curve
+    maturities = np.array([0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 5.0, 7.0, 10.0])
+    par_yields = np.array([0.042, 0.043, 0.044, 0.045, 0.046, 0.047, 0.048, 0.049, 0.050])
+    curve = YieldCurve(maturities=maturities, par_yields=par_yields)
+    max_err = max(abs(curve.price_par_bond(m, py) - 1.0)
+                  for m, py in zip(maturities, par_yields))
+    _check(failures, "bootstrap par-bond repricing max error", max_err, 0.0, 1e-8)
+    _check(failures, "10y spot above 10y par on upward curve", curve.spot_rates[-1], 0.050398, 5e-5)
+
+    if failures:
+        print(f"\n{len(failures)} check(s) FAILED: {', '.join(failures)}")
+        sys.exit(1)
+    print("\nAll checks passed.")
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description=__doc__.strip().splitlines()[2] if __doc__ else "",
+        epilog=(
+            "Provides: SovereignBond, YieldCurve. "
+            "For programmatic use, import this module (fixed_income_sovereign) instead of running it. "
+            "Bare run executes a demo whose printed values match the SKILL.md worked examples; "
+            "--verify asserts those values and exits nonzero on mismatch."
+        ),
+    )
+    parser.add_argument(
+        "--verify",
+        action="store_true",
+        help="run the verification checks against the SKILL.md worked-example values",
+    )
+    args = parser.parse_args()
+    if args.verify:
+        _verify()
+    else:
+        _demo()
+
+
+if __name__ == "__main__":
+    main()

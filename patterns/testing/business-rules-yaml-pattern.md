@@ -2,6 +2,9 @@
 
 **Tags**: "api:tests", "api:domain"
 
+**Layer**: Testing
+**Status**: Production
+
 **Category:** Testing
 **Level:** Advanced
 **Prerequisites:** Testing Pyramid Pattern, DDD basics, Specification Pattern

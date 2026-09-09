@@ -2,6 +2,29 @@
 
 **Tags**: "api:tests:fixtures", "api:data-access:projection"
 
+**Layer**: Testing (L2/E2E fixtures)
+**Status**: Production (7 projection tables migrated, LocalHero)
+
+## When to Use
+
+**Use this pattern for:**
+- ✅ A projection table is synced **exclusively** by an event handler from another context —
+  zero local command/aggregate to build through (Category 2, see table below).
+- ✅ Multiple test files insert raw literals into the same projection table and have already
+  drifted (a missing column in some copies but not others).
+- ✅ A test in context B just needs "a row to exist" in a projection owned by context A, without
+  exercising A's real sync mechanism.
+
+**Do NOT use for:**
+- ❌ A table backed by a real aggregate with `domain/aggregates/` and a `create()` factory —
+  that's Category 1: use a Mother + `repository.save()`
+  (`domain-colocated-fixture-mother-pattern.md`), not a raw row-builder.
+- ❌ The test that verifies the sync handler itself (e.g.
+  `sync-economy-user.handler.integration.spec.ts`) — that is the source-of-truth test of the
+  mechanism this builder only imitates; migrating it would make the test meaningless.
+- ❌ A cross-context orchestrator fixture with a large blast radius (Category 3, e.g.
+  `authorization-seeders.ts`) — stays as-is, does not get force-migrated to this pattern.
+
 ## 🎯 Problem
 
 **Tabele projekcyjne (cross-context user projections) nie mają repozytorium

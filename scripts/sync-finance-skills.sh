@@ -17,7 +17,7 @@
 #   ./scripts/sync-finance-skills.sh --diff      # only show diff, do not change anything
 #   ./scripts/sync-finance-skills.sh --ref v1.0.0  # pin to a specific tag
 #
-# Requirements: git, rsync, diff
+# Requirements: git, diff (rsync used when available, otherwise a cp fallback)
 
 set -euo pipefail
 
@@ -30,6 +30,81 @@ MODE="interactive"
 PLUGINS=(core wealth-management compliance advisory-practice trading-operations client-operations data-integration)
 
 source "$REPO_DIR/scripts/lib/common.sh"
+
+# --- rsync-free mirroring --------------------------------------------------
+# These scripts assumed rsync. It is not installed everywhere (this repo's own
+# dev box has none, and no root to add it), and the failure mode was the bad
+# one: the script died at the *apply* step, after already copying part of the
+# tree. `sync_tree` uses rsync when present and falls back to a find+cp mirror
+# with the same semantics: drop what upstream no longer has, copy the rest,
+# honour excludes. Exclude patterns follow rsync's rule — a bare pattern
+# matches a basename at any depth, a leading `/` anchors it to the tree root.
+_sync_excluded() {
+  local rel="$1"; shift
+  local base="${rel##*/}" p
+  for p in "$@"; do
+    if [[ "$p" == /* ]]; then
+      [[ "$rel" == "${p#/}" || "$rel" == "${p#/}"/* ]] && return 0
+    else
+      [[ "$base" == $p ]] && return 0
+    fi
+  done
+  return 1
+}
+
+_mirror_dir() {
+  local src="${1%/}" dst="${2%/}"; shift 2
+  local -a excl=(); local a rel
+  for a in "$@"; do excl+=("${a#--exclude=}"); done
+  mkdir -p "$dst"
+
+  # 1. drop entries upstream no longer has
+  while IFS= read -r rel; do
+    [[ -z "$rel" ]] && continue
+    _sync_excluded "$rel" "${excl[@]}" && continue
+    [[ -e "$src/$rel" ]] || rm -rf "${dst:?}/$rel"
+  done < <(cd "$dst" && find . -mindepth 1 -depth -printf '%P\n' 2>/dev/null)
+
+  # 2. copy in everything upstream does have
+  while IFS= read -r rel; do
+    [[ -z "$rel" ]] && continue
+    _sync_excluded "$rel" "${excl[@]}" && continue
+    if [[ -d "$src/$rel" ]]; then
+      mkdir -p "$dst/$rel"
+    else
+      mkdir -p "$dst/$(dirname "$rel")"
+      rm -rf "${dst:?}/$rel"
+      cp -a "$src/$rel" "$dst/$rel"
+    fi
+  done < <(cd "$src" && find . -mindepth 1 -printf '%P\n' 2>/dev/null)
+}
+
+sync_tree() {  # sync_tree SRC/ DST/ [--exclude=PATTERN]...
+  local src="$1" dst="$2"; shift 2
+  if command -v rsync >/dev/null 2>&1; then
+    rsync -a --delete "$@" "$src" "$dst"
+  else
+    _mirror_dir "$src" "$dst" "$@"
+  fi
+}
+
+# --- LOCAL-file protection -------------------------------------------------
+# `--exclude=LOCAL-*` only covers the filename convention. CLAUDE.md actually
+# teaches a *marker* convention — a skill we wrote ourselves carries
+# `<!-- LOCAL — not synced from upstream -->` right under its frontmatter.
+# Without this, `rsync --delete` silently wipes those skills on the next sync.
+# Emits one `--exclude=/<top-level-entry>` per marked file, so the whole
+# skill folder survives, not just the marked file.
+local_excludes() {
+  local root="$1"
+  [[ -d "$root" ]] || return 0
+  grep -rlZ --include='*.md' -e 'LOCAL — not synced from upstream' \
+       -e 'LOCAL - not synced from upstream' "$root" 2>/dev/null \
+    | while IFS= read -r -d '' f; do
+        local rel="${f#"$root"/}"
+        printf -- '--exclude=/%s\n' "${rel%%/*}"
+      done | sort -u
+}
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -62,7 +137,18 @@ trap 'rm -rf "$WORK_DIR"' EXIT
 git clone --depth 1 --branch "$REF" "$UPSTREAM_REPO" "$WORK_DIR" 2>&1 | tail -3
 
 # 2. Capture upstream version
-UPSTREAM_VERSION=$(grep '"version"' "$WORK_DIR/marketplace.json" | head -1 | sed 's/.*"version": *"\([^"]*\)".*/\1/')
+# Upstream moved marketplace.json under .claude-plugin/ (2026-06); keep the old
+# root path as fallback so pinning to an older --ref still resolves a version.
+MARKETPLACE=""
+for cand in "$WORK_DIR/.claude-plugin/marketplace.json" "$WORK_DIR/marketplace.json"; do
+  [[ -f "$cand" ]] && { MARKETPLACE="$cand"; break; }
+done
+if [[ -z "$MARKETPLACE" ]]; then
+  echo -e "${RED}No marketplace.json found upstream${NC} (looked in .claude-plugin/ and repo root)." >&2
+  echo "Upstream layout changed — update this script before syncing." >&2
+  exit 4
+fi
+UPSTREAM_VERSION=$(grep '"version"' "$MARKETPLACE" | head -1 | sed 's/.*"version": *"\([^"]*\)".*/\1/')
 UPSTREAM_COMMIT=$(cd "$WORK_DIR" && git rev-parse HEAD)
 echo -e "${BLUE}[2/4]${NC} Upstream version: ${GREEN}$UPSTREAM_VERSION${NC} (commit $UPSTREAM_COMMIT)"
 
@@ -110,24 +196,27 @@ if [[ "$MODE" == "interactive" ]]; then
   fi
 fi
 
-echo -e "${BLUE}[4/4]${NC} Applying with rsync..."
+echo -e "${BLUE}[4/4]${NC} Applying..."
 
 # Sync each plugin's skills/ subfolder, preserving local meta files
 for plugin in "${PLUGINS[@]}"; do
   if [[ -d "$WORK_DIR/plugins/$plugin/skills" ]]; then
     mkdir -p "$REPO_DIR/skills/finance/$plugin"
-    rsync -a --delete \
+    mapfile -t PLUGIN_LOCAL < <(local_excludes "$REPO_DIR/skills/finance/$plugin")
+    sync_tree "$WORK_DIR/plugins/$plugin/skills/" "$REPO_DIR/skills/finance/$plugin/" \
       --exclude='LOCAL-*' \
-      "$WORK_DIR/plugins/$plugin/skills/" "$REPO_DIR/skills/finance/$plugin/"
+      "${PLUGIN_LOCAL[@]}"
     echo "  ✓ $plugin"
   fi
 done
 
 # Sync eval framework — preserve our README.md
-rsync -a --delete \
-  --exclude='README.md' \
+mapfile -t EVALS_LOCAL < <(local_excludes "$REPO_DIR/tests/finance-evals")
+sync_tree "$WORK_DIR/finance-skills-workspace/" "$REPO_DIR/tests/finance-evals/" \
+  --exclude='/README.md' \
+  --exclude='/evals.json' \
   --exclude='LOCAL-*' \
-  "$WORK_DIR/finance-skills-workspace/" "$REPO_DIR/tests/finance-evals/"
+  "${EVALS_LOCAL[@]}"
 
 # Refresh evals.json (root-level)
 if [[ -f "$WORK_DIR/evals/evals.json" ]]; then

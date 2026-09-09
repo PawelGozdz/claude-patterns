@@ -1,6 +1,8 @@
 # Repository Events Pattern
 
 **Tags**: "api:data-access", "api:events"
+**Layer**: Infrastructure
+**Status**: production
 
 ## 🎯 Problem
 
@@ -323,7 +325,7 @@ const eventMap: Record<string, any> = {
 2. **Engagement Context** - 2 events (ActionPerformedEvent, ActionRemovedEvent)
 3. **Community-Communication Context** - Multiple event types for events/alerts
 
-## 🎯 When to Use
+## When to Use
 
 **Use Repository Events Pattern for:**
 

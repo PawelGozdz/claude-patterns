@@ -5,27 +5,7 @@ description: "Identify and prevent sales practice violations under FINRA and SEC
 
 # Sales Practices
 
-## Purpose
-Provides comprehensive guidance on FINRA and SEC rules governing the conduct of broker-dealers and their associated persons in securities sales activities. Covers ethical standards, prohibited practices, supervision requirements, and specialized rules for vulnerable investors and complex products. This skill enables identification of sales practice violations and the regulatory framework for enforcement.
-
-## Layer
-9 — Compliance & Regulatory Guidance
-
-## Direction
-prospective
-
-## When to Use
-- Evaluating whether a broker's trading activity constitutes churning or excessive trading
-- Assessing whether mutual fund breakpoint discounts were properly applied
-- Determining if an associated person engaged in selling away or unapproved private securities transactions
-- Reviewing outside business activity disclosures and firm obligations
-- Evaluating supervisory procedures and whether a firm met its supervision obligations
-- Analyzing potential market manipulation, marking the close, or other deceptive practices
-- Investigating unauthorized trading in customer accounts
-- Applying senior investor protection rules including trusted contact persons and temporary holds
-- Assessing suitability and disclosure requirements for variable annuity sales or 1035 exchanges
-- Reviewing options account approval, risk disclosure, and suitability for options strategies
-- Determining whether conduct violates FINRA's broad ethical standards under Rule 2010
+Regulatory status current as of June 2026 — verify effective dates, dollar thresholds, and pending rulemakings against current SEC/FINRA/FinCEN sources before advising.
 
 ## Core Concepts
 
@@ -36,16 +16,15 @@ FINRA Rule 2010 is the catch-all ethical standard for all member firms and assoc
 FINRA Rule 2020 prohibits any member or associated person from effecting any transaction in, or inducing the purchase or sale of, any security by means of any manipulative, deceptive, or other fraudulent device or contrivance. This rule mirrors the antifraud provisions of Section 10(b) of the Securities Exchange Act of 1934 and SEC Rule 10b-5. It covers a broad range of manipulative schemes including pump-and-dump, marking the close, wash trading, matched orders, and any scheme to defraud customers or the market.
 
 ### Churning and Excessive Trading
-Churning occurs when a broker exercises control over a customer's account and engages in excessive trading to generate commissions rather than to benefit the customer. Three elements must be established:
+Churning occurs when a broker engages in excessive trading to generate commissions rather than to benefit the customer. Two distinct legal frameworks apply, and they have different elements:
 
-- **Control:** The broker exercised de facto or de jure control over trading decisions. De facto control exists when the customer routinely follows the broker's recommendations without independent judgment.
-- **Excessive activity:** Trading frequency and volume are inconsistent with the customer's investment objectives. Quantitative metrics include:
-  - **Turnover ratio:** The aggregate cost of purchases divided by the average account equity over the period. A turnover ratio exceeding 6 is generally considered presumptive evidence of churning. Ratios of 4-6 may indicate excessive trading depending on account type and objectives.
-  - **Cost-to-equity ratio (break-even return):** The total costs (commissions, markups, fees) as a percentage of average account equity on an annualized basis. A cost-to-equity ratio exceeding 20% is generally considered excessive because the account must earn more than 20% annually just to break even after costs.
-  - **In-and-out trading:** A pattern of purchasing securities and selling them within a short period, generating commissions on both sides without meaningful investment rationale.
-- **Scienter:** The broker acted with intent to defraud or with reckless disregard for the customer's interests.
+- **Fraud-based churning (Section 10(b)/Rule 10b-5, Section 15(c)):** Requires proof of (1) control — de facto or de jure control over trading decisions (de facto control exists when the customer routinely follows the broker's recommendations without independent judgment); (2) excessive activity inconsistent with the customer's objectives; and (3) scienter — intent to defraud or reckless disregard for the customer's interests.
+- **Rule-based excessive trading (FINRA Rule 2111.05(c) quantitative suitability; Reg BI Care Obligation for retail customers):** Since FINRA's 2020 amendments (Regulatory Notice 20-18, effective June 30, 2020), the control element has been removed — a broker who recommends a series of transactions must have a reasonable basis to believe the series is not excessive in light of the customer's investment profile, regardless of whether the broker controls the account. No scienter is required.
 
-FINRA Rule 2111 (Suitability) includes a quantitative suitability obligation (the third prong) that specifically addresses excessive trading. A broker who has actual or de facto control over an account must have a reasonable basis for believing that the number of recommended transactions within a given period is not excessive and is consistent with the customer's investment profile. The SEC has also brought churning cases under Section 10(b) and Rule 10b-5, which require scienter, and under Section 15(c) of the Exchange Act.
+Quantitative metrics used under both frameworks:
+- **Turnover ratio:** The aggregate cost of purchases divided by the average account equity over the period. A turnover ratio exceeding 6 is generally considered presumptive evidence of excessive trading. Ratios of 4-6 may indicate excessive trading depending on account type and objectives.
+- **Cost-to-equity ratio (break-even return):** The total costs (commissions, markups, fees) as a percentage of average account equity on an annualized basis. A cost-to-equity ratio exceeding 20% is generally considered excessive because the account must earn more than 20% annually just to break even after costs.
+- **In-and-out trading:** A pattern of purchasing securities and selling them within a short period, generating commissions on both sides without meaningful investment rationale.
 
 ### Breakpoint Abuse
 Mutual funds offer volume discounts called breakpoints — reduced sales charges for larger purchases. Breakpoint abuse occurs when a broker fails to inform customers of available discounts or structures transactions to avoid breakpoints (e.g., splitting a single purchase into multiple smaller transactions across fund families). Key obligations:
@@ -110,7 +89,7 @@ Unauthorized trading violates FINRA Rules 2010 and 2020 and may also constitute 
 FINRA Rule 2165 provides a safe harbor for member firms to place temporary holds on disbursements of funds or securities from accounts of specified adults — customers aged 65 or older, or customers aged 18 or older who the firm reasonably believes have a mental or physical impairment that renders them unable to protect their own interests. Key provisions:
 
 - **Trusted contact person:** FINRA Rule 4512 requires firms to make reasonable efforts to obtain the name and contact information of a trusted contact person for each customer account. The trusted contact may be notified when the firm suspects financial exploitation, but the trusted contact does not have authority over the account.
-- **Temporary hold:** If a firm reasonably believes that financial exploitation has occurred, is occurring, has been attempted, or will be attempted, the firm may place a temporary hold on disbursements for up to 15 business days while it investigates. The hold may be extended for an additional 10 business days with firm approval.
+- **Temporary hold:** If a firm reasonably believes that financial exploitation has occurred, is occurring, has been attempted, or will be attempted, the firm may place a temporary hold on disbursements — and, since the March 2022 amendments, on securities transactions as well — for up to 15 business days while it investigates. The hold may be extended for an additional 10 business days with firm approval. The 2022 amendments (effective March 17, 2022) also permit a further extension of up to 30 additional business days (55 business days total) if the firm has reported the matter to a state regulator or agency of competent jurisdiction (such as Adult Protective Services) or a court of competent jurisdiction.
 - **Notification requirements:** The firm must notify the trusted contact person and all parties authorized to transact on the account of the hold, unless the firm reasonably believes one of those parties is responsible for the suspected exploitation.
 - **Record retention:** The firm must retain records of the basis for the hold, internal review, and customer/trusted contact notifications.
 
@@ -148,7 +127,7 @@ FINRA Rule 2360 governs the conduct of member firms and associated persons in op
 - **Cost-to-equity ratio:** $112,000 / $480,000 = 23.3% annualized. This exceeds the 20% threshold generally considered excessive. The account must earn over 23% annually just to break even after costs.
 - **In-and-out trading:** With 147 transactions in a $480,000 account over 12 months, the average holding period is extremely short, inconsistent with an income and capital preservation objective.
 
-**Analysis:** This pattern presents strong presumptive evidence of churning under FINRA Rule 2111 (quantitative suitability) and potentially under SEC antifraud provisions (Section 10(b)/Rule 10b-5) if scienter can be established. The customer's age, conservative objectives, and reliance on the broker for retirement income are aggravating factors. The broker's control over the account can be inferred from the volume and pattern of trading. The firm may also face supervisory failure charges under FINRA Rule 3110 if its exception reporting systems did not flag this activity or if flagged exceptions were not investigated. Potential remedies include disgorgement of excess commissions, restitution, fines, suspension, or barring of the broker.
+**Analysis:** This pattern presents strong presumptive evidence of excessive trading under FINRA Rule 2111.05(c) (quantitative suitability — no control element required since the 2020 amendments) and, for a retail customer, under Reg BI's Care Obligation; fraud-based churning charges under Section 10(b)/Rule 10b-5 are also available if control and scienter can be established. The customer's age, conservative objectives, and reliance on the broker for retirement income are aggravating factors. The firm may also face supervisory failure charges under FINRA Rule 3110 if its exception reporting systems did not flag this activity or if flagged exceptions were not investigated. Potential remedies include disgorgement of excess commissions, restitution, fines, suspension, or barring of the broker.
 
 ### Example 2: Breakpoint Abuse on Mutual Fund Purchases
 **Scenario:** A customer wishes to invest $100,000 in equity mutual funds. The fund family's Class A shares have the following breakpoint schedule: 5.75% sales charge on purchases under $25,000; 5.00% at $25,000; 4.50% at $50,000; 3.50% at $100,000; and 2.50% at $250,000. Rather than placing a single $100,000 purchase to receive the 3.50% sales charge, the broker splits the investment across four different fund families in $25,000 increments. The customer pays an average sales charge of approximately 5.00%.
@@ -186,8 +165,9 @@ FINRA Rule 2360 governs the conduct of member firms and associated persons in op
 - Failing to update WSPs when regulations change or when the firm's business model evolves, leaving gaps in supervisory coverage
 
 ## Cross-References
-- **investment-suitability** (Layer 9): Suitability obligations (FINRA Rule 2111) are closely intertwined with sales practices — churning is a quantitative suitability violation
-- **reg-bi** (Layer 9): Regulation Best Interest imposes a heightened standard on broker-dealer recommendations that overlaps with and strengthens sales practice requirements
-- **conflicts-of-interest** (Layer 9): Selling away, undisclosed compensation, and breakpoint abuse all involve conflicts of interest that must be identified, disclosed, and mitigated
-- **know-your-customer** (Layer 9): KYC obligations under FINRA Rule 2090 provide the customer information foundation for detecting sales practice violations
-- **fiduciary-standards** (Layer 9): For dual-registrants, fiduciary duties may impose obligations beyond FINRA sales practice rules
+- **investment-suitability** (compliance plugin): Suitability obligations (FINRA Rule 2111) are closely intertwined with sales practices — churning is a quantitative suitability violation
+- **reg-bi** (compliance plugin): Regulation Best Interest imposes a heightened standard on broker-dealer recommendations that overlaps with and strengthens sales practice requirements
+- **conflicts-of-interest** (compliance plugin): Selling away, undisclosed compensation, and breakpoint abuse all involve conflicts of interest that must be identified, disclosed, and mitigated
+- **know-your-customer** (compliance plugin): KYC obligations under FINRA Rule 2090 provide the customer information foundation for detecting sales practice violations
+- **fiduciary-standards** (compliance plugin): For dual-registrants, fiduciary duties may impose obligations beyond FINRA sales practice rules
+- **account-opening-compliance** (client-operations plugin): Trusted contact collection (FINRA Rule 4512) and senior investor protection infrastructure are established at onboarding; this skill covers the ongoing-conduct side of Rules 2165/4512

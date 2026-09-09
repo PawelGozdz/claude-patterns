@@ -5,75 +5,53 @@ description: "Analyze real estate and infrastructure investments including REITs
 
 # Real Assets
 
-## Purpose
-Analyze real estate and infrastructure investments including REITs, direct property, and infrastructure assets. This skill covers property valuation using NOI and cap rates, REIT-specific metrics (FFO, AFFO), leverage analysis, and the stable cash flow characteristics of infrastructure investments.
-
-## Layer
-2 — Asset Classes
-
-## Direction
-both
-
-## When to Use
-- User asks about real estate investing, property valuation, or REITs
-- User asks about cap rates, NOI, or cash-on-cash returns
-- User asks about REIT valuation (FFO, AFFO, P/FFO)
-- User asks about real estate sectors (residential, office, industrial, etc.)
-- User asks about infrastructure investments (toll roads, utilities, pipelines, cell towers)
-- User asks about leverage in real estate (LTV, DSCR)
-- User asks about gross rent multiplier or property-level return analysis
-
 ## Core Concepts
 
-### Net Operating Income (NOI)
-NOI = Gross Rental Income - Operating Expenses
+### Property Income and Return Metrics
+- **NOI (Net Operating Income):** effective gross rental income (after vacancy) minus operating expenses; excludes debt service, capex, and depreciation.
+- **Cap rate:** NOI divided by property value — the unlevered property yield; lower cap rates mean higher valuations.
+- **Income-approach value:** NOI divided by the prevailing cap rate for comparable properties.
+- **Cash-on-cash return:** annual pre-tax cash flow (NOI minus debt service) divided by total cash invested — the levered equity yield.
+- **GRM (Gross Rent Multiplier):** price divided by gross annual rent; a quick screen that ignores expenses, vacancy, and financing.
 
-Operating expenses include property taxes, insurance, maintenance, management fees, and utilities (if paid by the landlord). NOI excludes debt service (mortgage payments), capital expenditures, and depreciation. NOI is the core measure of property-level income before financing and taxes.
+### REITs and REIT Metrics
+REITs must distribute 90%+ of taxable income as dividends and trade on exchanges like equities. Sectors include residential, office, retail, industrial, data center, healthcare, self-storage, and specialty.
 
-### Cap Rate
-Cap Rate = NOI / Property Value
-
-The capitalization rate represents the unlevered yield on a property. It is the real estate equivalent of an earnings yield. Lower cap rates imply higher valuations (and vice versa). Cap rates vary by property type, location, and market conditions.
-
-### Property Valuation
-Value = NOI / Cap Rate
-
-This is the income approach to real estate valuation. Given a property's NOI and the prevailing cap rate for comparable properties, the value is derived by dividing NOI by the cap rate.
-
-### Cash-on-Cash Return
-Cash-on-Cash Return = Annual Pre-Tax Cash Flow / Total Cash Invested
-
-This measures the return on the investor's actual equity investment, after debt service. It accounts for leverage, unlike the cap rate which is unlevered.
-
-### Gross Rent Multiplier (GRM)
-GRM = Property Price / Gross Annual Rental Income
-
-A quick screening metric. Lower GRM suggests better value. Does not account for operating expenses, vacancies, or financing.
-
-### REITs (Real Estate Investment Trusts)
-REITs must distribute 90%+ of taxable income as dividends, making them high-income vehicles. They trade on exchanges like equities, providing liquidity that direct real estate lacks. REIT sectors include residential, office, retail, industrial, data center, healthcare, self-storage, and specialty.
-
-### FFO (Funds From Operations)
-FFO = Net Income + Depreciation/Amortization - Gains on Property Sales
-
-FFO adds back depreciation because real estate depreciation (a non-cash charge) often overstates the actual decline in property value. FFO is the standard earnings measure for REITs, replacing net income.
-
-### AFFO (Adjusted Funds From Operations)
-AFFO = FFO - Maintenance Capital Expenditures - Straight-Line Rent Adjustments
-
-AFFO is a more conservative and accurate measure of a REIT's recurring cash flow available for distribution. It accounts for the capital needed to maintain properties in their current condition.
-
-### REIT Valuation Metrics
-- P/FFO: the REIT equivalent of P/E. Compare across peers within the same sector.
-- P/AFFO: more conservative than P/FFO, accounts for maintenance capex.
-- NAV (Net Asset Value): value of underlying properties minus liabilities. Premium/discount to NAV indicates market sentiment.
+- **FFO (Funds From Operations):** net income plus depreciation minus gains on property sales — the standard REIT earnings measure, since real estate depreciation overstates actual value decline.
+- **AFFO (Adjusted FFO):** FFO minus maintenance capex and straight-line rent adjustments — the conservative measure of recurring distributable cash flow.
+- **P/FFO and P/AFFO:** the REIT equivalents of P/E; compare within the same sector.
+- **NAV premium/discount:** share price relative to per-share net asset value of the underlying properties; indicates market sentiment.
 
 ### Infrastructure Investments
-Infrastructure assets include toll roads, utilities, pipelines, cell towers, airports, and ports. Characteristics include long asset lives, high barriers to entry, regulated or contracted revenue streams, and inflation-linked cash flows (many contracts include CPI adjustments). Infrastructure provides stable, bond-like income with equity-like upside from traffic/usage growth.
+Infrastructure assets include toll roads, utilities, pipelines, cell towers, airports, and ports. Characteristics: long asset lives, high barriers to entry, regulated or contracted revenue streams, and inflation-linked cash flows (many contracts include CPI adjustments). Infrastructure provides stable, bond-like income with equity-like upside from traffic/usage growth.
 
 ### Leverage in Real Estate
-- **LTV (Loan-to-Value):** Mortgage amount / Property value. Higher LTV means more leverage and more risk. Typical commercial LTV is 60-75%.
-- **DSCR (Debt Service Coverage Ratio):** NOI / Annual Debt Service. Lenders typically require DSCR of 1.20x-1.50x minimum. Higher DSCR means more cushion to service debt.
+- **LTV (Loan-to-Value):** mortgage amount / property value. Higher LTV means more leverage and more risk. Typical commercial LTV is 60-75%.
+- **DSCR (Debt Service Coverage Ratio):** NOI / annual debt service. Lenders typically require 1.20x-1.50x minimum. Higher DSCR means more cushion to service debt.
+
+## Direct Real Estate vs REITs: Decision Checklist
+
+Work through these factors before recommending a vehicle:
+
+| Factor | Direct ownership | REITs |
+|--------|------------------|-------|
+| Liquidity | Sales take months; high transaction costs | Trade intraday on exchanges |
+| Management | Active management required, or pay a property manager | Passive; professional management included |
+| Leverage access | Non-recourse mortgage leverage at attractive LTVs (60-75%), chosen by the investor | Entity-level leverage set by REIT management; investors cannot choose property-level leverage |
+| 1031 exchange | Eligible — defer capital gains by exchanging into like-kind property | Not eligible — REIT shares do not qualify |
+| Diversification | Concentrated in one or a few properties | A REIT fund spreads across hundreds of properties and multiple sectors |
+| Minimum check size | Typically $50K+ equity (down payment plus closing costs) | From one share |
+
+Mapping investor situations to the preferred vehicle:
+
+| Investor situation | Preferred vehicle |
+|--------------------|-------------------|
+| May need the money within months, or rebalances regularly | REITs |
+| Wants control over leverage, tenants, and improvements | Direct |
+| Holds appreciated property and wants tax-deferred reinvestment | Direct (1031 exchange) |
+| Allocation under ~$50K, or wants broad diversification immediately | REITs |
+| Willing to manage tenants and repairs (or pay a manager from rent) | Direct |
+| Wants passive, hands-off exposure with no operational involvement | REITs |
 
 ## Key Formulas
 
@@ -115,10 +93,21 @@ Compare to the unlevered cap rate: $35,000 / $500,000 = 7.0%. Leverage boosts th
 - Overstating returns by ignoring maintenance capex — use AFFO rather than FFO for a realistic view of distributable cash flow
 
 ## Cross-References
-- **time-value-of-money** (core plugin, Layer 0): discounted cash flow analysis of property investments
-- **equities** (wealth-management plugin, Layer 2): REIT stock analysis and equity market context
-- **fixed-income-structured** (wealth-management plugin, Layer 2): MBS and the mortgage market underlying real estate
-- **asset-allocation** (wealth-management plugin, Layer 3): real assets as a portfolio diversifier and inflation hedge
+- **time-value-of-money** (core plugin): discounted cash flow analysis of property investments
+- **equities** (wealth-management plugin): REIT stock analysis and equity market context
+- **fixed-income-structured** (wealth-management plugin): MBS and the mortgage market underlying real estate
+- **asset-allocation** (wealth-management plugin): real assets as a portfolio diversifier and inflation hedge
 
-## Reference Implementation
-See `scripts/real_assets.py` for computational helpers.
+## Running the script
+
+```
+uv run scripts/real_assets.py
+```
+
+The PEP 723 header resolves the numpy dependency automatically. Alternatively run `python3 scripts/real_assets.py` after `pip install numpy`.
+
+- Bare run prints a demo covering property valuation, cash-on-cash and leverage analysis, REIT metrics, and inflation-adjusted returns.
+- `--verify` re-runs the demo computations and asserts the outputs match this skill's worked examples (prints PASS/FAIL, nonzero exit on mismatch).
+- `--help` lists the available classes.
+
+The file is primarily meant to be imported as a module, e.g. `from real_assets import PropertyValuation, LeverageMetrics, REITMetrics, RealReturn`.

@@ -5,24 +5,6 @@ description: "Maintain portfolio allocations over time using calendar-based, thr
 
 # Rebalancing
 
-## Purpose
-Provides frameworks for maintaining portfolio allocations over time as market movements cause weights to drift from targets. Covers calendar and threshold rebalancing strategies, optimal band widths, transaction cost considerations, tax-efficient approaches including tax-loss harvesting, and practical implementation across account types.
-
-## Layer
-4 — Portfolio Construction
-
-## Direction
-both
-
-## When to Use
-- Deciding when and how to rebalance a portfolio back to target weights
-- Comparing calendar-based vs. threshold-based rebalancing strategies
-- Setting optimal rebalancing bands that balance tracking error against transaction costs
-- Implementing tax-efficient rebalancing and tax-loss harvesting
-- Managing rebalancing across taxable and tax-deferred accounts
-- Using cash flows (contributions/withdrawals) to rebalance opportunistically
-- Evaluating the rebalancing premium and its contribution to portfolio returns
-
 ## Core Concepts
 
 ### Calendar Rebalancing
@@ -85,16 +67,14 @@ Strategies to minimize tax impact when rebalancing in taxable accounts:
 4. **Asset location:** Hold tax-inefficient assets (bonds, REITs) in tax-deferred accounts; rebalance these freely
 5. **Selective lot identification:** When selling, choose tax lots with the highest cost basis (lowest gain) or lots held over one year (long-term capital gains rate)
 
-### Tax-Loss Harvesting (TLH)
-Proactively selling losing positions to realize capital losses that offset capital gains:
+### Coordinating with Tax-Loss Harvesting (TLH)
+Rebalancing and TLH should be planned together, not as separate trade lists:
 
-Tax benefit = Realized loss * Marginal tax rate
+- **Combine TLH sells with rebalance sells** to reduce total trade count and transaction costs
+- **An overweight position sitting at a loss is the ideal dual-purpose trade** — the harvest and the rebalance are the same sell
+- **Check open wash-sale windows before buying back** or before rebalance buys in any account (including IRAs and spouse accounts)
 
-Rules and implementation:
-- **Wash sale rule:** Cannot repurchase a "substantially identical" security within 30 days before or after the sale (61-day window total)
-- **Replacement security:** Substitute a similar but not identical asset to maintain market exposure (e.g., sell one S&P 500 ETF, buy a total market ETF)
-- **Timing:** Most opportunities arise during market drawdowns
-- **Long-term benefit:** Harvested losses can offset current gains, and unused losses carry forward indefinitely. Up to $3,000 of net losses can offset ordinary income per year.
+Tax benefit = Realized loss * Marginal tax rate. For the 61-day wash-sale window, the $3,000 ordinary-income offset, replacement selection, and full TLH mechanics, see the **tax-loss-harvesting** skill.
 
 ### Rebalancing Across Account Types
 When an investor has multiple account types (taxable, IRA, 401k), optimize rebalancing by:
@@ -251,14 +231,14 @@ Note: TLH creates a lower cost basis in the replacement security, so taxes are d
 - Rebalancing into the wrong account: selling appreciated assets in taxable accounts when the same rebalancing could be done in tax-deferred accounts
 
 ## Cross-References
-- **asset-allocation** (wealth-management plugin, Layer 4): rebalancing maintains the target asset allocation over time
-- **diversification** (wealth-management plugin, Layer 4): rebalancing preserves the intended diversification structure
-- **bet-sizing** (wealth-management plugin, Layer 4): position sizes drift and need rebalancing to maintain conviction weighting
-- **historical-risk** (wealth-management plugin, Layer 1a): drift changes portfolio risk profile; rebalancing controls it
-- **financial-statements** (wealth-management plugin, Layer 2): tax implications of rebalancing require understanding of tax accounting
-- **tax-loss-harvesting** (wealth-management plugin, Layer 5): TLH trades should be coordinated with rebalancing to minimize total transaction count and avoid wash-sale conflicts
-- **tax-efficiency** (wealth-management plugin, Layer 5): asset location and tax-lot selection strategies directly affect rebalancing trade decisions
-- **client-review-prep** (advisory-practice plugin, Layer 10): drift analysis and rebalancing recommendations are core agenda items in periodic client reviews
+- **asset-allocation** (wealth-management plugin): rebalancing maintains the target asset allocation over time
+- **diversification** (wealth-management plugin): rebalancing preserves the intended diversification structure
+- **bet-sizing** (wealth-management plugin): position sizes drift and need rebalancing to maintain conviction weighting
+- **historical-risk** (wealth-management plugin): drift changes portfolio risk profile; rebalancing controls it
+- **financial-statements** (wealth-management plugin): tax implications of rebalancing require understanding of tax accounting
+- **tax-loss-harvesting** (wealth-management plugin): TLH trades should be coordinated with rebalancing to minimize total transaction count and avoid wash-sale conflicts
+- **tax-efficiency** (wealth-management plugin): asset location and tax-lot selection strategies directly affect rebalancing trade decisions
+- **client-review-prep** (advisory-practice plugin): drift analysis and rebalancing recommendations are core agenda items in periodic client reviews
 
-## Reference Implementation
-See `scripts/rebalancing.py` for computational helpers.
+## Running the script
+Run with `uv run scripts/rebalancing.py` (the PEP 723 header resolves dependencies automatically) or with `python3 scripts/rebalancing.py` after `pip install numpy scipy`. The bare run prints a demo covering drift analysis, threshold checks, trade generation, cash flow rebalancing, transaction costs, tax-aware lot selection, Leland bands, and the rebalancing premium. Pass `--verify` to assert the demo outputs match this skill's worked examples (prints PASS/FAIL), or `--help` for an overview of the available classes. The file is primarily meant to be imported as a module (e.g., `from rebalancing import DriftAnalyzer, TradeGenerator, TaxAwareLotSelector`).

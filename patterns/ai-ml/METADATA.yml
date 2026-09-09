@@ -1,15 +1,19 @@
+# AI/ML Inference Patterns — metadane katalogu.
+# Schemat: jeden dla całego patterns/** (K84, TASK-KAIZEN-002). Walidator:
+# node scripts/validate-metadata.mjs
 category: ai-ml
-version: 1.0.0
+version: "1.0.1"
 maturity: production
 last_verified: 2026-07-31
-stack: Python 3.10+, FastAPI, PyTorch, CUDA, transformers, sentence-transformers, Ollama
-source_projects: ai-ml-inference (CT 301, RTX 5090)
+stack: "Python 3.10+, FastAPI, PyTorch, CUDA, transformers, sentence-transformers, Ollama"
+source_projects: "ai-ml-inference (CT 301, RTX 5090)"
 patterns_count: 7
-description: |
-  Production-tested patterns for GPU inference services — model lifecycle
-  with TTL/VRAM budgeting, dynamic request batching, GPU concurrency,
-  LLM integration, observability and GPU-free testing.
+description: >-
+  Wzorce dla usług inferencji na GPU: cykl życia modelu z TTL i budżetem VRAM,
+  dynamiczne batchowanie żądań, współbieżność na GPU, integracja z LLM,
+  observability i testowanie bez GPU. Wyprowadzone z żywego API
+  wielomodelowego (18 endpointów: embeddingi, NER, klasyfikacja, sentyment,
+  relacje, STT, tłumaczenie) na GPU dzielonym z Ollamą i ComfyUI.
 
-  Extracted from a live multi-model inference API serving 18 endpoints
-  (embeddings, NER, classification, sentiment, relations, STT, translation)
-  on a GPU shared with Ollama and ComfyUI.
+layer: infrastructure
+stack_support: [python]

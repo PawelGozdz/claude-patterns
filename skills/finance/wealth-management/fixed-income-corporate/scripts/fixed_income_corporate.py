@@ -12,6 +12,8 @@ probability analysis.
 Part of Layer 2 (Asset Classes) in the finance skills framework.
 """
 
+import argparse
+import sys
 import numpy as np
 from scipy.optimize import brentq
 
@@ -96,7 +98,17 @@ class CreditSpread:
             pv = np.sum(self.cash_flows / discount)
             return pv - self.market_price
 
-        return float(brentq(objective, -0.05, 1.0, xtol=tol))
+        lo, hi = -0.05, 1.0
+        try:
+            return float(brentq(objective, lo, hi, xtol=tol))
+        except ValueError as exc:
+            raise ValueError(
+                f"Z-spread root not bracketed in [{lo:.0%}, {hi:.0%}]: the "
+                f"market price ({self.market_price}) is inconsistent with the "
+                "cash flows and spot curve (PV at the bracket endpoints does "
+                "not straddle the price). Check that cash flows, times, spot "
+                "rates, and price are on consistent scales."
+            ) from exc
 
     def oas(self, z_spread: float, option_cost: float) -> float:
         """Compute the Option-Adjusted Spread.
@@ -372,7 +384,7 @@ class MigrationMatrix:
         return float(self.matrix[idx, -1])
 
 
-if __name__ == "__main__":
+def _demo() -> None:
     # ----------------------------------------------------------------
     # Demo: Corporate bond credit analysis
     # ----------------------------------------------------------------
@@ -492,3 +504,65 @@ if __name__ == "__main__":
     print("\n" + "=" * 60)
     print("Demo complete.")
     print("=" * 60)
+
+def _check(failures: list, name: str, actual: float, expected: float, tol: float) -> None:
+    """Record a verification check result."""
+    ok = abs(actual - expected) <= tol
+    status = "PASS" if ok else "FAIL"
+    print(f"  [{status}] {name}: actual={actual:.6g}, expected={expected:.6g}, tol={tol:.2g}")
+    if not ok:
+        failures.append(name)
+
+def _verify() -> None:
+    """Verify key outputs against the SKILL.md worked examples."""
+    failures: list = []
+
+    # SKILL.md Example 1: G-spread = 5.8% - 4.5% = 130bp
+    cash_flows = np.full(14, 29.0)
+    cash_flows[-1] += 1000.0
+    times = np.arange(1, 15) * 0.5
+    spot_rates = np.array([0.040, 0.041, 0.042, 0.043, 0.044, 0.045, 0.046,
+                           0.047, 0.048, 0.049, 0.050, 0.051, 0.052, 0.053])
+    spreads = CreditSpread(cash_flows, times, market_price=985.0, spot_rates=spot_rates)
+    _check(failures, "Ex1 G-spread", spreads.g_spread(0.058, 0.045), 0.013, 1e-12)
+
+    # Z-spread round trip: price the bond with a known 118bp spread, then recover it
+    known_spread = 0.0118
+    price = float(np.sum(cash_flows / (1.0 + spot_rates + known_spread) ** times))
+    roundtrip = CreditSpread(cash_flows, times, market_price=price, spot_rates=spot_rates)
+    _check(failures, "Z-spread round trip (118bp)", roundtrip.z_spread(), known_spread, 1e-8)
+
+    # SKILL.md Example 2: expected loss
+    _check(failures, "Ex2 expected loss", CreditRisk.expected_loss(0.02, 0.60, 1_000_000), 12000.0, 1e-9)
+    _check(failures, "recovery rate (LGD 60%)", CreditRisk.recovery_rate(0.60), 0.40, 1e-12)
+    _check(failures, "yield-to-worst", CreditRisk.yield_to_worst(0.058, [0.055, 0.052, 0.057]), 0.052, 1e-12)
+
+    if failures:
+        print(f"\n{len(failures)} check(s) FAILED: {', '.join(failures)}")
+        sys.exit(1)
+    print("\nAll checks passed.")
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description=__doc__.strip().splitlines()[2] if __doc__ else "",
+        epilog=(
+            "Provides: CreditSpread, CreditRisk, MigrationMatrix. "
+            "For programmatic use, import this module (fixed_income_corporate) instead of running it. "
+            "Bare run executes a demo whose printed values match the SKILL.md worked examples; "
+            "--verify asserts those values and exits nonzero on mismatch."
+        ),
+    )
+    parser.add_argument(
+        "--verify",
+        action="store_true",
+        help="run the verification checks against the SKILL.md worked-example values",
+    )
+    args = parser.parse_args()
+    if args.verify:
+        _verify()
+    else:
+        _demo()
+
+
+if __name__ == "__main__":
+    main()

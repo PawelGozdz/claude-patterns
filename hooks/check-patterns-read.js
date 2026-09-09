@@ -28,6 +28,7 @@
 const fs = require('fs');
 const path = require('path');
 const { isExempt, findRequiredPattern } = require('./lib/pattern-routing');
+const { isSubagent } = require('./lib/utils');
 
 const MODE = process.env.CHECK_PATTERNS_MODE || 'block';
 const LOOKBACK = parseInt(process.env.CHECK_PATTERNS_LOOKBACK || '15', 10);
@@ -131,7 +132,7 @@ function main() {
   // `agent_id` is present ONLY inside a subagent (documented PreToolUse field).
   // Subagent prompts already instruct pattern reads, and the verifier tier
   // catches drift after the fact. This supersedes the legacy worktree heuristic.
-  if (payload.agent_id) process.exit(0);
+  if (isSubagent(payload)) process.exit(0);
 
   const filePath = payload.tool_input?.file_path || payload.tool_input?.path;
   if (isExempt(filePath)) process.exit(0);

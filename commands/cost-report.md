@@ -76,7 +76,7 @@ After the table, add a heuristic check:
 ```
 ⚠️ Haiku share is 1% — branża (15-30%) is target.
    Consider downgrading bounded skills/agents to Haiku.
-   Candidates: state-reader, changelog-bot, Explore (agents),
+   Candidates: state-reader, Explore (agents),
    pm-status, task-tidy, claude-updates-watcher (skills delegating to them).
 ```
 

@@ -16,6 +16,7 @@
 
 const path = require('path');
 const fs = require('fs');
+const { execFileSync } = require('child_process');
 const { createRequire } = require('module');
 
 const URL = process.env.KR_QDRANT_URL || 'http://localhost:6401';
@@ -54,8 +55,18 @@ async function main() {
     const r = await client.count(COLLECTION, {
       filter: { must_not: [{ key: inv.must_not_match.key, match: { value: inv.must_not_match.value } }] },
     });
-    if (r.count === inv.expect_count) ok(inv.id, `${inv.desc} — ${r.count} naruszeń (oczekiwano ${inv.expect_count})`);
-    else fail(inv.id, `${inv.desc} — ${r.count} naruszeń, oczekiwano ${inv.expect_count}`);
+    if (r.count === inv.expect_count) { ok(inv.id, `${inv.desc} — ${r.count} naruszeń (oczekiwano ${inv.expect_count})`); continue; }
+    // 100% naruszeń to prawie nigdy uszkodzony seed — to podbita wersja biblioteki albo
+    // przemianowane pole. Bez tej podpowiedzi czytelnik dostaje „regresja w danych seedu"
+    // i sam musi skrolować Qdranta, żeby zobaczyć, że po prostu wyszło 0.31.1 (K78).
+    let hint = '';
+    if (r.count === total) {
+      const sample = await client.scroll(COLLECTION, { limit: 1, with_payload: true, with_vector: false });
+      const actual = sample?.points?.[0]?.payload?.[inv.must_not_match.key];
+      hint = ` — WSZYSTKIE punkty; wartość w kolekcji: ${JSON.stringify(actual)}, w golden.json: ${JSON.stringify(inv.must_not_match.value)}`
+           + ` (jeśli to świadomy bump biblioteki — zaktualizuj golden.json razem z exact_counts)`;
+    }
+    fail(inv.id, `${inv.desc} — ${r.count} naruszeń, oczekiwano ${inv.expect_count}${hint}`);
   }
 
   // 3) combines OR-match floor — dokładnie ten filtr, którego używa retrieve_examples({feature})
@@ -68,6 +79,27 @@ async function main() {
   }
 
   process.stdout.write(rows.join('\n') + '\n\n');
+
+  // Log trendu — ten sam kształt co ../retrieval/results.jsonl (data + metryki + gitSha).
+  // Bez niego wynik żyje tylko w scrollbacku terminala, a eval odpala się z reseedu,
+  // czyli w miejscu, którego nikt nie ogląda po fakcie (K78). Konsument: scripts/rag-freshness.mjs.
+  try {
+    const gitSha = execFileSync('git', ['rev-parse', '--short', 'HEAD'], { cwd: REPO, encoding: 'utf8' }).trim();
+    const entry = {
+      date: new Date().toISOString().slice(0, 10),
+      eval: 'library-reference-schema',
+      pass: failures === 0,
+      failures,
+      checks: rows.length,
+      total: total,
+      libVersion: golden.invariants.find((i) => i.id === 'INV-LIBVER')?.must_not_match?.value ?? null,
+      gitSha,
+    };
+    fs.appendFileSync(path.join(__dirname, 'results.jsonl'), JSON.stringify(entry) + '\n');
+  } catch (e) {
+    process.stderr.write(`⚠️  log trendu pominięty: ${e.message}\n`);
+  }
+
   if (failures === 0) {
     process.stdout.write(`✅ WSZYSTKIE SPRAWDZENIA OK (0/${rows.length} naruszeń)\n`);
     process.exit(0);

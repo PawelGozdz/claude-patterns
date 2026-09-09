@@ -53,7 +53,16 @@ mcp-server/knowledge-retriever/.knowledge/
 # Wyniki evala retrievalu — artefakt runtime z tests/flow-evals/retrieval/run.js,
 # nadpisywany przy każdym uruchomieniu (m.in. z scripts/reseed-patterns.sh).
 tests/flow-evals/retrieval/results.jsonl
+tests/flow-evals/library-reference-schema/results.jsonl
 
 # Lokalne nadpisania uprawnień/hooków tego repo jako projektu — nie dla współpracowników.
 # (globalny ~/.config/git/ignore chroni to na tej maszynie, ale nie na innych)
 .claude/settings.local.json
+
+# Worktrees created by agents running in isolation — per-session scratch, never shared.
+.claude/worktrees/
+
+# Placeholder for illustrative screenshots. The directory sat empty from 2026-07 to
+# 2026-09 and was removed; the entry stays so a stray screenshot dropped in during a
+# demo does not end up committed.
+screenshots/

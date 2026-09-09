@@ -18,7 +18,7 @@
 const fs = require("fs");
 const path = require("path");
 const { spawn } = require("child_process");
-const { readStdinJsonWithRaw } = require("./lib/utils");
+const { readStdinJsonWithRaw, isSubagent } = require("./lib/utils");
 
 async function main() {
   const { raw, parsed: input } = await readStdinJsonWithRaw();
@@ -30,7 +30,7 @@ async function main() {
 
   try {
     // Tylko narzędzie Workflow, tylko główna pętla (defensywny check agent_id).
-    if (input.tool_name !== "Workflow" || input.agent_id) {
+    if (input.tool_name !== "Workflow" || isSubagent(input)) {
       finish();
       return;
     }

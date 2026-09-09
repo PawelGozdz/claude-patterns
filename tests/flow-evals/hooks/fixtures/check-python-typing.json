@@ -1,0 +1,58 @@
+[
+  {
+    "name": "python-typing-missing-return-warns",
+    "hook": "check-python-typing.js",
+    "payload": {
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "src/domain/pricing.py"
+      }
+    },
+    "setup": {
+      "cwd": true,
+      "files": {
+        "python-hooks.json": "{\"layerPath\": \"src\", \"purity\": {\"noInfraImportLayers\": [\"domain\", \"services\"], \"forbiddenImports\": [\"fastapi\", \"sqlalchemy\", \"alembic\", \"redis\", \"celery\", \"httpx\", \"requests\", \"boto3\", \"aiohttp\"]}, \"typing\": {\"checkUntyped\": {\"enabled\": true, \"filePatterns\": [\"**/domain/**/*.py\", \"**/services/**/*.py\", \"**/api/**/*.py\"]}}, \"skipPatterns\": [\"test_\", \"_test.py\", \"conftest.py\", \"__pycache__\", \".venv\"]}",
+        "src/domain/pricing.py": "def compute(a, b):\n    return a + b\n"
+      }
+    },
+    "expect": "pass",
+    "expect_stderr": "return type"
+  },
+  {
+    "name": "python-typing-annotated-silent",
+    "hook": "check-python-typing.js",
+    "payload": {
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "src/domain/pricing.py"
+      }
+    },
+    "setup": {
+      "cwd": true,
+      "files": {
+        "python-hooks.json": "{\"layerPath\": \"src\", \"purity\": {\"noInfraImportLayers\": [\"domain\", \"services\"], \"forbiddenImports\": [\"fastapi\", \"sqlalchemy\", \"alembic\", \"redis\", \"celery\", \"httpx\", \"requests\", \"boto3\", \"aiohttp\"]}, \"typing\": {\"checkUntyped\": {\"enabled\": true, \"filePatterns\": [\"**/domain/**/*.py\", \"**/services/**/*.py\", \"**/api/**/*.py\"]}}, \"skipPatterns\": [\"test_\", \"_test.py\", \"conftest.py\", \"__pycache__\", \".venv\"]}",
+        "src/domain/pricing.py": "def compute(a: int, b: int) -> int:\n    return a + b\n"
+      }
+    },
+    "expect": "pass",
+    "expect_silent": true
+  },
+  {
+    "name": "python-typing-no-config-silent",
+    "hook": "check-python-typing.js",
+    "payload": {
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "src/domain/pricing.py"
+      }
+    },
+    "setup": {
+      "cwd": true,
+      "files": {
+        "src/domain/pricing.py": "def compute(a, b):\n    return a + b\n"
+      }
+    },
+    "expect": "pass",
+    "expect_silent": true
+  }
+]

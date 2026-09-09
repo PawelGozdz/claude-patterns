@@ -2,6 +2,8 @@
 
 **Tags**: "api:tests"
 
+**Layer**: Testing
+
 ## 🎯 Problem
 
 **Test suites need balanced distribution between unit, integration, and E2E tests for fast feedback and comprehensive coverage.**
@@ -199,7 +201,7 @@ describe('CreateEventHandler', () => {
 - `src/contexts/auth/application/commands/__tests__/*.spec.ts` - L2 Handler integration tests
 - `test/app/api/auth/*.e2e.spec.ts` - L3 E2E API tests
 
-## 🎯 When to Use
+## When to Use 🎯
 
 **Use Testing Pyramid Pattern for:**
 

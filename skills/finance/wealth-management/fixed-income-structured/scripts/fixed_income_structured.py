@@ -12,6 +12,8 @@ speed.
 Part of Layer 2 (Asset Classes) in the finance skills framework.
 """
 
+import argparse
+import sys
 import numpy as np
 
 
@@ -368,7 +370,7 @@ class StructuredAnalytics:
         }
 
 
-if __name__ == "__main__":
+def _demo() -> None:
     # ----------------------------------------------------------------
     # Demo: Structured products analysis
     # ----------------------------------------------------------------
@@ -459,3 +461,63 @@ if __name__ == "__main__":
     print("\n" + "=" * 60)
     print("Demo complete.")
     print("=" * 60)
+
+def _check(failures: list, name: str, actual: float, expected: float, tol: float) -> None:
+    """Record a verification check result."""
+    ok = abs(actual - expected) <= tol
+    status = "PASS" if ok else "FAIL"
+    print(f"  [{status}] {name}: actual={actual:.6g}, expected={expected:.6g}, tol={tol:.2g}")
+    if not ok:
+        failures.append(name)
+
+def _verify() -> None:
+    """Verify key outputs against the SKILL.md worked examples."""
+    failures: list = []
+
+    # SKILL.md Example 1: 150% PSA, month 20
+    _check(failures, "Ex1 CPR (month 20, 150% PSA)", PrepaymentModel.psa_cpr(20, 150), 0.06, 1e-12)
+    _check(failures, "Ex1 SMM (month 20, 150% PSA)", PrepaymentModel.psa_smm(20, 150), 0.00514, 1e-5)
+
+    # CPR/SMM round trip
+    smm = PrepaymentModel.smm_from_cpr(0.06)
+    _check(failures, "CPR->SMM->CPR round trip", PrepaymentModel.cpr_from_smm(smm), 0.06, 1e-12)
+
+    # PSA plateau: 100% PSA after month 30 is 6% CPR
+    _check(failures, "100% PSA plateau", PrepaymentModel.psa_cpr(60, 100), 0.06, 1e-12)
+
+    # WAL sensitivity is monotonically decreasing in PSA speed
+    sens = StructuredAnalytics.wal_sensitivity(1_000_000.0, 0.06, 360,
+                                               np.array([50.0, 150.0, 300.0]))
+    wals = sens["wal_years"]
+    _check(failures, "WAL decreases with faster prepayment",
+           1.0 if wals[0] > wals[1] > wals[2] else 0.0, 1.0, 0)
+
+    if failures:
+        print(f"\n{len(failures)} check(s) FAILED: {', '.join(failures)}")
+        sys.exit(1)
+    print("\nAll checks passed.")
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description=__doc__.strip().splitlines()[2] if __doc__ else "",
+        epilog=(
+            "Provides: PrepaymentModel, MortgageCashFlow, StructuredAnalytics. "
+            "For programmatic use, import this module (fixed_income_structured) instead of running it. "
+            "Bare run executes a demo whose printed values match the SKILL.md worked examples; "
+            "--verify asserts those values and exits nonzero on mismatch."
+        ),
+    )
+    parser.add_argument(
+        "--verify",
+        action="store_true",
+        help="run the verification checks against the SKILL.md worked-example values",
+    )
+    args = parser.parse_args()
+    if args.verify:
+        _verify()
+    else:
+        _demo()
+
+
+if __name__ == "__main__":
+    main()

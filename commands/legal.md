@@ -23,6 +23,12 @@ disallowedTools: Write, Edit, MultiEdit, Bash, NotebookEdit
 **ZERO IMPLEMENTATION** — coordinates legal analysis through the
 `@legal-strategist` agent and the 12 vendored skills in `skills/legal/`.
 
+> **Narzędzia**: ten koordynator sam nie uruchamia niczego w powłoce — stąd `Bash`
+> w `disallowedTools`. Zakaz dotyczy WYŁĄCZNIE tej komendy i **nie propaguje się do
+> subagentów**: `@legal-strategist` ma własny zestaw narzędzi ze swojej definicji, `Bash`
+> włącznie, i to on uruchamia zvendorowane skrypty `scripts/*.py`. Nie usuwaj `Bash`
+> z agenta „dla spójności" — złamiesz przetwarzanie dokumentów (docx/pdf/xlsx) w skillach prawnych.
+
 ## What This Does
 
 1. Reads the project legal context — `.agents/legal-context.md`, a w drugiej

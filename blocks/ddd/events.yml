@@ -5,8 +5,10 @@
 # Keyword `transaction` celowo zachowany przy outboxie — w legacy
 # _stack-defaults/nestjs-ddd.yml grupa persystencyjna [repository, migration,
 # schema, transaction] ciągnęła outbox; po dekompozycji `transaction` nadal go
-# ciągnie (przez ten blok), a czysto persystencyjne keywordy już nie (zamierzona
-# różnica, patrz raport blocks-equivalence-check).
+# ciągnie (przez ten blok), a czysto persystencyjne keywordy już nie. Zamierzona
+# różnica względem tamtej grupy — opisana tu, bo `_stack-defaults/` i skrypt,
+# który to kiedyś porównywał (`blocks-equivalence-check.mjs`), zostały usunięte
+# razem z `presets/` (`af4bcd2`, 2026-08-13).
 name: ddd/events
 # Oś architektury, ale NIE wnosi własnych warstw do orchestrate.layers —
 # warstwy wnosi wyłącznie ddd/core. axis: architecture tu nie oznacza

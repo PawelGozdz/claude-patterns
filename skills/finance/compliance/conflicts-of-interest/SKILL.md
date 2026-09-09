@@ -5,27 +5,7 @@ description: "Identify, disclose, and mitigate conflicts of interest in advisory
 
 # Conflicts of Interest
 
-## Purpose
-Identify, disclose, and mitigate conflicts of interest that arise in advisory and brokerage relationships. This is a cross-cutting compliance topic referenced by nearly every other regulatory skill, covering compensation-based conflicts, proprietary product incentives, principal trading, soft dollar arrangements, pay-to-play restrictions, gifts and entertainment limits, personal trading obligations, and the mitigation hierarchy that governs how firms and individuals must address conflicts under both fiduciary and Reg BI standards.
-
-## Layer
-9 — Compliance & Regulatory Guidance
-
-## Direction
-prospective
-
-## When to Use
-- Evaluating whether a recommendation or transaction involves a material conflict of interest
-- Assessing whether compensation structures create incentives that may not align with client interests
-- Determining disclosure obligations for conflicts in advisory or brokerage accounts
-- Reviewing whether a firm's conflict-mitigation policies satisfy Reg BI or fiduciary duty requirements
-- Analyzing proprietary product recommendations and affiliated product preferences
-- Evaluating soft dollar arrangements and best execution obligations
-- Reviewing pay-to-play compliance for government entity advisory mandates
-- Assessing gifts, entertainment, or non-cash compensation under FINRA rules
-- Designing or auditing a code of ethics and personal trading policies for access persons
-- Evaluating fair allocation of investment opportunities across client accounts
-- Reviewing outside business activities for potential conflicts
+Regulatory status current as of June 2026 — verify effective dates, dollar thresholds, and pending rulemakings against current SEC/FINRA/FinCEN sources before advising.
 
 ## Core Concepts
 
@@ -63,12 +43,12 @@ Soft dollar arrangements involve directing client brokerage commissions to broke
 SEC Rule 206(4)-5 under the Investment Advisers Act restricts political contributions by investment advisers and their covered associates to government officials who can influence the selection of advisers for government entity clients (such as public pension funds and state-managed investment pools).
 
 - **Two-year look-back:** An adviser is prohibited from receiving compensation for advisory services to a government entity for two years after the adviser or any covered associate makes a political contribution to an official of that government entity.
-- **De minimis exception:** Contributions of $350 or less per election to officials for whom the contributor is entitled to vote, and $150 or less per election for officials for whom the contributor is not entitled to vote, are exempt from the two-year ban.
+- **De minimis exception:** Contributions of $350 or less per election to officials for whom the contributor is entitled to vote, and $150 or less per election for officials for whom the contributor is not entitled to vote, are exempt from the two-year ban ($350/$150 as set in Rule 206(4)-5 and unchanged as of 2026; not inflation-indexed).
 - **Covered associates:** Include any employee or officer of the adviser who solicits a government entity, any person who supervises such a solicitor (directly or indirectly), and all executive officers of the adviser.
 - **Third-party solicitation:** Advisers are prohibited from paying third parties to solicit government entity clients unless the solicitor is a regulated person (registered BD or registered IA) subject to equivalent pay-to-play restrictions.
 
 ### Gifts and Entertainment
-- **FINRA Rule 3220:** Limits gifts to $100 per person per year from a member or associated person to any person where the gift is in relation to the business of the employer of the recipient. Exceptions exist for personal gifts unrelated to business and promotional items of nominal value. Firms must keep records of all gifts given.
+- **FINRA Rule 3220:** Limits gifts to $100 per person per year (the limit as of 2026 — not inflation-indexed, and FINRA has proposed raising it; verify the current figure) from a member or associated person to any person where the gift is in relation to the business of the employer of the recipient. Exceptions exist for personal gifts unrelated to business and promotional items of nominal value. Firms must keep records of all gifts given.
 - **SEC expectations for RIAs:** No specific dollar limit, but advisers must ensure that gifts and entertainment do not create conflicts of interest, do not compromise the adviser's fiduciary duty, and are consistent with the firm's code of ethics. Regulators scrutinize lavish entertainment that could improperly influence adviser recommendations.
 - **Non-cash compensation rules:** FINRA Rules 2310 (variable annuities), 2320 (variable life), and 5110 (public offerings) restrict non-cash compensation to: (1) gifts under $100/year, (2) an occasional meal, event ticket, or entertainment not conditioned on sales, (3) payment for training or education meetings subject to specific conditions, and (4) internal firm-sponsored non-cash compensation arrangements that do not favor one product over another.
 
@@ -142,9 +122,9 @@ The regulatory expectation for addressing conflicts follows a clear hierarchy:
 - Treating outside business activities as a disclosure-only obligation without assessing whether they create substantive conflicts that require mitigation
 
 ## Cross-References
-- **reg-bi** (Layer 9): Regulation Best Interest's four component obligations, including the Conflict of Interest Obligation that directly governs BD conflict management
-- **fiduciary-standards** (Layer 9): The IA fiduciary framework — duty of care and duty of loyalty — that underlies all conflict-of-interest obligations for advisers
-- **fee-disclosure** (Layer 9): Disclosure requirements for fees and compensation that intersect with conflict identification and communication
-- **sales-practices** (Layer 9): Suitability, churning, and selling-away rules that address conduct flowing from unmanaged conflicts
-- **client-disclosures** (Layer 9): Form ADV, Form CRS, and other disclosure documents that serve as the primary vehicles for communicating conflicts to clients
-- **investment-suitability** (Layer 9): Suitability and best interest analysis that must account for conflicts when evaluating whether a recommendation is appropriate
+- **reg-bi** (compliance plugin): Regulation Best Interest's four component obligations, including the Conflict of Interest Obligation that directly governs BD conflict management
+- **fiduciary-standards** (compliance plugin): The IA fiduciary framework — duty of care and duty of loyalty — that underlies all conflict-of-interest obligations for advisers
+- **fee-disclosure** (compliance plugin): Disclosure requirements for fees and compensation that intersect with conflict identification and communication
+- **sales-practices** (compliance plugin): Suitability, churning, and selling-away rules that address conduct flowing from unmanaged conflicts
+- **client-disclosures** (compliance plugin): Form ADV, Form CRS, and other disclosure documents that serve as the primary vehicles for communicating conflicts to clients
+- **investment-suitability** (compliance plugin): Suitability and best interest analysis that must account for conflicts when evaluating whether a recommendation is appropriate

@@ -4,6 +4,9 @@
 **Created**: 2026-01-06
 **Updated**: 2026-07-12
 **Tags**: "api:tests:seeding"
+**Level**: exhaustive
+**Layer**: Testing
+**Status**: production
 
 **Purpose**: Unified guide for optimal test data seeding in Project Hybrid Fixture System
 **Principle**: **"Fixture what you DON'T test, real flow for what you DO test"**
@@ -1721,13 +1724,13 @@ fixture path above.
 ## References
 
 **ADRs**:
-- [ADR-0035: Specification-First Testing Strategy](docs/adr/0035-specification-first-testing-strategy.md)
-- [ADR-0061: Hybrid Fixture System](docs/adr/0061-hybrid-fixture-system-test-data-seeding.md)
+- ADR-0035: Specification-First Testing Strategy — `docs/adr/0035-specification-first-testing-strategy.md` in the consuming project
+- ADR-0061: Hybrid Fixture System — `docs/adr/0061-hybrid-fixture-system-test-data-seeding.md` in the consuming project
 
 **Patterns**:
-- [Testing Pyramid Pattern](.claude/knowledge/patterns/testing/testing-pyramid-pattern.md)
-- [Aggregate Pattern](.claude/knowledge/patterns/domain/aggregate-pattern.md)
-- [Domain Event Pattern](.claude/knowledge/patterns/domain/domain-event-pattern.md)
+- [Testing Pyramid Pattern](./testing-pyramid-pattern.md)
+- [Aggregate Pattern](../domain/aggregate-pattern.md)
+- [Domain Event Pattern](../domain/domain-event-pattern.md)
 - [Domain-Colocated Fixture Mother Pattern](./domain-colocated-fixture-mother-pattern.md) — canonical replacement for `UserIdentityFixture.createAsync()`/`createSync()` as of `TS-TEST-FIXTURE-001..006` (2026-07-10/12)
 - [Typed Projection Row-Builder Pattern](./typed-projection-row-builder-pattern.md) — Category 2 (cross-context projection tables) detail
 
@@ -1739,7 +1742,7 @@ fixture path above.
 - `src/app/api/auth/auth-core.e2e.spec.ts`
 
 **E2E Testing Guide**:
-- [E2E Testing Guide](test/shared/E2E_TESTING_GUIDE.md)
+- E2E Testing Guide — `test/shared/E2E_TESTING_GUIDE.md` in the consuming project
 
 ---
 

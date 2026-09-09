@@ -1,31 +1,11 @@
 ---
 name: regulatory-reporting
-description: "Guide regulatory filing obligations and deadlines for investment advisers, broker-dealers, and large traders. Use when the user asks about Form PF filing thresholds, 13F institutional holdings reports, 13H large trader filings, Form ADV amendment timing, FOCUS report preparation, blue sheet requests, CAT reporting infrastructure, or FINRA short interest and TRACE reporting. Also trigger when users mention 'filing deadline calendar', 'do we need to file Form PF', 'crossed the $100M 13F threshold', 'annual updating amendment', 'CAT clock synchronization', 'how to respond to a blue sheet request', 'FOCUS report errors', or ask which regulatory filings a firm must make and when."
+description: "Guide regulatory filing mechanics and deadlines for investment advisers, broker-dealers, and large traders — which forms to file, where, and by when. Use when the user asks about Form PF filing thresholds, 13F institutional holdings reports, 13H large trader filings, Form ADV amendment filing timing (including the annual updating amendment filed via IARD), FOCUS report preparation, blue sheet requests, CAT reporting infrastructure, or FINRA short interest and TRACE reporting. Also trigger when users mention 'filing deadline calendar', 'do we need to file Form PF', 'crossed the $100M 13F threshold', 'CAT clock synchronization', 'how to respond to a blue sheet request', or 'FOCUS report errors'. (For what the ADV brochure must contain and when it must be delivered to clients, use client-disclosures.)"
 ---
 
 # Regulatory Reporting
 
-## Purpose
-Guide the understanding and execution of regulatory filing obligations for investment advisers, broker-dealers, and large traders. This skill covers Form PF, 13F and 13H filings, Form ADV amendments, FOCUS reports, electronic blue sheets, CAT (Consolidated Audit Trail) reporting, SAR/CTR filing mechanics, and FINRA reporting requirements — enabling a user or agent to design compliant reporting workflows, meet filing deadlines, and avoid enforcement exposure from late, incomplete, or erroneous submissions.
-
-## Layer
-9 — Compliance & Regulatory Guidance
-
-## Direction
-prospective
-
-## When to Use
-- Determining which regulatory filings a firm must make and on what schedule
-- Setting up compliance calendars for recurring filing obligations
-- Designing operational workflows for Form PF, 13F, 13H, or FOCUS report preparation
-- Assessing whether a firm qualifies as a large private fund adviser triggering quarterly Form PF filing
-- Evaluating whether an institutional investment manager has crossed the $100M threshold for 13F reporting
-- Identifying when Form ADV amendments must be filed promptly versus at the annual updating amendment
-- Responding to SEC blue sheet requests or remediating CAT reporting errors
-- Building CAT reporting infrastructure and ensuring clock synchronization compliance
-- Understanding FINRA reporting obligations for short interest, TRACE, and trade reporting
-- Preparing for regulatory examinations focused on filing timeliness and accuracy
-- Establishing error correction and remediation procedures for reporting failures
+Regulatory status current as of June 2026 — verify effective dates, dollar thresholds, and pending rulemakings against current SEC/FINRA/FinCEN sources before advising.
 
 ## Core Concepts
 
@@ -49,7 +29,7 @@ Registered investment advisers must keep Form ADV current through two amendment 
 **Form ADV-W (Withdrawal)** — An adviser withdrawing from SEC registration files Form ADV-W via IARD. Partial withdrawal (from specific states) or full withdrawal from SEC registration. A withdrawal filing becomes effective 60 days after filing unless the SEC institutes proceedings. Firms must maintain books and records for the applicable retention periods after withdrawal.
 
 ### Form PF (Private Fund Reporting)
-SEC Form PF, required under Section 204(b) of the Advisers Act and Rule 204(b)-1, applies to SEC-registered investment advisers that manage one or more private funds.
+SEC Form PF, required under Section 204(b) of the Advisers Act and Rule 204(b)-1, applies to SEC-registered investment advisers that manage one or more private funds. (The dollar thresholds below are set by rule and are not inflation-indexed; unchanged as of 2026.)
 
 **Filing thresholds and frequency:**
 - **Large private fund advisers to hedge funds** — advisers with at least $1.5 billion in hedge fund AUM must file quarterly within 60 days of quarter end. They report on each qualifying hedge fund individually.
@@ -63,10 +43,10 @@ SEC Form PF, required under Section 204(b) of the Advisers Act and Rule 204(b)-1
 - **Large hedge fund advisers** must report within 72 hours of: extraordinary investment losses (20% or more of a reporting fund's NAV over a rolling 10-business-day period), significant margin and default events (failure to meet a margin call that exceeds the reporting fund's NAV by 5% or more), counterparty defaults, material changes in prime broker relationships, changes in unencumbered cash falling below a reporting fund's requirement, and operations events (significant disruption to key operations).
 - **All Form PF filers for private equity** must report within 60 days of: GP-led secondary transactions, adviser-led fund restructurings, removal of a fund's GP, election to terminate a fund's investment period, and election to terminate a fund.
 
-Filing is through the SEC's Private Fund Reporting Depository (PFRD) on EDGAR.
+Filing is through the Private Fund Reporting Depository (PFRD), an electronic filing system operated by FINRA on the IARD infrastructure — Form PF is not filed on EDGAR. A filing fee applies to each initial and update filing.
 
 ### 13F Filings (Institutional Holdings)
-SEC Rule 13f-1 under Section 13(f) of the Securities Exchange Act of 1934 requires institutional investment managers exercising investment discretion over $100 million or more in 13(f) securities to file Form 13F quarterly.
+SEC Rule 13f-1 under Section 13(f) of the Securities Exchange Act of 1934 requires institutional investment managers exercising investment discretion over $100 million or more in 13(f) securities to file Form 13F quarterly. (The $100 million threshold is statutory, set in 1975 and not inflation-indexed; it remains unchanged as of 2026.)
 
 **Who must file:** Any "institutional investment manager" — a broad category that includes investment advisers, banks, insurance companies, broker-dealers, pension funds, and corporations — that exercises investment discretion over the threshold amount. The threshold is measured as of the last trading day of any month in the calendar year. Once crossed, the manager must file for every quarter of that calendar year and the following calendar year.
 
@@ -86,6 +66,8 @@ SEC Rule 13h-1 under Section 13(h) of the Exchange Act requires "large traders" 
 **Large trader thresholds:** A person (including a firm) is a "large trader" if their transactions in NMS securities equal or exceed:
 - **2 million shares or $20 million in fair market value** during any single calendar day, or
 - **20 million shares or $200 million in fair market value** during any calendar month.
+
+(The 13H identifying-activity thresholds are fixed by Rule 13h-1 and are not inflation-indexed; unchanged as of 2026.)
 
 Transactions across all accounts over which the person exercises investment discretion are aggregated. The thresholds apply to both purchases and sales.
 
@@ -128,7 +110,7 @@ SEC Rule 17a-25 requires broker-dealers to submit, upon SEC request, standardize
 
 **Timeliness:** Broker-dealers must respond within the timeframe specified in the request, typically 10 business days. Firms should have systems capable of extracting and formatting blue sheet data promptly.
 
-**Relationship to CAT:** The Consolidated Audit Trail (CAT) has largely superseded blue sheets for routine regulatory surveillance purposes. FINRA and the SEC can now access much of the same information through CAT data. However, the SEC continues to use blue sheet requests for specific enforcement investigations, particularly when CAT data is incomplete or when historical data predating CAT implementation is needed. The SEC has announced plans to retire the Electronic Blue Sheet system as CAT reaches full maturity, but as of the current date, both systems remain in use.
+**Relationship to CAT:** The Consolidated Audit Trail (CAT) supplies much of the same information for routine regulatory surveillance of NMS equities and listed options. However, as of June 2026 no retirement timeline for the Electronic Blue Sheet system has been announced: data-attribute gaps between EBS and CAT remain, CAT does not cover fixed income, and the SEC continues to issue blue sheet requests in enforcement investigations (including for periods predating CAT). Plan for both systems to coexist, and verify current status before decommissioning any EBS capability.
 
 **Enforcement for non-compliance:** Failure to respond accurately or timely to blue sheet requests can result in SEC enforcement action. The SEC has brought cases against firms for submitting inaccurate blue sheet data, including incorrect customer identification or missing transactions.
 
@@ -199,29 +181,7 @@ Trade reports must be submitted within 10 seconds of execution during market hou
 **Regulatory filings and notifications** — FINRA members must promptly notify FINRA of certain events under FINRA Rule 4530, including: violations of securities laws, written customer complaints, regulatory actions by other agencies, criminal charges against associated persons, and civil litigation related to the firm's investment banking or securities business. Annual statistical reports of customer complaints are also required.
 
 ### Regulatory Reporting Calendar
-
-| Filing | Who Must File | Frequency | Deadline | Filed With |
-|--------|--------------|-----------|----------|------------|
-| Form ADV (annual) | SEC-registered IAs | Annually | 90 days after fiscal year end | SEC via IARD |
-| Form ADV (interim) | SEC-registered IAs | As needed | Promptly (within 30 days of material change) | SEC via IARD |
-| Form PF (small filer) | IAs with $150M+ private fund AUM | Annually | 120 days after fiscal year end | SEC via PFRD/EDGAR |
-| Form PF (large hedge) | IAs with $1.5B+ hedge fund AUM | Quarterly | 60 days after quarter end | SEC via PFRD/EDGAR |
-| Form PF (large liquidity) | IAs with $1B+ liquidity fund AUM | Quarterly | 15 days after quarter end | SEC via PFRD/EDGAR |
-| Form PF (large PE) | IAs with $2B+ PE fund AUM | Annually | 120 days after fiscal year end | SEC via PFRD/EDGAR |
-| Form PF (current report) | Large hedge fund advisers | Event-driven | 72 hours after triggering event | SEC via PFRD/EDGAR |
-| Form 13F | Managers with $100M+ in 13(f) securities | Quarterly | 45 days after quarter end | SEC via EDGAR |
-| Form 13H (initial) | Large traders | Once | Promptly after threshold is met | SEC via EDGAR |
-| Form 13H (annual) | Large traders | Annually | 45 days after calendar year end | SEC via EDGAR |
-| FOCUS Part II | Introducing BDs | Quarterly | 17 business days after quarter end | FINRA |
-| FOCUS Part IIA | Carrying/clearing BDs | Monthly | 17 business days after month end | FINRA |
-| CAT (equities/options) | BD members, exchanges | Daily | 8:00 a.m. ET on T+1 | FINRA CAT |
-| CAIS (customer data) | BD members | Ongoing | Per CAT NMS Plan schedule | FINRA CAT |
-| Short interest | FINRA members | Semi-monthly | 6:00 p.m. ET, 2nd business day after settlement date | FINRA |
-| TRACE (fixed income) | FINRA members | Per transaction | Within 15 minutes of execution | FINRA |
-| OTC equity trade reports | FINRA members | Per transaction | Within 10 seconds of execution | FINRA (TRF/ORF/ADF) |
-| SARs | BDs, banks, covered IAs | Event-driven | 30 days after detection (60 if no suspect) | FinCEN via BSA E-Filing |
-| CTRs | BDs, banks | Event-driven | 15 days after transaction | FinCEN via BSA E-Filing |
-| FINRA Rule 4530 | FINRA members | Event-driven | 30 calendar days of the event | FINRA |
+For the consolidated filing calendar (every filing, filer, frequency, deadline, and venue in one table), load `references/filing-calendar.md` when building a compliance calendar or checking a specific deadline.
 
 ## Worked Examples
 
@@ -234,7 +194,7 @@ Trade reports must be submitted within 10 seconds of execution during market hou
 - The firm's first Form PF is due within 120 days of its first fiscal year end after becoming obligated — meaning by April 30, 2026, for the fiscal year ending December 31, 2025.
 - The firm must also transition state notice filings to the SEC IARD system and ensure it withdraws from any state registrations that are no longer required.
 **Analysis:**
-The firm should establish the following operational timeline: (1) File Form ADV with the SEC via IARD concurrent with the registration application, ensuring all items are completed accurately, including Schedule D for the private fund. (2) File Form CRS with the SEC and deliver to all existing clients. (3) Register for access to the Private Fund Reporting Depository on EDGAR for Form PF filing. (4) Assign compliance personnel responsible for Form PF preparation and identify data sources — NAV, leverage, asset class exposure, investor concentration, counterparty exposure — that must be compiled from the fund administrator, prime broker, and internal records. (5) Conduct a dry run of the Form PF filing process before the first filing deadline to identify data gaps. (6) Set the compliance calendar: first annual Form PF due by April 30, 2026; first annual ADV updating amendment due by March 31, 2026; Form CRS must be reviewed and updated at least annually. (7) Monitor whether hedge fund AUM approaches $1.5 billion, which would trigger quarterly filing and significantly more detailed reporting. The firm should budget for the operational burden of Form PF — smaller private fund advisers typically spend 20-40 hours on each annual filing, and the data aggregation process requires coordination across multiple service providers.
+The firm should establish the following operational timeline: (1) File Form ADV with the SEC via IARD concurrent with the registration application, ensuring all items are completed accurately, including Schedule D for the private fund. (2) File Form CRS with the SEC and deliver to all existing clients. (3) Establish access to the FINRA-operated Private Fund Reporting Depository (PFRD) for Form PF filing. (4) Assign compliance personnel responsible for Form PF preparation and identify data sources — NAV, leverage, asset class exposure, investor concentration, counterparty exposure — that must be compiled from the fund administrator, prime broker, and internal records. (5) Conduct a dry run of the Form PF filing process before the first filing deadline to identify data gaps. (6) Set the compliance calendar: first annual Form PF due by April 30, 2026; first annual ADV updating amendment due by March 31, 2026; Form CRS must be reviewed and updated at least annually. (7) Monitor whether hedge fund AUM approaches $1.5 billion, which would trigger quarterly filing and significantly more detailed reporting. The firm should budget for the operational burden of Form PF — smaller private fund advisers typically spend 20-40 hours on each annual filing, and the data aggregation process requires coordination across multiple service providers.
 
 ### Example 2: Broker-dealer FOCUS report reveals net capital deficiency
 **Scenario:** A carrying broker-dealer files its monthly FOCUS Part IIA report for January 2026. The net capital computation shows that the firm's net capital has fallen below its minimum required net capital by $1.2 million, driven by unexpected trading losses in a proprietary account and an increase in customer debit balances that raised the firm's required net capital under the alternative method (SEC Rule 15c3-1(a)(1)(ii)). The firm's minimum requirement is $250,000, but its required net capital under the alternative method is $4.5 million, and actual net capital is $3.3 million.
@@ -274,8 +234,8 @@ The firm must address three parallel workstreams: (1) **Blue sheet response** �
 - Neglecting to file FINRA Rule 4530 event notifications within 30 calendar days, particularly for written customer complaints and associated person disciplinary events
 
 ## Cross-References
-- **anti-money-laundering** (Layer 9): SAR and CTR filing mechanics are regulatory reporting obligations; the substantive AML framework (detection, investigation, escalation) feeds into the reporting workflow covered here
-- **client-disclosures** (Layer 9): Form ADV amendments trigger delivery obligations to existing clients — the disclosure skill covers what must be delivered and when, while this skill covers the filing mechanics
-- **books-and-records** (Layer 9): Records retention requirements underpin all regulatory reporting; accurate books and records are the source data for FOCUS reports, 13F filings, Form PF, and CAT submissions
-- **know-your-customer** (Layer 9): CAT CAIS data and blue sheet responses require accurate customer identification information sourced from the firm's KYC and CIP processes
-- **fee-disclosure** (Layer 9): Form ADV amendments reflecting changes to fee schedules are both a filing obligation (covered here) and a fee disclosure requirement (covered in fee-disclosure)
+- **anti-money-laundering** (compliance plugin): SAR and CTR filing mechanics are regulatory reporting obligations; the substantive AML framework (detection, investigation, escalation) feeds into the reporting workflow covered here
+- **client-disclosures** (compliance plugin): Form ADV amendments trigger delivery obligations to existing clients — the disclosure skill covers what must be delivered and when, while this skill covers the filing mechanics
+- **books-and-records** (compliance plugin): Records retention requirements underpin all regulatory reporting; accurate books and records are the source data for FOCUS reports, 13F filings, Form PF, and CAT submissions
+- **know-your-customer** (compliance plugin): CAT CAIS data and blue sheet responses require accurate customer identification information sourced from the firm's KYC and CIP processes
+- **fee-disclosure** (compliance plugin): Form ADV amendments reflecting changes to fee schedules are both a filing obligation (covered here) and a fee disclosure requirement (covered in fee-disclosure)

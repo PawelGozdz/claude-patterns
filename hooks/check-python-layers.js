@@ -16,97 +16,47 @@
  * Always warns only (exit 0) — never blocks the agent.
  */
 
-const fs = require('fs');
-const path = require('path');
-const { findPythonConfig } = require('./lib/python-config');
-const { readStdinJsonWithRaw } = require('./lib/utils');
+const { runRuleScanner, COMMENT_LINE_PY } = require('./lib/rule-scanner');
 
 // Python import patterns
 const PY_IMPORT = /^\s*(?:import\s+(\S+)|from\s+(\S+)\s+import)/;
-const COMMENT_LINE = /^\s*#/;
 
-async function main() {
-  const { raw, parsed: input } = await readStdinJsonWithRaw();
-
-  try {
-    const filePath = input.tool_input?.file_path;
-
-    if (!filePath || !filePath.endsWith('.py')) {
-      process.stdout.write(raw);
-      process.exit(0);
-    }
-
-    // Load project config — no config means no checks
-    const loaded = findPythonConfig(filePath);
-    if (!loaded || !loaded.config.purity) {
-      process.stdout.write(raw);
-      process.exit(0);
-    }
-
-    const { config } = loaded;
-
-    // Skip test/generated files
-    const skipPatterns = config.skipPatterns || ['test_', '_test.py', 'conftest.py', '__pycache__', '.venv'];
-    const basename = path.basename(filePath);
-    if (skipPatterns.some((pat) => basename.startsWith(pat) || basename.endsWith(pat) || filePath.includes(pat))) {
-      process.stdout.write(raw);
-      process.exit(0);
-    }
-
-    const purity = config.purity;
-    const normalized = filePath.replace(/\\/g, '/');
-
-    // Determine which layer this file belongs to
-    const noInfraLayers = purity.noInfraImportLayers || [];
+runRuleScanner({
+  extensions: '.py',
+  configFinder: 'python',
+  section: (config) => config.purity || null,
+  skipStyle: 'python',
+  // Warstwę pliku rozpoznajemy po fragmencie ścieżki `/warstwa/`; plik spoza
+  // warstw czystych nie jest w ogóle sprawdzany.
+  scope: ({ normalized, section }) =>
+    (section.noInfraImportLayers || []).some((layer) => new RegExp(`/${layer}/`).test(normalized)),
+  // Własny skaner: reguła dotyczy TOP-LEVEL nazwy pakietu z importu
+  // (`sqlalchemy.orm` → `sqlalchemy`), a nie dowolnego trafienia w linii.
+  scan: ({ lines, basename, normalized, section: purity }) => {
     const forbiddenImports = purity.forbiddenImports || [];
+    if (forbiddenImports.length === 0) return;
 
-    const fileLayer = noInfraLayers.find((layer) =>
+    const fileLayer = (purity.noInfraImportLayers || []).find((layer) =>
       new RegExp(`/${layer}/`).test(normalized),
     );
 
-    if (!fileLayer) {
-      process.stdout.write(raw);
-      process.exit(0);
-    }
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      if (COMMENT_LINE_PY.test(line)) continue;
 
-    // Read the file
-    const resolvedPath = path.resolve(filePath);
-    if (!fs.existsSync(resolvedPath)) {
-      process.stdout.write(raw);
-      process.exit(0);
-    }
+      const importMatch = line.match(PY_IMPORT);
+      if (!importMatch) continue;
 
-    const content = fs.readFileSync(resolvedPath, 'utf8');
-    const lines = content.split('\n');
+      const importModule = importMatch[1] || importMatch[2];
+      if (!importModule) continue;
 
-    // Check: No forbidden imports in domain/services layers
-    if (forbiddenImports.length > 0) {
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
-        if (COMMENT_LINE.test(line)) continue;
-
-        const importMatch = line.match(PY_IMPORT);
-        if (!importMatch) continue;
-
-        const importModule = importMatch[1] || importMatch[2];
-        if (!importModule) continue;
-
-        // Check top-level package name (e.g. "sqlalchemy.orm" → "sqlalchemy")
-        const topPackage = importModule.split('.')[0];
-        const forbidden = forbiddenImports.find((f) => topPackage === f);
-        if (forbidden) {
-          console.error(
-            `[Hook] Python: Forbidden import "${forbidden}" at line ${i + 1} in ${basename} — ${fileLayer} layer must not depend on infrastructure`,
-          );
-        }
+      const topPackage = importModule.split('.')[0];
+      const forbidden = forbiddenImports.find((f) => topPackage === f);
+      if (forbidden) {
+        console.error(
+          `[Hook] Python: Forbidden import "${forbidden}" at line ${i + 1} in ${basename} — ${fileLayer} layer must not depend on infrastructure`,
+        );
       }
     }
-  } catch {
-    // Invalid input — pass through
-  }
-
-  process.stdout.write(raw);
-  process.exit(0);
-}
-
-main();
+  },
+});

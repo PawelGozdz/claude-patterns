@@ -1,67 +1,58 @@
-# Domain Layer Patterns - Metadata
-version: "1.0"
-layer: "domain"
-description: "Core domain modeling patterns for DDD/CQRS"
+# Domain Layer Patterns — metadane katalogu.
+# Schemat: jeden dla całego patterns/** (K84, TASK-KAIZEN-002). Walidator:
+# node scripts/validate-metadata.mjs
+category: domain
+version: "1.1.0"
+maturity: production
+last_verified: 2026-08-31
+stack: "TypeScript, NestJS, @vytches/ddd (przykłady); pojęcia przenośne między językami"
+source_projects: "LocalHero v3 (1355+ testów), juz-ide-api-1"
+patterns_count: 8
+description: >-
+  Rdzeń modelowania domenowego DDD/CQRS: agregaty z metodami wytwórczymi i
+  emisją zdarzeń, niezmienne value objecty, encje z tożsamością, zdarzenia
+  domenowe z correlation ID i segregacją GDPR, specyfikacje/polityki oraz
+  serwisy domenowe dla operacji między agregatami.
 
-stack_support:
-  - typescript
-  - python      # Partial support (value objects)
-  - generic     # Concepts applicable to all languages
+layer: domain
+stack_support: [typescript, python, generic]
 
 patterns:
-  - name: aggregate-pattern.md
-    stacks: [typescript]
+  - file: aggregate-pattern.md
     maturity: production
     last_verified: 2026-02-05
-    description: "Aggregate root with factory methods, event emission, invariants"
-
-  - name: value-object-pattern.md
-    stacks: [typescript, python]
+    description: "Agregat: metody wytwórcze, emisja zdarzeń, inwarianty"
+  - file: value-object-pattern.md
     maturity: production
     last_verified: 2026-02-05
-    description: "Immutable value objects with validation and reconstruction"
-
-  - name: domain-event-pattern.md
-    stacks: [typescript, generic]
+    description: "Niezmienne value objecty z walidacją formatu i rekonstrukcją"
+  - file: domain-event-pattern.md
     maturity: production
     last_verified: 2026-02-05
-    description: "Domain events with correlation IDs and GDPR segregation"
-
-  - name: entity-pattern.md
-    stacks: [typescript]
+    description: "Zdarzenia domenowe z correlation ID i segregacją GDPR"
+  - file: entity-pattern.md
     maturity: production
     last_verified: 2026-02-05
-    description: "Entities with identity-based equality and lifecycle"
-
-  - name: specification-policy-pattern.md
-    stacks: [typescript, generic]
+    description: "Encje z równością po tożsamości i cyklem życia"
+  - file: specification-policy-pattern.md
     maturity: production
     last_verified: 2026-02-05
-    description: "PolicyBuilder pattern for business rules"
-
-  - name: domain-service-pattern.md
-    stacks: [typescript, generic]
+    description: "PolicyBuilder dla reguł biznesowych"
+  - file: domain-service-pattern.md
     maturity: production
     last_verified: 2026-02-05
-    description: "Domain services for cross-aggregate operations"
-
-  - name: moderated-edit-buffer-pattern.md
-    stacks: [typescript]
+    description: "Serwisy domenowe dla operacji między agregatami"
+  - file: moderated-edit-buffer-pattern.md
     maturity: experimental
+    last_verified: 2026-08-31
     scope: project-specific
     project: juz-ide-api-1
-    last_verified: 2026-08-31
-    description: "Edit buffer VO for already-moderated live content, with revision fencing for manual moderation decisions"
-
-  - name: named-policy-pattern.md
-    stacks: [typescript]
+    description: >-
+      Bufor edycji jako VO dla już zmoderowanej treści live, z ogrodzeniem
+      rewizji dla decyzji moderacji ręcznej
+  - file: named-policy-pattern.md
     maturity: experimental
     last_verified: 2026-08-31
-    description: "One named createXxxPolicy() composing the specifications gating one class of content/action; variant behavior resolved at construction, not at the call site"
-
-notes: |
-  Domain patterns are highly transferable across languages.
-  TypeScript examples use NestJS + @vytches/ddd library.
-  Python examples planned for v1.1 (value objects, specifications).
-
-source: "LocalHero v3 production codebase (1355+ tests)"
+    description: >-
+      Jedna nazwana createXxxPolicy() składająca specyfikacje bramkujące
+      jedną klasę treści/akcji; wariant rozstrzygany przy konstrukcji

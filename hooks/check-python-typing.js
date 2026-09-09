@@ -17,96 +17,40 @@
  * Always warns only (exit 0) — never blocks the agent.
  */
 
-const fs = require('fs');
-const path = require('path');
-const { findPythonConfig, matchesPattern } = require('./lib/python-config');
-const { readStdinJsonWithRaw } = require('./lib/utils');
+const { matchesPattern } = require('./lib/python-config');
+const { runRuleScanner, COMMENT_LINE_PY } = require('./lib/rule-scanner');
 
-const COMMENT_LINE = /^\s*#/;
 // Match function defs: def foo(params) or def foo(params) -> RetType:
 const FUNC_DEF = /^\s*(?:async\s+)?def\s+(\w+)\s*\(([^)]*)\)/;
 const HAS_RETURN_TYPE = /->\s*\S+/;
 
-async function main() {
-  const { raw, parsed: input } = await readStdinJsonWithRaw();
-
-  try {
-    const filePath = input.tool_input?.file_path;
-
-    if (!filePath || !filePath.endsWith('.py')) {
-      process.stdout.write(raw);
-      process.exit(0);
-    }
-
-    // Load project config — no config means no checks
-    const loaded = findPythonConfig(filePath);
-    if (!loaded) {
-      process.stdout.write(raw);
-      process.exit(0);
-    }
-
-    const { config } = loaded;
-
-    // Check if typing checks are enabled
-    const typingConfig = config.typing?.checkUntyped;
-    if (!typingConfig?.enabled) {
-      process.stdout.write(raw);
-      process.exit(0);
-    }
-
-    // Skip test files
-    const skipPatterns = config.skipPatterns || ['test_', '_test.py', 'conftest.py', '__pycache__', '.venv'];
-    const basename = path.basename(filePath);
-    if (skipPatterns.some((pat) => basename.startsWith(pat) || basename.endsWith(pat) || filePath.includes(pat))) {
-      process.stdout.write(raw);
-      process.exit(0);
-    }
-
-    // Check if file matches configured patterns
-    const normalized = filePath.replace(/\\/g, '/');
-    const filePatterns = typingConfig.filePatterns || ['**/*.py'];
-    const matchesFile = filePatterns.some((pat) => matchesPattern(normalized, pat));
-
-    if (!matchesFile) {
-      process.stdout.write(raw);
-      process.exit(0);
-    }
-
-    // Read the file
-    const resolvedPath = path.resolve(filePath);
-    if (!fs.existsSync(resolvedPath)) {
-      process.stdout.write(raw);
-      process.exit(0);
-    }
-
-    const content = fs.readFileSync(resolvedPath, 'utf8');
-    const lines = content.split('\n');
-
+runRuleScanner({
+  extensions: '.py',
+  configFinder: 'python',
+  section: (config) => (config.typing?.checkUntyped?.enabled ? config.typing.checkUntyped : null),
+  skipStyle: 'python',
+  scope: ({ normalized, section }) => {
+    const filePatterns = section.filePatterns || ['**/*.py'];
+    return filePatterns.some((pat) => matchesPattern(normalized, pat));
+  },
+  // Własny skaner: komunikat niesie NAZWĘ funkcji, a dundery i prywatne helpery
+  // są zwolnione — obie rzeczy wymagają grupy z dopasowania, nie samego trafienia.
+  scan: ({ lines, basename }) => {
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
-      if (COMMENT_LINE.test(line)) continue;
+      if (COMMENT_LINE_PY.test(line)) continue;
 
       const funcMatch = line.match(FUNC_DEF);
       if (!funcMatch) continue;
 
       const funcName = funcMatch[1];
+      if (funcName.startsWith('_')) continue; // dundery i prywatne helpery
 
-      // Skip dunder methods and private helpers
-      if (funcName.startsWith('_')) continue;
-
-      // Check return type annotation
       if (!HAS_RETURN_TYPE.test(line)) {
         console.error(
           `[Hook] Python: Function "${funcName}" at line ${i + 1} in ${basename} — missing return type annotation`,
         );
       }
     }
-  } catch {
-    // Invalid input — pass through
-  }
-
-  process.stdout.write(raw);
-  process.exit(0);
-}
-
-main();
+  },
+});

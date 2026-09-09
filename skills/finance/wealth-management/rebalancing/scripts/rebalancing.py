@@ -356,11 +356,18 @@ class TaxAwareLotSelector:
         - 'current_price': float, current market price per share
         - 'holding_days': int, number of days held
     long_term_threshold : int, optional
-        Number of days for long-term capital gains treatment. Default is 365.
+        Holding must EXCEED this many days for long-term capital gains
+        treatment (long-term requires holding more than one year).
+        Default is 365.
     short_term_rate : float, optional
         Tax rate on short-term capital gains. Default is 0.37.
     long_term_rate : float, optional
         Tax rate on long-term capital gains. Default is 0.20.
+
+    Notes
+    -----
+    Defaults are 2024-era top US federal brackets (37% ordinary, 20% LTCG);
+    verify current-year rates.
     """
 
     def __init__(
@@ -395,7 +402,7 @@ class TaxAwareLotSelector:
         total_gain = gain_per_share * shares_to_sell
         rate = (
             self.long_term_rate
-            if lot["holding_days"] >= self.long_term_threshold
+            if lot["holding_days"] > self.long_term_threshold
             else self.short_term_rate
         )
         return total_gain * rate
@@ -428,7 +435,7 @@ class TaxAwareLotSelector:
             gain = lot["current_price"] - lot["cost_basis"]
             rate = (
                 self.long_term_rate
-                if lot["holding_days"] >= self.long_term_threshold
+                if lot["holding_days"] > self.long_term_threshold
                 else self.short_term_rate
             )
             tax_per_share = gain * rate
@@ -482,7 +489,7 @@ class TaxAwareLotSelector:
             if unrealized < -min_loss:
                 rate = (
                     self.long_term_rate
-                    if lot["holding_days"] >= self.long_term_threshold
+                    if lot["holding_days"] > self.long_term_threshold
                     else self.short_term_rate
                 )
                 tax_benefit = abs(unrealized) * rate
@@ -555,10 +562,8 @@ def rebalancing_premium_estimate(
     return 0.5 * weighted_var - 0.5 * portfolio_variance
 
 
-if __name__ == "__main__":
-    # ----------------------------------------------------------------
-    # Demo: Rebalancing toolkit on a 3-asset portfolio
-    # ----------------------------------------------------------------
+def _demo() -> None:
+    """Demo: rebalancing toolkit on a 3-asset portfolio (default bare-run output)."""
     np.random.seed(42)
 
     asset_names = ["US Equity", "Intl Equity", "US Bonds"]
@@ -633,7 +638,7 @@ if __name__ == "__main__":
     total_tax = 0.0
     for sale in sales:
         lot = lots[sale["lot_index"]]
-        lt = "LT" if lot["holding_days"] >= 365 else "ST"
+        lt = "LT" if lot["holding_days"] > 365 else "ST"
         print(f"  Lot {sale['lot_index']}: sell {sale['shares_to_sell']:.0f} shares, "
               f"gain/sh=${sale['gain_per_share']:.2f}, "
               f"tax=${sale['tax_impact']:.2f} ({lt})")
@@ -664,9 +669,7 @@ if __name__ == "__main__":
     print("\n--- Rebalancing Premium Estimate ---")
     asset_vols = np.array([0.16, 0.18, 0.04])
     asset_vars = asset_vols ** 2
-    # Approximate portfolio variance for a 60/20/20 portfolio
-    port_var = 0.0105 ** 2 * 100  # placeholder; use actual covariance in practice
-    # Use a more realistic estimate
+    # Portfolio variance for the 60/20/20 portfolio from the covariance matrix
     corr_matrix = np.array([
         [1.00, 0.75, 0.10],
         [0.75, 1.00, 0.05],
@@ -682,3 +685,137 @@ if __name__ == "__main__":
     print("\n" + "=" * 60)
     print("Demo complete.")
     print("=" * 60)
+
+
+def _verify() -> int:
+    """Re-run the demo computations and assert key outputs.
+
+    Where a computation corresponds to a SKILL.md worked example, the exact
+    SKILL.md numbers are asserted. Returns 0 on success, 1 on any mismatch.
+    """
+    import math
+
+    failures: list[str] = []
+
+    def check(name: str, actual: float, expected: float, rel_tol: float = 1e-3) -> None:
+        if math.isclose(actual, expected, rel_tol=rel_tol):
+            print(f"  PASS  {name}: {actual:,.6g} (expected {expected:,.6g})")
+        else:
+            failures.append(name)
+            print(f"  FAIL  {name}: {actual:,.6g} (expected {expected:,.6g})")
+
+    print("Verifying rebalancing.py against demo and SKILL.md worked examples...")
+
+    # --- SKILL.md Example 1: 60/40 threshold rebalance ---
+    # Target 60/40, current 68/32 on $1M with a +/-5% band: triggered;
+    # sell $80,000 equity, buy $80,000 bonds.
+    names = ["Equity", "Bonds"]
+    target = np.array([0.60, 0.40])
+    current = np.array([0.68, 0.32])
+    drift = DriftAnalyzer(target, names)
+    result = drift.check_threshold(current, absolute_threshold=0.05)
+    check("Example 1: trigger at 5% band", float(result["triggered"]), 1.0, rel_tol=1e-9)
+    trades = {t["asset"]: t for t in TradeGenerator(target, names).compute_trades(current, 1_000_000.0)}
+    check("Example 1: sell equity $80,000", trades["Equity"]["dollar_amount"], 80_000.0)
+    check("Example 1: buy bonds $80,000", trades["Bonds"]["dollar_amount"], 80_000.0)
+
+    # --- SKILL.md Example 2: tax-loss harvesting benefit ---
+    # $50,000 cost basis, $40,000 value, long-term: $10,000 loss harvested
+    # at the 20% LTCG rate saves $2,000; the first $3,000 of a net loss
+    # offsets ordinary income at 37% = $1,110.
+    tlh_lots = [{"shares": 1_000, "cost_basis": 50.0, "current_price": 40.0, "holding_days": 400}]
+    candidates = TaxAwareLotSelector(tlh_lots).tax_loss_harvest_candidates()
+    check("Example 2: unrealized loss", candidates[0]["unrealized_loss"], -10_000.0)
+    check("Example 2: tax benefit at 20% LTCG", candidates[0]["tax_benefit"], 2_000.0)
+    check("Example 2: $3,000 ordinary offset at 37%", 3_000 * 0.37, 1_110.0)
+
+    # --- Demo: 60/20/20 rebalancing trades ---
+    target3 = np.array([0.60, 0.20, 0.20])
+    current3 = np.array([0.68, 0.17, 0.15])
+    names3 = ["US Equity", "Intl Equity", "US Bonds"]
+    trades3 = {t["asset"]: t for t in TradeGenerator(target3, names3).compute_trades(current3, 1_000_000.0)}
+    check("demo: sell US Equity", trades3["US Equity"]["dollar_amount"], 80_000.0)
+    check("demo: buy Intl Equity", trades3["Intl Equity"]["dollar_amount"], 30_000.0)
+    check("demo: buy US Bonds", trades3["US Bonds"]["dollar_amount"], 50_000.0)
+
+    # --- Demo: tax-aware lot selection (sell 500 shares) ---
+    lots = [
+        {"shares": 200, "cost_basis": 80.0, "current_price": 120.0, "holding_days": 400},
+        {"shares": 300, "cost_basis": 100.0, "current_price": 120.0, "holding_days": 200},
+        {"shares": 150, "cost_basis": 130.0, "current_price": 120.0, "holding_days": 100},
+        {"shares": 100, "cost_basis": 110.0, "current_price": 120.0, "holding_days": 500},
+    ]
+    sales = TaxAwareLotSelector(lots).select_lots_min_tax(shares_needed=500)
+    total_tax = sum(s["tax_impact"] for s in sales)
+    check("demo: lot selection total tax", total_tax, 1_495.0)
+
+    # Long-term boundary: exactly 365 days is SHORT-term (must exceed one year).
+    boundary = TaxAwareLotSelector(
+        [{"shares": 1, "cost_basis": 100.0, "current_price": 110.0, "holding_days": 365}]
+    )
+    check("boundary: 365 days taxed short-term (37%)",
+          boundary._lot_tax_impact(boundary.lots[0], 1), 3.70)
+    boundary_lt = TaxAwareLotSelector(
+        [{"shares": 1, "cost_basis": 100.0, "current_price": 110.0, "holding_days": 366}]
+    )
+    check("boundary: 366 days taxed long-term (20%)",
+          boundary_lt._lot_tax_impact(boundary_lt.lots[0], 1), 2.00)
+
+    # --- Demo: Leland optimal band and rebalancing premium ---
+    check("demo: Leland band (low cost, low vol)",
+          leland_optimal_band(0.001, 3.0, 0.04 ** 2), 0.678604, rel_tol=1e-4)
+
+    asset_vols = np.array([0.16, 0.18, 0.04])
+    corr_matrix = np.array([
+        [1.00, 0.75, 0.10],
+        [0.75, 1.00, 0.05],
+        [0.10, 0.05, 1.00],
+    ])
+    cov_matrix = np.outer(asset_vols, asset_vols) * corr_matrix
+    port_var = float(target3 @ cov_matrix @ target3)
+    rp = rebalancing_premium_estimate(target3, asset_vols ** 2, port_var)
+    check("demo: rebalancing premium", rp, 0.0031088, rel_tol=1e-4)
+
+    if failures:
+        print(f"\nFAIL: {len(failures)} check(s) failed: {', '.join(failures)}")
+        return 1
+    print("\nPASS: all checks passed.")
+    return 0
+
+
+if __name__ == "__main__":
+    import argparse
+    import sys
+
+    parser = argparse.ArgumentParser(
+        description=(
+            "Rebalancing toolkit reference implementation. "
+            "Main classes and functions: DriftAnalyzer (drift measurement and "
+            "threshold triggers), TradeGenerator (rebalancing trades and cash "
+            "flow rebalancing), TransactionCostEstimator (commissions, spread, "
+            "impact), TaxAwareLotSelector (minimum-tax lot selection and TLH "
+            "candidates), leland_optimal_band (optimal no-trade band width), "
+            "rebalancing_premium_estimate (volatility harvesting estimate)."
+        ),
+        epilog=(
+            "This file is primarily meant to be imported as a module: "
+            "from rebalancing import DriftAnalyzer, TradeGenerator, "
+            "TransactionCostEstimator, TaxAwareLotSelector, "
+            "leland_optimal_band, rebalancing_premium_estimate. "
+            "Run without arguments to print a demonstration of each calculation."
+        ),
+    )
+    parser.add_argument(
+        "--verify",
+        action="store_true",
+        help=(
+            "run the demo computations and assert key outputs match the "
+            "SKILL.md worked examples; prints PASS/FAIL and exits nonzero "
+            "on mismatch"
+        ),
+    )
+    args = parser.parse_args()
+
+    if args.verify:
+        sys.exit(_verify())
+    _demo()

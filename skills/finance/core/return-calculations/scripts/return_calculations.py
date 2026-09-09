@@ -10,13 +10,18 @@ including time-weighted returns, money-weighted returns, CAGR, annualization,
 sub-period linking, and arithmetic/geometric/log return conversions.
 
 Usage:
-    python return_calculations.py
+    uv run return_calculations.py            # demo + verification (default)
+    python return_calculations.py --verify   # same as bare invocation
+    python return_calculations.py --help     # list available functions
 
 Dependencies:
     numpy
 """
 
+import argparse
 import math
+import sys
+
 import numpy as np
 
 
@@ -280,9 +285,57 @@ class Returns:
 
 
 # ---------------------------------------------------------------------------
-# Demonstration
+# Demonstration and verification
 # ---------------------------------------------------------------------------
-if __name__ == "__main__":
+
+_FUNCTIONS_HELP = """\
+Available functions (all static methods on the Returns class):
+  holding_period_return(begin_value, end_value, distributions=0.0)
+  time_weighted_return(sub_period_returns)
+  money_weighted_return(cash_flows, guess=0.1)   # IRR via Newton's method
+  cagr(begin_value, end_value, years)
+  annualize(total_return, periods, periods_per_year)
+  link_returns(returns)
+  arithmetic_mean(returns)
+  geometric_mean(returns)
+  log_return(begin_value, end_value)
+  log_to_simple(log_ret) / simple_to_log(simple_ret)
+
+Import usage (preferred for programmatic work):
+  from return_calculations import Returns
+  Returns.cagr(10_000, 16_105.10, 5)   # -> 0.10
+
+Running bare (or with --verify) prints a demo of every function and
+asserts the worked-example values from SKILL.md, exiting nonzero on
+any mismatch.
+"""
+
+
+def _verify() -> None:
+    """Assert that key outputs match the SKILL.md worked examples."""
+    calc = Returns()
+
+    # SKILL.md Example 1: CAGR of $10,000 -> $16,105.10 over 5 years = 10%
+    cagr_val = calc.cagr(begin_value=10_000, end_value=16_105.10, years=5)
+    assert abs(cagr_val - 0.10) < 1e-6, f"Example 1 CAGR mismatch: {cagr_val}"
+
+    # SKILL.md Example 2: TWR of +20% then -10% = +8.0% cumulative
+    twr = calc.time_weighted_return([0.20, -0.10])
+    assert abs(twr - 0.08) < 1e-12, f"Example 2 TWR mismatch: {twr}"
+    twr_ann = (1.0 + twr) ** 0.5 - 1.0
+    assert abs(twr_ann - 0.0392) < 5e-5, f"Example 2 annualized TWR mismatch: {twr_ann}"
+
+    # SKILL.md Example 2: MWR for (-100k, -100k, +198k) = -0.6682% (-0.66815%)
+    mwr = calc.money_weighted_return([(0, -100_000), (1, -100_000), (2, 198_000)])
+    assert abs(mwr - (-0.0066815)) < 1e-6, f"Example 2 MWR mismatch: {mwr}"
+
+    print("\nVerification PASSED: outputs match SKILL.md worked examples")
+    print("  Example 1 CAGR:           10.0000%")
+    print(f"  Example 2 TWR cumulative: {twr:.4%} (annualized {twr_ann:.4%})")
+    print(f"  Example 2 MWR (IRR):      {mwr:.4%}")
+
+
+def _demo() -> None:
     calc = Returns()
 
     print("=" * 60)
@@ -343,3 +396,31 @@ if __name__ == "__main__":
     print("\n" + "=" * 60)
     print("All calculations completed successfully.")
     print("=" * 60)
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description="Investment return calculations reference implementation.",
+        epilog=_FUNCTIONS_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument(
+        "--verify",
+        action="store_true",
+        help="run the demo and assert outputs match the SKILL.md worked "
+        "examples (this is also the default when run with no arguments)",
+    )
+    parser.parse_args()
+
+    # Bare invocation and --verify behave identically: demo + verification.
+    _demo()
+    try:
+        _verify()
+    except AssertionError as exc:
+        print(f"\nVerification FAILED: {exc}", file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -28,6 +28,7 @@
 
 ---
 
+%%DDD_RULES%%
 %%RULES_IMPORTS%%
 
 ---

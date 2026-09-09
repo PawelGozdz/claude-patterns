@@ -1,28 +1,11 @@
 ---
 name: fiduciary-standards
-description: "Apply fiduciary duty standards across the investment advisory landscape, including IA Act Section 206, ERISA, DOL rules, and CFA Institute standards. Use when the user asks whether a fiduciary standard applies, how fiduciary duty differs from Reg BI or suitability, what the duty of care and duty of loyalty require, ERISA Section 404 prudent expert obligations, PTE 2020-02 rollover exemptions, or state-level fiduciary developments. Also trigger when users mention 'are we a fiduciary here', 'best interest vs suitability', 'dual registrant hat switching', 'retirement plan adviser obligations', 'DOL fiduciary rule', or ask what standard of care applies to a recommendation."
+description: "Apply the investment adviser fiduciary duty (IA Act Section 206), ERISA fiduciary standards, the DOL fiduciary rule and PTE 2020-02, and state fiduciary rules. Use when the user asks whether a fiduciary standard applies, what the duty of care and duty of loyalty require of an adviser, ERISA Section 404 prudent expert obligations, PTE 2020-02 rollover exemption conditions, DOL fiduciary rulemaking status, or state-level fiduciary developments. Also trigger when users mention 'are we a fiduciary here', 'retirement plan adviser obligations', 'DOL fiduciary rule', or 'dual registrant hat switching' from the adviser side. (For the broker-dealer best-interest standard and the canonical Reg BI vs fiduciary comparison, use reg-bi.)"
 ---
 
 # Fiduciary Standards
 
-## Purpose
-Guide the understanding and application of fiduciary duties across the investment advisory landscape. This skill covers the Investment Advisers Act fiduciary duty, ERISA fiduciary standards, DOL rules, state-level developments, and CFA Institute standards — enabling a user or agent to identify fiduciary obligations and distinguish them from Reg BI and suitability standards.
-
-## Layer
-9 — Compliance & Regulatory Guidance
-
-## Direction
-prospective
-
-## When to Use
-- Determining whether a fiduciary standard applies to a given relationship or transaction
-- Designing compliance programs for registered investment advisers
-- Evaluating ERISA fiduciary obligations for retirement plan advisers
-- Comparing fiduciary duty to Reg BI or FINRA suitability
-- Assessing dual-registrant obligations (when wearing IA hat vs BD hat)
-- Understanding DOL fiduciary rules and prohibited transaction exemptions
-- Evaluating state-level fiduciary standards
-- Designing conflict disclosure and mitigation frameworks under fiduciary duty
+Regulatory status current as of June 2026 — verify effective dates, dollar thresholds, and pending rulemakings against current SEC/FINRA/FinCEN sources before advising.
 
 ## Core Concepts
 
@@ -56,14 +39,15 @@ ERISA imposes a fiduciary duty on persons who exercise discretionary authority o
 The Department of Labor has repeatedly sought to expand the ERISA fiduciary definition:
 
 - **2016 DOL Fiduciary Rule** — broadly defined "investment advice fiduciary" to include one-time rollover recommendations. Vacated by the Fifth Circuit in 2018 (*Chamber of Commerce v. DOL*).
-- **Current regulatory posture** — the DOL has proposed and re-proposed expanded fiduciary definitions. As of the latest guidance, the 1975 five-part test remains the baseline for determining ERISA fiduciary status.
+- **2024 Retirement Security Rule** — adopted April 2024, it would again have treated one-time rollover recommendations as fiduciary advice. Two Texas federal district courts stayed the rule nationwide in July 2024 before its September 2024 effective date (*Federation of Americans for Consumer Choice v. DOL*; *ACLI v. DOL*). The DOL subsequently abandoned its defense, and the Fifth Circuit dismissed the appeals in late 2025 — the rule never took effect. The DOL has signaled new rulemaking in this area (2026 regulatory agenda); verify the current status before advising.
+- **Current regulatory posture** — with the 2024 rule stayed and undefended, the 1975 five-part test remains the operative baseline for determining ERISA investment-advice fiduciary status (verify current status given pending rulemaking).
 - **PTE 2020-02 (Prohibited Transaction Exemption)** — provides a pathway for investment advice fiduciaries to receive compensation that would otherwise be a prohibited transaction (e.g., commissions, 12b-1 fees, revenue sharing) from rollover and other recommendations. Conditions include: acting in the customer's best interest, providing balanced disclosure, charging only reasonable compensation, adopting anti-conflict policies, and conducting retrospective compliance reviews.
 - **Rollover recommendations** — PTE 2020-02 explicitly covers rollover recommendations from plans to IRAs. Firms must document that the rollover is in the customer's best interest considering plan fees, investment options, services, and penalties.
 
 ### State-Level Fiduciary Standards
 Several states have enacted or proposed their own fiduciary standards:
 
-- **Massachusetts** — 950 CMR 12.207 (effective March 2020, later enjoined and revised) imposed a fiduciary duty on broker-dealers and agents making recommendations to customers in Massachusetts. Though challenged legally, it signals state-level regulatory momentum.
+- **Massachusetts** — 950 CMR 12.207 (effective March 2020) imposes a fiduciary duty on broker-dealers and agents making recommendations to Massachusetts customers. A trial court initially invalidated the rule in Robinhood's challenge, but the Massachusetts Supreme Judicial Court reversed and upheld the rule in *Robinhood Financial LLC v. Secretary of the Commonwealth* (August 2023). The rule is in effect.
 - **Nevada** — enacted a fiduciary duty statute for financial planners and broker-dealers, though implementing regulations have been limited.
 - Other states have considered similar legislation. Firms operating across state lines must monitor evolving state-level requirements.
 
@@ -76,17 +60,7 @@ Standard III — Duties to Clients includes:
 While CFA standards are not regulatory requirements, they represent industry best practices and are often referenced in enforcement actions and regulatory guidance.
 
 ### Fiduciary Duty vs Reg BI
-Key distinctions:
-
-| Dimension | IA Fiduciary Duty | Reg BI |
-|-----------|------------------|--------|
-| Applies to | Registered investment advisers | Broker-dealers (retail customers) |
-| Duration | Ongoing throughout the relationship | At the time of recommendation |
-| Standard | Best interest (continuous) | Best interest (at point of recommendation) |
-| Conflicts | Must eliminate or fully disclose and obtain informed consent | Must disclose, mitigate, and in some cases eliminate |
-| Monitoring | Ongoing duty to monitor (scope depends on relationship) | No ongoing monitoring obligation |
-| Account types | All advisory accounts | Only when making recommendations |
-| Source of law | IA Act §206 (judicial interpretation) | SEC Rule (17 CFR 240.15l-1) |
+The headline distinction: the IA fiduciary duty is a relationship-level, ongoing obligation (care, loyalty, monitoring), while Reg BI is a point-of-recommendation standard for broker-dealers serving retail customers. For the canonical side-by-side comparison table of the two standards, see the **reg-bi** skill ("Reg BI vs IA Fiduciary Duty").
 
 ### Dual-Registrant Considerations
 Firms registered as both IA and BD must clearly disclose which capacity they are acting in for each transaction or relationship:
@@ -132,8 +106,8 @@ Firms registered as both IA and BD must clearly disclose which capacity they are
 - Not conducting the annual compliance review required by Rule 206(4)-7
 
 ## Cross-References
-- **reg-bi** (Layer 9): Parallel standard for broker-dealers; key comparison point for understanding fiduciary duty's higher bar
-- **conflicts-of-interest** (Layer 9): Fiduciary duty of loyalty requires full disclosure and informed consent for all material conflicts
-- **fee-disclosure** (Layer 9): Fee transparency is a core fiduciary obligation; ADV Part 2A fee disclosure requirements
-- **investment-policy** (Layer 5): IPS construction reflects fiduciary obligation to document investment approach and client objectives
-- **advice-standards** (Layer 9): Determines when fiduciary duty is triggered (when does information become advice?)
+- **reg-bi** (compliance plugin): Parallel standard for broker-dealers; key comparison point for understanding fiduciary duty's higher bar
+- **conflicts-of-interest** (compliance plugin): Fiduciary duty of loyalty requires full disclosure and informed consent for all material conflicts
+- **fee-disclosure** (compliance plugin): Fee transparency is a core fiduciary obligation; ADV Part 2A fee disclosure requirements
+- **investment-policy** (wealth-management plugin): IPS construction reflects fiduciary obligation to document investment approach and client objectives
+- **advice-standards** (compliance plugin): Determines when fiduciary duty is triggered (when does information become advice?)

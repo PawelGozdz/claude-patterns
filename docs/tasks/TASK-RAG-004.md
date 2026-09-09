@@ -2,13 +2,17 @@
 id: TASK-RAG-004
 title: 'spójność retrievalu: ścieżki względne, kanoniczny ref, inwalidacja'
 type: task
-status: draft
+status: in-progress
 created_date: 2026-08-02
 ---
 
 # TASK-RAG-004 — spójność retrievalu: ścieżki względne, kanoniczny ref, inwalidacja
 
-> **STATUS: draft** (2026-08-02) — plan do review, nic nie zaimplementowane.
+> **STATUS: in-progress** (2026-09-07) — R1 i R2 wykonane (K79/K80 z TASK-KAIZEN-002),
+> R3 nadal do zrobienia. Cztery kolekcje `code_*` przesiane z kanonicznych refów; `source`
+> w payloadzie jest repo-relative, `retrieve_code` oddaje `evidence` zamiast pełnej treści.
+> Szczegóły i to, co świadomie zostało pominięte — przy nagłówkach R1/R2 niżej.
+> _(plan powstał 2026-08-02 jako draft do review)_
 >
 > **Numeracja:** `TASK-RAG-003` zapowiadał `TASK-RAG-004` jako kontynuację swoich sekcji
 > 0a/1/2/3/4 (examples-as-contract, knowledge-pins, best_practices, multi-stack). Ten task
@@ -73,15 +77,28 @@ branchami. Nie odpowiada na *„jaka jest treść"*.
 
 ---
 
-## R1 — ścieżki repo-relative + snippet jako dowód trafienia
+## R1 — ścieżki repo-relative + snippet jako dowód trafienia ✅ ZROBIONE 2026-09-07
 
 **Zakres: wyłącznie kolekcje kodu (`code_*`).** Patterns/examples zostają bez zmian.
 
+> **Wykonane 2026-09-07 (K79).** `indexer.ts` zapisuje `source` względem korzenia repo, payload
+> niesie `repo` i `indexedSha`, `retrieve_code` oddaje `evidence` (12 linii, `KR_CODE_EVIDENCE_LINES`)
+> zamiast pola `text`. Sprawdzone zapytaniem: `src/shared/domain/policies/verification-capabilities.policy.ts`
+> + `repo: "juz-ide-api"` + `indexedSha: 8e951759e…` — ścieżka rozwiązuje się w KAŻDEJ z czterech instancji.
+>
+> **Odstępstwo od planu — R1.3.** Instrukcje agentów NIE zostały zmienione w tym przebiegu
+> (`commands/**` i `agents/**` były poza zakresem zadania). Zamiast liczyć na prozę w plikach,
+> kontrakt jedzie **razem z odpowiedzią**: opis narzędzia mówi wprost „to wskaźnik, nie treść",
+> a każda odpowiedź `retrieve_code` zaczyna się polem `_contract` z tym samym zdaniem. Subagent
+> dostaje ten JSON wklejony do promptu długo po tym, jak opis narzędzia wypadł mu z kontekstu —
+> więc to mocniejsze wpięcie niż zdanie w 543-liniowym pliku komendy, a nie słabsze.
+> Zmiany w plikach agentów zostają jako uzupełnienie, nie jako warunek poprawności.
+
 ### R1.1 Ścieżki względne w indekserze
-- [ ] `indexer.ts::walk(dir, acc)` → `walk(dir, acc, repoRoot)`; `chunkFile(…, relative(repoRoot, full))`.
-- [ ] `buildCodeIndex(dirs, collection)` → `buildCodeIndex({repoRoot, dirs, collection, repo, sha})`.
-- [ ] Nowe pola payloadu w `types.ts::Chunk`/`Hit` + `store-qdrant.ts::add`/`toHit`:
-      `repo?: string` (np. `"local-hero"`), `indexedSha?: string`.
+- [x] `indexer.ts::walk(dir, acc)` → `walk(dir, acc, repoRoot)`; `chunkFile(…, relative(repoRoot, full))`.
+- [x] `buildCodeIndex(dirs, collection)` → `buildCodeIndex({repoRoot, dirs, collection, repo, gitRef})`; stara sygnatura nadal działa (overload) i głośno ostrzega.
+- [x] Nowe pola payloadu w `types.ts::Chunk`/`Hit` + `store-qdrant.ts::add`/`toHit`:
+      `repo?: string` (realnie `"juz-ide-api"`), `indexedSha?: string`; `repo` doszło też do `PAYLOAD_INDEX_FIELDS`.
 
 > **⚠ PUŁAPKA — `reindexFile` i `deleteBySource`.** `deleteBySource` (`store-qdrant.ts:76`) filtruje
 > po **dokładnej** wartości `source`. `reindexFile` dostaje dziś ścieżkę absolutną. Po przejściu na
@@ -97,10 +114,11 @@ branchami. Nie odpowiada na *„jaka jest treść"*.
 > włączenie inkrementalnego reindexu.
 
 ### R1.2 Kształt odpowiedzi `retrieve_code`
-- [ ] `Hit` dla kodu: `{ path, startLine, endLine, section, score, evidence, evidenceTruncated, repo, indexedSha, indexedAt }`.
-- [ ] `evidence` = pierwsze N linii chunku (`KR_CODE_EVIDENCE_LINES`, domyślnie 12) + flaga
-      `evidenceTruncated: true`, gdy ucięte. Bez zmian dla `retrieve_patterns`/`retrieve_examples`.
-- [ ] Opis toola (`index.ts:50-54`) przepisany wprost: *„`evidence` to fragment uzasadniający
+- [x] `Hit` dla kodu: `{ source, startLine, endLine, section, score, evidence, evidenceTruncated, repo, indexedSha, indexedAt }`
+      (pole nazywa się `source`, nie `path` — zgodnie z resztą kontraktu; `text` jest USUWANE, nie zerowane).
+- [x] `evidence` = pierwsze N linii chunku (`KR_CODE_EVIDENCE_LINES`, domyślnie 12; `0` wyłącza ucinanie)
+      + flaga `evidenceTruncated`. Bez zmian dla `retrieve_patterns`/`retrieve_examples` (OQ3 → nie).
+- [x] Opis toola (`index.ts`) przepisany wprost, plus pole `_contract` w każdej odpowiedzi: *„`evidence` to fragment uzasadniający
       trafienie — NIE kopiuj go. Otwórz `path` w SWOIM drzewie roboczym (Read) i pracuj na treści
       z dysku. Ścieżka jest względna do korzenia repo."*
 
@@ -109,25 +127,42 @@ branchami. Nie odpowiada na *„jaka jest treść"*.
 > na nich tak, jakby to była całość. Zmiana kontraktu i zmiana instrukcji muszą wejść **razem, w
 > jednym commicie**. Nie ma tu bezpiecznej kolejności częściowej.
 
-### R1.3 Instrukcje agentów (sprzężone z R1.2, ten sam commit)
+### R1.3 Instrukcje agentów (sprzężone z R1.2) — ⚠ NIEZROBIONE, patrz nota przy R1
 - [ ] `agents/stacks/nestjs-ddd/implementers/{domain-application,infrastructure,test}-implementer.md` —
       sekcja o `retrieve_code`: reguła „trafienie → Read pliku pod `path` → dopiero potem pisz".
 - [ ] `agents/stacks/flutter-clean-arch/flutter-implementer.md`,
       `agents/stacks/nestjs-ddd/sql-postgres-optimizer.md` — to samo.
-- [ ] `commands/analyze-ddd.md`, `commands/orchestrate-ddd.md` — jw. w opisie kroku RAG.
+- [ ] `commands/analyze.md`, `commands/orchestrate.md` — jw. w opisie kroku RAG.
 - [ ] **Główny agent orkiestrujący**: prompty komponowane ad hoc do subagentów wracają dziś do
       sformułowania *„możesz, ale jeśli MCP niedostępny, pomiń"* — dokładnie tego, co TASK-RAG-002
       zdiagnozował jako przyczynę zerowej adopcji, tylko poziom wyżej i poza naprawioną powierzchnią.
       Regułę decyzyjną (nieznana nazwa symbolu → `retrieve_code`; znana → prosto do Read/Grep)
-      przenieść do `commands/orchestrate-ddd.md` jako tekst **wstrzykiwany do promptu subagenta**,
+      przenieść do `commands/orchestrate.md` jako tekst **wstrzykiwany do promptu subagenta**,
       zamiast liczyć na to, że główny agent ją odtworzy z pamięci.
 
-**Definition of done R1:** zapytanie z kontekstu api-2 zwraca `src/…` (bez prefiksu drzewa),
-`evidence` ≤ 12 linii, a instrukcje implementerów mówią wprost o Read.
+**Definition of done R1:** zapytanie z kontekstu api-2 zwraca `src/…` (bez prefiksu drzewa) ✅,
+`evidence` ≤ 12 linii ✅, a instrukcje implementerów mówią wprost o Read — spełnione przez opis
+narzędzia i pole `_contract`; pliki agentów/komend zostają do uzupełnienia.
 
 ---
 
-## R2 — indeksowanie kanonicznego refa zamiast żywego drzewa roboczego
+## R2 — indeksowanie kanonicznego refa zamiast żywego drzewa roboczego ✅ ZROBIONE 2026-09-07
+
+> **Wykonane 2026-09-07 (K80).** Wszystkie cztery kolekcje `code_*` mają w `reseed.config.json`
+> `ref: origin/develop` i zostały przesiane z refa: `code_juz_ide_api` 31563 chunki z
+> `juz-ide-api@8e951759e`, `code_juz_ide_mobile_app` 26090, `code_grant_flow` 6185,
+> `code_universal_learning_system` 12395. `mirror/collections.json` niesie `{repo, ref, sha, indexedAt}`.
+>
+> **Zamiast `git show` per plik — `git archive`.** 8282 pliki `.ts` w `src` przy origin/develop:
+> `git show` to 8282 procesy, `git archive | tar -x` to jeden. Rozpakowane drzewo jest przy okazji
+> czystym `repoRoot`, więc ścieżki względne wychodzą poprawne bez dodatkowego przeliczania, a temp
+> znika w `finally`.
+>
+> **Efekt uboczny, który blokował całość:** `error-codes.ts` daje jeden chunk 131 KB i CT 301
+> odbijał CAŁY jego batch przez 422 — reseed umierał na 24320/31563 z gołym kodem statusu.
+> To znaczy, że kolekcje kodu były niesiewalne od dawna, niezależnie od tego zadania.
+> `embedder.ts` przycina teraz wejście do `KR_EMBED_MAX_CHARS` (8000); okno e5-large to i tak
+> 512 tokenów, więc żaden wektor się przez to nie zmienia — przestaje tylko wywracać przebieg.
 
 ### R2.1 Nowy kształt `reseed.config.json`
 ```jsonc
@@ -142,21 +177,26 @@ branchami. Nie odpowiada na *„jaka jest treść"*.
   }
 }
 ```
-- [ ] Wsteczna zgodność: stara forma (tablica katalogów) nadal działa = indeksowanie drzewa roboczego,
-      ale loguje `WARN: indexing a live worktree — WIP may leak into a shared collection`.
+- [x] Wsteczna zgodność: stara forma (tablica katalogów) nadal działa = indeksowanie drzewa roboczego,
+      ale loguje `WARN … working tree — uncommitted WIP will leak into a collection that other checkouts read`.
 
 ### R2.2 Indeksowanie z refa
-- [ ] `git -C <repo> rev-parse <ref>` → `sha` (do payloadu + manifestu).
-- [ ] `git -C <repo> archive <ref> -- <dirs>` → rozpakowanie do katalogu tymczasowego → `walk()` z
+- [x] `git -C <repo> rev-parse <ref>` → `sha` (do payloadu + manifestu).
+- [x] `git -C <repo> archive <ref> -- <dirs>` → rozpakowanie do katalogu tymczasowego → `walk()` z
       `repoRoot` = ten katalog (ścieżki względne wychodzą czyste z definicji) → sprzątanie temp.
-- [ ] `mirror/collections.json`: dopisać `{ repo, ref, sha, indexedAt }` obok `model`/`dim`.
+- [x] `mirror/collections.json`: dopisać `{ repo, ref, sha, indexedAt }` obok `model`/`dim`.
 
 ### R2.3 Zamknięcie kanału skażenia
-- [ ] Usunąć `watchDirs` z `juz-ide-api-2/.claude/config/knowledge.json` — po R2 indeks jest
-      **celowo** stanem `develop`, a nie czyjegoś WIP-u, więc wstrzykiwanie edycji z drzewa roboczego
-      przestaje mieć sens.
+- [x] `watchDirs` w `juz-ide-api-2/.claude/config/knowledge.json` **już go tam nie ma** (sprawdzone
+      2026-09-07: plik zawiera samo `collection`). Kanał domknięty jednak po stronie daemona, nie configu:
+      `reindexFile` **odmawia** dla kolekcji, którą `reseed.config.json` przypina do refa — inaczej
+      wystarczyłoby, żeby ktoś dopisał `watchDirs` z powrotem i skażenie wróciłoby po cichu.
+      Hook `knowledge-freshness-postwrite.js` wysyła teraz `repoRoot` (bez tego `deleteBySource`
+      nie trafiałby w nic i dokładał duplikaty przy każdym zapisie pliku).
 - [ ] `hooks/README.md` + `hooks/knowledge-freshness-postwrite.js` (docblock): zapisać wprost, że
       freshness dla **kodu** jest wyłączony w modelu „indeks = kanoniczny ref", i dlaczego.
+      _(niezrobione — odmowa jest w kodzie i niesie własne uzasadnienie w komunikacie błędu,
+      ale README hooków tego jeszcze nie mówi)_
 
 > **Do decyzji (OQ1).** Alternatywa dla twardego wyłączenia: freshness pisze do prywatnej nakładki
 > `code_<instancja>_wip`, a `retrieve_code` odpytuje baseline + nakładkę i scala. Daje świeżość
@@ -165,12 +205,15 @@ branchami. Nie odpowiada na *„jaka jest treść"*.
 > dla „wiem, czego szukam" jest szybszy i pewniejszy od wektorów.
 
 ### R2.4 Kadencja reseedu
-- [ ] `scripts/reseed-code.sh` (siostra `reseed-patterns.sh`) — reseed wszystkich kolekcji `code_*`
-      z ich refów, jedna komenda.
+- [x] Reseed wszystkich kolekcji `code_*` z ich refów jedną komendą: `mcp-server/knowledge-retriever/reseed.sh`
+      (już istniał) — `reseed.mjs` przyjmuje teraz nazwy kolekcji jako argumenty, więc da się przesiać
+      jedną. Osobny `scripts/reseed-code.sh` byłby trzecim wrapperem na to samo, więc go nie ma.
 - [ ] Uruchamiany po merge'u do `develop` (ręcznie lub z CI). **Nie** przy każdej edycji pliku.
+      _(kadencja nadal ręczna — nic tego nie pilnuje)_
 
-**Definition of done R2:** `mirror/collections.json` ma SHA dla `code_juz_ide_api`, żadna instancja
-nie ma włączonego freshness dla kodu, reseed jest odtwarzalny z samego refa.
+**Definition of done R2:** `mirror/collections.json` ma SHA dla `code_juz_ide_api` ✅, żadna instancja
+nie ma włączonego freshness dla kodu ✅ (i nie może go włączyć — daemon odmawia), reseed jest
+odtwarzalny z samego refa ✅.
 
 ---
 
@@ -200,7 +243,7 @@ Daemon jest współdzielony i po R1 nie wie, w którym drzewie roboczym siedzi c
 źródłowego jest więc dla kodu niewykonalny. Właściwym sygnałem jest rozjazd commitów.
 
 - [ ] Odpowiedź `retrieve_code` niesie `indexedSha` + `indexedAt` (z R1.1/R2.2).
-- [ ] `commands/analyze-ddd.md` / `commands/orchestrate-ddd.md`: porównać `indexedSha` z lokalnym
+- [ ] `commands/analyze.md` / `commands/orchestrate.md`: porównać `indexedSha` z lokalnym
       `git rev-parse HEAD`; przy rozjeździe wstrzyknąć do promptu subagenta zdanie:
       *„indeks odzwierciedla `develop@<sha>`, Twój branch jest inny — trafienia traktuj jako
       wskazówkę baseline'ową, treść zawsze z Read"*.
@@ -245,11 +288,13 @@ Krok 1 i 2 muszą iść w tej kolejności: reseed ze starym kodem indeksera zapi
 
 ## Otwarte pytania
 
-- **OQ1** — freshness kodu: twarde wyłączenie (rekomendacja) czy nakładka `code_<instancja>_wip`?
+- ~~**OQ1** — freshness kodu: twarde wyłączenie (rekomendacja) czy nakładka `code_<instancja>_wip`?~~
+  **Rozstrzygnięte 2026-09-07: twarde wyłączenie.** `reindexFile` odmawia dla kolekcji przypiętej do refa.
 - **OQ2** — `KR_CODE_EVIDENCE_LINES = 12`: do kalibracji na realnych przebiegach. Za mało → agent
   nie oceni trafności i zrobi zbędny Read; za dużo → wraca pokusa kopiowania.
-- **OQ3** — czy `retrieve_patterns` też ma ucinać `text`? Rule cards są krótkie i samodzielne,
+- **OQ3 (rozstrzygnięte: NIE)** — czy `retrieve_patterns` też ma ucinać `text`? Rule cards są krótkie i samodzielne,
   więc skłaniam się do **nie** — ale wtedy dwa toole mają różny kontrakt i trzeba to powiedzieć
   wprost w opisach, żeby agent nie uogólnił jednego na drugi.
-- **OQ4** — czy `repoName` (`local-hero`) ma być w payloadzie od razu, czy dopiero gdy pojawi się
+- **OQ4 (rozstrzygnięte: od razu)** — `repo` jest w payloadzie i w `PAYLOAD_INDEX_FIELDS`; bez niego
+  odpowiedź nie mówi, w którym drzewie rozwiązać ścieżkę względną. Czy `repoName` (`local-hero`) ma być w payloadzie od razu, czy dopiero gdy pojawi się
   druga kolekcja z tego samego repo? Dziś jest nieużywany poza diagnostyką.

@@ -1,45 +1,41 @@
-# Architecture Layer Patterns - Metadata
-version: "1.0"
-layer: "architecture"
-description: "Cross-cutting architectural patterns"
+# Architecture Layer Patterns — metadane katalogu.
+# Schemat: jeden dla całego patterns/** (K84, TASK-KAIZEN-002). Walidator:
+# node scripts/validate-metadata.mjs
+category: architecture
+version: "1.1.0"
+maturity: production
+last_verified: 2026-07-13
+stack: "TypeScript, NestJS, @vytches/ddd; część wzorców stack-agnostyczna"
+source_projects: "LocalHero v3, juz-ide-api-1, Claude Code best practices"
+patterns_count: 13
+description: >-
+  Wzorce przekrojowe: bezpieczeństwo tożsamości (dual-identity), komunikacja
+  cross-context przez ACL Registry, transakcje z Result<T>, outbox i zdarzenia
+  integracyjne, kolejki BullMQ, projekcje użytkownika oraz zarządzanie
+  kontekstem Claude Code. Liczba obejmuje trzy przewodniki (*.md bez sufiksu
+  -pattern), które chunker traktuje tak samo jak wzorce.
 
-stack_support:
-  - typescript
-  - generic     # Concepts applicable to all languages
+layer: architecture
+stack_support: [typescript, generic]
 
 patterns:
-  - name: dual-identity-pattern.md
-    stacks: [typescript, generic]
+  - file: dual-identity-pattern.md
     maturity: production
     last_verified: 2026-07-13
-    description: "Security pattern for userId extraction from RequestContext — Commands AND self-scoped Queries (ARCH-D001 gap documented)"
-
-  - name: acl-registry-pattern.md
-    stacks: [typescript, generic]
+    description: >-
+      userId z RequestContext dla Command ORAZ self-scoped Query
+      (luka ARCH-D001 znaleziona w 22 klasach Query)
+  - file: acl-registry-pattern.md
     maturity: production
     last_verified: 2026-07-13
-    description: "Cross-context service locator via ACL Registry; includes batch-call requirement to avoid N+1 across bounded contexts"
-
-  - name: transactional-pattern.md
-    stacks: [typescript, generic]
+    description: >-
+      Service locator cross-context; wymóg wywołań wsadowych zamyka N+1
+      między kontekstami (Anti-Pattern 4, D6)
+  - file: transactional-pattern.md
     maturity: production
     last_verified: 2026-02-05
-    description: "Transaction management patterns (Result pattern integration)"
-
-  - name: fresh-context-pattern.md
-    stacks: [generic]
+    description: "Zarządzanie transakcjami zintegrowane z Result<T>"
+  - file: fresh-context-pattern.md
     maturity: production
     last_verified: 2026-02-05
-    description: "Claude Code context management (lean orchestrator, fresh subagents)"
-
-notes: |
-  Architecture patterns are broadly applicable across tech stacks.
-  dual-identity-pattern is security-focused (prevent audit spoofing); as of
-  2026-07-13 explicitly covers self-scoped Query classes too, not just Commands
-  (ARCH-D001: found live as a gap in 22 Query classes, TS-REACH-SYSTEM-001).
-  acl-registry-pattern's batch-call rule (Anti-Pattern 4) closes an N+1 found
-  in the same task (D6) — one round trip for a set, not one per item.
-  transactional-pattern works with any ORM/database abstraction.
-  fresh-context-pattern is Claude Code specific but generic pattern.
-
-source: "LocalHero v3 production codebase + Claude Code best practices"
+    description: "Zarządzanie kontekstem Claude Code (chudy koordynator, świeże subagenty)"

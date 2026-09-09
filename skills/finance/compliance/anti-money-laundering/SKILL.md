@@ -1,35 +1,16 @@
 ---
 name: anti-money-laundering
-description: "Guide BSA/AML compliance program design and operation for broker-dealers, banks, and investment advisers. Use when the user asks about suspicious activity reports, currency transaction reports, OFAC screening, structuring detection, or FinCEN requirements. Also trigger when users mention 'large cash deposit', 'sanctions check', 'money laundering red flags', 'customer risk rating', 'unusual transaction patterns', 'wire to a foreign country', 'SDN list', 'tipping off a client about a SAR', 'AML audit', 'correspondent account due diligence', or ask whether a transaction needs to be reported."
+description: "Guide BSA/AML compliance program design, ongoing transaction monitoring, and FinCEN reporting for broker-dealers, banks, and investment advisers. Use when the user asks about suspicious activity reports, currency transaction reports, OFAC screening, structuring detection, ongoing risk-rating reviews and escalation, or FinCEN requirements. Also trigger when users mention 'large cash deposit', 'sanctions check', 'money laundering red flags', 'unusual transaction patterns', 'wire to a foreign country', 'SDN list', 'tipping off a client about a SAR', 'AML audit', 'correspondent account due diligence', or ask whether a transaction needs to be reported. (For onboarding identity verification, CIP/CDD, beneficial ownership, and initial customer risk rating, use know-your-customer.)"
 ---
 
 # Anti-Money Laundering Compliance
 
-## Purpose
-Guide the design and operation of Bank Secrecy Act / Anti-Money Laundering (BSA/AML) compliance programs for broker-dealers, banks, and investment advisers. This skill covers FinCEN reporting obligations, OFAC sanctions screening, red flag identification, customer risk rating, and the regulatory framework for detecting and preventing money laundering and terrorist financing.
-
-## Layer
-9 — Compliance & Regulatory Guidance
-
-## Direction
-prospective
-
-## When to Use
-- Designing or reviewing an AML compliance program under FINRA Rule 3310
-- Determining whether a transaction triggers a Currency Transaction Report (CTR) filing
-- Evaluating whether activity warrants a Suspicious Activity Report (SAR)
-- Screening customers or counterparties against the OFAC SDN list
-- Identifying red flags for structuring, layering, or integration
-- Assessing customer risk ratings and risk-based monitoring procedures
-- Reviewing AML obligations for investment advisers under evolving FinCEN rules
-- Handling correspondent or omnibus account due diligence
-- Preparing for an independent AML audit or regulatory examination
-- Understanding FinCEN enforcement trends and penalty exposure
+Regulatory status current as of June 2026 — verify effective dates, dollar thresholds, and pending rulemakings against current SEC/FINRA/FinCEN sources before advising.
 
 ## Core Concepts
 
-### Bank Secrecy Act (BSA) Framework
-The Bank Secrecy Act of 1970 (31 U.S.C. §§ 5311–5332) is the foundational U.S. anti-money laundering statute. It requires financial institutions to assist government agencies in detecting and preventing money laundering by maintaining records and filing reports on certain transactions. The USA PATRIOT Act (2001) significantly expanded BSA obligations, adding enhanced due diligence requirements, information-sharing provisions (Section 314(a) and 314(b)), and the requirement for written AML programs. FinCEN (the Financial Crimes Enforcement Network) is the bureau within the U.S. Treasury Department that administers and enforces BSA compliance. FinCEN issues rules, collects reports (CTRs, SARs), and coordinates with law enforcement.
+### BSA Framework — Key Hooks
+The operative statutes and authorities: the Bank Secrecy Act (31 U.S.C. §§ 5311–5332) as expanded by the USA PATRIOT Act (2001), which added enhanced due diligence requirements, information-sharing provisions (Sections 314(a) and 314(b)), and the written AML program requirement. FinCEN, a bureau of the U.S. Treasury, administers the BSA, issues implementing rules (31 CFR Chapter X), and collects CTRs and SARs.
 
 ### FINRA Rule 3310 — AML Compliance Program
 FINRA Rule 3310 requires every FINRA member firm to establish and implement a written AML compliance program that includes four pillars:
@@ -70,7 +51,7 @@ The Office of Foreign Assets Control (OFAC), a bureau within the U.S. Treasury, 
 - **Voluntary self-disclosure** — OFAC looks favorably on voluntary self-disclosure and considers it a significant mitigating factor in enforcement actions.
 
 ### Red Flags for Money Laundering
-Money laundering follows three stages — placement (introducing illicit funds into the financial system), layering (obscuring the trail through complex transactions), and integration (reintroducing laundered funds into the legitimate economy). Key red flags include:
+Key red flags, mapped to the placement/layering/integration stages:
 
 - **Structuring** — Deposits or withdrawals just below $10,000 (e.g., $9,500, $9,800), especially if repeated across days or accounts. Multiple deposits at different branches in a single day.
 - **Rapid movement of funds** — Funds received and immediately wired out, particularly to unrelated third parties or foreign jurisdictions. No economic rationale for the speed of movement.
@@ -82,12 +63,12 @@ Money laundering follows three stages — placement (introducing illicit funds i
 - **Third-party transactions** — Deposits or payments by unrelated third parties with no clear explanation, especially if the third party has no apparent relationship to the account holder.
 
 ### AML for Investment Advisers
-Historically, registered investment advisers (RIAs) have not been subject to BSA/AML program requirements, although the SEC has long advocated extending these rules. In 2024, FinCEN issued a final rule (effective January 1, 2026) requiring certain investment advisers — specifically, SEC-registered investment advisers and exempt reporting advisers — to establish AML/CFT programs, file SARs, and comply with other BSA requirements (31 CFR Part 1032). Key elements:
+Historically, registered investment advisers (RIAs) have not been subject to BSA/AML program requirements. In 2024, FinCEN issued a final rule (31 CFR Part 1032) that would require SEC-registered investment advisers and exempt reporting advisers to establish AML/CFT programs, file SARs, and comply with other BSA requirements. The rule's original January 1, 2026 effective date was postponed: FinCEN granted exemptive relief in August 2025 and finalized a delay rule on December 31, 2025, pushing the effective date to **January 1, 2028**. FinCEN has stated it intends to revisit the substance of the rule (and, with the SEC, the companion proposed CIP rule for advisers) through new rulemaking before that date — verify the current status and any revised requirements before advising. Key elements as adopted:
 
-- Investment advisers covered by the rule must implement risk-based AML programs with the same four pillars as broker-dealers (written procedures, designated compliance officer, independent testing, training).
-- Advisers must file SARs and comply with FinCEN information-sharing requests under Section 314(a).
+- Covered advisers must implement risk-based AML programs with the same four pillars as broker-dealers (written procedures, designated compliance officer, independent testing, training).
+- Covered advisers must file SARs and comply with FinCEN information-sharing requests under Section 314(a).
 - Advisers with bank or broker-dealer affiliates should coordinate their AML programs to avoid gaps.
-- State-registered advisers are not currently covered, but FinCEN may expand coverage in the future.
+- State-registered advisers are not covered.
 
 ### Correspondent and Omnibus Account Considerations
 Enhanced due diligence applies to correspondent accounts for foreign financial institutions (Section 312 of the USA PATRIOT Act, 31 CFR § 1010.610):
@@ -118,12 +99,12 @@ BSA/AML regulations impose specific recordkeeping obligations:
 ### FinCEN Enforcement Trends and Penalties
 FinCEN has significantly increased enforcement activity in recent years. Key trends include:
 
-- **Escalating penalties** — Civil money penalties can reach the greater of the amount involved in the transaction (up to $1 million) or $77,651 per violation (adjusted for inflation under 31 U.S.C. § 5321). Criminal penalties can include imprisonment of up to 10 years.
+- **Escalating penalties** — Civil money penalties for willful violations can reach the greater of the amount involved in the transaction (up to $1 million) or $77,651 per violation (the figure as of FinCEN's January 2025 inflation adjustment under 31 U.S.C. § 5321; re-indexed annually in 31 CFR 1010.821 — verify the current amount). Criminal penalties can include imprisonment of up to 10 years.
 - **Individual accountability** — FinCEN and DOJ increasingly pursue enforcement actions against individual compliance officers and senior management, not just institutions.
 - **Willful blindness** — Firms and individuals can be held liable for willfully failing to implement adequate AML controls, even without direct knowledge of specific illicit transactions.
 - **Areas of focus** — Virtual currency exchanges and administrators, money services businesses, and firms with repeated examination deficiencies. FinCEN has also focused on failures to file timely and complete SARs.
 - **Coordination with other regulators** — FinCEN actions are frequently accompanied by parallel actions from the SEC, FINRA, OCC, or DOJ, resulting in cumulative penalties and remedial orders.
-- **Beneficial Ownership Information (BOI)** — The Corporate Transparency Act (effective 2024) requires many companies to report beneficial ownership information to FinCEN, creating a new tool for AML enforcement and due diligence.
+- **Beneficial Ownership Information (BOI)** — The Corporate Transparency Act originally required most companies to report beneficial ownership information to FinCEN beginning in 2024, but under FinCEN's March 2025 interim final rule all US-formed entities are exempt; only foreign entities registered to do business in the US remain reporting companies, and they need not report US-person beneficial owners. CTA data is therefore not a substitute for a firm's own CDD Rule beneficial ownership collection (see account-opening-compliance in the client-operations plugin). Verify the current state of CTA rulemaking, which remains in flux.
 
 ## Worked Examples
 
@@ -164,12 +145,15 @@ The firm should not open the account pending resolution of the OFAC match. The c
 - Applying a one-size-fits-all approach to customer risk rating instead of a risk-based methodology that accounts for customer type, geography, products, and transaction patterns
 - Inadequate SAR narratives that describe what happened but fail to explain why the activity is suspicious or lacks a lawful purpose
 - Treating the AML program as a static document rather than updating it as the firm's business, customer base, and risk profile evolve
-- Assuming investment advisers have no AML obligations — the 2024 FinCEN final rule will require covered advisers to implement full BSA/AML programs effective January 1, 2026
+- Assuming the investment adviser AML rule's timeline is settled — the 2024 FinCEN final rule's effective date was postponed to January 1, 2028, and FinCEN has stated it will revisit the rule's substance before then; verify current status
 - Failing to coordinate AML monitoring across affiliated entities (e.g., a broker-dealer and investment adviser under common ownership), creating gaps in detection
 - Neglecting to document the independent testing (audit) findings and the firm's remediation of identified deficiencies
 - Not retaining SAR and CTR supporting documentation for the full 5-year period required under BSA regulations
 
 ## Cross-References
-- **know-your-customer** (Layer 9) — CIP and CDD are prerequisite inputs to AML monitoring; customer identification and verification feed directly into risk rating and transaction monitoring
-- **sales-practices** (Layer 9) — Supervisory systems for detecting unsuitable activity overlap with AML surveillance for detecting suspicious transaction patterns
-- **client-disclosures** (Layer 9) — AML program disclosures at account opening and the interplay between SAR confidentiality and client communication obligations
+- **know-your-customer** (compliance plugin) — CIP and CDD are prerequisite inputs to AML monitoring; customer identification and verification feed directly into risk rating and transaction monitoring
+- **sales-practices** (compliance plugin) — Supervisory systems for detecting unsuitable activity overlap with AML surveillance for detecting suspicious transaction patterns
+- **client-disclosures** (compliance plugin) — AML program disclosures at account opening and the interplay between SAR confidentiality and client communication obligations
+- **account-opening-compliance** (client-operations plugin) — The operational onboarding workflow where CIP verification, OFAC screening, and beneficial ownership collection are executed as compliance gates
+- **account-opening-workflow** (client-operations plugin) — The back-office account opening process that produces the customer records and risk ratings AML monitoring consumes
+- **private-placements** (compliance plugin): AML and beneficial-ownership diligence context for private fund subscriptions and placement agents

@@ -43,7 +43,7 @@ implementation, report it to whoever owns that layer (@domain-application-implem
 
 1. **Read testing patterns from your KB** that apply:
    `testing/testing-pyramid-pattern.md`, `testing/schema-testing-pattern.md`,
-   `testing/context-isolation-pattern.md`, `testing/test-seeding-performance-guide.md`
+   `architecture/fresh-context-pattern.md` (delegation contract), `testing/test-seeding-performance-guide.md`
    (CRITICAL — fixture vs real flow), `.claude/knowledge/learned/testing-patterns.md`
    (golevelup-mock, e2e-hybrid-fixture, redis-test-isolation, rate-limit-testing).
 
@@ -164,6 +164,13 @@ correctness, not just generic SQL — see "Geo/Spatial Repository Tests" below.
 ---
 
 ## 📚 Knowledge Base
+
+**`retrieve_code` returns a pointer, not content** (TASK-RAG-004 R1, 2026-09-07). `source` is a
+path RELATIVE to the repo root — open it with Read in YOUR working tree and work on what you read
+from disk. `evidence` is 12 lines justifying the hit; do NOT copy it — the index is built from
+`origin/develop` (`indexedSha`), your branch differs. Decision rule: unknown symbol name →
+`retrieve_code`; known → straight to Read/Grep.
+
 
 ### Patterns — the list comes from the orchestrator
 
@@ -356,6 +363,8 @@ rule before you assert anything.
 
 ## Changelog
 
+- 2026-09-08 — KB list: `testing/context-isolation-pattern.md` (removed in K89) → `architecture/fresh-context-pattern.md`
+- 2026-09-07 — `retrieve_code` contract: `source` is repo-relative, `evidence` is proof not content, index from `origin/develop` (TASK-RAG-004 R1 / K79, TASK-KAIZEN-002)
 - 2026-09-04 — HARD RULE: nigdy `pnpm test:e2e -- <file>` / `pnpm test:integration -- <file>` z literalnym `--` (pnpm przekazuje je do vitest, filtr plików znika i leci cały suite ~1h, trzymając współdzielony flock repo); zawsze bez `--`
 - 2026-08-27 — `tools:` frontmatter field normalized from multi-line to single-line YAML
   (matches convention of every other agent in the repo); `validate-agents.js` required the

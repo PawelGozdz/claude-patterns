@@ -1,11 +1,12 @@
 # `blocks/` — jednostki kompozycji stacku (ADR 0008)
 
-**Status: F3 — pilot działa.** `scripts/materialize-runtime.mjs` (wołany przez
-`setup-project.sh`) skleja te pliki w `<projekt>/.claude/config/runtime.yml`, a silniki
-`/analyze` i `/orchestrate` czytają wyłącznie ten wynik. Zmaterializowane dziś:
-`juz-ide-api-2` (nestjs + ddd + kysely + `./geo`) i `vytches-ddd` (`typescript-library`
-+ `approval-gate`). Stare `/analyze-ddd` i `/orchestrate-ddd` chodzą równolegle na
-`presets/` — `presets/` i `_stack-defaults/` są zamrożone, tylko bugfixy (OQ6).
+**Status: wdrożone (ADR 0008, 2026-08-12).** Stary tor — `/analyze-ddd`,
+`/orchestrate-ddd`, `presets/`, `patterns/_stack-defaults/` — jest usunięty; to jedyny
+tor, jaki dziś istnieje. `stack_blocks:` w `project.yml` → `scripts/materialize-runtime.mjs`
+(wołany przez `setup-project.sh`) skleja te pliki w `<projekt>/.claude/config/runtime.yml`
+→ silniki `/analyze` i `/orchestrate` czytają wyłącznie ten wynik. Który projekt ma dziś
+jaki skład i czy jego `runtime.yml` jest aktualny względem centrali — `node
+scripts/audit-projects.mjs` (fleet audit), nie ten plik.
 
 Projekt deklaruje skład jedną linią w `project.yml`:
 
@@ -225,6 +226,36 @@ wzorcach — uniwersalne dopiero po drugim realnym użyciu.
 - Bloki lokalne (`.claude/blocks/*.yml` w projekcie) używają identycznego schematu;
   ich ścieżki wskazują do wnętrza projektu.
 
+## `overlay:` — od deklaracji bloku do plików projektu
+
+`overlay:` nie jest opisem; to lista rzeczy, które `scripts/setup-project.sh` ma
+faktycznie umieścić w projekcie po materializacji `runtime.yml`:
+
+| pole | co się z nim dzieje | kto to robi |
+|---|---|---|
+| `agents:` | katalogi z `agents/` → symlinki plików w `<projekt>/.claude/agents/` | `setup-project.sh` (`link_overlay_agents`) |
+| `patterns:` | katalogi z `patterns/` → symlinki w `<projekt>/.claude/knowledge/patterns/` | `setup-project.sh` |
+| `rules:` | katalogi z `rules/` → symlinki w `<projekt>/.claude/rules/` | `setup-project.sh` (`link_overlay_rules`) |
+| `hooks:` | wpisy w `<projekt>/.claude/settings.json` | `scripts/sync-runtime-hooks.mjs --apply`, wołany z `setup-project.sh` |
+
+Hooki są jedynym polem, które nie kończy się symlinkiem: hook musi być
+zarejestrowany na zdarzeniu (`PreToolUse`, `SubagentStop`, …), a to wpis w
+`settings.json`. `sync-runtime-hooks.mjs` dopisuje **wyłącznie brakujące** wpisy,
+zostawia istniejące i ich kolejność (settings.json bywa ręcznie dostrojony), a przed
+zapisem robi kopię `settings.json.bak`. Uruchamiany osobno przydaje się przy naprawie
+pojedynczego projektu:
+
+```bash
+node scripts/sync-runtime-hooks.mjs <projekt>            # dry-run: co brakuje
+node scripts/sync-runtime-hooks.mjs <projekt> --apply    # dopisz brakujące
+```
+
+Braki w tym miejscu wychodzą też z `scripts/verify-project-setup.mjs` (i z
+`audit-projects.mjs`, który go woła) jako „hook deklarowany w runtime.yml, ale nie ma
+go w settings.json". Warstwa globalna ma swój odpowiednik: `hooks/hooks.json` →
+`~/.claude/settings.json` przez `scripts/sync-global-hooks.mjs` (wołany z
+`setup-global.sh`, audyt: `--check`).
+
 ## Bloki i aliasy
 
 | blok | oś | wnosi | requires |
@@ -247,7 +278,13 @@ wzorcach — uniwersalne dopiero po drugim realnym użyciu.
 | `ts-library` | framework | publikowana biblioteka TS: wzorce, panel api-surface-analysis (`library-api-guardian`, advisory), overlay, env — **bez `orchestrate.layers`** (przeniesione do `library-layers`) | — |
 | `library-layers` | architektura | `orchestrate.layers` (implementation→testing→api-surface opcjonalna), `inner_loop` verify `ecc:typescript-reviewer`, `final_gate` `library-quality-verifier` | `ts-library` |
 | `nx-monorepo` | architektura | granice pakietów i graf zależności w monorepo Nx (bez warstw orchestracji); panel: boundary-analysis (`ecc:architect`, wąski `when:`) | — |
+| `nextjs` | framework | Next.js 16 App Router: wzorce RSC/`use cache`/proxy.ts/Server Actions/auth/style/testy, panel: threat-model + `nextjs-architecture-expert` + `nextjs-quality-verifier` (advisory), overlay `stacks/nextjs-app/` — **bez półki `always`** (brak kart, a karty z `cross-layer/` są nestjsowe) | — |
+| `sveltekit` | framework | SvelteKit 2 na runach Svelte 5: wzorce run/komponentów/routingu/`load()`/testów, panel: threat-model + `sveltekit-architecture-expert` + `sveltekit-quality-verifier` (advisory), overlay `stacks/sveltekit/` — **bez półki `always`** (jw.) | — |
 
-Aliasy: `blocks/_aliases.yml` — 4 zdefiniowane: `ddd`, `nestjs-ddd`, `flutter-clean-arch`,
-`typescript-library` (= `[ts-library, library-layers, nx-monorepo]`). Test równoważności
-dekompozycji: `node scripts/blocks-equivalence-check.mjs` (bramka wyjścia F1).
+Aliasy: `blocks/_aliases.yml` — 5 zdefiniowanych: `ddd`, `nestjs-ddd`, `flutter-clean-arch`,
+`typescript-library` (= `[ts-library, library-layers, nx-monorepo]`), `nextjs-app` (= `[nextjs]`). Spójność kompozycji
+dziś pilnują `materialize-runtime.mjs` (błędy twarde: brakujący wymagany parametr, wisząca
+ścieżka wzorca, `requires`, dokładnie jeden blok osi architektury) i `node
+scripts/audit-projects.mjs` (dryf między projektem a centralą) — `blocks-equivalence-check.mjs`,
+który porównywał wynik kompozycji z usuniętymi `presets/`/`_stack-defaults/`, został
+usunięty razem z nimi (`af4bcd2`, 2026-08-13).

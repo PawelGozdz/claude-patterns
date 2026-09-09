@@ -1,31 +1,11 @@
 ---
 name: advice-standards
-description: "Determine when a product, platform, or communication crosses the regulatory line from education into investment advice requiring registration. Use when the user asks about the definition of investment advice under the Advisers Act, whether a fintech feature or AI chatbot constitutes advice, the publisher's exclusion for newsletters or model portfolios, broker-dealer solely incidental exclusion, what triggers a 'recommendation' under Reg BI, or DOL education vs advice safe harbors. Also trigger when users ask 'do I need to register as an investment adviser', 'does this app give investment advice', 'is this tool just education or advice', 'robo-adviser registration', or 'disclaimer language for financial content'."
+description: "Determine when a product, platform, or communication crosses the regulatory line from education into investment advice requiring investment adviser registration. Use when the user asks about the definition of investment advice under Advisers Act Section 202(a)(11), whether a fintech feature or AI chatbot constitutes advice, the publisher's exclusion for newsletters or model portfolios, the broker-dealer solely incidental exclusion, adviser registration thresholds and exemptions, or DOL education vs advice safe harbors. Also trigger when users ask 'do I need to register as an investment adviser', 'does this app give investment advice', 'is this tool just education or advice', 'robo-adviser registration', or 'disclaimer language for financial content'. (For what triggers a 'recommendation' under Reg BI, use reg-bi.)"
 ---
 
 # Investment Advice Standards & Regulatory Boundaries
 
-## Purpose
-This skill covers the critical regulatory distinctions between investment education, general information, recommendations, and investment advice under the Investment Advisers Act of 1940, Regulation Best Interest, and related federal and state frameworks. It provides the analytical tools to determine when a person, platform, or algorithm crosses the line from permissible education or information into regulated investment advice requiring registration, and the compliance consequences of getting that determination wrong.
-
-## Layer
-9 — Compliance & Regulatory Guidance
-
-## Direction
-prospective
-
-## When to Use
-- When evaluating whether a product, platform, tool, or AI application constitutes providing "investment advice" under the Advisers Act
-- When designing fintech features that operate near the education/advice boundary
-- When determining whether an individual or entity must register as an investment adviser
-- When assessing whether broker-dealer communications constitute "recommendations" under Reg BI
-- When building robo-advisory tools, AI chatbots, or digital platforms that discuss investments
-- When analyzing whether content (newsletters, blogs, model portfolios, AI-generated text) qualifies for the publisher's exclusion
-- When evaluating whether financial planning services cross into investment advice
-- When assessing DOL education vs. advice safe harbors for ERISA retirement plans
-- When a user asks "do I need to register as an investment adviser?"
-- When a user asks "does this feature/tool/app constitute investment advice?"
-- When reviewing disclaimers, disclosures, or terms of service for advice-boundary language
+Regulatory status current as of June 2026 — verify effective dates, dollar thresholds, and pending rulemakings against current SEC/FINRA/FinCEN sources before advising.
 
 ## Core Concepts
 
@@ -69,7 +49,7 @@ Section 202(a)(11)(D) excludes from the investment adviser definition "the publi
 Model portfolios, newsletters, market commentary, and investment research published to a general audience without individual tailoring typically qualify. However, if the publisher also provides personalized follow-up advice, individual portfolio reviews, or tailored recommendations to specific subscribers, the exclusion is lost for those communications.
 
 ### The "Recommendation" Trigger Under Regulation Best Interest
-Under Reg BI, a broker-dealer's obligations are triggered when it makes a "recommendation" to a retail customer. The SEC declined to define "recommendation" with a bright-line rule and instead applies a facts-and-circumstances test derived from prior FINRA guidance (particularly FINRA Regulatory Notice 11-02 and the legacy suitability rule framework).
+(The **reg-bi** skill owns the full treatment of what triggers a recommendation; this summary is included only because the recommendation boundary parallels the advice boundary.) Under Reg BI, a broker-dealer's obligations are triggered when it makes a "recommendation" to a retail customer. The SEC declined to define "recommendation" with a bright-line rule and instead applies a facts-and-circumstances test derived from prior FINRA guidance (particularly FINRA Regulatory Notice 11-02 and the legacy suitability rule framework).
 
 A communication is a recommendation if, based on the content, context, and manner of presentation, a reasonable person in the customer's position would view it as a **suggested course of action** or a **call to action**. Factors include:
 - Whether the communication is **reasonably individualized** to the customer rather than general in nature
@@ -129,7 +109,7 @@ The line shifts when there is **any individualization** — responding to an ind
 ### AI-Generated Content and the Advice Boundary
 The SEC and FINRA have increasingly focused on AI-generated content in the financial services context:
 
-- **SEC AI risk alerts and statements (2023-2025):** The SEC has warned that AI tools providing personalized investment suggestions to retail investors may constitute investment advice, regardless of disclaimers. The SEC's Division of Examinations has identified AI-driven advice as an examination priority. Disclaimers stating "this is not investment advice" do not override the functional test — if the content is functionally advisory, it is advisory.
+- **SEC AI risk alerts and statements (issued 2023-2025; current as of June 2026):** The SEC has warned that AI tools providing personalized investment suggestions to retail investors may constitute investment advice, regardless of disclaimers, and its Division of Examinations has identified AI-driven advice as an examination priority. Note that the SEC's July 2023 predictive data analytics proposal was withdrawn in June 2025 without adoption, so the functional Section 202(a)(11) test — not an AI-specific rule — governs; verify the current rulemaking agenda. Disclaimers stating "this is not investment advice" do not override the functional test — if the content is functionally advisory, it is advisory.
 
 - **FINRA Regulatory Notice 24-09 (2024):** FINRA addressed the use of AI in broker-dealer communications, noting that AI-generated content distributed to customers is subject to the same supervisory and compliance requirements as human-generated content. If an AI tool generates a communication that constitutes a recommendation, the firm must ensure Reg BI compliance.
 
@@ -144,7 +124,7 @@ Investment adviser registration operates at both the federal and state level:
 
 - **State registration:** Required for advisers with less than $100 million in AUM who do not qualify for federal registration. State registration is governed by individual state securities statutes (often modeled on the Uniform Securities Act).
 
-- **De minimis exemptions:** Section 203(b)(3) of the Advisers Act provides an exemption from registration for advisers who (i) have fewer than 15 clients in a 12-month period, (ii) do not hold themselves out as investment advisers, and (iii) do not advise registered investment companies. Many states have analogous de minimis exemptions, but thresholds vary.
+- **Registration exemptions (post-Dodd-Frank):** The old Section 203(b)(3) "fewer than 15 clients" private adviser exemption was repealed by the Dodd-Frank Act in 2010. The current federal framework instead provides: the **private fund adviser exemption** (Section 203(m) and Rule 203(m)-1 — advisers solely to private funds with less than $150 million in US private fund AUM are "exempt reporting advisers" that must still file a truncated Form ADV); the **venture capital fund adviser exemption** (Section 203(l), also exempt-reporting status); and the **foreign private adviser exemption** (Section 202(a)(30) — no US place of business, fewer than 15 US clients and private fund investors, less than $25 million attributable to them, and no holding out). Many states retain their own de minimis exemptions (commonly 5 or fewer clients in the state), but thresholds vary.
 
 - **The "place of business" test:** Under NASAA and most state laws, an adviser's registration obligations are determined by where it has a "place of business" and where its clients are located. An adviser with a place of business in a state generally must register in that state. An adviser without a place of business in a state may be exempt under the state's de minimis rules if it has fewer than a specified number of clients in that state (commonly 5 or 6 within a 12-month period).
 
@@ -199,8 +179,9 @@ Investment adviser registration operates at both the federal and state level:
 - **Treating model portfolios as always safe.** Model portfolios published to a general audience may qualify for the publisher's exclusion, but model portfolios tailored to individual clients or adjusted based on client-specific inputs are personal advice.
 
 ## Cross-References
-- **fiduciary-standards** (compliance plugin, Layer 9): Fiduciary duties that attach once adviser status is established
-- **reg-bi** (compliance plugin, Layer 9): Regulation Best Interest obligations for broker-dealer recommendations
-- **investment-suitability** (compliance plugin, Layer 9): Suitability analysis framework underlying both advice and recommendations
-- **advertising-compliance** (compliance plugin, Layer 9): Rules governing how advisory and brokerage services are marketed
-- **conflicts-of-interest** (compliance plugin, Layer 9): Identification and management of conflicts that arise in advisory and brokerage relationships
+- **fiduciary-standards** (compliance plugin): Fiduciary duties that attach once adviser status is established
+- **reg-bi** (compliance plugin): Regulation Best Interest obligations for broker-dealer recommendations
+- **investment-suitability** (compliance plugin): Suitability analysis framework underlying both advice and recommendations
+- **advertising-compliance** (compliance plugin): Rules governing how advisory and brokerage services are marketed
+- **conflicts-of-interest** (compliance plugin): Identification and management of conflicts that arise in advisory and brokerage relationships
+- **private-placements** (compliance plugin): the exempt offerings and private fund structures (3(c)(1)/3(c)(7)) that private fund advisers and exempt reporting advisers manage

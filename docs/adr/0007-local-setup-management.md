@@ -1,12 +1,23 @@
 # ADR 0007 — Zarządzanie lokalnym setupem: manifest instalacji, wykrywanie dryfu, wersjonowanie kontraktu
 
-**Status**: proposed (2026-08-02) — **NIE zaakceptowany, do przedyskutowania**
+**Status**: accepted w zawężeniu (2026-09-07, K66/TASK-KAIZEN-002) — status per decyzja
+w tabeli niżej. Wcześniej: proposed (2026-08-02).
 **Context source**: dyskusja przy ADR 0006 (broadcast) — pytanie „co jest lepsze long-run
 dla utrzymania i aktualizowania lokalnego setupu"; task `CI-DEVEX-001` (`juz-ide-mobile-app`)
 proponujący vendorowanie hooków Claude do repo.
 
-> **Ten ADR niczego nie implementuje.** Zawiera decyzje do zatwierdzenia i sekcję
-> OTWARTE PYTANIA wymagającą odpowiedzi człowieka.
+| decyzja | status | gdzie żyje |
+|---|---|---|
+| **D0** — implementacja centralnie, vendorowanie odrzucone | accepted 2026-08-02 | ADR 0001, symlinki `setup-project.sh` |
+| **D1** — manifest `.claude/config/installed.yml` | **accepted 2026-09-07** | `scripts/materialize-runtime.mjs` |
+| **D2** — raport dryfu, zero zmian | **accepted 2026-09-07** | `scripts/audit-projects.mjs` |
+| **D3** — wersjonujemy kontrakty, nie pliki | **accepted w zawężeniu 2026-09-07** — jedna wersja (`METADATA.yml`), porównanie po MAJOR; lista per-kontrakt odrzucona | `audit-projects.mjs`, `runtime.yml: schema_version` |
+| **D4** — bramka dla człowieka to git-hook | implemented 2026-09-07 | `templates/git-hooks/pre-commit-satellite.sh` |
+| **D5** — czego ten ADR nie robi | w mocy | — |
+
+> **Ten ADR opisuje stan obowiązujący dla D1-D4.** Sekcja „Realizacja" na końcu mówi, co
+> faktycznie powstało i czym różni się od pierwotnej propozycji; OTWARTE PYTANIA są
+> rozstrzygnięte tamże.
 
 ---
 
@@ -76,6 +87,8 @@ zainstalowane gdzie i czy jest aktualne.** Kolejne decyzje adresują to bezpośr
 
 ### D1 — Manifest instalacji: `.claude/config/installed.yml`
 
+> **accepted 2026-09-07.** Wdrożone węziej i w innym miejscu, niż opisuje ta sekcja — patrz „Realizacja" na końcu.
+
 Zapisywany przez `setup-project.sh`, jeden plik per instancja, **nieśledzony przez gita**
 (wykluczenie w `.git/info/exclude`, jak `broadcast.yml` w ADR 0006 D3 — repo nie dostaje
 żadnej zmiany śledzonej):
@@ -120,6 +133,8 @@ raportuje „brak manifestu" (OQ3), nie błąd.
 
 ### D2 — `setup-project.sh --check`: raport dryfu, zero zmian
 
+> **accepted 2026-09-07**, ale mieszka w `audit-projects.mjs`, nie w `setup-project.sh` — patrz „Realizacja".
+
 Nowy tryb read-only. Porównuje `installed.yml` ze stanem `claude-patterns` teraz i wypisuje:
 
 - **za stare** — `claude_patterns_sha` sprzed commitów oznaczonych jako istotne dla setupu;
@@ -137,6 +152,8 @@ Naturalne miejsce wywołania: `/pulse` (raz dziennie, przy okazji standupu) — 
 się raz na tygodnie.
 
 ### D3 — Wersjonujemy kontrakty, nie pliki
+
+> **accepted w zawężeniu 2026-09-07**: jedna wersja z `METADATA.yml`, nie lista per kontrakt — patrz „Realizacja".
 
 **Nie** wprowadzamy wersji per hook ani per skill — to byłby package manager, którego
 ADR 0001 świadomie nie chce. Wersjonujemy **formaty, na których opiera się integracja**:
@@ -181,6 +198,8 @@ plikach ze stage'a, hook Claude Code na plikach z `tool_input`. Zero duplikacji 
 
 ## OTWARTE PYTANIA
 
+> **Rozstrzygnięte 2026-09-07** — odpowiedzi w sekcji „Realizacja" na końcu. Zostawione dla śladu rozumowania.
+
 **OQ1 — Co dokładnie trafia do `components`.** Nazwy kategorii (`skills`) czy pełna lista
 (`skills/finance/core`, ...)? Pełna jest dokładniejsza, ale rośnie i szybciej się rozjeżdża.
 *Rekomendacja:* kategorie + liczba pozycji; szczegóły wylicza `--check` na żywo.
@@ -219,6 +238,8 @@ w obie strony.
 
 ## Plan wdrożenia
 
+> **Historyczne.** Fazy 1, 2 i 4 wykonane 2026-09-07 w kształcie opisanym w „Realizacji"; faza 3 (`SETUP-EPOCH`) odrzucona, faza 5 (`/pulse`) zastąpiona pre-commitem.
+
 | faza | zakres | co weryfikuje |
 |---|---|---|
 | **1** | Zapis manifestu w `setup-project.sh` (bez `--check`) | czy da się zapisać stan bez ruszania reszty skryptu — najtańszy krok, użyteczny natychmiast |
@@ -244,6 +265,72 @@ o tryb, który trzeba utrzymywać; `SETUP-EPOCH` wymaga dyscypliny ręcznego pod
 
 **Neutralne**: ADR 0001 (symlinki, brak formatu pluginu) pozostaje w mocy — ten ADR go nie
 rewiduje, tylko dokłada brakującą warstwę obserwowalności instalacji.
+
+---
+
+## Realizacja (2026-09-07, K66 z `TASK-KAIZEN-002`)
+
+Miesiąc obserwacji zmienił trzy rzeczy w stosunku do propozycji z sierpnia. Wszystkie
+biorą się z tego samego: przez ten czas powstał `materialize-runtime.mjs` (ADR 0008)
+i `audit-projects.mjs`, więc pytanie „gdzie to wpiąć" ma teraz inną, tańszą odpowiedź
+niż „rozbudować `setup-project.sh`".
+
+**Manifest pisze materializacja, nie `setup-project.sh`.** Setup odpala się raz, przy
+podłączaniu projektu; materializacja przy każdej zmianie kompozycji. Manifest zapisywany
+wyłącznie przez setup byłby przestarzały od pierwszej rematerializacji — czyli kłamałby
+dokładnie w tym polu, dla którego powstał. Kod: `scripts/materialize-runtime.mjs`, sekcja
+„manifest instalacji", zaraz po zapisie `runtime.yml`. Plik trafia do `.git/info/exclude`
+tym samym mechanizmem co `broadcast.yml` z ADR 0006 D3.
+
+Zawartość jest węższa niż w D1 i celowo: `claude_patterns_sha`, `claude_patterns_dirty`,
+`contract_version`, `materialized_at`, `blocks_hash`. Nie ma listy `components` (OQ1) —
+audyt wylicza ją na żywo z symlinków i `runtime.yml`, więc kopia w manifeście mogłaby się
+z nią rozjechać, a nie wnosi nic, czego nie widać bez niej. Nie ma `setup_script_version`:
+`setup-project.sh` nie ma numeru wersji, a dopisanie licznika do ręcznego podbijania to
+ten sam rytuał, przed którym ostrzega D3.
+
+**`--check` żyje w `audit-projects.mjs`, nie w `setup-project.sh --check`.** Audyt już
+robił dwie z trzech rzeczy z listy D2 (martwe symlinki, rozjazd szablonów) dla całej floty
+naraz; drugi tryb sprawdzania w drugim skrypcie oznaczałby dwie odpowiedzi na to samo
+pytanie. Reguły manifestowe dołożone do audytu:
+
+- **brak manifestu → OSTRZEŻENIE** z komendą `materialize-runtime.mjs` (rozstrzyga OQ3:
+  ani cichy dopisek z `sha: unknown`, ani błąd — repo sprzed tego ADR ma po prostu
+  wykonać jedną komendę);
+- **rozjazd `claude_patterns_sha` → INFO** — centrala dostaje commity codziennie, a
+  większość z nich nie dotyczy setupu. Błędem jest dopiero to, co z rozjazdu WYNIKA
+  (nieaktualny `runtime.yml`, martwe dowiązanie, niekompletny setup) i to łapią checki,
+  które w audycie już były;
+- **rozjazd MAJOR w `contract_version` → BŁĄD** — zmienił się format konfiguracji, więc
+  repo poniżej progu czyta plik, którego nie rozumie.
+
+To zarazem odpowiedź na OQ5 (`SETUP-EPOCH`): osobny licznik „commitów istotnych dla setupu"
+nie powstał. SHA daje datowanie, MAJOR daje próg blokujący, a plik podbijany ręcznie
+przy każdej istotnej zmianie jest dyscypliną, która w tym repo zawiodła już dwa razy.
+
+**D3 zawężone do jednej wersji.** Zamiast listy `contracts: {project_yml, broadcast_yml}`
+— jedno pole `contract_version` z `METADATA.yml` centrali, porównywane po MAJOR. Powód:
+przez rok nie pojawił się ani jeden przypadek, w którym dwa kontrakty rozjechałyby się
+niezależnie, a `runtime.yml` dostał już własne `schema_version` tam, gdzie wersjonowanie
+per plik faktycznie było potrzebne. Rozdzielenie zostaje na moment, w którym pierwszy
+realny rozjazd to wymusi.
+
+**D4 dostało implementację.** `templates/git-hooks/pre-commit-satellite.sh` — hook
+uruchamiany w satelicie przy commicie dotykającym `.claude/config/project.yml` albo
+`.claude/blocks/*.yml`: rematerializuje `runtime.yml` (tylko gdy `--check` mówi, że jest
+nieaktualny) i — w repo, które ten plik śledzi — wymaga, żeby pojechał tym samym commitem.
+Porównanie idzie po `source_hash`, nie po bajtach, bo `materialized_at` różni się przy
+każdym przebiegu.
+
+**OQ2 rozstrzygnięte inaczej niż rekomendacja.** Nie `/pulse`, tylko dwa pre-commity:
+w centrali (`pre-commit-guards.mjs` odpala `audit-projects --gate`, gdy commit rusza
+`blocks/**.yml` albo szablony hooków/settings) i w satelicie (wyżej). Powód jest ten sam,
+dla którego wybrano PostToolUse zamiast SessionStart: bramka ma stać tam, gdzie zmiana
+POWSTAJE, a nie tam, gdzie ktoś raz dziennie czyta raport. `/pulse` nie odpalił się ani
+razu między incydentem z 2026-08-12 a jego powtórką z 2026-09-07.
+
+**OQ4 potwierdzone**: manifest nieśledzony. Niesie SHA cudzego repozytorium, więc
+w diffie satelity byłby szumem bez odbiorcy.
 
 ---
 

@@ -1,0 +1,18 @@
+# Orchestration Patterns — metadane katalogu.
+# Schemat: jeden dla całego patterns/** (K84, TASK-KAIZEN-002). Walidator:
+# node scripts/validate-metadata.mjs
+category: orchestration
+version: "1.0.0"
+maturity: production
+last_verified: 2026-04-03
+stack: "Claude Code (agenci, skille, hooki); niezależne od języka projektu"
+source_projects: "claude-patterns"
+patterns_count: 1
+description: >-
+  System zarządzania projektem: TEAM-STATE.md jako wspólny mózg agentów
+  @tech-lead i @product-owner, KANBAN.md, TECH-DEBT.md i konwencje plików
+  zadań. Jedyny plik w katalogu to pełna dokumentacja systemu
+  (project-management-system.md), nie plik z sufiksem -pattern.
+
+layer: orchestration
+stack_support: [generic]

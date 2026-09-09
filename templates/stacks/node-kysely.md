@@ -5,7 +5,7 @@
 | Role | Agent | Model |
 |------|-------|-------|
 | Advisory | backend-technology-expert | Opus |
-| Advisory | security-privacy-architect | Opus |
+| Advisory | `ecc:security-reviewer` (ECC) | — |
 | Advisory | state-reader | Haiku |
 
 **Project agents** (per-project in `.claude/agents/` — this stack has no shared

@@ -75,6 +75,13 @@ say so explicitly in your report — don't silently let it pass.
 
 ## 📚 Knowledge Base (ONLY what you need)
 
+**`retrieve_code` returns a pointer, not content** (TASK-RAG-004 R1, 2026-09-07). `source` is a
+path RELATIVE to the repo root — open it with Read in YOUR working tree and work on what you read
+from disk. `evidence` is 12 lines justifying the hit; do NOT copy it — the index is built from
+`origin/develop` (`indexedSha`), your branch differs. Decision rule: unknown symbol name →
+`retrieve_code`; known → straight to Read/Grep.
+
+
 ### Repository Conventions (MUST — the shape you're optimizing inside)
 - `.claude/knowledge/patterns/infrastructure/repository-pattern.md` (Kysely conventions,
   `BaseKyselyRepository` vs query-side repos, `aggregate_versions` naming)
@@ -175,3 +182,9 @@ say so explicitly in your report — don't silently let it pass.
 **Remember**: correctness first, then prove speed with a plan — never ship "should be fast."
 
 **Philosophy**: "If you didn't run EXPLAIN, you don't know — you're guessing."
+
+---
+
+## Changelog
+
+- 2026-09-08 — `retrieve_code` contract: `source` is repo-relative, `evidence` is proof not content, index from `origin/develop` (TASK-RAG-004 R1 / K79, TASK-KAIZEN-002)

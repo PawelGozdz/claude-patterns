@@ -5,25 +5,6 @@ description: "Analyze commodity markets including futures curve dynamics, roll y
 
 # Commodities
 
-## Purpose
-Analyze commodity markets including futures curve dynamics, roll yield mechanics, commodity index construction, and supply/demand fundamentals. This skill covers the unique return drivers of commodity investing and the critical distinction between spot returns and futures-based returns.
-
-## Layer
-2 — Asset Classes
-
-## Direction
-both
-
-## When to Use
-- User asks about commodity investing, commodity ETFs, or commodity futures
-- User asks about contango, backwardation, or futures curve shape
-- User asks about roll yield or the cost of rolling futures contracts
-- User asks about commodity indices (S&P GSCI, Bloomberg Commodity)
-- User asks about storage costs, convenience yield, or cost of carry
-- User asks about commodities as an inflation hedge
-- User asks about supply/demand fundamentals for specific commodity sectors
-- User asks about seasonality in commodity markets
-
 ## Core Concepts
 
 ### Spot vs Futures Pricing
@@ -59,7 +40,7 @@ The gain or loss realized when an expiring futures contract is replaced by a lon
 - **Livestock:** live cattle, lean hogs — demand-driven
 
 ### Commodity Indices
-- **S&P GSCI:** production-weighted, heavily tilted toward energy (~60%+). Represents global commodity production.
+- **S&P GSCI:** production-weighted, heavily tilted toward energy (~60%+ as of 2024-2025; weights are rebalanced annually, so check the current composition). Represents global commodity production.
 - **Bloomberg Commodity Index (BCOM):** diversified with sector caps (33%) and single commodity caps (15%). More balanced exposure.
 - Index construction affects returns significantly — energy-heavy indices behave very differently from diversified indices.
 
@@ -88,7 +69,8 @@ Agricultural commodities show harvest-related patterns (supply increases at harv
 Monthly roll yield = (F_near - F_far) / F_near = ($50 - $52) / $50 = -4.0%
 This is a 1-month loss of 4.0%.
 Annualized roll yield ≈ -4.0% × 12 = -48% (simple annualization)
-More precisely: (50/52)^12 - 1 = (0.9615)^12 - 1 = -38.1%
+Compounded over 12 monthly rolls: (50/52)^12 - 1 = (0.9615)^12 - 1 = -37.5%
+Using the day-count formula above with a 30-day roll: (50/52)^(365/30) - 1 = -37.9%
 
 This illustrates how severe contango can create enormous roll yield drag. In practice, front-to-second-month contango is rarely this steep, but the example shows why curve shape matters enormously for commodity investors.
 
@@ -108,10 +90,17 @@ Despite a 10% spot price increase, the futures-based investor earned only 9% due
 - Storage costs matter for physical but not financial investors — financial investors face roll yield, not storage costs
 
 ## Cross-References
-- **historical-risk** (wealth-management plugin, Layer 1a): return and risk measurement basics
-- **real-assets** (wealth-management plugin, Layer 2): physical commodity-related investments (gold, farmland)
-- **currencies-and-fx** (wealth-management plugin, Layer 2): commodity currency relationships
-- **asset-allocation** (wealth-management plugin, Layer 3): commodities as a portfolio diversifier
+- **historical-risk** (wealth-management plugin): return and risk measurement basics
+- **real-assets** (wealth-management plugin): physical and collectible commodity ownership (bullion, farmland, timberland). Division of labor: this skill owns gold accessed via futures and the gold-as-safe-haven allocation question; real-assets owns physical/collectible gold ownership and storage
+- **currencies-and-fx** (wealth-management plugin): commodity currency relationships
+- **asset-allocation** (wealth-management plugin): commodities as a portfolio diversifier
 
-## Reference Implementation
-See `scripts/commodities.py` for computational helpers.
+## Running the Script
+
+```bash
+uv run scripts/commodities.py            # run the demo (uses PEP 723 inline deps)
+uv run scripts/commodities.py --verify   # check demo outputs against the worked examples (exit 1 on mismatch)
+python3 scripts/commodities.py            # alternative (requires: pip install numpy)
+```
+
+The demo prints the calculations covered above; its values match the worked examples in this skill. Run `--help` for a list of the classes and functions. For programmatic use, import the module rather than running it — the demo only executes under `python commodities.py`.

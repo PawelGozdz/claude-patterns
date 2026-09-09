@@ -23,7 +23,8 @@ skill performs:
 
 - **Diff collection** for the current branch vs `origin/main` (or a GitHub PR via `--pr`)
 - **Snapshot check** for incremental re-review (only changed files re-reviewed on later runs)
-- **Panel dispatch**: standard mode uses a fixed persona set per `stack_profile`; `--thorough`
+- **Panel dispatch**: standard mode picks the persona set from `stack_blocks` in
+  `.claude/config/runtime.yml` (ADR 0008 — not `stack_profile`); `--thorough`
   dynamically selects 10 of the 16 `reviewer-*` personas based on diff signals
 - **Synthesis**: dedupe findings, split auto-fixable vs requires-decision, severity-graded report
 - **Apply fixes** one at a time on approval (never commits/pushes)
@@ -47,13 +48,13 @@ never actually engage. The guard is the approval step in Phase 3, not a missing 
 
 ## When NOT to use
 
-- A quick sanity check on a small change — use `/code-review` instead (single-pass, faster)
+- A quick sanity check on a small change — use `/ecc:code-review` instead (single-pass, faster)
 - Full STRIDE/DREAD/LINDDUN security analysis — use `/security-review` (the panel's
   `reviewer-security` persona is a lighter pass, not a replacement)
 
 ## Related
 
-- `/code-review` — quick, single-agent review
+- `/ecc:code-review` — quick, single-agent review (ECC)
 - `/security-review` — full STRIDE/DREAD/LINDDUN pass
 - `/pr-ops` — list/triage PRs and their comments (before or after review)
 - Skill source: `skills/quality/review-panel/SKILL.md`

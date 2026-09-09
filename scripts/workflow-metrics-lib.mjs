@@ -5,6 +5,15 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import crypto from 'node:crypto';
+import { createRequire } from 'node:module';
+import { fileURLToPath } from 'node:url';
+
+// Jedna implementacja liczenia tokenów z transkryptu, dwóch konsumentów (K77):
+// ten moduł (ESM) i hooks/subagent-stop-cost-log.js (CJS). Źródło jest CJS,
+// bo hook nie może być ESM — stąd createRequire zamiast importu.
+const require_ = createRequire(import.meta.url);
+const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const transcriptUsage = require_(path.join(REPO_ROOT, 'hooks', 'lib', 'transcript-usage.js'));
 
 export const METRICS_DIR = path.join(os.homedir(), '.claude', 'metrics');
 export const STEPS_FILE = path.join(METRICS_DIR, 'workflow-steps.jsonl');
@@ -69,29 +78,11 @@ export function sha256short(text) {
 
 // Suma 4 liczników usage z transkryptu subagenta. Transkrypt to snapshoty streamingu:
 // jedno message.id występuje w wielu liniach z rosnącym usage — liczy się OSTATNIA linia per id.
-export function sumTranscriptUsage(transcriptPath) {
-  if (!transcriptPath || !fs.existsSync(transcriptPath)) return null;
-  const lastById = new Map();
-  for (const line of fs.readFileSync(transcriptPath, 'utf8').split('\n')) {
-    const t = line.trim();
-    if (!t) continue;
-    let o;
-    try { o = JSON.parse(t); } catch { continue; }
-    const u = o?.message?.usage;
-    const id = o?.message?.id;
-    if (!u || !id || typeof u.output_tokens !== 'number') continue;
-    lastById.set(id, u);
-  }
-  if (lastById.size === 0) return null;
-  const sums = { inputTokens: 0, outputTokens: 0, cacheWriteTokens: 0, cacheReadTokens: 0 };
-  for (const u of lastById.values()) {
-    sums.inputTokens += u.input_tokens || 0;
-    sums.outputTokens += u.output_tokens || 0;
-    sums.cacheWriteTokens += u.cache_creation_input_tokens || 0;
-    sums.cacheReadTokens += u.cache_read_input_tokens || 0;
-  }
-  return sums;
-}
+// Implementacja mieszka w hooks/lib/transcript-usage.js (współdzielona z hookiem SubagentStop, K77);
+// tu tylko re-eksport, żeby nie było dwóch rozjeżdżających się kopii tej samej pętli.
+export const sumTranscriptUsage = transcriptUsage.sumTranscriptUsage;
+export const modelFromTranscript = transcriptUsage.modelFromTranscript;
+export const readTranscriptUsage = transcriptUsage.readTranscriptUsage;
 
 // Szacunek $ z lokalnego cennika (D4). Stawki per 1M tokenów; null gdy model nieznany
 // LUB wpis cennika niekompletny (ręcznie edytowany prices.json nie może zatruć sum NaN-em).

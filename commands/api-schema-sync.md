@@ -50,28 +50,3 @@ Thin wrapper that invokes the `api-contract-sync` skill from
 
 ---
 
-## Publikacja wyniku na kanał broadcastu (ADR 0006, D10 — opcjonalne)
-
-Jeśli projekt ma `.claude/config/broadcast.yml`, wynik drift-checku jest **deterministyczny**
-(pochodzi z porównania schematów, nie z interpretacji), więc wolno go opublikować jako
-`class: deterministic` — czyli jedyną klasę, która może tworzyć taski automatycznie (D5)
-i której wolno nadać `severity: critical` (D11).
-
-Publikuj **tylko wykryty drift**, nigdy „sprawdzone, wszystko OK" — kanał ma nieść zmiany
-założeń, nie potwierdzenia rutyny. Bez manifestu pomiń ten krok w ciszy.
-
-```bash
-node "$HOME/.claude/hooks/lib/broadcast/cli.js" emit \
-  --topic <repo>/contracts --kind discovery --class deterministic \
-  --severity important \
-  --title "OpenAPI drift: <N> endpointów zmienionych" \
-  --body "<zwięzła lista zmian + które repo konsumenckie dotyka>" \
-  --paths <ścieżki plików kontraktu>
-```
-
-`severity: critical` zarezerwuj na zmiany łamiące konsumenta już dziś (usunięty endpoint,
-zmieniony typ pola w odpowiedzi). Zwykły przyrost pola to `important` albo `info`.
-
----
-
-Invoke skill: `api-contract-sync`

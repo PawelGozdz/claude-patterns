@@ -177,6 +177,11 @@ Read `src/contexts/{context}/BUSINESS_RULES.yaml` and check:
 
 ## Output Format
 
+> Every `<N>` below is a placeholder, not a sample value: fill it from your own
+> grep/read counts for THIS codebase. Never copy the shape of the example into a
+> report with the example's numbers — an invented count looks stable and poisons
+> the next audit (few-shot-as-data trap; see `tech-lead.md` / `product-owner.md`).
+
 ```
 [BUSINESS RULES AUDIT] {context} — {date}
 
@@ -229,14 +234,14 @@ HANDLER NON-RULES (✅ SKIP):
 
 ═══ SUMMARY ═══
 
-Specs:     32 total | 3 decorated | 29 missing  (9% coverage)
-Policies:   8 total | 0 decorated | 8 missing   (0% coverage)
-Aggregates: 15 BR methods identified | 0 decorated
-Handlers:   12 BR checks identified | 0 in rules.ts
+Specs:     <N> total | <N> decorated | <N> missing  (<N>% coverage)
+Policies:  <N> total | <N> decorated | <N> missing  (<N>% coverage)
+Aggregates: <N> BR methods identified | <N> decorated
+Handlers:   <N> BR checks identified | <N> in rules.ts
 
 NEXT STEPS:
-1. Decorate 29 remaining spec classes (REQUIRED)
-2. Decorate 8 policy classes (REQUIRED)
+1. Decorate <N> remaining spec classes (REQUIRED)
+2. Decorate <N> policy classes (REQUIRED)
 3. Create {aggregate-name}.rules.ts companion files with AGGREGATE_RULES object (RECOMMENDED)
 4. Create rules.ts for handler folders with @BusinessRules(ARRAY) (RECOMMENDED)
 ```
@@ -262,3 +267,9 @@ NEXT STEPS:
   individually
 - **Report, don't modify**: generate recommendations, human decides
 - **Cross-reference YAML**: catch rules defined in YAML but missing decorators
+
+---
+
+## Changelog
+
+- 2026-09-08 — Output Format summary uses `<N>` placeholders instead of sample counts (`32 total | 3 decorated | 29 missing (9%)`) and warns against copying example numbers into reports (K55, TASK-KAIZEN-002; same few-shot-as-data trap as the `product-owner` incident). Added this Changelog section

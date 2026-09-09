@@ -12,6 +12,10 @@ cash runway estimation.
 Part of Layer 6 (Personal Finance) in the finance skills framework.
 """
 
+import argparse
+import math
+import sys
+
 import numpy as np
 
 
@@ -420,7 +424,7 @@ class LiquidityManagement:
         return penalty_months * cd_rate / rate_diff
 
 
-if __name__ == "__main__":
+def _demo() -> None:
     # ----------------------------------------------------------------
     # Demo: Liquidity management computations
     # ----------------------------------------------------------------
@@ -543,3 +547,82 @@ if __name__ == "__main__":
     print("\n" + "=" * 60)
     print("Demo complete.")
     print("=" * 60)
+
+
+def _verify() -> int:
+    """Assert that demo computations match the SKILL.md worked examples."""
+    LM = LiquidityManagement
+    failures: list[str] = []
+
+    def check(label: str, actual: float, expected: float, rel_tol: float = 1e-3) -> None:
+        ok = math.isclose(actual, expected, rel_tol=rel_tol)
+        print(f"  {'PASS' if ok else 'FAIL'}: {label}: got {actual:,.4f}, expected {expected:,.4f}")
+        if not ok:
+            failures.append(label)
+
+    print("Verifying against SKILL.md worked examples...")
+
+    # Example 1: CD ladder — $60K, 6 rungs every 2 months, blended yield ~4.53%
+    ladder = LM.cd_ladder(
+        total_amount=60_000,
+        num_rungs=6,
+        rung_yields=[0.042, 0.044, 0.045, 0.046, 0.047, 0.048],
+        maturity_interval_months=2,
+    )
+    check("Ex1 rung amount ($10,000)", ladder["rungs"][0]["amount"], 10_000.0, rel_tol=1e-9)
+    check("Ex1 blended yield (~4.53%)", ladder["blended_yield"], 0.0453, rel_tol=2e-3)
+    check("Ex1 liquidity interval (2 months)", ladder["liquidity_interval_months"], 2, rel_tol=1e-9)
+
+    # Example 2: income smoothing — avg income $8,000, essentials $5,500
+    smoothing = LM.income_smoothing(np.full(12, 8_000.0), monthly_essentials=5_500)
+    check("Ex2 average income ($8,000)", smoothing["average_income"], 8_000.0, rel_tol=1e-9)
+    check("Ex2 average surplus ($2,500)", smoothing["average_surplus"], 2_500.0, rel_tol=1e-9)
+    check(
+        "Ex2 smoothing reserve target ($16,500)",
+        smoothing["smoothing_reserve_target"],
+        16_500.0,
+        rel_tol=1e-9,
+    )
+
+    if failures:
+        print(f"FAIL: {len(failures)} check(s) did not match SKILL.md.")
+        return 1
+    print("PASS: all checks match SKILL.md worked examples.")
+    return 0
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description=(
+            "Liquidity management reference implementation: liquidity ratios, "
+            "cash flow projections, cash runway, liquidity tier analysis, "
+            "CD ladders, income smoothing, and CD breakeven analysis."
+        ),
+        epilog=(
+            "Main class:\n"
+            "  LiquidityManagement -- static methods: liquidity_ratio,\n"
+            "    cash_reserve_ratio, current_ratio, quick_ratio, net_liquid_assets,\n"
+            "    cash_flow_projection, cash_runway, liquidity_tier_analysis,\n"
+            "    cd_ladder, income_smoothing, cd_breakeven_penalty\n"
+            "\n"
+            "This file is primarily meant to be imported as a module:\n"
+            "  from liquidity_management import LiquidityManagement\n"
+            "\n"
+            "Run with no arguments to print a worked demo."
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument(
+        "--verify",
+        action="store_true",
+        help="recompute the demo figures and assert they match the SKILL.md worked examples",
+    )
+    args = parser.parse_args()
+
+    if args.verify:
+        sys.exit(_verify())
+    _demo()
+
+
+if __name__ == "__main__":
+    main()

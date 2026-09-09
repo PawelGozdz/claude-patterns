@@ -1,14 +1,15 @@
 ---
 id: TASK-DDD-PANEL-SPLIT-001
-title: "Rozbicie advisory-stage'ów panelu /analyze-ddd na węższych, równoległych specjalistów"
+title: "Rozbicie advisory-stage'ów panelu /analyze na węższych, równoległych specjalistów"
 type: task
 status: planned
 created_date: 2026-07-08
+updated_date: 2026-09-07
 ---
 
-# TASK-DDD-PANEL-SPLIT-001 — Rozbicie advisory-stage'ów panelu `/analyze-ddd` na węższych, równoległych specjalistów
+# TASK-DDD-PANEL-SPLIT-001 — Rozbicie advisory-stage'ów panelu `/analyze` na węższych, równoległych specjalistów
 
-**Status: TODO** · **Źródło:** sesja 2026-07-08 (audyt latencji `/analyze-ddd` → `/orchestrate-ddd`,
+**Status: TODO** · **Źródło:** sesja 2026-07-08 (audyt latencji `/analyze-ddd` → `/orchestrate-ddd` — komendy sprzed ADR 0008,
 naprawa zależności od `mcp__zen__*`, dyskusja "duzi generaliści vs wielu wąskich specjalistów"
 po wzorze panelu `reviewer-*` z 2026-07-07)
 
@@ -16,9 +17,38 @@ po wzorze panelu `reviewer-*` z 2026-07-07)
 do artefaktu `{TASK-ID}.analysis.md`), nie gotowy plan do ślepego wykonania — patrz sekcja
 "Otwarte pytania" niżej.
 
+> **▶ Przepisane na bloki 2026-09-07 (K75 / `TASK-KAIZEN-002`).** Task powstał, gdy panel żył
+> w `presets/nestjs-ddd.yml`, a komendy nazywały się `/analyze-ddd` i `/orchestrate-ddd`.
+> [ADR 0008](../adr/0008-stack-blocks-composition.md) (2026-08-12) usunął jedno i drugie —
+> panel jest dziś składany ze slotów `analyze.panel` w `blocks/**`. **Cel taska nadal nie jest
+> zrealizowany**, zmienił się tylko adres pracy; kroki niżej są zaktualizowane.
+>
+> Co bloki załatwiły za nas:
+> - **Warunkowa aktywacja `when:`** — mechanizm istnieje i działa (`blocks/nestjs.yml:29-30`,
+>   slot `threat-model`). Task proponował go „na wzór `threat-model`" — dziś to standard slotu.
+> - **`advisory: true`** — pole obsługiwane w slotach (`blocks/ddd/core.yml:57-58`).
+> - **Nadpisanie modelu per slot** — `model:`/`effort:` w slocie nadpisują frontmatter agenta,
+>   więc wąski advisor nie potrzebuje osobnego pliku tylko po to, żeby zejść z Opusa.
+> - **Rozdzielenie panelu na osie** — `tech-analysis-specialist` (`backend-technology-expert`)
+>   nie siedzi już w panelu DDD, tylko w blokach frameworka (`blocks/nestjs.yml:32`,
+>   `node.yml:32`, `ts-library.yml:62`). Projekt DDD bez NestJS-a już go nie dostaje.
+>
+> Czego bloki NIE załatwiły — i to jest reszta tego taska:
+> - **Cztery wąskie advisory nadal nie istnieją.** `blocks/ddd/core.yml:57-58` woła
+>   `infrastructure-implementer` i `code-quality-verifier` — pełne, kilkusetliniowe prompty
+>   implementera i verifiera z VETO, użyte w trybie doradczym. Dokładnie ten martwy ciężar,
+>   który task opisuje.
+> - **`tech-analysis-specialist` nadal jest bezwarunkowy** — slot w trzech blokach frameworka
+>   nie ma `when:`, więc `backend-technology-expert` (Opus + max) odpala się w każdym zadaniu.
+> - **Panel nadal jest sekwencyjny.** `commands/analyze.md:182` mówi wprost: „Iteruj
+>   `analyze.panel` W KOLEJNOŚCI", a każdy slot dostaje streszczenie poprzednich. Równoległość
+>   grupy `advisory: true` wymaga zmiany w silniku, nie w bloku — i to jest teraz osobna
+>   decyzja, bo `/analyze` obsługuje wszystkie stacki, nie tylko DDD.
+
 ## Kontekst i motywacja
 
-Dzisiejszy audyt panelu `phase_research` (`presets/nestjs-ddd.yml`) ustalił:
+Audyt panelu `phase_research` (wtedy: `presets/nestjs-ddd.yml`; dziś: `analyze.panel`
+w `blocks/ddd/core.yml` + `blocks/nestjs.yml`) ustalił:
 
 1. Panel to 7 sekwencyjnych stage'ów, mimo że część z nich jest jawnie `advisory: true`
    (nie blokuje niczego) i nie zależy od siebie nawzajem (patrz wcześniejsza dyskusja o
@@ -47,14 +77,15 @@ Dzisiejszy audyt panelu `phase_research` (`presets/nestjs-ddd.yml`) ustalił:
 - `tech-analysis` (`ecc:architect`) — agent z bazy ECC, poza naszą kontrolą/zakresem edycji.
 - `synthesis` (`tech-lead`) — musi być ostatni, zbiera wszystko.
 - Implementery właściwe (`domain-application-implementer`, `infrastructure-testing-implementer`
-  w roli VETO w `/orchestrate-ddd`) — tam sekwencyjność i "jeden spójny pisarz kodu na warstwę"
+  w roli VETO w `/orchestrate`) — tam sekwencyjność i "jeden spójny pisarz kodu na warstwę"
   to celowa decyzja (patrz rozmowa: pisanie kodu potrzebuje jednego właściciela kontekstu, nie
   fragmentacji), inna sytuacja niż doradcze, bezstanowe lenses.
 
 ## Proponowany podział
 
-Zamiast: `tech-analysis-specialist` (1 agent, bezwarunkowy, Opus+max) + `impl-analysis` (1 pełny
-prompt implementera, advisory) + `pattern-fit` (1 pełny prompt verifiera, advisory) — **4 nowe, wąskie,
+Zamiast: `tech-analysis-specialist` (1 agent, bezwarunkowy, Opus+max — dziś w `blocks/nestjs.yml:32`,
+`node.yml:32`, `ts-library.yml:62`) + `impl-analysis` (1 pełny prompt implementera, advisory) +
+`pattern-fit` (1 pełny prompt verifiera, advisory) — oba w `blocks/ddd/core.yml:57-58` — **4 nowe, wąskie,
 jednotematyczne agenty doradcze**, każdy z osobnym, warunkowym `when:` (na wzór już istniejącego
 `threat-model`), wołane RÓWNOLEGLE:
 
@@ -62,29 +93,50 @@ jednotematyczne agenty doradcze**, każdy z osobnym, warunkowym `when:` (na wzó
 |---|---|---|---|---|
 | `agents/stacks/nestjs-ddd/advisors/sync-async-advisor.md` | Tylko decision framework sync vs async (tabela + template z `backend-technology-expert.md` sekcja "1. Sync vs Async Decision Framework") | `backend-technology-expert.md` §1 | sonnet | `sync\|async\|queue\|bullmq\|event-driven\|message queue` |
 | `agents/stacks/nestjs-ddd/advisors/performance-cache-advisor.md` | Tylko caching + performance/N+1 decision trees (§2 i §3 "Caching Strategy"/"Queue vs Direct Call"/"Database Query Optimization") | `backend-technology-expert.md` §2-3 | sonnet | `performance\|cache\|caching\|n\+1\|query\|throughput\|scalability` |
-| `agents/stacks/nestjs-ddd/advisors/testability-advisor.md` | Sama perspektywa "czy to będzie testowalne, jaki tier piramidy testów, jakie fixture'y" — BEZ pełnego workflow implementacji testów | subset `infrastructure-testing-implementer.md` (tylko advisory-relevant sekcje) | haiku lub sonnet | brak (zawsze, ale tani i wąski) |
+| `agents/stacks/nestjs-ddd/advisors/testability-advisor.md` | Sama perspektywa "czy to będzie testowalne, jaki tier piramidy testów, jakie fixture'y" — BEZ pełnego workflow implementacji testów | subset `implementers/infrastructure-implementer.md` (tylko advisory-relevant sekcje) | haiku lub sonnet | brak (zawsze, ale tani i wąski) |
 | `agents/stacks/nestjs-ddd/advisors/pattern-conformance-advisor.md` | Sama perspektywa "czy proponowane decyzje pasują do znanych wzorców/rule cards, jakie anti-patterny to wywoła" — BEZ pełnego VETO-verify workflow | subset `code-quality-verifier.md` (tylko advisory-relevant sekcje) | haiku lub sonnet | brak (zawsze, ale tani i wąski) |
 
 Każdy nowy plik: **żadnych `mcp__zen__*`** (dzisiejsza lekcja — niepotrzebna zależność), żadnego
 `Task` (to liście panelu, ta sama zasada co reszta), tylko `Read` + ewentualnie `Grep/Glob` jeśli
 faktycznie potrzebują szukać czegoś poza wstrzykniętym kontekstem.
 
-### Szkic zmiany w `presets/nestjs-ddd.yml`
+### Szkic zmiany w blokach
+
+Panel nie mieszka już w jednym pliku — trzeba tknąć dwa bloki, każdy na swojej osi.
+`blocks/ddd/core.yml` (`analyze.panel`) wnosi perspektywę modelu domenowego,
+`blocks/nestjs.yml` perspektywę frameworka. `synthesis` (`tech-lead`) i `threat-model`
+zostają tam, gdzie są.
 
 ```yaml
-panel:
-  - { stage: threat-model, agent: "/threat-model", when: "auth|pii|cross_context|public_api", ... }
-  - { stage: tech-analysis, agent: "ecc:architect" }
-  - { stage: ddd-modeling, agent: "ddd-application-expert" }        # równolegle z tech-analysis (patrz TASK latency #1)
-  - { stage: sync-async,        agent: "sync-async-advisor",        advisory: true, when: "sync|async|queue|bullmq|event-driven" }
-  - { stage: performance-cache, agent: "performance-cache-advisor", advisory: true, when: "performance|cache|caching|n\\+1|query|throughput|scalability" }
-  - { stage: testability,       agent: "testability-advisor",       advisory: true }
-  - { stage: pattern-fit,       agent: "pattern-conformance-advisor", advisory: true }
-  - { stage: synthesis,         agent: "tech-lead" }                # ostatni, zbiera wszystko
+# blocks/ddd/core.yml → analyze.panel (perspektywa domeny)
+analyze:
+  panel:
+    - { stage: ddd-modeling, agent: "ddd-application-expert" }
+    - { stage: testability,  agent: "testability-advisor",         advisory: true, model: haiku }
+    - { stage: pattern-fit,  agent: "pattern-conformance-advisor", advisory: true, model: haiku }
+  exit: PAUSE
+
+# blocks/nestjs.yml → analyze.panel (perspektywa frameworka)
+analyze:
+  panel:
+    - { stage: threat-model, agent: "/threat-model", when: "…", output: "…", skip_if_exists: true }
+    - { stage: tech-analysis, agent: "ecc:architect" }
+    - { stage: sync-async,        agent: "sync-async-advisor",        advisory: true, when: "sync|async|queue|bullmq|event-driven" }
+    - { stage: performance-cache, agent: "performance-cache-advisor", advisory: true, when: "performance|cache|caching|n\\+1|query|throughput|scalability" }
 ```
 
+Slot `tech-analysis-specialist` znika z trzech bloków frameworka — zastępują go dwa warunkowe
+advisory w `nestjs.yml`. `node.yml` i `ts-library.yml` wymagają osobnej decyzji: albo ten sam
+podział, albo pozostawienie `backend-technology-expert` (patrz ADR 0009, gdzie ten agent jest
+oznaczony jako load-bearing i wyjęty z listy retire właśnie do takiej decyzji).
+
+**Uwaga na kolejność.** Materializer zachowuje kolejność bloków, a panel **nie deduplikuje**
+stage'ów o tej samej nazwie (`scripts/materialize-runtime.mjs`). Dwa bloki wnoszące
+`stage: pattern-fit` dadzą dwa wywołania, nie jedno.
+
 Cztery `advisory: true` stage'e wołane w JEDNYM `parallel()` (albo równoległych `Task` w jednej
-wiadomości) zamiast po kolei — 2 z nich (`sync-async`, `performance-cache`) często w ogóle się nie
+wiadomości) zamiast po kolei — **to wymaga zmiany w `commands/analyze.md`**, który dziś iteruje
+panel sekwencyjnie i podaje każdemu slotowi streszczenie poprzednich — 2 z nich (`sync-async`, `performance-cache`) często w ogóle się nie
 odpalą (brak trafienia `when:`), więc typowy przebieg będzie miał **2 równoległe advisory-lenses
 zamiast 3 sekwencyjnych pełnych agentów**, plus możliwość, że żaden nie trafi (najlżejsze zadania).
 
@@ -95,7 +147,7 @@ zamiast 3 sekwencyjnych pełnych agentów**, plus możliwość, że żaden nie t
       (Performance/Caching) do dwóch osobnych, samodzielnych promptów — sprawdzić, czy dają się
       w pełni oddzielić bez odwołań do reszty pliku (Business Value Validation, Collaboration
       Protocol itd. — część z tego trzeba będzie skrócić/zduplikować minimalnie).
-- [ ] Wyciągnąć z `infrastructure-testing-implementer.md` i `code-quality-verifier.md` TYLKO
+- [ ] Wyciągnąć z `implementers/infrastructure-implementer.md` i `code-quality-verifier.md` TYLKO
       sekcje istotne dla oceny "na sucho" (bez pełnego workflow implementacji/VETO) —
       zidentyfikować dokładnie które sekcje to są.
 
@@ -104,16 +156,29 @@ zamiast 3 sekwencyjnych pełnych agentów**, plus możliwość, że żaden nie t
       od razu (nie czekać na kolejny audyt drift).
 - [ ] Dodać do `agents/README.md`.
 
-### Faza 3 — preset + orchestracja
-- [ ] Zaktualizować `presets/nestjs-ddd.yml` wg szkicu wyżej.
-- [ ] Zaktualizować `commands/analyze-ddd.md` krok 1 (dobór agentów panelu) — opisać nowe stage'e
-      i zasadę równoległości dla `advisory: true` grupy.
-- [ ] Zaktualizować sekcję "synthesis" (`tech-lead`), żeby wiedziała, że może dostać 0-4 raportów
+### Faza 3 — bloki + silnik
+- [ ] Zaktualizować `blocks/ddd/core.yml` (`analyze.panel`) i `blocks/nestjs.yml` wg szkicu wyżej.
+      Uruchomić `scripts/materialize-runtime.mjs` na projekcie referencyjnym i przejrzeć wynikowy
+      `analyze.panel` w `runtime.yml` — adnotacja `# source:` przy każdej pozycji pokazuje, czy
+      nic się nie zdublowało.
+- [ ] Zdecydować, co ze slotem `tech-analysis-specialist` w `blocks/node.yml:32`
+      i `blocks/ts-library.yml:62` — te dwa bloki obsługują projekty bez DDD, więc podział
+      na `sync-async` + `performance-cache` może, ale nie musi mieć tam sensu.
+- [ ] Zaktualizować `commands/analyze.md` §1 (iteracja panelu) — opisać nowe stage'e i zasadę
+      równoległości dla grupy `advisory: true`. **To jest zmiana w silniku wspólnym dla
+      wszystkich stacków**, nie w bloku DDD: dziś §1 mówi „iteruj W KOLEJNOŚCI" i wstrzykuje
+      każdemu slotowi streszczenie poprzednich. Równoległa grupa musi dostać to samo wejście
+      dla wszystkich swoich członków, a synteza — zebrać ich wyniki razem.
+- [ ] Zaktualizować stage `synthesis` (`tech-lead`), żeby wiedział, że może dostać 0-4 raportów
       advisory zamiast zawsze 2 — streszczenie musi to obsłużyć gracefully.
+- [ ] Sprawdzić `scripts/workflow-conformance.mjs` — nowi advisorzy muszą być rozpoznawani jako
+      agenci ze slotów, inaczej przebieg zostanie zgłoszony jako „agent spoza slotów".
 
 ### Faza 4 — weryfikacja
 - [ ] Przebieg testowy na małym zadaniu (bez sync/async/cache w opisie) — potwierdzić, że
       `sync-async`/`performance-cache` się NIE odpalają i panel faktycznie jest krótszy.
+      `/analyze` wypisuje, które słowo trafiło w `when:` — użyć tego jako dowodu zamiast
+      wnioskowania z długości outputu.
 - [ ] Przebieg testowy na zadaniu z cache'owaniem — potwierdzić, że `performance-cache-advisor`
       się odpala i daje sensowną, węższą analizę niż pełny `backend-technology-expert`.
 
@@ -126,9 +191,12 @@ zamiast 3 sekwencyjnych pełnych agentów**, plus możliwość, że żaden nie t
    czy to nadmiarowe rozdrobnienie w stosunku do zysku (w przeciwieństwie do `sync-async`/
    `performance-cache`, te dwa NIE mają warunku `when:` — zawsze się odpalą, więc oszczędność
    czasu jest mniejsza niż przy prawdziwie warunkowych stage'ach).
-3. Czy `backend-technology-expert.md` zostaje jako plik (do użycia poza `/analyze-ddd`, np.
+3. Czy `backend-technology-expert.md` zostaje jako plik (do użycia poza `/analyze`, np.
    ad-hoc "@backend-technology-expert zaprojektuj cache'owanie sesji") równolegle z nowymi,
    węższymi advisorami, czy zostaje zdeprecjonowany na rzecz dwóch nowych plików?
+   **Sprzężone z [ADR 0009](../adr/0009-wynik-spike-fazy-0-i-lista-retire.md)**, który trzyma
+   tego agenta jako KEEP (load-bearing w trzech blokach) i zostawia otwartą trzecią opcję:
+   podmianę slotu na `ecc:code-architect`. Rozstrzygnąć raz, nie w dwóch miejscach.
 4. **(dodane 2026-07-08, z dyskusji o wzorcu skill↔agent)** Czy te nowe, wąskie advisory-agenty
    powinny same deklarować `skills:` w swoim frontmatterze (jak dziś robią np.
    `security-e2e-verifier.md`, `library-api-guardian.md`), skoro — do zweryfikowania — to
@@ -142,5 +210,5 @@ zamiast 3 sekwencyjnych pełnych agentów**, plus możliwość, że żaden nie t
 Rozbijaj generalistę na wąskich specjalistów tam, gdzie ich perspektywy są **niezależne od siebie
 i od reszty panelu** (jak w `reviewer-*`) — równoległość i mniejsza powierzchnia driftu są wtedy
 "darmowe". NIE rozbijaj tam, gdzie potrzebny jest jeden spójny właściciel kontekstu podejmujący
-powiązane decyzje (`ddd-modeling`) albo piszący kod (implementery w `/orchestrate-ddd`) — tam
+powiązane decyzje (`ddd-modeling`) albo piszący kod (implementery w `/orchestrate`) — tam
 fragmentacja kosztuje więcej (koordynacja, spójność), niż oszczędza.

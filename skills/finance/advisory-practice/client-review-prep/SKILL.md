@@ -5,28 +5,6 @@ description: "Prepare advisors for client review meetings by assembling context 
 
 # Client Review Preparation
 
-## Purpose
-
-Guide the end-to-end workflow for preparing a wealth management advisor to conduct a client review meeting. This skill covers assembling the client context package, summarizing investment performance, identifying allocation drift, generating tailored talking points and proactive recommendations, building a structured meeting agenda with supporting exhibits, and completing a compliance pre-check before the meeting. It enables a user or agent to orchestrate all the data gathering, analysis, and document assembly steps required to walk into a review meeting fully prepared, with no manual scrambling.
-
-## Layer
-
-10 — Advisory Practice (Front Office)
-
-## Direction
-
-both
-
-## When to Use
-
-- An advisor asks to prepare for an upcoming client review meeting (annual, quarterly, or triggered)
-- A practice manager is building or standardizing the firm's review preparation workflow
-- Someone needs a checklist of what to gather and analyze before a client meeting
-- An advisor wants proactive recommendation ideas tailored to a specific client
-- The firm is automating review prep by integrating CRM, PMS, and planning data into a meeting package
-- A review is triggered by a life event, market event, or regulatory change rather than the regular cadence
-- An advisor needs to assemble a meeting agenda and supporting exhibits for a specific client
-
 ## Core Concepts
 
 ### Client Context Assembly
@@ -196,13 +174,13 @@ Document any compliance gaps found during the pre-check and add them as agenda i
 
 ## Cross-References
 
-- **performance-reporting** (wealth-management plugin, Layer 8): provides the performance data assembled into the review package; review prep extracts summary metrics and narratives from the full performance report
-- **performance-attribution** (wealth-management plugin, Layer 5): attribution analysis highlights for discussing what drove returns; review prep pulls the top contributors and detractors for talking points
-- **investment-policy** (wealth-management plugin, Layer 5): the IPS provides the reference framework for evaluating drift and suitability; review prep checks IPS recency and uses targets for drift analysis
-- **rebalancing** (wealth-management plugin, Layer 4): drift analysis and rebalancing recommendations are core review talking points; review prep identifies drift but references rebalancing for execution methodology
-- **tax-efficiency** (wealth-management plugin, Layer 5): tax-aware recommendations (Roth conversions, asset location) for proactive review items; review prep flags opportunities without re-deriving the underlying analysis
-- **tax-loss-harvesting** (wealth-management plugin, Layer 5): TLH opportunities are flagged during review prep as proactive recommendations; the TLH skill provides the methodology and wash sale rules
-- **client-onboarding** (advisory-practice plugin, Layer 10): onboarding data populates the initial client profile used in reviews; the profile assembled during onboarding is the starting point for all future review prep
-- **client-reporting-delivery** (advisory-practice plugin, Layer 10): review prep feeds into and complements the report delivery workflow; the meeting package may include or accompany the formal client report
-- **crm-client-lifecycle** (advisory-practice plugin, Layer 10): CRM provides client segmentation, review scheduling data, life event logs, and prior meeting notes that drive review preparation
-- **financial-planning-workflow** (advisory-practice plugin, Layer 10): financial plan progress is a key review agenda item; review prep pulls goal status and probability-of-success metrics from the planning system
+- **performance-reporting** (wealth-management plugin): provides the performance data assembled into the review package; review prep extracts summary metrics and narratives from the full performance report
+- **performance-attribution** (wealth-management plugin): attribution analysis highlights for discussing what drove returns; review prep pulls the top contributors and detractors for talking points
+- **investment-policy** (wealth-management plugin): the IPS provides the reference framework for evaluating drift and suitability; review prep checks IPS recency and uses targets for drift analysis
+- **rebalancing** (wealth-management plugin): drift analysis and rebalancing recommendations are core review talking points; review prep identifies drift but references rebalancing for execution methodology
+- **tax-efficiency** (wealth-management plugin): tax-aware recommendations (Roth conversions, asset location) for proactive review items; review prep flags opportunities without re-deriving the underlying analysis
+- **tax-loss-harvesting** (wealth-management plugin): TLH opportunities are flagged during review prep as proactive recommendations; the TLH skill provides the methodology and wash sale rules
+- **client-onboarding** (advisory-practice plugin): onboarding data populates the initial client profile used in reviews; the profile assembled during onboarding is the starting point for all future review prep
+- **client-reporting-delivery** (advisory-practice plugin): review prep feeds into and complements the report delivery workflow; the meeting package may include or accompany the formal client report
+- **crm-client-lifecycle** (advisory-practice plugin): CRM provides client segmentation, review scheduling data, life event logs, and prior meeting notes that drive review preparation
+- **financial-planning-workflow** (advisory-practice plugin): financial plan progress is a key review agenda item; review prep pulls goal status and probability-of-success metrics from the planning system

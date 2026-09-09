@@ -12,6 +12,10 @@ construction, and standard period returns (MTD, QTD, YTD, inception-to-date).
 Part of Layer 8 (Reporting & Communication) in the finance skills framework.
 """
 
+import argparse
+import math
+import sys
+
 import numpy as np
 from scipy.optimize import brentq
 
@@ -486,7 +490,8 @@ class PeriodReturns:
         return result
 
 
-if __name__ == "__main__":
+def run_demo() -> None:
+    """Run the demonstration suite (default when executed with no arguments)."""
     # ----------------------------------------------------------------
     # Demo 1: Modified Dietz return
     # ----------------------------------------------------------------
@@ -624,3 +629,123 @@ if __name__ == "__main__":
     print("\n" + "=" * 60)
     print("Demo complete.")
     print("=" * 60)
+
+
+def run_verify() -> int:
+    """Re-run the demo computations and assert their key outputs.
+
+    Returns
+    -------
+    int
+        0 if all checks pass, 1 otherwise.
+    """
+    failures = 0
+
+    def check(name: str, actual: float, expected: float,
+              rel_tol: float = 1e-6, abs_tol: float = 1e-9) -> None:
+        nonlocal failures
+        ok = math.isclose(actual, expected, rel_tol=rel_tol, abs_tol=abs_tol)
+        status = "PASS" if ok else "FAIL"
+        print(f"[{status}] {name}: actual={actual:.10g} expected={expected:.10g}")
+        if not ok:
+            failures += 1
+
+    # Demo 1: Modified Dietz
+    md = ModifiedDietz(
+        beginning_value=1_000_000.0,
+        ending_value=1_080_000.0,
+        cash_flows=np.array([50_000.0, -20_000.0]),
+        cash_flow_days=np.array([10.0, 25.0]),
+        total_days=30,
+    )
+    check("Modified Dietz weighted cash flows", md.weighted_cash_flows(), 30_000.0)
+    check("Modified Dietz return", md.compute_return(), 0.0485436893)
+
+    # Demo 2: chain-linked TWR
+    twr = TimeWeightedReturn(np.array([0.032, -0.015, 0.048, 0.022]))
+    cum_ret = twr.cumulative_return()
+    check("Cumulative TWR", cum_ret, 0.0887498451)
+    check("Annualized TWR (1yr)", TimeWeightedReturn.annualize(cum_ret, 1.0),
+          0.0887498451)
+
+    np.random.seed(42)
+    monthly_returns = np.random.normal(0.007, 0.035, 36)
+    twr_3y = TimeWeightedReturn(monthly_returns)
+    cum_3y = twr_3y.cumulative_return()
+    check("3-year cumulative TWR (seeded)", cum_3y, 0.0285067234)
+    check("3-year annualized TWR (seeded)",
+          TimeWeightedReturn.annualize(cum_3y, 3.0), 0.0094133519)
+
+    # Demo 3: IRR via Brent's method
+    mwr = MoneyWeightedReturn(
+        cash_flows=np.array([-100_000.0, -50_000.0, 165_000.0]),
+        times=np.array([0.0, 0.5, 1.0]),
+    )
+    irr = mwr.compute_irr()
+    check("IRR", irr, 0.1206873836)
+    check("NPV at IRR", mwr._npv(irr), 0.0, abs_tol=1e-4)
+
+    # Demo 4: GIPS composite
+    comp = CompositeReturn(
+        portfolio_returns=np.array([0.082, 0.075, 0.091, 0.068, 0.078,
+                                    0.085, 0.072, 0.088]),
+        portfolio_values=np.array([5_000_000, 3_200_000, 8_100_000,
+                                   1_500_000, 2_800_000, 4_300_000,
+                                   2_100_000, 6_500_000]),
+    )
+    check("Composite asset-weighted return", comp.asset_weighted_return(),
+          0.0834686567)
+    check("Composite equal-weighted return", comp.equal_weighted_return(),
+          0.079875)
+    check("Composite internal dispersion", comp.internal_dispersion(),
+          0.0068286973)
+
+    # Demo 5: standard period returns (seeded)
+    np.random.seed(123)
+    daily_rets = np.random.normal(0.0003, 0.012, 756)
+    pr = PeriodReturns(daily_returns=daily_rets, periods_per_year=252)
+    itd = pr.inception_to_date()
+    check("ITD cumulative return (seeded)", itd["cumulative_return"],
+          0.2634802003)
+    check("ITD annualized return (seeded)", itd["annualized_return"],
+          0.0810758028)
+
+    if failures:
+        print(f"\nFAIL: {failures} check(s) did not match expected values.")
+        return 1
+    print("\nPASS: all checks matched expected values.")
+    return 0
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description=(
+            "Performance reporting calculations: Modified Dietz time-weighted "
+            "returns (ModifiedDietz), chain-linked TWR (TimeWeightedReturn), "
+            "IRR via Brent's method (MoneyWeightedReturn), GIPS composite "
+            "returns (CompositeReturn), and standard period returns "
+            "(PeriodReturns)."
+        ),
+        epilog=(
+            "Run with no arguments to print the demo suite. "
+            "Import as a module: "
+            "from performance_reporting import ModifiedDietz, "
+            "TimeWeightedReturn, MoneyWeightedReturn, CompositeReturn, "
+            "PeriodReturns"
+        ),
+    )
+    parser.add_argument(
+        "--verify",
+        action="store_true",
+        help="run the demo computations and assert key outputs; "
+             "exits nonzero on mismatch",
+    )
+    args = parser.parse_args()
+
+    if args.verify:
+        sys.exit(run_verify())
+    run_demo()
+
+
+if __name__ == "__main__":
+    main()

@@ -5,25 +5,6 @@ description: "Estimate potential future losses using VaR, Expected Shortfall, Mo
 
 # Forward-Looking Risk Analysis
 
-## Purpose
-Estimate potential future losses and risk exposures using parametric models, simulation, and scenario analysis. This skill covers parametric and Monte Carlo Value-at-Risk, Conditional VaR (Expected Shortfall), component and marginal VaR, stress testing, scenario analysis, and factor-based risk decomposition. These tools are essential for portfolio risk management and regulatory capital calculations.
-
-## Layer
-1b — Forward-Looking Risk
-
-## Direction
-Prospective
-
-## When to Use
-- Estimating potential future losses for a portfolio or position
-- Computing parametric VaR (variance-covariance method) for normally distributed returns
-- Running Monte Carlo simulations to estimate VaR for non-normal distributions
-- Computing CVaR / Expected Shortfall to understand tail risk beyond VaR
-- Decomposing portfolio risk into component and marginal contributions
-- Performing scenario analysis with historical or hypothetical shocks
-- Stress testing portfolios under extreme but plausible conditions
-- Breaking down risk into systematic factor risk and idiosyncratic risk
-
 ## Core Concepts
 
 ### Parametric (Variance-Covariance) VaR
@@ -219,10 +200,11 @@ For this portfolio, the analytical answer provides a benchmark:
 
 ```
 sigma_p = sqrt(0.6^2 * 0.0324 + 0.4^2 * 0.0025 + 2 * 0.6 * 0.4 * (-0.0018))
-        = sqrt(0.01105)
-        = 10.51%
+        = sqrt(0.011664 + 0.0004 - 0.000864)
+        = sqrt(0.0112)
+        = 10.58%
 
-VaR_95% = $1,000,000 * 1.645 * 0.1051 = $172,890
+VaR_95% = $1,000,000 * 1.645 * 0.1058 = $174,090
 ```
 
 The Monte Carlo result should converge to approximately this value for a multivariate normal assumption.
@@ -238,7 +220,7 @@ The Monte Carlo result should converge to approximately this value for a multiva
 CVaR_95% = $225,000
 ```
 
-Interpretation: When losses exceed the 95% VaR threshold, the average loss is $225,000. This is 30% worse than the VaR figure, highlighting the severity of tail events.
+Interpretation: When losses exceed the 95% VaR threshold, the average loss is $225,000. This is roughly 29% worse than the $174,090 VaR figure, highlighting the severity of tail events.
 
 ## Common Pitfalls
 - **VaR says nothing about tail shape:** VaR only identifies a threshold. Two portfolios with identical VaR can have vastly different tail losses. Always compute CVaR alongside VaR to understand tail severity.
@@ -249,9 +231,16 @@ Interpretation: When losses exceed the 95% VaR threshold, the average loss is $2
 - **Square-root-of-time scaling limitations:** VaR_h = VaR_1 * sqrt(h) assumes i.i.d. returns. With serial correlation or volatility clustering, this scaling is inaccurate.
 
 ## Cross-References
-- **historical-risk** (wealth-management plugin, Layer 1a): Historical VaR and realized volatility serve as non-parametric alternatives and calibration benchmarks for the forward-looking models in this skill.
-- **performance-metrics** (wealth-management plugin, Layer 1a): VaR and CVaR can be used as risk denominators in modified risk-adjusted ratios (e.g., return/CVaR).
-- **volatility-modeling** (wealth-management plugin, Layer 1b): EWMA and GARCH volatility forecasts provide the volatility inputs (sigma) for parametric and Monte Carlo VaR.
+- **historical-risk** (wealth-management plugin): Historical VaR and realized volatility serve as non-parametric alternatives and calibration benchmarks for the forward-looking models in this skill.
+- **performance-metrics** (wealth-management plugin): VaR and CVaR can be used as risk denominators in modified risk-adjusted ratios (e.g., return/CVaR).
+- **volatility-modeling** (wealth-management plugin): EWMA and GARCH volatility forecasts provide the volatility inputs (sigma) for parametric and Monte Carlo VaR.
 
-## Reference Implementation
-See `scripts/forward_risk.py` for computational helpers.
+## Running the Script
+
+```bash
+uv run scripts/forward_risk.py            # run the demo (uses PEP 723 inline deps)
+uv run scripts/forward_risk.py --verify   # check demo outputs against the worked examples (exit 1 on mismatch)
+python3 scripts/forward_risk.py            # alternative (requires: pip install numpy scipy)
+```
+
+The demo prints the calculations covered above; its values match the worked examples in this skill. Run `--help` for a list of the classes and functions. For programmatic use, import the module rather than running it — the demo only executes under `python forward_risk.py`.

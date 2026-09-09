@@ -5,31 +5,6 @@ description: "Build and manage advisory fee billing operations from fee schedule
 
 # Fee Billing
 
-## Purpose
-
-Provide comprehensive guidance on advisory fee billing operations, from fee schedule design and AUM valuation through calculation, collection, revenue recognition, and compliance disclosure. This skill supports the build-out of billing engines, the analysis of billing exceptions, and the day-to-day operations that convert advisory relationships into recognized revenue.
-
-## Layer
-
-10 — Advisory Practice (Front Office)
-
-## Direction
-
-both
-
-## When to Use
-
-- Designing or evaluating fee schedule structures (tiered, flat, breakpoint, hybrid)
-- Building or improving a fee calculation engine
-- Handling mid-period account events such as contributions, withdrawals, transfers, or terminations
-- Configuring billing cycles (advance vs. arrears, quarterly vs. monthly)
-- Setting up custodian direct-debit collection or invoice-based billing
-- Analyzing revenue recognition treatment under GAAP for fees billed in advance or arrears
-- Reviewing compliance requirements for fee disclosure (ADV Part 2A, Reg BI, ERISA 408(b)(2))
-- Diagnosing billing exceptions, disputes, refunds, or retroactive adjustments
-- Migrating from manual or spreadsheet-based billing to an automated billing system
-- Forecasting advisory revenue or analyzing revenue concentration
-
 ## Core Concepts
 
 ### 1. Fee Schedule Structures
@@ -57,7 +32,7 @@ Under a true tiered schedule each dollar is billed at the rate for the tier it f
 
 **Financial Planning Fees.** One-time or recurring fees for plan creation and updates, often billed separately from investment management fees.
 
-**Performance-Based Fees.** Permitted only for "qualified clients" under SEC Rule 205-3 (generally $1.1 million in AUM with the adviser or net worth exceeding $2.2 million). Requires a high-water mark or similar mechanism to prevent double-charging after drawdowns. Rarely used by typical RIAs due to complexity and regulatory constraints.
+**Performance-Based Fees.** Permitted only for "qualified clients" under SEC Rule 205-3. Under the SEC's 2026 inflation adjustment (order issued April 2026, effective June 29, 2026), a qualified client must have at least $1.4 million in AUM with the adviser or a net worth exceeding $2.7 million — up from the $1.1 million / $2.2 million thresholds set in 2021. The SEC adjusts these thresholds for inflation every five years, and prior thresholds generally continue to apply to pre-existing contracts; verify current values. Requires a high-water mark or similar mechanism to prevent double-charging after drawdowns. Rarely used by typical RIAs due to complexity and regulatory constraints.
 
 **Family / Household Billing Aggregation.** Assets across related accounts (spouses, trusts, custodial accounts, IRAs) are combined for fee-tier determination, then the calculated fee is allocated back to individual accounts. This gives the household the benefit of breakpoint pricing. The aggregation definition (who qualifies as "household") must be documented in the advisory agreement.
 
@@ -306,159 +281,7 @@ The disclosure must be sufficiently detailed that a client can understand the to
 
 ## Worked Examples
 
-### Example 1: Quarterly Fee Calculation for a Household with Tiered Pricing
-
-**Scenario:** The Harrison household has five accounts under a tiered fee schedule. The firm bills quarterly in advance based on prior quarter-end values. The fee schedule is:
-
-| Tier | AUM Range | Annual Rate |
-|------|-----------|-------------|
-| 1 | First $500,000 | 1.00% |
-| 2 | Next $500,000 | 0.85% |
-| 3 | Next $2,000,000 | 0.65% |
-| 4 | Over $3,000,000 | 0.50% |
-
-Account valuations as of the prior quarter-end (December 31):
-
-| Account | Type | Market Value |
-|---------|------|-------------|
-| Harrison Joint | Taxable | $1,200,000 |
-| Harrison IRA (Mr.) | IRA | $650,000 |
-| Harrison IRA (Mrs.) | IRA | $480,000 |
-| Harrison Trust | Irrevocable Trust | $850,000 |
-| Harrison 529 | 529 Plan | $120,000 |
-
-**Design Considerations:**
-- The 529 plan is held away at a separate custodian. The advisory agreement specifies it is included in billable AUM for tier determination but fees on the 529 are billed by invoice, not direct debit.
-- The household prefers that direct-debit fees come from the taxable joint account, not the IRAs or trust.
-- The firm applies rounding to the nearest cent and allocates rounding differences to the largest account.
-
-**Analysis:**
-
-Step 1 — Aggregate household AUM:
-$1,200,000 + $650,000 + $480,000 + $850,000 + $120,000 = $3,300,000
-
-Step 2 — Apply tiered schedule:
-- Tier 1: $500,000 at 1.00% = $5,000.00
-- Tier 2: $500,000 at 0.85% = $4,250.00
-- Tier 3: $2,000,000 at 0.65% = $13,000.00
-- Tier 4: $300,000 at 0.50% = $1,500.00
-- Annual fee: $23,750.00
-- Effective rate: $23,750 / $3,300,000 = 0.7197%
-
-Step 3 — Quarterly fee:
-$23,750.00 / 4 = $5,937.50
-
-Step 4 — Allocate to accounts pro rata by market value:
-
-| Account | Market Value | Weight | Allocated Fee |
-|---------|-------------|--------|---------------|
-| Harrison Joint | $1,200,000 | 36.3636% | $2,159.09 |
-| Harrison IRA (Mr.) | $650,000 | 19.6970% | $1,170.01 |
-| Harrison IRA (Mrs.) | $480,000 | 14.5455% | $863.64 |
-| Harrison Trust | $850,000 | 25.7576% | $1,529.36 |
-| Harrison 529 | $120,000 | 3.6364% | $215.91 |
-| **Total** | **$3,300,000** | **100%** | **$5,938.01** |
-
-The raw allocation sums to $5,938.01 due to rounding, which is $0.51 over the $5,937.50 quarterly fee. The rounding adjustment of -$0.51 is applied to the largest account (Harrison Joint), reducing its fee to $2,158.58.
-
-Final billing output:
-- Direct debit from Harrison Joint account: $4,521.58 (covering Joint $2,158.58 + IRA Mr. $1,170.01 + IRA Mrs. $863.64 + Trust $1,529.35, with trust fee adjusted by rounding allocation)
-- Invoice to Harrison for 529 plan: $215.91
-
-Note: Because the household prefers all direct-debit fees to come from the joint account, the custodian debit instruction is a single debit of $5,721.59 from the joint account. However, the billing detail report still shows the per-account allocation for transparency and performance reporting accuracy.
-
-### Example 2: Mid-Quarter Account Events — Transfers, Contributions, and Terminations
-
-**Scenario:** The Martinez household bills quarterly in advance (Q2: April 1 through June 30, 91 days). At the start of Q2, the household has two accounts:
-
-| Account | Market Value (Mar 31) | Allocated Q2 Fee |
-|---------|----------------------|-----------------|
-| Martinez Taxable | $800,000 | $1,000.00 |
-| Martinez IRA | $400,000 | $500.00 |
-| **Total** | **$1,200,000** | **$1,500.00** |
-
-During Q2, three events occur:
-1. On April 20 (day 20 of 91), a $200,000 contribution is made to the taxable account.
-2. On May 15 (day 45 of 91), a new Roth IRA is opened with a $50,000 transfer from the taxable account.
-3. On June 10 (day 71 of 91), the IRA is terminated and the balance is rolled over to another firm.
-
-**Design Considerations:**
-- The firm's policy is to prorate for contributions over $25,000 and for all account openings and closings.
-- Since billing is in advance, the Q2 fee was already debited on April 1. Adjustments will appear on the Q3 billing run.
-- Internal transfers (item 2) should be revenue-neutral at the household level.
-
-**Analysis:**
-
-Event 1 — $200,000 contribution on April 20:
-Additional billable days: 71 days remaining out of 91 (April 20 through June 30).
-Additional annual fee on $200,000 at the household's effective rate (1.00% flat in this case): $2,000.
-Additional quarterly fee: $2,000 / 4 = $500.
-Prorated additional fee: $500 * (71 / 91) = $390.11.
-This will be charged as an adjustment on the Q3 billing run.
-
-Event 2 — Roth IRA opened May 15 via internal transfer:
-The $50,000 moves from the taxable account to the new Roth IRA. Since this is an intra-household transfer, the household AUM does not change and no fee adjustment is needed. The per-account allocation will be updated for the new account going forward, but the household-level fee remains the same.
-
-Event 3 — IRA terminated June 10:
-The IRA was billed $500 for the full quarter. Days active: 71 out of 91 (April 1 through June 10).
-Days unused: 20 out of 91.
-Refund: $500 * (20 / 91) = $109.89.
-This refund is applied as a credit on the Q3 billing run.
-
-Net Q3 adjustment for the Martinez household:
-- Additional charge for contribution: +$390.11
-- Refund for early termination: -$109.89
-- Net adjustment: +$280.22 added to the Q3 fee
-
-The billing detail report for Q3 will show the standard Q3 fee plus a line item for the Q2 adjustment with a reference to each underlying event.
-
-### Example 3: Billing System Migration from Spreadsheet to Automated Platform
-
-**Scenario:** A 15-advisor RIA managing $2.1 billion across 1,800 households currently calculates fees using a series of Excel workbooks maintained by two operations staff. The firm is migrating to an integrated billing module within their portfolio management system. The spreadsheet system has worked for years but is error-prone, poorly documented, and dependent on key personnel.
-
-**Design Considerations:**
-- The firm has 14 distinct fee schedules (including 6 legacy schedules that apply to fewer than 50 households each).
-- Approximately 120 households have negotiated rates that differ from the standard schedule.
-- The firm bills quarterly in advance, debiting from custodian accounts at Schwab and Fidelity.
-- The migration must not disrupt the next quarterly billing cycle.
-
-**Analysis:**
-
-Phase 1 — Data Extraction and Documentation (Weeks 1-3):
-- Export all fee schedules from the existing spreadsheets into a structured format (schedule name, tier breakpoints, rates, effective date).
-- Document every negotiated rate override with the associated household, effective date, and authorizing advisor.
-- Catalog all billing exceptions: waivers, caps, minimum overrides, split-billing arrangements, invoice-billed accounts.
-- Extract two years of historical billing data (household, account, AUM, fee charged, period) for parallel-run comparison.
-
-Phase 2 — System Configuration (Weeks 3-6):
-- Configure all 14 fee schedules in the new billing module with correct tier structures and effective dates.
-- Enter negotiated rate overrides per household.
-- Configure billing preferences per household: collection method, billing account designation, proration rules.
-- Set up custodian debit file formats for Schwab and Fidelity.
-- Configure the approval workflow (preview, review, approve, submit).
-
-Phase 3 — Parallel Run (Weeks 6-9, coinciding with one billing cycle):
-- Run the new system in parallel with the spreadsheet process for one full quarterly cycle.
-- Compare results at the household level. Accept a tolerance of $0.01 per household for rounding differences.
-- Investigate and resolve every variance exceeding the tolerance.
-- Common variance sources: different rounding methods, different day-count conventions for proration, fee schedule data entry errors, missing negotiated rate overrides.
-
-Phase 4 — Cutover (Week 10):
-- After parallel-run sign-off, the new system becomes the system of record.
-- The spreadsheet process is retained as a reference but is no longer used for production billing.
-- First live billing cycle is run with enhanced review (every household is spot-checked, not just exceptions).
-
-Phase 5 — Post-Migration Monitoring (Weeks 10-22, two billing cycles):
-- Heightened review of billing output for two additional cycles.
-- Monitor client inquiries or complaints related to fee amounts.
-- Validate that custodian debit files are accepted without error.
-- Confirm revenue recognition entries in the accounting system match prior methodology.
-
-Key success metrics:
-- Zero missed billing cycles during migration.
-- Variance rate below 0.5% of households in the first live cycle.
-- Reduction in billing processing time from approximately 40 person-hours per quarter to under 8 person-hours.
-- Elimination of single-point-of-failure key-person risk.
+See [references/examples.md](references/examples.md) for three end-to-end worked examples — a quarterly tiered-fee calculation for a five-account household, mid-quarter proration for contributions/transfers/terminations, and a spreadsheet-to-automated billing migration. Load it when the user needs a full numerical walkthrough.
 
 ## Common Pitfalls
 
@@ -477,12 +300,12 @@ Key success metrics:
 
 ## Cross-References
 
-- **fee-disclosure** — Detailed requirements for fee disclosure in client-facing documents and regulatory filings.
-- **portfolio-management-systems** — Integration between billing engines and PMS platforms for valuation and account data.
-- **advisor-dashboards** — Revenue metrics, billing status, and fee analytics displayed on advisor-facing dashboards.
-- **client-reporting-delivery** — Inclusion of fee summaries and performance-net-of-fee figures in client reports.
-- **investment-policy** — Fee schedule terms as specified in the investment policy statement or advisory agreement.
-- **reg-bi** — Regulation Best Interest cost disclosure obligations for dual-registrant firms.
-- **fiduciary-standards** — Fiduciary duty to charge reasonable fees and act in the client's best interest regarding cost.
-- **tax-efficiency** — Tax implications of fee payment source (taxable vs. tax-advantaged accounts) and deductibility considerations.
-- **performance-reporting** — Gross-of-fee vs. net-of-fee performance calculation and the role of accurate fee data.
+- **fee-disclosure** (compliance plugin) — Detailed requirements for fee disclosure in client-facing documents and regulatory filings.
+- **portfolio-management-systems** (advisory-practice plugin) — Integration between billing engines and PMS platforms for valuation and account data.
+- **advisor-dashboards** (advisory-practice plugin) — Revenue metrics, billing status, and fee analytics displayed on advisor-facing dashboards.
+- **client-reporting-delivery** (advisory-practice plugin) — Inclusion of fee summaries and performance-net-of-fee figures in client reports.
+- **investment-policy** (wealth-management plugin) — Fee schedule terms as specified in the investment policy statement or advisory agreement.
+- **reg-bi** (compliance plugin) — Regulation Best Interest cost disclosure obligations for dual-registrant firms.
+- **fiduciary-standards** (compliance plugin) — Fiduciary duty to charge reasonable fees and act in the client's best interest regarding cost.
+- **tax-efficiency** (wealth-management plugin) — Tax implications of fee payment source (taxable vs. tax-advantaged accounts) and deductibility considerations.
+- **performance-reporting** (wealth-management plugin) — Gross-of-fee vs. net-of-fee performance calculation and the role of accurate fee data.

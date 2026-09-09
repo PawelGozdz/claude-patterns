@@ -5,315 +5,104 @@ description: "Apply statistical methods to financial data including descriptive 
 
 # Statistics Fundamentals
 
-## Purpose
-This skill enables Claude to apply core statistical methods to financial data, including descriptive statistics, covariance estimation, linear regression, hypothesis testing, and resampling techniques. These methods form the quantitative backbone for portfolio construction, risk measurement, and factor modeling.
-
-## Layer
-0 — Mathematical Foundations
-
-## Direction
-both
-
-## When to Use
-- Analyzing return distributions
-- Estimating correlations or covariance matrices
-- Running regression analysis on financial data
-- Testing hypotheses about returns
-- Building factor models
-
 ## Core Concepts
 
-### Descriptive Statistics
+### Conventions and Decision Rules
 
-**Mean (Expected Value):**
+### Sample variance: use n-1
+When estimating variance or standard deviation from a sample of returns, divide by `n - 1` (Bessel's correction), not `n`. Dividing by `n` systematically underestimates dispersion. Standard deviation of returns is "volatility"; annualize with `sigma_annual = sigma_period * sqrt(periods_per_year)` (e.g., `* sqrt(12)` for monthly, `* sqrt(252)` for daily).
 
-$$\mu = E[X] = \frac{1}{n} \sum_{i=1}^{n} x_i$$
+### Normality testing: Jarque-Bera and its limits
+`JB = (n/6) * (skew^2 + excess_kurtosis^2 / 4)`, distributed chi-squared with 2 df under the null of normality (5% critical value: 5.99).
 
-The arithmetic average of observed values. For financial returns, this represents the central tendency of the return distribution.
+**Low-power caveat:** with small samples (n below roughly 50), JB rarely rejects even for clearly non-normal data — failing to reject is weak evidence of normality, not confirmation. With large samples, financial return series almost always reject due to fat tails and (for equities) negative skewness. Treat the test as a screen, and pair it with a look at the actual skew/kurtosis magnitudes and extreme observations.
 
-**Variance:**
+### Covariance estimation and Ledoit-Wolf shrinkage
+The sample covariance matrix `Sigma_hat = (1/(n-1)) (X - X_bar)^T (X - X_bar)` becomes poorly conditioned or singular when the number of assets `p` approaches the number of observations `n`. Plugging it into a mean-variance optimizer then produces extreme, unstable weights that flip with small data changes.
 
-Population variance:
-
-$$\sigma^2 = \frac{1}{n} \sum_{i=1}^{n} (x_i - \mu)^2$$
-
-Sample variance (Bessel's correction):
-
-$$s^2 = \frac{1}{n-1} \sum_{i=1}^{n} (x_i - \bar{x})^2$$
-
-**Standard Deviation:**
-
-$$\sigma = \sqrt{\sigma^2}$$
-
-In finance, standard deviation of returns is commonly called **volatility**. Annualized volatility from monthly data: `sigma_annual = sigma_monthly * sqrt(12)`.
-
-**Skewness:**
-
-$$\gamma = \frac{E[(X - \mu)^3]}{\sigma^3}$$
-
-Measures asymmetry of the distribution. Negative skewness (left tail) is common in equity returns and indicates a higher probability of large losses than large gains.
-
-**Excess Kurtosis:**
-
-$$\kappa = \frac{E[(X - \mu)^4]}{\sigma^4} - 3$$
-
-Measures tail thickness relative to the normal distribution (which has excess kurtosis of 0). Financial returns typically exhibit positive excess kurtosis (leptokurtosis), meaning fat tails and more frequent extreme events than a normal distribution would predict.
-
-### Covariance and Correlation
-
-**Covariance:**
-
-$$\text{Cov}(X, Y) = E[(X - \mu_X)(Y - \mu_Y)]$$
-
-Sample covariance:
-
-$$\hat{\text{Cov}}(X, Y) = \frac{1}{n-1} \sum_{i=1}^{n} (x_i - \bar{x})(y_i - \bar{y})$$
-
-Covariance measures the linear co-movement between two variables. Positive covariance means they tend to move together; negative means they move inversely.
-
-**Correlation (Pearson):**
-
-$$\rho(X, Y) = \frac{\text{Cov}(X, Y)}{\sigma_X \times \sigma_Y}$$
-
-Correlation normalizes covariance to the range `[-1, +1]`, making it unit-free and comparable across variable pairs.
-
-### Covariance Matrix Estimation
-
-For a set of `p` assets with `n` return observations, the sample covariance matrix is:
-
-$$\hat{\Sigma} = \frac{1}{n-1} (X - \bar{X})^T (X - \bar{X})$$
-
-where `X` is the `n x p` matrix of returns.
-
-**The curse of dimensionality:** When `p` (number of assets) is large relative to `n` (number of observations), the sample covariance matrix becomes poorly conditioned or singular, leading to unstable portfolio optimizations.
-
-### Ledoit-Wolf Shrinkage Estimator
-
-Shrinkage blends the sample covariance matrix with a structured target (e.g., the identity matrix scaled by average variance) to produce a more stable estimate:
+Shrinkage blends the sample matrix toward a structured target:
 
 $$\hat{\Sigma}_{shrunk} = \delta \cdot F + (1 - \delta) \cdot \hat{\Sigma}$$
 
-where:
-- `F` = the shrinkage target (structured estimator)
-- `delta` = the optimal shrinkage intensity (estimated analytically)
-- `Sigma_hat` = the sample covariance matrix
+where `F` is the target (e.g., scaled identity) and `delta` is the shrinkage intensity. Ledoit-Wolf (2004) derives the `delta` that minimizes expected squared Frobenius distance to the true covariance matrix, trading a little bias for a large variance reduction — yielding better-conditioned, invertible matrices and stable portfolio weights.
 
-Ledoit-Wolf determines the optimal `delta` that minimizes expected squared Frobenius distance to the true covariance matrix. This produces better-conditioned matrices and more stable portfolio weights.
+**Note:** the bundled script's `shrunk_covariance` implements a *simplified* shrinkage-intensity estimate, not the full Ledoit-Wolf estimator. For production work use `sklearn.covariance.LedoitWolf`.
 
-### OLS Regression
+### Regression diagnostics (CAPM and factor models)
+For the single-factor CAPM regression `R_i - R_f = alpha + beta * (R_m - R_f) + epsilon`:
+- `beta = rho * sigma_i / sigma_m` (market sensitivity); `alpha` is the risk-adjusted excess return.
+- In a single-factor regression, `R^2 = rho^2`.
+- Judge coefficients by t-statistics (`t = coefficient / SE`); with `n - 2` df, |t| above roughly 2 indicates 5% significance. A positive alpha point estimate with |t| < 2 is not evidence of skill.
+- Adding regressors always raises R-squared; use adjusted R-squared, AIC/BIC, or cross-validation to guard against overfitting.
 
-Ordinary Least Squares estimates the linear relationship `y = X * beta + epsilon` by minimizing the sum of squared residuals.
+### Bootstrap procedure
+Non-parametric resampling for the sampling distribution of a statistic when analytical standard errors are unavailable (Sharpe ratio, alpha), the distribution is non-normal, or samples are small:
 
-**Coefficient Estimate:**
+1. From the original `n` observations, draw `B` resamples of size `n` **with replacement** (B = 1,000-10,000).
+2. Compute the statistic on each resample.
+3. Percentile method: the `(1 - alpha)` confidence interval is the `alpha/2` and `1 - alpha/2` percentiles of the bootstrap distribution; the bootstrap standard error is the std of the `B` statistics.
 
-$$\hat{\beta} = (X^T X)^{-1} X^T y$$
+Caveat: the i.i.d. bootstrap ignores autocorrelation and volatility clustering; use block bootstrap for serially dependent return series.
 
-**Key Regression Diagnostics:**
+### Standard Analysis Workflow
 
-**R-squared (Coefficient of Determination):**
+Given a return series, run this sequence:
 
-$$R^2 = 1 - \frac{SS_{res}}{SS_{tot}} = 1 - \frac{\sum(y_i - \hat{y}_i)^2}{\sum(y_i - \bar{y})^2}$$
-
-Represents the proportion of variance in the dependent variable explained by the model.
-
-**Adjusted R-squared:**
-
-$$\bar{R}^2 = 1 - (1 - R^2) \frac{n - 1}{n - k - 1}$$
-
-where `k` = number of regressors. Penalizes additional regressors that do not improve fit.
-
-**Standard Errors:**
-
-$$SE(\hat{\beta}) = \sqrt{\hat{\sigma}^2 \cdot \text{diag}((X^T X)^{-1})}$$
-
-where `sigma_hat^2 = SS_res / (n - k - 1)`.
-
-**t-statistic:**
-
-$$t = \frac{\hat{\beta}_j}{SE(\hat{\beta}_j)}$$
-
-Tests whether each coefficient is significantly different from zero.
-
-In finance, the single-factor regression `R_i - R_f = alpha + beta * (R_m - R_f) + epsilon` is the CAPM regression, where `alpha` is the risk-adjusted excess return and `beta` is market sensitivity.
-
-### Common Distributions in Finance
-
-**Normal Distribution:** Symmetric, fully characterized by mean and variance. Used as a baseline model for returns, though real returns deviate from normality.
-
-**Log-Normal Distribution:** If `ln(X)` is normal, then `X` is log-normal. Asset prices (not returns) are often modeled as log-normal, ensuring prices cannot go negative.
-
-**Student-t Distribution:** Has heavier tails than the normal. Parameterized by degrees of freedom `nu`; lower `nu` means fatter tails. Commonly used to model financial returns more realistically. As `nu -> infinity`, converges to the normal.
-
-**Chi-Squared Distribution:** The distribution of a sum of squared standard normal variables. Used in variance tests and as the sampling distribution of `(n-1)*s^2 / sigma^2`.
-
-### Bootstrap Methods
-
-Non-parametric resampling technique for estimating the sampling distribution of a statistic.
-
-**Algorithm:**
-1. From the original dataset of size `n`, draw `B` bootstrap samples, each of size `n`, with replacement.
-2. Compute the statistic of interest on each bootstrap sample.
-3. Use the distribution of the `B` bootstrap statistics to estimate confidence intervals, standard errors, or bias.
-
-**Confidence Interval (Percentile Method):**
-The `(1 - alpha)` confidence interval is given by the `alpha/2` and `1 - alpha/2` percentiles of the bootstrap distribution.
-
-Bootstrap is especially useful in finance when:
-- Analytical formulas for standard errors are unavailable (e.g., Sharpe ratio)
-- The underlying distribution is unknown or non-normal
-- Small sample sizes make asymptotic results unreliable
-
-### Hypothesis Testing
-
-**t-test (mean):** Tests whether a sample mean differs significantly from a hypothesized value.
-
-$$t = \frac{\bar{x} - \mu_0}{s / \sqrt{n}}$$
-
-with `n - 1` degrees of freedom.
-
-**F-test (joint significance):** Tests whether a group of regression coefficients are jointly zero. Used in multi-factor models.
-
-$$F = \frac{(SS_{restricted} - SS_{unrestricted}) / q}{SS_{unrestricted} / (n - k - 1)}$$
-
-where `q` = number of restrictions.
-
-**Jarque-Bera Test (normality):** Tests whether sample skewness and kurtosis are consistent with a normal distribution.
-
-$$JB = \frac{n}{6} \left(\gamma^2 + \frac{\kappa^2}{4}\right)$$
-
-where `gamma` = sample skewness and `kappa` = sample excess kurtosis. Under the null of normality, JB follows a chi-squared distribution with 2 degrees of freedom. Financial return series almost always reject normality due to fat tails and skewness.
-
-## Key Formulas
-
-| Formula | Expression | Use Case |
-|---------|-----------|----------|
-| Sample Mean | `x_bar = (1/n) * sum(x_i)` | Central tendency |
-| Sample Variance | `s^2 = (1/(n-1)) * sum((x_i - x_bar)^2)` | Dispersion |
-| Annualized Volatility | `sigma_annual = sigma_period * sqrt(periods_per_year)` | Risk standardization |
-| Skewness | `gamma = E[(X-mu)^3] / sigma^3` | Asymmetry |
-| Excess Kurtosis | `kappa = E[(X-mu)^4] / sigma^4 - 3` | Tail thickness |
-| Covariance | `Cov(X,Y) = E[(X-mu_X)(Y-mu_Y)]` | Co-movement |
-| Correlation | `rho = Cov(X,Y) / (sigma_X * sigma_Y)` | Standardized co-movement |
-| Shrinkage Estimator | `Sigma_shrunk = delta*F + (1-delta)*Sigma_hat` | Stable covariance matrix |
-| OLS Coefficients | `beta_hat = (X'X)^(-1) X'y` | Linear regression |
-| R-squared | `1 - SS_res / SS_tot` | Model explanatory power |
-| t-statistic | `t = beta_hat_j / SE(beta_hat_j)` | Coefficient significance |
-| Jarque-Bera | `JB = (n/6) * (gamma^2 + kappa^2/4)` | Normality test |
+1. **Descriptive stats** — mean, volatility (n-1), skewness, excess kurtosis; annualize for reporting.
+2. **Distribution checks** — Jarque-Bera (mind the low-power caveat), inspect skew/kurtosis magnitudes and largest outliers; decide whether normal-based methods (parametric VaR, t-tests) are defensible.
+3. **Covariance/correlation** (multi-asset) — sample covariance and correlation matrices; if `p` is large relative to `n`, apply shrinkage before any optimization.
+4. **Regression diagnostics** — CAPM or factor regression; report alpha/beta with t-stats and R-squared; check residuals for structure.
+5. **Bootstrap CIs** — for statistics without clean analytical standard errors (Sharpe, alpha, drawdown), bootstrap confidence intervals rather than reporting bare point estimates.
 
 ## Worked Examples
 
-### Example 1: Compute Descriptive Statistics and Test for Normality
-**Given:** Monthly returns (in %) for a fund over 12 months:
-`[2.1, -0.5, 1.8, -3.2, 4.5, 0.3, -1.1, 2.7, -0.8, 3.4, 1.2, -0.6]`
+### Example 1: Descriptive Statistics and Normality Test
+**Given:** 12 monthly returns (%): `[2.1, -0.5, 1.8, -3.2, 4.5, 0.3, -1.1, 2.7, -0.8, 3.4, 1.2, -0.6]`
 
-**Calculate:** Mean, volatility, skewness, excess kurtosis, and Jarque-Bera test statistic.
-
-**Solution:**
-
-**Mean:**
 ```
-x_bar = (2.1 + (-0.5) + 1.8 + (-3.2) + 4.5 + 0.3 + (-1.1) + 2.7 + (-0.8) + 3.4 + 1.2 + (-0.6)) / 12
-x_bar = 9.8 / 12
-x_bar = 0.8167% per month
+Mean      = 9.8 / 12 = 0.8167% per month  (~9.8% annualized, simple x12)
+s^2       = 52.977 / 11 = 4.816   ->   s = 2.195% per month
+Ann. vol  = 2.195% * sqrt(12) = 7.60%
+Skewness  = -0.045  (bias-corrected; near symmetric)
+Ex. kurt  = -0.42   (bias-corrected; lighter tails than normal)
+
+JB = (12/6) * ((-0.045)^2 + (-0.42)^2 / 4) = 0.09
 ```
 
-**Annualized return** (approximate): `0.8167% * 12 = 9.8%`
+JB = 0.09 < 5.99 (chi-squared 5% critical, df=2): **fail to reject** normality. With only 12 observations the test has very low power — this is not evidence that the returns are truly normal.
 
-**Sample Standard Deviation:**
-```
-Deviations from mean: [1.283, -1.317, 0.983, -4.017, 3.683, -0.517, -1.917, 1.883, -1.617, 2.583, 0.383, -1.417]
-Squared deviations:   [1.646, 1.734, 0.967, 16.133, 13.566, 0.267, 3.674, 3.547, 2.614, 6.674, 0.147, 2.007]
-Sum of squared deviations = 52.977
-s^2 = 52.977 / 11 = 4.816
-s = sqrt(4.816) = 2.195% per month
-```
+### Example 2: CAPM Regression from Summary Statistics
+**Given:** 24 monthly observations. Fund excess returns: mean 0.8%, std 4.2%. Market excess returns: mean 0.6%, std 3.8%. Correlation 0.85.
 
-**Annualized volatility:** `2.195% * sqrt(12) = 7.60%`
-
-**Skewness:**
 ```
-Sum of cubed standardized deviations:
-gamma = (1/n) * sum[((x_i - x_bar)/s)^3]  (using adjusted formula for sample)
-gamma approx 0.075 (slightly positive, near symmetric)
+beta  = rho * sigma_i / sigma_m = 0.85 * 4.2 / 3.8 = 0.939
+alpha = 0.8% - 0.939 * 0.6% = 0.236% per month (~2.84% annualized)
+R^2   = rho^2 = 0.7225
+
+Residual std = 4.2% * sqrt(1 - 0.7225) = 2.213%
+SE(alpha) = 2.213% / sqrt(24) = 0.452%   ->  t(alpha) = 0.236 / 0.452 = 0.52
+SE(beta)  = 2.213% / (3.8% * sqrt(23)) = 0.121  ->  t(beta) = 0.939 / 0.121 = 7.74
 ```
 
-**Excess Kurtosis:**
-```
-kappa = (1/n) * sum[((x_i - x_bar)/s)^4] - 3
-kappa approx -0.42 (platykurtic, lighter tails than normal)
-```
-
-**Jarque-Bera Test:**
-```
-JB = (12/6) * (0.075^2 + (-0.42)^2 / 4)
-JB = 2 * (0.00563 + 0.04410)
-JB = 2 * 0.04973
-JB = 0.099
-```
-
-The JB critical value at 5% significance (chi-squared, df=2) is 5.99. Since `0.099 < 5.99`, we **fail to reject** the null hypothesis of normality. With only 12 observations, however, the test has low power, and we should not conclude the data is truly normal.
-
-### Example 2: Regress Fund Returns on Market Factor (CAPM)
-**Given:** 24 monthly observations:
-- Fund excess returns (`R_i - R_f`): mean = 0.8%, std = 4.2%
-- Market excess returns (`R_m - R_f`): mean = 0.6%, std = 3.8%
-- Sample correlation between fund and market: 0.85
-
-**Calculate:** CAPM alpha and beta, R-squared, and assess statistical significance.
-
-**Solution:**
-
-**Beta:**
-```
-beta = Cov(R_i, R_m) / Var(R_m)
-     = rho * sigma_i * sigma_m / sigma_m^2
-     = rho * sigma_i / sigma_m
-     = 0.85 * 4.2 / 3.8
-     = 0.939
-```
-
-**Alpha:**
-```
-alpha = mean(R_i - R_f) - beta * mean(R_m - R_f)
-      = 0.8% - 0.939 * 0.6%
-      = 0.8% - 0.564%
-      = 0.236% per month (approximately 2.84% annualized)
-```
-
-**R-squared:**
-```
-R^2 = rho^2 = 0.85^2 = 0.7225
-```
-
-72.25% of the fund's return variance is explained by the market factor.
-
-**Standard Error and t-statistic for alpha:**
-```
-Residual std = sigma_i * sqrt(1 - R^2) = 4.2% * sqrt(1 - 0.7225) = 4.2% * 0.5268 = 2.213%
-SE(alpha) = residual_std / sqrt(n) = 2.213% / sqrt(24) = 0.452%
-t(alpha) = 0.236 / 0.452 = 0.522
-```
-
-With 22 degrees of freedom (n - 2), the critical t-value at 5% significance (two-tailed) is approximately 2.074. Since `|0.522| < 2.074`, the alpha is **not statistically significant**. Despite the positive point estimate, we cannot conclude the fund generates genuine risk-adjusted outperformance with this sample size.
-
-**Standard Error and t-statistic for beta:**
-```
-SE(beta) = residual_std / (sigma_m * sqrt(n-1)) = 2.213% / (3.8% * sqrt(23)) = 2.213% / 18.226% = 0.121
-t(beta) = 0.939 / 0.121 = 7.76
-```
-
-Since `|7.76| >> 2.074`, the beta is **highly statistically significant**, confirming the fund has meaningful market exposure.
+With 22 df, the 5% two-tailed critical t is 2.074. Beta is highly significant (7.74 >> 2.074); alpha is **not** significant (0.52 < 2.074) — despite the positive point estimate, the sample cannot distinguish it from zero.
 
 ## Common Pitfalls
-- Using population variance instead of sample variance: always use `n - 1` (Bessel's correction) in the denominator when estimating variance from a sample. Using `n` underestimates the true variance.
-- Assuming normality when financial returns have fat tails: equity returns typically exhibit negative skewness and positive excess kurtosis. Models relying on normality (e.g., standard VaR) underestimate tail risk. Use the Student-t distribution or non-parametric methods for more robust estimates.
-- Ignoring non-stationarity in time series: financial return distributions change over time (regime shifts, volatility clustering). Rolling-window estimation or GARCH models may be more appropriate than full-sample statistics.
-- Overfitting with too many regressors: adding more factors to a regression always increases R-squared but may not improve out-of-sample explanatory power. Use adjusted R-squared, information criteria (AIC/BIC), or cross-validation to guard against overfitting.
-- Unstable covariance matrices with small samples: when the number of assets `p` approaches or exceeds the number of observations `n`, the sample covariance matrix becomes singular or poorly conditioned. Apply Ledoit-Wolf shrinkage or factor-based covariance models to obtain stable, invertible matrices for portfolio optimization.
+- Using population variance instead of sample variance: always use `n - 1` (Bessel's correction) when estimating from a sample.
+- Assuming normality when financial returns have fat tails: equity returns typically show negative skewness and positive excess kurtosis; normal-based models (standard VaR) underestimate tail risk. Use Student-t or non-parametric methods.
+- Ignoring non-stationarity: return distributions shift over time (regime changes, volatility clustering). Rolling-window estimation or GARCH may be more appropriate than full-sample statistics.
+- Overfitting with too many regressors: R-squared always rises with added factors; use adjusted R-squared, information criteria, or cross-validation.
+- Unstable covariance matrices with small samples: when `p` approaches or exceeds `n`, apply Ledoit-Wolf shrinkage or factor-based covariance models before optimizing.
+
+## Running the Script
+`scripts/statistics_fundamentals.py` provides a `StatisticsFundamentals` class with static methods `descriptive_stats`, `covariance_matrix`, `correlation_matrix`, `shrunk_covariance` (simplified Ledoit-Wolf — see note above), `ols_regression`, `rolling_regression`, `bootstrap_mean`, and `jarque_bera_test`.
+
+- Run: `uv run scripts/statistics_fundamentals.py` (PEP 723 inline metadata resolves numpy and scipy), or `python3 scripts/statistics_fundamentals.py` with numpy/scipy installed.
+- Bare invocation (or `--verify`) prints a demo on synthetic data **and** asserts the Example 1 worked-example values above (mean 0.8167, std 2.195, JB 0.09 on the 12-month series), exiting nonzero on any mismatch.
+- `--help` lists the available methods and import usage.
+- For programmatic use, import rather than run: `from statistics_fundamentals import StatisticsFundamentals`, then call e.g. `StatisticsFundamentals.descriptive_stats(...)`.
 
 ## Cross-References
-- **return-calculations** (core plugin, Layer 0): Arithmetic and geometric mean returns, log returns for statistical modeling
-- **time-value-of-money** (core plugin, Layer 0): Discount rate estimation via CAPM regression; NPV and IRR calculations use statistical inputs
-
-## Reference Implementation
-See `scripts/statistics_fundamentals.py` for computational helpers.
+- **return-calculations** (core plugin): Arithmetic and geometric mean returns, log returns for statistical modeling
+- **time-value-of-money** (core plugin): Discount rate estimation via CAPM regression; NPV and IRR calculations use statistical inputs
+- **factor-investing** (wealth-management plugin): Extends the single-factor CAPM/OLS regression to Fama-French multifactor models for alpha attribution and fund evaluation
+- **financial-statements** (wealth-management plugin): applies descriptive statistics and trend analysis to financial ratios and peer comparisons

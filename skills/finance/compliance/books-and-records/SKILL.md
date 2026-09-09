@@ -5,28 +5,7 @@ description: "Guide the design and maintenance of recordkeeping programs under S
 
 # Books and Records
 
-## Purpose
-Guide the design, implementation, and maintenance of recordkeeping programs for broker-dealers and investment advisers under federal securities laws. This skill covers the creation, retention, and storage of required records under SEC Rules 17a-3, 17a-4, and 204-2, FINRA recordkeeping obligations, electronic storage standards including WORM (Write Once, Read Many) requirements, and the archiving of electronic communications and social media. It enables users to build compliant document retention systems and respond to regulatory examinations of books and records.
-
-## Layer
-9 — Compliance & Regulatory Guidance
-
-## Direction
-prospective
-
-## When to Use
-- Designing a document retention policy or schedule for a broker-dealer or investment adviser
-- Determining what records must be created under SEC Rule 17a-3
-- Determining how long specific records must be retained under SEC Rule 17a-4
-- Establishing recordkeeping systems for an investment adviser under Rule 204-2
-- Evaluating electronic storage solutions for compliance with WORM or audit trail requirements
-- Implementing email, instant messaging, or text message archiving systems
-- Addressing social media archiving and supervision challenges
-- Responding to an SEC or FINRA examination request for books and records
-- Assessing gaps in a firm's recordkeeping practices after a systems migration or platform change
-- Designing BYOD (Bring Your Own Device) policies that satisfy communications archiving obligations
-- Evaluating third-party archiving vendors for regulatory compliance
-- Remediating recordkeeping deficiencies identified in an examination or internal review
+Regulatory status current as of June 2026 — verify effective dates, dollar thresholds, and pending rulemakings against current SEC/FINRA/FinCEN sources before advising.
 
 ## Core Concepts
 
@@ -158,35 +137,7 @@ Social media presents unique recordkeeping challenges that have been the subject
 **FINRA guidance on social media records:** FINRA has emphasized that firms must: (1) inventory all social media platforms used by the firm and its associated persons for business purposes, (2) establish written policies identifying approved and prohibited platforms, (3) deploy archiving technology for all approved platforms, (4) train associated persons on social media policies and the consequences of using unapproved platforms, and (5) conduct periodic attestations from associated persons confirming compliance with the firm's social media policies.
 
 ### Document Retention Schedule
-The following table maps common document types to their required retention periods and source rules:
-
-| Document Type | Retention Period | Source Rule |
-|---|---|---|
-| Blotters (purchase/sale, cash receipts/disbursements) | 6 years | Rule 17a-4(a) |
-| General ledger and subsidiary ledgers | 6 years | Rule 17a-4(a) |
-| Customer account records and statements | 6 years | Rule 17a-4(a), (b) |
-| Securities positions (stock record) | 6 years | Rule 17a-4(a) |
-| Financial statements and net capital computations | 6 years | Rule 17a-4(b)(8) |
-| Partnership articles and amendments | 6 years | Rule 17a-4(b) |
-| Communications (letters, emails, IMs, texts) — BD | 3 years | Rule 17a-4(b)(4) |
-| Memoranda of brokerage orders | 3 years | Rule 17a-4(b)(1) |
-| Written supervisory procedures | 3 years (current plus prior versions) | Rule 17a-4(b), FINRA Rule 3110 |
-| Employment applications (associated persons) | 3 years after termination | Rule 17a-4(c) |
-| Customer complaints | 4 years | FINRA Rule 4513 |
-| Written agreements (customer, clearing, employment) | 3 years after termination or expiration | Rule 17a-4(b)(7) |
-| Exception reports and supervisory review records | 3 years | FINRA Rule 3110 |
-| Branch inspection reports | 3 years (per inspection cycle) | FINRA Rule 3110 |
-| Articles of incorporation, bylaws, minute books | Life of enterprise | Rule 17a-4(d) |
-| IA journals and ledgers | 5 years | Rule 204-2(a)(1)-(2) |
-| IA written communications (sent and received) | 5 years | Rule 204-2(a)(7) |
-| IA advertising and performance records | 5 years | Rule 204-2(a)(11), (16) |
-| IA client records and advisory agreements | 5 years from end of advisory relationship | Rule 204-2(a)(3), (10) |
-| IA investment recommendations and supporting docs | 5 years | Rule 204-2(a)(3), (8) |
-| IA political contribution records (pay-to-play) | 5 years | Rule 204-2(a)(18) |
-| IA code of ethics and personal trading records | 5 years | Rule 204-2(a)(12)-(13) |
-| IA proxy voting records | 5 years | Rule 206(4)-6 |
-
-For all broker-dealer records subject to three-year or six-year retention, the first two years must be maintained in an easily accessible place. For investment adviser records, the first two years of the five-year period must be maintained in an easily accessible place.
+For the full retention table mapping each document type to its required retention period and source rule (BD 3/4/6-year and lifetime tiers, IA 5-year records), load `references/retention-schedule.md` when answering "how long must we keep X" or building a retention policy. Universal rule of thumb: the first two years of any retention period must be in an easily accessible place.
 
 ## Worked Examples
 
@@ -226,7 +177,7 @@ The firm faces a serious examination outcome. The remediation plan should includ
 - The firm's written supervisory procedures prohibited the use of personal devices, but the firm failed to enforce the prohibition, rendering the policy ineffective and compounding the supervisory failure.
 
 **Analysis:**
-This scenario reflects a pattern that has been the subject of major SEC and FINRA enforcement actions in recent years. Beginning in 2021, the SEC and FINRA initiated a series of sweeping investigations into off-channel communications at broker-dealers and investment advisers. These investigations resulted in billions of dollars in aggregate penalties across the industry. The SEC imposed fines of $125 million on individual firms, with total industry penalties exceeding $2 billion by 2024. FINRA has brought parallel actions with fines ranging from hundreds of thousands to tens of millions of dollars. The firm should take the following steps: (1) Immediately deploy a text message archiving solution for all registered representatives. Solutions include firm-issued devices with built-in archiving, mobile archiving applications installed on personal devices (with employee consent), or enterprise mobility management platforms that capture text messages from approved applications. (2) Collect and preserve all available text messages from the affected registered representatives' personal devices. This may require cooperation from the representatives and potentially forensic data collection. (3) Conduct a review of the collected text messages to identify any customer complaints, trade instructions, or other records that should have been maintained under Rules 17a-3 and 17a-4. (4) Self-report the deficiency to FINRA and the SEC. Given the current enforcement environment, self-reporting is strongly advisable — regulators have imposed significantly higher penalties on firms that failed to self-report or that were discovered through examination rather than voluntary disclosure. (5) Strengthen the firm's policies to include: a clear prohibition on unapproved communication channels, mandatory use of the firm's archiving solution for all business communications, annual (or more frequent) attestations from registered representatives confirming compliance, technical controls where feasible (e.g., monitoring for unapproved application usage on firm-issued devices), and disciplinary consequences for violations. (6) Retrain all registered representatives on the firm's communications policies, the regulatory basis for the requirements, and the personal liability exposure for off-channel communications. The regulatory exposure is significant. In the current enforcement climate, the SEC and FINRA have treated off-channel communications failures as serious violations warranting substantial monetary penalties, undertakings to engage independent compliance consultants, and requirements to implement enhanced supervisory systems.
+This scenario reflects a pattern that has been the subject of major SEC and FINRA enforcement actions. Beginning in 2021, the SEC and FINRA initiated a series of sweeping investigations into off-channel communications at broker-dealers and investment advisers. As of the 2021-2024 sweep (figures as of year-end 2024 — verify current totals), the SEC had imposed fines as high as $125 million on individual firms, with total industry penalties exceeding $2 billion; FINRA brought parallel actions with fines ranging from hundreds of thousands to tens of millions of dollars. The firm should take the following steps: (1) Immediately deploy a text message archiving solution for all registered representatives. Solutions include firm-issued devices with built-in archiving, mobile archiving applications installed on personal devices (with employee consent), or enterprise mobility management platforms that capture text messages from approved applications. (2) Collect and preserve all available text messages from the affected registered representatives' personal devices. This may require cooperation from the representatives and potentially forensic data collection. (3) Conduct a review of the collected text messages to identify any customer complaints, trade instructions, or other records that should have been maintained under Rules 17a-3 and 17a-4. (4) Self-report the deficiency to FINRA and the SEC. Given the current enforcement environment, self-reporting is strongly advisable — regulators have imposed significantly higher penalties on firms that failed to self-report or that were discovered through examination rather than voluntary disclosure. (5) Strengthen the firm's policies to include: a clear prohibition on unapproved communication channels, mandatory use of the firm's archiving solution for all business communications, annual (or more frequent) attestations from registered representatives confirming compliance, technical controls where feasible (e.g., monitoring for unapproved application usage on firm-issued devices), and disciplinary consequences for violations. (6) Retrain all registered representatives on the firm's communications policies, the regulatory basis for the requirements, and the personal liability exposure for off-channel communications. The regulatory exposure is significant. In the current enforcement climate, the SEC and FINRA have treated off-channel communications failures as serious violations warranting substantial monetary penalties, undertakings to engage independent compliance consultants, and requirements to implement enhanced supervisory systems.
 
 ## Common Pitfalls
 - Treating document retention as a one-time project rather than an ongoing program that requires monitoring, testing, and updating as platforms and regulations change
@@ -243,9 +194,9 @@ This scenario reflects a pattern that has been the subject of major SEC and FINR
 - Failing to update the document retention schedule after regulatory amendments — for example, the 2022 amendments to Rule 17a-4 changed certain requirements that may affect the firm's storage architecture and vendor relationships
 
 ## Cross-References
-- **client-disclosures** (Layer 9): Records of disclosure document delivery (Form ADV, Form CRS, prospectuses, privacy notices) are themselves books and records subject to retention requirements under Rules 17a-4 and 204-2
-- **sales-practices** (Layer 9): Supervisory records required under FINRA Rule 3110 — including exception reports, branch inspection reports, and written supervisory procedures — are a major component of books and records obligations
-- **anti-money-laundering** (Layer 9): BSA/AML recordkeeping (SARs, CTRs, CIP documentation) feeds directly into the books-and-records framework and is subject to its own retention requirements that run parallel to Rules 17a-4 and 204-2
-- **advertising-compliance** (Layer 9): Advertising materials and performance records are subject to retention requirements under Rule 17a-4 for broker-dealers and Rule 204-2(a)(11) for investment advisers
-- **conflicts-of-interest** (Layer 9): Code of ethics records, personal trading reports, and conflict disclosure documentation are books and records that must be retained under both the BD and IA frameworks
-- **know-your-customer** (Layer 9): CIP and CDD records collected during account opening are retained under Rule 17a-4 as customer account records and under BSA regulations for a minimum of five years after account closure
+- **client-disclosures** (compliance plugin): Records of disclosure document delivery (Form ADV, Form CRS, prospectuses, privacy notices) are themselves books and records subject to retention requirements under Rules 17a-4 and 204-2
+- **sales-practices** (compliance plugin): Supervisory records required under FINRA Rule 3110 — including exception reports, branch inspection reports, and written supervisory procedures — are a major component of books and records obligations
+- **anti-money-laundering** (compliance plugin): BSA/AML recordkeeping (SARs, CTRs, CIP documentation) feeds directly into the books-and-records framework and is subject to its own retention requirements that run parallel to Rules 17a-4 and 204-2
+- **advertising-compliance** (compliance plugin): Advertising materials and performance records are subject to retention requirements under Rule 17a-4 for broker-dealers and Rule 204-2(a)(11) for investment advisers
+- **conflicts-of-interest** (compliance plugin): Code of ethics records, personal trading reports, and conflict disclosure documentation are books and records that must be retained under both the BD and IA frameworks
+- **know-your-customer** (compliance plugin): CIP and CDD records collected during account opening are retained under Rule 17a-4 as customer account records and under BSA regulations for a minimum of five years after account closure

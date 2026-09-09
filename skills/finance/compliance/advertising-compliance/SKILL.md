@@ -5,26 +5,7 @@ description: "Ensure investment advertising and marketing materials comply with 
 
 # Advertising Compliance — Investment Marketing & Communications
 
-## Purpose
-Ensure investment advertising and marketing communications comply with the SEC Marketing Rule, FINRA Rule 2210, and related regulatory requirements. This skill covers performance advertising constraints, testimonial and endorsement disclosures, social media supervision, third-party ratings, recordkeeping obligations, and current SEC enforcement priorities.
-
-## Layer
-9 — Compliance & Regulatory Guidance
-
-## Direction
-prospective
-
-## When to Use
-- Reviewing or drafting marketing materials for an investment adviser or broker-dealer
-- Presenting investment performance in advertisements, pitchbooks, or websites
-- Evaluating whether hypothetical, backtested, or extracted performance can be shown and under what conditions
-- Using client testimonials or endorsements in marketing materials
-- Posting investment-related content on social media (firm accounts or associated persons' accounts)
-- Incorporating third-party ratings or rankings in advertisements
-- Assessing whether predecessor or portability performance can be presented
-- Designing compliance review workflows for advertising approval
-- Responding to SEC or FINRA examination findings on advertising practices
-- Establishing recordkeeping procedures for advertisements and marketing communications
+Regulatory status current as of June 2026 — verify effective dates, dollar thresholds, and pending rulemakings against current SEC/FINRA/FinCEN sources before advising.
 
 ## Core Concepts
 
@@ -48,7 +29,7 @@ Performance presentation is the most technically demanding area of advertising c
 
 **Net performance requirement.** Whenever gross performance is presented, net performance must also be shown with at least equal prominence. Net performance must reflect the deduction of all fees and expenses that a client would pay, including advisory fees, custodial fees, and any other fees the adviser charges. Model fees are permitted only if they reflect the adviser's current fee schedule and the highest fee charged to the relevant audience.
 
-**Time period requirements.** Performance must be shown for standardized time periods of 1-year, 5-year, and 10-year periods (or since inception if the track record is shorter than the prescribed period). These periods must end on the most recent practicable date. An adviser cannot show only a favorable 3-year period while omitting the required 1-, 5-, and 10-year figures.
+**Time period requirements.** Performance must be shown for standardized time periods of 1-year, 5-year, and 10-year periods (or since inception if the track record is shorter than the prescribed period). These periods must end on the most recent practicable date. An adviser cannot show only a favorable 3-year period while omitting the required 1-, 5-, and 10-year figures. **Private fund carve-out:** the prescribed 1/5/10-year periods do not apply to performance of private funds (Rule 206(4)-1(d)(2) excludes private funds from the time-period requirement) — but private fund performance remains fully subject to the net performance requirement, the seven general prohibitions, and the fair-and-balanced standard.
 
 **Hypothetical performance.** Includes backtested performance, model performance, and targeted or projected returns. The Marketing Rule permits hypothetical performance only if the adviser:
 
@@ -144,8 +125,8 @@ Social media presents unique advertising compliance challenges. Both the SEC and
 - All business-related social media communications must be captured and retained. Firms must have technology systems in place to archive social media activity.
 - This applies to all platforms — LinkedIn, X (formerly Twitter), Facebook, Instagram, YouTube, and any other platforms used for business.
 
-### SEC Enforcement Trends
-Recent SEC enforcement actions highlight several priority areas in advertising compliance.
+### SEC Enforcement Trends (2023-2026; verify current priorities)
+SEC enforcement actions during 2023-2026 highlight several priority areas in advertising compliance. Check the most recent Division of Examinations priorities letter and enforcement press releases for the current emphasis.
 
 **AI-washing.** The SEC has brought enforcement actions against advisers that claim to use artificial intelligence in their investment process when AI plays no meaningful role, or when the AI capabilities are materially overstated. Any claim about the use of technology, algorithms, or AI must be accurate and substantiable.
 
@@ -231,3 +212,4 @@ This includes all forms of advertisements — print, digital, social media, emai
 - Layer 9: `conflicts-of-interest` — material conflicts arising from testimonial compensation, promoter arrangements, and third-party rating relationships.
 - Layer 9: `client-disclosures` — broader disclosure framework that encompasses advertising disclosures as a subset of the adviser's overall disclosure obligations.
 - Layer 9: `advice-standards` — fiduciary duty and Reg BI obligations that constrain how investment recommendations can be framed in marketing communications.
+- **private-placements** (compliance plugin): general solicitation boundaries under Rule 502(c) and permitted 506(c) marketing with verification

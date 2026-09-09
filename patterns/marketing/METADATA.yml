@@ -1,0 +1,18 @@
+# Marketing Patterns — metadane katalogu.
+# Schemat: jeden dla całego patterns/** (K84, TASK-KAIZEN-002). Walidator:
+# node scripts/validate-metadata.mjs
+category: marketing
+version: "1.0.0"
+maturity: stable
+last_verified: 2026-05-07
+stack: "Claude Code (skille marketingowe zvendorowane z coreyhaines31/marketingskills)"
+source_projects: "claude-patterns"
+patterns_count: 1
+description: >-
+  Architektoniczne uzasadnienie wspólnego dokumentu pozycjonowania
+  (.agents/product-marketing-context.md) — marketingowy odpowiednik
+  BUSINESS_RULES.yaml: jedno miejsce, z którego 41 skilli bierze ICP,
+  pozycjonowanie i głos marki, zamiast wymyślać je za każdym razem.
+
+layer: cross-layer
+stack_support: [generic]

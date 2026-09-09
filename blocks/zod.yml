@@ -5,11 +5,23 @@ name: zod
 axis: validation
 requires: []
 
+# Bez tego overlay każdy projekt składający zod BEZ kysely (np. ts-library + nestjs + zod,
+# jak feature-flags) dostaje w runtime.yml odwołania do infrastructure/*.md, których setup
+# nigdy nie zlinkuje — verify-project-setup.mjs raportuje je jako "niedostępne lokalnie"
+# (znalezione 2026-09-08 przy setupie feature-flags). kysely.yml ma ten sam overlay,
+# bo obie deklarują wzorce z tej samej kategorii.
+overlay:
+  patterns: [infrastructure/]
+
 patterns:
   triggers:
     - keywords: [validation, dto, input, request body, schema, endpoint]
       include:
         - infrastructure/controller-schema-pattern.md
+        - infrastructure/zod-schema-validation-pattern.md
+    - keywords: [rate limit, rate-limit, throttl, limit żądań, brute force]
+      include:
+        - infrastructure/rate-limit-guard-pattern.md
 
 # Wkład do warstw wniesionych przez oś architektury. Blok walidacji nie ma własnej
 # warstwy i mieć nie powinien — schematy żyją tam, gdzie kod, który waliduje wejście.
@@ -32,3 +44,6 @@ pattern_routing:
     - { match: "/infrastructure/controllers/", pattern: infrastructure/controller-schema-pattern.md }
   filenames:
     - { match: "\\.controller\\.ts$", pattern: infrastructure/controller-schema-pattern.md }
+    # Split K89 (2026-09-07): schematy i limity wyszły z controller-schema do własnych plików.
+    - { match: "\\.schema\\.ts$", pattern: infrastructure/zod-schema-validation-pattern.md }
+    - { match: "\\.rate-limits\\.ts$", pattern: infrastructure/rate-limit-guard-pattern.md }

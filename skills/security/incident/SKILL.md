@@ -2,7 +2,7 @@
 name: incident
 description: Incident response classifier and playbook navigator. Classifies security incidents as P0/P1/P2, routes to the appropriate playbook steps, and generates incident log. Use when a potential security issue is detected in production or staging.
 origin: LocalHero-patterns
-allowed-tools: Read, Write
+allowed-tools: Read, Write, Edit
 effort: low
 disable-model-invocation: true
 ---
@@ -117,7 +117,12 @@ If none of the above apply, re-examine the issue — it may be a non-incident bu
 
 ## Step 2: Generate Incident Log
 
-Create the incident log file at:
+Create the incident log file — `Write` once, then `Edit` it as the incident
+unfolds. The timeline below runs from T+0 to T+72h and every phase appends to
+this same file; rewriting it wholesale with `Write` on each update would drop
+everything recorded earlier.
+
+Path:
 
 ```
 docs/security/incidents/INC-{YYYYMMDD}-{slug}.md

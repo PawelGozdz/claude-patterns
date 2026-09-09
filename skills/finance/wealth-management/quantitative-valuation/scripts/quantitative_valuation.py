@@ -11,6 +11,10 @@ WACC calculation, and sensitivity analysis helpers.
 Part of Layer 3 (Valuation) in the finance skills framework.
 """
 
+import argparse
+import math
+import sys
+
 import numpy as np
 
 
@@ -484,11 +488,8 @@ class ComparableMultiples:
         return float(current_price / implied_value - 1.0)
 
 
-if __name__ == "__main__":
-    # ----------------------------------------------------------------
-    # Demo: Quantitative valuation models on synthetic data
-    # ----------------------------------------------------------------
-
+def _demo() -> None:
+    """Run the demonstration calculations (bare-run default)."""
     print("=" * 65)
     print("Quantitative Valuation - Demo")
     print("=" * 65)
@@ -627,3 +628,93 @@ if __name__ == "__main__":
     print("\n" + "=" * 65)
     print("Demo complete.")
     print("=" * 65)
+
+
+def _verify() -> None:
+    """Assert demo computations against the SKILL.md worked examples."""
+    checks: list[tuple[str, float, float]] = []
+
+    # SKILL.md Example 1: Two-stage DCF
+    dcf = DCF(
+        fcf_current=100.0,
+        growth_rates=[0.15, 0.15, 0.15, 0.15, 0.15],
+        wacc=0.10,
+        terminal_growth=0.03,
+    )
+    checks.append(("Example 1 Year 5 FCF ($M)", float(dcf.projected_fcfs()[-1]), 201.1))
+    checks.append(("Example 1 PV explicit FCFs ($M)", dcf.pv_explicit_fcfs(), 572.5))
+    checks.append(("Example 1 terminal value ($M)", dcf.terminal_value(), 2959.6))
+    checks.append(("Example 1 PV terminal value ($M)", dcf.pv_terminal_value(), 1837.7))
+    checks.append(("Example 1 enterprise value ($M)", dcf.enterprise_value(), 2410.1))
+
+    # SKILL.md Example 2: Comparable P/E analysis
+    implied = ComparableMultiples.implied_value(
+        metric=5.00, peer_multiples=[15.0, 17.0, 18.0, 19.0, 22.0], use_median=True,
+    )
+    checks.append(("Example 2 implied share price", implied, 90.00))
+    checks.append((
+        "Example 2 premium/discount at $75",
+        ComparableMultiples.premium_discount(75.0, implied),
+        -1.0 / 6.0,
+    ))
+
+    # Demo WACC: r_e = 4% + 1.2 * 5.5% = 10.6%; WACC = 0.7*10.6% + 0.3*5%*0.75
+    re = WACC.cost_of_equity_capm(0.04, 1.2, 0.055)
+    checks.append(("Demo CAPM cost of equity", re, 0.106))
+    wacc_val = WACC(0.70, 0.30, re, 0.05, 0.25).compute()
+    checks.append(("Demo WACC", wacc_val, 0.08545))
+
+    # Demo Gordon Growth DDM: 2.50 / (0.10 - 0.04)
+    checks.append((
+        "Demo Gordon Growth DDM price",
+        DividendDiscount.gordon_growth(2.50, 0.10, 0.04),
+        2.50 / 0.06,
+    ))
+
+    failures = 0
+    for name, got, expected in checks:
+        ok = math.isclose(got, expected, rel_tol=1e-3)
+        print(f"{'PASS' if ok else 'FAIL'}: {name}: got {got:,.6g}, expected {expected:,.6g}")
+        failures += 0 if ok else 1
+    if failures:
+        print(f"FAIL: {failures} of {len(checks)} checks failed.")
+        sys.exit(1)
+    print(f"PASS: all {len(checks)} checks passed.")
+
+
+def _build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="quantitative_valuation.py",
+        description=(
+            "Quantitative valuation reference implementation. Main classes: "
+            "DCF (projected_fcfs, pv_explicit_fcfs, terminal_value, "
+            "enterprise_value, equity_value, sensitivity_table), WACC "
+            "(compute, cost_of_equity_capm), DividendDiscount "
+            "(gordon_growth, two_stage_ddm), ResidualIncome "
+            "(intrinsic_value), ComparableMultiples (implied_value, "
+            "ev_to_equity, premium_discount)."
+        ),
+        epilog=(
+            "Primarily intended to be imported as a module: "
+            "from quantitative_valuation import DCF, WACC, DividendDiscount, "
+            "ResidualIncome, ComparableMultiples. "
+            "Run with no arguments to print a demo."
+        ),
+    )
+    parser.add_argument(
+        "--verify",
+        action="store_true",
+        help=(
+            "run the demo computations and assert key outputs match the "
+            "SKILL.md worked examples (exits nonzero on mismatch)"
+        ),
+    )
+    return parser
+
+
+if __name__ == "__main__":
+    args = _build_parser().parse_args()
+    if args.verify:
+        _verify()
+    else:
+        _demo()

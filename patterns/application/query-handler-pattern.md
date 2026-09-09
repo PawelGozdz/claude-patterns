@@ -547,7 +547,7 @@ private registerEventHandlers(): void {
 
 ---
 
-## 🎯 When to Use
+## When to Use
 
 ### Use Query Handlers When
 

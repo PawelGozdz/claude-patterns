@@ -5,24 +5,6 @@ description: "Determine how much capital to allocate to individual positions wit
 
 # Bet Sizing
 
-## Purpose
-Provides frameworks for determining how much capital to allocate to individual positions within a portfolio. Covers the Kelly criterion, fractional Kelly, risk budgeting, liquidity-based sizing, and conviction weighting. Proper bet sizing is critical — even a portfolio of good ideas can fail with poor sizing.
-
-## Layer
-4 — Portfolio Construction
-
-## Direction
-prospective
-
-## When to Use
-- Determining the appropriate size for a new position
-- Applying the Kelly criterion to a bet or investment with estimable odds
-- Allocating a risk budget across active positions
-- Setting maximum position sizes based on liquidity or risk limits
-- Sizing positions proportional to conviction and edge
-- Deciding the optimal number of positions in a concentrated portfolio
-- Scaling position sizes with volatility changes
-
 ## Core Concepts
 
 ### Kelly Criterion (Discrete)
@@ -36,6 +18,8 @@ Properties:
 - f* = 0 when edge = 0 (no bet when there is no advantage)
 - f* < 0 when negative edge (the formula tells you to bet the other side)
 - f* > 0 only when b*p > q (positive expected value)
+
+Note: the reference script's `discrete_kelly` clamps negative Kelly fractions to 0 (no bet) rather than returning a negative value — it does not recommend taking the other side.
 
 ### Kelly Criterion (Continuous / Investment)
 For a normally distributed investment return with expected excess return mu-r_f and variance sigma^2:
@@ -178,12 +162,19 @@ Given that the 8% expected return and 20% volatility are estimates with signific
 - Not adjusting for regime changes: edge and volatility are time-varying
 
 ## Cross-References
-- **historical-risk** (wealth-management plugin, Layer 1a): realized volatility as a key input to Kelly sizing
-- **forward-risk** (wealth-management plugin, Layer 1b): expected return forecasts as inputs to Kelly criterion
-- **diversification** (wealth-management plugin, Layer 4): tension between concentration (large bets) and diversification (many small bets)
-- **asset-allocation** (wealth-management plugin, Layer 4): bet sizing operates within the asset allocation framework
-- **rebalancing** (wealth-management plugin, Layer 4): positions drift from target sizes and require rebalancing
-- **quantitative-valuation** (wealth-management plugin, Layer 3): valuation-based edge estimates feed into conviction weighting
+- **historical-risk** (wealth-management plugin): realized volatility as a key input to Kelly sizing
+- **forward-risk** (wealth-management plugin): expected return forecasts as inputs to Kelly criterion
+- **diversification** (wealth-management plugin): tension between concentration (large bets) and diversification (many small bets)
+- **asset-allocation** (wealth-management plugin): bet sizing operates within the asset allocation framework
+- **rebalancing** (wealth-management plugin): positions drift from target sizes and require rebalancing
+- **quantitative-valuation** (wealth-management plugin): valuation-based edge estimates feed into conviction weighting
 
-## Reference Implementation
-See `scripts/bet_sizing.py` for computational helpers.
+## Running the Script
+
+```bash
+uv run scripts/bet_sizing.py            # run the demo (uses PEP 723 inline deps)
+uv run scripts/bet_sizing.py --verify   # check demo outputs against the worked examples (exit 1 on mismatch)
+python3 scripts/bet_sizing.py            # alternative (requires: pip install numpy)
+```
+
+The demo prints the calculations covered above; its values match the worked examples in this skill. Run `--help` for a list of the classes and functions. For programmatic use, import the module rather than running it — the demo only executes under `python bet_sizing.py`.

@@ -1,6 +1,8 @@
 # Fresh Context Pattern
 
 **Tags**: "any:process"
+**Layer**: Orchestration
+**Status**: production
 
 > **Category**: Architecture
 > **Layer**: Cross-Agent Coordination
@@ -170,6 +172,31 @@ Cost: None (previous context not needed)
 - Context from previous task not needed
 - Orchestrator context >40% before new task
 - Starting new session after break
+
+---
+
+### Delegation Input/Output Contract
+
+Fresh context is only fresh if the handoff itself stays small. Both directions have a shape:
+
+**What the orchestrator sends** — references, never content:
+- file paths (the subagent reads them in its own context)
+- business-rule ids (`BR-GEO-001`), so the subagent pulls the rule text itself
+- expected behaviour in one or two sentences
+- the test level or layer in scope
+
+Sending the files' contents defeats the point twice: it costs the orchestrator the tokens it was
+trying to avoid, and the subagent re-reads them anyway to get line numbers it can edit against.
+
+**What the subagent returns** — a summary, never code:
+- status, and on failure the specific reason
+- the counts that matter (tests written, coverage, files touched)
+- paths to what it produced, so the orchestrator can verify without reading
+- what it deliberately did not do
+
+A subagent that returns its diff hands the orchestrator the whole context it just spent a separate
+window building. The orchestrator verifies by re-reading the named files if it needs to — usually
+it does not.
 
 ---
 

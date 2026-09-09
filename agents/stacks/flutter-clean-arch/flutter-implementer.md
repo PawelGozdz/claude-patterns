@@ -88,6 +88,12 @@ and the `flutter-hooks.json` config afterward. Skipping this step reliably produ
 
 ## 💰 Cost Optimization — delegate file discovery
 
+**`retrieve_code` returns a pointer, not content** (TASK-RAG-004 R1, 2026-09-07). `source` is a
+path RELATIVE to the repo root — open it with Read in YOUR working tree and work on what you read
+from disk. `evidence` is 12 lines justifying the hit; do NOT copy it — the index is built from
+`origin/develop` (`indexedSha`), your branch differs. Decision rule: unknown symbol name →
+`retrieve_code`; known → straight to Read/Grep.
+
 **Decision rule — `retrieve_code` (MCP tool) vs Explore/Grep/Read** (mirrors the nestjs-ddd
 implementers; the daemon is shared, so ALWAYS pass `collection` explicitly — read it from
 `.claude/config/knowledge.json`, e.g. `code_juz_ide_mobile_app`):
@@ -215,3 +221,9 @@ how ungrounded code gets written.
 5. Tests written alongside data/presentation work, matching the testing-pattern distribution
 6. Reference implementations found via Explore agent before writing new code
 7. Ready for `@flutter-quality-verifier` / `@flutter-ui-verifier`
+
+---
+
+## Changelog
+
+- 2026-09-08 — `retrieve_code` contract: `source` is repo-relative, `evidence` is proof not content, index from `origin/develop` (TASK-RAG-004 R1 / K79, TASK-KAIZEN-002)

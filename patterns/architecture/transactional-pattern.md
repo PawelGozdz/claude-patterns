@@ -2,6 +2,8 @@
 
 **Tags**: "api:data-access:transaction"
 
+**Layer**: Architecture
+
 ## 🎯 Problem
 
 **Command handlers need automatic transaction management with Result pattern integration.**
@@ -336,7 +338,7 @@ export class UserRepository {
 2. **Create Event** (`community-communication/application/commands/create-event/handler.ts`)
 3. **Perform Action** (`engagement/application/commands/create-action/handler.ts`)
 
-## 🎯 When to Use
+## When to Use 🎯
 
 **Use @Transactional Pattern for:**
 

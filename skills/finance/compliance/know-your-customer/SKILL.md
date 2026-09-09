@@ -1,29 +1,11 @@
 ---
 name: know-your-customer
-description: "Guide the implementation of customer identification, due diligence, and ongoing monitoring under FINRA Rule 2090, CIP, and the FinCEN CDD Rule. Use when the user asks about customer onboarding identity verification, beneficial ownership collection for entity accounts, enhanced due diligence for PEPs or high-risk customers, customer risk rating systems, KYC refresh triggers, or documentary vs non-documentary verification. Also trigger when users mention 'account opening requirements', 'who is the beneficial owner', 'new client identity check', 'how often to update KYC', 'essential facts for the account', 'foreign customer onboarding', or ask what information must be gathered before opening an account."
+description: "Guide customer onboarding identification, due diligence, and profile maintenance under FINRA Rule 2090, the CIP rules, and the FinCEN CDD Rule. Use when the user asks about onboarding identity verification, beneficial ownership collection for entity accounts, enhanced due diligence for PEPs or high-risk customers at account opening, assigning the initial customer risk rating, KYC refresh triggers, or documentary vs non-documentary verification. Also trigger when users mention 'account opening requirements', 'who is the beneficial owner', 'new client identity check', 'how often to update KYC', 'essential facts for the account', 'foreign customer onboarding', or ask what information must be gathered before opening an account. (For ongoing transaction monitoring, SAR filing, and surveillance-driven risk re-rating, use anti-money-laundering.)"
 ---
 
 # Know Your Customer
 
-## Purpose
-Guide the implementation of customer identification, due diligence, and ongoing monitoring requirements under federal and FINRA rules. This skill covers CIP, CDD, beneficial ownership, enhanced due diligence, and profile maintenance — enabling a user or agent to design compliant onboarding and customer monitoring processes.
-
-## Layer
-9 — Compliance & Regulatory Guidance
-
-## Direction
-prospective
-
-## When to Use
-- Designing customer onboarding or account opening workflows
-- Implementing Customer Identification Programs (CIP)
-- Collecting beneficial ownership information for legal entity accounts
-- Determining when enhanced due diligence (EDD) is required
-- Building customer risk rating and profiling systems
-- Establishing triggers for KYC refresh and ongoing monitoring
-- Understanding what "essential facts" must be gathered under FINRA Rule 2090
-- Evaluating documentary vs non-documentary identity verification methods
-- Designing systems that feed KYC data into suitability and AML processes
+Regulatory status current as of June 2026 — verify effective dates, dollar thresholds, and pending rulemakings against current SEC/FINRA/FinCEN sources before advising.
 
 ## Core Concepts
 
@@ -31,7 +13,7 @@ prospective
 Every FINRA member must use reasonable diligence, with regard to the opening and maintenance of every account, to know and retain the essential facts concerning every customer and concerning the authority of each person acting on behalf of the customer. "Essential facts" are those required to: (a) effectively service the account, (b) act in accordance with any special handling instructions, (c) understand the authority of each person acting on behalf of the customer, and (d) comply with applicable laws, regulations, and rules.
 
 ### Customer Identification Program (CIP)
-Required under USA PATRIOT Act Section 326 and implementing regulations (31 CFR 1020.220 for banks; similar requirements apply to broker-dealers under SEC Rule 17a-8 and FINRA rules). The CIP must include:
+Required under USA PATRIOT Act Section 326 and implementing regulations. The broker-dealer CIP rule is **31 CFR 1023.220**; the bank CIP rule is 31 CFR 1020.220. (SEC Rule 17a-8 separately requires broker-dealers to comply with BSA recordkeeping and reporting.) The CIP must include:
 
 - **Identity verification** for each customer opening an account: name, date of birth (for individuals), address, and identification number (SSN for US persons; passport number/country or other government ID for non-US persons)
 - **Verification procedures** using documentary methods (government-issued ID), non-documentary methods (credit bureau checks, public database searches, financial statement review), or a combination
@@ -79,7 +61,7 @@ KYC is not a one-time event. Customer profiles must be updated when:
 FINRA does not mandate a specific refresh cycle, but firms typically establish risk-based review schedules (e.g., annual review for high-risk accounts, every 3 years for standard risk).
 
 ### SEC Requirements for Investment Advisers
-Investment advisers have a fiduciary duty to understand their clients, which creates KYC-like obligations independent of FINRA rules. Form ADV Part 2A describes the adviser's services and client relationships. The SEC expects advisers to gather sufficient information to fulfill their fiduciary duty of care — including financial situation, investment objectives, risk tolerance, and any constraints. FinCEN's 2024 final rule (31 CFR Part 1032, effective January 1, 2026) extends BSA/AML requirements — including CIP and CDD — to SEC-registered investment advisers.
+Investment advisers have a fiduciary duty to understand their clients, which creates KYC-like obligations independent of FINRA rules. Form ADV Part 2A describes the adviser's services and client relationships. The SEC expects advisers to gather sufficient information to fulfill their fiduciary duty of care — including financial situation, investment objectives, risk tolerance, and any constraints. FinCEN's 2024 final rule (31 CFR Part 1032) would extend BSA/AML program and SAR requirements to SEC-registered investment advisers, but its effective date was postponed from January 1, 2026 to January 1, 2028, and FinCEN has said it will revisit the rule's substance (and the companion proposed adviser CIP rule, jointly with the SEC) before then — verify current status.
 
 ### Recordkeeping Requirements
 - **CIP records:** Identifying information, verification documents/methods, and resolution of discrepancies must be retained for 5 years after account closure
@@ -117,7 +99,9 @@ Investment advisers have a fiduciary duty to understand their clients, which cre
 - Not training frontline staff to recognize when a customer's circumstances have changed, triggering a profile update obligation
 
 ## Cross-References
-- **anti-money-laundering** (Layer 9): KYC/CDD data feeds directly into AML monitoring and suspicious activity detection
-- **investment-suitability** (Layer 9): Customer profile gathered through KYC is the foundation for suitability analysis
-- **reg-bi** (Layer 9): Reg BI's Care Obligation requires understanding the customer's investment profile — sourced from KYC
-- **investment-policy** (Layer 5): IPS constraints (time horizon, risk tolerance, liquidity) derive from KYC profiling
+- **anti-money-laundering** (compliance plugin): KYC/CDD data feeds directly into AML monitoring and suspicious activity detection
+- **investment-suitability** (compliance plugin): Customer profile gathered through KYC is the foundation for suitability analysis
+- **reg-bi** (compliance plugin): Reg BI's Care Obligation requires understanding the customer's investment profile — sourced from KYC
+- **investment-policy** (wealth-management plugin): IPS constraints (time horizon, risk tolerance, liquidity) derive from KYC profiling
+- **account-opening-compliance** (client-operations plugin): The onboarding compliance workflow that operationalizes CIP verification, CDD, and beneficial ownership collection defined here
+- **account-opening-workflow** (client-operations plugin): The operational account opening process where KYC data collection and verification are embedded

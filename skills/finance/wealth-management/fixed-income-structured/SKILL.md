@@ -5,25 +5,6 @@ description: "Analyze structured fixed income products including mortgage-backed
 
 # Fixed Income — Structured Products
 
-## Purpose
-Analyze structured fixed income products including mortgage-backed securities (MBS), asset-backed securities (ABS), and collateralized loan obligations (CLOs). This skill covers prepayment modeling, tranching mechanics, waterfall structures, and the unique risk characteristics of securitized products.
-
-## Layer
-2 — Asset Classes
-
-## Direction
-both
-
-## When to Use
-- User asks about mortgage-backed securities (MBS), agency or non-agency
-- User asks about asset-backed securities (ABS) — auto loans, credit cards, student loans
-- User asks about CLOs (Collateralized Loan Obligations) or CDOs
-- User asks about prepayment risk, extension risk, or contraction risk
-- User asks about tranching, waterfall structures, or subordination
-- User asks about PSA prepayment models, CPR, or SMM
-- User asks about weighted average life (WAL) vs maturity
-- User asks about negative convexity in MBS
-
 ## Core Concepts
 
 ### MBS Pass-Throughs
@@ -117,10 +98,17 @@ The AAA tranche has 35% subordination — the portfolio would need to lose more 
 - Not understanding that waterfall mechanics affect tranche risk differently — senior and subordinate tranches of the same deal have very different risk profiles
 
 ## Cross-References
-- **fixed-income-sovereign** (wealth-management plugin, Layer 2): the Treasury curve and duration/convexity concepts
-- **fixed-income-corporate** (wealth-management plugin, Layer 2): credit spread concepts applied to non-agency MBS and CLOs
-- **real-assets** (wealth-management plugin, Layer 2): real estate market fundamentals underlying MBS
-- **portfolio-construction** (wealth-management plugin, Layer 3): structured products in multi-asset portfolios
+- **fixed-income-sovereign** (wealth-management plugin): the Treasury curve and duration/convexity concepts
+- **fixed-income-corporate** (wealth-management plugin): credit spread concepts applied to non-agency MBS and CLOs
+- **real-assets** (wealth-management plugin): real estate market fundamentals underlying MBS
+- **asset-allocation** (wealth-management plugin): structured products in multi-asset portfolios
 
-## Reference Implementation
-See `scripts/fixed_income_structured.py` for computational helpers.
+## Running the Script
+
+```bash
+uv run scripts/fixed_income_structured.py            # run the demo (uses PEP 723 inline deps)
+uv run scripts/fixed_income_structured.py --verify   # check demo outputs against the worked examples (exit 1 on mismatch)
+python3 scripts/fixed_income_structured.py            # alternative (requires: pip install numpy)
+```
+
+The demo prints the calculations covered above; its values match the worked examples in this skill. Run `--help` for a list of the classes and functions. For programmatic use, import the module rather than running it — the demo only executes under `python fixed_income_structured.py`.

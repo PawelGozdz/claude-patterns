@@ -15,7 +15,7 @@ description: |
   4. "Why does p99 latency spike every few minutes?"
   5. "Should we run 4 uvicorn workers or 1 with threads?"
   6. "Serve this with our FastAPI service, vLLM, or Ollama?"
-tools: Read, Glob, Grep, Bash, mcp__zen__thinkdeep, mcp__zen__analyze
+tools: Read, Glob, Grep, Bash
 disallowedTools: Write, Edit, MultiEdit, NotebookEdit, Task
 model: sonnet
 permissionMode: plan
@@ -166,3 +166,9 @@ Defer to:
 - `python-architecture-expert` — module boundaries and general Python structure
 - `gpu-resource-verifier` — verification and VETO on implemented code
 - `backend-technology-expert` — queueing, caching and non-GPU performance work
+
+---
+
+## Changelog
+
+- 2026-09-08 — removed `mcp__zen__thinkdeep`, `mcp__zen__analyze` from `tools` (K56, TASK-KAIZEN-002): no satellite project has a `zen` MCP server in `.mcp.json`, so every such call failed; do the analysis directly with the remaining tools

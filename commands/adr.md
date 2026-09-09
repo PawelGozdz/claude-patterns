@@ -1,4 +1,5 @@
 ---
+name: adr
 description: Create an Architecture Decision Record for a decision just made
 ---
 

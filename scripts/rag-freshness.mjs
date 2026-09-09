@@ -55,6 +55,28 @@ if (RECORD) {
   process.exit(0);
 }
 
+// Drugi sygnał w tym samym miejscu: eval strukturalny library_reference_global (K78).
+// Świeżość mówi „kolekcja odpowiada dyskowi", eval mówi „seed ma właściwy kształt" —
+// eval wymaga żywego Qdranta, więc nie da się go odpalić z pre-commita; czytamy więc
+// OSTATNI zapisany wynik z reseedu. To OSTRZEŻENIE, nie bramka: exit code zostaje
+// własnością checku świeżości, żeby FAIL evala nie blokował niezwiązanego commita.
+const LIBREF_RESULTS = join(REPO, 'tests', 'flow-evals', 'library-reference-schema', 'results.jsonl');
+const warnStaleLibRefEval = () => {
+  if (!existsSync(LIBREF_RESULTS)) return;
+  const lines = readFileSync(LIBREF_RESULTS, 'utf8').split('\n').filter((l) => l.trim());
+  if (!lines.length) return;
+  let last;
+  try { last = JSON.parse(lines[lines.length - 1]); } catch { return; }
+  if (last.pass !== false) return;
+  console.error(
+    `  ⚠️  eval library-reference-schema: ostatni wynik FAIL (${last.failures}/${last.checks} sprawdzeń, ` +
+    `${last.date}, ${last.gitSha}, total=${last.total})\n` +
+    '     → node tests/flow-evals/library-reference-schema/run.js   (wymaga Qdranta na :6401)'
+  );
+};
+
+warnStaleLibRefEval();
+
 if (!existsSync(STATE_PATH)) {
   console.error('  RAG: brak .rag-seed-state.json — kolekcje nigdy nie były zasiane z tego klona\n' +
     '  → ./scripts/reseed-patterns.sh');

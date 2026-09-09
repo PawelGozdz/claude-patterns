@@ -8,6 +8,16 @@
  * MVP: fixtures inline (poniżej). Nagrane wejścia z realnych transkryptów
  * dokładaj do tests/flow-evals/hooks/fixtures/*.json wg tego samego schematu
  * {name, hook, env, payload, setup, expect} — runner je dołączy automatycznie.
+ *
+ * Asercje na wyjściu (hooki doradcze zawsze kończą exit 0, więc sam kod wyjścia
+ * niczego nie odróżnia):
+ *   expect_stderr: "<regex>"  — ten tekst MUSI paść na stderr (hook złapał naruszenie)
+ *   expect_silent: true      — stderr MUSI być pusty (hook przepuścił / brak configu)
+ *   expect_typecheck_ran: <bool> — czy post-edit-typecheck doszedł do tsc (czyta znacznik
+ *                              cooldownu; wymaga setup.typecheckCooldown)
+ *   setup.cwd: true          — proces hooka startuje w katalogu tymczasowym, dzięki czemu
+ *                              względne `file_path` trafiają w pliki z `setup.files`
+ *   setup.typecheckCooldown: { ageMs } — sadzi znacznik cooldownu post-edit-typecheck
  */
 
 const fs = require('fs');
@@ -101,12 +111,51 @@ function runFixture(fx) {
       }
     }
 
+    // setup.typecheckCooldown: { ageMs } — sadzi znacznik cooldownu post-edit-typecheck
+    // DOKŁADNIE tam, gdzie hook go szuka. Ścieżkę liczy ta sama biblioteka co hook
+    // (hooks/lib/typecheck-cooldown.js) — powielenie schematu hashowania tutaj dawałoby
+    // zielony test przy rozjechanym hooku, czyli dokładnie to, czemu ten eval ma zapobiegać.
+    let plantedRun = null;
+    if (fx.setup && fx.setup.typecheckCooldown) {
+      const cd = require(path.join(REPO, 'hooks', 'lib', 'typecheck-cooldown.js'));
+      const ageMs = fx.setup.typecheckCooldown.ageMs || 0;
+      plantedRun = new Date(Date.now() - ageMs);
+      cd.markRun(tmp, plantedRun);
+    }
+
     const input = fx.raw !== undefined ? fx.raw : JSON.stringify({ ...fx.payload, cwd: tmp });
+    // setup.cwd: true — proces hooka startuje w katalogu tymczasowym, więc względne
+    // `file_path` z payloadu rozwiązują się do plików z `setup.files` (hooki czytające
+    // `payload.cwd` tego nie potrzebują i domyślnie zachowanie jest bez zmian).
     const res = spawnSync('node', [fx.hook], {
       input, encoding: 'utf8', env: { ...process.env, WATCHDOG_MODE: 'block', ...(fx.env || {}) },
+      ...(fx.setup && fx.setup.cwd ? { cwd: tmp } : {}),
     });
     const got = res.status === 0 ? 'pass' : res.status === 2 ? 'deny' : `exit-${res.status}`;
-    return { ok: got === fx.expect, got, stderr: (res.stderr || '').trim().split('\n')[0] || '' };
+    const stderr = (res.stderr || '').trim();
+    // expect_silent: hook ma nie powiedzieć NIC na stderr (kod wyjścia tego nie odróżnia —
+    // hooki doradcze zawsze kończą 0, a cała różnica jest w tym, czy coś wypisały)
+    if (fx.expect_silent && stderr) {
+      return { ok: false, got: `stderr: ${stderr.split('\n')[0]}`, stderr: stderr.split('\n')[0] };
+    }
+    // expect_stderr: wzorzec (regex), który MUSI pojawić się na stderr. Odwrotność
+    // expect_silent i jedyny sposób odróżnienia „hook złapał naruszenie" od „hook
+    // nic nie zrobił" u hooków doradczych — obie sytuacje kończą się exit 0.
+    if (fx.expect_stderr && !new RegExp(fx.expect_stderr).test(stderr)) {
+      return { ok: false, got: `stderr bez /${fx.expect_stderr}/`, stderr: stderr.split('\n')[0] || '(cisza)' };
+    }
+    // expect_typecheck_ran: czy post-edit-typecheck w ogóle doszedł do uruchomienia tsc.
+    // Cisza na stderr tego nie rozstrzyga (czysty projekt też milczy), a to jest CAŁA
+    // różnica między „cooldown zadziałał" a „cooldown wygasł" — czytamy znacznik last_run.
+    if (fx.expect_typecheck_ran !== undefined && plantedRun) {
+      const cd = require(path.join(REPO, 'hooks', 'lib', 'typecheck-cooldown.js'));
+      const after = Date.parse(cd.readMarker(tmp).last_run || '');
+      const ran = Number.isFinite(after) && after > plantedRun.getTime();
+      if (ran !== fx.expect_typecheck_ran) {
+        return { ok: false, got: `typecheck_ran=${ran}`, stderr: stderr.split('\n')[0] || '' };
+      }
+    }
+    return { ok: got === fx.expect, got, stderr: stderr.split('\n')[0] || '' };
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
   }

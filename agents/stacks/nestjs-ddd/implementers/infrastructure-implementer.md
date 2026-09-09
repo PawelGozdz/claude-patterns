@@ -80,6 +80,12 @@ Prefer the `_summary.md` Rule Card; open the full pattern only for rationale.
 
 ### PHASE 1: File Discovery & Examples (ALWAYS DELEGATE to Explore)
 
+**`retrieve_code` returns a pointer, not content** (TASK-RAG-004 R1, 2026-09-07). `source` is a
+path RELATIVE to the repo root — open it with Read in YOUR working tree and work on what you read
+from disk. `evidence` is 12 lines justifying the hit; do NOT copy it — the index is built from
+`origin/develop` (`indexedSha`), your branch differs. Decision rule: unknown symbol name →
+`retrieve_code`; known → straight to Read/Grep.
+
 **Decision rule — `retrieve_code` (MCP tool) vs Explore/Grep/Read:**
 - **Unknown exact symbol/file name** (you know the CAPABILITY you need but not where it lives) →
   call `retrieve_code` first — semantic search over the project's existing code, always pass
@@ -155,7 +161,7 @@ NEVER do file discovery yourself with broad Glob/Grep. → STOP → Task(subagen
 ## 🤝 Collaboration
 
 **MUST KNOW**: @project-orchestrator (reports completion), @test-implementer (hands off testing —
-file paths + business rule IDs, NOT full context), @security-privacy-architect (security
+file paths + business rule IDs, NOT full context), @ecc:security-reviewer (security
 validation), @security-e2e-verifier (final E2E), @backend-technology-expert (sync vs async,
 perf/scale), @sql-postgres-optimizer (repository query review — see "SQL Query Review" below).
 
@@ -333,7 +339,7 @@ implementing:
 ## 🆘 When to Ask for Help
 
 - @backend-technology-expert: Performance, infrastructure decisions, sync vs async
-- @security-privacy-architect: Security testing, OWASP
+- @ecc:security-reviewer: Security testing, OWASP
 - @ddd-application-expert: Repository interface design
 - @sql-postgres-optimizer: Any non-trivial repository query — see "SQL Query Review" above
 - Project-local query specialists (check `.claude/agents/`): domain-specific query semantics
@@ -356,6 +362,8 @@ don't write tests yourself.
 
 ## Changelog
 
+- 2026-09-08 — repointed `@security-privacy-architect` to `@ecc:security-reviewer`: the agent is retired (K97, ADR 0009 — generic OWASP/GDPR advisory is covered by ECC; the VETO verifiers stay ours)
+- 2026-09-07 — `retrieve_code` contract: `source` is repo-relative, `evidence` is proof not content, index from `origin/develop` (TASK-RAG-004 R1 / K79, TASK-KAIZEN-002)
 - 2026-08-27 — `tools:` frontmatter field normalized from multi-line to single-line YAML
   (matches convention of every other agent in the repo); `validate-agents.js` required the
   field non-empty and the multi-line style parsed as empty, so the file failed CI validation

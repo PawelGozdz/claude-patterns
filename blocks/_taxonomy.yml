@@ -59,8 +59,7 @@ areas:
 variants_seen:
   app: [async, batching, concurrency, cross-context, errors, external-integration, ingestion, llm, model-lifecycle]
   api-surface: [barrel, contract, deprecation, errors, semver]
-  auth: [jwt, session, oauth, refresh]
-  data-access: [http, mapper, migration, offline, outbox, polyglot, projection, transaction]
+  data-access: [http, mapper, migration, offline, polyglot, projection, transaction]
   domain: [aggregate, errors, moderation-buffer]
   events: [domain, integration, outbox, queue]
   geo: [radius, teryt, polygon, discovery]

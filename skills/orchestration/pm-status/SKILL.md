@@ -10,43 +10,48 @@ disable-model-invocation: true
 
 # /pm-status — Quick Status
 
-Instant project status. Reads `TEAM-STATE.md` only — no agents spawned,
-no cost, results in seconds.
+Instant project state. Reads `project-orchestration/TEAM-STATE.md` only.
+No agents, no cost, results in seconds.
 
-**Cost**: ~$0 (read only)
-**When**: Any time you want current state without a full pulse
+**Cost**: ~$0 (read only) | **When**: Any time — morning check, before a task, mid-session
 
 ## Steps
 
-1. Read `project-orchestration/TEAM-STATE.md`
-2. Display formatted:
-   - Last sync date + who ran it
-   - Sprint Focus (1 line)
-   - Critical Now section (full)
-   - Technical Pulse (key numbers only: debt, blocked, stale)
-   - Business Pulse (key numbers only: milestone, risks)
-   - Last 3 Team Notes
+### 1. Read TEAM-STATE.md
 
-3. If TEAM-STATE.md doesn't exist: suggest running `/pulse` first
+Read `project-orchestration/TEAM-STATE.md`.
 
-## Output Example
+If the file doesn't exist:
+> "TEAM-STATE.md not found. Run `/pulse` to initialize the project management system."
+> Stop here.
+
+### 2. Display formatted status
+
+Output this format, filled **only** from the file's content — never from memory,
+never from a plausible-looking guess. Every `{placeholder}` that the file does not
+answer stays as `—`:
 
 ```
-[PM STATUS] Last pulse: 2026-04-03 by @tech-lead
+[PM STATUS] Last pulse: {date} by @{agent}
 
-Sprint: Trust verification + load test stability
+Sprint: {Sprint Focus content}
 
 🔴 CRITICAL:
-  • TS-AUTH-003 BLOCKED — email migration, blocks 3 others
-  • TS-GEO-013 OVERDUE (18d) — no owner, mobile HIGH
+  {Critical Now section — each item as a bullet}
 
-Tech: Debt 🔴 | Blocked: 5 | Stale: 8
-Business: MVP ~6w | Unvalidated: 2 | Mobile risks: 3
+Tech: Debt {icon+level} | Blocked: {N} | Stale: {N}
+Business: {milestone} ~{weeks}w | Unvalidated: {N} | Mobile: {N}
 
 Last notes:
-  [04-03] @tech-lead: BullMQ cleanup unblocks perf cluster
-  [04-02] @product-owner: geo-auth mobile flow needs redesign
-  [04-01] @tech-lead: FK order fixed — TS-TEST-LOAD-003 closeable
+  {3 most recent Team Notes, one per line}
 
-→ Run /pulse for full analysis
+→ Run /pulse for full analysis (updates both sections)
+```
+
+### 3. If TEAM-STATE.md is stale (>2 days since last sync)
+
+Append the warning:
+
+```
+⚠️  Last pulse was {N} days ago — consider running /pulse
 ```

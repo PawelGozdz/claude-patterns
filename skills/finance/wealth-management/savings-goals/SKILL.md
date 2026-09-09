@@ -5,23 +5,6 @@ description: "Plan and track savings for specific financial goals including reti
 
 # Savings Goals
 
-## Purpose
-Plan and track savings for specific financial goals — retirement, education, home purchase, and other targets. This skill computes required savings rates, projects future values under different scenarios, and helps prioritize competing goals.
-
-## Layer
-6 — Personal Finance
-
-## Direction
-Prospective
-
-## When to Use
-- Computing required monthly savings to reach a future goal
-- Planning education funding (529 plans, cost projections)
-- Retirement accumulation targets and savings rate analysis
-- Down payment planning for home purchase
-- Balancing and prioritizing multiple competing savings goals
-- Evaluating whether current savings pace is on track
-
 ## Core Concepts
 
 ### Required Monthly Savings
@@ -40,10 +23,10 @@ Then solve for the required savings using the nominal return, or use the real re
 
 ### Education Funding
 - **529 plans**: tax-free growth for qualified education expenses, state tax deductions in many states
-- **Current costs**: ~$25K/year (public in-state) to $60K+/year (private), growing ~5%/year
+- **Current costs** (2025-26, total cost of attendance, College Board Trends in College Pricing): ~$30K/year (public four-year in-state) to ~$65K/year (private nonprofit), growing ~5%/year
 - **Front-loading**: maximize early contributions for compound growth
 - **Superfunding**: 5-year gift tax averaging (contribute 5× annual exclusion at once)
-- **Financial aid impact**: 529 owned by parent counted at ~5.6% in EFC
+- **Financial aid impact**: parent-owned 529 assets are assessed at a maximum of 5.64% in the federal Student Aid Index (SAI) formula — FAFSA has used the SAI in place of the Expected Family Contribution (EFC) since the 2024-25 award year
 
 ### Retirement Accumulation
 - **Target nest egg**: annual spending need / safe withdrawal rate
@@ -99,21 +82,20 @@ Recommended priority order:
 - Monthly rate: r = 0.07/12 = 0.005833
 - Months: n = 18 × 12 = 216
 - PMT = $200,000 × 0.005833 / [(1.005833)^216 - 1]
-- PMT = $1,166.67 / [3.4787 - 1]
-- PMT = $1,166.67 / 2.4787 = **$470.72/month**
+- PMT = $1,166.67 / [3.5125 - 1]
+- PMT = $1,166.67 / 2.5125 = **$464.34/month**
 
 ### Example 2: Retirement Accumulation
 **Given:** Age 30, $50,000 currently saved, wants $2,000,000 by age 65, expects 8% annual return
 **Calculate:** Required monthly savings
 **Solution:**
-- FV of current savings: $50,000 × (1.08)^35 = $50,000 × 14.785 = $739,274
-- Remaining needed: $2,000,000 - $739,274 = $1,260,726
-- Monthly rate: r = 0.08/12 = 0.006667
-- Months: n = 35 × 12 = 420
-- PMT = $1,260,726 × 0.006667 / [(1.006667)^420 - 1]
-- PMT = $8,404.84 / [16.367 - 1]
-- PMT = $8,404.84 / 15.367 = **$547/month**
-- With employer match of $200/mo: personal contribution = **$347/month**
+- Monthly rate: r = 0.08/12 = 0.006667; months: n = 35 × 12 = 420
+- FV of current savings (monthly compounding): $50,000 × (1.006667)^420 = $50,000 × 16.2925 = $814,627
+- Remaining needed: $2,000,000 - $814,627 = $1,185,373
+- PMT = $1,185,373 × 0.006667 / [(1.006667)^420 - 1]
+- PMT = $7,902.49 / [16.2925 - 1]
+- PMT = $7,902.49 / 15.2925 = **$517/month**
+- With employer match of $200/mo: personal contribution = **$317/month**
 
 ## Common Pitfalls
 - Not inflation-adjusting future goals (college in 18 years costs much more than today)
@@ -124,14 +106,23 @@ Recommended priority order:
 - Using average returns without considering sequence risk near goal date
 
 ## Cross-References
-- **time-value-of-money** (core plugin, Layer 0): FV/PV calculations, annuity formulas
-- **emergency-fund** (wealth-management plugin, Layer 6): must be funded before other goals
-- **debt-management** (wealth-management plugin, Layer 6): high-interest debt payoff competes with savings
-- **tax-efficiency** (wealth-management plugin, Layer 5): 529 tax benefits, Roth vs traditional, HSA
-- **investment-policy** (wealth-management plugin, Layer 5): goal-based allocation aligns with IPS constraints
-- **asset-allocation** (wealth-management plugin, Layer 4): glide paths for target-date retirement savings
-- **finance-psychology** (wealth-management plugin, Layer 7): mental accounting, present bias, commitment devices
-- **financial-planning-workflow** (advisory-practice plugin, Layer 10): savings goals are key inputs to the comprehensive financial planning process
+- **time-value-of-money** (core plugin): FV/PV calculations, annuity formulas
+- **emergency-fund** (wealth-management plugin): must be funded before other goals
+- **debt-management** (wealth-management plugin): high-interest debt payoff competes with savings
+- **tax-efficiency** (wealth-management plugin): 529 tax benefits, Roth vs traditional, HSA
+- **investment-policy** (wealth-management plugin): goal-based allocation aligns with IPS constraints
+- **asset-allocation** (wealth-management plugin): glide paths for target-date retirement savings
+- **finance-psychology** (wealth-management plugin): mental accounting, present bias, commitment devices
+- **financial-planning-workflow** (advisory-practice plugin): savings goals are key inputs to the comprehensive financial planning process
+- **insurance-planning** (wealth-management plugin): education and survivor-income goals feed the capital-needs calculation for life insurance sizing
+- **estate-gifting** (wealth-management plugin): 529 superfunding (5-year gift-tax election) lets grandparents front-load education goals within annual exclusions
+- **retirement-decumulation** (wealth-management plugin): the drawdown-side counterpart — safe withdrawal rates and spending rules for the nest egg accumulated here
+## Running the script
+Run the reference implementation directly:
 
-## Reference Implementation
-See `scripts/savings_goals.py` for computational helpers.
+```
+uv run scripts/savings_goals.py      # PEP 723 header resolves dependencies automatically
+python3 scripts/savings_goals.py     # standard library only — no installs needed
+```
+
+A bare run prints a demo covering required monthly savings, retirement accumulation, time-to-goal, inflation adjustment, shortfall analysis, education funding, savings rate, and real returns. Use `--verify` to recompute the demo figures and assert they match this skill's worked examples (prints PASS/FAIL, exits nonzero on mismatch), and `--help` to list the available classes and functions. The file is primarily meant to be imported as a module (`from savings_goals import SavingsGoals`) rather than run standalone.

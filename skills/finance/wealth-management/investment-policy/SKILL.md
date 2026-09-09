@@ -5,24 +5,6 @@ description: "Construct comprehensive Investment Policy Statements governing ret
 
 # Investment Policy Statement Construction
 
-## Purpose
-Guide the construction of comprehensive Investment Policy Statements (IPS) that govern all investment decisions. This skill covers return objective setting, risk tolerance assessment, constraint identification, asset allocation policy, and ongoing review frameworks.
-
-## Layer
-5 — Policy & Planning
-
-## Direction
-prospective
-
-## When to Use
-- Building an investment policy statement for an individual, endowment, or foundation
-- Defining return objectives (nominal and real) based on future liabilities or spending needs
-- Assessing risk tolerance by reconciling financial capacity with psychological comfort
-- Setting constraints across liquidity, legal/regulatory, time horizon, tax, and unique circumstances
-- Establishing portfolio guidelines including asset allocation ranges and rebalancing triggers
-- Selecting benchmarks and defining manager evaluation criteria
-- Scheduling periodic IPS and performance reviews
-
 ## Core Concepts
 
 ### Investment Policy Statement (IPS)
@@ -101,14 +83,14 @@ An appropriate benchmark must be:
 
 ### Example 1: IPS for a 45-year-old pre-retiree
 **Given:** Age 45, current portfolio $2M, needs $100K/year (today's dollars) starting at age 65, life expectancy 90, inflation 2.5%, portfolio fees 0.5%.
-**Calculate:** Required nominal return.
+**Calculate:** Required nominal return and the resulting allocation guidance.
 **Solution:**
 1. Time horizon: 20 years to retirement + 25 years in retirement = two-stage horizon.
 2. At retirement, need $100K × (1.025)^20 = $163,862/year in nominal terms.
-3. Required nest egg at 65 (25-year payout at ~5% real return): PV of $163,862/year annuity growing at 2.5% inflation, discounted at ~7.5% nominal ≈ $2.76M.
-4. Required return: solve $2M × (1+R)^20 = $2.76M → R = (2.76/2.0)^(1/20) - 1 ≈ 1.6% nominal (if no additional contributions). With $0 contributions, the required return is modest.
-5. If the client also contributes $30K/year, the required return is even lower, suggesting moderate risk tolerance is sufficient.
-6. Risk tolerance: ability is moderate-to-high (long horizon, stable income); assess willingness via questionnaire. If willingness is moderate, adopt moderate allocation (e.g., 60/40).
+3. Required nest egg at 65 (25-year payout, assuming the retirement portfolio earns ~5% real, roughly 7.5% nominal at 2.5% inflation): the inflation-growing withdrawals are a level annuity in real terms, so N = $163,862 × [1 - 1.05^(-25)] / 0.05 = $163,862 × 14.094 ≈ **$2.31M** (in age-65 dollars).
+4. Required return (no additional contributions): solve $2M × (1+R)^20 = $2.31M → R = (2.31/2.0)^(1/20) - 1 ≈ **0.7% nominal net of fees** (≈1.2% gross adding the 0.5% fee). That is below the 2.5% inflation assumption — the required real return is roughly -1.7%.
+5. If the client also contributes $30K/year, the required return falls to essentially zero. Return needs alone do not compel an equity-heavy portfolio.
+6. Allocation logic: ability to take risk is high (20-year accumulation horizon, assets large relative to the goal), so willingness governs the choice within a wide acceptable range. The required return is modest, but a 45-year total horizon, longevity beyond age 90, and inflation risk argue for substantial equities; if willingness is moderate, a 60/40 allocation is comfortable, and the client could de-risk to 40/60 and still expect to meet the goal. Document in the IPS that the equity allocation is held for inflation protection and longevity risk, not because the return target demands it.
 
 ### Example 2: Endowment spending policy
 **Given:** $50M endowment, 5% spending rule on 3-year rolling average, expected inflation 2.5%, investment fees 0.5%.
@@ -130,11 +112,13 @@ An appropriate benchmark must be:
 - Ignoring the interaction between constraints (e.g., tax considerations affecting asset allocation ranges)
 
 ## Cross-References
-- **tax-efficiency** (wealth-management plugin, Layer 5): asset location and withdrawal sequencing affect IPS constraint section
-- **performance-attribution** (wealth-management plugin, Layer 5): benchmark selection in IPS directly feeds performance evaluation
-- **liquidity-management** (wealth-management plugin, Layer 6): liquidity constraint in IPS depends on cash flow analysis
-- **savings-goals** (wealth-management plugin, Layer 6): return objectives often derived from goal-based planning
-- **emergency-fund** (wealth-management plugin, Layer 6): emergency reserve requirement feeds into IPS liquidity constraint
-- **client-review-prep** (advisory-practice plugin, Layer 10): IPS provides the reference framework for evaluating drift and suitability during reviews
-- **financial-planning-workflow** (advisory-practice plugin, Layer 10): the financial plan informs and is codified in the investment policy statement
-- **tax-loss-harvesting** (wealth-management plugin, Layer 5): IPS may specify TLH policy parameters (minimum loss threshold, approved replacement pairs)
+- **tax-efficiency** (wealth-management plugin): asset location and withdrawal sequencing affect IPS constraint section
+- **performance-attribution** (wealth-management plugin): benchmark selection in IPS directly feeds performance evaluation
+- **liquidity-management** (wealth-management plugin): liquidity constraint in IPS depends on cash flow analysis
+- **savings-goals** (wealth-management plugin): return objectives often derived from goal-based planning
+- **emergency-fund** (wealth-management plugin): emergency reserve requirement feeds into IPS liquidity constraint
+- **client-review-prep** (advisory-practice plugin): IPS provides the reference framework for evaluating drift and suitability during reviews
+- **financial-planning-workflow** (advisory-practice plugin): the financial plan informs and is codified in the investment policy statement
+- **tax-loss-harvesting** (wealth-management plugin): IPS may specify TLH policy parameters (minimum loss threshold, approved replacement pairs)
+- **estate-gifting** (wealth-management plugin): trust structures and multi-generational transfer objectives feed the IPS legal/regulatory and time-horizon constraints
+- **retirement-decumulation** (wealth-management plugin): the IPS spending policy documents the withdrawal rate, guardrail rules, and rebalancing discipline used in decumulation

@@ -1,15 +1,27 @@
 {
   "code_grant_flow": {
     "model": "ct301:multilingual-e5-large",
-    "dim": 1024
+    "dim": 1024,
+    "repo": "grant-flow",
+    "ref": "origin/develop",
+    "sha": "dba068cd9c71ea41265273236c28b0a4b068fb9b",
+    "indexedAt": "2026-09-07T22:14:25.502Z"
   },
   "code_universal_learning_system": {
     "model": "ct301:multilingual-e5-large",
-    "dim": 1024
+    "dim": 1024,
+    "repo": "universal-learning-system",
+    "ref": "origin/develop",
+    "sha": "0dc7cf92462bce6f551d51740fe35cce813fe1ec",
+    "indexedAt": "2026-09-07T22:14:54.216Z"
   },
   "code_juz_ide_api": {
     "model": "ct301:multilingual-e5-large",
-    "dim": 1024
+    "dim": 1024,
+    "repo": "juz-ide-api",
+    "ref": "origin/develop",
+    "sha": "8e951759e146294effecfdef45a1715a7b3ddb2c",
+    "indexedAt": "2026-09-07T22:10:24.643Z"
   },
   "patterns_global": {
     "model": "ct301:multilingual-e5-large",
@@ -23,6 +35,10 @@
   },
   "code_juz_ide_mobile_app": {
     "model": "ct301:multilingual-e5-large",
-    "dim": 1024
+    "dim": 1024,
+    "repo": "juz-ide-mobile-app",
+    "ref": "origin/develop",
+    "sha": "c4aa4bec52fdfa8492dd1a961f60452627f8a0e6",
+    "indexedAt": "2026-09-07T22:13:04.565Z"
   }
 }

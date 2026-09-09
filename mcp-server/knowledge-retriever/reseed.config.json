@@ -1,9 +1,31 @@
 {
-  "_comment": "collection -> source dirs. Reseed embeds (KR_EMBED_*) + recreates each Qdrant collection. Naming: code_<project-basename> by default, OR explicit project.yml::knowledge_collection override for twin/shared-repo projects (see setup-project.sh) — must match the value written to that project's .claude/config/knowledge.json.",
+  "_comment": "collection -> source spec. Reseed embeds (KR_EMBED_*) + recreates each Qdrant collection. Naming: code_<project-basename> by default, OR explicit project.yml::knowledge_collection override for twin/shared-repo projects (see setup-project.sh) — must match the value written to that project's .claude/config/knowledge.json.",
+  "_spec": "{ repo: path to ANY clone (it only supplies git objects), ref: the canonical revision that IS the index, dirs: repo-relative subdirs, repoName: name stored in the payload }. Paths are relative to this file. A bare array of dirs is the legacy form — still accepted, but it indexes a live working tree, so one developer's WIP leaks into a collection every checkout of that repo reads; the indexer warns about it.",
+  "_why_ref": "juz-ide-api-1..4 are four checkouts of one repo sharing ONE collection. Indexing whichever tree happens to be on disk makes the index mean 'whatever api-1 was doing that afternoon'. Pinning to origin/develop makes it mean 'the merged trunk' — the one answer that is equally true in all four (TASK-RAG-004 R2). Reseed after a merge to develop, not on every file save.",
   "collections": {
-    "code_juz_ide_api": ["../../../juz-ide-api-1/src"],
-    "code_juz_ide_mobile_app": ["../../../juz-ide-mobile-app/lib"],
-    "code_grant_flow": ["../../../grant-flow/src"],
-    "code_universal_learning_system": ["../../../universal-learning-system/src"]
+    "code_juz_ide_api": {
+      "repo": "../../../juz-ide-api-1",
+      "ref": "origin/develop",
+      "dirs": ["src"],
+      "repoName": "juz-ide-api"
+    },
+    "code_juz_ide_mobile_app": {
+      "repo": "../../../juz-ide-mobile-app",
+      "ref": "origin/develop",
+      "dirs": ["lib"],
+      "repoName": "juz-ide-mobile-app"
+    },
+    "code_grant_flow": {
+      "repo": "../../../grant-flow",
+      "ref": "origin/develop",
+      "dirs": ["src"],
+      "repoName": "grant-flow"
+    },
+    "code_universal_learning_system": {
+      "repo": "../../../universal-learning-system",
+      "ref": "origin/develop",
+      "dirs": ["src"],
+      "repoName": "universal-learning-system"
+    }
   }
 }

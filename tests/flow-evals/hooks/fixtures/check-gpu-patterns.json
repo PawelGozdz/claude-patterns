@@ -1,0 +1,77 @@
+[
+  {
+    "name": "gpu-blocking-inference-in-async-warns",
+    "hook": "check-gpu-patterns.js",
+    "payload": {
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "src/services/inference.py"
+      }
+    },
+    "setup": {
+      "cwd": true,
+      "files": {
+        "python-hooks.json": "{\n  \"layerPath\": \"src\",\n  \"purity\": {\n    \"noInfraImportLayers\": [\n      \"domain\",\n      \"services\"\n    ],\n    \"forbiddenImports\": [\n      \"fastapi\",\n      \"sqlalchemy\",\n      \"alembic\",\n      \"redis\",\n      \"celery\",\n      \"httpx\",\n      \"requests\",\n      \"boto3\",\n      \"aiohttp\"\n    ]\n  },\n  \"typing\": {\n    \"checkUntyped\": {\n      \"enabled\": true,\n      \"filePatterns\": [\n        \"**/domain/**/*.py\",\n        \"**/services/**/*.py\",\n        \"**/api/**/*.py\"\n      ]\n    }\n  },\n  \"skipPatterns\": [\n    \"test_\",\n    \"_test.py\",\n    \"conftest.py\",\n    \"__pycache__\",\n    \".venv\"\n  ],\n  \"gpu\": {\n    \"enabled\": true\n  }\n}",
+        "src/services/inference.py": "async def run(model, x):\n    return model.encode(x)\n"
+      }
+    },
+    "expect": "pass",
+    "expect_stderr": "Blocking"
+  },
+  {
+    "name": "gpu-offloaded-inference-silent",
+    "hook": "check-gpu-patterns.js",
+    "payload": {
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "src/services/inference.py"
+      }
+    },
+    "setup": {
+      "cwd": true,
+      "files": {
+        "python-hooks.json": "{\n  \"layerPath\": \"src\",\n  \"purity\": {\n    \"noInfraImportLayers\": [\n      \"domain\",\n      \"services\"\n    ],\n    \"forbiddenImports\": [\n      \"fastapi\",\n      \"sqlalchemy\",\n      \"alembic\",\n      \"redis\",\n      \"celery\",\n      \"httpx\",\n      \"requests\",\n      \"boto3\",\n      \"aiohttp\"\n    ]\n  },\n  \"typing\": {\n    \"checkUntyped\": {\n      \"enabled\": true,\n      \"filePatterns\": [\n        \"**/domain/**/*.py\",\n        \"**/services/**/*.py\",\n        \"**/api/**/*.py\"\n      ]\n    }\n  },\n  \"skipPatterns\": [\n    \"test_\",\n    \"_test.py\",\n    \"conftest.py\",\n    \"__pycache__\",\n    \".venv\"\n  ],\n  \"gpu\": {\n    \"enabled\": true\n  }\n}",
+        "src/services/inference.py": "import asyncio\n\n\nasync def run(model, x):\n    return await asyncio.to_thread(model.encode, x)\n"
+      }
+    },
+    "expect": "pass",
+    "expect_silent": true
+  },
+  {
+    "name": "gpu-empty-cache-without-gc-warns",
+    "hook": "check-gpu-patterns.js",
+    "payload": {
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "src/services/inference.py"
+      }
+    },
+    "setup": {
+      "cwd": true,
+      "files": {
+        "python-hooks.json": "{\n  \"layerPath\": \"src\",\n  \"purity\": {\n    \"noInfraImportLayers\": [\n      \"domain\",\n      \"services\"\n    ],\n    \"forbiddenImports\": [\n      \"fastapi\",\n      \"sqlalchemy\",\n      \"alembic\",\n      \"redis\",\n      \"celery\",\n      \"httpx\",\n      \"requests\",\n      \"boto3\",\n      \"aiohttp\"\n    ]\n  },\n  \"typing\": {\n    \"checkUntyped\": {\n      \"enabled\": true,\n      \"filePatterns\": [\n        \"**/domain/**/*.py\",\n        \"**/services/**/*.py\",\n        \"**/api/**/*.py\"\n      ]\n    }\n  },\n  \"skipPatterns\": [\n    \"test_\",\n    \"_test.py\",\n    \"conftest.py\",\n    \"__pycache__\",\n    \".venv\"\n  ],\n  \"gpu\": {\n    \"enabled\": true\n  }\n}",
+        "src/services/inference.py": "def free():\n    torch.cuda.empty_cache()\n"
+      }
+    },
+    "expect": "pass",
+    "expect_stderr": "empty_cache"
+  },
+  {
+    "name": "gpu-no-config-silent",
+    "hook": "check-gpu-patterns.js",
+    "payload": {
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "src/services/inference.py"
+      }
+    },
+    "setup": {
+      "cwd": true,
+      "files": {
+        "src/services/inference.py": "async def run(model, x):\n    return model.encode(x)\n"
+      }
+    },
+    "expect": "pass",
+    "expect_silent": true
+  }
+]

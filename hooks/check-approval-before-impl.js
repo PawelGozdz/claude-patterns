@@ -10,15 +10,23 @@
  * artefakt *.analysis.md ze `status:` innym niż `approved` (lub z pytaniem bez
  * odpowiedzi), to edycja pliku źródłowego prawdopodobnie wyprzedza zatwierdzenie analizy.
  *
- * Tryby (env ORCHESTRATE_DDD_GATE): warn (default) | block | off
+ * Tryby (env APPROVAL_GATE_MODE): warn (default) | block | off
+ * `ORCHESTRATE_DDD_GATE` to nazwa DEPRECATED — nadal honorowana, żeby satelity,
+ * które ją ustawiły, nie przestały działać z dnia na dzień (K106).
  * Ograniczenie: przy wielu równoległych zadaniach jest zgrubny (nie wie, którego
  * zadania dotyczy edycja). Stąd default = warn. One-off bypass: .analysis-ok-sentinel.
+ *
+ * Changelog:
+ *   2026-09-07 (K106) — ORCHESTRATE_DDD_GATE → APPROVAL_GATE_MODE (stara nazwa jako alias).
+ *   2026-09-07 (K51) — subagenci (payload.agent_id) przepuszczani bez skanu; helper
+ *     isSubagent() w lib/utils.js współdzielony z pozostałymi bramkami.
  */
 'use strict';
 const fs = require('fs');
 const path = require('path');
+const { isSubagent } = require('./lib/utils');
 
-const MODE = process.env.ORCHESTRATE_DDD_GATE || 'warn';
+const MODE = process.env.APPROVAL_GATE_MODE ?? process.env.ORCHESTRATE_DDD_GATE ?? 'warn';
 
 const ENFORCED_EXT = ['.ts', '.tsx', '.dart', '.py', '.svelte'];
 const EXEMPT_FRAGMENTS = ['__tests__/', '.test.', '.spec.', 'node_modules/', '.claude/',
@@ -56,6 +64,12 @@ function main() {
   if (MODE === 'off') process.exit(0);
   if (!['Write', 'Edit', 'MultiEdit'].includes(p.tool_name)) process.exit(0);
 
+  // Subagenci zawsze przechodzą (jak w check-delegation / check-patterns-read):
+  // implementer /orchestrate rusza dopiero PO precondition-check na approved analysis,
+  // a ten hook skanuje cały katalog analysis/ i w trybie block zatrzymałby go na
+  // cudzym niezatwierdzonym artefakcie (K51).
+  if (isSubagent(p)) process.exit(0);
+
   const fp = p.tool_input && (p.tool_input.file_path || p.tool_input.path);
   if (!isSourceFile(fp)) process.exit(0);
 
@@ -77,7 +91,7 @@ function main() {
     `\n${isBlock ? '🛑 BLOCKED' : '⚠️  WARN'}: APPROVAL-GATE on ${p.tool_name} ${fp}\n` +
     `    Edytujesz kod źródłowy, ale istnieje analiza NIEZATWIERDZONA:\n${list}\n\n` +
     `    Najpierw: odpowiedz na open_questions + ustaw status: approved, potem /orchestrate <TASK>.\n` +
-    `    Tryb: ${MODE.toUpperCase()} (ORCHESTRATE_DDD_GATE=warn|block|off; one-off: touch .analysis-ok-sentinel)\n`;
+    `    Tryb: ${MODE.toUpperCase()} (APPROVAL_GATE_MODE=warn|block|off, alias deprecated: ORCHESTRATE_DDD_GATE; one-off: touch .analysis-ok-sentinel)\n`;
   process.stderr.write(msg);
   process.exit(isBlock ? 2 : 0);
 }

@@ -14,7 +14,7 @@ Analyze your repository's git history to extract coding patterns and generate SK
 /skill-create                    # Analyze current repo
 /skill-create --commits 100      # Analyze last 100 commits
 /skill-create --output ./skills  # Custom output directory
-/skill-create --instincts        # Also generate instincts for continuous-learning-v2
+/skill-create --instincts        # Also generate instincts for ecc:continuous-learning-v2
 ```
 
 ## What It Does
@@ -22,7 +22,7 @@ Analyze your repository's git history to extract coding patterns and generate SK
 1. **Parses Git History** - Analyzes commits, file changes, and patterns
 2. **Detects Patterns** - Identifies recurring workflows and conventions
 3. **Generates SKILL.md** - Creates valid Claude Code skill files
-4. **Optionally Creates Instincts** - For the continuous-learning-v2 system
+4. **Optionally Creates Instincts** - For the `ecc:continuous-learning-v2` system
 
 ## Analysis Steps
 
@@ -81,7 +81,7 @@ analyzed_commits: {count}
 
 ### Step 4: Generate Instincts (if --instincts)
 
-For continuous-learning-v2 integration:
+For `ecc:continuous-learning-v2` integration:
 
 ```yaml
 ---
@@ -165,9 +165,11 @@ For advanced features (10k+ commits, team sharing, auto-PRs), use the [Skill Cre
 
 ## Related Commands
 
-- `/instinct-import` - Import generated instincts
-- `/instinct-status` - View learned instincts
-- `/evolve` - Cluster instincts into skills/agents
+Cały system instynktów jest po stronie ECC (ADR 0009) — te komendy nie istnieją już lokalnie:
+
+- `/ecc:instinct-import` - Import generated instincts
+- `/ecc:instinct-status` - View learned instincts
+- `/ecc:evolve` - Cluster instincts into skills/agents
 
 ---
 

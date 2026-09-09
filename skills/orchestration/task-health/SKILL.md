@@ -2,7 +2,7 @@
 name: task-health
 description: "Deep task audit: blocked, stale, missing deps, format issues, orphaned tasks"
 origin: LocalHero
-allowed-tools: Read, Glob, Grep, Agent
+allowed-tools: Read, Edit, Glob, Grep, Bash, Agent
 model: opus
 effort: high
 disable-model-invocation: true
@@ -88,6 +88,8 @@ Agent(subagent_type='tech-lead',
               5. Orphaned (no story_id)
               6. Circular dependency chains
               7. P0/P1 with no due_date
+              8. Status mismatch — status: done still sitting in tasks/
+                 instead of completed-tasks/
 
               Prioritize fixes: critical (broken deps) → high (stuck) → cleanup.',
       description='Task health analysis (Sonnet)')
@@ -95,13 +97,23 @@ Agent(subagent_type='tech-lead',
 
 ### Phase 3 — Render
 
-Display audit results with fix recommendations.
+Display audit results grouped by severity:
 
-Ask user: "Fix issues automatically where safe (missing fields)? Y/N"
+- **Critical** — broken deps, circular deps, task in the wrong folder
+- **Warning** — stuck in-progress, P0/P1 with no due date
+- **Info** — missing fields, orphaned (no `story_id`)
+
+Then ask: "Fix safe issues automatically? (missing `updated_date` → today,
+missing `priority` → P2, move `done` tasks to `completed-tasks/`) Y/N"
+
+If yes, apply them with `Edit` and list every change you made. Never touch
+anything outside that closed list without asking.
 
 ---
 
 ## Output Example
+
+Illustration of the *shape* only — never copy these IDs or counts into a real audit.
 
 ```
 [TASK HEALTH AUDIT] 2026-04-03 — 74 tasks scanned

@@ -1,7 +1,7 @@
 ---
 name: flutter-signature-animations
 description: Rich, choreographed Flutter animations for juz-ide — screen-welcome/what's-new reveals (ScreenInfo ℹ︎ icon, CoachMark tutorials), main-view screen transitions, map camera motion, staggered tile/list reveals — with an explicit performance budget so "beautiful" never means janky. Companion to flutter-brand-motion (tokens/anti-dark-pattern rules) — read that one first for the constraints this one builds on.
-origin: juz-ide-mobile-app (screen_info.dart "Future hook: animatedTutorial", coach_mark.dart)
+origin: 'juz-ide-mobile-app (screen_info.dart "Future hook: animatedTutorial", coach_mark.dart)'
 paths:
   - "**/screen_info.dart"
   - "**/coach_mark*.dart"

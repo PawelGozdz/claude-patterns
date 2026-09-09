@@ -11,7 +11,9 @@ inflation-adjusted targets, and multi-goal prioritization.
 Part of Layer 6 (Personal Finance) in the finance skills framework.
 """
 
+import argparse
 import math
+import sys
 
 
 class SavingsGoals:
@@ -376,7 +378,7 @@ class SavingsGoals:
         }
 
 
-if __name__ == "__main__":
+def _demo() -> None:
     # ----------------------------------------------------------------
     # Demo: Savings goals computations
     # ----------------------------------------------------------------
@@ -472,3 +474,74 @@ if __name__ == "__main__":
     print("\n" + "=" * 60)
     print("Demo complete.")
     print("=" * 60)
+
+
+def _verify() -> int:
+    """Assert that demo computations match the SKILL.md worked examples."""
+    SG = SavingsGoals
+    failures: list[str] = []
+
+    def check(label: str, actual: float, expected: float, rel_tol: float = 1e-3) -> None:
+        ok = math.isclose(actual, expected, rel_tol=rel_tol)
+        print(f"  {'PASS' if ok else 'FAIL'}: {label}: got {actual:,.2f}, expected {expected:,.2f}")
+        if not ok:
+            failures.append(label)
+
+    print("Verifying against SKILL.md worked examples...")
+
+    # Example 1: $200K in 18 years @ 7% from $0 -> $464.34/month
+    pmt_529 = SG.required_monthly_savings(200_000, 0.07, 18, current_savings=0)
+    check("Ex1 required monthly savings ($464.34)", pmt_529, 464.34)
+    fv_check = SG.future_value_with_contributions(0, pmt_529, 0.07, 18)
+    check("Ex1 FV of contributions ($200,000)", fv_check, 200_000.0, rel_tol=1e-6)
+
+    # Example 2: $80K/yr spending @ 4% SWR -> $2M target;
+    # age 30, $50K saved, 35 years @ 8% -> ~$517/month ($317 after $200 match)
+    target = SG.retirement_target(80_000, 0.04)
+    check("Ex2 retirement target ($2,000,000)", target, 2_000_000.0, rel_tol=1e-9)
+    pmt_ret = SG.required_monthly_savings(target, 0.08, 35, current_savings=50_000)
+    check("Ex2 required monthly savings ($517)", pmt_ret, 517.0)
+    check("Ex2 personal after $200 match ($317)", pmt_ret - 200, 317.0, rel_tol=2e-3)
+
+    if failures:
+        print(f"FAIL: {len(failures)} check(s) did not match SKILL.md.")
+        return 1
+    print("PASS: all checks match SKILL.md worked examples.")
+    return 0
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description=(
+            "Savings goals reference implementation: required monthly savings, "
+            "future value projections, time-to-goal, inflation adjustment, "
+            "retirement targets, shortfall analysis, and education funding plans."
+        ),
+        epilog=(
+            "Main class:\n"
+            "  SavingsGoals -- static methods: required_monthly_savings,\n"
+            "    future_value_with_contributions, time_to_goal,\n"
+            "    inflation_adjusted_goal, real_rate_of_return, retirement_target,\n"
+            "    savings_rate, contribution_shortfall, education_funding_plan\n"
+            "\n"
+            "This file is primarily meant to be imported as a module:\n"
+            "  from savings_goals import SavingsGoals\n"
+            "\n"
+            "Run with no arguments to print a worked demo."
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument(
+        "--verify",
+        action="store_true",
+        help="recompute the demo figures and assert they match the SKILL.md worked examples",
+    )
+    args = parser.parse_args()
+
+    if args.verify:
+        sys.exit(_verify())
+    _demo()
+
+
+if __name__ == "__main__":
+    main()

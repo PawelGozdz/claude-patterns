@@ -5,7 +5,7 @@
 
 **Layer**: E2E (L3)
 **Introduced**: TS-TEST-001 Week 2 (2025-01-08)
-**Status**: ACTIVE
+**Status**: production
 
 > **Status migracji [2026-07-12]**: the underlying philosophy here (HTTP for
 > what you test, fixtures for setup/verification) is unchanged and still
@@ -20,6 +20,22 @@
 > Pattern 2 below is updated to the current file; Patterns 1 and 3-6 describe
 > HTTP/DB/Redis/timing techniques that are independent of this migration and
 > remain accurate as written.
+
+## When to Use
+
+**Use this pattern for:**
+- ✅ L3/E2E specs, where the flow under test goes over HTTP and everything around it (setup, verification) may not
+- ✅ setting up preconditions a real API call cannot produce cheaply — a verified user, a cache entry, a specific Redis state
+- ✅ asserting on state the API does not expose: a row in another context's table, a queued job, an event side effect
+- ✅ timing-sensitive assertions on async event handlers and on concurrent requests hitting the same aggregate
+
+**Do NOT use for:**
+- ❌ L1 unit tests of an aggregate or specification — build with the Mother directly, no app, no database (`domain-colocated-fixture-mother-pattern.md`)
+- ❌ constructing an aggregate by raw `INSERT` — persistence goes through the real `repository.save()`
+- ❌ bulk seeding for load tests at k6 VU scale — `SeederRunner` in `test/load/`, a documented exception
+- ❌ testing the very flow you are faking: if the SUT is registration, register over HTTP rather than seeding the user
+
+---
 
 ## Problem
 
@@ -315,6 +331,9 @@ describe('Security Operation Lock E2E', () => {
 
 ## Decision Tree
 
+See "When to Use" for the boundaries; the tree below picks the pattern inside them.
+
+
 ```
 What are you testing?
 ├─ Auth registration flow?
@@ -340,7 +359,6 @@ What are you testing?
 
 - [Domain-Colocated Fixture Mother Pattern](./domain-colocated-fixture-mother-pattern.md) - canonical construction+persistence for Pattern 2's fixture layer
 - [Test Seeding Performance Guide](./test-seeding-performance-guide.md) - "Fixture what you DON'T test"
-- [Context Isolation Pattern](./context-isolation-pattern.md) - DatabaseCleaner usage
 - [Testing Pyramid Pattern](./testing-pyramid-pattern.md) - L3 E2E layer
 
 ## References

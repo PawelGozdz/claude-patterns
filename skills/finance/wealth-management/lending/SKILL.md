@@ -5,25 +5,6 @@ description: "Analyze lending products including mortgages, HELOCs, and personal
 
 # Lending Analysis
 
-## Purpose
-Analyze lending products including mortgages, HELOCs, and personal loans. This skill covers loan comparison, qualification assessment, fixed vs adjustable rate analysis, amortization with extra payments, and home equity line of credit evaluation.
-
-## Layer
-6 — Personal Finance
-
-## Direction
-both
-
-## When to Use
-- Shopping for a mortgage and comparing loan offers (fixed vs ARM, 15-year vs 30-year)
-- Computing monthly payments, total interest, and amortization schedules
-- Evaluating the impact of extra principal payments on loan term and interest savings
-- Deciding whether to buy points (prepaid interest) and computing breakeven
-- Comparing APR vs interest rate across loan offers
-- Assessing loan qualification (FICO, DTI, LTV, reserves)
-- Analyzing HELOC options and combined loan-to-value ratios
-- Evaluating PMI costs and strategies to eliminate PMI
-
 ## Core Concepts
 
 ### Fixed-Rate Mortgage
@@ -133,25 +114,23 @@ Required when conventional loan LTV exceeds 80%:
 2. **30-year total interest:** 360 × $2,528 - $400,000 = **$510,178**
 3. **15-year monthly payment:** PMT = $400,000 × [0.004917 × (1.004917)^180] / [(1.004917)^180 - 1]
    - r = 5.9%/12 = 0.004917, n = 180
-   - PMT = **$3,357/month**
-4. **15-year total interest:** 180 × $3,357 - $400,000 = **$204,299**
-5. **Payment difference:** $3,357 - $2,528 = **$829/month more** for 15-year.
-6. **Interest savings:** $510,178 - $204,299 = **$305,879 saved** by choosing 15-year.
+   - PMT = **$3,354/month**
+4. **15-year total interest:** 180 × $3,354 - $400,000 = **$203,694**
+5. **Payment difference:** $3,354 - $2,528 = **$826/month more** for 15-year.
+6. **Interest savings:** $510,178 - $203,694 = **$306,484 saved** by choosing 15-year.
 7. The 15-year costs 33% more per month but saves 60% in total interest.
 
 ### Example 2: Extra payment impact
-**Given:** $300K 30-year mortgage at 6.5% (payment = $1,896/mo). Borrower adds $200/month extra to principal.
-**Calculate:** Years saved and interest saved.
+**Given:** $300K 30-year mortgage at 6.5% (payment = $1,896.20/month). Borrower adds $200/month extra to principal, making the total payment $2,096.20/month.
+**Calculate:** Time saved and interest saved.
 **Solution:**
-1. **Without extra payments:** 30 years (360 months), total interest = $282,632.
-2. **With $200/month extra ($2,096 total):** Solve for n: n = -ln(1 - ($300,000 × 0.005417) / $2,096) / ln(1.005417)
-   - n ≈ 274 months = **22.8 years** (saves ~7.2 years).
-3. **Total payments with extra:** 274 × $2,096 = $574,304. Total interest = $574,304 - $300,000 = $274,304.
-4. Wait — we must account for the extra payments reducing principal faster. Using iterative amortization:
-   - Actual payoff: approximately **272 months (22 years 8 months)**
-   - Total interest paid: approximately **$210,000**
-5. **Interest saved:** $282,632 - $210,000 ≈ **$72,600 saved** with just $200/month extra.
-6. Total extra paid: 272 × $200 = $54,400. Return on extra payments: $72,600 / $54,400 = 133% return.
+1. **Without extra payments:** 360 months, total interest = 360 × $1,896.20 - $300,000 = **$382,633**.
+2. **New term (closed-form estimate):** n = -ln(1 - P × r / PMT_total) / ln(1+r) with r = 0.065/12 = 0.005417:
+   - n = -ln(1 - $300,000 × 0.005417 / $2,096.20) / ln(1.005417) ≈ 276.3 payments.
+3. **Exact amortization** (month-by-month simulation, final payment partial): payoff in **277 months = 23 years 1 month** (~23.1 years), total interest = **$279,185**. The closed form and the exact schedule agree closely.
+4. **Interest saved:** $382,633 - $279,185 = **$103,449**.
+5. **Time saved:** 360 - 277 = 83 months ≈ **6.9 years**.
+6. Total extra principal paid ≈ 276 × $200 = **$55,200**. Interest saved per dollar of extra payment: $103,449 / $55,200 ≈ **$1.87**.
 
 ## Common Pitfalls
 - Comparing interest rate instead of APR — APR captures fees and gives a truer cost comparison
@@ -165,11 +144,18 @@ Required when conventional loan LTV exceeds 80%:
 - Ignoring closing costs in refinancing decisions (see debt-management refinance breakeven)
 
 ## Cross-References
-- **debt-management** (wealth-management plugin, Layer 6): refinancing analysis, debt payoff vs investing decisions, DTI calculations
-- **emergency-fund** (wealth-management plugin, Layer 6): adequate reserves required for loan qualification and financial safety
-- **tax-efficiency** (wealth-management plugin, Layer 5): mortgage interest deductibility, points deduction
-- **savings-goals** (wealth-management plugin, Layer 6): down payment saving is a common goal-based savings target
-- **liquidity-management** (wealth-management plugin, Layer 6): mortgage payments are the largest fixed obligation in most household cash flow plans
+- **debt-management** (wealth-management plugin): refinancing analysis, debt payoff vs investing decisions, DTI calculations
+- **emergency-fund** (wealth-management plugin): adequate reserves required for loan qualification and financial safety
+- **tax-efficiency** (wealth-management plugin): mortgage interest deductibility, points deduction
+- **savings-goals** (wealth-management plugin): down payment saving is a common goal-based savings target
+- **liquidity-management** (wealth-management plugin): mortgage payments are the largest fixed obligation in most household cash flow plans
 
-## Reference Implementation
-See `scripts/lending.py` for computational helpers.
+## Running the script
+Run the reference implementation directly:
+
+```
+uv run scripts/lending.py          # PEP 723 header resolves dependencies automatically
+python3 scripts/lending.py         # after: pip install numpy scipy
+```
+
+A bare run prints a demo covering payment calculation, extra-payment impact, LTV/PMI, DSCR, balloon payments, refinance analysis, points breakeven, and ARM resets. Use `--verify` to recompute the demo figures and assert they match this skill's worked examples (prints PASS/FAIL, exits nonzero on mismatch), and `--help` to list the available classes and functions. The file is primarily meant to be imported as a module (`from lending import LendingAnalysis`) rather than run standalone.

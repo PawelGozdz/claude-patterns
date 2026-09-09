@@ -20,25 +20,21 @@ echo ""
 #
 # Positional: project directory (default: current directory).
 # Flags (all optional, all additive — bez nich skrypt zachowuje się dokładnie jak dotąd):
-#   --with-broadcast   włącz sekcję broadcastu (ADR 0006) bez pytania
-#   --interactive      zapytaj o dodatki (broadcast); nigdy nie dotyczy rdzenia
+#   --interactive      zapytaj o dodatki; nigdy nie dotyczy rdzenia
 PROJECT_DIR=""
-WITH_BROADCAST=false
 INTERACTIVE=false
 
 for arg in "$@"; do
   case "$arg" in
     -h|--help)
       cat <<'EOF'
-Usage: setup-project.sh [PROJECT_DIR] [--with-broadcast] [--interactive]
+Usage: setup-project.sh [PROJECT_DIR] [--interactive]
 
   PROJECT_DIR         Project to set up (default: current directory)
-  --with-broadcast     Enable the broadcast section (ADR 0006) without asking
-  --interactive        Prompt for optional add-ons (broadcast); never affects core setup
+  --interactive        Prompt for optional add-ons; never affects core setup
 EOF
       exit 0
       ;;
-    --with-broadcast) WITH_BROADCAST=true ;;
     --interactive)    INTERACTIVE=true ;;
     --*)
       echo -e "${YELLOW}Unknown flag ignored:${NC} $arg"
@@ -72,30 +68,26 @@ if [ ! -d "$GLOBAL_PATTERNS" ]; then
   exit 1
 fi
 
-# --- YAML helpers (copied from generate-claude-md.sh) ---
+# --- YAML helpers (jeden parser: scripts/lib/project-yml.mjs) ---
+#
+# Do 2026-09-07 każdy z trzech skryptów (ten, generate-claude-md.sh, migrate-v2.sh)
+# miał własną kopię grep/sed — i kopie zdążyły się rozjechać: tamta ucinała komentarz
+# inline (`stack_profile: nestjs-ddd  # szablon`), ta wciągała go do wartości. Jeden
+# plik dawał więc dwie różne odpowiedzi zależnie od tego, który skrypt pytał (K65).
 
 PROJECT_YML="$PROJECT_DIR/.claude/config/project.yml"
 
+# `|| true` — parser kończy się kodem 1, gdy klucza po prostu nie ma (pole opcjonalne).
+# Pod `set -e` nonzero zabiłby VAR=$(yml_get ...); błędy realne (zły YAML) i tak lecą
+# na stderr i są widoczne.
 yml_get() {
-  local key="$1"
-  local section="${key%%.*}"
-  local field="${key#*.}"
-
-  if [[ ! -f "$PROJECT_YML" ]]; then return; fi
-
-  # `|| true` — brak dopasowania (pole opcjonalne) to oczekiwany pusty wynik; pod
-  # pipefail nonzero z grep zabiłby VAR=$(yml_get ...) przez set -e.
-  if [[ "$section" == "$field" ]]; then
-    { grep "^${key}:" "$PROJECT_YML" | head -1 | sed 's/^[^:]*: *//' | sed 's/^"//' | sed 's/"$//'; } || true
-  else
-    { sed -n "/^${section}:/,/^[a-z]/p" "$PROJECT_YML" | grep "^  ${field}:" | head -1 | sed 's/^[^:]*: *//' | sed 's/^"//' | sed 's/"$//'; } || true
-  fi
+  [[ -f "$PROJECT_YML" ]] || return 0
+  node "$SCRIPT_DIR/lib/project-yml.mjs" "$PROJECT_YML" get "$1" || true
 }
 
 yml_list() {
-  local section="$1"
-  if [[ ! -f "$PROJECT_YML" ]]; then return; fi
-  { sed -n "/^${section}:/,/^[a-z]/p" "$PROJECT_YML" | grep '^  - ' | sed 's/^  - //' | sed 's/^"//' | sed 's/"$//'; } || true
+  [[ -f "$PROJECT_YML" ]] || return 0
+  node "$SCRIPT_DIR/lib/project-yml.mjs" "$PROJECT_YML" list "$1" || true
 }
 
 # --- Helper: create or verify a symlink ---
@@ -353,13 +345,21 @@ fi
 # same reasoning as overlay.patterns above. A block naming an agent in one of its slots
 # has to be able to deliver that agent; `stack_profile` alone can't reach a second
 # directory (ml-pipeline → agents/stacks/python-ml/), so the slot resolved to nothing.
-link_overlay_agents() {
+# Katalogi zadeklarowane przez kompozycję w `overlay.<klucz>` runtime.yml.
+# Jeden odczyt dla agentów i dla reguł: dwie kopie tego samego seda rozjechałyby się
+# tak samo, jak rozjechały się trzy kopie parsera project.yml (K65). Czyta ten sam
+# moduł co reszta skryptów — `list` zwraca elementy po jednej linii, `sed 's|/$||'`
+# zdejmuje końcowy ukośnik z zapisu `stacks/python/`.
+overlay_dirs() {
   local rt="$PROJECT_DIR/.claude/config/runtime.yml"
   [[ -f "$rt" ]] || return 0
+  # `|| true` — brak `overlay.<klucz>` w tym runtime.yml to kod 1 i normalny pusty wynik.
+  node "$SCRIPT_DIR/lib/project-yml.mjs" "$rt" list "overlay.$1" | sed 's|/$||' || true
+}
+
+link_overlay_agents() {
   local dirs
-  # `|| true` — brak `overlay: agents:` w tym runtime.yml to normalny pusty wynik.
-  dirs=$(sed -n '/^overlay:/,/^[a-z]/p' "$rt" | grep -E '^\s+agents:' \
-    | sed 's/.*\[//; s/\].*//' | tr -d ' ' | tr ',' '\n' | sed 's|/$||') || true
+  dirs=$(overlay_dirs agents)
   for d in $dirs; do
     [[ -z "$d" ]] && continue
     local src="$PATTERNS_REPO/agents/$d"
@@ -375,6 +375,41 @@ link_overlay_agents() {
       ln -sf "$f" "$t"
       echo -e "  ${GREEN}Linked:${NC} $(basename "$f") (overlay: $d)"
     done
+  done
+}
+
+# Reguły z kompozycji (`overlay.rules` w runtime.yml) — ta sama logika co przy agentach.
+# Do 2026-09-07 `overlay.rules` deklarowały cztery bloki (`python`, `ts-library`,
+# `clean-arch`, `ddd/core`), materializowało się do runtime.yml i NIE MIAŁO KONSUMENTA:
+# reguły szły wyłącznie po `$STACK_PROFILE`, choć `templates/project.yml.example`
+# mówi wprost, że stack_profile jest tylko selektorem szablonu CLAUDE.md. Projekt
+# na blokach `[clean-arch]` bez profilu `flutter-clean-arch` nie dostawał `rules/dart/`
+# wcale (audyt 2026-09-07, A4).
+#
+# Zwraca (przez OVERLAY_RULE_NAMES) nazwy dowiązań, żeby sprzątanie „stale" niżej
+# wiedziało, czego NIE usuwać.
+OVERLAY_RULE_NAMES=()
+link_overlay_rules() {
+  local dirs
+  dirs=$(overlay_dirs rules)
+  for d in $dirs; do
+    [[ -z "$d" ]] && continue
+    local src="$PATTERNS_REPO/rules/$d"
+    local name
+    name=$(basename "$d")
+    if [[ ! -d "$src" ]]; then
+      echo -e "  ${YELLOW}Warning:${NC} overlay declares rules/$d — brak takiego katalogu"
+      continue
+    fi
+    mkdir -p "$NATIVE_RULES_DIR"
+    # `rules/dart/` bywa wnoszone i przez `project.language`, i przez overlay — bez tego
+    # warunku log pokazywałby dwa razy ten sam katalog („Created", potem „Already exists").
+    if [[ -L "$NATIVE_RULES_DIR/$name" && "$(readlink "$NATIVE_RULES_DIR/$name")" == "$src" ]]; then
+      OVERLAY_RULE_NAMES+=("$name")
+      continue
+    fi
+    ensure_symlink "$NATIVE_RULES_DIR/$name" "$src" ".claude/rules/$name" || true
+    OVERLAY_RULE_NAMES+=("$name")
   done
 }
 
@@ -464,17 +499,34 @@ if [[ -n "$PROJECT_LANGUAGE" ]]; then
     ensure_symlink "$NATIVE_RULES_DIR/$PROJECT_LANGUAGE" "$LANG_RULES_SOURCE" ".claude/rules/$PROJECT_LANGUAGE" || true
   fi
 
-  # Stack-specific rules (e.g., rules/nestjs-ddd/) — overlay for DDD/stack invariants
-  STACK_RULES_SOURCE="$PATTERNS_REPO/rules/$STACK_PROFILE"
-  if [[ -n "$STACK_PROFILE" && -d "$STACK_RULES_SOURCE" ]]; then
-    ensure_symlink "$NATIVE_RULES_DIR/$STACK_PROFILE" "$STACK_RULES_SOURCE" ".claude/rules/$STACK_PROFILE" || true
+  # Reguły stackowe: z KOMPOZYCJI (overlay.rules), nie z $STACK_PROFILE.
+  #
+  # `stack_profile` jest selektorem szablonu CLAUDE.md (tak mówi
+  # templates/project.yml.example) — o doborze reguł decyduje skład bloków. Ścieżka po
+  # $STACK_PROFILE zostaje wyłącznie dla projektów BEZ `stack_blocks`, czyli bez
+  # runtime.yml: legacy, do usunięcia razem z ostatnim takim repo.
+  KEEP_RULE_LINKS=("common" "$PROJECT_LANGUAGE")
+  if [[ -f "$PROJECT_DIR/.claude/config/runtime.yml" ]]; then
+    link_overlay_rules
+    KEEP_RULE_LINKS+=("${OVERLAY_RULE_NAMES[@]:+${OVERLAY_RULE_NAMES[@]}}")
+  else
+    # ŚCIEŻKA LEGACY (projekt bez kompozycji bloków): reguły po stack_profile.
+    STACK_RULES_SOURCE="$PATTERNS_REPO/rules/$STACK_PROFILE"
+    if [[ -n "$STACK_PROFILE" && -d "$STACK_RULES_SOURCE" ]]; then
+      ensure_symlink "$NATIVE_RULES_DIR/$STACK_PROFILE" "$STACK_RULES_SOURCE" ".claude/rules/$STACK_PROFILE" || true
+      KEEP_RULE_LINKS+=("$STACK_PROFILE")
+    fi
   fi
 
-  # Clean up stale language rule symlinks (preserve common, language, and stack rules)
+  # Sprzątanie dowiązań, których bieżąca konfiguracja już nie przewiduje. Lista „do
+  # zachowania" powstaje wyżej — inaczej przełączenie bloków zostawiałoby reguły po
+  # poprzednim składzie, cicho podpięte do promptów.
   for link in "$NATIVE_RULES_DIR"/*/; do
     [[ -L "${link%/}" ]] || continue
     link_name=$(basename "${link%/}")
-    if [[ "$link_name" != "common" && "$link_name" != "$PROJECT_LANGUAGE" && "$link_name" != "$STACK_PROFILE" ]]; then
+    keep=false
+    for k in "${KEEP_RULE_LINKS[@]}"; do [[ "$link_name" == "$k" ]] && keep=true && break; done
+    if [[ "$keep" == false ]]; then
       echo -e "  ${YELLOW}Removing stale:${NC} .claude/rules/$link_name"
       rm "${link%/}"
     fi
@@ -669,6 +721,17 @@ if [[ -n "$STACK_PROFILE" ]]; then
     *)                HOOKS_FILENAME="" ;;
   esac
 
+  # Projekt skonfigurowany przez stack_blocks z profilem spoza mapy (K110, 2026-09-07):
+  # do tej pory krok [5] był bramkowany wyłącznie na stack_profile, więc projekt na
+  # ścieżce ADR 0008 z nietypowym profilem nie dostawał configu hooków wcale.
+  if [[ -z "$HOOKS_FILENAME" && -f "$PROJECT_DIR/.claude/config/runtime.yml" ]]; then
+    BLOCKS=$(node "$SCRIPT_DIR/lib/project-yml.mjs" "$PROJECT_DIR/.claude/config/runtime.yml" list stack_blocks 2>/dev/null || true)
+    grep -qx 'ddd/core'    <<<"$BLOCKS" && HOOKS_FILENAME="ddd-hooks.json"
+    grep -qx 'flutter'     <<<"$BLOCKS" && HOOKS_FILENAME="flutter-hooks.json"
+    grep -qx 'ml-pipeline' <<<"$BLOCKS" && { HOOKS_FILENAME="python-hooks.json"; STACK_PROFILE="${STACK_PROFILE:-python-ml}"; }
+    grep -qx 'python'      <<<"$BLOCKS" && HOOKS_FILENAME="${HOOKS_FILENAME:-python-hooks.json}"
+  fi
+
   # Find the template source file in templates/
   HOOKS_SOURCE=""
   if [[ -n "$HOOKS_FILENAME" ]]; then
@@ -714,6 +777,18 @@ if grep -qE '^  stack_blocks:' "$PROJECT_YML" 2>/dev/null; then
     echo -e "  ${GREEN}Materialized:${NC} .claude/config/runtime.yml"
   else
     echo -e "  ${YELLOW}FAILED:${NC} materializacja runtime.yml — popraw project.yml/bloki i uruchom ponownie"
+  fi
+
+  # BUSINESS_RULES.yaml — CLAUDE.md wymaga trzymania go w zgodzie z kodem domeny,
+  # ale nic go nigdy nie zakładało (K110, 2026-09-07). Kopiujemy TYLKO gdy kompozycja
+  # ma ddd/core i pliku jeszcze nie ma — to dokument projektu, nie plik zarządzany.
+  if node "$SCRIPT_DIR/lib/project-yml.mjs" "$PROJECT_DIR/.claude/config/runtime.yml" list stack_blocks 2>/dev/null | grep -qx 'ddd/core'; then
+    BR_DST="$PROJECT_DIR/docs/BUSINESS_RULES.yaml"
+    if [[ ! -f "$BR_DST" ]]; then
+      mkdir -p "$PROJECT_DIR/docs"
+      cp "$PATTERNS_REPO/templates/BUSINESS_RULES.yaml.template" "$BR_DST"
+      echo -e "  ${GREEN}Created:${NC} docs/BUSINESS_RULES.yaml (ze wzorca — wypełnij regułami domeny)"
+    fi
   fi
   echo ""
 fi
@@ -762,22 +837,43 @@ fi
 
 # --- 5a3. Hooki z runtime.yml → settings.json ---
 # Bloki deklarują, których hooków wymaga stack; szablony per stack_profile znały tylko
-# swój własny zestaw. Dopinamy brakujące, nie ruszając tego, co projekt już ma.
-if [[ -f "$PROJECT_DIR/.claude/config/runtime.yml" && -f "$PROJECT_DIR/.claude/settings.json" ]]; then
-  # `|| true` — `hooks:` może nie być w stylu flow (`[a, b]`) na jednej linii w tym
-  # runtime.yml; brak dopasowania to pusty wynik, nie błąd zabijający cały setup.
-  RT_HOOKS=$(grep -m1 '^hooks:' "$PROJECT_DIR/.claude/config/runtime.yml" | sed 's/^hooks:[[:space:]]*\[//; s/\]//; s/,/ /g') || true
-  MISSING_HOOKS=""
-  for h in $RT_HOOKS; do
-    grep -q "$h" "$PROJECT_DIR/.claude/settings.json" || MISSING_HOOKS="$MISSING_HOOKS $h"
-  done
-  if [[ -n "$MISSING_HOOKS" ]]; then
-    echo -e "${BLUE}[5a3] Hooki z runtime.yml${NC}"
-    echo -e "  ${YELLOW}Brakuje w settings.json:${NC}$MISSING_HOOKS"
-    echo -e "  Dodaj je do PreToolUse/PostToolUse w .claude/settings.json (ścieżka: .claude/hooks/<nazwa>.js)."
-    echo -e "  Nie robimy tego automatycznie — settings.json bywa ręcznie dostrojony i scalanie JSON-a na ślepo psuje kolejność matcherów."
-    echo ""
+# swój własny zestaw. Dopinamy BRAKUJĄCE, nie ruszając tego, co projekt już ma —
+# istniejące wpisy, ich kolejność i ręczne dostrojenie (timeouty, statusMessage)
+# zostają nietknięte, a przed zapisem powstaje kopia settings.json.bak.
+#
+# Do 2026-09-07 ten krok tylko OSTRZEGAŁ, a `sync-runtime-hooks.mjs` (napisany
+# 2026-08-12 dokładnie po to) nie był wołany z żadnego miejsca w repo. Bramka
+# deklarowana w runtime.yml i nieobecna w settings.json to bramka, która nie działa —
+# a wygląda w konfiguracji na włączoną (audyt 2026-09-07, A3).
+if [[ -f "$PROJECT_DIR/.claude/config/runtime.yml" ]]; then
+  echo -e "${BLUE}[5a3] Hooki z runtime.yml → settings.json${NC}"
+
+  # Świeży projekt nie ma jeszcze settings.json, a `sync-runtime-hooks.mjs` wymaga
+  # istniejącego pliku (celowo — nie zgaduje, gdzie mają trafić wpisy). Do 2026-09-07
+  # plik zakładała wyłącznie ścieżka `migrate-v2.sh` z templates/settings/<profil>.json,
+  # czyli ta wycofywana w K64. Zakładamy go tutaj z BAZOWEGO szablonu (permissions.deny
+  # z K21), a hooki dokłada kompozycja — jedna ścieżka provisioningu zamiast dwóch.
+  if [[ ! -f "$PROJECT_DIR/.claude/settings.json" ]]; then
+    if [[ -f "$PATTERNS_REPO/templates/settings/base.json" ]]; then
+      cp "$PATTERNS_REPO/templates/settings/base.json" "$PROJECT_DIR/.claude/settings.json"
+      echo -e "  ${GREEN}Utworzono:${NC} .claude/settings.json (baza: templates/settings/base.json)"
+    else
+      printf '{\n  "$schema": "https://json.schemastore.org/claude-code-settings.json"\n}\n' \
+        > "$PROJECT_DIR/.claude/settings.json"
+      echo -e "  ${YELLOW}Utworzono:${NC} .claude/settings.json (pusty — brak templates/settings/base.json)"
+    fi
   fi
+
+  if command -v node >/dev/null 2>&1; then
+    if node "$SCRIPT_DIR/sync-runtime-hooks.mjs" "$PROJECT_DIR" --apply 2>&1 | sed 's/^/  /'; then
+      :
+    else
+      echo -e "  ${YELLOW}Warning:${NC} sync-runtime-hooks zwrócił błąd — sprawdź .claude/settings.json ręcznie"
+    fi
+  else
+    echo -e "  ${YELLOW}Skipped:${NC} node not in PATH — hooki z runtime.yml nie zostały wpięte"
+  fi
+  echo ""
 fi
 
 # --- 5b. Universal SH hooks (symlinked from claude-patterns/hooks/) ---
@@ -843,8 +939,9 @@ fi
 echo ""
 
 # --- 6. .mcp.json (project-scope MCP servers — merged, idempotent) ---
-# Two servers are ensured (merge, not clobber — preserves any project-local entries):
-#   • claude-patterns      — pattern-delivery (python server.py)
+# One server is ensured (merge, not clobber — preserves any project-local entries).
+# The old python `claude-patterns` stdio server was retired 2026-09-07 (K100) — patterns
+# reach agents through `retrieve_patterns` on the same knowledge-retriever daemon.
 #   • knowledge-retriever  — code retrieval, SHARED HTTP daemon (docker-compose, :6403) — same URL
 #     for every project. Per-project isolation = Qdrant collection, NOT a separate process anymore;
 #     the daemon has no way to know which project is calling, so collection must be passed explicitly
@@ -862,8 +959,6 @@ else
   PROJ_BASENAME=$(basename "$PROJECT_DIR")
   KR_COLLECTION="code_$(echo "$PROJ_BASENAME" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]\+/_/g' | sed 's/^_//; s/_$//')"
 fi
-PATTERNS_SERVER="$PATTERNS_REPO/mcp-server/server.py"
-
 # Record the collection name where /analyze, /orchestrate, and implementers read it
 # (the HTTP daemon is shared — every retrieve_code call must pass `collection` explicitly).
 mkdir -p "$PROJECT_DIR/.claude/config"
@@ -872,7 +967,7 @@ printf '{\n  "collection": "%s"\n}\n' "$KR_COLLECTION" > "$KNOWLEDGE_CFG"
 echo -e "  ${GREEN}Wrote:${NC} .claude/config/knowledge.json (collection: $KR_COLLECTION)"
 
 if command -v node >/dev/null 2>&1; then
-  MCP_JSON="$MCP_JSON" PATTERNS_SERVER="$PATTERNS_SERVER" \
+  MCP_JSON="$MCP_JSON" \
   node -e '
     const fs = require("fs");
     const p = process.env.MCP_JSON;
@@ -880,17 +975,14 @@ if command -v node >/dev/null 2>&1; then
     if (fs.existsSync(p)) { try { cfg = JSON.parse(fs.readFileSync(p, "utf8")); } catch {} }
     cfg.mcpServers ??= {};
     let changed = false;
-    // claude-patterns (pattern delivery) — ensure present, do not overwrite if customized
-    if (!cfg.mcpServers["claude-patterns"]) {
-      cfg.mcpServers["claude-patterns"] = { type: "stdio", command: "python3", args: [process.env.PATTERNS_SERVER] };
-      changed = true;
-    }
+    // claude-patterns (python stdio server) — retired 2026-09-07 (K100); drop a stale entry
+    if (cfg.mcpServers["claude-patterns"]) { delete cfg.mcpServers["claude-patterns"]; changed = true; }
     // knowledge-retriever (code retrieval) — shared HTTP daemon, same URL for every project
     const want = { type: "http", url: "http://localhost:6403/mcp" };
     const cur = cfg.mcpServers["knowledge-retriever"];
     if (JSON.stringify(cur) !== JSON.stringify(want)) { cfg.mcpServers["knowledge-retriever"] = want; changed = true; }
     if (changed || !fs.existsSync(p)) fs.writeFileSync(p, JSON.stringify(cfg, null, 2) + "\n");
-    console.log(changed ? "  \x1b[0;32mMerged:\x1b[0m knowledge-retriever (http daemon) + claude-patterns" : "  \x1b[1;33mUp to date:\x1b[0m .mcp.json");
+    console.log(changed ? "  \x1b[0;32mMerged:\x1b[0m knowledge-retriever (http daemon)" : "  \x1b[1;33mUp to date:\x1b[0m .mcp.json");
   '
 else
   echo -e "  ${YELLOW}Skipped:${NC} node not found — cannot merge .mcp.json"
@@ -898,7 +990,7 @@ fi
 echo ""
 
 # --- 7. Project Management System (optional) ---
-echo -e "${BLUE}[7/8] Project Management System${NC}"
+echo -e "${BLUE}[7/9] Project Management System${NC}"
 PM_DIR="$PROJECT_DIR/project-orchestration"
 PM_TEMPLATE="$PATTERNS_REPO/templates/project-orchestration"
 
@@ -937,80 +1029,32 @@ else
 fi
 echo ""
 
-# --- 7b. Cross-instance broadcast (opt-in, ADR 0006) ---
-#
-# WARUNEK KONIECZNY: uruchomienie bez flag i bez bloku `broadcast:` w project.yml
-# nie wypisuje ANI JEDNEJ linii i nie dotyka ani jednego pliku. Ta sekcja chodzi
-# po istniejących projektach — cisza jest tu funkcją, nie oszczędnością.
-#
-# Trzy drogi włączenia (ADR 0006, sekcja Setup):
-#   1. blok `broadcast:` w .claude/config/project.yml  (tryb nieinteraktywny, CI)
-#   2. flaga --with-broadcast
-#   3. --interactive → pytanie w menu dodatków
-BROADCAST_ENABLED=$(yml_get "broadcast.enabled")
-BROADCAST_WANTED=false
-
-if [[ "$BROADCAST_ENABLED" == "true" ]] || [[ "$WITH_BROADCAST" == "true" ]]; then
-  BROADCAST_WANTED=true
-elif [[ "$INTERACTIVE" == "true" ]]; then
-  echo -e "${BLUE}[7b/8] Optional add-ons${NC}"
-  read -r -p "  Enable cross-instance broadcast (ADR 0006)? [y/N] " REPLY_BROADCAST
-  [[ "$REPLY_BROADCAST" =~ ^[Yy]$ ]] && BROADCAST_WANTED=true
-  echo ""
-fi
-
-if [[ "$BROADCAST_WANTED" == "true" ]]; then
-  echo -e "${BLUE}[7b/8] Cross-instance broadcast${NC} (opt-in, ADR 0006)"
-
-  BROADCAST_CLI="$PATTERNS_REPO/hooks/lib/broadcast/cli.js"
-
-  if ! command -v node >/dev/null 2>&1; then
-    echo -e "  ${RED}Skipped:${NC} node not found in PATH — broadcast runtime requires it"
-  elif [[ ! -f "$BROADCAST_CLI" ]]; then
-    echo -e "  ${RED}Skipped:${NC} broadcast CLI not found at $BROADCAST_CLI"
-  else
-    # Wartości z project.yml, gdy są; inaczej CLI wyprowadzi je z nazwy katalogu.
-    BC_ARGS=()
-    BC_REPO=$(yml_get "broadcast.repo")
-    BC_INSTANCE=$(yml_get "broadcast.instance")
-    BC_EMITS=$(yml_get "broadcast.emits")
-    BC_SUBSCRIBES=$(yml_get "broadcast.subscribes")
-
-    # Formy inline z project.yml: `emits: [geo, pricing]` albo `emits: geo,pricing`
-    BC_EMITS=$(echo "$BC_EMITS" | tr -d '[] ' )
-    BC_SUBSCRIBES=$(echo "$BC_SUBSCRIBES" | tr -d '[] ')
-
-    [[ -n "$BC_REPO" ]]       && BC_ARGS+=(--repo "$BC_REPO")
-    [[ -n "$BC_INSTANCE" ]]   && BC_ARGS+=(--instance "$BC_INSTANCE")
-    [[ -n "$BC_EMITS" ]]      && BC_ARGS+=(--emits "$BC_EMITS")
-    [[ -n "$BC_SUBSCRIBES" ]] && BC_ARGS+=(--subscribes "$BC_SUBSCRIBES")
-
-    # 1) manifest + .git/info/exclude + katalog stanu (idempotentne, nigdy nie nadpisuje)
-    if (cd "$PROJECT_DIR" && node "$BROADCAST_CLI" init "${BC_ARGS[@]:+${BC_ARGS[@]}}" 2>&1 | sed 's/^/  /'); then
-      :
-    else
-      echo -e "  ${YELLOW}Warning:${NC} broadcast init returned non-zero (check the manifest by hand)"
-    fi
-
-    # 2) wpięcie hooków PER PROJEKT — nie globalnie. Wycofanie: install-hooks --remove
-    if (cd "$PROJECT_DIR" && node "$BROADCAST_CLI" install-hooks 2>&1 | sed 's/^/  /'); then
-      :
-    else
-      echo -e "  ${YELLOW}Warning:${NC} could not wire broadcast hooks into .claude/settings.json"
-    fi
-
-    echo -e "  ${YELLOW}Note:${NC} manifest is gitignored per clone — each instance needs its own"
-    echo -e "  ${YELLOW}  Rollback:${NC} node $BROADCAST_CLI install-hooks --remove && rm .claude/config/broadcast.yml"
-  fi
-  echo ""
-fi
-
 # --- 8. Regenerate CLAUDE.md ---
-echo -e "${BLUE}[8/8] CLAUDE.md generation${NC}"
+echo -e "${BLUE}[8/9] CLAUDE.md generation${NC}"
 if [[ -f "$PROJECT_YML" ]]; then
   bash "$SCRIPT_DIR/generate-claude-md.sh" "$PROJECT_DIR"
 else
   echo -e "${YELLOW}Skipped:${NC} No project.yml found (CLAUDE.md not regenerated)"
+fi
+echo ""
+
+# --- 9. Git pre-commit satelity (ADR 0007 D4, K63b) ---
+# Rematerializuje runtime.yml, gdy commit rusza .claude/config/project.yml
+# albo .claude/blocks/*.yml. Bez tego lokalna edycja kompozycji zostawia
+# runtime.yml z poprzedniego świata, a rozjazd wychodzi dopiero przy audycie centrali.
+echo -e "${BLUE}[9/9] Git pre-commit (rematerializacja runtime.yml)${NC}"
+HOOK_SRC="$PATTERNS_REPO/templates/git-hooks/pre-commit-satellite.sh"
+HOOK_DST="$PROJECT_DIR/.git/hooks/pre-commit"
+
+if [ ! -d "$PROJECT_DIR/.git" ]; then
+  echo -e "  ${YELLOW}Skipped:${NC} $PROJECT_DIR nie jest repozytorium gita"
+elif [ -f "$HOOK_DST" ] && ! grep -q 'pre-commit-satellite' "$HOOK_DST"; then
+  # Cudzy hook (lefthook/husky/własny) — nie nadpisujemy, bo skasowalibyśmy czyjąś bramkę.
+  echo -e "  ${YELLOW}Warning:${NC} .git/hooks/pre-commit już istnieje i nie jest nasz"
+  echo -e "           Dodaj do niego krok:  \"$HOOK_SRC\" || exit 1"
+else
+  install -m 0755 "$HOOK_SRC" "$HOOK_DST"
+  echo -e "  ${GREEN}Installed:${NC} .git/hooks/pre-commit"
 fi
 echo ""
 

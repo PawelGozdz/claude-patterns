@@ -50,5 +50,13 @@
     "payload": { "tool_name": "Write", "tool_input": { "file_path": "src/contexts/a/domain/aggregates/x.aggregate.ts" } },
     "setup": { "files": { "project-orchestration/analysis/T1.analysis.md": "---\ntask: T1\nstatus: approved\nopen_questions:\n  - id: Q1\n    answer: \"tak\"\n---\n" } },
     "expect": "pass"
+  },
+  {
+    "name": "approval-draft-block-subagent-passes",
+    "hook": "check-approval-before-impl.js",
+    "env": { "ORCHESTRATE_DDD_GATE": "block" },
+    "payload": { "agent_id": "a1", "tool_name": "Write", "tool_input": { "file_path": "src/contexts/a/domain/aggregates/x.aggregate.ts" } },
+    "setup": { "files": { "project-orchestration/analysis/T1.analysis.md": "---\ntask: T1\nstatus: awaiting-human\nopen_questions:\n  - id: Q1\n    answer: null\n---\n" } },
+    "expect": "pass"
   }
 ]

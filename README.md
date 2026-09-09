@@ -1,8 +1,8 @@
 # Global Claude Code Patterns Repository
 
-**Version**: 3.5.0
+**Version**: 3.6.0
 **Created**: 2026-02-05
-**Updated**: 2026-05-07
+**Updated**: 2026-08-27
 **Purpose**: Reusable patterns, agents, skills, project management, marketing skills, finance skills, and legal skills for Claude Code
 
 ---
@@ -14,15 +14,14 @@ A **single source of truth** for production-tested software patterns and agent t
 > **🔌 Używasz ECC (plugin) + nasz overlay?** Przewodnik: [`docs/ECC-USAGE.md`](docs/ECC-USAGE.md).
 > Kierunek refaktoru: [`docs/REFACTOR-ANALYSIS.md`](docs/REFACTOR-ANALYSIS.md) · plan: [`docs/faza-1-plan.md`](docs/faza-1-plan.md) · dyrygent: [`docs/orchestrate-ddd-design.md`](docs/orchestrate-ddd-design.md).
 
-> **📣 Pracujesz na kilku instancjach naraz?** [`docs/BROADCAST.md`](docs/BROADCAST.md) —
-> kanał wymiany informacji między równoległymi sesjami Claude Code: konfiguracja per repo,
-> nadawanie, trzy tory nasłuchu, pytania cross-repo, obserwowalność i wycofanie.
-> Domyślnie wyłączony — bez `.claude/config/broadcast.yml` nie istnieje dla projektu.
+**Language**: indexes, READMEs and pattern files are English; decision records
+(`docs/adr/` from 0002 on, `docs/DECISIONS-LOG.md`) and design notes are Polish —
+the language a decision was argued in is the language it stays recorded in.
 
 **Three Distribution Systems**:
 1. **MCP Server** (`.mcp.json` per project) - Pattern delivery to Claude Code
 2. **Filesystem Symlinks** (Global agents/commands/hooks) - Universal resources
-3. **Stack Presets** (Settings templates) - Per-stack hooks, autoMode, worktree config
+3. **Block composition** (`stack_blocks` in `project.yml` → `runtime.yml`) - Per-project hooks, agents, patterns and gates (ADR 0008; stack presets were removed 2026-08-12)
 
 **Key Benefits**:
 - ✅ **Write once, use everywhere** - No pattern duplication
@@ -30,26 +29,30 @@ A **single source of truth** for production-tested software patterns and agent t
 - ✅ **Consistency** - Same patterns = consistent AI agent behavior
 - ✅ **Multi-project support** - Works across different projects, not just multiple folders
 - ✅ **Proven quality** - Extracted from LocalHero production codebase (1355+ tests)
-- ✅ **Stack presets** - DDD hooks only in NestJS, Flutter hooks only in Flutter
+- ✅ **Composition, not presets** - DDD hooks only where the `ddd` blocks are composed in
 - ✅ **Native integration** - .claude/rules/ auto-discovery, @import directives, worktree config
 
 ---
 
 ## 🏗️ Repository Structure
 
+Paths below assume the repo is at `~/projects/claude-patterns`. Wherever you
+cloned it, set `CLAUDE_PATTERNS` to that directory — the commands in this file
+use it.
+
 ```
-~/projects/claude-patterns/
+$CLAUDE_PATTERNS/
 ├── README.md                    # This file
 ├── METADATA.yml                 # Repository metadata
 ├── .gitignore                   # Git exclusions
-├── patterns/                    # Production patterns (50 core + 45 stack-specific + 1 marketing + 2 finance + 2 legal)
+├── patterns/                    # Production patterns (54 core + 45 stack-specific + 1 marketing + 2 finance + 2 legal)
 │   ├── README.md                # Pattern index & usage guide
-│   ├── domain/                  # Domain layer (6 patterns)
-│   ├── application/             # Application layer (4 patterns)
-│   ├── infrastructure/          # Infrastructure layer (6 patterns)
-│   ├── architecture/            # Architecture patterns (14 patterns)
-│   ├── testing/                 # Testing patterns (11 patterns)
-│   ├── cross-layer/             # Cross-layer patterns (8 patterns)
+│   ├── domain/                  # Domain layer (8 patterns)
+│   ├── application/             # Application layer (5 patterns)
+│   ├── infrastructure/          # Infrastructure layer (8 patterns)
+│   ├── architecture/            # Architecture patterns (13 patterns)
+│   ├── testing/                 # Testing patterns (10 patterns)
+│   ├── cross-layer/             # Cross-layer patterns (9 patterns)
 │   ├── orchestration/           # Orchestration patterns (1 pattern)
 │   ├── marketing/               # Marketing patterns (1 pattern)
 │   ├── finance/                 # Finance patterns (2 patterns: layered-knowledge, regulatory-disclaimer)
@@ -59,11 +62,13 @@ A **single source of truth** for production-tested software patterns and agent t
 │   ├── requirements.txt         # Python dependencies
 │   ├── settings.json.example    # Example Claude settings
 │   └── README.md                # MCP setup & usage guide
-├── agents/                      # Agent definitions (26 universal + 30 stack-specific)
+├── agents/                      # Agent definitions (24 universal + 30 stack-specific)
 │   ├── README.md                # Agent setup & usage guide
 │   ├── universal/               # Stack-agnostic agents (linked to ~/.claude/agents/)
 │   │   ├── backend-technology-expert.md
-│   │   ├── security-privacy-architect.md
+│   │   ├── reviewer-*.md             # 16 personas driving /review-panel
+│   │   ├── state-reader.md           # Read-only extraction from dashboards (Haiku)
+│   │   ├── project-orchestrator.md   # Runs the implement/verify cycle from runtime.yml
 │   │   ├── tech-lead.md              # PM: project health, debt, dependencies
 │   │   ├── product-owner.md          # PM: business value, mobile UX, milestones
 │   │   ├── marketing-strategist.md   # Marketing coordinator (CRO, copy, SEO, growth)
@@ -137,7 +142,7 @@ A **single source of truth** for production-tested software patterns and agent t
 ├── hooks/                       # PostToolUse/Stop hooks
 │   ├── pm-task-check.js         # [NEW] PM briefing when task files change
 │   └── ...                      # (other hooks)
-├── commands/                    # Global commands (26 — symlinked to ~/.claude/commands/)
+├── commands/                    # Global commands (33 — symlinked to ~/.claude/commands/)
 │   ├── README.md                # Command catalog & usage guide
 │   ├── pulse.md                 # PM: full team sync
 │   ├── pm-status.md             # PM: quick state read (~$0)
@@ -147,7 +152,7 @@ A **single source of truth** for production-tested software patterns and agent t
 │   ├── orchestrate.md           # Unified orchestration (5 modes)
 │   ├── plan.md                  # Requirements + implementation plan
 │   ├── verify.md                # Quality gates (typecheck, lint, test)
-│   └── ...                      # +14 more (see commands/README.md)
+│   └── ...                      # +37 more (see commands/README.md)
 ├── scripts/                     # Setup & maintenance scripts
 │   ├── setup-global.sh          # Setup global ~/.claude/ (agents, commands, hooks)
 │   ├── setup-project.sh         # Setup per-project (patterns, agents, rules, skills, MCP)
@@ -157,7 +162,7 @@ A **single source of truth** for production-tested software patterns and agent t
 │   ├── sync-marketing-skills.sh # Pull updates from coreyhaines31/marketingskills
 │   ├── sync-finance-skills.sh   # Pull updates from JoelLewis/finance_skills
 │   ├── sync-legal-skills.sh     # [NEW v3.5] Pull updates from evolsb + lawvable (license-aware!)
-│   └── validate-metadata.sh     # Validate METADATA.yml files
+│   └── validate-metadata.mjs    # Validate METADATA.yml files
 └── docs/                        # Additional documentation
     └── troubleshooting.md       # Common issues & solutions
 ```
@@ -513,9 +518,9 @@ cd ~/projects/claude-patterns
 ```
 
 **What this does**:
-- Creates per-file symlinks in `~/.claude/agents/` for 26 universal agents
-- Creates `~/.claude/commands/` symlink (45 commands)
-- Creates `~/.claude/hooks/` symlink (45 hooks)
+- Creates per-file symlinks in `~/.claude/agents/` for 24 universal agents
+- Creates `~/.claude/commands/` symlink (33 commands)
+- Creates `~/.claude/hooks/` symlink (42 hooks)
 - Idempotent — safe to run multiple times
 
 ### Step 2: Project Setup (once per project)
@@ -584,16 +589,30 @@ For projects already set up with v2, run:
 | Agent `isolation: worktree` | Verifiers run without blocking working tree |
 | Skill `paths:` filtering | Skills auto-activate only for matching files |
 
-### Stack Presets
+### Stack Composition (blocks)
 
-Each project gets hooks and settings matching its `stack_profile`:
+Patterns, agents, and gates come from **block composition** (ADR 0008), not from
+`stack_profile`. Declare the composition once in `project.yml`:
 
-| Preset | Hooks | autoMode |
-|--------|-------|----------|
-| `nestjs-ddd` | DDD patterns, domain purity, TypeScript check, context isolation | pnpm test, pnpm lint, tsc |
-| `flutter` | Clean arch, Riverpod patterns, cross-feature imports | flutter test, flutter analyze |
-| `python` | Layer purity, type annotations | pytest, mypy, ruff |
-| (base) | Universal only (formatting, console.log, git push) | Read, Glob, Grep |
+```yaml
+stack_blocks: [nestjs, ddd, kysely]   # see templates/project.yml.example
+```
+
+`setup-project.sh` calls `scripts/materialize-runtime.mjs`, which resolves the
+blocks into `.claude/config/runtime.yml` — the only file `/analyze` and
+`/orchestrate` read. After editing a block you can re-materialize a single
+project directly, without a full `setup-project.sh` pass:
+
+```bash
+node scripts/materialize-runtime.mjs <project_dir>
+```
+
+Then run `/analyze <TASK-ID>` followed by `/orchestrate <TASK-ID>`. Full block
+catalog, schema, and merge rules: [`blocks/README.md`](blocks/README.md).
+
+`stack_profile` still exists, but only selects the `CLAUDE.md` template
+section and the stack hooks-config template — it does not choose patterns,
+agents, or gates.
 
 ---
 
@@ -681,27 +700,41 @@ ls -la .claude/knowledge/patterns  # Should show symlink
 
 User-level resources available across ALL projects on your system.
 
-### Universal Agents (5)
+### Universal Agents (24)
+
+Four coordinators plus a sixteen-strong review panel and two readers.
 
 | Agent | Purpose | Model |
 |-------|---------|-------|
 | `@tech-lead` | Project health: blocked/stale tasks, debt, dependencies | Sonnet |
 | `@product-owner` | Business value: milestones, mobile UX, segment gaps | Sonnet |
 | `@backend-technology-expert` | Sync/async decisions, performance, tech stack | Opus |
-| `@security-privacy-architect` | OWASP, GDPR, encryption, auth | Opus |
+| `@project-orchestrator` | Runs an implement/verify cycle from the block composition | — |
+| `@marketing-strategist` | Routes marketing work to `skills/marketing/` | Sonnet |
+| `@finance-strategist` | Routes finance work to `skills/finance/` | Sonnet |
+| `@legal-strategist` | Routes legal work to `skills/legal/`, jurisdiction-aware | Sonnet |
+| `@state-reader` | Read-only extraction from dashboards and task files | Haiku |
+| `@reviewer-*` (16) | The `/review-panel` personas — security, performance, skeptic, tester, and so on | Mixed |
 
-### Commands (22)
+Security review is served by `ecc:security-reviewer` and the `/security-review`
+skill; `@changelog-bot` and `@security-privacy-architect` were retired in favour
+of `ecc:*` equivalents (ADR 0009).
 
-Organized by category: PM (5), orchestration (4), quality (4), session (3), learning (4), infrastructure (2).
+See `agents/README.md` for the full catalog including the 30 stack-specific agents.
+
+### Commands (33)
 
 Key commands:
 - `/pulse` — Full team sync (~$0.10)
 - `/pm-status` — Quick state check (~$0)
-- `/orchestrate` — Unified orchestration (5 modes)
-- `/verify` — Quality gates (typecheck, lint, test, build)
-- `/plan` — Requirements + implementation plan
+- `/analyze` — Research phase, gated on approval
+- `/orchestrate` — Implementation phase driven by `runtime.yml`
+- `/review-panel` — Multi-persona review
+- `/marketing`, `/finance`, `/legal` — Domain entry points
 
-See `commands/README.md` for full catalog.
+Generic engineering commands come from ECC: `/ecc:plan`, `/ecc:code-review`,
+`/ecc:tdd-workflow`, `/ecc:test-coverage`, `/ecc:checkpoint`, `/ecc:sessions`,
+`/ecc:evolve`, `/ecc:instinct-*`. See `commands/README.md` for the full catalog.
 
 ### Cost Optimization
 
@@ -920,8 +953,8 @@ vim new-pattern.md
 vim METADATA.yml  # Add entry for new-pattern.md
 
 # 3. Validate
-cd ~/.claude-patterns
-./scripts/validate-metadata.sh
+cd $CLAUDE_PATTERNS
+node scripts/validate-metadata.mjs
 
 # 4. Commit
 git add .
@@ -932,11 +965,11 @@ git commit -m "Added new-pattern.md to domain layer"
 
 ```bash
 # On Machine A (after making changes)
-cd ~/.claude-patterns
+cd $CLAUDE_PATTERNS
 git push
 
 # On Machine B (pull changes)
-cd ~/.claude-patterns
+cd $CLAUDE_PATTERNS
 git pull  # All projects see updates via symlinks
 ```
 
@@ -944,17 +977,82 @@ git pull  # All projects see updates via symlinks
 
 ## Scripts Reference
 
+All 46 scripts, grouped by what they are for. Descriptions come from each
+file's own header — if one looks wrong, the header is wrong.
+
+### Setup and installation
+
 | Script | Purpose |
 |--------|---------|
-| `setup-global.sh` | Global setup: agents, commands, hooks to `~/.claude/` |
-| `setup-project.sh` | Per-project: patterns, stack agents, rules, skills, MCP, CLAUDE.md |
-| `generate-claude-md.sh` | Generate CLAUDE.md from `project.yml` config |
-| `migrate-v2.sh` | Migrate single project to v3 |
-| `migrate-all.sh` | Batch migrate all projects in `/opt/projects/` |
-| `validate-metadata.sh` | Validate all METADATA.yml files |
-| `workflow-metrics-collect.mjs` | TASK-OBS-002: collector metryk per-krok przebiegów Workflow → `~/.claude/metrics/workflow-steps.jsonl` (odpalany automatycznie hookiem po każdym Workflow) |
-| `workflow-metrics-report.mjs` | Raporty kosztów/zużycia: `--by`, `--top`, `--regression`, `--sessions`, `--calibrate`, `--json` (wrapper: `wf-metrics`) |
-| `workflow-conformance.mjs` | Zgodność przebiegu z planem `runtime.yml`: `OK` / `DEVIATIONS(n)` (wrapper: `wf-conformance`) |
+| `setup.sh` | Master entry point — runs global then project setup |
+| `setup-global.sh` | One-time per machine: agents, commands, hooks into `~/.claude/` |
+| `setup-project.sh` | Per-project: patterns, stack agents, rules, skills, MCP, CLAUDE.md, runtime.yml |
+| `generate-claude-md.sh` | Compose a project's CLAUDE.md from `templates/core.md` + stack template + `project.yml` |
+| `materialize-runtime.mjs` | Expand `stack_blocks` into `.claude/config/runtime.yml` (ADR 0008) |
+| `sync-global-hooks.mjs` | Register `hooks/hooks.json` in `~/.claude/settings.json`. `--apply` / `--check` / `--remove <hook>` |
+| `sync-runtime-hooks.mjs` | Register the hooks a project's `runtime.yml` declares in its `.claude/settings.json` |
+| `generate-pattern-routing.mjs` | Build `hooks/lib/pattern-routing.generated.js` from the blocks' `pattern_routing:` sections |
+| `migrate-v2.sh` | Migrate one project to v2 features (legacy) |
+| `migrate-all.sh` | Batch migration across `/opt/projects/` (legacy) |
+
+### Patterns and knowledge
+
+| Script | Purpose |
+|--------|---------|
+| `new-pattern.mjs` | Scaffold a pattern plus its rule card — one command instead of the seven manual steps |
+| `lint-patterns.mjs` | Validate pattern format: required sections, tags against the taxonomy, card/pattern tag match |
+| `reseed-patterns.sh` | Rebuild `patterns_global` and `library_reference_global` in Qdrant from the current tree |
+| `rag-freshness.mjs` | Warn when the seeded index has fallen behind the files. `--record` stamps a reseed |
+| `index-decisions.mjs` | Index ADRs and BDRs into `.claude/config/decisions-index.json` |
+| `dedupe-agent-patterns.mjs` | Strip hard-coded pattern path lists out of agent definitions |
+| `validate-metadata.mjs` | Validate the `METADATA.yml` in every pattern directory |
+| `count-assets.mjs` | Single source of truth for repo counters. `--check` against METADATA, `--check-docs` against prose |
+
+### Validation (CI)
+
+| Script | Purpose |
+|--------|---------|
+| `ci/validate-agents.js` | Agent frontmatter: name, description, tools, model |
+| `ci/validate-commands.js` | Command file structure |
+| `ci/validate-skills.js` | Skill frontmatter and `name`/`description` presence |
+| `ci/validate-hooks.js` | Hook config shape, plus name drift between `hooks.json`, settings templates and blocks |
+| `ci/validate-rules.js` | Rule markdown structure |
+| `ci/validate-business-rules.js` | `BUSINESS_RULES.yaml` against `schemas/business-rules.schema.json` |
+| `ci/validate-tasks.mjs` | Task file audit: broken deps, missing fields, stale status |
+| `pre-commit-guards.mjs` | The local pre-commit gate (dev machine, not a CI server) |
+
+### Telemetry and audit
+
+| Script | Purpose |
+|--------|---------|
+| `workflow-metrics-collect.mjs` | Per-step Workflow metrics into `~/.claude/metrics/workflow-steps.jsonl` (hook-driven) |
+| `workflow-metrics-report.mjs` | Cost and usage reports: `--by`, `--top`, `--regression`, `--sessions`, `--calibrate`, `--json` |
+| `workflow-metrics-lib.mjs` | Shared metrics helpers. No LLM, no dependencies beyond node builtins |
+| `workflow-conformance.mjs` | Did a run follow the plan in `runtime.yml` — `OK` or `DEVIATIONS(n)` |
+| `workflow-watcher.js` | Long-running observer for workflow runs |
+| `telemetry-freshness.mjs` | Flag telemetry that has stopped updating |
+| `tasks-digest.mjs` | Deterministic digest of `docs/tasks/` |
+| `audit-projects.mjs` | Audit every project linked to claude-patterns |
+| `verify-project-setup.mjs` | Check one project's state against its `runtime.yml` |
+| `cleanup-host-orphans.sh` | Report-only diagnostic for recurring host-level leftovers |
+| `orchestrate-prepare.mjs` | Deterministic preparation step run before `/orchestrate` hands off to Workflow |
+
+### Vendored-skill sync
+
+| Script | Purpose |
+|--------|---------|
+| `sync-marketing-skills.sh` | Pull `coreyhaines31/marketingskills` into `skills/marketing/` + `tools/marketing/` |
+| `sync-finance-skills.sh` | Pull `JoelLewis/finance_skills` into `skills/finance/` + `tests/finance-evals/` |
+| `sync-legal-skills.sh` | Pull the two legal upstreams, verifying each skill's license first (`--verify-licenses`) |
+| `sync-ecc-rules.sh` | Sync `rules/common/` against the ECC plugin's rules |
+
+### Shared libraries
+
+| Script | Purpose |
+|--------|---------|
+| `lib/common.sh` | ANSI colour codes shared by the shell scripts |
+| `lib/project-yml.mjs` | The one `project.yml` parser — bash calls it via `node` rather than re-deriving one in sed |
+| `lib/frontmatter.mjs` | The one frontmatter parser, shared by the CI validators |
 
 ---
 
@@ -974,11 +1072,12 @@ Each pattern has a maturity level in METADATA.yml:
 ## Success Metrics
 
 After setup, you should see:
-- `ls ~/.claude/agents/` shows 5 universal agent symlinks
-- `ls ~/.claude/commands/` shows 22 command files
-- `ls ~/.claude/hooks/` shows hook scripts + hooks.json
+- `ls ~/.claude/agents/` shows 24 universal agent symlinks
+- `ls ~/.claude/commands/` shows 33 command files
+- `ls ~/.claude/hooks/` shows hook scripts + hooks.json (the files)
+- `node scripts/sync-global-hooks.mjs --check` reports 0 missing (registration lives in `~/.claude/settings.json`, not in the symlink)
 - `ls .claude/knowledge/patterns/` shows pattern symlink (per project)
-- All slash commands work: `/pm-status`, `/pulse`, `/verify`, etc.
+- All slash commands work: `/pm-status`, `/pulse`, `/analyze`, etc.
 
 ---
 
@@ -1005,7 +1104,7 @@ ls ~/projects/claude-patterns/patterns/
 - **WSL2**: Symlinks work natively (recommended)
 - **Windows native**: Use junction points instead:
   ```cmd
-  mklink /J .claude\knowledge\patterns %USERPROFILE%\.claude-patterns\patterns
+  mklink /J .claude\knowledge\patterns %USERPROFILE%\projects\claude-patterns\patterns
   ```
 
 ### Patterns Not Loading
@@ -1018,8 +1117,8 @@ ls ~/projects/claude-patterns/patterns/
 readlink .claude/knowledge/patterns
 
 # Verify METADATA.yml is valid
-cd ~/.claude-patterns
-./scripts/validate-metadata.sh
+cd $CLAUDE_PATTERNS
+node scripts/validate-metadata.mjs
 
 # Check Claude Code settings
 cat .claude/settings.json  # Ensure patterns path is correct
@@ -1056,12 +1155,11 @@ cat .claude/settings.json  # Ensure patterns path is correct
 - Production-tested patterns since 2026-01-06
 
 **Key Documentation**:
-- `patterns/README.md` — Full pattern index (100 patterns)
-- `agents/README.md` — Agent catalog (56 agents)
-- `commands/README.md` — Command catalog (45 commands)
+- `patterns/README.md` — Full pattern index (104 patterns)
+- `agents/README.md` — Agent catalog (54 agents)
+- `commands/README.md` — Command catalog (33 commands)
 - `patterns/orchestration/project-management-system.md` — PM system docs
 
 ---
-
-**Version**: 3.1.0
-**Last Updated**: 2026-04-03
+**Version**: 3.6.0
+**Last Updated**: 2026-08-27

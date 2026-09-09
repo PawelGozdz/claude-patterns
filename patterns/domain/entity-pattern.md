@@ -1,6 +1,8 @@
 # Entity Pattern
 
 **Tags**: "api:domain"
+**Layer**: Domain
+**Status**: production
 
 ## 🎯 Problem
 
@@ -564,7 +566,7 @@ export class InstitutionalAnnouncement extends BaseEntity<...> {
 
 ---
 
-## 🎯 When to Use
+## When to Use
 
 ### Use Entity When
 

@@ -1,0 +1,174 @@
+# GENERATED przez materialize-runtime.mjs (ADR 0008) — NIE edytuj ręcznie.
+# Zmiany rób w blokach (claude-patterns/blocks/ lub .claude/blocks/) i odpal setup-project.sh.
+
+schema_version: 1
+stack_blocks: [nestjs, ddd/core, ddd/layers, ddd/cqrs, ddd/events, ddd/acl, kysely]
+# osie: nestjs=framework, ddd/core=architecture, ddd/layers=architecture, ddd/cqrs=architecture, ddd/events=architecture, ddd/acl=architecture, kysely=persistence
+
+patterns:
+  always:
+    - cross-layer/conventions-pattern.md # source: nestjs
+    - cross-layer/security-invariants-pattern.md # source: nestjs
+    - cross-layer/safe-error-propagation-pattern.md # source: nestjs
+    - cross-layer/logger-pattern.md # source: nestjs
+    - cross-layer/domain-errors-pattern.md # source: ddd/core
+  triggers:
+    # source: nestjs
+    - keywords: [auth, authentication, authorization, permission, login]
+      include:
+        - cross-layer/security-invariants-pattern.md
+    # source: nestjs
+    - keywords: [test, fixture, mock, coverage, e2e]
+      include:
+        - testing/testing-pyramid-pattern.md
+    # source: ddd/core
+    - keywords: [aggregate, entity, value object, domain event, specification, policy]
+      include:
+        - domain/aggregate-pattern.md
+        - domain/value-object-pattern.md
+    # source: ddd/core
+    - keywords: [polityk, policy, guardrail, bramka, gate, business rule, reguła biznesowa, uprawnien, kompozycj]
+      include:
+        - domain/named-policy-pattern.md
+    # source: ddd/cqrs
+    - keywords: [handler, command, query, saga, cqrs]
+      include:
+        - application/command-handler-pattern.md
+        - application/query-handler-pattern.md
+    # source: ddd/cqrs
+    - keywords: [rezerwacj, reservation, reserve, confirm, release, kompensacj, compensate, rollback, tcc]
+      include:
+        - application/try-confirm-cancel-pattern.md
+    # source: ddd/cqrs
+    - keywords: [dto, response, odpowiedź, mapper, mapowanie, result.ok]
+      include:
+        - cross-layer/dto-mapper-pattern.md
+    # source: ddd/events
+    - keywords: [transaction, outbox, domain event, integration event]
+      include:
+        - architecture/transactional-outbox-pattern.md
+    # source: ddd/events
+    - keywords: [integration event, publish, subscribe]
+      include:
+        - architecture/integration-event-pattern.md
+    # source: ddd/acl
+    - keywords: [acl, cross-context, bounded context, another context]
+      include:
+        - architecture/acl-registry-pattern.md
+        - architecture/cross-context-communication.md
+    # source: kysely
+    - keywords: [repository, migration, schema, transaction]
+      include:
+        - infrastructure/repository-pattern.md
+
+analyze:
+  panel:
+    # source: nestjs
+    - {stage: threat-model, agent: "/threat-model", when: "\\b(auth|authn|authz|authentication|authorization|login|sesj|session|token)\\b|\\bpii\\b|cross[-_ ]context|public[-_ ]api|publiczn\\w* endpoint", output: "docs/security/threat-models/TM-{TASK_ID}.md", skip_if_exists: true}
+    # source: nestjs
+    - {stage: tech-analysis, agent: "ecc:architect"}
+    # source: nestjs
+    - {stage: tech-analysis-specialist, agent: "backend-technology-expert"}
+    # source: ddd/core
+    - {stage: ddd-modeling, agent: "ddd-application-expert"}
+    # source: ddd/core
+    - {stage: impl-analysis, agent: "infrastructure-implementer", advisory: true}
+    # source: ddd/core
+    - {stage: pattern-fit, agent: "code-quality-verifier", advisory: true}
+  exit: PAUSE # source: ddd/core
+
+orchestrate: # source: ddd/layers
+  # 2026-07-02: domain i application ROZDZIELONE — podwójna warstwa (15-25 plików)
+  # strukturalnie nie mieściła się w budżecie tur implementera, a fail handlera oznaczał
+  # re-implementację OBU warstw ×3. Application czyta świeży kod domeny z repo.
+  # 2026-07-09: infrastructure ROZDZIELONE od testów — pisanie kodu produkcyjnego
+  # i pisanie testów do cudzego kodu to dwa różne fachy; load-testy nie miały właściciela.
+  layers:
+    - {id: domain, dirs: [domain/], agent: "domain-application-implementer", tags: ["api:domain"], role: "Model domenowy: agregaty, encje, VO, zdarzenia i specyfikacje. Zero I/O, zero frameworka."}
+    - {id: application, dirs: [application/], agent: "domain-application-implementer", tags: ["api:app"], role: "Przypadki użycia: handlery komend i zapytań orkiestrujące domenę. Bez reguł biznesowych — te należą do domeny."}
+    - {
+        id: infrastructure,
+        dirs: [infrastructure/],
+        agent: "infrastructure-implementer",
+        tags: ["api:data-access", "api:api-surface"],
+        role: "Styk ze światem: repozytoria, kontrolery, mappery, adaptery. Tłumaczy między domeną a technologią.",
+        patterns: [infrastructure/repository-pattern.md] # +kysely
+      }
+    - {id: testing, dirs: [__tests__/], agent: "test-implementer", tests: true, tags: ["api:tests"], role: "Weryfikacja cudzego kodu: piramida L1/L2/L3. Testy dowodzą reguł, nie powtarzają implementacji."}
+  inner_loop: {verify: "code-quality-verifier", max_attempts: 3, on_max: ESCALATE_AND_HALT}
+  final_gate: {agent: "security-e2e-verifier", on_fail: ESCALATE_AND_HALT}
+  exit: STAGE_NOT_COMMIT
+
+hooks: [check-security-considerations, check-context-isolation, check-delegation, check-patterns-read, check-subagent-pattern-reads, check-approval-before-impl, check-ddd-patterns, check-domain-purity, check-human-voice]
+
+env:
+  ECC_GATEGUARD: "off" # source: ddd/core
+  ECC_DISABLED_HOOKS: "pre:edit-write:gateguard-fact-force,pre:bash:gateguard-fact-force" # source: ddd/core
+  DELEGATION_MODE: "block" # source: ddd/core
+
+overlay:
+  agents: [stacks/nestjs-ddd/]
+  patterns: [domain/, application/, architecture/, infrastructure/]
+  rules: [nestjs-ddd/]
+
+human_voice: # język tekstu dla człowieka; nadpisz w project.yml → human_voice
+  language: pl
+  register: business
+  max_sentences: 2
+  avoid: [nazwy klas i funkcji, ścieżki plików, numery ADR/BDR, żargon warstw i wzorców]
+
+taxonomy: # rdzeń blocks/_taxonomy.yml + .claude/taxonomy.yml projektu
+  stacks:
+    - any
+    - api
+    - mobile
+    - web
+    - lib
+    - data
+    - infra
+  areas:
+    - auth
+    - authz
+    - domain
+    - app
+    - data-access
+    - events
+    - geo
+    - api-surface
+    - ui
+    - tests
+    - security
+    - observability
+    - build
+    - economy
+    - platform
+    - process
+  variants_seen:
+    app: [async, batching, concurrency, cross-context, errors, external-integration, ingestion, llm, model-lifecycle]
+    api-surface: [barrel, contract, deprecation, errors, semver]
+    data-access: [http, mapper, migration, offline, polyglot, projection, transaction]
+    domain: [aggregate, errors, moderation-buffer]
+    events: [domain, integration, outbox, queue]
+    geo: [radius, teryt, polygon, discovery]
+    observability: [audit, logging]
+    platform: [channel, gpu, nestjs, nextjs, python, svelte]
+    process: [review]
+    security: [identity, rate-limit, validation]
+    tests: [contract, e2e, fixtures, integration, load, seeding, unit]
+    ui: [accessibility, design-token, forms, i18n, navigation, state]
+
+params:
+  ddd/core:
+    ddd_library: "@vytches/ddd"
+    ddd_library_min_version: null
+
+requires_ecc: # source: nestjs
+  profile: developer
+  modules: [lang:typescript, capability:orchestration]
+
+ralphinho: # source: ddd/layers
+  units: single
+  worktree: shared
+  fan_out: sequential
+  merge_stage: noop
+  guardrails: {push_only: "claude/*", max_attempts_per_layer: 3}

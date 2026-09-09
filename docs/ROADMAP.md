@@ -218,7 +218,10 @@ the abstractions hold up under pressure.
 
 ---
 
-## Sprint 6 — Cross-instance broadcast (ADR-0006)
+## Sprint 6 — Cross-instance broadcast (ADR-0006) — RETIRED 2026-09-07 (K99)
+
+> Pilot zamknięty bez go: zero wpisów na kanale, kill-switch 2026-08-09. Kod w historii gita
+> (`4d4eac5`), decyzja w ADR 0006 (`Status: retired`) i DECISIONS-LOG. Treść poniżej historyczna.
 
 Task: [`docs/tasks/TASK-BROADCAST-001.md`](tasks/TASK-BROADCAST-001.md) (status `blocked`) ·
 Spec: [`docs/adr/0006-cross-instance-broadcast.md`](adr/0006-cross-instance-broadcast.md)

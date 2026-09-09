@@ -11,6 +11,10 @@ property valuation, leverage metrics, and inflation-adjusted real return.
 Part of Layer 2 (Asset Classes) in the finance skills framework.
 """
 
+import argparse
+import math
+import sys
+
 import numpy as np
 
 
@@ -489,10 +493,8 @@ class RealReturn:
         }
 
 
-if __name__ == "__main__":
-    # ----------------------------------------------------------------
-    # Demo: Real asset analysis
-    # ----------------------------------------------------------------
+def _demo() -> None:
+    """Run the demonstration calculations (bare-run default)."""
     np.random.seed(42)
 
     print("=" * 60)
@@ -622,3 +624,105 @@ if __name__ == "__main__":
     print("\n" + "=" * 60)
     print("Demo complete.")
     print("=" * 60)
+
+
+def _verify() -> None:
+    """Assert demo computations against the SKILL.md worked examples."""
+    checks: list[tuple[str, float, float]] = []
+
+    # SKILL.md Example 1: Value = $100,000 / 0.06 = $1,666,667
+    value = PropertyValuation.value_from_cap_rate(noi=100_000, cap_rate=0.06)
+    checks.append(("Example 1 property value", value, 1_666_667.0))
+    checks.append((
+        "Example 1 cap rate round-trip",
+        PropertyValuation.cap_rate(noi=100_000, property_value=value),
+        0.06,
+    ))
+
+    # SKILL.md Example 2: cash-on-cash 9.0%, unlevered cap rate 7.0%
+    coc = PropertyValuation.cash_on_cash_return(
+        annual_pretax_cash_flow=18_000, total_cash_invested=200_000,
+    )
+    checks.append(("Example 2 cash-on-cash return", coc, 0.09))
+    lev = LeverageMetrics.levered_vs_unlevered(
+        property_value=500_000, noi=35_000,
+        loan_amount=300_000, annual_debt_service=17_000,
+    )
+    checks.append(("Example 2 cap rate", lev["cap_rate"], 0.07))
+    checks.append(("Example 2 leverage effect", lev["leverage_effect"], 0.02))
+
+    # Demo leverage metrics
+    checks.append((
+        "Demo LTV",
+        LeverageMetrics.loan_to_value(300_000, 500_000),
+        0.60,
+    ))
+    checks.append((
+        "Demo DSCR",
+        LeverageMetrics.debt_service_coverage(35_000, 17_000),
+        35_000 / 17_000,
+    ))
+
+    # Demo REIT metrics: FFO = 50M + 30M - 5M = 75M; AFFO = 75M - 8M - 2M = 65M
+    ffo_val = REITMetrics.ffo(
+        net_income=50_000_000, depreciation=30_000_000, gains_on_sales=5_000_000,
+    )
+    checks.append(("Demo FFO", ffo_val, 75_000_000.0))
+    affo_val = REITMetrics.affo(
+        ffo=ffo_val, maintenance_capex=8_000_000, straight_line_rent_adj=2_000_000,
+    )
+    checks.append(("Demo AFFO", affo_val, 65_000_000.0))
+
+    # Demo real return: 8% nominal, 3% inflation -> 4.854%
+    checks.append((
+        "Demo real return",
+        RealReturn.inflation_adjusted_return(0.08, 0.03),
+        0.0485437,
+    ))
+
+    failures = 0
+    for name, got, expected in checks:
+        ok = math.isclose(got, expected, rel_tol=1e-4)
+        print(f"{'PASS' if ok else 'FAIL'}: {name}: got {got:,.6g}, expected {expected:,.6g}")
+        failures += 0 if ok else 1
+    if failures:
+        print(f"FAIL: {failures} of {len(checks)} checks failed.")
+        sys.exit(1)
+    print(f"PASS: all {len(checks)} checks passed.")
+
+
+def _build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="real_assets.py",
+        description=(
+            "Real asset analysis reference implementation. Main classes: "
+            "PropertyValuation (noi, cap_rate, value_from_cap_rate, "
+            "gross_rent_multiplier, cash_on_cash_return), LeverageMetrics "
+            "(loan_to_value, debt_service_coverage, levered_vs_unlevered), "
+            "REITMetrics (ffo, affo, ffo_yield, affo_yield, p_ffo, "
+            "nav_premium_discount), RealReturn (inflation_adjusted_return, "
+            "cumulative_real_return, real_vs_nominal_comparison)."
+        ),
+        epilog=(
+            "Primarily intended to be imported as a module: "
+            "from real_assets import PropertyValuation, LeverageMetrics, "
+            "REITMetrics, RealReturn. Run with no arguments to print a demo."
+        ),
+    )
+    parser.add_argument(
+        "--verify",
+        action="store_true",
+        help=(
+            "run the demo computations and assert key outputs match the "
+            "SKILL.md worked examples (exits nonzero on mismatch)"
+        ),
+    )
+    return parser
+
+
+if __name__ == "__main__":
+    args = _build_parser().parse_args()
+    if args.verify:
+        _verify()
+    else:
+        _demo()

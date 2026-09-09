@@ -1,8 +1,8 @@
 upstream: https://github.com/JoelLewis/finance_skills.git
 ref: main
-commit: f553a84f722218ac29d7db6bdd9cee704f925bae
+commit: 5c498eacf7057e31238c4c5a8012a1afe9ec7c8a
 plugin_version: 1.0.0
-synced_at: 2026-05-07T00:00:00Z
-synced_by: initial-vendoring (manual)
+synced_at: 2026-09-07T22:34:17Z
+synced_by: scripts/sync-finance-skills.sh
 license: MIT
 author: Joel Lewis (joel@eleazar.dev)

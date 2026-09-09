@@ -1,0 +1,58 @@
+[
+  {
+    "name": "typography-inline-fontsize-warns",
+    "hook": "check-typography-tokens.js",
+    "payload": {
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "lib/presentation/widgets/title.dart"
+      }
+    },
+    "setup": {
+      "cwd": true,
+      "files": {
+        "flutter-hooks.json": "{\"featurePath\": \"lib/features\", \"purity\": {\"noInfraImportLayers\": [\"domain\", \"application\"], \"forbiddenImports\": [\"package:flutter/\", \"package:dio/\", \"package:hive/\", \"package:shared_preferences/\", \"package:http/\", \"dart:io\", \"dart:html\"]}, \"riverpod\": {\"checkRefRead\": {\"enabled\": true, \"filePatterns\": [\"**/presentation/**/*.dart\"]}}, \"tokens\": {\"checkInlineStyles\": {\"enabled\": true, \"filePatterns\": [\"**/presentation/**/*.dart\"]}}, \"designTokens\": {\"enabled\": true, \"pathContains\": [\"/lib/\"], \"definitionPaths\": [\"lib/core/design/tokens/\", \"lib/core/theme/\"], \"allowedColors\": [\"Colors.transparent\"], \"checks\": {\"colorLiterals\": true, \"materialColors\": true, \"materialIcons\": true, \"hardShadows\": true}}, \"logging\": {\"checkDebugPrintGuard\": {\"enabled\": true, \"pathContains\": [\"/lib/\"], \"allowFiles\": []}}, \"l10n\": {\"enabled\": true, \"checkHardcodedStrings\": {\"filePatterns\": [\"**/presentation/**/*.dart\"], \"forbiddenPatterns\": [\"Text\\\\('[A-ZĄĆĘŁŃÓŚŹŻ]\", \"text: '[A-ZĄĆĘŁŃÓŚŹŻ]\", \"title: '[A-ZĄĆĘŁŃÓŚŹŻ]\", \"label: '[A-ZĄĆĘŁŃÓŚŹŻ]\", \"hintText: '[A-ZĄĆĘŁŃÓŚŹŻ]\", \"tooltip: '[A-ZĄĆĘŁŃÓŚŹŻ]\"], \"excludePaths\": [\"/l10n/\", \"/generated/\"], \"domainLayers\": {\"enabled\": true, \"filePatterns\": [\"**/domain/entities/**/*.dart\", \"**/domain/failures/**/*.dart\"]}}}, \"pumpAndSettle\": {\"checkBareCall\": {\"enabled\": true}}, \"interactiveFocus\": {\"enabled\": true, \"filePatterns\": [\"**/presentation/**/*.dart\"]}, \"skipPatterns\": [\"_test.dart\", \".g.dart\", \".freezed.dart\", \".mock.dart\"]}",
+        "lib/presentation/widgets/title.dart": "Widget b() {\n  return Text('x', style: TextStyle(fontSize: 14));\n}\n"
+      }
+    },
+    "expect": "pass",
+    "expect_stderr": "TextStyle"
+  },
+  {
+    "name": "typography-token-silent",
+    "hook": "check-typography-tokens.js",
+    "payload": {
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "lib/presentation/widgets/title.dart"
+      }
+    },
+    "setup": {
+      "cwd": true,
+      "files": {
+        "flutter-hooks.json": "{\"featurePath\": \"lib/features\", \"purity\": {\"noInfraImportLayers\": [\"domain\", \"application\"], \"forbiddenImports\": [\"package:flutter/\", \"package:dio/\", \"package:hive/\", \"package:shared_preferences/\", \"package:http/\", \"dart:io\", \"dart:html\"]}, \"riverpod\": {\"checkRefRead\": {\"enabled\": true, \"filePatterns\": [\"**/presentation/**/*.dart\"]}}, \"tokens\": {\"checkInlineStyles\": {\"enabled\": true, \"filePatterns\": [\"**/presentation/**/*.dart\"]}}, \"designTokens\": {\"enabled\": true, \"pathContains\": [\"/lib/\"], \"definitionPaths\": [\"lib/core/design/tokens/\", \"lib/core/theme/\"], \"allowedColors\": [\"Colors.transparent\"], \"checks\": {\"colorLiterals\": true, \"materialColors\": true, \"materialIcons\": true, \"hardShadows\": true}}, \"logging\": {\"checkDebugPrintGuard\": {\"enabled\": true, \"pathContains\": [\"/lib/\"], \"allowFiles\": []}}, \"l10n\": {\"enabled\": true, \"checkHardcodedStrings\": {\"filePatterns\": [\"**/presentation/**/*.dart\"], \"forbiddenPatterns\": [\"Text\\\\('[A-ZĄĆĘŁŃÓŚŹŻ]\", \"text: '[A-ZĄĆĘŁŃÓŚŹŻ]\", \"title: '[A-ZĄĆĘŁŃÓŚŹŻ]\", \"label: '[A-ZĄĆĘŁŃÓŚŹŻ]\", \"hintText: '[A-ZĄĆĘŁŃÓŚŹŻ]\", \"tooltip: '[A-ZĄĆĘŁŃÓŚŹŻ]\"], \"excludePaths\": [\"/l10n/\", \"/generated/\"], \"domainLayers\": {\"enabled\": true, \"filePatterns\": [\"**/domain/entities/**/*.dart\", \"**/domain/failures/**/*.dart\"]}}}, \"pumpAndSettle\": {\"checkBareCall\": {\"enabled\": true}}, \"interactiveFocus\": {\"enabled\": true, \"filePatterns\": [\"**/presentation/**/*.dart\"]}, \"skipPatterns\": [\"_test.dart\", \".g.dart\", \".freezed.dart\", \".mock.dart\"]}",
+        "lib/presentation/widgets/title.dart": "Widget b() {\n  return Text('x', style: AppTypography.body);\n}\n"
+      }
+    },
+    "expect": "pass",
+    "expect_silent": true
+  },
+  {
+    "name": "typography-no-config-silent",
+    "hook": "check-typography-tokens.js",
+    "payload": {
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "lib/presentation/widgets/title.dart"
+      }
+    },
+    "setup": {
+      "cwd": true,
+      "files": {
+        "lib/presentation/widgets/title.dart": "Widget b() {\n  return Text('x', style: TextStyle(fontSize: 14));\n}\n"
+      }
+    },
+    "expect": "pass",
+    "expect_silent": true
+  }
+]

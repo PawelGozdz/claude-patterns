@@ -54,16 +54,57 @@ runCheck('rag-freshness', 'node', ['scripts/rag-freshness.mjs']);
 runCheck('eval: hooks', 'node', ['tests/flow-evals/hooks/run.js']);
 runCheck('eval: watcher', 'node', ['tests/flow-evals/watcher/run.js']);
 runCheck('eval: workflow-lint', 'node', ['tests/flow-evals/workflow-lint/run.js']);
+runCheck('eval: orchestrate-prepare', 'node', ['tests/flow-evals/orchestrate-prepare/run.js']);
+runCheck('eval: orchestrate-script', 'node', ['tests/flow-evals/orchestrate-script/run.js']);
+runCheck('eval: materialize-runtime', 'node', ['tests/flow-evals/materialize-runtime/run.js']);
+runCheck('eval: setup-project', 'node', ['tests/flow-evals/setup-project/run.js']);
 runCheck('eval: workflow-metrics', 'node', ['tests/flow-evals/workflow-metrics/run.js']);
-runCheck('eval: broadcast', 'node', ['tests/flow-evals/broadcast/run.js']);
+runCheck('eval: project-yml', 'node', ['tests/flow-evals/project-yml/run.js']);
 runCheck('validate-agents', 'node', ['scripts/ci/validate-agents.js']);
 runCheck('validate-business-rules', 'node', ['scripts/ci/validate-business-rules.js']);
 runCheck('validate-commands', 'node', ['scripts/ci/validate-commands.js']);
 runCheck('validate-hooks', 'node', ['scripts/ci/validate-hooks.js']);
+runCheck('validate-blocks', 'node', ['scripts/ci/validate-blocks.mjs']);
 runCheck('validate-rules', 'node', ['scripts/ci/validate-rules.js']);
 runCheck('validate-skills', 'node', ['scripts/ci/validate-skills.js']);
 runCheck('count-assets --check', 'node', ['scripts/count-assets.mjs', '--check']);
+runCheck('count-assets --check-docs', 'node', ['scripts/count-assets.mjs', '--check-docs']);
+// K84 (TASK-KAIZEN-002, 2026-09-07): jeden schemat METADATA.yml katalogów wzorców.
+// Poprzednik (`validate-metadata.sh`) znał tylko stary schemat, raportował 6/10 FAIL
+// na poprawnych plikach i nie był wpięty nigdzie — stąd 7/16 kategorii bez metadanych.
+runCheck('validate-metadata', 'node', ['scripts/validate-metadata.mjs']);
 runCheck('validate-tasks', 'node', ['scripts/ci/validate-tasks.mjs']);
+
+// K63 (TASK-KAIZEN-002, 2026-09-07): audyt floty przy zmianie źródeł kompozycji.
+//
+// Incydent „10/10 runtime.yml nieaktualnych" z 2026-08-12 powtórzył się co do joty
+// miesiąc później, bo `audit-projects.mjs` odpalał wyłącznie człowiek, który akurat
+// o nim pamiętał. Zmiana w `blocks/**` unieważnia `source_hash` KAŻDEGO projektu naraz
+// — to jest dokładnie ten moment, w którym audyt ma sens, i jedyny, w którym autor
+// zmiany jeszcze wie, co zmienił.
+//
+// Warunkowo, nie zawsze: audyt czyta jedenaście cudzych repozytoriów (~1,5 s), więc
+// przy commicie dotykającym wyłącznie dokumentacji byłby podatkiem bez treści.
+//
+// Tryb `--gate`, nie domyślny: przerywa tylko na BŁĘDACH, czyli znaleziskach z wypisaną
+// komendą naprawczą. OSTRZEŻENIA (fork bloku przez `extends`, brak manifestu) lecą do
+// raportu, ale nie blokują commita — bramka, której nie da się wyzerować, jest
+// obchodzona przez `--no-verify`, a wtedy nie chroni już niczego.
+const stagedForAudit = execFileSync(
+  'git', ['diff', '--cached', '--name-only', '--diff-filter=ACMR'],
+  { cwd: REPO, encoding: 'utf8' },
+).split('\n').filter((f) =>
+  // Tylko `.yml`: `source_hash` liczy się z treści bloków, aliasów i taksonomii, więc
+  // `blocks/README.md` nie unieważnia niczyjego runtime.yml i nie ma po co ciągnąć
+  // przez to audytu całej floty.
+  /^blocks\/.*\.yml$/.test(f) ||
+  /^templates\/[^/]+-hooks\.json$/.test(f) ||
+  /^templates\/settings\/[^/]+\.json$/.test(f));
+
+if (stagedForAudit.length) {
+  runCheck(`audit-projects --gate (zmienione: ${stagedForAudit.join(', ')})`,
+    'node', ['scripts/audit-projects.mjs', '--gate']);
+}
 
 // Sekcja 3: dyscyplina zmian promptów agentów. Dla każdego stage'owanego `agents/**.md`
 // z nietrywialnym diffem (nie samo formatowanie) wymagamy nowego wpisu w `## Changelog`

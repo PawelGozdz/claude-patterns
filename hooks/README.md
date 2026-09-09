@@ -20,12 +20,19 @@ User request → Claude picks a tool → PreToolUse hook runs → Tool executes 
 
 | Hook | Matcher | Behavior | Exit Code |
 |------|---------|----------|-----------|
-| **Dev server blocker** | `Bash` | Blocks `npm run dev` etc. outside tmux — ensures log access | 2 (blocks) |
-| **Tmux reminder** | `Bash` | Suggests tmux for long-running commands (npm test, cargo build, docker) | 0 (warns) |
-| **Git push reminder** | `Bash` | Reminds to review changes before `git push` | 0 (warns) |
-| **Doc file warning** | `Write` | Warns about non-standard `.md`/`.txt` files (allows README, CLAUDE, CONTRIBUTING, CHANGELOG, LICENSE, SKILL, docs/, skills/); cross-platform path handling | 0 (warns) |
-| **Strategic compact** | `Edit\|Write` | Suggests manual `/compact` at logical intervals (every ~50 tool calls) | 0 (warns) |
-| **Delegation gate** _(per-stack)_ | `Write\|Edit\|MultiEdit` | Blocks the **main agent** from implementing production code directly — forces delegation to a subagent / `/orchestrate`. Subagents pass through (detected via `agent_id`). Threshold: pattern files (`lib/pattern-routing.js`), widened to **any enforced source file** while an orchestration run is active (STRICT, below). Wired in via `templates/settings/<stack>.json`, not global `hooks.json`. `DELEGATION_MODE=warn\|off`. | 2 (blocks) |
+| **Root grep blocker** (`block-root-grep.js`) | `Bash` | Denies `grep -r`/`rg`/`git grep`/`find … \| xargs grep` over the repo root (`.`, `*`, repo dir). A `Read(.env)` deny rule turns such a walk into a permission prompt that stalls the flow; scoped searches (`src/ docs/`) and the Grep tool pass. In global `hooks.json` since 2026-09-07 (K53). | 2 (blocks) |
+| **Workflow lint** (`pre-workflow-lint.js`) | `Workflow` | Lints a Workflow script before it runs. `WORKFLOW_LINT=warn\|off`. | 2 (blocks) |
+| **Approval gate** (`check-approval-before-impl.js`) _(per-stack)_ | `Write\|Edit\|MultiEdit` | Backstop for the research→implementation hard gate (ADR 0002): warns (or blocks) when source code is edited while an `*.analysis.md` is still unapproved. Subagents pass through. `APPROVAL_GATE_MODE=warn\|block\|off`. | 0/2 |
+| **Delegation gate** (`check-delegation.js`) _(per-stack)_ | `Write\|Edit\|MultiEdit` | Blocks the **main agent** from implementing production code directly — forces delegation to a subagent / `/orchestrate`. Subagents pass through (detected via `agent_id`). Threshold: pattern files (`lib/pattern-routing.js`), widened to **any enforced source file** while an orchestration run is active (STRICT, below). Wired in via `templates/settings/<stack>.json`, not global `hooks.json`. `DELEGATION_MODE=warn\|off`. | 2 (blocks) |
+
+> **Session lifecycle, formatting and generic guard hooks now come from ECC**
+> (`ECC_HOOK_PROFILE=minimal|standard|strict`), not from here. Retired 2026-09-07 (K98):
+> `session-start`, `session-end`, `evaluate-session`, `pre-compact`, `post-edit-format`,
+> `post-edit-console-warn`, `pre-write-doc-warn`, `git-push-reminder`, plus the dev-server
+> blocker and tmux reminder that this table used to advertise. Rationale and the ECC
+> equivalent for each: [`docs/adr/0009-wynik-spike-fazy-0-i-lista-retire.md`](../docs/adr/0009-wynik-spike-fazy-0-i-lista-retire.md).
+> Watch for the double gate: ECC's `gateguard-fact-force` also fires on `Edit`/`Write`/`Bash`,
+> so DDD projects set `ECC_GATEGUARD=off` (or `ECC_DISABLED_HOOKS=…`) in their block `env:`.
 
 > **Per-stack enforcement** (`check-delegation.js`, `check-patterns-read.js`, `check-ddd-patterns.js`, `check-domain-purity.js`, …) lives in the hooks dir but is **not** registered in global `hooks.json`. It is injected per project via `templates/settings/<stack>.json` because the routing rules are stack-specific. `check-delegation.js` and `check-patterns-read.js` share their file→pattern routing through `lib/pattern-routing.js` (single source of truth).
 
@@ -47,14 +54,13 @@ User request → Claude picks a tool → PreToolUse hook runs → Tool executes 
 
 | Hook | Matcher | What It Does |
 |------|---------|-------------|
-| **PR logger** | `Bash` | Logs PR URL and review command after `gh pr create` |
-| **Build analysis** | `Bash` | Background analysis after build commands (async, non-blocking) |
-| **Prettier format** | `Edit` | Auto-formats JS/TS files with Prettier after edits |
-| **TypeScript check** | `Edit` | Runs `tsc --noEmit` after editing `.ts`/`.tsx` files |
-| **console.log warning** | `Edit` | Warns about `console.log` statements in edited files |
-| **GPU patterns** | `Edit` | ML inference: blocking calls in `async def`, `empty_cache()` without `gc.collect()`, `asyncio.gather` fan-out over GPU calls. Requires `gpu.enabled` in `python-hooks.json` — silent skip otherwise |
-| **Human voice** _(per-stack)_ | `Write\|Edit\|MultiEdit` | On `*.analysis.md`: warns when `open_questions[].ask` / `decisions[].means` are missing, empty, or still written in codebase language (file names, ADR numbers, class names, layer jargon). Register comes from `runtime.yml` `human_voice`. Wired in by the `approval-gate` block. `HUMAN_VOICE_MODE=off`. |
-| **Workflow metrics** | `Workflow` | TASK-OBS-002: fire-and-forget spawn of `scripts/workflow-metrics-collect.mjs` after every Workflow run — per-step tokens/$/outcome land in `~/.claude/metrics/workflow-steps.jsonl` (idempotent, key `runId+agentId`). Never blocks (always exit 0); skips subagent contexts via `agent_id`. Format + reports: `scripts/WORKFLOW-METRICS.md`. L1 eval: `node tests/flow-evals/workflow-metrics/run.js` |
+| **PR logger** (`pr-url-logger.js`) | `Bash` | Logs PR URL and review command after `gh pr create` |
+| **TypeScript check** (`post-edit-typecheck.js`) | `Edit` | Runs `npx --no-install tsc --noEmit` in the nearest tsconfig root and reports only errors touching the edited file. Since K107 it uses `--incremental` (build info under `.claude/run-state/`) and a **per-directory cooldown**, default 120 s — editing six files of one feature costs one typecheck, not six. `TYPECHECK_COOLDOWN_MS=<ms>`, `TYPECHECK_MODE=off`. Never blocks. |
+| **PM housekeeping** (`pm-task-housekeeping.js`) | `Edit\|Write\|MultiEdit` | Moves task files to `completed-tasks/` once they read `status: done`. `PM_HOUSEKEEPING_MODE=off`. |
+| **Security impl feedback** (`security-impl-feedback.js`) | `Edit\|Write\|MultiEdit` | Shows security-checklist progress while `.ts` source is edited. `AGENT_SECURITY_IMPL_FEEDBACK=off`. |
+| **GPU patterns** (`check-gpu-patterns.js`) | `Edit` | ML inference: blocking calls in `async def`, `empty_cache()` without `gc.collect()`, `asyncio.gather` fan-out over GPU calls. Requires `gpu.enabled` in `python-hooks.json` — silent skip otherwise |
+| **Human voice** (`check-human-voice.js`) _(per-stack)_ | `Write\|Edit\|MultiEdit` | On `*.analysis.md`: warns when `open_questions[].ask` / `decisions[].means` are missing, empty, or still written in codebase language (file names, ADR numbers, class names, layer jargon). Register comes from `runtime.yml` `human_voice`. Wired in by the `approval-gate` block. `HUMAN_VOICE_MODE=off`. |
+| **Workflow metrics** (`workflow-metrics-postrun.js`) | `Workflow` | TASK-OBS-002: fire-and-forget spawn of `scripts/workflow-metrics-collect.mjs` after every Workflow run — per-step tokens/$/outcome land in `~/.claude/metrics/workflow-steps.jsonl` (idempotent, key `runId+agentId`). Never blocks (always exit 0); skips subagent contexts via `agent_id`. Format + reports: `scripts/WORKFLOW-METRICS.md`. L1 eval: `node tests/flow-evals/workflow-metrics/run.js` |
 
 > **Knowledge freshness** (`knowledge-freshness-postwrite.js`) lives in the hooks dir but is **not**
 > registered in global `hooks.json` — it's OPT-IN per project, since it only makes sense for
@@ -105,31 +111,53 @@ User request → Claude picks a tool → PreToolUse hook runs → Tool executes 
 > (per-agent burn tokens, tokens-since-progress, silence) + HALT flags at 2× the spin threshold.
 > L1 eval (run on every hook change): `node tests/flow-evals/hooks/run.js`.
 
-### Cross-instance broadcast (ADR 0006)
-
-Dwa hooki + biblioteka `hooks/lib/broadcast/` (segmenty dzienne JSONL, kursory,
-claim `O_EXCL`, manifest, walidacja schematu v1). **Wszystko domyślnie wyłączone**:
-brak `.claude/config/broadcast.yml` w projekcie = oba hooki kończą `exit 0`, zanim
-cokolwiek zrobią. Stan runtime leży w `/opt/projects/.claude-swarm/` — poza repozytoriami.
-
-| Hook | Event | What It Does |
-|------|-------|-------------|
-| **broadcast-session-start.js** | `SessionStart` | Wypisuje nieprzeczytane wpisy z subskrybowanych topiców, oznaczone jako DANE (nie polecenia). Nie ACK-uje, nie tworzy tasków |
-| **broadcast-task-emit.js** | `PostToolUse` (`Edit\|Write\|MultiEdit`) | Przy zapisie taska cross-cluster przypomina o `/broadcast`. Raz na task na dobę. Nic nie emituje sam |
-| **broadcast-inbox-inject.js** | `UserPromptSubmit` | Dostarcza inbox do najbliższego promptu (`critical` maks. 2/~1 KB, `important` digest 5, `info` nigdy). **Bezczynny, dopóki manifest nie ma `inject: true`** albo `BROADCAST_INJECT=on` |
-
-Ręczna diagnostyka: `node hooks/lib/broadcast/cli.js doctor`.
-Włączenie w projekcie: `node hooks/lib/broadcast/cli.js init`.
-
 ### Lifecycle Hooks
 
 | Hook | Event | What It Does |
 |------|-------|-------------|
-| **Session start** | `SessionStart` | Loads previous context and detects package manager |
-| **Pre-compact** | `PreCompact` | Saves state before context compaction |
-| **Console.log audit** | `Stop` | Checks all modified files for `console.log` after each response |
-| **Session end** | `SessionEnd` | Persists session state for next session |
-| **Pattern extraction** | `SessionEnd` | Evaluates session for extractable patterns (continuous learning) |
+| **PM briefing** (`session-start-pm.js`) | `SessionStart` | Loads `TEAM-STATE.md` for projects with a PM system; silent when there is none |
+| **Subagent start log** (`subagent-start-log.js`) | `SubagentStart` | Cost monitoring — records that a subagent started (async) |
+| **Subagent stop log** (`subagent-stop-log.js`) | `SubagentStop` | Cost monitoring — records that a subagent finished (async) |
+| **Agent usage log** (`subagent-stop-cost-log.js`) | `SubagentStop` | Per-agent token usage → `~/.claude/logs/agent-usage.jsonl`. `AGENT_USAGE_LOG_MODE=off` |
+| **Agent memory guard** (`agent-memory-size-guard.js`) | `SubagentStop` | Warns when an agent's memory dir looks like a run log. `AGENT_MEMORY_SIZE_GUARD=off` |
+| **Subagent pattern reads** (`check-subagent-pattern-reads.js`) | `SubagentStop` | The moat: closes the gap left when `check-patterns-read.js` waves all subagents through. `PATTERN_READS_MODE=block\|warn\|off` |
+| **Worktree env copy** (`worktree-env-copy.js`) | `WorktreeCreate` | Copies `.env` files into a fresh worktree |
+
+Everything else at session boundaries — `SessionStart` context loading, `SessionEnd`
+persistence, `PreCompact` state saving, pattern extraction — comes from ECC since 2026-09-07
+(K98). Manual compaction advice lives in the [`strategic-compact`](../skills/optimization/strategic-compact/)
+skill, not in a hook.
+
+## Environment Variables
+
+Every switch a hook reads, in one place. Convention (K106): `<NAME>_MODE=block|warn|off`.
+Three variables predate it and keep their old spelling as a **deprecated alias** so satellite
+projects that set them keep working — the new name wins when both are present.
+
+| Variable | Hook | Values | Default |
+|----------|------|--------|---------|
+| `AGENT_MEMORY_SIZE_GUARD` | `agent-memory-size-guard.js` | `off` | (on) |
+| `AGENT_SECURITY_IMPL_FEEDBACK` | `security-impl-feedback.js` | `off` | (on) |
+| `AGENT_USAGE_DEBUG` | `subagent-stop-cost-log.js` | `1` | (off) |
+| `AGENT_USAGE_LOG_MODE` | `subagent-stop-cost-log.js` | `off` | (on) — alias deprecated: `AGENT_USAGE_LOG` |
+| `APPROVAL_GATE_MODE` | `check-approval-before-impl.js` | `warn` \| `block` \| `off` | `warn` — alias deprecated: `ORCHESTRATE_DDD_GATE` |
+| `CHECK_PATTERNS_LOOKBACK` | `check-patterns-read.js` | integer (tool calls scanned) | `15` |
+| `CHECK_PATTERNS_MODE` | `check-patterns-read.js` | `block` \| `warn` | `block` |
+| `CHECK_PATTERNS_REQUIRED_HITS` | `check-patterns-read.js` | integer | `1` |
+| `CHECK_SECURITY_MODE` | `check-security-considerations.js` | `warn` \| `block` \| `off` | `warn` |
+| `DELEGATION_MODE` | `check-delegation.js` | `block` \| `warn` \| `off` | `block` |
+| `HUMAN_VOICE_MODE` | `check-human-voice.js` | `warn` \| `off` | `warn` |
+| `KR_HTTP_PORT` | `knowledge-freshness-postwrite.js` | port of the knowledge-retriever daemon | `6403` |
+| `KR_TRANSCRIPT_MAX_BYTES` | `lib/transcript-usage.js` | bytes | (internal cap) |
+| `PATTERN_READS_MODE` | `check-subagent-pattern-reads.js` | `block` \| `warn` \| `off` | `block` |
+| `PM_HOUSEKEEPING_MODE` | `pm-task-housekeeping.js` | `off` | (on) — alias deprecated: `PM_NO_AUTO_HOUSEKEEPING=true` |
+| `TYPECHECK_COOLDOWN_MS` | `post-edit-typecheck.js` | milliseconds | `120000` |
+| `TYPECHECK_MODE` | `post-edit-typecheck.js` | `off` | (on) |
+| `WATCHDOG_MODE` | `productivity-watchdog.js` | `block` \| `warn` \| `off` | `block` |
+| `WORKFLOW_LINT` | `pre-workflow-lint.js` | `block` \| `warn` \| `off` | `block` |
+
+ECC's own hooks read their own variables (`ECC_HOOK_PROFILE`, `ECC_DISABLED_HOOKS`,
+`ECC_GATEGUARD`, `ECC_SESSION_START_MAX_CHARS`) — see `docs/ECC-USAGE.md`.
 
 ## Customizing Hooks
 
@@ -274,8 +302,10 @@ Async hooks run in the background. They cannot block tool execution.
 
 ## Additional Hooks (quick reference, K42)
 
-31 hooks not covered by name in the prose sections above (added over time, not backfilled here).
-One line per file, from its own header comment — see the file itself for full detail.
+Files in `hooks/` not covered by name in the prose sections above (added over time, not
+backfilled here). One line per file, from its own header comment — see the file itself for
+full detail. Every `.js`/`.sh` in this directory appears either here or in a table above;
+if you add one, add its row.
 
 | File | Event | Purpose |
 |------|-------|---------|
@@ -285,6 +315,7 @@ One line per file, from its own header comment — see the file itself for full 
 | `check-debugprint-guard.js` | PostToolUse | `debugPrint()`/`print()` without `kDebugMode` guard (Flutter) |
 | `check-design-tokens.js` | PostToolUse | Visual literals used instead of design tokens |
 | `check-flutter-imports.js` | Stop | Detect cross-feature imports in modified Dart files |
+| `check-focus-wrapper.js` | PostToolUse | Bare `GestureDetector(` in a file with no `Focus(`/`FocusableActionDetector(`/`SoftPressable(`/Material tap widget (WCAG SC 2.4.7). Config `interactiveFocus` in `flutter-hooks.json`; wired via `blocks/clean-arch.yml` `overlay.hooks` (K53) |
 | `check-l10n-hardcoded.js` | PostToolUse | Hardcoded UI text instead of localization keys |
 | `check-pumpandsettle.js` | PostToolUse | Warn on bare `pumpAndSettle()` (no `Duration`) in Flutter tests |
 | `check-python-layers.js` | PostToolUse | Python domain/service layer purity after editing |
@@ -294,14 +325,9 @@ One line per file, from its own header comment — see the file itself for full 
 | `check-subagent-pattern-reads.js` | SubagentStop | Closes the gap left when `check-patterns-read.js` passes all subagents |
 | `check-typography-tokens.js` | PostToolUse | Inline `TextStyle(fontSize:...)`/`EdgeInsets.*()` literals |
 | `cost-optimizer.sh` | — | Tool-restriction enforcement (renamed from `enforce-tool-restrictions.sh`) |
-| `evaluate-session.js` | — | Continuous Learning — session evaluator |
 | `pm-task-check.js` | PostToolUse | PM health check when `project-orchestration/` task files change |
 | `pm-task-housekeeping.js` | PostToolUse | Auto-housekeeping for task files marked `status: done` |
-| `post-edit-console-warn.js` | PostToolUse | Warn about `console.log` statements after edits |
-| `post-edit-format.js` | PostToolUse | Auto-format JS/TS files after edits |
-| `pre-compact.js` | PreCompact | Save state before context compaction |
-| `pre-workflow-lint.js` | — | Thin wrapper around `workflow-lint.js`'s hardcoded rule set |
-| `pre-write-doc-warn.js` | PreToolUse | Warn about non-standard documentation files |
+| `pre-workflow-lint.js` | PreToolUse | Thin wrapper around `workflow-lint.js`'s hardcoded rule set |
 | `security-impl-feedback.js` | PostToolUse | Security implementation feedback |
 | `session-monitor.sh` | — | Merges `session-summary.sh` + `periodic-visual-feedback.sh` + `post-tool-use-feedback.sh` |
 | `session-start-pm.js` | SessionStart | Auto-load `TEAM-STATE.md` for projects with a PM system |
@@ -322,5 +348,6 @@ All hooks in this plugin use Node.js (`node -e` or `node script.js`) for maximum
 ## Related
 
 - [rules/common/hooks.md](../rules/common/hooks.md) — Hook architecture guidelines
-- [skills/strategic-compact/](../skills/strategic-compact/) — Strategic compaction skill
-- [scripts/hooks/](../scripts/hooks/) — Hook script implementations
+- [skills/optimization/strategic-compact/](../skills/optimization/strategic-compact/) — Strategic compaction skill (a skill, not a hook)
+- [docs/adr/0009-wynik-spike-fazy-0-i-lista-retire.md](../docs/adr/0009-wynik-spike-fazy-0-i-lista-retire.md) — which hooks moved to ECC and why
+- [tests/flow-evals/hooks/](../tests/flow-evals/hooks/) — L1 eval; run `node tests/flow-evals/hooks/run.js` on every hook change

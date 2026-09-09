@@ -1,0 +1,38 @@
+# Fixture dla tests/flow-evals/project-yml/run.js — celowo zawiera dokładnie te
+# kształty, na których rozjechały się trzy kopie parsera grep/sed (K65):
+#   - komentarz inline po wartości
+#   - wartość w cudzysłowach zawierająca przecinek i znak #
+#   - lista prosta inline (broadcast.emits)
+#   - lista blokowa z komentarzem przy elemencie
+#   - lista elementów złożonych (contexts)
+
+project:
+  name: fixture-project
+  description: "Opis z przecinkiem, cudzysłowem i # hashem w środku"
+  stack_blocks: [nestjs, ddd, kysely]
+  stack_profile: nestjs-ddd  # tylko selektor szablonu CLAUDE.md
+  language: typescript   # rules/typescript/
+  stack: "NestJS, TypeScript, PostgreSQL"
+  pm_system: true
+
+skills:
+  - security
+  - testing   # komentarz przy elemencie
+  - "quality"
+
+docs:
+  - DOC_A.md   # opis, który nie należy do ścieżki
+  - DOC_B.md
+
+broadcast:
+  enabled: true
+  emits: [geo, pricing]
+
+contexts:
+  - name: auth
+    tests: 279
+
+cost:
+  opus: "<30%"
+
+empty_list: []

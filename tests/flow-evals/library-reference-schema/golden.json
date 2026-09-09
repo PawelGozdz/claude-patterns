@@ -1,13 +1,15 @@
 {
-  "comment": "Eval L1 strukturalny (deterministyczny, BEZ embeddera) dla library_reference_global — TASK-RAG-003 sekcja 0.1/0.2. Sprawdza integralność seedu (kind/level rozkłady, lib_version, tags, OR-match combines) przez czyste zapytania count()/scroll() do Qdranta — nie ranking semantyczny (to robi ../retrieval/). exact_counts to snapshot z 2026-07-03 (853 chunki ekstrakcji LLMGUIDE.md + 129 TS-examples = 982) — AKTUALIZUJ ŚWIADOMIE przy każdej zmianie treści LLMGUIDE.md/re-ekstrakcji, tak jak snapshot test. min_counts to podłoga do wykrywania regresji (spadek = alarm), nie snapshot — wzrost jest OK (nowa treść).",
+  "comment": "Eval L1 strukturalny (deterministyczny, BEZ embeddera) dla library_reference_global — TASK-RAG-003 sekcja 0.1/0.2. Sprawdza integralność seedu (kind/level rozkłady, lib_version, tags, OR-match combines) przez czyste zapytania count()/scroll() do Qdranta — nie ranking semantyczny (to robi ../retrieval/). exact_counts to snapshot — AKTUALIZUJ ŚWIADOMIE przy każdej zmianie treści LLMGUIDE.md/re-ekstrakcji, tak jak snapshot test. min_counts to podłoga do wykrywania regresji (spadek = alarm), nie snapshot — wzrost jest OK (nowa treść).",
+  "snapshot_updated": "2026-09-07",
+  "snapshot_rationale": "Poprzedni snapshot (982, lib_version 0.30.0) pochodził z 2026-07-03 i przestał opisywać rzeczywistość, bo @vytches/ddd podbiła się do 0.31.1 (/opt/projects/vytches-ddd/lerna.json). Sprawdzone przez pełny reseed: kolekcja NIE była nieświeża — świeży `seed:global --library` daje dokładnie te same 1007 punktów, więc to zmiana treści źródła, nie osad w Qdrancie. Skąd +25: examples 129 → 154, bo w examples/policies/src przybyło 5 plików (09-caching-factory-preset … 13-composed-enriched-policies); LLMGUIDE.md nie ruszył (concept/api/anti_pattern bez zmian: 215/547/91). Te 5 plików nie miało wpisu w mcp-server/knowledge-retriever/global.config.json::vytchesLevels i wpadało na domyślne 'medium' z ostrzeżeniem na stderr — mapowania dopisane przy tej samej okazji (09-12 medium, 13 complex jak reszta przykładów o kompozycji), stąd level advanced 136 → 140 zamiast core 465.",
   "collection": "library_reference_global",
   "exact_counts": {
-    "total": 982,
-    "kind": { "concept": 215, "api": 547, "anti_pattern": 91, "example": 129 },
-    "level": { "quickstart": 85, "core": 441, "advanced": 136, "exhaustive": 320 }
+    "total": 1007,
+    "kind": { "concept": 215, "api": 547, "anti_pattern": 91, "example": 154 },
+    "level": { "quickstart": 86, "core": 461, "advanced": 140, "exhaustive": 320 }
   },
   "invariants": [
-    { "id": "INV-LIBVER", "desc": "100% punktów ma lib_version == '0.30.0' (0 null/unknown/stale)", "must_not_match": { "key": "lib_version", "value": "0.30.0" }, "expect_count": 0 },
+    { "id": "INV-LIBVER", "desc": "100% punktów ma lib_version == '0.31.1' (0 null/unknown/stale)", "must_not_match": { "key": "lib_version", "value": "0.31.1" }, "expect_count": 0 },
     { "id": "INV-TAGS", "desc": "100% punktów ma tag 'vytches-ddd' (wspólny marker źródła)", "must_not_match": { "key": "tags", "value": "vytches-ddd" }, "expect_count": 0 }
   ],
   "combines_or_match_floor": [

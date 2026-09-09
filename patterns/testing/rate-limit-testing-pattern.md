@@ -7,6 +7,24 @@
 **Purpose**: Reliable rate limit testing with concurrent requests in E2E tests
 **Context**: Test environment uses 1-second windows (production: 1 hour), IP-based rate limiting (all supertest requests = 127.0.0.1)
 
+**Layer**: Testing (E2E / L3)
+**Status**: Production
+
+## When to Use
+
+**Use this pattern for:**
+- ✅ Verifying a rate-limited endpoint returns 429 once the limit is exceeded.
+- ✅ Checking rate-limit response headers (`Retry-After`, `X-RateLimit-*`).
+- ✅ Verifying burst requests within the limit all succeed.
+- ✅ Testing IP-based limiting across multiple simulated users on the same IP.
+- ✅ Testing that the rate-limit window resets after it expires.
+
+**Do NOT use for:**
+- ❌ Functional correctness of the endpoint's business logic — keep rate-limit tests in
+  separate files from functional tests (see testing-pyramid-pattern.md).
+- ❌ Load/throughput testing — this pattern verifies limiter behavior at small N, not
+  performance under real load.
+
 ---
 
 ## Problem Statement

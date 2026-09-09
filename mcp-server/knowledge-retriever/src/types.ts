@@ -6,7 +6,17 @@ export type ChunkKind = "code" | "rule_card" | "example" | "anti_pattern" | "con
 
 export interface Chunk {
   id: string;          // stable: `${source}#${index}` (code) or `${source}#${headingSlug}` (markdown)
-  source: string;      // relative file path (code) or absolute file path (freshness re-embed)
+  // ALWAYS repo-relative ("src/contexts/auth/user.aggregate.ts"), never absolute. The index is a
+  // pointer into a repo, not into one machine's checkout: twin worktrees of the same repo share one
+  // collection, so an absolute path from api-1 handed to an agent in api-2 resolves to a file that
+  // EXISTS and reads fine — the wrong branch's version, silently (TASK-RAG-004 R1).
+  source: string;
+  // Canonical repo name the source path is relative to (reseed.config.json::repoName). Tells a
+  // caller which working tree to resolve `source` in when one daemon serves several repos.
+  repo?: string;
+  // Commit the chunk was extracted from, when the collection is indexed off a git ref instead of a
+  // live worktree (TASK-RAG-004 R2). Lets a caller notice "index is develop@abc, I'm on a branch".
+  indexedSha?: string;
   section: string;     // heading / symbol the chunk belongs to
   text: string;
   vector?: number[];   // embedding (present once indexed)
@@ -40,9 +50,15 @@ export interface Chunk {
 }
 
 export interface Hit {
-  source: string;
+  source: string;      // repo-relative for code (see Chunk.source) — open it in YOUR OWN worktree
+  repo?: string;
   section: string;
+  // Full chunk text. For code hits index.ts replaces this with a truncated `evidence` field before
+  // handing the result to an agent — the index answers "where does this concept live", and the
+  // content of record is the file on the caller's disk, not the snapshot in the vector store.
   text: string;
+  evidence?: string;          // first N lines of `text` — proof the hit is real, NOT material to copy
+  evidenceTruncated?: boolean;
   score: number;       // cosine similarity 0..1
   startLine?: number;
   endLine?: number;
@@ -52,6 +68,7 @@ export interface Hit {
   feature?: string;
   combines?: string[];
   lib_version?: string;
+  indexedSha?: string;
   indexedAt?: string;
   scope?: "universal" | "project-specific";
   project?: string;

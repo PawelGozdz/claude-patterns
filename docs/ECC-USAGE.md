@@ -3,6 +3,14 @@
 > Status: ECC zainstalowany globalnie jako plugin (2026-06). To przewodnik „jak tego używać".
 > Tło decyzji: `docs/REFACTOR-ANALYSIS.md`. Docelowy dyrygent: `docs/orchestrate-ddd-design.md`.
 
+> **⚠ ARCHIWUM — opisuje stan sprzed [ADR 0008](adr/0008-stack-blocks-composition.md)**
+> (2026-08-12: kompozycja bloków zamiast presetów, `/analyze` + `/orchestrate` zamiast
+> `/analyze-ddd` + `/orchestrate-ddd`). Liczniki ECC z czerwca też są nieaktualne —
+> stan 2026-09-07 to 92 komendy, 67 agentów, 271 skilli. Aktualny opis:
+> [`docs/ARCHITECTURE.md`](ARCHITECTURE.md), ADR 0008,
+> [ADR 0009](adr/0009-wynik-spike-fazy-0-i-lista-retire.md) (co zostaje u nas, a co idzie
+> do `ecc:*`). Zachowany dla historii decyzji.
+
 ## Co jest zainstalowane
 - **ECC plugin** (`ecc@ecc`, v2.0.0) — globalnie w `~/.claude`. 363 skille, 67 agentów, 7 hooków,
   1 MCP (chrome-devtools). Wszystko namespaced `ecc:*`.

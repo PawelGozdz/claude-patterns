@@ -49,5 +49,6 @@ export const GLOBAL_COLLECTIONS = COLLECTION_REGISTRY.filter((c) => c.scope === 
 // Payload fields needing a keyword index on EVERY collection: kind/tags/level for filtering,
 // source for diversity grouping (store-qdrant.ts::search groups by 'source'). feature/combines
 // back the retrieve_examples OR-match (feature param matches either field, see index.ts::buildFilter);
-// lib_version supports pinning/drift queries against a specific @vytches/ddd release.
-export const PAYLOAD_INDEX_FIELDS = ["kind", "tags", "level", "source", "feature", "combines", "lib_version"] as const;
+// lib_version supports pinning/drift queries against a specific @vytches/ddd release; repo names the
+// repository a code chunk's relative `source` is anchored in (TASK-RAG-004 R1).
+export const PAYLOAD_INDEX_FIELDS = ["kind", "tags", "level", "source", "feature", "combines", "lib_version", "repo"] as const;

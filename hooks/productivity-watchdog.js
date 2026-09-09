@@ -31,6 +31,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { isSubagent } = require('./lib/utils');
 
 const MODE = process.env.WATCHDOG_MODE || 'block';
 const FLAG_TTL_MS = 15 * 60 * 1000;
@@ -73,8 +74,8 @@ function main() {
   if (MODE === 'off') process.exit(0);
 
   // Główny agent NIGDY nie jest blokowany — musi móc reagować/odblokować.
+  if (!isSubagent(payload)) process.exit(0);
   const agentId = payload.agent_id;
-  if (!agentId) process.exit(0);
 
   const cwd = payload.cwd || process.cwd();
   const runStateDir = path.join(cwd, '.claude', 'run-state');

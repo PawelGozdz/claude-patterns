@@ -11,7 +11,9 @@ balloon payments, points breakeven, extra payment savings, and refinance analysi
 Part of Layer 6 (Personal Finance) in the finance skills framework.
 """
 
+import argparse
 import math
+import sys
 
 import numpy as np
 
@@ -521,7 +523,7 @@ class LendingAnalysis:
         }
 
 
-if __name__ == "__main__":
+def _demo() -> None:
     # ----------------------------------------------------------------
     # Demo: Lending analysis computations
     # ----------------------------------------------------------------
@@ -624,3 +626,77 @@ if __name__ == "__main__":
     print("\n" + "=" * 60)
     print("Demo complete.")
     print("=" * 60)
+
+
+def _verify() -> int:
+    """Assert that demo computations match the SKILL.md worked examples."""
+    LA = LendingAnalysis
+    failures: list[str] = []
+
+    def check(label: str, actual: float, expected: float, rel_tol: float = 1e-3) -> None:
+        ok = math.isclose(actual, expected, rel_tol=rel_tol)
+        print(f"  {'PASS' if ok else 'FAIL'}: {label}: got {actual:,.2f}, expected {expected:,.2f}")
+        if not ok:
+            failures.append(label)
+
+    print("Verifying against SKILL.md worked examples...")
+
+    # Example 1: $400K, 30-year @ 6.5% vs 15-year @ 5.9%
+    check("Ex1 30-year payment", LA.monthly_payment(400_000, 0.065, 360), 2_528.0)
+    check("Ex1 30-year total interest", LA.total_interest(400_000, 0.065, 360), 510_178.0)
+    check("Ex1 15-year payment", LA.monthly_payment(400_000, 0.059, 180), 3_354.0)
+    check("Ex1 15-year total interest", LA.total_interest(400_000, 0.059, 180), 203_694.0)
+
+    # Example 2: $300K, 30-year @ 6.5%, $200/month extra
+    check("Ex2 base payment", LA.monthly_payment(300_000, 0.065, 360), 1_896.20)
+    check("Ex2 baseline total interest", LA.total_interest(300_000, 0.065, 360), 382_633.0)
+    extra = LA.extra_payment_savings(300_000, 0.065, 360, 200)
+    check("Ex2 payoff months (277)", extra["new_months"], 277, rel_tol=1e-9)
+    check("Ex2 months saved (83)", extra["months_saved"], 83, rel_tol=1e-9)
+    check("Ex2 total interest with extra", extra["new_interest"], 279_185.0)
+    check("Ex2 interest saved", extra["interest_saved"], 103_449.0)
+
+    if failures:
+        print(f"FAIL: {len(failures)} check(s) did not match SKILL.md.")
+        return 1
+    print("PASS: all checks match SKILL.md worked examples.")
+    return 0
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description=(
+            "Lending analysis reference implementation: loan payments, "
+            "amortization, extra-payment savings, LTV/CLTV, DSCR, balloon "
+            "payments, points and refinance breakevens, PMI, and ARM resets."
+        ),
+        epilog=(
+            "Main class:\n"
+            "  LendingAnalysis -- static methods: monthly_payment, total_interest,\n"
+            "    remaining_balance, loan_to_value, combined_ltv,\n"
+            "    debt_service_coverage_ratio, interest_only_payment, balloon_payment,\n"
+            "    points_breakeven, refinance_breakeven, refinance_total_savings,\n"
+            "    extra_payment_savings, amortization_schedule, pmi_cost,\n"
+            "    arm_payment_after_reset\n"
+            "\n"
+            "This file is primarily meant to be imported as a module:\n"
+            "  from lending import LendingAnalysis\n"
+            "\n"
+            "Run with no arguments to print a worked demo."
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument(
+        "--verify",
+        action="store_true",
+        help="recompute the demo figures and assert they match the SKILL.md worked examples",
+    )
+    args = parser.parse_args()
+
+    if args.verify:
+        sys.exit(_verify())
+    _demo()
+
+
+if __name__ == "__main__":
+    main()

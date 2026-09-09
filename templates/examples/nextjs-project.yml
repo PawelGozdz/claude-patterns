@@ -4,7 +4,11 @@
 project:
   name: MyNextApp
   description: "Fullstack web application with Next.js 16 App Router"
-  # Konfiguracja (ADR 0008) — z niej powstaje .claude/config/runtime.yml:
+  # Konfiguracja (ADR 0008) — z niej powstaje .claude/config/runtime.yml.
+  # Blok `nextjs` wnosi wzorce App Routera, panel /analyze (nextjs-architecture-expert
+  # + nextjs-quality-verifier) i overlay agentów/reguł. Warstw NIE wnosi (oś frameworka),
+  # więc /orchestrate jedzie bez podziału na warstwy do czasu, aż powstanie blok osi
+  # architektury dla Next.js.
   stack_blocks: [nextjs]
   # Selektor szablonu CLAUDE.md i hooków, nie konfiguracja doboru wzorców:
   stack_profile: nextjs-app

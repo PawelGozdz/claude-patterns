@@ -11,6 +11,10 @@ premium/discount to NAV, fund overlap analysis, and tax cost ratio.
 Part of Layer 2 (Asset Classes) in the finance skills framework.
 """
 
+import argparse
+import math
+import sys
+
 import numpy as np
 
 
@@ -483,12 +487,22 @@ class TaxEfficiency:
         years : int
             Investment horizon in years.
 
+        Both vehicles grow at (gross_return - expense_ratio) before
+        distribution taxes. The ETF distributes nothing; its gain over the
+        original basis is taxed once at liquidation. The mutual fund
+        distributes ``distribution_rate`` of NAV at each year-end; the
+        distribution is taxed at ``tax_rate`` and the after-tax remainder
+        is reinvested (adding to cost basis). At liquidation the remaining
+        unrealized gain (terminal value minus accumulated basis) is taxed.
+
         Returns
         -------
         dict[str, float]
             Keys: 'etf_pretax_terminal', 'etf_aftertax_terminal'
-            (after liquidation tax), 'mf_aftertax_terminal',
-            'tax_advantage' (dollar benefit of deferral).
+            (after liquidation tax), 'mf_pretax_terminal' (pre-liquidation
+            value), 'mf_cost_basis', 'mf_distribution_taxes_paid',
+            'mf_aftertax_terminal', 'tax_advantage' (after-tax dollar
+            benefit of deferral).
         """
         net_return = gross_return - expense_ratio
 
@@ -497,26 +511,34 @@ class TaxEfficiency:
         etf_gain = etf_pretax - initial_value
         etf_aftertax = etf_pretax - (etf_gain * tax_rate)
 
-        # Mutual fund: annual distributions taxed
-        mf_net = net_return - (distribution_rate * tax_rate)
-        mf_terminal = initial_value * (1.0 + mf_net) ** years
-        # Remaining unrealized gain taxed at sale
-        mf_unrealized = mf_terminal - initial_value
-        mf_aftertax = mf_terminal - (max(mf_unrealized, 0.0) * tax_rate * 0.5)
-        # The 0.5 factor approximates that a portion of gains was already taxed
+        # Mutual fund: year-by-year distributions, taxed and reinvested
+        value = initial_value
+        basis = initial_value
+        distribution_taxes = 0.0
+        for _ in range(years):
+            value *= 1.0 + net_return
+            distribution = distribution_rate * value
+            tax = distribution * tax_rate
+            value -= tax                 # after-tax distribution reinvested
+            basis += distribution - tax  # reinvestment adds to cost basis
+            distribution_taxes += tax
+
+        liquidation_tax = max(value - basis, 0.0) * tax_rate
+        mf_aftertax = value - liquidation_tax
 
         return {
             "etf_pretax_terminal": etf_pretax,
             "etf_aftertax_terminal": etf_aftertax,
+            "mf_pretax_terminal": value,
+            "mf_cost_basis": basis,
+            "mf_distribution_taxes_paid": distribution_taxes,
             "mf_aftertax_terminal": mf_aftertax,
             "tax_advantage": etf_aftertax - mf_aftertax,
         }
 
 
-if __name__ == "__main__":
-    # ----------------------------------------------------------------
-    # Demo: Fund vehicle analysis
-    # ----------------------------------------------------------------
+def _demo() -> None:
+    """Run the demonstration calculations (bare-run default)."""
     np.random.seed(42)
 
     print("=" * 60)
@@ -603,16 +625,20 @@ if __name__ == "__main__":
     print(f"  Shared weight (SPY): {detail['shared_weight_a']:.4f}")
     print(f"  Shared weight (QQQ): {detail['shared_weight_b']:.4f}")
 
-    # --- Tax Efficiency ---
+    # --- Tax Efficiency (Example 2 from SKILL.md) ---
     print("\n--- Tax Efficiency (ETF vs Mutual Fund) ---")
     tax_result = TaxEfficiency.deferred_vs_annual_tax(
         initial_value=100_000, gross_return=0.10,
         expense_ratio=0.0003, distribution_rate=0.02,
         tax_rate=0.20, years=20,
     )
-    print(f"ETF (deferred):  ${tax_result['etf_aftertax_terminal']:,.0f} after-tax")
-    print(f"Mutual fund:     ${tax_result['mf_aftertax_terminal']:,.0f} after-tax")
-    print(f"Tax advantage:   ${tax_result['tax_advantage']:,.0f}")
+    print(f"ETF pre-tax terminal:    ${tax_result['etf_pretax_terminal']:,.0f}")
+    print(f"ETF after-tax terminal:  ${tax_result['etf_aftertax_terminal']:,.0f}")
+    print(f"MF pre-liquidation:      ${tax_result['mf_pretax_terminal']:,.0f}")
+    print(f"MF cost basis:           ${tax_result['mf_cost_basis']:,.0f}")
+    print(f"MF distribution taxes:   ${tax_result['mf_distribution_taxes_paid']:,.0f}")
+    print(f"MF after-tax terminal:   ${tax_result['mf_aftertax_terminal']:,.0f}")
+    print(f"ETF tax advantage:       ${tax_result['tax_advantage']:,.0f}")
 
     tcr = TaxEfficiency.tax_cost_ratio(pretax_return=0.10, aftertax_return=0.092)
     print(f"\nTax cost ratio (10% pretax, 9.2% after-tax): {tcr:.4f} ({tcr*100:.2f}%)")
@@ -620,3 +646,97 @@ if __name__ == "__main__":
     print("\n" + "=" * 60)
     print("Demo complete.")
     print("=" * 60)
+
+
+def _verify() -> None:
+    """Assert demo computations against the SKILL.md worked examples."""
+    checks: list[tuple[str, float, float]] = []
+
+    # SKILL.md Example 1: $100,000, 30 years, 8% gross
+    impact_a = ExpenseAnalysis.fee_impact(
+        initial_value=100_000, gross_return=0.08, expense_ratio=0.0003, years=30,
+    )
+    impact_b = ExpenseAnalysis.fee_impact(
+        initial_value=100_000, gross_return=0.08, expense_ratio=0.0075, years=30,
+    )
+    checks.append(("Example 1 Fund A terminal", impact_a["terminal_value"], 997_914.0))
+    checks.append(("Example 1 Fund B terminal", impact_b["terminal_value"], 816_430.0))
+    checks.append((
+        "Example 1 difference",
+        impact_a["terminal_value"] - impact_b["terminal_value"],
+        181_484.0,
+    ))
+
+    # SKILL.md Example 2: ETF vs mutual fund, $100,000, 20 years
+    tax_result = TaxEfficiency.deferred_vs_annual_tax(
+        initial_value=100_000, gross_return=0.10,
+        expense_ratio=0.0003, distribution_rate=0.02,
+        tax_rate=0.20, years=20,
+    )
+    checks.append(("Example 2 ETF pre-tax", tax_result["etf_pretax_terminal"], 669_090.0))
+    checks.append(("Example 2 ETF after-tax", tax_result["etf_aftertax_terminal"], 555_272.0))
+    checks.append(("Example 2 MF pre-liquidation", tax_result["mf_pretax_terminal"], 617_549.0))
+    checks.append(("Example 2 MF cost basis", tax_result["mf_cost_basis"], 195_554.0))
+    checks.append((
+        "Example 2 MF distribution taxes",
+        tax_result["mf_distribution_taxes_paid"],
+        23_888.0,
+    ))
+    checks.append(("Example 2 MF after-tax", tax_result["mf_aftertax_terminal"], 533_150.0))
+    checks.append(("Example 2 ETF tax advantage", tax_result["tax_advantage"], 22_122.0))
+
+    # Demo tax cost ratio: 1 - 1.092/1.10
+    checks.append((
+        "Demo tax cost ratio",
+        TaxEfficiency.tax_cost_ratio(0.10, 0.092),
+        0.0072727,
+    ))
+
+    failures = 0
+    for name, got, expected in checks:
+        ok = math.isclose(got, expected, rel_tol=1e-4)
+        print(f"{'PASS' if ok else 'FAIL'}: {name}: got {got:,.6g}, expected {expected:,.6g}")
+        failures += 0 if ok else 1
+    if failures:
+        print(f"FAIL: {failures} of {len(checks)} checks failed.")
+        sys.exit(1)
+    print(f"PASS: all {len(checks)} checks passed.")
+
+
+def _build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="fund_vehicles.py",
+        description=(
+            "Fund vehicle analysis reference implementation. Main classes: "
+            "ExpenseAnalysis (fee_impact, compare_funds, breakeven_years), "
+            "TrackingAnalysis (tracking_difference, tracking_error, "
+            "information_ratio), NAVAnalysis (nav_per_share, "
+            "premium_discount, premium_discount_series), FundOverlap "
+            "(overlap_coefficient, overlap_detail), TaxEfficiency "
+            "(tax_cost_ratio, aftertax_return_with_distributions, "
+            "deferred_vs_annual_tax)."
+        ),
+        epilog=(
+            "Primarily intended to be imported as a module: "
+            "from fund_vehicles import ExpenseAnalysis, TrackingAnalysis, "
+            "NAVAnalysis, FundOverlap, TaxEfficiency. "
+            "Run with no arguments to print a demo."
+        ),
+    )
+    parser.add_argument(
+        "--verify",
+        action="store_true",
+        help=(
+            "run the demo computations and assert key outputs match the "
+            "SKILL.md worked examples (exits nonzero on mismatch)"
+        ),
+    )
+    return parser
+
+
+if __name__ == "__main__":
+    args = _build_parser().parse_args()
+    if args.verify:
+        _verify()
+    else:
+        _demo()

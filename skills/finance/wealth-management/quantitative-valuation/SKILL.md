@@ -5,24 +5,6 @@ description: "Estimate intrinsic value of stocks and companies using DCF, divide
 
 # Quantitative Valuation
 
-## Purpose
-Provides frameworks and formulas for estimating the intrinsic value of a stock or company using quantitative models. Covers discounted cash flow (DCF), dividend discount models (DDM), comparable multiples, residual income, and sum-of-the-parts valuation. Enables rigorous, assumption-driven valuation that can be stress-tested through sensitivity analysis.
-
-## Layer
-3 — Valuation
-
-## Direction
-prospective
-
-## When to Use
-- Valuing a stock or company from first principles
-- Building a discounted cash flow (DCF) model
-- Comparing a company's multiples to peers or its own history
-- Estimating intrinsic value using dividend discount models
-- Performing sum-of-the-parts valuation for a conglomerate
-- Running sensitivity analysis on valuation assumptions
-- Screening for undervalued or overvalued securities using relative multiples
-
 ## Core Concepts
 
 ### Discounted Cash Flow (DCF)
@@ -141,9 +123,9 @@ PV of Stage 1 cash flows:
 
 Terminal value (Gordon Growth):
 - TV = $201.1M × 1.03 / (0.10 - 0.03) = $207.2M / 0.07 = $2,959.6M
-- PV of TV = $2,959.6M / 1.10⁵ = $1,837.3M
+- PV of TV = $2,959.6M / 1.10⁵ = $1,837.7M
 
-Enterprise Value = $572.5M + $1,837.3M = $2,409.8M
+Enterprise Value = $572.5M + $1,837.7M = $2,410.1M
 
 Note: Terminal value represents 76% of total value, which is typical but underscores the importance of terminal assumptions.
 
@@ -172,11 +154,22 @@ If the stock trades at $75, it appears undervalued relative to peers (16.7% disc
 - Ignoring dilution from stock-based compensation in per-share value estimates
 
 ## Cross-References
-- **historical-risk** (wealth-management plugin, Layer 1a): historical beta estimation for CAPM inputs
-- **forward-risk** (wealth-management plugin, Layer 1b): cost of equity estimation via CAPM and factor models
-- **financial-statements** (wealth-management plugin, Layer 2): FCF and EBITDA derivation from financials
-- **qualitative-valuation** (wealth-management plugin, Layer 3): complements quantitative models with moat and quality analysis
-- **asset-allocation** (wealth-management plugin, Layer 4): valuation outputs feed into portfolio construction decisions
+- **historical-risk** (wealth-management plugin): historical beta estimation for CAPM inputs
+- **forward-risk** (wealth-management plugin): cost of equity estimation via CAPM and factor models
+- **financial-statements** (wealth-management plugin): FCF and EBITDA derivation from financials
+- **qualitative-valuation** (wealth-management plugin): complements quantitative models with moat and quality analysis
+- **asset-allocation** (wealth-management plugin): valuation outputs feed into portfolio construction decisions
 
-## Reference Implementation
-See `scripts/quantitative_valuation.py` for computational helpers.
+## Running the script
+
+```
+uv run scripts/quantitative_valuation.py
+```
+
+The PEP 723 header resolves the numpy dependency automatically. Alternatively run `python3 scripts/quantitative_valuation.py` after `pip install numpy`.
+
+- Bare run prints a demo covering WACC/CAPM, a two-stage DCF with sensitivity table, dividend discount models, residual income, and comparable multiples.
+- `--verify` re-runs the demo computations and asserts the outputs match this skill's worked examples (prints PASS/FAIL, nonzero exit on mismatch).
+- `--help` lists the available classes.
+
+The file is primarily meant to be imported as a module, e.g. `from quantitative_valuation import DCF, WACC, DividendDiscount, ComparableMultiples`.

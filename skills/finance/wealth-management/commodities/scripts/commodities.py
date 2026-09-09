@@ -11,6 +11,8 @@ detection, and commodity index return decomposition (spot + roll + collateral).
 Part of Layer 2 (Asset Classes) in the finance skills framework.
 """
 
+import argparse
+import sys
 import numpy as np
 
 
@@ -307,7 +309,7 @@ class ReturnDecomposition:
         return float((prices[-1] - prices[0]) / prices[0])
 
 
-if __name__ == "__main__":
+def _demo() -> None:
     # ----------------------------------------------------------------
     # Demo: Commodity analysis on synthetic data
     # ----------------------------------------------------------------
@@ -394,3 +396,58 @@ if __name__ == "__main__":
     print("\n" + "=" * 60)
     print("Demo complete.")
     print("=" * 60)
+
+def _check(failures: list, name: str, actual: float, expected: float, tol: float) -> None:
+    """Record a verification check result."""
+    ok = abs(actual - expected) <= tol
+    status = "PASS" if ok else "FAIL"
+    print(f"  [{status}] {name}: actual={actual:.6g}, expected={expected:.6g}, tol={tol:.2g}")
+    if not ok:
+        failures.append(name)
+
+def _verify() -> None:
+    """Verify key outputs against the SKILL.md worked examples."""
+    failures: list = []
+
+    # SKILL.md Example 1: roll yield in contango ($50 front, $52 next)
+    curve = CurveAnalysis(prices=np.array([50.0, 52.0]), days_between=np.array([30.0]))
+    _check(failures, "Ex1 monthly roll yield", curve.front_roll_yield(), -0.04, 1e-12)
+    _check(failures, "Ex1 annualized roll yield (365/30 days)",
+           curve.annualized_roll_yield(), -0.379472, 1e-5)
+    _check(failures, "Ex1 compounded 12 rolls", (50.0 / 52.0) ** 12 - 1.0, -0.375403, 1e-5)
+
+    # SKILL.md Example 2: total return decomposition
+    decomp = ReturnDecomposition.decompose(spot_begin=70.0, spot_end=77.0,
+                                           roll_yield=-0.06, risk_free_rate=0.05)
+    _check(failures, "Ex2 spot return", decomp["spot_return"], 0.10, 1e-12)
+    _check(failures, "Ex2 total return", decomp["total_return"], 0.09, 1e-12)
+
+    if failures:
+        print(f"\n{len(failures)} check(s) FAILED: {', '.join(failures)}")
+        sys.exit(1)
+    print("\nAll checks passed.")
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description=__doc__.strip().splitlines()[2] if __doc__ else "",
+        epilog=(
+            "Provides: FuturesPricing, CurveAnalysis, ReturnDecomposition. "
+            "For programmatic use, import this module (commodities) instead of running it. "
+            "Bare run executes a demo whose printed values match the SKILL.md worked examples; "
+            "--verify asserts those values and exits nonzero on mismatch."
+        ),
+    )
+    parser.add_argument(
+        "--verify",
+        action="store_true",
+        help="run the verification checks against the SKILL.md worked-example values",
+    )
+    args = parser.parse_args()
+    if args.verify:
+        _verify()
+    else:
+        _demo()
+
+
+if __name__ == "__main__":
+    main()

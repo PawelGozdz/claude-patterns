@@ -5,24 +5,6 @@ description: "Build diversified portfolios using correlation analysis, efficient
 
 # Diversification
 
-## Purpose
-Provides the mathematical foundations and practical frameworks for building diversified portfolios. Covers portfolio variance, correlation effects, the efficient frontier, minimum variance portfolios, risk contributions, and factor-based diversification. Explains why diversification reduces risk and where it fails.
-
-## Layer
-4 — Portfolio Construction
-
-## Direction
-both
-
-## When to Use
-- Understanding why and how diversification reduces portfolio risk
-- Computing portfolio variance and volatility for multi-asset portfolios
-- Constructing the efficient frontier or minimum variance portfolio
-- Analyzing risk contributions and diversification ratios
-- Evaluating whether a portfolio is truly diversified across risk factors
-- Assessing correlation stability and regime-dependent behavior
-- Determining how many assets are needed for adequate diversification
-
 ## Core Concepts
 
 ### Portfolio Variance (2 Assets)
@@ -160,10 +142,18 @@ Interpretation: The portfolio achieves significant diversification — the weigh
 - Using historical correlations without testing sensitivity to regime changes
 
 ## Cross-References
-- **historical-risk** (wealth-management plugin, Layer 1a): volatility, correlation, and systematic vs. idiosyncratic risk foundations
-- **asset-allocation** (wealth-management plugin, Layer 4): diversification principles feed directly into portfolio construction and optimization
-- **rebalancing** (wealth-management plugin, Layer 4): maintaining diversification targets over time through rebalancing
-- **bet-sizing** (wealth-management plugin, Layer 4): position sizing interacts with diversification — concentrated vs. diversified approaches
+- **historical-risk** (wealth-management plugin): volatility, correlation, and systematic vs. idiosyncratic risk foundations
+- **asset-allocation** (wealth-management plugin): diversification principles feed directly into portfolio construction and optimization
+- **rebalancing** (wealth-management plugin): maintaining diversification targets over time through rebalancing
+- **bet-sizing** (wealth-management plugin): position sizing interacts with diversification — concentrated vs. diversified approaches
+- **equity-compensation** (wealth-management plugin): concentrated employer stock from RSUs, options, and ESPPs is a common source of single-stock concentration requiring staged diversification
+- **factor-investing** (wealth-management plugin): diversifying across factor premia (value, momentum, quality) as a layer distinct from asset-class diversification
+## Running the Script
 
-## Reference Implementation
-See `scripts/diversification.py` for computational helpers.
+```bash
+uv run scripts/diversification.py            # run the demo (uses PEP 723 inline deps)
+uv run scripts/diversification.py --verify   # check demo outputs against the worked examples (exit 1 on mismatch)
+python3 scripts/diversification.py            # alternative (requires: pip install numpy)
+```
+
+The demo prints the calculations covered above; its values match the worked examples in this skill. Run `--help` for a list of the classes and functions. For programmatic use, import the module rather than running it — the demo only executes under `python diversification.py`.

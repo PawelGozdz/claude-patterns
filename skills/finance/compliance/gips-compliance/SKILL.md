@@ -1,31 +1,11 @@
 ---
 name: gips-compliance
-description: "Ensure investment firms satisfy CFA Institute GIPS requirements for composite construction, performance calculation, presentation, and verification. Use when the user asks about building composites, time-weighted return calculation, GIPS-compliant presentations, error correction policies, pooled fund reporting, wrap fee or SMA program performance, or GIPS advertising guidelines. Also trigger when users mention 'claiming GIPS compliance', 'composite membership rules', 'terminated portfolio returns', 'gross vs net of fees under GIPS', 'GIPS verification findings', 'can we show this track record to prospects', or ask whether a firm's performance reporting meets GIPS standards."
+description: "Ensure firms claiming GIPS compliance under the CFA Institute Global Investment Performance Standards satisfy requirements for composite construction, performance calculation, presentation, and verification. Use when the user asks about building composites, time-weighted return calculation under GIPS, GIPS Reports and pooled fund reports, error correction policies, wrap fee or SMA program performance under GIPS, GIPS verification, or GIPS advertising guidelines. Also trigger when users mention 'claiming GIPS compliance', 'composite membership rules', 'terminated portfolio returns', 'gross vs net of fees under GIPS', or 'GIPS verification findings'. (For SEC Marketing Rule and FINRA 2210 regulatory compliance of marketing materials, use advertising-compliance.)"
 ---
 
 # GIPS Compliance — Global Investment Performance Standards
 
-## Purpose
-Ensure investment firms claiming compliance with the CFA Institute Global Investment Performance Standards (GIPS) satisfy all requirements for composite construction, performance calculation, presentation, verification, error correction, and advertising. This skill covers the 2020 edition of the GIPS standards (effective January 1, 2020) and addresses the practical application of GIPS requirements to traditional composites, pooled funds, wrap fee/SMA programs, and advertising materials.
-
-## Layer
-9 — Compliance & Regulatory Guidance
-
-## Direction
-prospective
-
-## When to Use
-- Constructing or reviewing composites for GIPS compliance
-- Calculating composite returns using time-weighted return methods
-- Preparing GIPS-compliant presentations for prospective clients
-- Evaluating whether a firm meets the prerequisites to claim GIPS compliance
-- Designing error correction policies and materiality thresholds for GIPS-compliant firms
-- Assessing whether verification is appropriate and selecting a verifier
-- Presenting performance for wrap fee, SMA, or overlay programs under GIPS
-- Preparing GIPS-compliant pooled fund reports for limited-distribution or broad-distribution pooled funds
-- Drafting GIPS-compliant advertisements
-- Advising small firms on the practicality and requirements of GIPS adoption
-- Responding to GIPS verification findings or correcting composite construction errors
+Regulatory status current as of June 2026 — verify effective dates, dollar thresholds, and pending rulemakings against current SEC/FINRA/FinCEN and CFA Institute sources before advising.
 
 ## Core Concepts
 
@@ -89,19 +69,7 @@ Firms must present at least one of gross-of-fees or net-of-fees returns in GIPS-
 ### Presentation and Reporting Requirements
 GIPS-compliant presentations (also called "GIPS Reports" in the 2020 edition) are the primary vehicle through which firms communicate composite performance to prospective clients. The presentation requirements are detailed and specific.
 
-**Required elements of a GIPS-compliant presentation:**
-
-1. **Composite description** — a general description of the investment strategy, including the type of securities, the investment approach, and the benchmark used.
-2. **Benchmark description and returns** — the benchmark must be appropriate to the composite's strategy. Benchmark returns must be presented for the same periods as composite returns. If no appropriate benchmark exists, the firm must disclose this and explain why.
-3. **Number of portfolios in the composite** — reported as of each annual period-end. If the composite contains five or fewer portfolios, the firm may choose not to disclose the exact number (to protect client confidentiality) but must state that the number is five or fewer.
-4. **Composite assets and total firm assets** — reported as of each annual period-end. This allows prospective clients to assess the size and significance of the composite relative to the firm.
-5. **Internal dispersion** — a measure of the spread of individual portfolio returns within the composite (e.g., high-low range, standard deviation of portfolio returns). Required when the composite contains six or more portfolios for the full year.
-6. **Three-year annualized ex-post standard deviation** — calculated using 36 monthly returns for both the composite and the benchmark. Required as of each annual period-end. If the firm believes standard deviation is inappropriate (e.g., for private equity or illiquid strategies), an alternative risk measure may be presented with justification.
-7. **Annual returns** — composite and benchmark returns for each year, with a minimum of five years of annual performance (or since composite inception if the composite has been in existence for less than five years), building to a minimum of 10 years as the composite ages.
-8. **Composite creation date** — the date the composite was established (which may differ from the composite inception date, which is the date of the first portfolio return in the composite).
-9. **Fee schedule** — the current advisory fee schedule applicable to the composite strategy.
-10. **Statement of compliance** — the specific GIPS compliance statement: "[ Firm Name ] claims compliance with the Global Investment Performance Standards (GIPS) and has prepared and presented this report in compliance with the GIPS standards. [ Firm Name ] has not been independently verified." (If verified, the statement is modified accordingly.)
-11. **Availability of composite list** — a statement that the firm's complete list and description of composites is available upon request.
+**Required elements of a GIPS-compliant presentation:** there are eleven required elements (composite description; benchmark description and returns; number of portfolios; composite and total firm assets; internal dispersion; three-year ex-post standard deviation; annual returns; composite creation date; fee schedule; the prescribed compliance statement; and availability of the composite list). Load `references/presentation-elements.md` for the full element-by-element detail when drafting or reviewing a GIPS Report.
 
 **Complete annual periods.** Firms must present complete annual performance (January 1 through December 31, or the firm's fiscal year). Firms cannot present only cherry-picked favorable time periods. Partial-year returns are presented only for the composite's inception year or the current year-to-date (if the presentation is prepared mid-year).
 
@@ -247,7 +215,7 @@ GIPS 2020 includes specific provisions for advertisements — abbreviated commun
 
 4. **Firm-wide compliance.** Even with a single strategy, the firm must claim compliance on a firm-wide basis. If the firm manages any other portfolios (e.g., the founder's personal account managed as part of the firm's business), those must be addressed — either included in the composite (if discretionary and fee-paying), excluded with documentation, or defined outside the firm's scope.
 
-5. **Verification decision.** Verification is optional but increasingly expected by institutional allocators. For a small firm seeking its first institutional mandates, verification substantially enhances credibility. The cost of verification for a small, single-composite firm is typically modest (often $5,000-$15,000 annually, depending on the verifier and the firm's complexity). Given the firm's goal of pursuing institutional business, verification is a worthwhile investment.
+5. **Verification decision.** Verification is optional but increasingly expected by institutional allocators. For a small firm seeking its first institutional mandates, verification substantially enhances credibility. The cost of verification for a small, single-composite firm is typically modest (roughly $5,000-$15,000 annually as of mid-2020s pricing — obtain current quotes, as fees vary by verifier and firm complexity). Given the firm's goal of pursuing institutional business, verification is a worthwhile investment.
 
 6. **Operational requirements.** The firm must maintain: (a) written GIPS compliance policies and procedures; (b) portfolio valuations that meet GIPS standards (actual valuations, valued on dates of large cash flows); (c) documentation of composite membership decisions; (d) error correction policies with defined materiality thresholds; (e) a complete list and description of composites; (f) records supporting all performance calculations.
 
@@ -271,8 +239,8 @@ GIPS 2020 includes specific provisions for advertisements — abbreviated commun
 - Presenting GIPS-compliant advertisements without the required elements (firm definition, compliance statement, benchmark, standardized-period returns).
 
 ## Cross-References
-- **performance-metrics** (Layer 1a): GIPS requires time-weighted return calculation consistent with the TWR methods defined in the performance-metrics skill; composite return accuracy depends on correct application of Modified Dietz or true daily valuation methods.
-- **performance-attribution** (Layer 5): Attribution analysis presented alongside GIPS-compliant reports must be labeled as supplemental information and cannot contradict or be inconsistent with the reported composite returns.
-- **performance-reporting** (Layer 8): GIPS constrains how performance can be presented in client and prospective-client reports, including required elements, standardized time periods, and the prohibition on cherry-picked performance.
-- **advertising-compliance** (Layer 9): GIPS advertising guidelines layer on top of SEC Marketing Rule and FINRA Rule 2210 requirements; firms subject to both must comply with the more restrictive standard for each element.
-- **fee-disclosure** (Layer 9): GIPS requires fee schedule disclosure in compliant presentations and mandates clear labeling of gross-of-fees versus net-of-fees returns, consistent with the broader fee transparency requirements covered in the fee-disclosure skill.
+- **performance-metrics** (wealth-management plugin): GIPS requires time-weighted return calculation consistent with the TWR methods defined in the performance-metrics skill; composite return accuracy depends on correct application of Modified Dietz or true daily valuation methods.
+- **performance-attribution** (wealth-management plugin): Attribution analysis presented alongside GIPS-compliant reports must be labeled as supplemental information and cannot contradict or be inconsistent with the reported composite returns.
+- **performance-reporting** (wealth-management plugin): GIPS constrains how performance can be presented in client and prospective-client reports, including required elements, standardized time periods, and the prohibition on cherry-picked performance.
+- **advertising-compliance** (compliance plugin): GIPS advertising guidelines layer on top of SEC Marketing Rule and FINRA Rule 2210 requirements; firms subject to both must comply with the more restrictive standard for each element.
+- **fee-disclosure** (compliance plugin): GIPS requires fee schedule disclosure in compliant presentations and mandates clear labeling of gross-of-fees versus net-of-fees returns, consistent with the broader fee transparency requirements covered in the fee-disclosure skill.

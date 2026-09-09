@@ -1,6 +1,8 @@
 # DDD Application Services Reference
 
 **Tags**: "api:app"
+**Layer**: Application
+**Status**: production
 
 **Purpose**: Orchestration layer between API and domain
 **Audience**: domain-application-implementer

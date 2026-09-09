@@ -5,25 +5,6 @@ description: "Analyze digital assets including cryptocurrency fundamentals, bloc
 
 # Digital Assets
 
-## Purpose
-Analyze digital assets including cryptocurrency fundamentals, blockchain mechanics, DeFi protocols, staking yields, and on-chain metrics. This skill covers the unique valuation challenges, risk characteristics, and technical mechanics of the digital asset ecosystem.
-
-## Layer
-2 — Asset Classes
-
-## Direction
-both
-
-## When to Use
-- User asks about cryptocurrency analysis or crypto portfolio allocation
-- User asks about blockchain mechanics, consensus mechanisms (PoW, PoS)
-- User asks about DeFi protocols, lending, or decentralized exchanges
-- User asks about staking yields or validator economics
-- User asks about on-chain metrics (NVT, active addresses, hash rate)
-- User asks about stablecoin types or mechanisms
-- User asks about impermanent loss in liquidity pools
-- User asks about digital asset custody or regulatory considerations
-
 ## Core Concepts
 
 ### Blockchain Fundamentals
@@ -35,7 +16,7 @@ A distributed ledger maintained by a network of nodes. Transactions are grouped 
 **Proof of Stake (PoS):** Validators lock up tokens as collateral ("stake"). Block proposers are selected based on stake weight. Slashing penalizes malicious behavior. Far more energy-efficient than PoW. Ethereum transitioned to PoS in September 2022.
 
 ### Bitcoin
-Fixed supply of 21 million coins, enforced by protocol rules. Block reward halves approximately every 4 years (halving cycle), reducing new supply issuance. Current block reward is 3.125 BTC (after April 2024 halving). Mining reward = block reward + transaction fees. Scarcity narrative drives the "digital gold" thesis.
+Fixed supply of 21 million coins, enforced by protocol rules. Block reward halves approximately every 4 years (halving cycle), reducing new supply issuance. The block reward is 3.125 BTC following the April 2024 halving (next halving expected ~2028, dropping to 1.5625 BTC). Mining reward = block reward + transaction fees. Scarcity narrative drives the "digital gold" thesis.
 
 ### Ethereum
 The leading smart contract platform. The Ethereum Virtual Machine (EVM) executes arbitrary programs (smart contracts). Gas fees compensate validators for computation. EIP-1559 introduced a base fee that is burned (destroyed), making ETH potentially deflationary when network usage is high. The merge to PoS (Sept 2022) reduced energy usage by ~99.95%.
@@ -132,7 +113,7 @@ The LP's position is worth 5.72% less than if they had simply held the tokens. I
 - Comparing crypto "yields" to traditional fixed income — very different risk profiles; crypto yields compensate for smart contract risk, impermanent loss, token price volatility, and regulatory uncertainty
 
 ## Cross-References
-- **historical-risk** (wealth-management plugin, Layer 1a): volatility and risk measurement (crypto exhibits extreme volatility)
-- **currencies-and-fx** (wealth-management plugin, Layer 2): stablecoin and crypto-fiat exchange dynamics
-- **alternatives** (wealth-management plugin, Layer 2): crypto as an alternative asset class
-- **tax-efficiency** (wealth-management plugin, Layer 5): cryptocurrency tax reporting and optimization
+- **historical-risk** (wealth-management plugin): volatility and risk measurement (crypto exhibits extreme volatility)
+- **currencies-and-fx** (wealth-management plugin): stablecoin and crypto-fiat exchange dynamics
+- **alternatives** (wealth-management plugin): crypto as an alternative asset class
+- **tax-efficiency** (wealth-management plugin): cryptocurrency tax reporting and optimization

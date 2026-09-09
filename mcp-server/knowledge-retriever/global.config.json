@@ -22,6 +22,11 @@
     "policies/05-event-driven-policy.ts": "medium",
     "policies/06-retry-policy.ts": "medium",
     "policies/07-cached-policy.ts": "complex",
-    "policies/08-temporal-policy.ts": "complex"
+    "policies/08-temporal-policy.ts": "complex",
+    "policies/09-caching-factory-preset.ts": "medium",
+    "policies/10-retry-factory-preset.ts": "medium",
+    "policies/11-temporal-factory-preset.ts": "medium",
+    "policies/12-cache-metrics.ts": "medium",
+    "policies/13-composed-enriched-policies.ts": "complex"
   }
 }

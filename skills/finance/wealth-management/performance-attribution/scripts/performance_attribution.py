@@ -12,6 +12,10 @@ attribution, and multi-period geometric linking (Carino method).
 Part of Layer 5 (Policy & Planning) in the finance skills framework.
 """
 
+import argparse
+import math
+import sys
+
 import numpy as np
 
 
@@ -440,7 +444,8 @@ class MultiPeriodLinker:
         }
 
 
-if __name__ == "__main__":
+def run_demo() -> None:
+    """Run the demonstration suite (default when executed with no arguments)."""
     # ----------------------------------------------------------------
     # Demo 1: Brinson-Fachler attribution (matches SKILL.md Example 1)
     # ----------------------------------------------------------------
@@ -576,3 +581,117 @@ if __name__ == "__main__":
     print("\n" + "=" * 60)
     print("Demo complete.")
     print("=" * 60)
+
+
+def run_verify() -> int:
+    """Assert the demo outputs against the SKILL.md worked-example numbers.
+
+    Returns
+    -------
+    int
+        0 if all checks pass, 1 otherwise.
+    """
+    failures = 0
+
+    def check(name: str, actual: float, expected: float,
+              rel_tol: float = 1e-6, abs_tol: float = 1e-9) -> None:
+        nonlocal failures
+        ok = math.isclose(actual, expected, rel_tol=rel_tol, abs_tol=abs_tol)
+        status = "PASS" if ok else "FAIL"
+        print(f"[{status}] {name}: actual={actual:.10g} expected={expected:.10g}")
+        if not ok:
+            failures += 1
+
+    # SKILL.md Example 1: Brinson-Fachler attribution (Tech / Healthcare)
+    bf = BrinsonFachler(
+        portfolio_weights=np.array([0.35, 0.65]),
+        benchmark_weights=np.array([0.25, 0.75]),
+        portfolio_returns=np.array([0.15, 0.08]),
+        benchmark_returns=np.array([0.12, 0.06]),
+        sector_names=["Tech", "Healthcare"],
+    )
+    result = bf.summary()
+    check("SKILL.md Ex1 portfolio return", result["portfolio_return"], 0.1045)
+    check("SKILL.md Ex1 benchmark return", result["benchmark_return"], 0.0750)
+    check("SKILL.md Ex1 total active return", result["total_active_return"],
+          0.0295)
+    check("SKILL.md Ex1 total allocation", result["total_allocation"], 0.0060)
+    check("SKILL.md Ex1 total selection", result["total_selection"], 0.0225)
+    check("SKILL.md Ex1 total interaction", result["total_interaction"],
+          0.0010)
+    tech, health = result["sectors"]
+    check("SKILL.md Ex1 Tech allocation", tech["allocation"], 0.0045)
+    check("SKILL.md Ex1 Tech selection", tech["selection"], 0.0075)
+    check("SKILL.md Ex1 Tech interaction", tech["interaction"], 0.0030)
+    check("SKILL.md Ex1 Healthcare allocation", health["allocation"], 0.0015)
+    check("SKILL.md Ex1 Healthcare selection", health["selection"], 0.0150)
+    check("SKILL.md Ex1 Healthcare interaction", health["interaction"],
+          -0.0020)
+
+    # SKILL.md Example 2: factor contributions with given betas
+    # (single-period factor returns; contributions = beta_k * F_k)
+    fa = FactorAttribution(
+        portfolio_returns=np.array([0.07]),
+        factor_returns=np.array([[0.05, 0.02, -0.01]]),
+        factor_names=["MKT", "SMB", "HML"],
+    )
+    contributions = fa.factor_contributions(betas=np.array([1.1, 0.3, -0.2]))
+    check("SKILL.md Ex2 MKT contribution", float(contributions[0]), 0.0550)
+    check("SKILL.md Ex2 SMB contribution", float(contributions[1]), 0.0060)
+    check("SKILL.md Ex2 HML contribution", float(contributions[2]), 0.0020)
+    total_explained = float(np.sum(contributions))
+    check("SKILL.md Ex2 factor-explained total", total_explained, 0.0630)
+    check("SKILL.md Ex2 alpha", 0.07 - total_explained, 0.0070)
+
+    # Demo 3: multi-period linking inputs (deterministic active returns)
+    q_port = np.array([0.035, -0.012, 0.048, 0.021])
+    q_bench = np.array([0.028, -0.008, 0.040, 0.015])
+    linker = MultiPeriodLinker(
+        portfolio_returns=q_port,
+        benchmark_returns=q_bench,
+        allocation_effects=np.array([0.003, -0.001, 0.004, 0.002]),
+        selection_effects=np.array([0.003, -0.002, 0.003, 0.003]),
+        interaction_effects=np.array([0.001, -0.001, 0.001, 0.001]),
+    )
+    check("Demo 3 geometric active return", linker.geometric_active_return(),
+          0.0164362629)
+    check("Demo 3 arithmetic active return", float(np.sum(q_port - q_bench)),
+          0.0170)
+
+    if failures:
+        print(f"\nFAIL: {failures} check(s) did not match expected values.")
+        return 1
+    print("\nPASS: all checks matched expected values.")
+    return 0
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description=(
+            "Performance attribution calculations: Brinson-Fachler "
+            "allocation/selection/interaction effects (BrinsonFachler), "
+            "OLS factor-based attribution (FactorAttribution), and "
+            "multi-period Carino linking (MultiPeriodLinker)."
+        ),
+        epilog=(
+            "Run with no arguments to print the demo suite. "
+            "Import as a module: "
+            "from performance_attribution import BrinsonFachler, "
+            "FactorAttribution, MultiPeriodLinker"
+        ),
+    )
+    parser.add_argument(
+        "--verify",
+        action="store_true",
+        help="assert demo outputs against the SKILL.md worked-example "
+             "numbers; exits nonzero on mismatch",
+    )
+    args = parser.parse_args()
+
+    if args.verify:
+        sys.exit(run_verify())
+    run_demo()
+
+
+if __name__ == "__main__":
+    main()

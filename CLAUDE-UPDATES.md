@@ -1,5 +1,9 @@
 # Claude Updates — Last Scan
 
+> **Stale.** Last checked 2026-04-24 — over four months ago as of 2026-09-07.
+> Refresh with `/claude-updates` before trusting anything below as current;
+> model deprecations in particular age badly.
+
 **Last scanned**: 2026-04-24
 **Last entry seen**: 2026-04-23 — Memory for Claude Managed Agents (public beta)
 

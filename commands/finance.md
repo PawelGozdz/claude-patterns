@@ -23,6 +23,12 @@ disallowedTools: Write, Edit, MultiEdit, Bash, NotebookEdit
 **ZERO IMPLEMENTATION** — coordinates finance analysis through the
 `@finance-strategist` agent and the 84 skills in `skills/finance/`.
 
+> **Narzędzia**: ten koordynator sam nie uruchamia niczego w powłoce — stąd `Bash`
+> w `disallowedTools`. Zakaz dotyczy WYŁĄCZNIE tej komendy i **nie propaguje się do
+> subagentów**: `@finance-strategist` ma własny zestaw narzędzi ze swojej definicji, `Bash`
+> włącznie, i to on uruchamia zvendorowane skrypty `scripts/*.py`. Nie usuwaj `Bash`
+> z agenta „dla spójności" — złamiesz obliczenia numpy/scipy w skillach finansowych.
+
 ## What This Does
 
 1. Reads the project finance context — `.agents/finance-context.md`, a w drugiej

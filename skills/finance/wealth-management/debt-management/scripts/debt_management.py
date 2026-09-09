@@ -11,6 +11,8 @@ refinancing breakeven, debt-to-income ratios, and opportunity cost analysis.
 Part of Layer 6 (Personal Finance) in the finance skills framework.
 """
 
+import argparse
+import sys
 import math
 from dataclasses import dataclass
 
@@ -328,7 +330,9 @@ class DebtManagement:
         rates = {d.name: d.apr / 12.0 for d in self.debts}
         minimums = {d.name: d.minimum_payment for d in self.debts}
         interest_paid = {d.name: 0.0 for d in self.debts}
+        paid_off: set[str] = set()
         payoff_order: list[dict] = []
+        total_paid = 0.0
         month = 0
         max_months = 1200  # safety limit (100 years)
 
@@ -349,14 +353,22 @@ class DebtManagement:
                 interest_paid[name] += interest
                 balances[name] += interest
 
-            # Pay minimums first
-            freed_payment = 0.0
+            # Freed minimums from already-paid-off debts snowball into the
+            # extra payment every month for the rest of the simulation.
+            extra_available = self.extra_payment + sum(
+                minimums[name] for name in paid_off
+            )
+
+            # Pay minimums on active debts
             for name in list(active):
                 pay = min(minimums[name], balances[name])
                 balances[name] -= pay
+                total_paid += pay
                 if balances[name] <= 0.005:
-                    freed_payment += minimums[name] - pay
+                    # Unused portion of this debt's minimum is freed this month
+                    extra_available += minimums[name] - pay
                     balances[name] = 0.0
+                    paid_off.add(name)
                     payoff_order.append(
                         {
                             "name": name,
@@ -365,8 +377,7 @@ class DebtManagement:
                         }
                     )
 
-            # Apply extra payment + freed minimums to priority debt
-            extra_available = self.extra_payment + freed_payment
+            # Apply extra payment + freed minimums to priority debt(s)
             # Recalculate active after minimum payments
             active = [name for name in balances if balances[name] > 0.005]
             if strategy == "avalanche":
@@ -379,9 +390,11 @@ class DebtManagement:
                     break
                 apply = min(extra_available, balances[name])
                 balances[name] -= apply
+                total_paid += apply
                 extra_available -= apply
                 if balances[name] <= 0.005:
                     balances[name] = 0.0
+                    paid_off.add(name)
                     payoff_order.append(
                         {
                             "name": name,
@@ -391,8 +404,6 @@ class DebtManagement:
                     )
 
         total_interest = sum(interest_paid.values())
-        total_minimums = sum(d.minimum_payment for d in self.debts)
-        total_paid = month * (total_minimums + self.extra_payment)
 
         return {
             "total_months": month,
@@ -422,7 +433,7 @@ class DebtManagement:
         }
 
 
-if __name__ == "__main__":
+def _demo() -> None:
     # ----------------------------------------------------------------
     # Demo: Debt management computations
     # ----------------------------------------------------------------
@@ -502,3 +513,69 @@ if __name__ == "__main__":
     print("\n" + "=" * 60)
     print("Demo complete.")
     print("=" * 60)
+
+def _check(failures: list, name: str, actual: float, expected: float, tol: float) -> None:
+    """Record a verification check result."""
+    ok = abs(actual - expected) <= tol
+    status = "PASS" if ok else "FAIL"
+    print(f"  [{status}] {name}: actual={actual:.6g}, expected={expected:.6g}, tol={tol:.2g}")
+    if not ok:
+        failures.append(name)
+
+def _verify() -> None:
+    """Verify key outputs against the SKILL.md worked examples."""
+    failures: list = []
+
+    # SKILL.md Example 1: avalanche vs snowball
+    debts = [
+        Debt("Credit Card", 5000, 0.22, 100),
+        Debt("Student Loan", 12000, 0.06, 200),
+        Debt("Personal Loan", 3000, 0.15, 75),
+    ]
+    dm = DebtManagement(debts, extra_payment=500)
+    av = dm.payoff_avalanche()
+    sb = dm.payoff_snowball()
+    _check(failures, "Ex1 avalanche months", av["total_months"], 26, 0)
+    _check(failures, "Ex1 avalanche interest", av["total_interest"], 1945.92, 1.0)
+    _check(failures, "Ex1 avalanche total paid = principal + interest",
+           av["total_paid"], 20000 + av["total_interest"], 0.5)
+    _check(failures, "Ex1 avalanche first payoff (CC) month",
+           av["payoff_order"][0]["month_paid_off"], 10, 0)
+    _check(failures, "Ex1 snowball months", sb["total_months"], 26, 0)
+    _check(failures, "Ex1 snowball interest", sb["total_interest"], 2104.35, 1.0)
+    _check(failures, "Ex1 snowball first payoff (PL) month",
+           sb["payoff_order"][0]["month_paid_off"], 6, 0)
+
+    # SKILL.md Example 2: refinance breakeven
+    _check(failures, "Ex2 refinance breakeven months",
+           DebtManagement.refinance_breakeven(6000, 2028, 1838), 31.58, 0.01)
+
+    if failures:
+        print(f"\n{len(failures)} check(s) FAILED: {', '.join(failures)}")
+        sys.exit(1)
+    print("\nAll checks passed.")
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description=__doc__.strip().splitlines()[2] if __doc__ else "",
+        epilog=(
+            "Provides: Debt, DebtManagement. "
+            "For programmatic use, import this module (debt_management) instead of running it. "
+            "Bare run executes a demo whose printed values match the SKILL.md worked examples; "
+            "--verify asserts those values and exits nonzero on mismatch."
+        ),
+    )
+    parser.add_argument(
+        "--verify",
+        action="store_true",
+        help="run the verification checks against the SKILL.md worked-example values",
+    )
+    args = parser.parse_args()
+    if args.verify:
+        _verify()
+    else:
+        _demo()
+
+
+if __name__ == "__main__":
+    main()

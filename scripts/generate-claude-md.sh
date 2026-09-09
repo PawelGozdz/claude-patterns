@@ -27,33 +27,24 @@ source "$SCRIPT_DIR/lib/common.sh"
 
 # --- Helpers ---
 
-# Extract a simple scalar value from YAML (flat keys only)
+# Odczyt project.yml — jeden parser dla wszystkich skryptów: scripts/lib/project-yml.mjs
+#
+# Wcześniej ta kopia grep/sed ucinała komentarz inline, a bliźniacza kopia w
+# setup-project.sh wciągała go do wartości — ten sam plik dawał dwie różne odpowiedzi
+# zależnie od tego, który skrypt akurat pytał (K65). Komentarze i cudzysłowy zdejmuje
+# teraz parser YAML, nie łańcuch sedów.
+#
+# `|| true` — parser kończy się kodem 1, gdy klucza nie ma (pole opcjonalne); pod
+# `set -e` nonzero zabiłby `VAR=$(yml_get ...)`.
+
 # Usage: yml_get "project.name"
 yml_get() {
-  local key="$1"
-  local section="${key%%.*}"
-  local field="${key#*.}"
-
-  # `|| true` na końcu: brak dopasowania w grep (klucz opcjonalny, nieobecny w tym
-  # project.yml) jest normalnym wynikiem "pusty string", nie błędem — pod pipefail
-  # nonzero z grep zabijałby całą funkcję przez set -e na `VAR=$(yml_get ...)`.
-  if [[ "$section" == "$field" ]]; then
-    # Top-level key
-    { grep "^${key}:" "$PROJECT_YML" | head -1 | sed 's/^[^:]*: *//' | sed 's/^"//' | sed 's/"$//'; } || true
-  else
-    # Nested key: find section, then field within indented block
-    { sed -n "/^${section}:/,/^[a-z]/p" "$PROJECT_YML" | grep "^  ${field}:" | head -1 | sed 's/^[^:]*: *//' | sed 's/^"//' | sed 's/"$//'; } || true
-  fi
+  node "$SCRIPT_DIR/lib/project-yml.mjs" "$PROJECT_YML" get "$1" || true
 }
 
-# Extract list items (lines starting with "  - " under a section)
+# Usage: yml_list "skills"
 yml_list() {
-  local section="$1"
-  # Komentarz po wartości (`- docs/x.md   # opis`) był dotąd wciągany do wartości —
-  # w CLAUDE.md dawało to linki z opisem w środku ścieżki. Ucinamy go tutaj, raz.
-  # `|| true` — sekcja bez elementów listy (albo nieobecna) to normalny pusty wynik.
-  { sed -n "/^${section}:/,/^[a-z]/p" "$PROJECT_YML" | grep '^  - ' \
-    | sed 's/^  - //' | sed 's/[[:space:]]*#.*$//' | sed 's/^"//' | sed 's/"$//' | sed 's/[[:space:]]*$//'; } || true
+  node "$SCRIPT_DIR/lib/project-yml.mjs" "$PROJECT_YML" list "$1" || true
 }
 
 # --- Validate ---
@@ -297,11 +288,41 @@ CONTENT="${CONTENT//%%PROJECT_NAME%%/$PROJECT_NAME}"
 CONTENT="${CONTENT//%%PROJECT_DESCRIPTION%%/$PROJECT_DESC}"
 CONTENT="${CONTENT//%%STACK%%/$STACK}"
 CONTENT="${CONTENT//%%TESTING%%/$TESTING}"
+RUNTIME_YML="$PROJECT_DIR/.claude/config/runtime.yml"
+
+# --- Reguły DDD, warunkowo (K111) ---
+#
+# Ta sekcja stała bezwarunkowo w ~/.claude/CLAUDE.md, linijkę nad "nie zakładaj
+# NestJS/TypeScript" — więc dostawał ją każdy projekt, także Flutter, Python
+# i docs-only. Reguły należą do bloku, nie do globalnej konfiguracji: wchodzą
+# tylko wtedy, gdy kompozycja projektu zawiera `ddd/core`.
+#
+# Źródłem prawdy jest rozwinięta lista z runtime.yml (materializacja rozwija
+# alias `ddd` → ddd/core, ddd/layers, ...). Kiedy runtime.yml jeszcze nie
+# istnieje — pierwszy setup — czytamy project.yml i honorujemy alias.
+DDD_RULES_SECTION=""
+# Prawdziwy parser, nie awk: materializacja zapisuje `stack_blocks` w stylu
+# flow (`[nestjs, ddd/core, ...]`), a project.yml bywa w stylu blokowym —
+# jedno wyrażenie regularne nie obsłuży obu, a cicha pomyłka daje CLAUDE.md
+# bez reguł tam, gdzie mają obowiązywać.
+DDD_BLOCKS=""
+if [[ -f "$RUNTIME_YML" ]]; then
+  DDD_BLOCKS=$(node "$SCRIPT_DIR/lib/project-yml.mjs" "$RUNTIME_YML" list stack_blocks || true)
+fi
+if [[ -z "$DDD_BLOCKS" ]]; then
+  DDD_BLOCKS=$(yml_list "project.stack_blocks")
+fi
+if grep -qxE 'ddd(/core)?' <<<"$DDD_BLOCKS"; then
+  DDD_TEMPLATE="$TEMPLATES_DIR/ddd-core-rules.md"
+  [[ -f "$DDD_TEMPLATE" ]] && DDD_RULES_SECTION="$(cat "$DDD_TEMPLATE")
+
+---"
+fi
+
 # --- Taksonomia tagów z runtime.yml (ADR 0008) ---
 # Słownik żyje w claude-patterns (rdzeń) + .claude/taxonomy.yml (projekt) i jest scalany
 # do runtime.yml. Tutaj trafia do CLAUDE.md, bo inaczej agent pracujący w repo projektu
 # nie ma skąd wiedzieć, że `api:geo:radius` jest poprawnym tagiem, a `geo-radius` nie.
-RUNTIME_YML="$PROJECT_DIR/.claude/config/runtime.yml"
 TAXONOMY_SECTION=""
 if [[ -f "$RUNTIME_YML" ]] && grep -q "^taxonomy:" "$RUNTIME_YML"; then
   TAX_STACKS=$(awk '/^taxonomy:/{t=1} t&&/^  stacks:/{s=1;next} s&&/^    - /{gsub(/^    - | #.*/,"");printf "%s%s", sep, $0; sep=", "} s&&/^  [a-z]/{exit}' "$RUNTIME_YML")
@@ -325,6 +346,7 @@ Levels 1 and 2 are closed: a value outside the table is an error, not a new tag.
 TAXEOF
 )
 fi
+CONTENT="${CONTENT//%%DDD_RULES%%/$DDD_RULES_SECTION}"
 CONTENT="${CONTENT//%%TAXONOMY%%/$TAXONOMY_SECTION}"
 CONTENT="${CONTENT//%%CMD_ANALYZE%%/${CMD_ANALYZE:-/analyze}}"
 CONTENT="${CONTENT//%%CMD_ORCHESTRATE%%/$CMD_ORCH}"

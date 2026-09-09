@@ -1,6 +1,8 @@
 # Mapper Pattern
 
 **Tags**: "api:data-access:mapper"
+**Level**: exhaustive
+**Layer**: Infrastructure
 
 ## 🎯 Problem
 
@@ -809,7 +811,7 @@ async toPersistence(
 
 ---
 
-## 🎯 When to Use
+## When to Use
 
 ### Use Mapper When
 

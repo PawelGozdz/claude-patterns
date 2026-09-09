@@ -1,28 +1,11 @@
 ---
 name: fee-disclosure
-description: "Guide fee disclosure compliance across advisory, brokerage, fund, and retirement plan contexts. Use when the user asks about Form ADV Item 5 fee schedules, prospectus fee table format, Reg BI cost disclosure obligations, 12b-1 fee transparency, revenue sharing arrangements, wrap fee program costs, or ERISA 408(b)(2) service provider fee disclosure. Also trigger when users mention 'hidden fees', 'total cost to the client', 'are we disclosing all layers of fees', 'expense ratio comparison', 'fee billing in advance vs arrears', 'share class selection', 'indirect compensation', or ask whether fee disclosures are complete and compliant."
+description: "Evaluate whether the substance of fee and cost disclosures is complete, accurate, and not misleading across advisory, brokerage, fund, and retirement plan contexts. Use when the user asks whether Form ADV Item 5 fee content is adequate, prospectus fee table format, Reg BI cost disclosure content, 12b-1 fee transparency, revenue sharing arrangements, wrap fee program cost-effectiveness, or ERISA 408(b)(2)/404a-5 fee disclosure content. Also trigger when users mention 'hidden fees', 'total cost to the client', 'are we disclosing all layers of fees', 'expense ratio comparison', 'fee billing in advance vs arrears', 'share class selection', or 'indirect compensation'. (For which disclosure documents must exist and when they are delivered, use client-disclosures.)"
 ---
 
 # Fee Disclosure
 
-## Purpose
-Guide the understanding and application of fee disclosure requirements across the advisory and brokerage landscape. This skill covers RIA fee disclosure (Form ADV), fund-level fee tables, Reg BI cost obligations, wrap fee programs, ERISA fee transparency, and revenue sharing — enabling a user or agent to identify where fee disclosure gaps or violations may arise.
-
-## Layer
-9 — Compliance & Regulatory Guidance
-
-## Direction
-prospective
-
-## When to Use
-- Designing fee schedules and fee disclosure documents for advisory firms
-- Reviewing Form ADV Part 2A Item 5 (Fees and Compensation) for completeness
-- Evaluating fund prospectus fee tables for compliance with SEC format requirements
-- Assessing Reg BI disclosure obligations related to costs and compensation
-- Analyzing wrap fee programs for cost-effectiveness and disclosure adequacy
-- Reviewing ERISA fee disclosures for retirement plan service providers
-- Evaluating revenue sharing arrangements and their disclosure requirements
-- Identifying hidden fees, indirect compensation, and all-in cost analysis
+Regulatory status current as of June 2026 — verify effective dates, dollar thresholds, and pending rulemakings against current SEC/FINRA/FinCEN sources before advising.
 
 ## Core Concepts
 
@@ -148,9 +131,9 @@ Comprehensive fee analysis requires looking beyond the stated fee schedule to ca
 - Assuming "commission-free" means "cost-free" — bid-ask spreads and payment for order flow still represent costs
 
 ## Cross-References
-- **fund-vehicles** (Layer 2): Fund mechanics, expense ratios, share classes — the product knowledge underlying fee disclosure
-- **conflicts-of-interest** (Layer 9): Revenue sharing, 12b-1 fees, and differential compensation are core conflicts requiring disclosure
-- **reg-bi** (Layer 9): Reg BI's Disclosure Obligation specifically addresses fees and costs
-- **client-disclosures** (Layer 9): Form ADV and Form CRS are the delivery vehicles for fee disclosure
-- **fiduciary-standards** (Layer 9): Fee transparency is a core fiduciary obligation
-- **investment-policy** (Layer 5): IPS fee assumptions must reflect actual total cost
+- **fund-vehicles** (wealth-management plugin): Fund mechanics, expense ratios, share classes — the product knowledge underlying fee disclosure
+- **conflicts-of-interest** (compliance plugin): Revenue sharing, 12b-1 fees, and differential compensation are core conflicts requiring disclosure
+- **reg-bi** (compliance plugin): Reg BI's Disclosure Obligation specifically addresses fees and costs
+- **client-disclosures** (compliance plugin): Form ADV and Form CRS are the delivery vehicles for fee disclosure
+- **fiduciary-standards** (compliance plugin): Fee transparency is a core fiduciary obligation
+- **investment-policy** (wealth-management plugin): IPS fee assumptions must reflect actual total cost

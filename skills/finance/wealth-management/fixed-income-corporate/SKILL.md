@@ -5,25 +5,6 @@ description: "Analyze corporate bonds and credit instruments including investmen
 
 # Fixed Income — Corporate
 
-## Purpose
-Analyze corporate bonds and credit instruments including investment grade and high yield debt. This skill covers credit spread measurement (G-spread, Z-spread, OAS), credit rating frameworks, default and recovery analysis, callable bond structures, covenant analysis, and private credit fundamentals.
-
-## Layer
-2 — Asset Classes
-
-## Direction
-both
-
-## When to Use
-- User asks about corporate debt, corporate bonds, or credit risk
-- User asks about credit spreads (OAS, Z-spread, G-spread)
-- User asks about credit ratings, rating migration, or default probabilities
-- User asks about investment grade vs high yield bonds
-- User asks about callable bonds, yield-to-call, or yield-to-worst
-- User asks about covenants, recovery rates, or loss given default
-- User asks about private credit, direct lending, or mezzanine debt
-- User asks about CDS (Credit Default Swaps) or market-implied default probabilities
-
 ## Core Concepts
 
 ### Credit Spreads
@@ -101,10 +82,17 @@ The expected annual credit loss is $12,000, or 1.2% of the exposure. This repres
 - Assuming recovery rates are constant — they vary significantly by seniority and economic cycle (lower in recessions)
 
 ## Cross-References
-- **fixed-income-sovereign** (wealth-management plugin, Layer 2): the Treasury curve used as the risk-free benchmark
-- **fixed-income-structured** (wealth-management plugin, Layer 2): CLOs and structured credit products
-- **alternatives** (wealth-management plugin, Layer 2): private credit as an alternative investment
-- **portfolio-construction** (wealth-management plugin, Layer 3): credit allocation in multi-asset portfolios
+- **fixed-income-sovereign** (wealth-management plugin): the Treasury curve used as the risk-free benchmark
+- **fixed-income-structured** (wealth-management plugin): CLOs and structured credit products
+- **alternatives** (wealth-management plugin): private credit as an alternative investment
+- **asset-allocation** (wealth-management plugin): credit allocation in multi-asset portfolios
 
-## Reference Implementation
-See `scripts/fixed_income_corporate.py` for computational helpers.
+## Running the Script
+
+```bash
+uv run scripts/fixed_income_corporate.py            # run the demo (uses PEP 723 inline deps)
+uv run scripts/fixed_income_corporate.py --verify   # check demo outputs against the worked examples (exit 1 on mismatch)
+python3 scripts/fixed_income_corporate.py            # alternative (requires: pip install numpy scipy)
+```
+
+The demo prints the calculations covered above; its values match the worked examples in this skill. Run `--help` for a list of the classes and functions. For programmatic use, import the module rather than running it — the demo only executes under `python fixed_income_corporate.py`.

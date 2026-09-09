@@ -8,7 +8,10 @@
 //
 // Dwa poziomy zgłoszeń:
 //   BŁĄD (exit 1 przy --strict) — psuje działanie: wzorzec z półki `always` bez
-//     karty reguł, wzorzec deklarowany przez blok, którego nie ma na dysku.
+//     karty reguł, wzorzec deklarowany przez blok, którego nie ma na dysku, oraz
+//     brak wymaganych sekcji we wzorcu będącym celem `pattern_routing:` (K82) —
+//     ten ostatni NIEZALEŻNIE od `.lint-baseline.json`, bo hook wstrzykuje taki
+//     plik implementerowi do prompta, więc dług formatu jest tam długiem runtime.
 //   UWAGA — dług do nadrobienia: brak `**Layer**`/`**Status**`/„When to Use".
 //
 // Półkę `always` czytamy z bloków, nie z listy w tym pliku: to blok decyduje,
@@ -50,12 +53,19 @@ const patternFiles = allFiles
 const blockFiles = walk(BLOCKS).filter((f) => f.endsWith('.yml') && !f.split('/').pop().startsWith('_'));
 const always = new Map();      // ścieżka → [bloki]
 const triggered = new Map();
+// Cele `pattern_routing:` — wzorce, które hook (check-patterns-read / check-delegation)
+// wstrzykuje implementerowi na podstawie ścieżki albo nazwy edytowanego pliku.
+const routed = new Map();      // ścieżka → [{block, rule}]
 for (const bf of blockFiles) {
   const doc = YAML.parse(readFileSync(join(BLOCKS, bf), 'utf8')) ?? {};
   const name = doc.name ?? bf.replace(/\.yml$/, '');
   for (const p of doc.patterns?.always ?? []) always.set(p, [...(always.get(p) ?? []), name]);
   for (const g of doc.patterns?.triggers ?? [])
     for (const p of g.include ?? []) triggered.set(p, [...(triggered.get(p) ?? []), name]);
+  for (const kind of ['paths', 'filenames'])
+    for (const rule of doc.pattern_routing?.[kind] ?? [])
+      if (rule?.pattern && rule?.match)
+        routed.set(rule.pattern, [...(routed.get(rule.pattern) ?? []), { block: name, rule: rule.match }]);
 }
 
 const errors = [], warnings = [];
@@ -167,7 +177,20 @@ for (const f of patternFiles) {
   // dopływ długu. Plik z baseline zostaje uwagą, żeby jedna zmiana nie kazała
   // przepisywać stu dokumentów naraz. Baseline wolno tylko SKRACAĆ.
   if (miss.length) {
-    if (baselineFiles.has(f)) warnings.push(`${f}: brak ${miss.join(', ')}`);
+    // Wzorzec będący celem `pattern_routing:` jest wyjęty spod baseline (K82,
+    // TASK-KAIZEN-002). Powód: baseline jest ustępstwem wobec DOKUMENTACJI, której
+    // nikt nie czyta na siłę — a plik routowany czyta implementer, bo hook mu go
+    // wstrzykuje przy każdej edycji pasującego pliku. Brak „When to Use" z bulletami
+    // ✅/❌ w takim wzorcu to nie dług dokumentacji, tylko dług runtime: agent
+    // dostaje do promptu tekst, z którego nie da się szybko rozstrzygnąć, czy
+    // wzorzec pasuje do jego sytuacji. Pomiar z 2026-09-07: wszystkie 14 celów
+    // routingu siedziało w baseline, w tym command-handler i query-handler
+    // edytowane cztery dni wcześniej bez naprawy formatu.
+    const via = routed.get(f);
+    if (via) {
+      const where = via.map((r) => `blok ${r.block}, reguła ${r.rule}`).join('; ');
+      errors.push(`${f}: routowany przez hook (${where}) — brak ${miss.join(', ')}`);
+    } else if (baselineFiles.has(f)) warnings.push(`${f}: brak ${miss.join(', ')}`);
     else errors.push(`${f}: brak ${miss.join(', ')} — wymóg z CLAUDE.md, a pliku nie ma w patterns/.lint-baseline.json`);
   } else if (baselineFiles.has(f)) {
     // Naprawiony, a wciąż na liście długu — trzeba zdjąć, inaczej baseline przestaje
@@ -228,7 +251,9 @@ if (UPDATE_BASELINE) {
     if (!/^\*\*Status\*\*/m.test(src)) miss.push('**Status**');
     if (!/##\s*When to Use/i.test(src)) miss.push('## When to Use');
     else if (!/✅/.test(src) || !/❌/.test(src)) miss.push('bullety ✅/❌');
-    if (miss.length) files[f] = miss;
+    // Cel `pattern_routing:` nie wchodzi do baseline — dla niego brak sekcji jest
+    // błędem zawsze (K82), więc wpis tylko udawałby, że dług jest usprawiedliwiony.
+    if (miss.length && !routed.has(f)) files[f] = miss;
   }
   writeFileSync(BASELINE_PATH, JSON.stringify({
     _comment: 'Zastany dług formatu wzorców. Lista może TYLKO maleć — nowy wzorzec ma ' +

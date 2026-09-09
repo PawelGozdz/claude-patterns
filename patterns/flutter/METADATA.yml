@@ -1,11 +1,49 @@
+# Flutter Patterns — metadane katalogu.
+# Schemat: jeden dla całego patterns/** (K84, TASK-KAIZEN-002). Walidator:
+# node scripts/validate-metadata.mjs
 category: flutter
-version: 1.1.0
+version: "1.2.0"
 maturity: production
 last_verified: 2026-05-20
-stack: Flutter, Dart, Riverpod, Freezed, GoRouter, Dio, google_fonts, material_symbols_icons
-source_project: juz-ide-mobile-app
-patterns_count: 8
-description: Production-tested Flutter Clean Architecture patterns + DS-007 design system
+stack: "Flutter, Dart, Riverpod, Freezed, GoRouter, Dio, google_fonts, material_symbols_icons"
+source_projects: "juz-ide-mobile-app"
+patterns_count: 14
+description: >-
+  Wzorce Flutter Clean Architecture (warstwy, Either, Riverpod, Dio,
+  nawigacja, Freezed, l10n, testy) plus system projektowy DS-007: tokeny,
+  bramki tworzenia komponentów i dostępność. Trzy ostatnie są wyprowadzone z
+  jednego repo i mają scope project-specific.
+
+layer: cross-layer
+stack_support: [dart]
+
 changelog:
-  - "1.1.0 (2026-05-20): added component-creation-pattern.md (DS-007 V1 component gates)"
-  - "1.0.0 (2026-03-30): initial production patterns"
+  - "1.2.0 (2026-09-07): patterns_count 8 → 14 (realna liczba plików), scope project-specific dla 3 wzorców DS-007 (K84/K85)"
+  - "1.1.0 (2026-05-20): dodany component-creation-pattern.md (bramki komponentu DS-007 V1)"
+  - "1.0.0 (2026-03-30): pierwsze wzorce produkcyjne"
+
+patterns:
+  - file: design-token-pattern.md
+    maturity: production
+    last_verified: 2026-05-20
+    scope: project-specific
+    project: juz-ide-mobile-app
+    description: >-
+      Tokeny projektowe jako jedyne źródło wartości wizualnych; przykłady
+      cytują konkretną paletę aplikacji (LocalHeroDesignTokens), K85
+  - file: component-creation-pattern.md
+    maturity: production
+    last_verified: 2026-05-20
+    scope: project-specific
+    project: juz-ide-mobile-app
+    description: >-
+      Bramki G1-Gn tworzenia komponentu V1 (DS-007); reguły odwołują się do
+      tokenów i komponentów tej jednej aplikacji, K85
+  - file: accessibility-pattern.md
+    maturity: production
+    last_verified: 2026-05-20
+    scope: project-specific
+    project: juz-ide-mobile-app
+    description: >-
+      Dostępność: rozmiary celu dotyku, kontrast, tryb elderMode — tryb i
+      paleta są konkretne dla tej aplikacji, K85

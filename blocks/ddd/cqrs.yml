@@ -12,6 +12,26 @@ patterns:
       include:
         - application/command-handler-pattern.md
         - application/query-handler-pattern.md
+    # K86 (TASK-KAIZEN-002): obie karty istniały, ale nie występowały w `always`,
+    # `triggers` ani `pattern_routing` ŻADNEGO bloku — czyli nie miały jak trafić do
+    # prompta implementera przez mechanizm wymuszony, tylko przez podobieństwo
+    # embeddingów w `retrieve_patterns`, jeśli ktoś akurat zapytał.
+    #
+    # TCC nie dostaje `pattern_routing`: protokół reserve→confirm/release nie ma
+    # własnego rodzaju pliku. Mieszka w handlerze (`/application/commands/`, już
+    # zarutowane na command-handler) albo w serwisie (`/application/services/`, już
+    # zarutowane na application-service). Druga reguła na te same ścieżki tylko
+    # przesłoniłaby wzorzec, który rządzi tam bez konkurencji.
+    - keywords: [rezerwacj, reservation, reserve, confirm, release, kompensacj, compensate, rollback, tcc]
+      include:
+        - application/try-confirm-cancel-pattern.md
+    # Mapper DTO odpowiedzi (DM1-DM5) leży obok `handler.ts` tej samej komendy, a nie
+    # w `/infrastructure/repositories/mappers/` — nazwa pliku `*.mapper.ts` jest już
+    # zajęta przez mapper persystencji (blok `kysely`), więc rozróżnia je kontekst
+    # zadania, nie ścieżka. Stąd wyzwalacz słowny, nie routing.
+    - keywords: [dto, response, odpowiedź, mapper, mapowanie, result.ok]
+      include:
+        - cross-layer/dto-mapper-pattern.md
 
 overlay:
   patterns: [application/]

@@ -1,6 +1,9 @@
 # Aggregate Pattern
 
 **Tags**: "api:domain:aggregate"
+**Level**: exhaustive
+**Layer**: Domain
+**Status**: production
 
 ## 🎯 Problem
 
@@ -640,7 +643,7 @@ this.apply(
 
 ---
 
-### 5. Direct Constructor Usage
+### 6. Direct Constructor Usage
 
 ```typescript
 // ❌ WRONG: Direct constructor call
@@ -677,7 +680,7 @@ const comment = result.value; // ✅ Event emitted
 
 ---
 
-## 🎯 When to Use
+## When to Use
 
 ### Use Aggregates When
 

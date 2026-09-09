@@ -11,6 +11,8 @@ CAPM expected return, dividend discount model (Gordon growth), valuation ratios
 Part of Layer 2 (Asset Classes) in the finance skills framework.
 """
 
+import argparse
+import sys
 import numpy as np
 
 
@@ -419,7 +421,7 @@ class SectorAllocation:
         return result
 
 
-if __name__ == "__main__":
+def _demo() -> None:
     # ----------------------------------------------------------------
     # Demo: Equity analysis on synthetic data
     # ----------------------------------------------------------------
@@ -546,3 +548,59 @@ if __name__ == "__main__":
     print("\n" + "=" * 60)
     print("Demo complete.")
     print("=" * 60)
+
+def _check(failures: list, name: str, actual: float, expected: float, tol: float) -> None:
+    """Record a verification check result."""
+    ok = abs(actual - expected) <= tol
+    status = "PASS" if ok else "FAIL"
+    print(f"  [{status}] {name}: actual={actual:.6g}, expected={expected:.6g}, tol={tol:.2g}")
+    if not ok:
+        failures.append(name)
+
+def _verify() -> None:
+    """Verify key outputs against the SKILL.md worked example."""
+    failures: list = []
+
+    # SKILL.md worked example: industrial company metric selection
+    _check(failures, "EV/EBITDA ($550M EV / $75M EBITDA)",
+           EquityValuation.ev_ebitda(500e6, 100e6, 50e6, 75e6), 7.3333, 1e-4)
+    _check(failures, "P/E cross-check ($150 / $7.50)",
+           EquityValuation.pe_ratio(150.0, 7.50), 20.0, 1e-12)
+    _check(failures, "earnings yield (7.50 / 150)",
+           EquityValuation.earnings_yield(7.50, 150.0), 0.05, 1e-12)
+
+    # Key formulas table: CAPM and Gordon growth
+    _check(failures, "CAPM (rf=4%, beta=1.2, mkt=10%)",
+           EquityValuation.capm_expected_return(0.04, 1.2, 0.10), 0.112, 1e-12)
+    _check(failures, "Gordon growth (D1=2.50, g=5%, r=10%)",
+           EquityValuation.gordon_growth_model(2.50, 0.05, 0.10), 50.0, 1e-9)
+
+    if failures:
+        print(f"\n{len(failures)} check(s) FAILED: {', '.join(failures)}")
+        sys.exit(1)
+    print("\nAll checks passed.")
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description=__doc__.strip().splitlines()[2] if __doc__ else "",
+        epilog=(
+            "Provides: EquityValuation, FactorAnalysis, SectorAllocation. "
+            "For programmatic use, import this module (equities) instead of running it. "
+            "Bare run executes a demo whose printed values match the SKILL.md worked examples; "
+            "--verify asserts those values and exits nonzero on mismatch."
+        ),
+    )
+    parser.add_argument(
+        "--verify",
+        action="store_true",
+        help="run the verification checks against the SKILL.md worked-example values",
+    )
+    args = parser.parse_args()
+    if args.verify:
+        _verify()
+    else:
+        _demo()
+
+
+if __name__ == "__main__":
+    main()

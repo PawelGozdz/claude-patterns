@@ -12,6 +12,8 @@ analysis for portfolios.
 Part of Layer 1b (Forward-Looking Risk) in the finance skills framework.
 """
 
+import argparse
+import sys
 import numpy as np
 from scipy import stats
 
@@ -174,7 +176,17 @@ class ForwardRisk:
         h_cov = daily_cov * horizon_days
 
         # Cholesky decomposition for correlated sampling
-        chol = np.linalg.cholesky(h_cov)
+        try:
+            chol = np.linalg.cholesky(h_cov)
+        except np.linalg.LinAlgError as exc:
+            raise ValueError(
+                "Covariance matrix is not positive definite, so Cholesky "
+                "decomposition failed. This usually means inconsistent or "
+                "estimated correlations. Repair the matrix first — e.g., "
+                "project to the nearest positive semi-definite matrix "
+                "(clip negative eigenvalues via np.linalg.eigh, or use "
+                "Higham's nearest-correlation-matrix algorithm) — then retry."
+            ) from exc
 
         # Generate random scenarios
         z = rng.standard_normal((n_simulations, len(self.weights)))
@@ -428,7 +440,7 @@ class ForwardRisk:
         }
 
 
-if __name__ == "__main__":
+def _demo() -> None:
     # ----------------------------------------------------------------
     # Demo: Forward-looking risk analysis on a two-asset portfolio
     # ----------------------------------------------------------------
@@ -553,3 +565,66 @@ if __name__ == "__main__":
     print("\n" + "=" * 60)
     print("Demo complete.")
     print("=" * 60)
+
+def _check(failures: list, name: str, actual: float, expected: float, tol: float) -> None:
+    """Record a verification check result."""
+    ok = abs(actual - expected) <= tol
+    status = "PASS" if ok else "FAIL"
+    print(f"  [{status}] {name}: actual={actual:.6g}, expected={expected:.6g}, tol={tol:.2g}")
+    if not ok:
+        failures.append(name)
+
+def _verify() -> None:
+    """Verify key outputs against the SKILL.md worked examples."""
+    failures: list = []
+
+    # SKILL.md Example 1: $1M, 15% annual vol, 1-day 95% VaR ~= $15,545 (z=1.645)
+    fr1 = ForwardRisk(weights=np.array([1.0]), cov_matrix=np.array([[0.0225]]),
+                      portfolio_value=1_000_000.0)
+    _check(failures, "Ex1 1-day 95% parametric VaR", fr1.parametric_var(0.95, 1), 15545.0, 10.0)
+
+    # SKILL.md Example 2: 60/40 portfolio analytical benchmark
+    cov = np.array([[0.0324, -0.0018], [-0.0018, 0.0025]])
+    fr2 = ForwardRisk(weights=np.array([0.60, 0.40]), cov_matrix=cov,
+                      portfolio_value=1_000_000.0, mean_returns=np.array([0.10, 0.04]))
+    ann_vol = fr2.portfolio_volatility(annualized=True)
+    _check(failures, "Ex2 portfolio volatility", ann_vol, 0.105830, 1e-5)
+    _check(failures, "Ex2 annual 95% VaR (z=1.645)", 1_000_000.0 * 1.645 * ann_vol, 174090.0, 100.0)
+
+    # CVaR exceeds VaR at the same confidence level
+    var95 = fr2.parametric_var(0.95, 1)
+    cvar95 = fr2.conditional_var_parametric(0.95, 1)
+    _check(failures, "CVaR > VaR", 1.0 if cvar95 > var95 else 0.0, 1.0, 0)
+
+    # Component VaRs sum to total VaR
+    _check(failures, "component VaRs sum to total", float(np.sum(fr2.component_var(0.95))), var95, 1e-6)
+
+    if failures:
+        print(f"\n{len(failures)} check(s) FAILED: {', '.join(failures)}")
+        sys.exit(1)
+    print("\nAll checks passed.")
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description=__doc__.strip().splitlines()[2] if __doc__ else "",
+        epilog=(
+            "Provides: ForwardRisk. "
+            "For programmatic use, import this module (forward_risk) instead of running it. "
+            "Bare run executes a demo whose printed values match the SKILL.md worked examples; "
+            "--verify asserts those values and exits nonzero on mismatch."
+        ),
+    )
+    parser.add_argument(
+        "--verify",
+        action="store_true",
+        help="run the verification checks against the SKILL.md worked-example values",
+    )
+    args = parser.parse_args()
+    if args.verify:
+        _verify()
+    else:
+        _demo()
+
+
+if __name__ == "__main__":
+    main()

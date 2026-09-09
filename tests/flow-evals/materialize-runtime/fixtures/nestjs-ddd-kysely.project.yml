@@ -1,0 +1,10 @@
+# Fixture kompozycji: nestjs + ddd + kysely (skrót z templates/project.yml.example).
+# Trzymamy MINIMALNY project.yml — pola nieistotne dla materializacji (contexts, docs,
+# cost) tylko rozmywałyby to, co ten eval faktycznie sprawdza.
+project:
+  name: eval-nestjs-ddd
+  description: "Fixture ewaluacyjny — kompozycja nestjs-ddd"
+  stack_blocks: [nestjs, ddd, kysely]
+  stack_profile: nestjs-ddd
+  language: typescript
+  ddd_library: "@vytches/ddd"

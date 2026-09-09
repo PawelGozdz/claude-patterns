@@ -1,0 +1,142 @@
+# GENERATED przez materialize-runtime.mjs (ADR 0008) — NIE edytuj ręcznie.
+# Zmiany rób w blokach (claude-patterns/blocks/ lub .claude/blocks/) i odpal setup-project.sh.
+
+schema_version: 1
+stack_blocks: [flutter, clean-arch]
+# osie: flutter=framework, clean-arch=architecture
+
+patterns:
+  always:
+    - cross-layer/conventions-pattern.md # source: flutter
+    - flutter/clean-architecture-pattern.md # source: clean-arch
+    - flutter/either-error-pattern.md # source: clean-arch
+  triggers:
+    # source: flutter
+    - keywords: [state, riverpod, provider, notifier]
+      include:
+        - flutter/riverpod-state-pattern.md
+    # source: flutter
+    - keywords: [api, dio, http, network, request]
+      include:
+        - flutter/dio-networking-pattern.md
+    # source: flutter
+    - keywords: [navigation, route, screen, push, pop]
+      include:
+        - flutter/navigation-pattern.md
+    # source: flutter
+    - keywords: [model, entity, dto, freezed, immutable]
+      include:
+        - flutter/freezed-immutability-pattern.md
+    # source: flutter
+    - keywords: [test, mockito, golden]
+      include:
+        - flutter/testing-pattern.md
+        - testing/testing-pyramid-pattern.md
+    # source: clean-arch
+    - keywords: [ekran, screen, widget, komponent, ui, ux, layout, formularz]
+      include:
+        - flutter/design-token-pattern.md
+        - flutter/accessibility-pattern.md
+    # source: clean-arch
+    - keywords: [tekst, string, tłumaczenie, arb, l10n, lokalizacja]
+      include:
+        - flutter/localization-pattern.md
+
+analyze:
+  panel:
+    # source: flutter
+    - {stage: threat-model, agent: "/threat-model", when: "auth|pii|cross_context|public_api", output: "docs/security/threat-models/TM-{TASK_ID}.md", skip_if_exists: true}
+    # source: clean-arch
+    - {stage: tech-analysis, agent: "flutter-architecture-expert"}
+    # source: clean-arch
+    - {stage: ux-design, agent: "flutter-ux-designer", when: "ekran|screen|widget|komponent|ui|ux|formularz|onboarding|przepływ|flow", advisory: true}
+    # source: clean-arch
+    - {stage: impl-analysis, agent: "flutter-quality-verifier", advisory: true}
+    # source: clean-arch
+    - {stage: ui-analysis, agent: "flutter-ui-verifier", advisory: true}
+    # source: clean-arch
+    - {stage: perf-analysis, agent: "flutter-performance-verifier", when: "lista|list|przewijan|scroll|mapa|map|animacj|wydajnoś|performance|jank|czat|chat", advisory: true}
+  exit: PAUSE # source: clean-arch
+
+orchestrate: # source: clean-arch
+  layers:
+    - {id: domain, dirs: [domain/], agent: "flutter-implementer"}
+    - {id: application, dirs: [application/], agent: "flutter-implementer", optional: true, create_when: "decisions[].application_layer == true (kryterium ADR-A)"}
+    - {id: data, dirs: [data/], agent: "flutter-implementer", tests: true}
+    - {id: presentation, dirs: [presentation/], agent: "flutter-implementer", tests: true}
+  inner_loop: {verify: "flutter-quality-verifier | flutter-ui-verifier", max_attempts: 3, on_max: ESCALATE_AND_HALT}
+  # Bramka końcowa = bezpieczeństwo, analogicznie do ddd/core (security-e2e-verifier).
+  # Jakość/wzorce są już wymuszone w inner_loop przy każdej warstwie; ostatni zamek
+  # przed staged sprawdza to, czego nie widać w pojedynczej warstwie: sekrety, logi,
+  # pinning, deep linki i realność kanałów natywnych.
+  final_gate: {agent: "flutter-security-verifier", on_fail: ESCALATE_AND_HALT}
+  exit: STAGE_NOT_COMMIT
+
+hooks: [check-patterns-read, check-clean-arch, check-riverpod-patterns, check-flutter-imports, check-pumpandsettle, check-typography-tokens, check-design-tokens, check-l10n-hardcoded, check-focus-wrapper, check-approval-before-impl, check-human-voice]
+
+env:
+  ECC_GATEGUARD: "off" # source: clean-arch
+  ECC_DISABLED_HOOKS: "pre:edit-write:gateguard-fact-force,pre:bash:gateguard-fact-force" # source: clean-arch
+  DELEGATION_MODE: "block" # source: clean-arch
+
+overlay:
+  agents: [stacks/flutter-clean-arch/]
+  patterns: [flutter/, testing/]
+  rules: [dart/]
+
+human_voice: # język tekstu dla człowieka; nadpisz w project.yml → human_voice
+  language: pl
+  register: business
+  max_sentences: 2
+  avoid: [nazwy klas i funkcji, ścieżki plików, numery ADR/BDR, żargon warstw i wzorców]
+
+taxonomy: # rdzeń blocks/_taxonomy.yml + .claude/taxonomy.yml projektu
+  stacks:
+    - any
+    - api
+    - mobile
+    - web
+    - lib
+    - data
+    - infra
+  areas:
+    - auth
+    - authz
+    - domain
+    - app
+    - data-access
+    - events
+    - geo
+    - api-surface
+    - ui
+    - tests
+    - security
+    - observability
+    - build
+    - economy
+    - platform
+    - process
+  variants_seen:
+    app: [async, batching, concurrency, cross-context, errors, external-integration, ingestion, llm, model-lifecycle]
+    api-surface: [barrel, contract, deprecation, errors, semver]
+    data-access: [http, mapper, migration, offline, polyglot, projection, transaction]
+    domain: [aggregate, errors, moderation-buffer]
+    events: [domain, integration, outbox, queue]
+    geo: [radius, teryt, polygon, discovery]
+    observability: [audit, logging]
+    platform: [channel, gpu, nestjs, nextjs, python, svelte]
+    process: [review]
+    security: [identity, rate-limit, validation]
+    tests: [contract, e2e, fixtures, integration, load, seeding, unit]
+    ui: [accessibility, design-token, forms, i18n, navigation, state]
+
+requires_ecc: # source: flutter
+  profile: developer
+  modules: [lang:dart, capability:orchestration]
+
+ralphinho: # source: clean-arch
+  units: single
+  worktree: shared
+  fan_out: sequential
+  merge_stage: noop
+  guardrails: {push_only: "claude/*", max_attempts_per_layer: 3}

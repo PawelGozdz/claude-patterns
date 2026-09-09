@@ -33,7 +33,7 @@ poller (po commit) wykonuje faktyczną publikację.
 - **N1** — ❌ `fanOutService.fanOut(...)` / `queue.add(...)` / `fetch`/`axios`/SMTP bezpośrednio
   z handlera eventu domenowego — crash window + rollback-leak.
 - **N2** — ❌ Emisja integration eventu z AGREGATU (agregaty emitują wyłącznie domain events —
-  patrz integration-event-pattern / entity-event-emission).
+  patrz integration-event-pattern).
 - **N3** — ❌ `saveMessage()` wywołane poza transakcją command-handlera (np. z serwisu bez
   `@Transactional` w łańcuchu) — traci atomowość, czyli cały sens outboxa.
 

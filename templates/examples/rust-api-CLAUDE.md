@@ -264,17 +264,17 @@ cargo fmt -- --check
 
 ```bash
 # Planning
-/plan "Add order fulfillment with Stripe payment"
+/ecc:plan "Add order fulfillment with Stripe payment"
 
 # Development with TDD
-/tdd                    # cargo test-based TDD workflow
+/ecc:rust-test          # cargo test-based TDD workflow
 
 # Review
-/code-review            # Rust-specific code review
+/ecc:rust-review        # Rust-specific code review
 /security-scan          # Dependency audit + unsafe scan
 
 # Verification
-/verify                 # Build, clippy, test, security scan
+/ecc:quality-gate       # Build, clippy, test, security scan
 ```
 
 ## Git Workflow

@@ -1,9 +1,11 @@
 ---
 id: TASK-VYTCHES-BLOCKS-001
 title: Setup vytches-ddd na kompozycji bloków (ADR 0008) — runtime.yml + triage agentów
-status: ready
+status: in-progress
 priority: high
 created: 2026-08-10
+created_date: 2026-08-10
+updated_date: 2026-09-07
 owner: unassigned
 repos: [vytches-ddd, claude-patterns]
 ---
@@ -13,6 +15,23 @@ repos: [vytches-ddd, claude-patterns]
 Zadanie przygotowane 2026-08-10 w sesji, która zrobiła to samo dla
 `juz-ide-mobile-app`. Rozpisane tak, żeby dało się je wykonać **bez odtwarzania
 researchu** — wszystkie ustalenia poniżej są zweryfikowane w kodzie, nie zgadywane.
+
+> **▶ Stan na 2026-09-07 (przegląd w ramach K75 / `TASK-KAIZEN-002`).** Większość jest
+> zrobiona — task zostaje otwarty **wyłącznie dla F2 (triage 12 agentów lokalnych)**.
+>
+> | kryterium ukończenia | stan | dowód |
+> |---|---|---|
+> | `runtime.yml` istnieje, zmaterializowany bez ostrzeżeń | ✅ | `/opt/projects/vytches-ddd/.claude/config/runtime.yml`, `materialized_at: 2026-09-07`, `stack_blocks: [ts-library, library-layers, nx-monorepo, approval-gate]` |
+> | agenci z `runtime.yml` osiągalni w `.claude/agents/` | ✅ | `library-api-guardian`, `library-quality-verifier` na miejscu; reszta to `ecc:*` i `general-purpose` |
+> | hooki z `runtime.yml` wpięte w `settings.json` | ✅ | `check-approval-before-impl`, `check-human-voice` obecne w `.claude/settings.json` |
+> | **triage 12 agentów; zero duplikatów lokalny↔współdzielony** | ❌ | nadal 12 plików w `.claude/agents/`, w tym `library-api-guardian.md` i `library-quality-verifier.md` — czyli dokładnie te dwa duplikaty, które F2 miała usunąć |
+> | 5 wzorców z konwencją ✅/❌ + karty `_summary.md` | ✅ | `patterns/typescript-library/` — 5 wzorców, 5 kart |
+> | reseed wykonany | ? | niezweryfikowane w tym przeglądzie (wymaga żywego Qdranta) — sprawdź `./scripts/reseed-patterns.sh` + `retrieve_patterns` przed zamknięciem |
+>
+> Bloki z F1 powstały w kształcie innym niż proponowany: zamiast dwóch bloków są cztery
+> (`ts-library`, `library-layers`, `nx-monorepo`, `approval-gate`) — warstwy zostały
+> wydzielone z `ts-library` do osobnego bloku osi „architecture", bo materializer wymaga,
+> żeby `orchestrate.layers` wnosił blok tej osi (`materialize-runtime.mjs:424`).
 
 ## Cel
 
@@ -78,10 +97,12 @@ pakietów i to, że zmiana sygnatury psuje cztery repo konsumenckie naraz.
 `projections`, `repositories`, `resilience`, `testing`, `utils`, `validation`,
 `value-objects`.
 
-**Konfiguracja Claude Code**:
-- `.claude/config/project.yml` — `stack_profile: typescript-library`, `pm_system: true`
-- **BRAK** `runtime.yml`, **BRAK** symlinku `preset.yml` — projekt nigdy nie przeszedł
-  na stary system presetów, więc wchodzi na bloki bez migracji i bez pilota równoległego
+**Konfiguracja Claude Code** (stan 2026-08-10; ~~przekreślone~~ = nieaktualne po wykonaniu F4):
+- `.claude/config/project.yml` — ~~`stack_profile: typescript-library`~~ → dziś
+  `stack_blocks: [ts-library, library-layers, nx-monorepo, approval-gate]`, `pm_system: true`
+- ~~**BRAK** `runtime.yml`~~ → `runtime.yml` zmaterializowany. Symlink `preset.yml` nigdy nie
+  powstał i już nie powstanie — presety usunięto w całym repo 2026-08-12
+  ([ADR 0008](../adr/0008-stack-blocks-composition.md)), więc migracji nie ma z czego robić
 - 12 agentów LOKALNYCH w `.claude/agents/` (lista i triage niżej)
 - skille: `api-design`, `coding-standards`, `e2e-testing`, `tdd-workflow`,
   `ts-library-patterns`, `verification-loop`, `skill-stocktake`, `grantflow`, `log-time`
@@ -99,7 +120,9 @@ a nie wymyślać własne): `@microsoft/api-extractor` (raport publicznego API), 
   `build-publish-pattern.md`, `library-testing-pattern.md`
 - `agents/stacks/typescript-library/` — `library-api-guardian.md`, `library-quality-verifier.md`
   (2 z 12 lokalnych agentów zostały już wcześniej awansowane do współdzielonych)
-- `patterns/_stack-defaults/typescript-library.yml`
+- ~~`patterns/_stack-defaults/typescript-library.yml`~~ — katalog `_stack-defaults/`
+  usunięty 2026-08-12 (ADR 0008); dobór wzorców robi dziś `patterns:` w blokach
+  (`blocks/ts-library.yml`, `blocks/nx-monorepo.yml`)
 - `blocks/approval-gate.yml` — gotowa twarda bramka PAUSE dla projektów bez `ddd/core`
 
 ## Zakres
@@ -107,10 +130,14 @@ a nie wymyślać własne): `@microsoft/api-extractor` (raport publicznego API), 
 ### F1. Nowe bloki w `claude-patterns/blocks/`
 
 Schemat i konwencje: `claude-patterns/blocks/README.md`. Uwaga na ograniczenia
-silnika (`scripts/materialize-runtime.mjs`): `orchestrate.layers` może pochodzić
-z **dokładnie jednego** bloku; `requires_ecc` i `ralphinho` biorą pierwsze wystąpienie;
+silnika (`scripts/materialize-runtime.mjs`, stan 2026-09-07): `orchestrate.layers` może
+pochodzić z **dokładnie jednego** bloku (`:418`) i ten blok musi mieć `axis: architecture`
+(`:424`) — dlatego warstwy biblioteki mieszkają w osobnym `blocks/library-layers.yml`, nie
+w `ts-library.yml`; `requires_ecc` i `ralphinho` biorą pierwsze wystąpienie;
 `overlay`/`env`/`hooks` sumują się; panel **nie deduplikuje** — ten sam etap w dwóch
-blokach pojawi się dwukrotnie. Listy inline (`hooks: [...]`) muszą być w JEDNEJ linii.
+blokach pojawi się dwukrotnie, **z jednym wyjątkiem**: pozycja z bloku lokalnego
+(`.claude/blocks/`) o tym samym `stage` zastępuje bazową (`:261`). Listy inline
+(`hooks: [...]`) muszą być w JEDNEJ linii.
 
 - **`ts-library.yml`** (oś frameworka) — publikowana biblioteka TS.
   `patterns.always`: konwencje + `public-api-pattern.md`. Triggery: semver/breaking →

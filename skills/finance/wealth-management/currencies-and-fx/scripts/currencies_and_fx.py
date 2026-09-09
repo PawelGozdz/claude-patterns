@@ -11,6 +11,9 @@ currency-hedged returns, and unhedged international return decomposition.
 Part of Layer 2 (Asset Classes) in the finance skills framework.
 """
 
+import argparse
+import sys
+
 
 class FXForward:
     """Forward exchange rate and interest rate parity calculations.
@@ -369,7 +372,7 @@ class RealExchangeRate:
         return domestic_price_level / foreign_price_level
 
 
-if __name__ == "__main__":
+def _demo() -> None:
     # ----------------------------------------------------------------
     # Demo: Currency and FX calculations
     # ----------------------------------------------------------------
@@ -465,3 +468,58 @@ if __name__ == "__main__":
     print("\n" + "=" * 60)
     print("Demo complete.")
     print("=" * 60)
+
+def _check(failures: list, name: str, actual: float, expected: float, tol: float) -> None:
+    """Record a verification check result."""
+    ok = abs(actual - expected) <= tol
+    status = "PASS" if ok else "FAIL"
+    print(f"  [{status}] {name}: actual={actual:.6g}, expected={expected:.6g}, tol={tol:.2g}")
+    if not ok:
+        failures.append(name)
+
+def _verify() -> None:
+    """Verify key outputs against the SKILL.md worked examples."""
+    failures: list = []
+
+    # SKILL.md Example 1: USD/JPY 1-year forward
+    fwd = FXForward.forward_rate(spot=150.0, domestic_rate=0.005, foreign_rate=0.05)
+    _check(failures, "Ex1 1y forward JPY/USD", fwd, 143.5714, 0.01)
+
+    # SKILL.md Example 2: EUR investor hedging USD
+    fwd_eur = FXForward.forward_rate(spot=1.10, domestic_rate=0.03, foreign_rate=0.05)
+    _check(failures, "Ex2 EUR/USD forward", fwd_eur, 1.0790, 1e-3)
+    benefit = (1.10 - fwd_eur) / 1.10
+    _check(failures, "Ex2 hedging benefit", benefit, 0.019048, 1e-4)
+
+    # Core concept: cross rate EUR/GBP
+    _check(failures, "cross rate EUR/GBP", CrossRate.compute(1.10, 1.27), 0.8661, 1e-4)
+
+    if failures:
+        print(f"\n{len(failures)} check(s) FAILED: {', '.join(failures)}")
+        sys.exit(1)
+    print("\nAll checks passed.")
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description=__doc__.strip().splitlines()[2] if __doc__ else "",
+        epilog=(
+            "Provides: FXForward, CrossRate, InternationalReturn, RealExchangeRate. "
+            "For programmatic use, import this module (currencies_and_fx) instead of running it. "
+            "Bare run executes a demo whose printed values match the SKILL.md worked examples; "
+            "--verify asserts those values and exits nonzero on mismatch."
+        ),
+    )
+    parser.add_argument(
+        "--verify",
+        action="store_true",
+        help="run the verification checks against the SKILL.md worked-example values",
+    )
+    args = parser.parse_args()
+    if args.verify:
+        _verify()
+    else:
+        _demo()
+
+
+if __name__ == "__main__":
+    main()

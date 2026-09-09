@@ -6,8 +6,31 @@
 
 set -euo pipefail
 
+# ─────────────────────────────────────────────────────────────────────────────
+# LEGACY (sprzed ADR 0008, 2026-08-12) — NIE UŻYWAJ.
+#
+# Wsadowe uruchomienie `migrate-v2.sh`, czyli wycofanej ścieżki provisioningu
+# settings.json po `stack_profile`. Powód wycofania i zamiennik: patrz baner
+# w scripts/migrate-v2.sh.
+#
+# Zamiast tego (dla całej floty):
+#   for p in /opt/projects/*/; do ./scripts/setup-project.sh "$p"; done
+#   node scripts/audit-projects.mjs        # co jeszcze wymaga uwagi
+#
+# Świadome uruchomienie mimo wszystko: --i-know-legacy
+# ─────────────────────────────────────────────────────────────────────────────
+if [[ " $* " != *" --i-know-legacy "* ]]; then
+  echo "migrate-all.sh: LEGACY (sprzed ADR 0008) — nie używać." >&2
+  echo "  Użyj: ./scripts/setup-project.sh <projekt> dla każdego repo, potem node scripts/audit-projects.mjs" >&2
+  echo "  Świadome uruchomienie: $0 [root] --i-know-legacy" >&2
+  exit 1
+fi
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECTS_ROOT="${1:-/opt/projects}"
+# Flaga bramki nie jest ścieżką — filtrujemy ją z argumentów pozycyjnych.
+POSITIONAL=()
+for arg in "$@"; do [[ "$arg" == "--i-know-legacy" ]] || POSITIONAL+=("$arg"); done
+PROJECTS_ROOT="${POSITIONAL[0]:-/opt/projects}"
 
 source "$SCRIPT_DIR/lib/common.sh"
 
@@ -43,7 +66,9 @@ for project_dir in "$PROJECTS_ROOT"/*/; do
   # pipefail: `if` już był odporny na set -e (warunek if jest wyłączony spod niego), ale
   # BEZ pipefail status if-a to status sed'a (prawie zawsze 0) — realna awaria migrate-v2.sh
   # była dotąd cicho liczona jako "Migrated". Z pipefail if poprawnie widzi awarię migracji.
-  if bash "$SCRIPT_DIR/migrate-v2.sh" "$project_dir" 2>&1 | sed 's/^/  /'; then
+  # Świadomość „to legacy" potwierdzona już przy wejściu do migrate-all.sh — przekazujemy
+  # ją dalej, żeby bramka w migrate-v2.sh nie zatrzymywała każdego repo z osobna.
+  if bash "$SCRIPT_DIR/migrate-v2.sh" "$project_dir" --i-know-legacy 2>&1 | sed 's/^/  /'; then
     MIGRATED=$((MIGRATED + 1))
   else
     echo -e "  ${RED}Failed!${NC}"

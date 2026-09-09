@@ -12,12 +12,43 @@
 
 set -euo pipefail
 
+# ─────────────────────────────────────────────────────────────────────────────
+# LEGACY (sprzed ADR 0008, 2026-08-12) — NIE UŻYWAJ.
+#
+# Ten skrypt to druga, równoległa ścieżka provisioningu `.claude/settings.json`:
+# wybiera szablon `templates/settings/<stack_profile>.json` po profilu stacku.
+# Od ADR 0008 o zawartości settings.json decyduje KOMPOZYCJA BLOKÓW (runtime.yml),
+# a szablony zostały w tyle — `templates/settings/nestjs-ddd.json` nie miał
+# `check-patterns-read`, kluczowej bramki groundingu z `blocks/ddd/core.yml`
+# (audyt 2026-09-07, A7). Projekt zmigrowany tą ścieżką wyglądał na wyposażony
+# i nie miał połowy bramek.
+#
+# Zamiast tego:
+#   ./scripts/setup-project.sh /path/to/project
+# (zakłada settings.json z templates/settings/base.json i dopina hooki z runtime.yml
+# przez scripts/sync-runtime-hooks.mjs --apply)
+#
+# Świadome uruchomienie mimo wszystko: --i-know-legacy
+# ─────────────────────────────────────────────────────────────────────────────
+if [[ " $* " != *" --i-know-legacy "* ]]; then
+  echo "migrate-v2.sh: LEGACY (sprzed ADR 0008) — nie używać." >&2
+  echo "  Użyj: ./scripts/setup-project.sh <projekt>" >&2
+  echo "  Powód: settings.json powstaje dziś z kompozycji bloków, nie z templates/settings/<profil>.json." >&2
+  echo "  Świadome uruchomienie: $0 <projekt> --i-know-legacy" >&2
+  exit 1
+fi
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PATTERNS_REPO="$(dirname "$SCRIPT_DIR")"
 
 source "$SCRIPT_DIR/lib/common.sh"
 
-PROJECT_DIR="${1:-.}"
+# `--i-know-legacy` to flaga bramki wyżej, nie ścieżka projektu — odfiltrowujemy ją
+# z argumentów pozycyjnych, żeby `migrate-v2.sh --i-know-legacy` nie próbowało wejść
+# do katalogu o tej nazwie.
+POSITIONAL=()
+for arg in "$@"; do [[ "$arg" == "--i-know-legacy" ]] || POSITIONAL+=("$arg"); done
+PROJECT_DIR="${POSITIONAL[0]:-.}"
 PROJECT_DIR=$(cd "$PROJECT_DIR" && pwd)
 PROJECT_NAME=$(basename "$PROJECT_DIR")
 
@@ -39,18 +70,10 @@ if [[ ! -f "$PROJECT_YML" ]]; then
   exit 1
 fi
 
-# YAML helper
+# Odczyt project.yml — jeden parser dla wszystkich skryptów (K65).
+# `|| true` — kod 1 znaczy „nie ma takiego klucza" (pole opcjonalne), a nie błąd.
 yml_get() {
-  local key="$1"
-  local section="${key%%.*}"
-  local field="${key#*.}"
-  # `|| true` — brak dopasowania (pole opcjonalne, nieobecne) jest oczekiwanym pustym
-  # wynikiem; pod pipefail nonzero z grep zabiłby VAR=$(yml_get ...) przez set -e.
-  if [[ "$section" == "$field" ]]; then
-    { grep "^${key}:" "$PROJECT_YML" | head -1 | sed 's/^[^:]*: *//' | sed 's/^"//' | sed 's/"$//'; } || true
-  else
-    { sed -n "/^${section}:/,/^[a-z]/p" "$PROJECT_YML" | grep "^  ${field}:" | head -1 | sed 's/^[^:]*: *//' | sed 's/^"//' | sed 's/"$//'; } || true
-  fi
+  node "$SCRIPT_DIR/lib/project-yml.mjs" "$PROJECT_YML" get "$1" || true
 }
 
 PROJECT_LANGUAGE=$(yml_get "project.language")

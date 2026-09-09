@@ -1,0 +1,77 @@
+[
+  {
+    "name": "domain-purity-throw-in-domain-warns",
+    "hook": "check-domain-purity.js",
+    "payload": {
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "src/contexts/billing/domain/services/pricing.service.ts"
+      }
+    },
+    "setup": {
+      "cwd": true,
+      "files": {
+        "ddd-hooks.json": "{\"$comment\": \"DDD enforcement hooks config — place in project root or .claude/ directory\", \"baseClasses\": [{\"file\": \"*.aggregate.ts\", \"extends\": [\"AggregateRoot<\"], \"label\": \"Aggregate\"}, {\"file\": \"*.vo.ts\", \"extends\": [\"BaseValueObject<\"], \"label\": \"Value Object\"}, {\"file\": \"*.entity.ts\", \"extends\": [\"BaseEntity<\"], \"label\": \"Entity\"}, {\"file\": \"*.specification.ts\", \"extends\": [\"CompositeSpecification<\", \"AsyncCompositeSpecification<\"], \"label\": \"Specification\"}, {\"file\": \"*/domain/**/*.event.ts\", \"extends\": [\"ProjectDomainEvent<\"], \"label\": \"Domain Event\"}, {\"file\": \"*.integration-event.ts\", \"extends\": [\"IntegrationEvent\"], \"label\": \"Integration Event\"}, {\"file\": \"*/application/commands/**/command.ts\", \"implements\": [\"ICommand\"], \"label\": \"Command\"}, {\"file\": \"*/application/queries/**/*.query.ts\", \"implements\": [\"IQuery\"], \"label\": \"Query\"}, {\"file\": \"*-command.kysely.repository.ts\", \"extends\": [\"BaseKyselyRepository<\"], \"label\": \"Command Repository\"}, {\"file\": \"*-query.kysely.repository.ts\", \"label\": \"Query Repository\", \"forbidden\": [{\"pattern\": \"TransactionHost\", \"message\": \"Query repositories must NOT use TransactionHost — use @Inject(DATABASE_TOKEN) + Kysely<Database> instead\"}]}], \"purity\": {\"noThrowLayers\": [\"domain\", \"application\"], \"noInfraImportLayers\": [\"domain\"], \"forbiddenImports\": [\"infrastructure/\", \"@nestjs/\", \"typeorm\", \"kysely\"]}, \"contextPath\": \"src/contexts\", \"nestjs\": {\"requireInjectDecorator\": {\"enabled\": true, \"filePatterns\": [\"*.handler.ts\", \"*.service.ts\", \"*.controller.ts\", \"*.guard.ts\", \"*.interceptor.ts\", \"*.pipe.ts\", \"*.filter.ts\", \"*.gateway.ts\", \"*.resolver.ts\", \"*.saga.ts\"]}}}",
+        "src/contexts/billing/domain/services/pricing.service.ts": "export class Pricing {\n  run() {\n    throw new Error('boom');\n  }\n}\n"
+      }
+    },
+    "expect": "pass",
+    "expect_stderr": "throw|Result"
+  },
+  {
+    "name": "domain-purity-infra-import-warns",
+    "hook": "check-domain-purity.js",
+    "payload": {
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "src/contexts/billing/domain/services/pricing.service.ts"
+      }
+    },
+    "setup": {
+      "cwd": true,
+      "files": {
+        "ddd-hooks.json": "{\"$comment\": \"DDD enforcement hooks config — place in project root or .claude/ directory\", \"baseClasses\": [{\"file\": \"*.aggregate.ts\", \"extends\": [\"AggregateRoot<\"], \"label\": \"Aggregate\"}, {\"file\": \"*.vo.ts\", \"extends\": [\"BaseValueObject<\"], \"label\": \"Value Object\"}, {\"file\": \"*.entity.ts\", \"extends\": [\"BaseEntity<\"], \"label\": \"Entity\"}, {\"file\": \"*.specification.ts\", \"extends\": [\"CompositeSpecification<\", \"AsyncCompositeSpecification<\"], \"label\": \"Specification\"}, {\"file\": \"*/domain/**/*.event.ts\", \"extends\": [\"ProjectDomainEvent<\"], \"label\": \"Domain Event\"}, {\"file\": \"*.integration-event.ts\", \"extends\": [\"IntegrationEvent\"], \"label\": \"Integration Event\"}, {\"file\": \"*/application/commands/**/command.ts\", \"implements\": [\"ICommand\"], \"label\": \"Command\"}, {\"file\": \"*/application/queries/**/*.query.ts\", \"implements\": [\"IQuery\"], \"label\": \"Query\"}, {\"file\": \"*-command.kysely.repository.ts\", \"extends\": [\"BaseKyselyRepository<\"], \"label\": \"Command Repository\"}, {\"file\": \"*-query.kysely.repository.ts\", \"label\": \"Query Repository\", \"forbidden\": [{\"pattern\": \"TransactionHost\", \"message\": \"Query repositories must NOT use TransactionHost — use @Inject(DATABASE_TOKEN) + Kysely<Database> instead\"}]}], \"purity\": {\"noThrowLayers\": [\"domain\", \"application\"], \"noInfraImportLayers\": [\"domain\"], \"forbiddenImports\": [\"infrastructure/\", \"@nestjs/\", \"typeorm\", \"kysely\"]}, \"contextPath\": \"src/contexts\", \"nestjs\": {\"requireInjectDecorator\": {\"enabled\": true, \"filePatterns\": [\"*.handler.ts\", \"*.service.ts\", \"*.controller.ts\", \"*.guard.ts\", \"*.interceptor.ts\", \"*.pipe.ts\", \"*.filter.ts\", \"*.gateway.ts\", \"*.resolver.ts\", \"*.saga.ts\"]}}}",
+        "src/contexts/billing/domain/services/pricing.service.ts": "import { Kysely } from 'kysely';\n\nexport class Pricing {}\n"
+      }
+    },
+    "expect": "pass",
+    "expect_stderr": "[Ff]orbidden|import"
+  },
+  {
+    "name": "domain-purity-clean-domain-silent",
+    "hook": "check-domain-purity.js",
+    "payload": {
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "src/contexts/billing/domain/services/pricing.service.ts"
+      }
+    },
+    "setup": {
+      "cwd": true,
+      "files": {
+        "ddd-hooks.json": "{\"$comment\": \"DDD enforcement hooks config — place in project root or .claude/ directory\", \"baseClasses\": [{\"file\": \"*.aggregate.ts\", \"extends\": [\"AggregateRoot<\"], \"label\": \"Aggregate\"}, {\"file\": \"*.vo.ts\", \"extends\": [\"BaseValueObject<\"], \"label\": \"Value Object\"}, {\"file\": \"*.entity.ts\", \"extends\": [\"BaseEntity<\"], \"label\": \"Entity\"}, {\"file\": \"*.specification.ts\", \"extends\": [\"CompositeSpecification<\", \"AsyncCompositeSpecification<\"], \"label\": \"Specification\"}, {\"file\": \"*/domain/**/*.event.ts\", \"extends\": [\"ProjectDomainEvent<\"], \"label\": \"Domain Event\"}, {\"file\": \"*.integration-event.ts\", \"extends\": [\"IntegrationEvent\"], \"label\": \"Integration Event\"}, {\"file\": \"*/application/commands/**/command.ts\", \"implements\": [\"ICommand\"], \"label\": \"Command\"}, {\"file\": \"*/application/queries/**/*.query.ts\", \"implements\": [\"IQuery\"], \"label\": \"Query\"}, {\"file\": \"*-command.kysely.repository.ts\", \"extends\": [\"BaseKyselyRepository<\"], \"label\": \"Command Repository\"}, {\"file\": \"*-query.kysely.repository.ts\", \"label\": \"Query Repository\", \"forbidden\": [{\"pattern\": \"TransactionHost\", \"message\": \"Query repositories must NOT use TransactionHost — use @Inject(DATABASE_TOKEN) + Kysely<Database> instead\"}]}], \"purity\": {\"noThrowLayers\": [\"domain\", \"application\"], \"noInfraImportLayers\": [\"domain\"], \"forbiddenImports\": [\"infrastructure/\", \"@nestjs/\", \"typeorm\", \"kysely\"]}, \"contextPath\": \"src/contexts\", \"nestjs\": {\"requireInjectDecorator\": {\"enabled\": true, \"filePatterns\": [\"*.handler.ts\", \"*.service.ts\", \"*.controller.ts\", \"*.guard.ts\", \"*.interceptor.ts\", \"*.pipe.ts\", \"*.filter.ts\", \"*.gateway.ts\", \"*.resolver.ts\", \"*.saga.ts\"]}}}",
+        "src/contexts/billing/domain/services/pricing.service.ts": "import { Result } from '../result';\n\nexport class Pricing {\n  run(): Result<number> {\n    return Result.ok(1);\n  }\n}\n"
+      }
+    },
+    "expect": "pass",
+    "expect_silent": true
+  },
+  {
+    "name": "domain-purity-no-config-silent",
+    "hook": "check-domain-purity.js",
+    "payload": {
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "src/contexts/billing/domain/services/pricing.service.ts"
+      }
+    },
+    "setup": {
+      "cwd": true,
+      "files": {
+        "src/contexts/billing/domain/services/pricing.service.ts": "export class Pricing {\n  run() {\n    throw new Error('boom');\n  }\n}\n"
+      }
+    },
+    "expect": "pass",
+    "expect_silent": true
+  }
+]

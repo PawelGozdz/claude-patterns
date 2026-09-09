@@ -32,6 +32,7 @@ function toHit(p: { score: number; payload?: Record<string, unknown> | null }): 
   const payload = (p.payload ?? {}) as Record<string, unknown>;
   return {
     source: String(payload.source ?? ""),
+    repo: (payload.repo as string) ?? undefined,
     section: String(payload.section ?? ""),
     text: String(payload.text ?? ""),
     startLine: (payload.startLine as number) ?? undefined,
@@ -42,6 +43,7 @@ function toHit(p: { score: number; payload?: Record<string, unknown> | null }): 
     feature: (payload.feature as string) ?? undefined,
     combines: (payload.combines as string[]) ?? undefined,
     lib_version: (payload.lib_version as string) ?? undefined,
+    indexedSha: (payload.indexedSha as string) ?? undefined,
     indexedAt: (payload.indexedAt as string) ?? undefined,
     scope: (payload.scope as Hit["scope"]) ?? undefined,
     project: (payload.project as string) ?? undefined,
@@ -67,10 +69,11 @@ export class QdrantStore {
       id: uuidv5(c.id, NAMESPACE), // deterministic — safe to call add() repeatedly for the same chunk.id
       vector: c.vector as number[],
       payload: {
-        source: c.source, section: c.section, text: c.text,
+        source: c.source, repo: c.repo ?? null, section: c.section, text: c.text,
         startLine: c.startLine ?? null, endLine: c.endLine ?? null,
         kind: c.kind ?? null, tags: c.tags ?? null, level: c.level ?? null, indexedAt: c.indexedAt ?? null,
         feature: c.feature ?? null, combines: c.combines ?? null, lib_version: c.lib_version ?? null,
+        indexedSha: c.indexedSha ?? null,
         scope: c.scope ?? null, project: c.project ?? null,
       },
     }));
@@ -80,7 +83,9 @@ export class QdrantStore {
   }
 
   /** Delete-by-filter on payload.source — used by indexer.ts::reindexFile to drop a file's stale
-   *  chunks before re-adding fresh ones (add() alone would leave orphans if chunk count shrank). */
+   *  chunks before re-adding fresh ones (add() alone would leave orphans if chunk count shrank).
+   *  The filter matches the EXACT stored value, so the caller must pass a repo-RELATIVE path since
+   *  TASK-RAG-004 R1 — an absolute one silently deletes nothing and leaves orphans accumulating. */
   async deleteBySource(source: string): Promise<void> {
     await this.client.delete(this.collection, { filter: { must: [{ key: "source", match: { value: source } }] } });
   }

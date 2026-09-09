@@ -1,35 +1,9 @@
 ---
 name: reference-data
-description: "Design and manage reference data systems — security master, client master, account master, identifier mapping, pricing data, and governance. Use when building or evaluating a security master database, mapping identifiers across systems (CUSIP to ISIN, SEDOL to FIGI), designing client master models for onboarding or KYC, defining account master attributes across custodians, implementing pricing validation with vendor hierarchy, establishing reference data governance and stewardship, handling identifier changes from corporate actions, or troubleshooting data quality issues traced to stale prices or missing identifiers. Trigger on: security master, CUSIP, ISIN, SEDOL, FIGI, client master, account master, pricing data, reference data, golden source, MDM, master data, identifier mapping, data governance, pricing validation."
+description: "Design and manage reference data systems — security master, client master, account master, identifier mapping, pricing data sources, golden source designation, and governance. Use when building or evaluating a security master database, mapping identifiers across systems (CUSIP to ISIN, SEDOL to FIGI), designing client master models for onboarding or KYC, defining account master attributes across custodians, designating golden sources and MDM patterns across systems, establishing a pricing vendor hierarchy with fallback order, establishing reference data governance and stewardship, handling identifier changes from corporate actions, or troubleshooting issues traced to missing or changed identifiers. Trigger on: security master, CUSIP, ISIN, SEDOL, FIGI, client master, account master, pricing data, reference data, golden source, MDM, master data, identifier mapping, data governance, vendor hierarchy."
 ---
 
 # Reference Data
-
-## Purpose
-
-Guide the design and management of reference data systems for financial services. Covers security master data (instrument identification, classification, terms), client master data (identity, demographics, relationships), account master data (registration, configuration, features), pricing data management, identifier systems (CUSIP, ISIN, SEDOL, FIGI), and reference data governance. Enables building or evaluating reference data infrastructure that serves as a reliable foundation for all downstream systems.
-
-## Layer
-
-13 — Data Integration (Reference Data & Integration)
-
-## Direction
-
-both
-
-## When to Use
-
-- Designing or evaluating a security master database for an advisory firm or asset manager
-- Mapping security identifiers across systems (CUSIP to ISIN, SEDOL to FIGI, internal IDs)
-- Building or improving a client master data model for onboarding, CRM, or regulatory reporting
-- Defining account master attributes and account-to-client relationships across custodians
-- Implementing pricing data management with validation, exception handling, and vendor hierarchy
-- Establishing reference data governance — ownership, stewardship, quality metrics, change management
-- Distributing reference data to downstream systems (portfolio management, trading, reporting, billing)
-- Evaluating or integrating data vendors (Bloomberg, Refinitiv, ICE, S&P, Moody's)
-- Troubleshooting data quality issues traced to reference data (stale prices, missing identifiers, incorrect classifications)
-- Handling identifier changes caused by corporate actions (mergers, spin-offs, ticker changes)
-- Trigger phrases: "security master," "CUSIP," "ISIN," "SEDOL," "FIGI," "client master," "account master," "pricing data," "reference data," "golden source," "MDM," "master data," "identifier mapping," "data governance," "pricing validation"
 
 ## Core Concepts
 
@@ -94,11 +68,9 @@ Pricing is the most time-sensitive reference data category. Incorrect prices pro
 
 **Pricing hierarchy:** Define a preferred source per security type with automatic fallback. Example: US equities — exchange close, then Bloomberg, then Refinitiv. Corporate bonds — ICE evaluated, then Bloomberg BVAL, then Refinitiv. Alternatives — manager/GP valuation, then third-party appraisal, then internal model.
 
-**Stale price detection:** Flag prices unchanged beyond expected thresholds (1 day for liquid equities, 3-5 days for bonds, 30 days for alternatives). Assess portfolio-level impact and resolve via vendor contact, broker quote, or fair value estimate.
-
 **Fair value pricing:** Adjust international securities' closing prices for subsequent market, currency, and news developments when foreign exchanges close hours before the US close. Prevents stale-price arbitrage in mutual funds.
 
-**Pricing validation:** Automated checks before loading — variance check (flag moves exceeding 10-15% for equities, 5% for bonds), zero-price detection, negative-price detection, cross-source comparison, currency verification, stale detection.
+**Pricing validation and stale-price detection:** Validation-rule design and execution (variance checks, zero/negative-price detection, stale-price windows, cross-source comparison, threshold calibration) are owned by the **data-quality** skill (data-integration plugin); reference-data owns the source hierarchy those rules validate against.
 
 **Manual overrides:** Restricted to authorized users, documented with reason and source, logged in an audit trail, time-limited pending vendor correction.
 
@@ -110,7 +82,7 @@ Governance establishes the structures, policies, and processes ensuring referenc
 
 **Data stewardship:** Stewards execute governance daily — monitoring quality dashboards, resolving exceptions, coordinating with vendors, approving overrides, maintaining data dictionaries.
 
-**Data quality metrics:** Completeness (percentage of records with all required fields), accuracy (percentage matching the authoritative source), timeliness (percentage updated within the expected window), consistency (same value across all systems).
+**Data quality metrics:** Measure reference data on the standard quality dimensions (completeness, accuracy, timeliness, consistency). Dimension definitions, validation-rule design, profiling, exception management, and threshold calibration are owned by the **data-quality** skill (data-integration plugin).
 
 **MDM patterns:** Registry (links only, no conflict resolution), consolidation (read-only golden record aggregated from sources), coexistence (bidirectional sync between MDM and sources), transaction/hub (single system of entry for all reference data).
 
@@ -162,11 +134,11 @@ Data vendors are the primary external source for security reference data, pricin
 
 ### Example 3: Building Client Master Data Governance for Regulatory Compliance
 
-**Scenario:** A wealth management firm serving 3,000 households discovers poor client data quality: 12% incomplete addresses, 8% stale employment data (clients known to be retired still listed as employed), 5% of entity clients missing beneficial ownership documentation, and inconsistent household groupings causing billing errors (missing breakpoint discounts). Client data exists in three systems (Salesforce CRM, Schwab custodian, Orion PMS) with no designated golden source and divergent records. The firm must remediate and establish governance before FinCEN's 2026 investment adviser AML/CIP requirements.
+**Scenario:** A wealth management firm serving 3,000 households discovers poor client data quality: 12% incomplete addresses, 8% stale employment data (clients known to be retired still listed as employed), 5% of entity clients missing beneficial ownership documentation, and inconsistent household groupings causing billing errors (missing breakpoint discounts). Client data exists in three systems (Salesforce CRM, Schwab custodian, Orion PMS) with no designated golden source and divergent records. The firm must remediate and establish governance before FinCEN's investment adviser AML/CFT program requirements take effect — originally January 1, 2026, delayed by FinCEN to January 1, 2028 (status as of June 2026; verify current).
 
 **Design considerations:** Data owners are assigned by domain: client identity (CCO — regulatory significance), client relationships (Head of Client Services — servicing and billing), client financial profile (CIO — suitability). Golden sources: Schwab for legal identity data (verified through CIP, used for 1099s), Salesforce for relationship/advisory data, Orion as a consumer only (synchronized from the other two, not edited directly). Remediation: incomplete addresses resolved by cross-referencing CRM against custodian and contacting clients for gaps (target 100% in 90 days); stale employment flagged for clients 60+ not updated in two years, with automated triggers when systematic withdrawals begin; missing beneficial ownership collected using FinCEN forms, prioritized by account size (target 100% in 60 days); household groupings identified via shared addresses/phones/names, confirmed by advisors, with overbilling refunds issued. Ongoing governance: daily automated quality checks with exception dashboard, weekly steward review of trends, monthly metrics reporting to operations committee, quarterly governance review with data owners, annual comprehensive data refresh for inactive clients.
 
-**Analysis:** The program addresses both immediate gaps and structural causes. Golden source designation eliminates cross-system ambiguity. The remediation requires significant advisor engagement, best positioned as a client service improvement. FinCEN's 2026 effective date creates additional urgency for complete, verified client identity data.
+**Analysis:** The program addresses both immediate gaps and structural causes. Golden source designation eliminates cross-system ambiguity. The remediation requires significant advisor engagement, best positioned as a client service improvement. FinCEN's effective date (January 1, 2028 after the delay) still warrants early remediation — complete, verified client identity data takes years to build.
 
 ## Common Pitfalls
 
@@ -183,11 +155,11 @@ Data vendors are the primary external source for security reference data, pricin
 
 ## Cross-References
 
-- **market-data** (Layer 13, data-integration) — Market data covers real-time pricing and trade data; reference data provides the instrument master that market data references.
-- **data-quality** (Layer 13, data-integration) — General data quality principles (profiling, validation, monitoring) applied here specifically to financial reference data.
-- **integration-patterns** (Layer 13, data-integration) — Integration patterns (event-driven, batch, API) are the mechanisms for distributing reference data.
-- **portfolio-management-systems** (Layer 10, advisory-practice) — The PMS is a primary consumer of security master, pricing, and account master data.
-- **reconciliation** (Layer 13, data-integration) — Reference data mismatches (identifiers, stale prices) are a leading cause of reconciliation breaks.
-- **corporate-actions** (Layer 13, data-integration) — Corporate actions drive security master changes; this skill covers the resulting reference data updates.
-- **know-your-customer** (Layer 9, compliance) — KYC requirements define what client data must be collected; the client master stores and governs it.
-- **books-and-records** (Layer 9, compliance) — Reference data records are books and records subject to retention and examination requirements.
+- **market-data** (data-integration plugin) — Market data covers real-time pricing and trade data; reference data provides the instrument master that market data references.
+- **data-quality** (data-integration plugin) — General data quality principles (profiling, validation, monitoring) applied here specifically to financial reference data.
+- **integration-patterns** (data-integration plugin) — Integration patterns (event-driven, batch, API) are the mechanisms for distributing reference data.
+- **portfolio-management-systems** (advisory-practice plugin) — The PMS is a primary consumer of security master, pricing, and account master data.
+- **reconciliation** (client-operations plugin) — Reference data mismatches (identifiers, stale prices) are a leading cause of reconciliation breaks.
+- **corporate-actions** (client-operations plugin) — Corporate actions drive security master changes; this skill covers the resulting reference data updates.
+- **know-your-customer** (compliance plugin) — KYC requirements define what client data must be collected; the client master stores and governs it.
+- **books-and-records** (compliance plugin) — Reference data records are books and records subject to retention and examination requirements.

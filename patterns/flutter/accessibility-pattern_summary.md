@@ -6,6 +6,12 @@
      Verifier sprawdza KAŻDĄ regułę z ID poniżej i cytuje ją przy naruszeniu. -->
 
 **Layer**: Cross-Layer · **Applies to**: `.dart` w `lib/**/presentation/**` z widgetem
+
+**Scope**: project-specific (juz-ide-mobile-app) — single-project derivation, not yet validated
+in a second codebase. Excluded from `retrieve_patterns` by default; pass
+`project: "juz-ide-mobile-app"` to include it. Promote to universal once a second project adopts
+this shape.
+
 interaktywnym (`onTap`/`onPressed`/`GestureDetector`/`InkWell`) lub renderujący tekst;
 `lib/core/design/tokens/**`; `lib/core/motion/**`
 

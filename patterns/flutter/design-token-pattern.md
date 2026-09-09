@@ -4,6 +4,11 @@
 
 **Layer**: Cross-Layer
 **Status**: production
+**Scope**: project-specific (juz-ide-mobile-app) — single-project derivation, not yet validated
+in a second codebase. Excluded from `retrieve_patterns` by default; pass
+`project: "juz-ide-mobile-app"` to include it. Promote to universal once a second project adopts
+this shape.
+
 
 ## What This Is
 

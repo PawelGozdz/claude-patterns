@@ -3,9 +3,26 @@
 **Tags**: "api:events:outbox", "api:data-access:transaction"
 
 **Layer**: Architecture
+**Status**: production
+**Adoption**: partial — 6 of ~30 Tier 1 integration event handlers migrated (reference codebase, 2026-08)
 **Assumes**: ddd/core   <!-- wzorzec operuje pojęciami modelu domenowego -->
 
 **Purpose**: Atomic delivery of integration events — eliminates the crash window between DB commit and BullMQ dispatch.
+
+## When to Use
+
+**Use this pattern for:**
+- ✅ every cross-context integration event — the outbox is the only sanctioned transport (ADR-0082)
+- ✅ any O-1/O-2 event where loss is a GDPR violation or observable revenue/feature degradation
+- ✅ replacing an existing `fanOut()` or `dispatchEvent()` call that sits outside the producer's transaction
+- ✅ work that must survive a process restart between the DB commit and the queue write
+
+**Do NOT use for:**
+- ❌ domain events inside one bounded context — those persist with the aggregate (`domain-event-pattern.md`)
+- ❌ background jobs whose consumer lives in the producing context — plain BullMQ (`bullmq-queue-pattern.md`)
+- ❌ the shape and GDPR/security fields of the event itself — `integration-event-pattern.md`
+- ❌ synchronous cross-context reads — the ACL registry, not an event
+
 **Audience**: domain-application-implementer, infrastructure-testing-implementer
 **Philosophy**: Code + concise rules. Reference: TS-DR-003, ADR-0027 (Tier 1 events)
 
@@ -249,5 +266,3 @@ directly — never a side effect some OTHER event handler produced downstream of
 ---
 
 **Pattern Type**: Architecture (MANDATORY for Tier 1 integration event handlers)
-**Status**: Partially adopted (6 of ~30 handlers migrated)
-**Lines**: ~180

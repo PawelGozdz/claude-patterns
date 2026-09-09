@@ -108,12 +108,11 @@ patterns:
     deprecated: 0
 
 agents:
-  universal: 26
+  universal: 24
   stack_specific: 30
   categories:
     universal:
       - backend-technology-expert
-      - security-privacy-architect
       - tech-lead
       - product-owner
       - marketing-strategist        # v3.3
@@ -150,7 +149,7 @@ agents:
       - typescript-library (2)
 
 commands:
-  total: 45
+  total: 33
   categories:  # NIE zweryfikowane przez count-assets.mjs (K13) — przypisanie komendy do
                # kategorii wymaga czytania treści, nie prostego liczenia; suma poniżej (26)
                # nie sumuje się do total: 45, bo lista nie nadążyła za nowymi komendami
@@ -159,10 +158,10 @@ commands:
                # security-review, task-tidy, threat-model i inne — 16 z nich brakuje też
                # w commands/README.md, patrz K42).
     orchestration: 5  # pulse, pm-status, sprint, task-health, tech-debt
-    quality: 4        # verify, code-review, build-fix, test-coverage
-    workflow: 4       # plan, tdd, orchestrate, scaffold
-    learning: 4       # instinct-status, instinct-export, instinct-import, evolve
-    session: 3        # sessions, checkpoint, progress
+    quality: 1        # build-fix  (verify/code-review/test-coverage → ECC, ADR 0009)
+    workflow: 3       # analyze, orchestrate, scaffold  (plan/tdd → ECC)
+    learning: 0       # instinct-*/evolve → ECC (ADR 0009)
+    session: 2        # checkpoint (handoff-only wrapper), progress  (sessions → ECC)
     infrastructure: 2 # pm2, schedule (if exists)
     marketing: 1      # /marketing  (v3.3)
     finance: 1        # /finance    (v3.4)
@@ -170,8 +169,8 @@ commands:
     meta: 1           # skill-create
 
 skills:
-  total_categories: 24
-  total_skills: 190  # 52 internal + 42 vendored marketing + 84 vendored finance + 12 vendored legal
+  total_categories: 23
+  total_skills: 194  # 49 internal + 42 vendored marketing + 91 vendored finance + 12 vendored legal
   orchestration_skills:
     - pulse
     - pm-status
@@ -274,7 +273,7 @@ skills:
     jurisdictions_supported: ["PL", "EU general", "US", "UK", "FR (limited)"]
 
 hooks:
-  total: 53  # 50 .js + 3 .sh, płasko w hooks/ (lib/ to kod dzielony, nie osobne hooki)
+  total: 42  # 39 .js + 3 .sh, płasko w hooks/ (lib/ to kod dzielony, nie osobne hooki); 53→42 po K98/K99 (ADR 0009)
 
 templates:
   stack_presets: 10

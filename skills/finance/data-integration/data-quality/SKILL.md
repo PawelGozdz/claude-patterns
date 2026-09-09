@@ -1,36 +1,9 @@
 ---
 name: data-quality
-description: "Design and operate data quality programs for financial data — golden source architecture, validation rules, data lineage, exception management, profiling, and governance. Use when building validation rules for pricing or client data pipelines, designing a data quality monitoring framework, establishing golden source designations across systems, implementing data lineage for BCBS 239 or MiFID II, investigating reconciliation breaks or billing errors traced to bad data, preparing for regulatory exams on data accuracy, building data quality scorecards, or defining data stewardship roles. Trigger on: data quality, golden source, data lineage, data validation, data profiling, exception management, data governance, BCBS 239, data completeness, data accuracy, validation rules, data anomaly, data stewardship, data quality scorecard."
+description: "Design and operate data quality programs for financial data — validation rules, pricing validation, data lineage, exception management, profiling, and governance. Use when building validation rules for pricing or client data pipelines, detecting stale prices, designing a data quality monitoring framework, calibrating validation thresholds, implementing data lineage for BCBS 239 or MiFID II, investigating reconciliation breaks or billing errors traced to bad data, preparing for regulatory exams on data accuracy, building data quality scorecards, or defining data stewardship roles. Trigger on: data quality, pricing validation, stale prices, data lineage, data validation, data profiling, exception management, data governance, BCBS 239, data completeness, data accuracy, validation rules, data anomaly, data stewardship, data quality scorecard."
 ---
 
 # Data Quality
-
-## Purpose
-
-Guide the design and operation of data quality management programs for financial services firms. Covers the six dimensions of data quality (accuracy, completeness, timeliness, consistency, validity, uniqueness) applied to financial data domains, golden source architecture and master data management, data lineage and provenance tracking, validation rule design for security prices, client data, transaction data, and position data, data profiling and anomaly detection, exception management workflows, data quality governance frameworks, and regulatory requirements for data accuracy including BCBS 239, MiFID II, GIPS, and SEC recordkeeping obligations. Enables building or evaluating data quality infrastructure that ensures downstream systems — portfolio management, trading, compliance, reporting, and billing — operate on trustworthy data.
-
-## Layer
-
-13 — Data Integration (Reference Data & Integration)
-
-## Direction
-
-both
-
-## When to Use
-
-- Designing a data quality monitoring framework for a wealth management or asset management platform
-- Building validation rules for security pricing, client data, transaction data, or position data pipelines
-- Conducting a data quality assessment for regulatory reporting readiness (SEC filings, GIPS, AML/KYC)
-- Establishing golden source designations and conflict resolution rules across multiple systems
-- Implementing data lineage tracking to satisfy BCBS 239 or MiFID II requirements
-- Designing exception management workflows for data quality breaks
-- Building data quality scorecards and governance reporting for operations committees
-- Investigating root causes of reconciliation breaks, billing errors, or performance calculation discrepancies traced to data quality
-- Evaluating data profiling tools or data quality monitoring platforms
-- Defining data stewardship roles and accountability structures
-- Preparing for regulatory examinations where data accuracy is a focus area
-- Trigger phrases: "data quality," "golden source," "data lineage," "data validation," "data profiling," "exception management," "data stewardship," "data governance," "BCBS 239," "data quality scorecard," "validation rules," "data anomaly," "data completeness," "data accuracy"
 
 ## Core Concepts
 
@@ -61,36 +34,7 @@ Six dimensions define data quality. Each has domain-specific meaning in financia
 
 ### 2. Golden Source Architecture
 
-A golden source (also called system of record or authoritative source) is the single designated source for a specific data domain. Every data element should have exactly one golden source, and all consuming systems should retrieve that element from the golden source rather than maintaining independent copies.
-
-**Designations by data domain:**
-
-| Data Domain | Typical Golden Source | Rationale |
-|---|---|---|
-| Security reference data | Security master (fed by Bloomberg, Refinitiv) | Centralized, vendor-validated, corporate-action-managed |
-| Client identity data | Custodian | Verified through CIP/KYC processes, used for tax reporting |
-| Client relationship/advisory data | CRM (Salesforce, Redtail, Wealthbox) | Advisor-maintained, includes preferences and suitability |
-| Position and transaction data | Custodian books and records | Legal record of ownership, basis for regulatory reporting |
-| Performance data | Performance calculation engine (Orion, Black Diamond, Addepar) | Calculated from reconciled positions and pricing |
-| Pricing data | Pricing service or security master pricing module | Vendor hierarchy with defined fallback and validation |
-| Billing data | Billing system | Derived from positions and pricing via their golden sources |
-
-The golden source designation must be documented, communicated to all stakeholders, and enforced through system architecture — ideally, non-golden-source systems should not allow manual edits to fields owned by another system.
-
-**Conflict resolution:** When multiple sources provide the same data element, the golden source designation determines which value is authoritative. Conflicts require explicit resolution rules: custodian legal name overrides CRM legal name (custodian verified through CIP), but CRM preferred name overrides custodian (advisory relationship data). For pricing, a vendor hierarchy with defined fallback order resolves conflicts — e.g., exchange close, then Bloomberg, then Refinitiv, then manual override with documentation.
-
-**Golden record construction:** In master data management (MDM), the golden record is constructed by merging the best attributes from multiple sources according to survivorship rules. Example: for a client record, legal name comes from the custodian, email and phone from the CRM, risk profile from the PMS, and KYC status from the compliance system. Each attribute has its own golden source, and the composite golden record draws from all of them.
-
-**MDM patterns:**
-
-| Pattern | Description | Data Quality Trade-off |
-|---|---|---|
-| Registry | Links records across systems without copying data | Lowest cost; no conflict resolution, queries require cross-system joins |
-| Consolidation | Read-only golden record aggregated from sources | Good for reporting; does not write corrections back to sources |
-| Coexistence | Bidirectional sync between MDM hub and source systems | Keeps all systems current; complex to implement and maintain |
-| Transaction hub | Single point of entry for all creates and updates | Highest data quality; requires all users to adopt new workflows |
-
-Most wealth management and advisory firms operate at the consolidation level, aggregating custodian, CRM, and PMS data into a reporting warehouse. Firms with significant data quality issues or regulatory pressure may advance to coexistence, where the MDM hub enforces quality rules and pushes corrections back to source systems.
+Golden-source designation (which system is authoritative per data domain), MDM patterns (registry, consolidation, coexistence, transaction hub), conflict-resolution and survivorship rules, and pricing-source hierarchies are owned by the **reference-data** skill (data-integration plugin) — see it for the designation tables and pattern trade-offs. What matters here: accuracy is unmeasurable without a designated authoritative source to compare against, so every validation rule and accuracy metric below presumes a golden-source designation exists.
 
 ### 3. Data Lineage and Provenance
 
@@ -244,7 +188,7 @@ Financial regulators do not typically prescribe specific data quality standards,
 
 **GIPS requirements for performance data quality:** Firms claiming GIPS compliance must maintain data quality controls ensuring: all actual, fee-paying, discretionary portfolios are included in composites (completeness), returns are calculated using accurate valuations and cash flows (accuracy), portfolio-level returns are time-weighted with appropriate valuation frequency (validity), and composite construction is applied consistently over time (consistency). GIPS verification includes testing data quality controls as part of the verification procedures.
 
-**AML/KYC data accuracy requirements:** FinCEN's Customer Identification Program (CIP) rules require firms to verify client identity information. Customer Due Diligence (CDD) rules require identifying and verifying beneficial owners of legal entity customers. Ongoing monitoring requires current, accurate client data — stale or incomplete client data undermines the effectiveness of transaction monitoring and sanctions screening. The 2026 investment adviser AML/CIP requirements extend these obligations to SEC-registered investment advisers.
+**AML/KYC data accuracy requirements:** FinCEN's Customer Identification Program (CIP) rules require firms to verify client identity information. Customer Due Diligence (CDD) rules require identifying and verifying beneficial owners of legal entity customers. Ongoing monitoring requires current, accurate client data — stale or incomplete client data undermines the effectiveness of transaction monitoring and sanctions screening. FinCEN's investment adviser AML/CFT program rule extends these obligations to SEC-registered investment advisers; its effective date, originally January 1, 2026, was delayed by FinCEN to January 1, 2028 (status as of June 2026 — FinCEN has signaled further tailoring of the rule before it takes effect; verify current status).
 
 **Risk data aggregation:** Beyond BCBS 239, prudential regulators (OCC, Fed, PRA) expect firms to demonstrate that risk calculations (VaR, stress testing, capital adequacy) are based on accurate, complete, timely data with documented lineage. Supervisory stress tests (CCAR, DFAST) require firms to aggregate exposure data across business lines and legal entities with demonstrated accuracy — data quality failures during stress testing exercises have resulted in supervisory findings and remediation orders.
 
@@ -293,11 +237,11 @@ Financial regulators do not typically prescribe specific data quality standards,
 
 ## Cross-References
 
-- **reference-data** (Layer 13, data-integration) — Reference data (security master, client master, account master) is the primary domain where data quality governance applies; quality of reference data determines quality of all downstream processes.
-- **market-data** (Layer 13, data-integration) — Market data pricing quality is a critical data quality domain; real-time and EOD pricing validation rules are a core application of data quality principles.
-- **integration-patterns** (Layer 13, data-integration) — Integration failures (file delivery issues, API errors, transformation bugs) are a leading source of data quality issues; integration architecture determines lineage capture capability.
-- **reconciliation** (Layer 12, client-operations) — Reconciliation is the primary detective control for data quality, comparing positions, transactions, and cash across systems to identify breaks caused by data quality failures.
-- **gips-compliance** (Layer 9, compliance) — GIPS requires documented data quality controls for performance data, including composite completeness, valuation accuracy, and return calculation integrity.
-- **books-and-records** (Layer 9, compliance) — Data quality directly affects regulatory recordkeeping obligations; inaccurate or incomplete records violate SEC Rule 17a-4 and Investment Advisers Act requirements.
-- **regulatory-reporting** (Layer 9, compliance) — Regulatory filings (Form ADV, 13F, FOCUS, Form PF) depend on accurate, complete source data; data quality failures in reporting data carry direct regulatory risk.
-- **operational-risk** (Layer 11, trading-operations) — Data quality failures are an operational risk category; material data errors can cause financial losses, regulatory sanctions, and reputational damage.
+- **reference-data** (data-integration plugin) — Reference data (security master, client master, account master) is the primary domain where data quality governance applies; quality of reference data determines quality of all downstream processes.
+- **market-data** (data-integration plugin) — Market data pricing quality is a critical data quality domain; real-time and EOD pricing validation rules are a core application of data quality principles.
+- **integration-patterns** (data-integration plugin) — Integration failures (file delivery issues, API errors, transformation bugs) are a leading source of data quality issues; integration architecture determines lineage capture capability.
+- **reconciliation** (client-operations plugin) — Reconciliation is the primary detective control for data quality, comparing positions, transactions, and cash across systems to identify breaks caused by data quality failures.
+- **gips-compliance** (compliance plugin) — GIPS requires documented data quality controls for performance data, including composite completeness, valuation accuracy, and return calculation integrity.
+- **books-and-records** (compliance plugin) — Data quality directly affects regulatory recordkeeping obligations; inaccurate or incomplete records violate SEC Rule 17a-4 and Investment Advisers Act requirements.
+- **regulatory-reporting** (compliance plugin) — Regulatory filings (Form ADV, 13F, FOCUS, Form PF) depend on accurate, complete source data; data quality failures in reporting data carry direct regulatory risk.
+- **operational-risk** (trading-operations plugin) — Data quality failures are an operational risk category; material data errors can cause financial losses, regulatory sanctions, and reputational damage.

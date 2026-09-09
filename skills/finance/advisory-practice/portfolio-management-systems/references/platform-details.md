@@ -1,3 +1,18 @@
+# Platform Details — Portfolio Management Systems
+
+## Table of Contents
+
+1. [Portfolio Management System Architecture](#1-portfolio-management-system-architecture) — core functions, major platform comparison table, IBOR vs. OBOR
+2. [Model Portfolio Management](#2-model-portfolio-management) — model specification, types, hierarchy, change governance, marketplaces
+3. [Sleeve-Based and UMA Architecture](#3-sleeve-based-and-uma-architecture) — UMA structure, cash management rules, UMA vs. SMA vs. wrap comparison
+4. [Drift Monitoring and Rebalancing](#4-drift-monitoring-and-rebalancing) — drift measurement, threshold configurations, rebalancing approaches, tax-aware logic
+5. [Held-Away Asset Aggregation](#5-held-away-asset-aggregation) — data sources, data-quality challenges, reporting views
+6. [Portfolio Accounting and Reconciliation](#6-portfolio-accounting-and-reconciliation) — IBOR ledger, daily reconciliation, break resolution, corporate actions, cost basis
+7. [Trading and Order Management Integration](#7-trading-and-order-management-integration) — pointer to order-management-advisor
+8. [Performance Calculation Engine](#8-performance-calculation-engine) — daily vs. monthly calculation, benchmark tracking, performance levels
+9. [Billing and Fee Calculation](#9-billing-and-fee-calculation) — pointer to fee-billing
+10. [Custodian Integration and Data Feeds](#10-custodian-integration-and-data-feeds) — data flow table, integration methods, feed timing, multi-custodian management
+
 ## Core Concepts
 
 ### 1. Portfolio Management System Architecture
@@ -380,110 +395,17 @@ Effective tax lot management enables gain/loss optimization:
 
 ### 7. Trading and Order Management Integration
 
-The PMS generates trade proposals based on model changes, rebalancing triggers, cash
-flow events, and ad-hoc advisor instructions. These proposals flow through a trading
-workflow that includes compliance checks, order aggregation, and execution routing.
-
-**PMS-Generated Trade Lists:**
-
-Trade lists originate from several PMS functions:
-
-- **Model-driven trades** — When a model allocation changes or a new security is
-  substituted, the PMS generates trades for all accounts assigned to that model.
-- **Rebalancing trades** — When drift monitoring detects threshold breaches, the
-  PMS generates trades to restore target alignment.
-- **Cash-flow trades** — When a client deposits or withdraws funds, the PMS
-  generates invest or liquidation trades.
-- **Ad-hoc trades** — Advisor-initiated trades for client-specific needs (e.g.,
-  selling a concentrated stock position, gifting securities).
-
-**Integration with Order Management:**
-
-In larger firms, the PMS integrates with a separate Order Management System (OMS):
-
-1. PMS proposes trades (trade blotter or trade list).
-2. Advisor or portfolio manager reviews and approves.
-3. Approved trades are sent to the OMS.
-4. OMS applies pre-trade compliance checks.
-5. OMS aggregates orders across accounts for block trading.
-6. OMS routes orders to execution venues.
-7. Execution confirmations flow back to the PMS to update positions.
-
-In smaller firms, the PMS may handle steps 3-7 internally using a built-in trading
-module (e.g., Orion Eclipse, Tamarac Trading).
-
-**Block Trading from PMS:**
-
-When the same trade needs to execute across dozens or hundreds of accounts, the PMS
-or OMS aggregates individual account orders into block orders:
-
-- Aggregate buy or sell orders for the same security across accounts.
-- Execute the block as a single order for best execution.
-- Allocate fills back to individual accounts pro-rata or according to a
-  pre-defined allocation methodology.
-- Ensure fair and equitable treatment across accounts (no account systematically
-  receives better or worse fills).
-
-**Pre-Trade Compliance Checks:**
-
-Before trades execute, the PMS or OMS validates against compliance rules:
-
-- **Restricted securities** — Securities on the firm's restricted list (due to
-  insider information, investment banking relationships, or client instructions).
-- **Concentration limits** — Maximum position size as a percentage of the account
-  or portfolio (e.g., no single equity position exceeding 10%).
-- **Client restrictions** — Individual client mandates such as ESG exclusions,
-  sector prohibitions, or specific security restrictions.
-- **Regulatory limits** — Position limits for certain securities or asset classes.
-- **Cash minimums** — Ensuring sufficient cash remains after trading to cover
-  anticipated withdrawals or fee debits.
-
-**Trade Implementation Methods:**
-
-- **Direct custodian trading** — The PMS sends trade instructions directly to the
-  custodian's trading platform via API or file-based integration. Common for simple
-  equity and ETF trades.
-- **Third-party execution platforms** — Trades are routed to an execution management
-  system (EMS) for best-execution routing across multiple venues. Used for fixed
-  income, international, or complex orders.
-- **Mutual fund trading** — Mutual fund orders typically execute through the
-  custodian's fund trading platform (e.g., Schwab Mutual Fund OneSource, Fidelity
-  FundsNetwork) at NAV.
+Trade list generation, PMS-to-OMS handoff, block trading, pre-trade compliance, and
+order routing are covered in the **order-management-advisor** skill (advisory-practice
+plugin) — load that skill for trading workflow detail.
 
 ### 8. Performance Calculation Engine
 
 The PMS serves as the performance calculation engine for the advisory practice,
-computing returns at multiple levels and across multiple methodologies.
-
-**Time-Weighted Return (TWR):**
-
-TWR measures the compound growth rate of a portfolio, eliminating the impact of
-external cash flows (deposits and withdrawals). This method is the standard for
-evaluating investment manager performance because it reflects only investment
-decisions, not the timing of client cash flows.
-
-TWR is calculated by:
-
-1. Dividing the measurement period into sub-periods at each external cash flow.
-2. Computing the holding-period return for each sub-period.
-3. Geometrically linking the sub-period returns.
-
-TWR is required for benchmark comparison and GIPS-compliant composites because it
-enables fair comparison between portfolios with different cash flow patterns.
-
-**Money-Weighted Return (MWR / IRR):**
-
-MWR measures the actual return experienced by the investor, accounting for the
-timing and size of cash flows. A client who adds significant funds just before a
-market rally will see a higher MWR than TWR, while a client who withdraws before
-a rally will see a lower MWR than TWR.
-
-MWR is most relevant for:
-
-- Client reporting (showing the personal investment experience).
-- Evaluating the impact of cash flow timing decisions.
-- Private equity and alternative investments where cash flow timing is integral
-  to the investment.
+computing returns at multiple levels and across multiple methodologies. For the
+definitions and mathematics of time-weighted (TWR) vs. money-weighted (MWR/IRR)
+returns and when each is appropriate, see the wealth-management **performance-metrics**
+and **performance-reporting** skills.
 
 **Daily vs. Monthly Performance:**
 
@@ -528,68 +450,9 @@ A comprehensive PMS calculates performance at every level of the investment hier
 
 ### 9. Billing and Fee Calculation
 
-The PMS fee engine automates the calculation, deduction, and tracking of advisory fees,
-which are typically the primary revenue source for RIA firms.
-
-**Fee Structures:**
-
-- **AUM-based (flat rate)** — A single percentage applied to all managed assets
-  (e.g., 1.00% annually on all AUM).
-- **AUM-based (tiered/breakpoint)** — Declining fee rates at higher asset levels.
-  Example: 1.25% on the first $500K, 1.00% on $500K-$1M, 0.75% on $1M-$5M,
-  0.50% above $5M. Tiers may be applied per account or at the household level.
-- **Flat/retainer fees** — Fixed dollar amounts for financial planning or advisory
-  services, independent of AUM.
-- **Performance fees** — Fees based on investment returns exceeding a benchmark or
-  hurdle rate. Subject to SEC regulations (generally available only to qualified
-  clients with $1.1M+ in AUM or $2.2M+ net worth under the Investment Advisers
-  Act).
-- **Blended fees** — Combinations of the above (e.g., reduced AUM fee plus
-  financial planning retainer).
-
-**Billing Frequency and Timing:**
-
-- **Quarterly billing** — The most common frequency. Billed in advance (based on
-  beginning-of-quarter AUM) or in arrears (based on end-of-quarter AUM or
-  average daily AUM during the quarter).
-- **Monthly billing** — Common for larger accounts or institutional mandates.
-- **Annual billing** — Less common, used for flat-fee planning engagements.
-
-Advance billing requires prorating for accounts opened or closed mid-quarter.
-Arrears billing is more precise but delays revenue recognition.
-
-**Billable AUM Calculation:**
-
-Determining which assets are included in the billable base requires clear policies:
-
-- **Included assets** — Typically all managed securities and cash held at the
-  custodian. Some firms exclude cash above a threshold or assets in transit.
-- **Excluded assets** — Held-away assets, assets under a separate fee arrangement,
-  or specific asset types excluded by client agreement.
-- **Household billing** — Aggregating AUM across all accounts for a household to
-  determine the fee tier, then applying that tier to each account. This benefits
-  clients with multiple smaller accounts who collectively reach higher breakpoints.
-- **Billing date valuation** — The market value used for fee calculation. End-of-
-  period, beginning-of-period, or average daily balance during the period.
-
-**Fee Deduction Methods:**
-
-- **Direct debit** — The advisory fee is deducted directly from the client's
-  custodial account. Requires client authorization (typically in the investment
-  advisory agreement). The custodian processes the deduction based on an invoice
-  from the advisor. This is the most common method for RIAs.
-- **Invoice/direct pay** — The firm sends an invoice and the client pays by check
-  or ACH. Used for financial planning fees or when clients prefer not to have
-  fees deducted from investment accounts.
-
-**Revenue Tracking and Reporting:**
-
-The PMS fee engine should provide:
-
-- Revenue by client, advisor, model, strategy, and office.
-- Fee trend analysis (quarter-over-quarter, year-over-year).
-- Fee schedule compliance (verifying charged fees match contracted rates).
-- Billing audit trail for regulatory examination support.
+Fee schedule structures, billable-AUM determination, billing cycles, fee deduction,
+and revenue tracking are covered in the **fee-billing** skill (advisory-practice
+plugin) — load that skill for billing detail.
 
 ### 10. Custodian Integration and Data Feeds
 
@@ -623,7 +486,7 @@ accounting, performance reporting, rebalancing, and billing.
 - **API-based integration** — RESTful APIs provided by custodians for real-time
   data access. Increasingly available but with varying levels of completeness.
   Schwab and Fidelity have expanded API offerings for RIAs.
-- **Third-party data aggregators** — Services like Quovo (Plaid), ByAllAccounts
+- **Third-party data aggregators** — Services like Plaid (which absorbed Quovo in 2019), ByAllAccounts
   (Morningstar), or Addepar's data infrastructure that normalize data from
   multiple custodians into a standard format for PMS consumption.
 

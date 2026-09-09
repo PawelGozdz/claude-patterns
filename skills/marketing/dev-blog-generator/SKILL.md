@@ -5,6 +5,10 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash
 effort: medium
 ---
 
+<!-- LOCAL — not synced from upstream. Written here, has no counterpart in
+     coreyhaines31/marketingskills. sync-marketing-skills.sh protects it via
+     this marker; do not remove it. -->
+
 # Dev Blog Generator
 
 You help maintain a build-in-public developer blog generated from the

@@ -1,0 +1,121 @@
+{
+  "statusLine": {
+    "type": "command",
+    "command": "node \"$HOME/.claude/hooks/statusline-pm.js\""
+  },
+  "permissions": {
+    "allow": [
+      "Read(//opt/projects/pcu/**)",
+      "Bash(bash /opt/projects/claude-patterns/scripts/setup-project.sh /opt/projects/grant-flow 2>&1)",
+      "Bash(bash /opt/projects/claude-patterns/scripts/setup-project.sh /opt/projects/universal-learning-system 2>&1)",
+      "Bash(bash /opt/projects/claude-patterns/scripts/setup-project.sh /opt/projects/vytches-ddd 2>&1)",
+      "Bash(bash /opt/projects/claude-patterns/scripts/setup-project.sh /opt/projects/juz-ide-mobile-app 2>&1)",
+      "Bash(bash /opt/projects/claude-patterns/scripts/setup-project.sh /opt/projects/pcu 2>&1)",
+      "Read(//opt/projects/juz-ide-mobile-app/.claude/knowledge/rules/**)",
+      "Read(//opt/projects/grant-flow/.claude/knowledge/rules/**)",
+      "Read(//opt/projects/vytches-ddd/.claude/knowledge/rules/**)",
+      "Bash(bash /opt/projects/claude-patterns/scripts/generate-claude-md.sh /opt/projects/juz-ide-mobile-app 2>&1)",
+      "Read(//opt/projects/juz-ide-mobile-app/.claude/memory/**)",
+      "Read(//opt/projects/juz-ide-mobile-app/.claude/memory/agent-knowledge/**)",
+      "Read(//opt/projects/juz-ide-mobile-app/.claude/knowledge/**)",
+      "Bash(bash /opt/projects/claude-patterns/scripts/migrate-v2.sh /opt/projects/juz-ide-mobile-app 2>&1)",
+      "Read(//opt/projects/juz-ide-mobile-app/.claude/rules/**)",
+      "Bash(node -e \"const s=JSON.parse\\(require\\(''''fs''''\\).readFileSync\\(''''/opt/projects/juz-ide-mobile-app/.claude/settings.json'''',''''utf8''''\\)\\);console.log\\(''''autoMode env:'''',s.autoMode?.environment?.length,''''rules''''\\);if\\(s.hooks\\)for\\(const[k,v]of Object.entries\\(s.hooks\\)\\)console.log\\(k+'''':'''',v.map\\(h=>h.description.substring\\(0,40\\)\\)\\)\")",
+      "Read(//opt/projects/juz-ide-mobile-app/**)",
+      "Bash(ls /opt/projects/juz-ide-mobile-app/.claude/knowledge/patterns/*.md)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(ls -la /opt/projects/juz-ide-api/.*)",
+      "Bash(bash /opt/projects/claude-patterns/scripts/migrate-v2.sh /opt/projects/juz-ide-api 2>&1)",
+      "Bash(node -e \"const s=JSON.parse\\(require\\(''fs''\\).readFileSync\\(''/opt/projects/juz-ide-api/.claude/settings.json'',''utf8''\\)\\);if\\(s.hooks\\)for\\(const[k,v]of Object.entries\\(s.hooks\\)\\)console.log\\(''  ''+k+'': ''+v.length\\)\")",
+      "Bash(node -e \"const s=JSON.parse\\(require\\(''fs''\\).readFileSync\\(''/opt/projects/juz-ide-api/.claude/settings.json'',''utf8''\\)\\);console.log\\(JSON.stringify\\(s.worktree\\)\\)\")",
+      "Bash(node -e \"const s=JSON.parse\\(require\\(''fs''\\).readFileSync\\(''/opt/projects/juz-ide-api/.claude/settings.json'',''utf8''\\)\\);console.log\\(s.autoMode?.environment?.length+'' env rules''\\)\")",
+      "Bash(bash /opt/projects/claude-patterns/scripts/migrate-v2.sh /opt/projects/grant-flow 2>&1)",
+      "Bash(node -e \"const s=JSON.parse\\(require\\(''fs''\\).readFileSync\\(''/opt/projects/grant-flow/.claude/settings.json'',''utf8''\\)\\);console.log\\(''hooks:'',Object.keys\\(s.hooks||{}\\).join\\('', ''\\)\\);console.log\\(''worktree:'',JSON.stringify\\(s.worktree\\)\\);console.log\\(''autoMode:'',s.autoMode?.environment?.length+'' env rules''\\)\")",
+      "Bash(grep -oP @w[w-]+ /opt/projects/juz-ide-api/CLAUDE.md)",
+      "Bash(find /opt/projects/juz-ide-api/.claude/agents -maxdepth 2 -name *.md ! -name README.md ! -name AGENT* ! -name agent-* ! -path */archive/* ! -path */phase-2* ! -path */templates/* ! -path */registry/*)",
+      "Bash(bash /opt/projects/claude-patterns/scripts/generate-claude-md.sh /opt/projects/juz-ide-api)",
+      "Bash(bash /opt/projects/claude-patterns/scripts/generate-claude-md.sh /opt/projects/grant-flow)",
+      "Bash(xargs cat:*)",
+      "Bash(find /opt/projects/claude-patterns/patterns -type f -name *.md)",
+      "Bash(cat /opt/projects/universal-learning-system/.claude/commands/*.sh)",
+      "Bash(cat /opt/projects/universal-learning-system/.claude/hooks/*.sh)",
+      "Bash(wc -l /opt/projects/grant-flow/.claude/standards/*/*.md)",
+      "Bash(for f:*)",
+      "Read(//opt/projects/claude-patterns/**)",
+      "Bash(grep -h '^### ' /opt/projects/grant-flow/.claude/standards/**/*.md)",
+      "Bash(rm /opt/projects/grant-flow/.claude/standards/global/conventions.md /opt/projects/grant-flow/.claude/standards/global/error-handling.md /opt/projects/grant-flow/.claude/standards/global/validation.md rmdir /opt/projects/grant-flow/.claude/standards/global/ 2)",
+      "Bash(bash /opt/projects/claude-patterns/scripts/generate-claude-md.sh /opt/projects/universal-learning-system)",
+      "Bash(bash /opt/projects/claude-patterns/scripts/setup-global.sh 2>&1)",
+      "Read(//home/dev/.claude/agents/**)",
+      "Bash(sed 's|.*/||')",
+      "Bash(ls /opt/projects/claude-patterns/agents/stacks/nestjs-ddd/*.md)",
+      "Bash(ls /opt/projects/juz-ide-mobile-app/.claude/agents/*.md)",
+      "Bash(bash /opt/projects/claude-patterns/scripts/setup-project.sh /opt/projects/juz-ide-mobile-app)",
+      "Bash(find /opt/projects/pcu/src -type f -name *.py)",
+      "Bash(grep -E \"\\\\.\\(py|toml|txt|yml|yaml|json\\)$\")",
+      "Bash(wc -l /opt/projects/claude-patterns/patterns/python/*.md /opt/projects/claude-patterns/patterns/python/METADATA.yml)",
+      "Bash(bash /opt/projects/claude-patterns/scripts/migrate-v2.sh /opt/projects/my-intelligence 2>&1)",
+      "Bash(bash /opt/projects/claude-patterns/scripts/migrate-v2.sh /opt/projects/pcu 2>&1)",
+      "Bash(npm view:*)",
+      "Bash(wc -l /opt/projects/claude-patterns/patterns/nextjs/*.md /opt/projects/claude-patterns/patterns/nextjs/METADATA.yml)",
+      "Bash(wc -l /opt/projects/claude-patterns/patterns/nextjs/*)",
+      "Bash(ls -d /opt/projects/vytches-ddd/examples/*)",
+      "Bash(find /opt/projects/vytches-ddd -maxdepth 2 -name rollup* -o -name esbuild* -o -name tsup*)",
+      "Bash(ls -la /opt/projects/vytches-ddd/packages/*/src/index.ts)",
+      "Bash(find /opt/projects/vytches-ddd/.gitignore -type f -exec cat {})",
+      "Bash(find /opt/projects/vytches-ddd -maxdepth 2 -name *.config.ts -o -name *.config.js -o -name *.config.mts)",
+      "Bash(ls -la /opt/projects/vytches-ddd/.claude/*.json)",
+      "Bash(find /opt/projects/claude-patterns -name *.md -not -path */node_modules/* -not -path */.git/* -exec wc -l {} +)",
+      "Bash(find /opt/projects/claude-patterns -name *.md -not -path */node_modules/* -not -path */.git/* -exec cat {} +)",
+      "Bash(grep \"^- \\\\`\" /opt/projects/universal-learning-system/CLAUDE.md)",
+      "Bash(while read:*)",
+      "Bash(find . -maxdepth 3 -name svelte.config.* -not -path */node_modules/*)",
+      "Bash(node -e \"const p=JSON.parse\\(require\\(''''fs''''\\).readFileSync\\(''''frontend/package.json'''',''''utf8''''\\)\\);console.log\\(''''Dependencies:''''\\);for\\(const[k,v]of Object.entries\\({...p.dependencies,...p.devDependencies}\\)\\)console.log\\(''''  ''''+k+'''': ''''+v\\)\")",
+      "Bash(ln -sf /opt/projects/claude-patterns/patterns/sveltekit /opt/projects/pcu/.claude/knowledge/patterns-local/sveltekit)",
+      "Bash(node:*)",
+      "Bash(cp /opt/projects/juz-ide-api-1/.claude/hooks/cost-optimizer.sh /opt/projects/claude-patterns/hooks/cost-optimizer.sh)",
+      "Bash(cp /opt/projects/juz-ide-api-1/.claude/hooks/state-manager.sh /opt/projects/claude-patterns/hooks/state-manager.sh)",
+      "Bash(cp /opt/projects/juz-ide-api-1/.claude/hooks/session-monitor.sh /opt/projects/claude-patterns/hooks/session-monitor.sh)",
+      "Bash(chmod +x /opt/projects/claude-patterns/hooks/*.sh)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$HOME/.claude/hooks/broadcast-session-start.js\""
+          }
+        ],
+        "description": "Broadcast: read cross-instance channel (ADR 0006). Silent without .claude/config/broadcast.yml."
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$HOME/.claude/hooks/broadcast-task-emit.js\""
+          }
+        ],
+        "description": "Broadcast: remind about /broadcast on cross-cluster task files. Once per task per day."
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$HOME/.claude/hooks/broadcast-inbox-inject.js\""
+          }
+        ],
+        "description": "Broadcast: deliver inbox into the next prompt (ADR 0006 D8/D11). Inert unless inject: true."
+      }
+    ]
+  }
+}

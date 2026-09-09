@@ -4,7 +4,8 @@
 #
 # Purely mechanical (no LLM): builds knowledge-retriever, ensures the dedicated Qdrant is up,
 # then runs the global-indexer (recreate() — full drop+rebuild of both collections, not
-# incremental). Safe to re-run any time; idempotent.
+# incremental), then runs both flow-evals (retrieval hit@5 + library_reference schema).
+# Safe to re-run any time; idempotent.
 #
 # Usage: ./scripts/reseed-patterns.sh   (from anywhere — resolves its own path)
 set -e
@@ -34,8 +35,17 @@ node "$SCRIPT_DIR/rag-freshness.mjs" --record
 # nadal trafia właściwe wzorce po tej zmianie treści/chunkingu". Oba tanie do sprawdzenia
 # w tym samym miejscu, skoro Qdrant i tak już żyje z reseedu powyżej (TASK-GUARDRAILS-001
 # Sekcja 2).
-echo -e "${BLUE}[reseed-patterns] 4/4 eval retrievalu (golden-set, bramka hit@5)${NC}"
+echo -e "${BLUE}[reseed-patterns] 4/4 evale (retrieval hit@5 + schemat library_reference)${NC}"
 node "$SCRIPT_DIR/../tests/flow-evals/retrieval/run.js"
+
+# Eval strukturalny library_reference_global. FAIL nie przerywa reseedu: reseed jest
+# operacją naprawczą, a nie bramką — wywalenie się tutaj zostawiłoby kolekcje zasiane, a
+# operatora bez komunikatu „OK". FAIL i tak zostaje w results.jsonl i wraca alertem z
+# rag-freshness.mjs (K78) — czyli w miejscu, gdzie ktoś na niego patrzy.
+if ! node "$SCRIPT_DIR/../tests/flow-evals/library-reference-schema/run.js"; then
+  echo -e "${YELLOW}WARN:${NC} eval library-reference-schema NIE przeszedł — patrz wyżej."
+  echo -e "      Reseed dokończony; wynik zapisany w tests/flow-evals/library-reference-schema/results.jsonl."
+fi
 
 echo -e "${GREEN}[reseed-patterns] OK${NC} — retrieve_patterns now reflects the current patterns/**+rules/** tree."
 echo -e "${YELLOW}Note:${NC} this is a full recreate() of both global collections — safe, but batch multiple"

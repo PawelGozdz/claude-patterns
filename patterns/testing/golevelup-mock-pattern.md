@@ -2,6 +2,29 @@
 
 **Tags**: "api:tests:unit"
 
+**Layer**: Testing
+**Status**: Production (LocalHero migration scope: 28 already using, 92 files to migrate)
+
+## When to Use
+
+**Use this pattern for:**
+- ✅ Mocking any interface (`ISomeRepository`, `ILoggerService`, `RequestContextService`) in an
+  L1/L2 spec — `createMock<T>()` replaces hand-written factory functions and inline
+  `{ method: vi.fn() }` objects.
+- ✅ A mock needs conditional/custom behavior for one method — pass a partial override to
+  `createMock<T>({ method: vi.fn().mockImplementation(...) })`, let the rest auto-mock.
+- ✅ An interface changes shape — `createMock<T>()` mocks are typed, so `tsc` catches the drift
+  instead of a stale hand-written factory silently going out of sync.
+
+**Do NOT use for:**
+- ❌ `vi.mock()` module mocking (Node.js modules like `@nestjs/config`) — orthogonal, leave as-is.
+- ❌ `vi.spyOn()` on a real object instance — that's spying on real behavior, not interface mocking.
+- ❌ Mock classes that track internal call state deliberately (`findCalls: string[]`) —
+  intentional, leave as-is.
+- ❌ Mock classes that `extends` a real class (need a real constructor) — leave as-is.
+- ❌ E2E tests (`.e2e.spec.ts`) — different mocking context (real HTTP, NestJS modules),
+  evaluate individually.
+
 ## 🎯 Problem
 
 **Ręczne factory functions i inline obiekty z `vi.fn()` niszczą type safety i generują boilerplate.**
@@ -240,7 +263,6 @@ src/contexts/neighborhood-economy/application/quick-jobs/commands/submit-job-req
 
 - `testing-pyramid-pattern.md` — kiedy pisać L1 vs L2 vs L3
 - `e2e-hybrid-fixture-pattern.md` — setup danych w testach E2E
-- `context-isolation-pattern.md` — izolacja między kontekstami w testach
 
 ## 📋 Scope migracji (LocalHero, 2026-04-19)
 

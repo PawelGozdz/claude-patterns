@@ -393,6 +393,19 @@ function runCommand(cmd, options = {}) {
 }
 
 /**
+ * True when a hook payload comes from inside a subagent.
+ * `agent_id` is present ONLY inside a subagent (documented PreToolUse/PostToolUse/
+ * SubagentStop field); its absence means the main thread. Gates that scan shared
+ * state (analysis/, run-state/) must let subagents through — otherwise an
+ * /orchestrate implementer gets blocked on someone else's artefact (K51).
+ * @param {object} payload - parsed hook stdin JSON
+ * @returns {boolean}
+ */
+function isSubagent(payload) {
+  return Boolean(payload && payload.agent_id);
+}
+
+/**
  * Check if current directory is a git repository
  */
 function isGitRepo() {
@@ -562,6 +575,9 @@ module.exports = {
   readStdinJsonWithRaw,
   log,
   output,
+
+  // Hook context
+  isSubagent,
 
   // System
   commandExists,

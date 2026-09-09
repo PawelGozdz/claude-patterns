@@ -11,6 +11,8 @@ opportunity cost analysis, drawdown modeling, and replenishment schedules.
 Part of Layer 6 (Personal Finance) in the finance skills framework.
 """
 
+import argparse
+import sys
 import numpy as np
 
 
@@ -383,7 +385,7 @@ class EmergencyFund:
         }
 
 
-if __name__ == "__main__":
+def _demo() -> None:
     # ----------------------------------------------------------------
     # Demo: Emergency fund computations
     # ----------------------------------------------------------------
@@ -490,3 +492,61 @@ if __name__ == "__main__":
     print("\n" + "=" * 60)
     print("Demo complete.")
     print("=" * 60)
+
+def _check(failures: list, name: str, actual: float, expected: float, tol: float) -> None:
+    """Record a verification check result."""
+    ok = abs(actual - expected) <= tol
+    status = "PASS" if ok else "FAIL"
+    print(f"  [{status}] {name}: actual={actual:.6g}, expected={expected:.6g}, tol={tol:.2g}")
+    if not ok:
+        failures.append(name)
+
+def _verify() -> None:
+    """Verify key outputs against the SKILL.md worked examples."""
+    failures: list = []
+
+    # SKILL.md Example 1: dual-income sizing
+    _check(failures, "Ex1 minimum fund (3 months)", EmergencyFund.expense_based_fund(4500, 3), 13500, 0)
+    _check(failures, "Ex1 recommended fund (4 months)", EmergencyFund.expense_based_fund(4500, 4), 18000, 0)
+
+    # SKILL.md Example 2: tiered allocation of $27,000
+    alloc = EmergencyFund.tiered_allocation(27000, 4500)
+    _check(failures, "Ex2 tier 1 amount", alloc["tier_1"]["amount"], 4500, 0)
+    _check(failures, "Ex2 tier 2 amount", alloc["tier_2"]["amount"], 13500, 0)
+    _check(failures, "Ex2 tier 3 amount", alloc["tier_3"]["amount"], 9000, 0)
+    blended = EmergencyFund.blended_yield([4500.0, 13500.0, 9000.0], [0.0001, 0.045, 0.048])
+    _check(failures, "Ex2 blended yield", blended, 0.038517, 1e-5)
+
+    # Opportunity cost concept check
+    _check(failures, "opportunity cost $27K at 5pp spread",
+           EmergencyFund.opportunity_cost(27000, 0.04, 0.09), 1350.0, 1e-9)
+
+    if failures:
+        print(f"\n{len(failures)} check(s) FAILED: {', '.join(failures)}")
+        sys.exit(1)
+    print("\nAll checks passed.")
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description=__doc__.strip().splitlines()[2] if __doc__ else "",
+        epilog=(
+            "Provides: EmergencyFund. "
+            "For programmatic use, import this module (emergency_fund) instead of running it. "
+            "Bare run executes a demo whose printed values match the SKILL.md worked examples; "
+            "--verify asserts those values and exits nonzero on mismatch."
+        ),
+    )
+    parser.add_argument(
+        "--verify",
+        action="store_true",
+        help="run the verification checks against the SKILL.md worked-example values",
+    )
+    args = parser.parse_args()
+    if args.verify:
+        _verify()
+    else:
+        _demo()
+
+
+if __name__ == "__main__":
+    main()

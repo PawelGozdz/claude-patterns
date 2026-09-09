@@ -48,6 +48,7 @@
 const fs = require('fs');
 const path = require('path');
 const { isExempt, findRequiredPattern } = require('./lib/pattern-routing');
+const { isSubagent } = require('./lib/utils');
 
 const MODE = process.env.DELEGATION_MODE || 'block';
 
@@ -108,7 +109,7 @@ function main() {
 
   // KEY GATE: subagent calls always pass. `agent_id` is present only inside a
   // subagent — its absence means this is the main thread.
-  if (payload.agent_id) process.exit(0);
+  if (isSubagent(payload)) process.exit(0);
 
   const filePath = payload.tool_input?.file_path || payload.tool_input?.path;
   if (isExempt(filePath)) process.exit(0);

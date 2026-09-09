@@ -10,12 +10,10 @@
 ```
 ~/.claude/agents/              <- universal agents (global, all projects)
     backend-technology-expert.md  -> agents/universal/
-    changelog-bot.md              -> agents/universal/
     finance-strategist.md         -> agents/universal/
     legal-strategist.md           -> agents/universal/
     marketing-strategist.md       -> agents/universal/
     project-orchestrator.md       -> agents/universal/
-    security-privacy-architect.md -> agents/universal/
     state-reader.md               -> agents/universal/
     tech-lead.md                  -> agents/universal/
     product-owner.md              -> agents/universal/
@@ -41,14 +39,16 @@ Linked globally to `~/.claude/agents/` via `setup-global.sh`.
 
 Mirror of the `/orchestrate` command, callable from `Task()` for async/delegated orchestration. Everything stack-specific comes from the project's `stack_blocks:` composition (ADR 0008).
 
-### Cost-optimized utility (2)
+### Cost-optimized utility (1)
 
 | Agent | Purpose | Model | Writes Code |
 |-------|---------|-------|-------------|
 | **state-reader** | Read-only extraction from STATE.md / TEAM-STATE.md / KANBAN.md / TECH-DEBT.md / tasks/. Returns structured summaries — no synthesis, no judgment. | Haiku | No |
-| **changelog-bot** | `git log` → CHANGELOG.md (Keep-a-Changelog format). Mechanical conversion using Conventional Commits prefixes. | Haiku | Yes (CHANGELOG.md only) |
 
-Use these instead of running discovery/extraction in Sonnet/Opus context — 12-60× cheaper for bounded I/O work. Default delegation target for skills like `/task-health`, `/task-tidy`, `/pm-status`, `/changelog`.
+Use this instead of running discovery/extraction in Sonnet/Opus context — 12-60× cheaper for bounded I/O work. Default delegation target for skills like `/task-health`, `/task-tidy`, `/pm-status`.
+
+`changelog-bot` was retired 2026-09-07 (K97, ADR 0009) — `git log` → `CHANGELOG.md` is
+mechanical work that `ecc:doc-updater` already does.
 
 ### Advisory / PM (2)
 
@@ -60,20 +60,23 @@ Use these instead of running discovery/extraction in Sonnet/Opus context — 12-
 These agents power the PM system (`/pulse`, `/sprint`, etc.).
 See `patterns/orchestration/project-management-system.md` for full docs.
 
-### Specialists (2)
+### Specialists (1)
 
 | Agent | Purpose | Model | Writes Code |
 |-------|---------|-------|-------------|
 | **backend-technology-expert** | Sync vs async, performance, tech stack decisions | Opus | No |
-| **security-privacy-architect** | OWASP, GDPR, encryption, auth strategies | Opus | No |
+
+`security-privacy-architect` was retired 2026-09-07 (K97, ADR 0009) — generic OWASP/GDPR
+advisory now goes to `ecc:security-reviewer`. The VETO verifiers (`security-e2e-verifier`,
+`flutter-security-verifier`) stay here: they know our domain model, ECC's reviewer does not.
 
 ### Marketing, Finance & Legal Strategy (3)
 
 | Agent | Purpose | Model | Writes Code |
 |-------|---------|-------|-------------|
-| **marketing-strategist** | Coordinator for 41 marketing skills (CRO, copy, SEO, paid, growth, RevOps). Enforces `product-marketing-context` before any deep analysis, routes tasks to the right skill in `skills/marketing/`. | Sonnet | No |
-| **finance-strategist** | Coordinator for 84 finance skills (investment, compliance, advisory, trading, ops, data). Plugin-aware (7 plugins with dependency graph). Data-driven hedged recommendations with contextual disclaimers. | Sonnet | No |
-| **legal-strategist** | Coordinator for 12 vendored legal skills (1 MIT + 11 Apache 2.0) + catalog of 30 external skills (mostly AGPL — install per-project per their license). Jurisdiction-aware (PL/EU/US/FR/UK), 4-category contextual disclaimers, refuses to fabricate jurisdiction-specific content. | Sonnet | No |
+| **marketing-strategist** | Coordinator for 41 marketing skills (CRO, copy, SEO, paid, growth, RevOps). Enforces `product-marketing-context` before any deep analysis, routes tasks to the right skill in `skills/marketing/`. | Haiku | No |
+| **finance-strategist** | Coordinator for 84 finance skills (investment, compliance, advisory, trading, ops, data). Plugin-aware (7 plugins with dependency graph). Data-driven hedged recommendations with contextual disclaimers. | Haiku | No |
+| **legal-strategist** | Coordinator for 12 vendored legal skills (1 MIT + 11 Apache 2.0) + catalog of 30 external skills (mostly AGPL — install per-project per their license). Jurisdiction-aware (PL/EU/US/FR/UK), 4-category contextual disclaimers, refuses to fabricate jurisdiction-specific content. | Haiku | No |
 
 Powers `/marketing`, `/finance`, `/legal` slash commands. All three agents
 are **automatically consulted by `@product-owner`** during strategic work
@@ -95,7 +98,7 @@ anything missing or wrong, to keep false-positive rate low.
 | **reviewer-security** | Injection, authz/authn, secrets, PII exposure | Sonnet | No |
 | **reviewer-performance** | N+1 queries, blocking I/O, algorithmic complexity | Sonnet | No |
 | **reviewer-user** | Loading/error/empty states, a11y, i18n, confusing flows | Sonnet | No |
-| **reviewer-nitpicker** | Naming, formatting, dead code — deliberately low-severity | Sonnet | No |
+| **reviewer-nitpicker** | Naming, formatting, dead code — deliberately low-severity | Haiku | No |
 | **reviewer-newbie** | Readability/cognitive load for someone new to the code | Sonnet | No |
 | **reviewer-skeptic** | Race conditions, null/edge-case assumptions | Sonnet | No |
 | **reviewer-pragmatist** | Production-blocker baseline — always included in the panel | Sonnet | No |
@@ -146,7 +149,7 @@ For Python ML inference services (FastAPI + PyTorch on a shared GPU).
 | **flutter-implementer** | Implements domain/(application)/data/presentation layers | Sonnet | No |
 | **flutter-architecture-expert** | Clean architecture, Riverpod patterns | Sonnet | No |
 | **flutter-quality-verifier** | Flutter quality, layer purity | Sonnet | Yes |
-| **flutter-ui-verifier** | UI/UX patterns, widget testing | Sonnet | Yes |
+| **flutter-ui-verifier** | UI/UX patterns, widget testing | Haiku | Yes |
 | **flutter-ux-designer** | Designs the screen BEFORE code exists — advisory, `/analyze` panel participant, produces a screen spec (structure, states, a11y) | Sonnet | No |
 | **flutter-security-verifier** | Mobile-specific security: secret storage, certificate pinning, and related mobile attack surface | Sonnet | Yes |
 | **flutter-performance-verifier** | Widget rebuild scope, Riverpod provider granularity, build() cost, main-thread work — advisory, no VETO | Sonnet | No |
@@ -168,7 +171,7 @@ For Astro 5 static blog / AI-first content projects.
 | Agent | Purpose | Model | VETO |
 |-------|---------|-------|------|
 | **astro-implementer** | Content Collections schema updates, Astro components, static blog implementation | Sonnet | No |
-| **content-reviewer** | Blog content review: Zod frontmatter schema compliance, brand voice rules | Haiku | No |
+| **content-reviewer** | Blog content review: Zod frontmatter schema compliance, brand voice rules | Haiku | Yes |
 
 ### nextjs-app (2)
 
@@ -197,6 +200,28 @@ For Astro 5 static blog / AI-first content projects.
 |-------|---------|-------|------|
 | **library-api-guardian** | Public API surface, breaking changes, semver | Sonnet | Yes |
 | **library-quality-verifier** | Library quality, tree-shaking, bundle size | Sonnet | Yes |
+
+### Stacks without a block: agents reachable via @mention only
+
+A stack-specific agent reaches a project through a **block**: `overlay.agents:` in
+`blocks/<stack>.yml` is what `setup-project.sh` symlinks into `.claude/agents/`, and
+`analyze.panel` is what actually summons the agent during `/analyze`. Two agent folders
+have no block, so nobody is summoned automatically — you have to type `@agent-name`, and
+nothing reminds you the agent exists. This is a deliberate gap, not an oversight: neither
+stack has a second adopter, and a block written for one repo is a guess about the next one.
+Documented here so the choice is visible instead of looking like coverage
+(K88, `TASK-KAIZEN-002`; `blocks/nextjs.yml` + `blocks/sveltekit.yml` closed the same gap
+for those two stacks on 2026-09-07).
+
+| Agent folder | Agents | Used by | Why no block (yet) |
+|---|---|---|---|
+| `stacks/node-ts-claude-api/` | `ts-implementer`, `safety-reviewer`, `architecture-verifier` | ai-os-bot | The `core/` ↔ `mcp-servers/` boundary and the seven safety invariants are that bot's architecture, not a stack convention. `blocks/node.yml` + `blocks/flat-service.yml` already cover the generic Node/TS half. |
+| `stacks/astro-static/` | `astro-implementer`, `content-reviewer` | juz-ide-blog | One project, content-only. `content-reviewer` enforces that blog's brand-voice rules; a central block would push them onto every Astro project. |
+
+**Stack profiles without their own agents.** `python-modular`, `python-pipeline`,
+`node-kysely` and `docs-only` exist as `templates/stacks/*.md` (CLAUDE.md scaffolds), not
+as agent folders — they compose from existing blocks (`python` + `flat-service`/`ml-pipeline`,
+`node` + `kysely`). Nothing is missing there.
 
 ---
 

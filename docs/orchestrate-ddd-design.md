@@ -2,6 +2,15 @@
 
 > Źródło ustaleń: claude-code-guide (mechanika CC, czerwiec 2026) + audyt ECC. Status: DESIGN.
 
+> **⚠ ARCHIWUM — komenda `/orchestrate-ddd` nie istnieje.** Zastąpiona przez
+> [ADR 0008](adr/0008-stack-blocks-composition.md) (2026-08-12): jeden `/orchestrate`
+> sterowany kompozycją bloków, warstwy i bramki ze slotów `runtime.yml` zamiast presetu.
+> Aktualny opis: [`docs/ARCHITECTURE.md`](ARCHITECTURE.md), ADR 0008,
+> [`commands/orchestrate.md`](../commands/orchestrate.md),
+> [ADR 0009](adr/0009-wynik-spike-fazy-0-i-lista-retire.md). Zachowany dla historii
+> decyzji — mechanika silników (Workflow vs `/goal`) i uzasadnienie wyboru są nadal
+> tym, na czym stoi dzisiejszy `/orchestrate`.
+
 ## Cel
 Jeden punkt wejścia `/orchestrate-ddd <task>`, który **automatycznie** rozwija się w wieloagentową
 pracę w tle (loops + ecc:* agenci + nasze bramki), bez ręcznego wołania `/loop`, `/ecc:loop-start`,

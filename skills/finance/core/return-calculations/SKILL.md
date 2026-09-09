@@ -1,114 +1,62 @@
 ---
 name: return-calculations
-description: "Compute and compare investment return metrics including TWR, MWR/IRR, CAGR, and annualized returns. Use when the user asks about portfolio performance calculation, comparing manager returns, linking sub-period returns, understanding why different return methods give different numbers, or converting returns across time periods. Also trigger when users mention 'how much did I make', 'annual return', 'compound growth', 'dollar-weighted vs time-weighted', 'what was my rate of return', 'geometric vs arithmetic mean', 'log returns', or ask about the effect of cash flows on reported returns."
+description: "Compute and compare investment return metrics including TWR, MWR (dollar-weighted IRR on portfolio cash flows), CAGR, and annualized returns. Use when the user asks about portfolio performance calculation, comparing manager returns, linking sub-period returns, understanding why different return methods give different numbers, converting returns across time periods, or computing the IRR of an investor's own contributions and withdrawals. Also trigger when users mention 'how much did I make', 'annual return', 'compound growth', 'dollar-weighted vs time-weighted', 'what was my rate of return', 'geometric vs arithmetic mean', 'log returns', or ask about the effect of cash flows on reported returns. For project or loan IRR, NPV, and generic 'solve for the rate' problems, use time-value-of-money instead."
 ---
 
 # Return Calculations
 
-## Purpose
-This skill enables Claude to compute, explain, and compare investment return metrics across different methodologies and time horizons. It covers the full spectrum from simple holding-period returns through time-weighted and money-weighted returns, ensuring the appropriate metric is selected for each analytical context.
-
-## Layer
-0 — Mathematical Foundations
-
-## Direction
-retrospective
-
-## When to Use
-- User asks about calculating investment returns
-- Comparing returns across different time periods
-- Understanding arithmetic vs geometric vs log returns
-- Computing CAGR, TWR, MWR/IRR
-- Linking sub-period returns
-
 ## Core Concepts
 
 ### Simple (Holding Period) Return
-The most basic measure of investment performance over a single period, capturing price change plus any income received.
 
 $$R = \frac{V_{end} - V_{begin} + D}{V_{begin}}$$
 
-where:
-- `V_end` = ending value
-- `V_begin` = beginning value
-- `D` = distributions (dividends, interest) received during the period
+where `D` = distributions (dividends, interest) received during the period. If `V_end` already reflects reinvested distributions, do not add `D` again.
 
-### Arithmetic Mean Return
-The simple average of a series of periodic returns. Represents the expected return for any single period.
+### Mean and Log Return Conventions
 
-$$R_a = \frac{1}{n} \sum_{i=1}^{n} R_i$$
-
-The arithmetic mean is always greater than or equal to the geometric mean. It is an unbiased estimator of the expected single-period return but overstates the compounded growth rate.
-
-### Geometric Mean Return
-The constant rate that, if earned each period, would produce the same terminal wealth as the actual sequence of returns.
-
-$$R_g = \left(\prod_{i=1}^{n}(1 + R_i)\right)^{1/n} - 1$$
-
-The geometric mean captures the effects of compounding and volatility drag. It is always the correct choice for describing realized multi-period growth.
-
-### Log (Continuously Compounded) Return
-The natural logarithm of the wealth ratio. Log returns are time-additive, making them convenient for multi-period aggregation and statistical modeling.
-
-$$r = \ln\left(\frac{V_{end}}{V_{begin}}\right)$$
-
-Properties:
-- Time-additive: `r_total = r_1 + r_2 + ... + r_n`
-- Conversion: `R_simple = e^r - 1` and `r = ln(1 + R_simple)`
-- More symmetric and closer to normally distributed than simple returns for small magnitudes
+- **Arithmetic mean** `R_a = (1/n) * sum(R_i)` — unbiased estimate of the expected *single-period* return (use for forward-looking inputs, e.g., mean-variance optimization). Always >= geometric mean; overstates realized compound growth.
+- **Geometric mean** `R_g = [prod(1 + R_i)]^(1/n) - 1` — the correct measure of realized multi-period compound growth. The gap below the arithmetic mean approximates `sigma^2 / 2` (volatility drag).
+- **Log return** `r = ln(V_end / V_begin)` — time-additive (`r_total = r_1 + ... + r_n`), so preferred for statistical modeling and multi-period aggregation. Convert with `R_simple = e^r - 1` and `r = ln(1 + R_simple)`. Log returns are additive across time but NOT across assets.
 
 ### CAGR (Compound Annual Growth Rate)
-The annualized geometric return that equates the beginning value to the ending value over a given number of years.
 
 $$CAGR = \left(\frac{V_{end}}{V_{begin}}\right)^{1/n} - 1$$
 
-where `n` is measured in years. CAGR smooths out volatility and provides a single annualized growth figure.
+where `n` is measured in years. The annualized geometric growth rate between two valuations with no intermediate cash flows.
 
 ### Time-Weighted Return (TWR)
-Chain-links sub-period returns calculated between each external cash flow, thereby removing the effect of cash flow timing on the measured return. TWR measures the manager's investment skill independent of investor deposit/withdrawal decisions.
+Chain-links sub-period returns calculated between each external cash flow, removing the effect of cash flow timing. TWR measures the manager's investment skill independent of investor deposit/withdrawal decisions, and is the GIPS standard for manager performance.
 
-$$1 + R_{TWR} = \prod_{i=1}^{n}(1 + R_i)$$
+$$1 + R_{TWR} = \prod_{i=1}^{n}(1 + R_i), \qquad R_i = \frac{V_{end,i}}{V_{begin,i} + CF_i} - 1$$
 
-where each sub-period return `R_i` is computed between consecutive cash flow dates:
+Exact TWR requires a portfolio valuation on every cash flow date.
 
-$$R_i = \frac{V_{end,i}}{V_{begin,i} + CF_i}$$
+### Modified Dietz Return
+When valuations on each cash flow date are unavailable, Modified Dietz approximates the period return by day-weighting each external cash flow within the period:
 
-In practice, exact TWR requires portfolio valuation on every cash flow date. The Modified Dietz method approximates TWR when daily valuations are unavailable.
+$$R_{MD} = \frac{V_{end} - V_{begin} - CF_{net}}{V_{begin} + \sum_i CF_i \times w_i}, \qquad w_i = \frac{CD - D_i}{CD}$$
+
+where `CF_net` = sum of external cash flows, `CD` = calendar days in the period, and `D_i` = day of flow `i` (so `w_i` is the fraction of the period the flow was invested). It is a money-weighted approximation; chain-linking Modified Dietz sub-period returns approximates TWR. Accuracy degrades when flows are large relative to portfolio value or markets are volatile within the period — revalue on large-flow dates instead.
 
 ### Money-Weighted Return (MWR / IRR)
-The internal rate of return that sets the net present value of all cash flows (contributions, withdrawals, and terminal value) to zero.
+The internal rate of return that sets the NPV of all investor cash flows (contributions, withdrawals, and terminal value) to zero:
 
 $$0 = \sum_{t=0}^{T} \frac{CF_t}{(1 + r)^t}$$
 
-MWR reflects the actual investor experience because it is sensitive to the timing and magnitude of cash flows. It rewards (penalizes) investors who add capital before good (bad) periods.
+MWR reflects the actual investor experience because it is sensitive to the timing and magnitude of cash flows. Solved numerically (Newton-Raphson or bisection).
 
 ### Annualization
-Converts a return measured over any holding period to an equivalent annual rate, assuming compounding.
 
 $$R_{annual} = (1 + R_{period})^{periods\_per\_year} - 1$$
 
 For example, a 2% quarterly return annualizes to `(1.02)^4 - 1 = 8.24%`.
 
 ### Sub-Period Linking
-Combines returns from contiguous sub-periods into a single cumulative return.
 
 $$(1 + R_{total}) = \prod_{i=1}^{n}(1 + R_i)$$
 
-This is the foundational identity behind TWR and CAGR calculations.
-
-## Key Formulas
-
-| Formula | Expression | Use Case |
-|---------|-----------|----------|
-| Holding Period Return | `R = (V_end - V_begin + D) / V_begin` | Single-period total return |
-| Arithmetic Mean | `R_a = (1/n) * sum(R_i)` | Expected single-period return |
-| Geometric Mean | `R_g = [prod(1+R_i)]^(1/n) - 1` | Realized compound growth rate |
-| Log Return | `r = ln(V_end / V_begin)` | Time-additive return for modeling |
-| CAGR | `(V_end / V_begin)^(1/n) - 1` | Annualized growth over n years |
-| TWR | `prod(1 + R_i) - 1` | Manager performance (cash-flow neutral) |
-| MWR / IRR | `sum(CF_t / (1+r)^t) = 0`, solve for r | Investor-specific experience |
-| Annualization | `(1 + R_period)^(periods/year) - 1` | Standardize to annual basis |
-| Sub-Period Linking | `(1 + R_total) = prod(1 + R_i)` | Combine contiguous returns |
+The foundational identity behind TWR and CAGR.
 
 ## Worked Examples
 
@@ -163,16 +111,18 @@ Cash flows from the investor's perspective:
 
 Solve: `-100,000 + (-100,000)/(1+r) + 198,000/(1+r)^2 = 0`
 
-Testing r = -0.0051 (approximately -0.51%):
+This is quadratic in `x = 1/(1+r)`; the positive root gives r = -0.66815% (verifiable with the bundled script or any IRR solver).
+
+NPV check at r = -0.0066815:
 ```
--100,000 + (-100,000)/0.9949 + 198,000/0.9899
-= -100,000 - 100,512.6 + 200,020.2
-approx -492.4  (close to zero; actual IRR approx -0.48%)
+-100,000 + (-100,000)/0.9933185 + 198,000/0.9933185^2
+= -100,000 - 100,672.65 + 200,672.65
+= 0.00  (exact)
 ```
 
-The MWR is approximately **-0.48% annualized**.
+The MWR is approximately **-0.67% annualized**.
 
-**Interpretation:** The TWR of +3.92% annualized reflects the manager's skill: the fund gained 20% then lost 10%, netting +8% over two years. The MWR of approximately -0.48% reflects the investor's experience: more money was at risk during the losing year (Year 2) because of the large deposit, so the investor's dollar-weighted outcome was slightly negative. This divergence highlights why TWR is preferred for evaluating manager performance, while MWR better describes the specific investor's realized result.
+**Interpretation:** The TWR of +3.92% annualized reflects the manager's skill: the fund gained 20% then lost 10%, netting +8% over two years. The MWR of approximately -0.67% reflects the investor's experience: more money was at risk during the losing year (Year 2) because of the large deposit, so the investor's dollar-weighted outcome was slightly negative. This divergence highlights why TWR is preferred for evaluating manager performance, while MWR better describes the specific investor's realized result.
 
 ## Common Pitfalls
 - Confusing arithmetic and geometric means: the arithmetic mean is always greater than or equal to the geometric mean (AM-GM inequality). Using arithmetic mean to project compounded growth overstates terminal wealth.
@@ -180,10 +130,16 @@ The MWR is approximately **-0.48% annualized**.
 - Annualizing returns from very short periods: annualizing a 2% weekly return yields `(1.02)^52 - 1 = 180%`, which amplifies noise and is misleading. Annualization is most meaningful for periods of at least one year.
 - Ignoring cash flow timing when TWR is appropriate: MWR conflates manager skill with investor timing decisions. Use TWR for manager evaluation.
 - Double-counting dividends: if the ending value `V_end` already includes reinvested dividends, do not add `D` separately in the holding period return formula.
+- Trusting Modified Dietz with large intra-period flows: when a single flow exceeds roughly 10% of portfolio value, revalue the portfolio on the flow date rather than day-weighting.
+
+## Running the Script
+`scripts/return_calculations.py` provides a `Returns` class with static methods for every formula above (holding period return, TWR, MWR/IRR via Newton's method, Modified Dietz is straightforward to compose from these, CAGR, annualization, linking, arithmetic/geometric means, log-return conversions).
+
+- Run: `uv run scripts/return_calculations.py` (PEP 723 inline metadata resolves numpy automatically), or `python3 scripts/return_calculations.py` with numpy installed.
+- Bare invocation (or `--verify`) prints a demo of all functions **and** asserts the worked-example values above (Example 1 CAGR = 10%, Example 2 TWR = +8.0% cumulative / 3.92% annualized, MWR = -0.6682%), exiting nonzero on any mismatch.
+- `--help` lists the available functions and import usage.
+- For programmatic use, import rather than run: `from return_calculations import Returns`.
 
 ## Cross-References
-- **time-value-of-money** (core plugin, Layer 0): NPV, IRR, and discounting concepts overlap with MWR calculations
-- **statistics-fundamentals** (core plugin, Layer 0): Arithmetic and geometric means, return distribution analysis
-
-## Reference Implementation
-See `scripts/return_calculations.py` for computational helpers.
+- **time-value-of-money** (core plugin): NPV, IRR, and discounting concepts overlap with MWR calculations; owns project/loan IRR
+- **statistics-fundamentals** (core plugin): Arithmetic and geometric means, return distribution analysis

@@ -7,7 +7,7 @@
 (TypeScript + NestJS, bez Kysely, bez DDD), które ujawniło, że `stack_profile` nie ma
 odpowiedzi dla projektów spoza sześciu przewidzianych kombinacji.
 
-> **Wdrożone.** Ten ADR opisuje stan obowiązujący, nie plan. Decyzje D1-D7 zatwierdzone, pytania OQ1-OQ7
+> **Wdrożone.** Ten ADR opisuje stan obowiązujący, nie plan. Decyzje D1-D7 zatwierdzone, pytania OQ1-OQ8
 > rozstrzygnięte (sekcja na końcu). Plan wykonawczy (pilot na `juz-ide-api-4`):
 > [`docs/tasks/TASK-BLOCKS-001.md`](../tasks/TASK-BLOCKS-001.md).
 
@@ -330,6 +330,70 @@ liczba plików rośnie (kilkanaście małych YAML zamiast dwóch dużych); parso
   **Odpowiedź:** żadnego mechanizmu teraz. Unia zbiorów + obserwacja na pilocie;
   najgorszy skutek kolizji („wczytało się kilka wzorców za dużo") łapie już
   ostrzeżenie z OQ4, a naprawa leży w treści bloków (węższe keywordy), nie w silniku.
+
+## OQ8 — override/subtract w kompozycji (rozstrzygnięte 2026-09-07, K95)
+
+**Pytanie.** Kompozycja umie tylko dodawać. Czy blok ma dostać sposób na (a) ODJĘCIE wpisu
+wniesionego przez inny blok i (b) CZĘŚCIOWE nadpisanie sekcji dziedziczonej przez `extends`?
+
+**Skąd się wzięło.** Projekt `iam` obchodzi oba braki, każdy inaczej:
+
+- `.claude/blocks/iam-security.yml` dokłada własny wzorzec bezpieczeństwa pod Fastify obok
+  `cross-layer/security-invariants-pattern.md` z bloku `node`. Oba trafiają do `runtime.yml`,
+  a który wygrywa przy sprzeczności składni — rozstrzyga komentarz w nagłówku pliku bloku.
+- `.claude/blocks/iam-verifiers.yml` dziedziczy po `flat-service` (`extends`) wyłącznie po to,
+  żeby podmienić dwóch agentów: `inner_loop.verify` i `final_gate.agent`. Ponieważ `extends`
+  nadpisuje sekcję `orchestrate` W CAŁOŚCI, blok musiał skopiować także `layers` i `exit` —
+  czyli fragment, którego nie zamierzał zmieniać. Skutek: przyszła zmiana warstw
+  w `flat-service` nie dotrze do `iam`, i nikt się o tym nie dowie.
+
+**Rozstrzygnięcie (a) — odejmowanie: mechanizm JEST, brakuje tylko jego użycia.**
+`patterns.remove:` istnieje od K44 (TASK-KAIZEN-001) i robi dokładnie to, o co chodzi:
+blok jawnie wyklucza ze zsumowanego `always` wzorzec dodany przez INNY blok, a odejmowanie
+stosuje się po całej pętli po blokach, więc kolejność w `stack_blocks` nie ma znaczenia.
+`iam-security.yml` nie używa go dziś i twierdzi w komentarzu, że „silnik materializacji sumuje
+`patterns.always`, nie potrafi odjąć wpisu wniesionego przez inny blok" — to zdanie jest
+nieaktualne. **Nie wprowadzamy osobnego `exclude:`**: byłby to drugi mechanizm o tej samej
+semantyce, a jedyny realny adopter potrzebuje tego, co już jest.
+
+Do zrobienia po stronie projektu (nie silnika): `iam-security.yml` dopisuje
+
+```yaml
+patterns:
+  remove:
+    - cross-layer/security-invariants-pattern.md
+```
+
+i usuwa akapit komentarza o niemożności odejmowania.
+
+Odejmowania na półce `overlay.*` **nie wprowadzamy** — nie ma dziś ani jednego przypadku,
+w którym projekt chciałby usunąć katalog overlay wniesiony przez centralny blok. Otwieranie
+drugiej osi odejmowania bez adoptera to konfiguracja, której nikt nie przetestuje.
+
+**Rozstrzygnięcie (b) — `extends` merguje sekcję `orchestrate` per klucz: TAK.**
+Klucze nieobecne w bloku lokalnym dziedziczą z bazy, lokalne nadpisują. Głębokość: JEDEN
+poziom (`layers`, `inner_loop`, `final_gate`, `exit` — a nie wnętrze `inner_loop`), tak jak
+`extends` dopuszcza jeden poziom dziedziczenia i z tego samego powodu: głębsze scalanie robi
+z kompozycji labirynt, w którym „skąd wziął się ten agent" przestaje być odpowiadalne.
+
+Trzy argumenty za, mimo że dotyczy to dziś jednego projektu:
+
+1. **To nie jest nowa semantyka, tylko domknięcie istniejącej.** `analyze.panel` już merguje
+   per pozycję (`stage` lokalny zastępuje bazowy, nowe dochodzą, `drop: true` usuwa).
+   `orchestrate` jest jedyną dużą sekcją, która tego nie robi — asymetria, nie decyzja.
+2. **Koszt implementacji jest proporcjonalny**: około ośmiu linii w `applyExtends()`
+   (`scripts/materialize-runtime.mjs`), bez nowego pojęcia w schemacie bloku.
+3. **Zmiana jest wstecznie zgodna.** Jedyny blok z `extends` w całej flocie
+   (`iam-verifiers.yml`) deklaruje dziś pełną sekcję `orchestrate`, więc po zmianie
+   materializuje się identycznie. Dopiero potem może skasować skopiowane `layers` i `exit`
+   — i od tego momentu zaczyna dostawać zmiany bazy.
+
+**Implementacja: pozycja K113 (planned)** w `docs/tasks/TASK-KAIZEN-002.md`. Ten ADR opisuje
+decyzję, nie stan wdrożony — do czasu K113 `extends` nadal nadpisuje `orchestrate` w całości.
+
+**Kiedy to wraca na stół.** Gdy pojawi się drugi adopter `flat-service` albo pierwszy projekt
+chcący odjąć pozycję z `overlay.*` — wtedy warto sprawdzić, czy jeden poziom scalania nadal
+wystarcza.
 
 ## Aneks A (2026-08-11): pole `axis` i przypisanie warstw do osi architektury
 

@@ -3,24 +3,14 @@
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"$HOME/.claude/hooks/pre-write-doc-warn.js\""
-          }
-        ],
-        "description": "Doc file warning: warn about non-standard documentation files"
-      },
-      {
         "matcher": "Bash",
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$HOME/.claude/hooks/git-push-reminder.js\""
+            "command": "node \"$HOME/.claude/hooks/block-root-grep.js\""
           }
         ],
-        "description": "Reminder before git push"
+        "description": "Deny recursive grep/rg/git grep over the repo root (Read(.env) deny rule would stall the flow with a permission prompt). Scoped searches and the Grep tool pass."
       },
       {
         "matcher": "Workflow",
@@ -32,29 +22,7 @@
         ]
       }
     ],
-    "PreCompact": [
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"$HOME/.claude/hooks/pre-compact.js\""
-          }
-        ],
-        "description": "Save state before context compaction"
-      }
-    ],
     "SessionStart": [
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"$HOME/.claude/hooks/session-start.js\""
-          }
-        ],
-        "description": "Load previous context and detect package manager"
-      },
       {
         "matcher": "*",
         "hooks": [
@@ -64,28 +32,6 @@
           }
         ],
         "description": "Auto-load TEAM-STATE.md for projects with PM-system (silent if absent)"
-      },
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"$HOME/.claude/hooks/broadcast-session-start.js\""
-          }
-        ],
-        "description": "Broadcast: read cross-instance channel (ADR 0006). Silent unless .claude/config/broadcast.yml exists."
-      }
-    ],
-    "UserPromptSubmit": [
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"$HOME/.claude/hooks/broadcast-inbox-inject.js\""
-          }
-        ],
-        "description": "Broadcast: deliver inbox into the next prompt (ADR 0006 D8/D11). Inert unless the manifest sets inject: true or BROADCAST_INJECT=on."
       }
     ],
     "PostToolUse": [
@@ -110,26 +56,6 @@
         "description": "Log PR URL after creation"
       },
       {
-        "matcher": "Edit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"$HOME/.claude/hooks/post-edit-format.js\""
-          }
-        ],
-        "description": "Auto-format files after edits (Biome/Prettier)"
-      },
-      {
-        "matcher": "Edit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"$HOME/.claude/hooks/post-edit-console-warn.js\""
-          }
-        ],
-        "description": "Warn about console.log after edits"
-      },
-      {
         "matcher": "Edit|Write|MultiEdit",
         "hooks": [
           {
@@ -148,16 +74,6 @@
           }
         ],
         "description": "Show security checklist progress when editing .ts source files. Disable via AGENT_SECURITY_IMPL_FEEDBACK=off. Silent for non-source or no-active-task."
-      },
-      {
-        "matcher": "Edit|Write|MultiEdit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"$HOME/.claude/hooks/broadcast-task-emit.js\""
-          }
-        ],
-        "description": "Broadcast: remind about /broadcast when a cross-cluster task file changes (ADR 0006). Silent without .claude/config/broadcast.yml; once per task per day."
       }
     ],
     "SubagentStart": [
@@ -218,28 +134,6 @@
           }
         ],
         "description": "Copy .env files to worktree on creation"
-      }
-    ],
-    "SessionEnd": [
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"$HOME/.claude/hooks/session-end.js\""
-          }
-        ],
-        "description": "Persist session state"
-      },
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"$HOME/.claude/hooks/evaluate-session.js\""
-          }
-        ],
-        "description": "Evaluate session for extractable patterns"
       }
     ]
   }

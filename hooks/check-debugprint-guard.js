@@ -22,93 +22,43 @@
  * Zawsze tylko ostrzega (exit 0) — nigdy nie blokuje agenta.
  */
 
-const fs = require('fs');
-const path = require('path');
-const { findFlutterConfig } = require('./lib/flutter-config');
-const { readStdinJsonWithRaw } = require('./lib/utils');
+const { runRuleScanner, stripTrailingComment, COMMENT_LINE_C } = require('./lib/rule-scanner');
 
-const COMMENT_LINE = /^\s*(\/\/|\/\*|\*)/;
 const KDEBUG = /\bkDebugMode\b/;
 const DEBUG_PRINT = /\bdebugPrint\s*\(/;
 // `print(` ale nie `debugPrint(`, `sprint(`, `obj.print(`
 const BARE_PRINT = /(?<![\w.])print\s*\(/;
 
-/** Ucina komentarz liniowy, żeby `// debugPrint(x)` nie liczyło się jako kod. */
-function stripTrailingComment(line) {
-  const idx = line.indexOf('//');
-  return idx >= 0 ? line.slice(0, idx) : line;
-}
-
-async function main() {
-  const { raw, parsed: input } = await readStdinJsonWithRaw();
-
-  try {
-    const filePath = input.tool_input?.file_path;
-
-    if (!filePath || !filePath.endsWith('.dart')) {
-      process.stdout.write(raw);
-      process.exit(0);
-    }
-
-    const loaded = findFlutterConfig(filePath);
-    if (!loaded) {
-      process.stdout.write(raw);
-      process.exit(0);
-    }
-
-    const { config } = loaded;
-
-    const loggingConfig = config.logging?.checkDebugPrintGuard;
-    if (!loggingConfig?.enabled) {
-      process.stdout.write(raw);
-      process.exit(0);
-    }
-
-    const skipPatterns = config.skipPatterns || ['_test.dart', '.g.dart', '.freezed.dart', '.mock.dart'];
-    if (skipPatterns.some((pat) => filePath.endsWith(pat))) {
-      process.stdout.write(raw);
-      process.exit(0);
-    }
-
-    const normalized = filePath.replace(/\\/g, '/');
-
+runRuleScanner({
+  extensions: '.dart',
+  configFinder: 'flutter',
+  section: (config) => (config.logging?.checkDebugPrintGuard?.enabled ? config.logging.checkDebugPrintGuard : null),
+  skipStyle: 'flutter',
+  scope: ({ normalized, section }) => {
     // Pliki jawnie zwolnione (np. własny wrapper loggera, który sam osłania kDebugMode)
-    const allowList = loggingConfig.allowFiles || [];
-    if (allowList.some((pat) => normalized.includes(pat))) {
-      process.stdout.write(raw);
-      process.exit(0);
-    }
-
+    const allowList = section.allowFiles || [];
+    if (allowList.some((pat) => normalized.includes(pat))) return false;
     // Zakres po fragmencie ścieżki, nie po globie. Powód: matchesPattern() z
     // lib/ddd-config.js psuje `**` przy podstawianiu pojedynczych gwiazdek, przez
     // co `**/lib/**/*.dart` nie łapie plików zagnieżdżonych głębiej niż jeden
     // katalog. Prosty `includes` jest tu przewidywalny i wystarczający.
-    const pathContains = loggingConfig.pathContains || ['/lib/'];
-    if (!pathContains.some((frag) => normalized.includes(frag))) {
-      process.stdout.write(raw);
-      process.exit(0);
-    }
-
-    const resolvedPath = path.resolve(filePath);
-    if (!fs.existsSync(resolvedPath)) {
-      process.stdout.write(raw);
-      process.exit(0);
-    }
-
-    const lines = fs.readFileSync(resolvedPath, 'utf8').split('\n');
-    const basename = path.basename(filePath);
-
-    // Śledzenie zagnieżdżenia: `guards` trzyma głębokości, na których otwarto blok
-    // osłonięty kDebugMode. Wszystko wewnątrz takiego bloku jest bezpieczne.
+    const pathContains = section.pathContains || ['/lib/'];
+    return pathContains.some((frag) => normalized.includes(frag));
+  },
+  // Własny skaner zamiast `rules`: „osłonięty" zależy od ZAGNIEŻDŻENIA bloków,
+  // a nie od treści pojedynczej linii.
+  scan: ({ lines, basename }) => {
+    // `guards` trzyma głębokości, na których otwarto blok osłonięty kDebugMode.
+    // Wszystko wewnątrz takiego bloku jest bezpieczne.
     let depth = 0;
     const guards = [];
     const findings = [];
 
     for (let i = 0; i < lines.length; i++) {
-      const raw = lines[i];
-      if (COMMENT_LINE.test(raw)) continue;
+      const rawLine = lines[i];
+      if (COMMENT_LINE_C.test(rawLine)) continue;
 
-      const line = stripTrailingComment(raw);
+      const line = stripTrailingComment(rawLine);
       const hasGuardKeyword = KDEBUG.test(line);
 
       // Osłonięte, jeśli jesteśmy w bloku kDebugMode albo osłona jest w tej samej linii
@@ -116,11 +66,8 @@ async function main() {
       const guarded = guards.length > 0 || hasGuardKeyword;
 
       if (!guarded) {
-        if (DEBUG_PRINT.test(line)) {
-          findings.push({ line: i + 1, kind: 'debugPrint' });
-        } else if (BARE_PRINT.test(line)) {
-          findings.push({ line: i + 1, kind: 'print' });
-        }
+        if (DEBUG_PRINT.test(line)) findings.push({ line: i + 1, kind: 'debugPrint' });
+        else if (BARE_PRINT.test(line)) findings.push({ line: i + 1, kind: 'print' });
       }
 
       const depthBefore = depth;
@@ -150,12 +97,5 @@ async function main() {
           `Wzorzec: patterns/flutter/mobile-security-pattern.md`,
       );
     }
-  } catch {
-    // Nieprawidłowe wejście — przepuść bez zmian
-  }
-
-  process.stdout.write(raw);
-  process.exit(0);
-}
-
-main();
+  },
+});

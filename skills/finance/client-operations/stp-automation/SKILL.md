@@ -1,43 +1,15 @@
 ---
 name: stp-automation
-description: "Design and implement straight-through processing and operational automation for securities operations. Use when measuring STP rates and identifying manual touchpoints in an existing process, replacing review-all workflows with exception-based processing, selecting automation patterns for account opening trade processing settlement reconciliation or billing, designing integration between portfolio management custodian CRM and order management systems, building exception queuing categorization and auto-resolution workflows, evaluating RPA vs API-based vs hybrid automation for legacy systems, establishing operational controls and audit trails for automated environments, conducting process mining or root cause analysis on exception volumes, or setting STP rate targets and continuous improvement programs."
+description: "Measure and raise straight-through processing (STP) rates in securities operations through zero-touch, exception-based processing. Use when measuring STP rates and analyzing manual touchpoints in an existing process, replacing review-all workflows with exception-based processing, evaluating RPA vs API-based vs hybrid automation for legacy systems, building exception queuing, categorization, and auto-resolution workflows, conducting process mining or root cause analysis on exception volumes, or setting STP rate targets and continuous improvement programs. For approval chains, four-eyes controls, and SLA monitoring, see workflow-automation."
 ---
 
 # STP & Automation
-
-## Purpose
-
-Guide the design and implementation of straight-through processing (STP) and operational automation in securities operations. Covers STP architecture and design principles, exception-based processing, STP rate measurement, process automation techniques, integration patterns between operations systems, and operational efficiency improvement. Enables building or improving operations infrastructure that maximizes automated processing while maintaining accuracy and controls.
-
-## Layer
-
-12 — Client Operations (Account Lifecycle & Servicing)
-
-## Direction
-
-prospective
-
-## When to Use
-
-- Designing or evaluating STP architecture for a securities operations workflow
-- Measuring STP rates and identifying manual touchpoints in an existing process
-- Implementing exception-based processing to replace review-all workflows
-- Selecting automation patterns for a specific operations domain (account opening, trade processing, settlement, reconciliation, corporate actions, reporting, billing)
-- Designing integration between operations systems (portfolio management, custodian, CRM, order management, accounting)
-- Building or improving exception queuing, categorization, and resolution workflows
-- Evaluating RPA, API-based, or hybrid automation approaches for legacy system interactions
-- Establishing operational controls, audit trails, and monitoring for automated environments
-- Conducting process mining or root cause analysis on exception volumes
-- Setting STP rate targets and continuous improvement programs
-- Trigger phrases: "straight-through processing," "STP rate," "exception-based processing," "automation," "manual touchpoints," "process automation," "exception queue," "auto-resolution," "integration pattern," "operational efficiency"
 
 ## Core Concepts
 
 ### 1. STP Fundamentals
 
-Straight-through processing is the end-to-end automated completion of a business process without manual intervention. The defining characteristic is that a transaction or workflow enters the system at one end and exits as a completed, booked, and confirmed event at the other end with no human touching it along the way.
-
-**STP vs. automation.** The terms are related but not interchangeable. Automation refers to replacing a manual step with a programmatic one — a single task within a larger process. STP is the complete automation of an entire workflow from initiation to completion. A process can be partially automated (several steps are programmatic, but a human reviews or approves at a midpoint) without being STP. True STP means zero manual intervention for the happy path.
+Straight-through processing is the end-to-end automated completion of a business process without manual intervention: a transaction enters the system at one end and exits as a completed, booked, and confirmed event at the other with no human touching it along the way. True STP means zero manual intervention for the happy path; a process with a human review or approval at a midpoint is partially automated, not STP.
 
 **STP rate calculation.** The fundamental metric is:
 
@@ -59,11 +31,7 @@ An "automated completion" is a transaction or workflow instance that passed thro
 
 These ranges reflect the spectrum from mid-tier broker-dealers to large custodian banks. A firm's position within the range depends on data quality, system integration maturity, and the complexity of its product mix.
 
-**The business case for STP.** The value of STP compounds across four dimensions:
-- **Cost reduction.** Each manual touchpoint has a fully loaded cost (salary, benefits, training, management oversight, workspace). STP eliminates per-transaction labor cost for automated items, converting variable cost into fixed infrastructure cost.
-- **Speed.** Automated processing completes in seconds or milliseconds. Manual processing introduces queuing delays, handoff delays, and human processing time. For time-sensitive operations like settlement, speed directly reduces risk.
-- **Error reduction.** Manual data entry, re-keying, and judgment-based decisions introduce errors. Automated validation and routing apply consistent rules without fatigue, distraction, or interpretation variance.
-- **Scalability.** An STP-enabled process can handle volume increases with minimal incremental cost. A manual process requires proportional staffing increases. During peak periods (quarter-end, rebalancing events, corporate action clusters), STP prevents the staffing bottleneck.
+**The business case for STP** compounds across four dimensions: cost reduction (per-transaction labor cost becomes fixed infrastructure cost), speed (seconds instead of queuing and handoff delays — directly reducing settlement risk), error reduction (consistent rules instead of re-keying and judgment variance), and scalability (volume spikes at quarter-end or corporate action clusters do not require proportional staffing).
 
 ### 2. STP Architecture
 
@@ -159,7 +127,7 @@ RPA is brittle — UI changes break the bot — and requires ongoing maintenance
 
 Each operations domain has distinct STP characteristics, challenges, and success factors.
 
-**Account opening STP.** The workflow runs from application receipt through funded, active account. Key STP challenges: variable document requirements by account type, KYC verification failures for thin-file individuals or non-US persons, NIGO (Not In Good Order) rejections from custodians due to missing or inconsistent data, manual review requirements for complex entity types (trusts, partnerships, estates). Success factors: standardized data collection forms, real-time KYC API integration, custodian-specific validation before submission, automated NIGO categorization and resolution.
+**Account opening STP.** From application receipt through funded, active account. NIGO taxonomy, pre-submission validation, document requirements matrices, and custodian submission design are covered in account-opening-workflow; apply the measurement and exception-management framework in this skill to the targets defined there (60-80% STP for simple individual/joint accounts, 20-40% for complex entity/trust accounts).
 
 **Trade processing STP.** From trade execution through allocation, confirmation, and booking. Key STP challenges: block trade allocation complexity, counterparty confirmation matching, non-standard settlement terms, late trade reporting, manual enrichment of trade details. Success factors: standardized allocation rules, automated confirmation matching (CTM, ALERT), reference data quality for securities and counterparties, real-time trade validation against compliance rules.
 
@@ -167,7 +135,7 @@ Each operations domain has distinct STP characteristics, challenges, and success
 
 **Corporate actions STP.** From event notification through entitlement calculation and booking. Key STP challenges: unstructured event notifications (narrative-format announcements), complex event types (mergers with elections, rights issues, spin-offs with fractional shares), tight election deadlines, multi-custodian entitlement reconciliation. Success factors: ISO 20022 event messaging, automated scrubbing of event data, rule-based entitlement calculation for mandatory events, automated deadline tracking.
 
-**Reconciliation STP.** Automated matching of internal records against external records (custodian positions, counterparty confirmations, bank statements). Key STP challenges: timing differences (trades booked internally but not yet reflected at custodian), corporate action timing (entitlements booked at different times), pricing differences, identifier mismatches. Success factors: multi-pass matching logic (exact match first, then fuzzy match with tolerances), automated break categorization, aging-based escalation, trend analysis on persistent breaks.
+**Reconciliation STP.** Automated matching of internal records against custodian and counterparty records. Auto-match rate benchmarks, matching rule design, break categorization, and tolerance thresholds are covered in reconciliation; that skill owns the auto-match content, and reconciliation also serves as the primary detective control over every other STP domain.
 
 **Reporting STP.** Automated generation and delivery of regulatory reports, client reports, and management reports. Key STP challenges: data aggregation from multiple sources, format requirements that change with regulatory updates, exception handling for missing or inconsistent data, delivery failures (email bounce, portal upload error). Success factors: data warehouse with validated, reconciled data, template-based report generation, automated delivery with confirmation tracking, exception-based review (only review reports that fail validation).
 
@@ -189,11 +157,7 @@ Operations systems do not function in isolation. The integration architecture de
 
 **Hybrid patterns.** Most real-world operations environments use a combination of patterns. A common architecture: real-time APIs for trade execution and compliance checks, message queues for inter-system event notifications, batch files for end-of-day reconciliation and custodian data feeds, RPA for legacy system interactions that cannot be replaced immediately.
 
-**Error handling and retry logic.** Every integration must account for failure. Standard patterns include:
-- **Retry with exponential backoff.** For transient errors (network timeout, service temporarily unavailable), retry with increasing intervals (1s, 2s, 4s, 8s) up to a maximum retry count.
-- **Dead letter queue.** Messages that fail after maximum retries are routed to a dead letter queue for manual investigation rather than being silently dropped.
-- **Circuit breaker.** If a downstream system is consistently failing, stop sending requests (open the circuit) to prevent cascading failures. Periodically test the connection (half-open) and resume when the system recovers.
-- **Idempotency.** Design all integrations so that processing the same message twice produces the same result. This allows safe retries without creating duplicate transactions.
+**Error handling.** Every integration must account for failure using standard software resilience patterns — retries with backoff for transient errors, dead-letter routing for messages that exhaust retries, circuit breakers for failing downstream systems, and idempotent message processing so retries cannot create duplicate transactions. The operations-specific requirement is that no failed message may be silently dropped: every failure must surface in an exception queue with an owner.
 
 ### 7. Measuring and Improving STP Rates
 
@@ -266,186 +230,11 @@ Automation does not eliminate the need for controls — it changes the nature of
 
 ## Worked Examples
 
-### Example 1: Designing an STP Framework for a Broker-Dealer's Trade Processing Operations
+A worked example — a 12-month STP improvement program for a broker-dealer's equity and fixed income trade processing (data quality remediation, integration upgrade, auto-resolution rules) — is in [references/examples.md](references/examples.md); load it when designing a concrete STP improvement roadmap.
 
-**Scenario.** A mid-size broker-dealer processes approximately 15,000 equity trades and 3,000 fixed income trades per day. Currently, the equity STP rate is 72% and the fixed income STP rate is 45%. The operations team of 28 people spends most of their time on manual exception handling. The COO has set a target of 90% equity STP and 70% fixed income STP within 12 months.
+### Account opening and reconciliation examples
 
-**Design Considerations:**
-- The firm uses a legacy order management system (OMS) that generates trades in a proprietary format, a middle-office system that handles allocation and confirmation, and a back-office system that handles settlement and booking.
-- The three systems communicate via batch files exchanged every 30 minutes during the trading day and hourly overnight.
-- The most common equity exceptions are counterparty SSI mismatches (28% of exceptions), allocation discrepancies (22%), and late trade reporting by the trading desk (18%).
-- The most common fixed income exceptions are security identifier mismatches (31%), non-standard settlement terms (24%), and manual enrichment requirements for structured products (19%).
-
-**Analysis:**
-
-Phase 1 — Data quality remediation (months 1-3). The highest-impact STP improvement comes from fixing the data, not changing the processing logic.
-
-For equity counterparty SSI mismatches (28% of equity exceptions): audit the SSI database against the top 50 counterparties by volume. These 50 counterparties likely represent 80%+ of SSI-related breaks. Update stale or incorrect SSIs, establish a process for counterparties to confirm SSI changes proactively, and implement automated SSI validation against the DTCC ALERT database.
-
-For fixed income security identifier mismatches (31% of fixed income exceptions): the root cause is typically that the OMS uses one identifier (e.g., CUSIP) while the counterparty uses another (e.g., ISIN). Implement a security master cross-reference service that maps between identifier types. When an incoming message uses an identifier type not stored in the system, the cross-reference service translates it automatically.
-
-For allocation discrepancies (22% of equity exceptions): standardize allocation instructions. Require the trading desk to submit allocation instructions with the block trade rather than after the fact. Implement validation that allocation quantities sum to the block quantity and that all allocation accounts are valid and active.
-
-Expected STP improvement from Phase 1: equity from 72% to 82%, fixed income from 45% to 58%.
-
-Phase 2 — Integration upgrade (months 3-8). Replace the 30-minute batch file exchange between the OMS and middle-office system with a message queue (e.g., Kafka). This delivers several benefits:
-
-- Trades flow to the middle office within seconds of execution rather than waiting up to 30 minutes for the next batch. This eliminates the late-trade-reporting exception category for all trades reported to the OMS in real time.
-- Failed messages are retained in the queue and can be retried automatically, eliminating the manual file-reprocessing procedures.
-- The message queue supports event-driven processing: when a trade message arrives, it immediately triggers allocation, enrichment, and confirmation workflows rather than waiting for a batch scheduler.
-
-Implement a real-time API integration with the DTCC for trade confirmation matching, replacing the current end-of-day batch matching. This enables same-day confirmation matching and earlier identification of mismatches.
-
-Expected STP improvement from Phase 2: equity from 82% to 88%, fixed income from 58% to 65%.
-
-Phase 3 — Auto-resolution and rule enhancement (months 8-12). With the major data quality and integration issues addressed, the remaining exceptions are lower-volume, more varied, and require more nuanced resolution. Implement auto-resolution rules for the most common remaining exception types:
-
-- For minor SSI field differences (e.g., abbreviated vs. full counterparty name), implement fuzzy matching with a confidence threshold. Matches above 95% confidence auto-resolve; below 95% route to manual review.
-- For fixed income non-standard settlement terms: build a settlement convention library that maps security type, market, and counterparty to the expected settlement terms. Automatically apply the correct convention when the trade does not specify terms explicitly.
-- For structured product enrichment: pre-load security master data for actively traded structured products so the system does not need manual enrichment when a trade in a known security arrives.
-
-Implement STP rate dashboards with daily reporting to operations management. Establish a weekly exception review meeting where the top 5 exception categories from the prior week are analyzed and remediation actions assigned.
-
-Expected STP improvement from Phase 3: equity from 88% to 91%, fixed income from 65% to 72%.
-
-**Key success metrics for the 12-month program:**
-- Equity STP rate: 72% to 91% (target 90% — achieved)
-- Fixed income STP rate: 45% to 72% (target 70% — achieved)
-- Daily manual exceptions: reduced from approximately 5,600 to approximately 2,000
-- Operations headcount redeployed from exception handling to process improvement and controls: 8 of 28 staff
-
-### Example 2: Implementing Exception-Based Processing for Account Opening Across Custodians
-
-**Scenario.** An RIA with $4.5 billion in AUM opens approximately 200 new accounts per month across three custodians (Schwab, Fidelity, and Pershing). The current process requires an operations analyst to review every account opening application before submission to the custodian, regardless of complexity. The average processing time is 45 minutes per account (including review, data entry into the custodian portal, and follow-up on NIGO rejections). The NIGO rate is 22% — meaning 22% of submitted applications are rejected by the custodian and require correction and resubmission.
-
-**Design Considerations:**
-- Account types opened monthly: 120 individual/joint taxable, 50 IRAs (traditional, Roth, SEP), 20 trust accounts, 10 entity accounts (LLCs, partnerships, corporate).
-- The firm uses a CRM (Salesforce) for client data, a separate onboarding platform for document collection and e-signature, and manual data entry into each custodian's portal for account submission.
-- The 22% NIGO rate breaks down as: missing or inconsistent data (40% of NIGOs), missing required documents (30%), signature issues (15%), custodian-specific formatting errors (15%).
-- The firm wants to reduce the NIGO rate to below 5% and shift operations staff from reviewing every application to handling only exceptions.
-
-**Analysis:**
-
-Step 1 — Define the STP path and exception criteria. Not all account types should follow the same path. Define three tiers:
-
-Tier 1 — Full STP (individual, joint, IRA accounts with clean data): The application passes all validation rules, all required documents are collected and signed, KYC verification passes, and the submission file passes custodian-specific format validation. These accounts are submitted to the custodian automatically with no human review. Target: 70% of total volume.
-
-Tier 2 — Light-touch review (trust accounts, simple entities): The application passes most validation rules but requires a brief review of entity documentation (trust agreement, articles of organization) to confirm the account title, trustee/authorized signer, and entity formation details match the application. An operations analyst reviews only the flagged items, not the entire application. Target: 15% of total volume.
-
-Tier 3 — Full review (complex entities, estates, accounts with unusual features): These accounts require detailed review due to complexity. But even here, the review is focused on the complex elements — the routine data fields have already been validated automatically. Target: 15% of total volume.
-
-Step 2 — Build pre-submission validation. Implement automated validation that runs before the application reaches the operations team (or, for Tier 1, before automatic submission):
-
-- **Data completeness check.** Every required field for the account type must be populated. Map required fields per account type per custodian (Schwab, Fidelity, and Pershing each have slightly different requirements).
-- **Data consistency check.** Name on the application matches the name on the identification document. SSN format is valid. Date of birth indicates the applicant is at least 18. Address passes USPS validation. For joint accounts, both applicants' data is complete.
-- **Document completeness check.** All required documents for the account type are collected and signed. Trust accounts require the trust agreement or certification of trust. Entity accounts require formation documents and an authorized signer resolution.
-- **Custodian-specific format validation.** Each custodian has specific formatting requirements — name length limits, address line restrictions, valid values for employment status, acceptable ID document types. Validate against these rules before submission to eliminate the 15% of NIGOs caused by formatting errors.
-- **KYC verification.** Automated KYC check via API (e.g., Alloy, LexisNexis). If the check passes, proceed. If it returns a soft fail (partial match), route to Tier 2 for analyst review of the discrepancy. If it returns a hard fail, route to Tier 3.
-
-Step 3 — Build custodian submission automation. For accounts that pass all validation (Tier 1), automate the submission to each custodian:
-
-- **Schwab:** Use the Schwab Advisor Services API for account opening. Map internal data fields to Schwab's API schema. Submit programmatically and receive a real-time or near-real-time response (accepted, rejected with reason, pending).
-- **Fidelity:** If API access is available, use the same approach. If not, generate a pre-formatted application file and use the bulk upload facility, or as a last resort, RPA to enter data into the Fidelity portal.
-- **Pershing:** Use Pershing's NetX360 API or file-based submission, depending on available integration options.
-
-For each custodian, build automated confirmation handling: when the custodian returns an acceptance, update the CRM and onboarding platform. When the custodian returns a rejection, categorize the rejection reason and route to the appropriate exception queue.
-
-Step 4 — Implement exception queuing and metrics. Exceptions are organized into queues:
-
-- **Data quality queue:** Applications where validation found missing or inconsistent data. The analyst sees exactly which fields failed, can correct them, and re-submit through the automated path.
-- **Document queue:** Applications with missing or unacceptable documents. The analyst contacts the client or advisor to collect the missing items.
-- **KYC review queue:** Applications where KYC verification returned a soft fail. The analyst reviews the discrepancy and either approves with documentation or requests additional information.
-- **Custodian rejection queue:** Applications rejected by the custodian despite passing internal validation. These reveal gaps in the pre-submission validation rules and should be analyzed for rule improvement.
-
-Dashboard metrics: total applications in each tier, STP rate for Tier 1, NIGO rate (post-validation vs. pre-validation baseline), average processing time by tier, exception volume by category, exception aging.
-
-**Expected outcomes:**
-- NIGO rate: 22% down to 3-4% (pre-submission validation catches most NIGO causes before submission)
-- Tier 1 STP rate: 65-75% of total volume processed without human review
-- Average processing time per account: 45 minutes down to 10 minutes (blended across all tiers; Tier 1 is near zero, Tier 2 is 15 minutes, Tier 3 is 40 minutes)
-- Operations capacity freed: equivalent of 1.5 FTEs redeployed from routine review to exception handling, process improvement, and client service
-
-### Example 3: Measuring and Improving STP Rates Across an RIA's Operations Department
-
-**Scenario.** A $12 billion RIA with 4,200 client households wants to establish a formal STP measurement program. The firm has never measured STP rates systematically. Operations staff report that "everything takes too long" and that they spend most of their time on repetitive manual work, but there is no data to identify what specifically should be improved. The head of operations has budget for one process improvement initiative per quarter and wants to direct resources to the highest-impact areas.
-
-**Design Considerations:**
-- The firm's operations span: account opening, account maintenance, money movement (contributions, withdrawals, transfers), trade processing and allocation, rebalancing execution, reconciliation, billing, client reporting, and regulatory reporting.
-- Systems in use: CRM (Salesforce), portfolio management system (Orion), trading/rebalancing (Orion Trading), custodian interfaces (Schwab and Fidelity), document management (DocuSign + SharePoint), billing (Orion Billing), reporting (Orion client portal + custom reports).
-- The firm processes approximately 500 account maintenance requests, 2,000 money movements, 8,000 trades, and 400 account openings per month.
-
-**Analysis:**
-
-Phase 1 — Baseline measurement (weeks 1-4). Before improving anything, the firm must establish where it stands. For each operations domain, define what constitutes an "STP completion" versus a "manual intervention":
-
-Account opening: STP completion means the account application is submitted to the custodian and accepted without any operations staff reviewing, correcting, or re-keying data. Manual intervention means any human touch between application receipt and custodian acceptance.
-
-Trade processing: STP completion means a trade is executed, allocated, confirmed, and booked without any operations staff reviewing, correcting, or intervening. Manual intervention means any human touch between trade execution and booking.
-
-Money movement: STP completion means a contribution, withdrawal, or transfer request is processed and confirmed at the custodian without operations staff review. Manual intervention means any human involvement in processing the request.
-
-Reconciliation: STP completion means a position or cash reconciliation item is automatically matched. Manual intervention means a reconciliation break that requires human investigation.
-
-Billing: STP completion means the fee for a household is calculated, allocated, and submitted for debit without human review. Manual intervention means any household requiring manual fee calculation, adjustment, or review.
-
-With these definitions, instrument each process to count automated completions versus total volume. For systems that do not log this data automatically, implement a four-week manual tracking exercise: operations staff tally each item they touch and categorize the reason for the touch.
-
-Phase 2 — Baseline results and prioritization (week 5). After four weeks of measurement, the baseline might reveal:
-
-| Domain | Monthly Volume | STP Rate | Monthly Manual Items | Avg. Time per Manual Item |
-|--------|---------------|----------|---------------------|--------------------------|
-| Account opening | 400 | 15% | 340 | 40 min |
-| Trade processing | 8,000 | 82% | 1,440 | 8 min |
-| Money movement | 2,000 | 55% | 900 | 15 min |
-| Reconciliation | 120,000 positions | 91% | 10,800 breaks | 5 min |
-| Billing | 4,200 households | 70% | 1,260 | 12 min |
-
-Convert to monthly manual hours to prioritize:
-
-| Domain | Manual Items | Avg. Minutes | Monthly Hours | Rank |
-|--------|-------------|-------------|---------------|------|
-| Reconciliation | 10,800 | 5 | 900 | 1 |
-| Trade processing | 1,440 | 8 | 192 | 2 |
-| Money movement | 900 | 15 | 225 | 3 |
-| Account opening | 340 | 40 | 227 | 4 |
-| Billing | 1,260 | 12 | 252 | 5 |
-
-The ranking by total manual hours shows reconciliation as the dominant consumer of operations time, followed by billing, account opening, money movement, and trade processing. However, the prioritization should also consider:
-- STP improvement feasibility (how much improvement is realistic in one quarter)
-- Impact on client experience (account opening delays affect new clients directly)
-- Impact on risk (reconciliation breaks represent unresolved discrepancies in the books)
-- Cost of the improvement (some improvements are configuration changes, others require system integration projects)
-
-Phase 3 — First improvement initiative (quarter 1). Based on the analysis, the firm selects reconciliation as the first target because it consumes the most manual hours and has high STP improvement feasibility (auto-matching logic enhancements can be deployed within the existing Orion platform).
-
-Root cause analysis of the 10,800 monthly reconciliation breaks:
-- Timing differences (trade date vs. settlement date mismatches): 45% of breaks
-- Corporate action timing (entitlements booked at different times in Orion vs. custodian): 20% of breaks
-- Price differences (Orion pricing vs. custodian pricing): 15% of breaks
-- Legitimate discrepancies requiring investigation: 12% of breaks
-- Cash reconciliation breaks (interest, dividends, fees posted at different times): 8% of breaks
-
-For timing differences (45%), implement a matching rule that automatically resolves a position difference when a pending trade in Orion matches the discrepancy. If Orion shows 100 shares of XYZ and the custodian shows 200 shares, and there is a pending buy of 100 shares settling tomorrow, auto-match with a status of "expected to resolve on settlement date." This one rule addresses nearly half of all breaks.
-
-For corporate action timing (20%), implement a similar expected-resolution rule for pending corporate action entitlements.
-
-For price differences (15%), implement a tolerance-based auto-match. If the position quantities match but the market values differ by less than a defined threshold (e.g., 0.5% of market value), auto-match as a pricing difference.
-
-Expected improvement: reconciliation auto-match rate from 91% to 97%, reducing monthly manual breaks from 10,800 to approximately 3,600, saving approximately 600 hours per month.
-
-Phase 4 — Subsequent initiatives. With the reconciliation improvements deployed and verified, the firm moves to the next priority. Each quarter, re-measure STP rates across all domains (the baseline may have shifted due to volume changes or organic improvements), re-prioritize, and select the next initiative. A two-year roadmap might look like:
-
-- Q1: Reconciliation auto-matching enhancements (described above)
-- Q2: Money movement STP — implement automated processing for standard contributions and withdrawals with custodian API integration
-- Q3: Account opening STP — implement pre-submission validation and Tier 1 auto-submission for simple account types
-- Q4: Billing STP — automate exception detection and resolution for common billing exceptions (missing valuations, new account proration)
-- Q5-Q8: Trade processing enhancements, reporting automation, advanced reconciliation rules, cross-domain integration improvements
-
-**Governance framework.** To sustain the STP improvement program:
-- Monthly STP scorecard reviewed by the head of operations and the COO
-- Quarterly deep-dive analysis of exception trends and root causes
-- Annual review of STP rate targets and adjustment based on achieved rates and strategic priorities
-- Operations staff trained in process improvement methodology so they can identify and propose STP enhancements from the front line
+For a worked example of exception-based account opening processing (tiered review, pre-submission validation, NIGO reduction), see account-opening-workflow. For worked examples of reconciliation auto-matching and break-reduction programs, see reconciliation.
 
 ## Common Pitfalls
 
@@ -462,10 +251,10 @@ Phase 4 — Subsequent initiatives. With the reconciliation improvements deploye
 
 ## Cross-References
 
-- **workflow-automation** — Detailed patterns for multi-step workflow orchestration, state machines, and task routing that underpin STP implementations.
-- **account-opening-workflow** — End-to-end account opening process design, including the specific STP challenges and custodian integration requirements for new accounts.
-- **reconciliation** — Automated matching logic, break categorization, and resolution workflows that serve as both an STP domain and a control over other STP processes.
-- **settlement-clearing** — Settlement instruction matching, fail management, and CSD/DTC integration patterns for trade settlement STP.
-- **corporate-actions** — Event processing, entitlement calculation, and election management workflows with their unique STP challenges.
-- **operational-risk** — Risk framework for automated operations, including control design, incident management, and regulatory expectations for operational resilience.
-- **portfolio-management-systems** — PMS architecture, data feeds, and integration patterns that serve as the hub for many operations STP workflows.
+- **workflow-automation** (client-operations plugin) — Detailed patterns for multi-step workflow orchestration, state machines, and task routing that underpin STP implementations.
+- **account-opening-workflow** (client-operations plugin) — End-to-end account opening process design, including the specific STP challenges and custodian integration requirements for new accounts.
+- **reconciliation** (client-operations plugin) — Automated matching logic, break categorization, and resolution workflows that serve as both an STP domain and a control over other STP processes.
+- **settlement-clearing** (trading-operations plugin) — Settlement instruction matching, fail management, and CSD/DTC integration patterns for trade settlement STP.
+- **corporate-actions** (client-operations plugin) — Event processing, entitlement calculation, and election management workflows with their unique STP challenges.
+- **operational-risk** (trading-operations plugin) — Risk framework for automated operations, including control design, incident management, and regulatory expectations for operational resilience.
+- **portfolio-management-systems** (advisory-practice plugin) — PMS architecture, data feeds, and integration patterns that serve as the hub for many operations STP workflows.

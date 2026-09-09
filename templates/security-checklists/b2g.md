@@ -83,7 +83,7 @@
 ## When to escalate
 
 If you find any item here cannot be satisfied with current architecture,
-**stop the task** and raise with security-privacy-architect agent or
+**stop the task** and raise with `ecc:security-reviewer` agent or
 real legal counsel. B2G non-compliance carries:
 - Service termination from public registry
 - UODO fines (up to 2% global revenue or €10M)

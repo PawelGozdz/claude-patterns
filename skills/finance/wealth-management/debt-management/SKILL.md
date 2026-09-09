@@ -5,24 +5,6 @@ description: "Provide frameworks for managing and paying off personal debt effec
 
 # Debt Management
 
-## Purpose
-Provide frameworks for managing personal debt effectively, including prioritization strategies (avalanche vs snowball), refinancing decisions, debt consolidation evaluation, and debt-to-income ratio management. This skill balances mathematical optimization with behavioral psychology.
-
-## Layer
-6 — Personal Finance
-
-## Direction
-both
-
-## When to Use
-- Deciding how to prioritize paying off multiple debts
-- Comparing avalanche vs snowball payoff strategies with specific debt profiles
-- Evaluating whether to refinance a loan (breakeven analysis)
-- Assessing debt consolidation offers
-- Computing debt-to-income ratios for mortgage qualification or financial health assessment
-- Deciding between paying off debt vs investing (opportunity cost analysis)
-- Building a debt payoff plan with timeline and interest cost projections
-
 ## Core Concepts
 
 ### Debt Avalanche
@@ -106,22 +88,22 @@ Amortization calculation with extra payments:
 - Student loan: $12,000 balance, 6% APR, $200 minimum
 - Personal loan: $3,000 balance, 15% APR, $75 minimum
 
-**Calculate:** Order of payoff, total months, and total interest for each strategy.
+**Calculate:** Order of payoff, total months, and total interest for each strategy (month-by-month simulation; see `scripts/debt_management.py`).
 **Solution — Avalanche (highest rate first: 22% → 15% → 6%):**
 1. Pay minimums on all ($375/mo). Extra $500 goes to credit card ($600/mo total to CC).
-2. Credit card ($5K at 22%, $600/mo): paid off in ~9 months, ~$450 interest.
-3. Freed payment → personal loan ($75 + $600 = $675/mo to PL). Remaining ~$2,300 at 15%: paid off in ~4 months, ~$100 interest.
-4. All payments → student loan ($200 + $675 = $875/mo). Remaining ~$10,400 at 6%: paid off in ~12 months, ~$350 interest.
-5. **Total: ~25 months, ~$900 total interest.**
+2. Credit card ($5K at 22%, $600/mo): paid off in month 10, ~$476 interest.
+3. Freed payment rolls to the personal loan ($75 + $600 = $675/mo to PL): paid off in month 14, ~$408 interest.
+4. All payments roll to the student loan ($200 + $675 = $875/mo): paid off in month 26, ~$1,062 interest (the 6% loan accrues interest on its full $12K balance throughout the earlier phases, not just at the end).
+5. **Total: 26 months, ~$1,946 total interest.**
 
 **Solution — Snowball (smallest balance first: $3K → $5K → $12K):**
 1. Extra $500 goes to personal loan ($575/mo total to PL).
-2. Personal loan ($3K at 15%, $575/mo): paid off in ~6 months, ~$140 interest.
-3. Freed payment → credit card ($100 + $575 = $675/mo). Remaining ~$4,700 at 22%: paid off in ~8 months, ~$430 interest.
-4. All payments → student loan. Remaining ~$10,200 at 6%: paid off in ~12 months, ~$340 interest.
-5. **Total: ~26 months, ~$910 total interest.**
+2. Personal loan ($3K at 15%, $575/mo): paid off in month 6, ~$123 interest.
+3. Freed payment rolls to the credit card ($100 + $575 = $675/mo): paid off in month 14, ~$911 interest.
+4. All payments roll to the student loan: paid off in month 26, ~$1,071 interest.
+5. **Total: 26 months, ~$2,104 total interest.**
 
-**Comparison:** Avalanche saves ~$10 and 1 month in this scenario. The difference is modest because the highest-rate debt is not the largest. Snowball gives a quicker first win (6 months vs 9 months to first payoff).
+**Comparison:** Avalanche saves ~$158 in interest; both finish in 26 months. The difference is modest because the highest-rate debt is not the largest. Snowball gives a quicker first win (month 6 vs month 10 to first payoff) — for many people that motivational difference is worth $158.
 
 ### Example 2: Refinance breakeven
 **Given:** Current mortgage: $300K remaining, 6.5%, 25 years left, payment $2,028/mo. New offer: 5.5%, 25 years, closing costs $6,000, payment $1,838/mo.
@@ -145,12 +127,19 @@ Amortization calculation with extra payments:
 - Ignoring the amortization reset: refinancing to a new 30-year term extends the payoff date
 
 ## Cross-References
-- **lending** (wealth-management plugin, Layer 6): mortgage analysis, loan terms, and amortization calculations
-- **emergency-fund** (wealth-management plugin, Layer 6): adequate emergency fund prevents taking on new high-interest debt during crises
-- **savings-goals** (wealth-management plugin, Layer 6): debt payoff competes with savings goals for cash flow allocation
-- **tax-efficiency** (wealth-management plugin, Layer 5): tax deductibility of certain debt interest affects optimal payoff order
-- **liquidity-management** (wealth-management plugin, Layer 6): debt payments are fixed obligations in cash flow planning
-- **financial-planning-workflow** (advisory-practice plugin, Layer 10): debt payoff strategies are evaluated during the cash flow and recommendation phases of financial planning
+- **lending** (wealth-management plugin): mortgage analysis, loan terms, and amortization calculations
+- **emergency-fund** (wealth-management plugin): adequate emergency fund prevents taking on new high-interest debt during crises
+- **savings-goals** (wealth-management plugin): debt payoff competes with savings goals for cash flow allocation
+- **tax-efficiency** (wealth-management plugin): tax deductibility of certain debt interest affects optimal payoff order
+- **liquidity-management** (wealth-management plugin): debt payments are fixed obligations in cash flow planning
+- **financial-planning-workflow** (advisory-practice plugin): debt payoff strategies are evaluated during the cash flow and recommendation phases of financial planning
+- **insurance-planning** (wealth-management plugin): outstanding debt balances are a direct input to life insurance needs analysis
+## Running the Script
 
-## Reference Implementation
-See `scripts/debt_management.py` for computational helpers.
+```bash
+uv run scripts/debt_management.py            # run the demo (uses PEP 723 inline deps)
+uv run scripts/debt_management.py --verify   # check demo outputs against the worked examples (exit 1 on mismatch)
+python3 scripts/debt_management.py            # alternative (requires: pip install numpy)
+```
+
+The demo prints the calculations covered above; its values match the worked examples in this skill. Run `--help` for a list of the classes and functions. For programmatic use, import the module rather than running it — the demo only executes under `python debt_management.py`.

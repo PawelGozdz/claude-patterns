@@ -19,12 +19,12 @@ to opt in. Promote to plain "Production" once a second project adopts the same s
 
 ```
 patterns/
-├── domain/              # Domain Layer (core business logic) - 7 patterns
-├── application/         # Application Layer (CQRS handlers) - 4 patterns
-├── infrastructure/      # Infrastructure Layer (persistence, API) - 5 patterns
-├── architecture/        # Cross-cutting architecture patterns - 11 patterns
-├── testing/            # Testing patterns - 9 patterns
-├── cross-layer/        # Used everywhere (errors, logging, error handlers, registry guards) - 5 patterns
+├── domain/              # Domain Layer (core business logic) - 8 patterns
+├── application/         # Application Layer (CQRS handlers) - 5 patterns
+├── infrastructure/      # Infrastructure Layer (persistence, API) - 8 patterns
+├── architecture/        # Cross-cutting architecture patterns - 13 patterns
+├── testing/            # Testing patterns - 10 patterns
+├── cross-layer/        # Used everywhere (errors, logging, error handlers, registry guards) - 9 patterns
 ├── orchestration/      # Project management and team coordination - 1 pattern
 ├── marketing/          # Marketing workflow patterns - 1 pattern
 ├── finance/            # Finance workflow patterns - 2 patterns
@@ -94,16 +94,18 @@ CQRS command and query handlers, application services for complex workflows.
 
 ---
 
-### Infrastructure Layer (4 patterns)
+### Infrastructure Layer (8 patterns)
 
 Persistence, API, and technical implementation patterns.
 
 | Pattern | Lines | Status | Description | Primary Users |
 |---------|-------|--------|-------------|---------------|
-| **[repository-pattern.md](infrastructure/repository-pattern.md)** | ~700 | Production | BaseKyselyRepository, CQRS separation, optimistic locking, upsert | infrastructure-testing-implementer |
-| **[repository-events-pattern.md](infrastructure/repository-events-pattern.md)** | 400 | Production | 3-layer event protection (imports, eventMap, verification test) | infrastructure-testing-implementer |
+| **[repository-pattern.md](infrastructure/repository-pattern.md)** | ~1000 | Production | BaseKyselyRepository, CQRS separation, optimistic locking, upsert | infrastructure-testing-implementer |
+| **[repository-events-pattern.md](infrastructure/repository-events-pattern.md)** | ~410 | Production | 3-layer event protection (imports, eventMap, verification test) | infrastructure-testing-implementer |
 | **[mapper-pattern.md](infrastructure/mapper-pattern.md)** | ~600 | Production | toDomain(), toPersistence(), value object reconstruction | infrastructure-testing-implementer |
-| **[controller-schema-pattern.md](infrastructure/controller-schema-pattern.md)** | ~600 | Production | Zod validation, @CurrentUser, rate limiting, Result pattern | infrastructure-testing-implementer |
+| **[controller-schema-pattern.md](infrastructure/controller-schema-pattern.md)** | ~740 | Production | Controller shape: @CurrentUser from JWT, @AuthEndpointSchema, orchestration-only, Result<z.infer<…>> responses | infrastructure-testing-implementer |
+| **[zod-schema-validation-pattern.md](infrastructure/zod-schema-validation-pattern.md)** | ~390 | Production | Request/response schemas at the API boundary: `.strict()`, UUID ids, safe-text/XSS, shared `commonValidators`, `AuthorSnapshotDto` | infrastructure-testing-implementer |
+| **[rate-limit-guard-pattern.md](infrastructure/rate-limit-guard-pattern.md)** | ~160 | Production | @RateLimit per endpoint, per-context `*.rate-limits.ts`, blockDuration on auth endpoints | infrastructure-testing-implementer, security-e2e-verifier |
 | **[external-adapter-pattern.md](infrastructure/external-adapter-pattern.md)** | ~230 | ⚠ project-specific (grant-flow) | Logging placeholder adapter: realny port, zero I/O, fail-fast w onModuleInit, rozdzielone klasy błędów | infrastructure-testing-implementer |
 | **[geo-spatial-query-pattern.md](infrastructure/geo-spatial-query-pattern.md)** | ~500 | production | PostGIS: 4 predicate classes (metric/topological/containment/KNN), cast shape = index shape, catalogue-before-EXPLAIN verification, spatial predicate as access control, snap-at-write privacy, canonical typed builder (juz-ide reference impl) | infrastructure-testing-implementer, geo-postgres-specialist |
 
@@ -117,7 +119,7 @@ Persistence, API, and technical implementation patterns.
 
 ---
 
-### Architecture Layer (14 patterns)
+### Architecture Layer (13 patterns)
 
 Cross-cutting architectural patterns spanning multiple layers.
 
@@ -129,7 +131,6 @@ Cross-cutting architectural patterns spanning multiple layers.
 | **[transactional-pattern.md](architecture/transactional-pattern.md)** | 412 | Production | @Transactional decorator, auto-commit/rollback | domain-application-implementer |
 | **[bullmq-queue-pattern.md](architecture/bullmq-queue-pattern.md)** | 490 | Production | Async job processing with BullMQ | infrastructure-testing-implementer |
 | **[integration-event-pattern.md](architecture/integration-event-pattern.md)** | ~800 | Production | Cross-context events via Outbox Pattern, NO PII, priority-based processing | domain-application-implementer, infrastructure-testing-implementer |
-| **[entity-event-emission-pattern.md](architecture/entity-event-emission-pattern.md)** | 480 | Production | Manual domain event emission for Entities (non-Aggregates), eventPersistenceHandler + eventDispatcher | domain-application-implementer |
 | **[golden-rule-endpoints.md](architecture/golden-rule-endpoints.md)** | ~120 | Production | GET /{resource} = public (approved only), GET /{resource}/my = owner (all statuses). ADR-0071 | infrastructure-testing-implementer, domain-application-implementer |
 | **[cross-context-communication.md](architecture/cross-context-communication.md)** | ~200 | Production | Decision guide: ACL vs Integration Events vs queues for cross-context communication | All implementers |
 | **[token-optimization-pattern.md](architecture/token-optimization-pattern.md)** | ~300 | Production | Token reduction settings, session quality, model selection strategy | All users |
@@ -149,7 +150,7 @@ Cross-cutting architectural patterns spanning multiple layers.
 
 ---
 
-### Testing Layer (11 patterns)
+### Testing Layer (10 patterns)
 
 Testing strategies and patterns for all levels of the test pyramid.
 
@@ -157,7 +158,6 @@ Testing strategies and patterns for all levels of the test pyramid.
 |---------|-------|--------|-------------|---------------|
 | **[testing-pyramid-pattern.md](testing/testing-pyramid-pattern.md)** | ~600 | Production | L1 ~50%, L2 ~30%, L3 ~20% test distribution | All implementers |
 | **[schema-testing-pattern.md](testing/schema-testing-pattern.md)** | ~500 | Production | 6-category methodology for Zod schema testing | infrastructure-testing-implementer |
-| **[context-isolation-pattern.md](testing/context-isolation-pattern.md)** | ~450 | Production | Isolated test databases per bounded context | All implementers |
 | **[e2e-hybrid-fixture-pattern.md](testing/e2e-hybrid-fixture-pattern.md)** | ~550 | Production | Fixture what you DON'T test, real flow for what you DO test | infrastructure-testing-implementer |
 | **[test-seeding-performance-guide.md](testing/test-seeding-performance-guide.md)** | ~700 | Production | Performance optimization for test data seeding | All implementers |
 | **[rate-limit-testing-pattern.md](testing/rate-limit-testing-pattern.md)** | ~400 | Production | Separate E2E files for rate limiting tests | infrastructure-testing-implementer |
@@ -165,7 +165,7 @@ Testing strategies and patterns for all levels of the test pyramid.
 | **[business-rules-yaml-pattern.md](testing/business-rules-yaml-pattern.md)** | ~400 | Production | BUSINESS_RULES.yaml as test oracle, specification/policy alignment | All implementers |
 | **[golevelup-mock-pattern.md](testing/golevelup-mock-pattern.md)** | ~300 | Production | `createMock<T>()` zamiast factory functions, DeepMocked type safety, co NIE migrować | All implementers |
 | **[typed-projection-row-builder-pattern.md](testing/typed-projection-row-builder-pattern.md)** | ~250 | Production | Typed row-builder kolokowany przy repo dla cross-context projection tables bez repozytorium zapisu | infrastructure-testing-implementer |
-| **[domain-colocated-fixture-mother-pattern.md](testing/domain-colocated-fixture-mother-pattern.md)** | ~200 | Production | Pure Mother (`*.mother.ts`) kolokowany w `domain/aggregates/__fixtures__/` buduje agregat przez publiczne `create()`; persystencja przez realny `repository.save()` via DI; kompozyt łączy Mother+save+typed row-buildery dla cross-context projekcji | infrastructure-testing-implementer |
+| **[domain-colocated-fixture-mother-pattern.md](testing/domain-colocated-fixture-mother-pattern.md)** | ~200 | ⚠ project-specific (juz-ide-api-1) | Pure Mother (`*.mother.ts`) kolokowany w `domain/aggregates/__fixtures__/` buduje agregat przez publiczne `create()`; persystencja przez realny `repository.save()` via DI; kompozyt łączy Mother+save+typed row-buildery dla cross-context projekcji | infrastructure-testing-implementer |
 
 **Testing Layer Key Principles**:
 - Test Pyramid: L1 (unit) ~50%, L2 (integration) ~30%, L3 (E2E) ~20%
@@ -180,7 +180,7 @@ Testing strategies and patterns for all levels of the test pyramid.
 
 ---
 
-### Cross-Layer Patterns (7 patterns)
+### Cross-Layer Patterns (9 patterns)
 
 Patterns used across all architectural layers.
 
@@ -307,10 +307,10 @@ The other 2 files in `patterns/python/` (`polyglot-persistence-pattern`,
 
 Stack-specific patterns for `stack_profile: flutter-clean-arch` projects.
 
-- [accessibility-pattern.md](flutter/accessibility-pattern.md)
+- [accessibility-pattern.md](flutter/accessibility-pattern.md) — ⚠ project-specific (juz-ide-mobile-app)
 - [clean-architecture-pattern.md](flutter/clean-architecture-pattern.md)
-- [component-creation-pattern.md](flutter/component-creation-pattern.md)
-- [design-token-pattern.md](flutter/design-token-pattern.md)
+- [component-creation-pattern.md](flutter/component-creation-pattern.md) — ⚠ project-specific (juz-ide-mobile-app)
+- [design-token-pattern.md](flutter/design-token-pattern.md) — ⚠ project-specific (juz-ide-mobile-app)
 - [dio-networking-pattern.md](flutter/dio-networking-pattern.md)
 - [either-error-pattern.md](flutter/either-error-pattern.md)
 - [freezed-immutability-pattern.md](flutter/freezed-immutability-pattern.md)
@@ -433,24 +433,6 @@ hook `check-gpu-patterns.js`.
 
 ---
 
-## 📊 Pattern Statistics
-
-**Core Patterns**: 46
-**Stack-Specific Patterns**: 35 (flutter, nextjs, python, sveltekit, typescript-library)
-**Total**: 81
-**Production Status**: 100% (all patterns verified in production code)
-
-**Core Pattern Distribution**:
-- Domain: 15% (7)
-- Application: 11% (5)
-- Infrastructure: 9% (4)
-- Architecture: 26% (12)
-- Testing: 24% (11)
-- Cross-Layer: 13% (6)
-- Orchestration: 2% (1)
-
----
-
 ## 🔄 Pattern Updates
 
 **Version 3.13** (2026-08-31):
@@ -516,6 +498,9 @@ hook `check-gpu-patterns.js`.
   events nationwide for a week with a green test suite.
   Marked `project-specific (juz-ide)` per the "Promoting a Project Refactor" rule — the PostGIS
   mechanics generalise, but a second project must adopt the shape before promotion.
+  **Superseded 2026-08-16**: promoted to universal by owner decision (recorded in the pattern's
+  own header note); juz-ide stays the reference implementation, cited as evidence, not as a
+  dependency. The file carries no `**Scope**` line on purpose.
 - Total patterns: 47 (was 46)
 
 **Version 3.10** (2026-07-18):

@@ -11,6 +11,8 @@ calculation, AMT adjustment, and muni-to-Treasury ratio analysis.
 Part of Layer 2 (Asset Classes) in the finance skills framework.
 """
 
+import argparse
+import sys
 import numpy as np
 
 
@@ -250,20 +252,18 @@ class AMTAdjustment:
     @staticmethod
     def amt_adjusted_yield(
         muni_yield: float,
-        federal_rate: float,
         amt_rate: float,
     ) -> float:
         """Compute the effective yield on an AMT-subject private activity bond.
 
         For a taxpayer subject to AMT, the interest is included in AMT
-        income, reducing the tax benefit.
+        income, reducing the tax benefit. Only the AMT rate matters here;
+        the regular federal rate does not enter this calculation.
 
         Parameters
         ----------
         muni_yield : float
             Stated yield on the AMT-subject muni as a decimal.
-        federal_rate : float
-            Regular federal marginal tax rate as a decimal.
         amt_rate : float
             AMT rate as a decimal (e.g., 0.28 = 28%).
 
@@ -301,7 +301,7 @@ class AMTAdjustment:
             TEY accounting for AMT: the taxable yield equivalent of the
             AMT-reduced muni yield.
         """
-        after_amt = AMTAdjustment.amt_adjusted_yield(muni_yield, federal_rate, amt_rate)
+        after_amt = AMTAdjustment.amt_adjusted_yield(muni_yield, amt_rate)
         # Convert the after-AMT yield to a pre-tax equivalent
         if federal_rate >= 1.0:
             raise ValueError("Federal rate must be less than 1.0.")
@@ -407,7 +407,7 @@ class MuniRatio:
         return muni / tsy
 
 
-if __name__ == "__main__":
+def _demo() -> None:
     # ----------------------------------------------------------------
     # Demo: Municipal bond tax analysis
     # ----------------------------------------------------------------
@@ -487,7 +487,7 @@ if __name__ == "__main__":
     amt_muni_yield = 0.038  # 3.8% private activity bond
     amt_rate = 0.28
 
-    after_amt = AMTAdjustment.amt_adjusted_yield(amt_muni_yield, fed_rate, amt_rate)
+    after_amt = AMTAdjustment.amt_adjusted_yield(amt_muni_yield, amt_rate)
     amt_tey = AMTAdjustment.amt_tax_equivalent_yield(
         amt_muni_yield, fed_rate, amt_rate
     )
@@ -529,3 +529,61 @@ if __name__ == "__main__":
     print("\n" + "=" * 60)
     print("Demo complete.")
     print("=" * 60)
+
+def _check(failures: list, name: str, actual: float, expected: float, tol: float) -> None:
+    """Record a verification check result."""
+    ok = abs(actual - expected) <= tol
+    status = "PASS" if ok else "FAIL"
+    print(f"  [{status}] {name}: actual={actual:.6g}, expected={expected:.6g}, tol={tol:.2g}")
+    if not ok:
+        failures.append(name)
+
+def _verify() -> None:
+    """Verify key outputs against the SKILL.md worked examples."""
+    failures: list = []
+
+    # SKILL.md Example 1: TEY with federal and state tax
+    tey_full = MunicipalBondTax.tax_equivalent_yield_full(0.035, 0.37, 0.05)
+    _check(failures, "Ex1 TEY (fed+state)", tey_full, 0.05848, 1e-5)
+    tey_fed = MunicipalBondTax.tax_equivalent_yield_federal(0.035, 0.37)
+    _check(failures, "Ex1 TEY (federal only)", tey_fed, 0.055556, 1e-5)
+
+    # De minimis threshold: par 1000, 10 years
+    _check(failures, "de minimis threshold", DeMinimis.threshold_price(1000.0, 10.0), 975.0, 1e-9)
+
+    # AMT adjustment (federal_rate no longer needed for the effective yield)
+    _check(failures, "AMT-adjusted yield (3.8% at 28% AMT)",
+           AMTAdjustment.amt_adjusted_yield(0.038, 0.28), 0.02736, 1e-9)
+
+    # Muni/Treasury ratio
+    _check(failures, "muni/Treasury ratio", MuniRatio.yield_ratio(0.032, 0.040), 0.80, 1e-12)
+
+    if failures:
+        print(f"\n{len(failures)} check(s) FAILED: {', '.join(failures)}")
+        sys.exit(1)
+    print("\nAll checks passed.")
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description=__doc__.strip().splitlines()[2] if __doc__ else "",
+        epilog=(
+            "Provides: MunicipalBondTax, DeMinimis, AMTAdjustment, MuniRatio. "
+            "For programmatic use, import this module (fixed_income_municipal) instead of running it. "
+            "Bare run executes a demo whose printed values match the SKILL.md worked examples; "
+            "--verify asserts those values and exits nonzero on mismatch."
+        ),
+    )
+    parser.add_argument(
+        "--verify",
+        action="store_true",
+        help="run the verification checks against the SKILL.md worked-example values",
+    )
+    args = parser.parse_args()
+    if args.verify:
+        _verify()
+    else:
+        _demo()
+
+
+if __name__ == "__main__":
+    main()

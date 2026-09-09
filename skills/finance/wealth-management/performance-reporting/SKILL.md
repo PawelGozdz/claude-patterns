@@ -5,25 +5,6 @@ description: "Generate clear, accurate performance reports for investment portfo
 
 # Performance Reporting — Reporting & Communication
 
-## Purpose
-Generate clear, accurate, and contextually rich performance reports for investment portfolios. This skill covers return calculation and presentation, benchmark comparison, attribution analysis, risk dashboards, goal progress tracking, and visualization best practices — all with an emphasis on honest, plain-language communication that serves the reader.
-
-## Layer
-8 — Reporting & Communication
-
-## Direction
-retrospective
-
-## When to Use
-- Creating portfolio performance reports (monthly, quarterly, annual)
-- Summarizing investment returns across multiple time periods
-- Comparing portfolio performance to appropriate benchmarks
-- Presenting attribution analysis (what drove returns)
-- Building risk dashboards with current and rolling metrics
-- Tracking progress toward financial goals (retirement, education, etc.)
-- Designing charts and visualizations for investment reporting
-- Translating quantitative results into plain-language summaries for clients
-
 ## Core Concepts
 
 ### Return Reporting
@@ -44,6 +25,15 @@ Accurate and consistent return calculation is the foundation of all performance 
 - Time-weighted return (TWR) removes the impact of cash flows — use for evaluating the investment manager's skill.
 - Money-weighted return (MWR / IRR) reflects the investor's actual experience including timing of contributions and withdrawals — use for evaluating the investor's outcome.
 
+### Calculation Engines
+`scripts/performance_reporting.py` implements the return calculations behind these reports:
+
+- **Modified Dietz (`ModifiedDietz`):** approximates TWR by weighting each external cash flow by the fraction of the period it was invested: R = (V_end - V_start - sum(CF)) / (V_start + sum(w_i * CF_i)), with w_i = (D - d_i)/D. A GIPS-acceptable approximation when daily valuations are unavailable.
+- **True TWR (`TimeWeightedReturn`):** chain-links sub-period returns, prod(1 + r_t) - 1, with an annualization helper that refuses periods under 1 year.
+- **IRR / MWR (`MoneyWeightedReturn`):** solves NPV(rate) = 0 numerically using Brent's root-finding method (`scipy.optimize.brentq`) over a bracketing interval, returning the annual money-weighted return.
+- **GIPS composites (`CompositeReturn`):** asset-weighted composite return using beginning-of-period values as weights, plus equal-weighted return and the asset-weighted internal dispersion GIPS requires for composites with 6+ portfolios.
+- **Standard periods (`PeriodReturns`):** MTD/QTD/YTD-style trailing windows (1M through 10Y) and inception-to-date from a daily return series, annualizing only periods of 1 year or more.
+
 ### Benchmark Comparison
 A return number in isolation is meaningless. Context requires a benchmark.
 
@@ -55,16 +45,14 @@ A return number in isolation is meaningless. Context requires a benchmark.
 
 **Active return (alpha):** Portfolio return minus benchmark return. Positive alpha indicates outperformance; negative alpha indicates underperformance.
 
-**Tracking error:** The standard deviation of active returns (portfolio return minus benchmark return) over time. Measures the consistency of active management.
-
-**Information ratio:** Alpha divided by tracking error. Measures the efficiency of active management — how much excess return is generated per unit of active risk. An IR above 0.5 is generally considered good; above 1.0 is exceptional.
+**Tracking error and information ratio:** For definitions and computation, see performance-metrics. In reports, present these alongside active return so the reader can judge how consistently outperformance was achieved.
 
 ### Risk Dashboard
-Complement return reporting with risk metrics to give a complete picture.
+Complement return reporting with risk metrics to give a complete picture. For definitions and computation of these metrics (volatility, VaR, drawdown, etc.), see historical-risk.
 
 **Current snapshot metrics:**
-- Annualized volatility (standard deviation of returns)
-- Maximum drawdown (peak-to-trough decline) and current drawdown
+- Annualized volatility
+- Maximum drawdown and current drawdown
 - Value at Risk (VaR) at 95% and 99% confidence levels
 - Beta relative to the benchmark
 
@@ -83,12 +71,7 @@ Complement return reporting with risk metrics to give a complete picture.
 ### Attribution Summary
 Explain *why* the portfolio outperformed or underperformed.
 
-**Brinson attribution (allocation vs selection):**
-- Allocation effect: did the manager overweight sectors that performed well?
-- Selection effect: within each sector, did the manager pick better-performing securities?
-- Interaction effect: the combined impact of allocation and selection decisions.
-
-**Factor contribution decomposition:** Decompose returns into contributions from market beta, size, value, momentum, quality, and other factors. The residual is the manager's idiosyncratic alpha.
+**Brinson attribution (allocation, selection, interaction) and factor decomposition:** For methodology and formulas, see performance-attribution. In a report, summarize each effect in one plain-language sentence (e.g., "sector weighting added 0.2%, stock selection added 0.4%").
 
 **Top/bottom contributors (holdings-level):**
 - List the 5-10 holdings that contributed most positively and most negatively to portfolio returns.
@@ -204,14 +187,14 @@ The most important reporting skill is translating numbers into meaning.
 - Ignoring taxes: for taxable investors, after-tax returns are what actually matters.
 
 ## Cross-References
-- **statistics-fundamentals** (core plugin, Layer 0): return distributions, confidence intervals for projections
-- **time-value-of-money** (core plugin, Layer 0): future value projections, annualization math
-- **performance-metrics** (wealth-management plugin, Layer 1a): Sharpe, Sortino, Information Ratio calculation details
-- **historical-risk** (wealth-management plugin, Layer 1a): volatility, drawdown, VaR computation for risk dashboards
-- **asset-allocation** (wealth-management plugin, Layer 4): benchmark construction for multi-asset portfolios
-- **quantitative-valuation** (wealth-management plugin, Layer 3): forward-looking return assumptions for goal projections
-- **finance-psychology** (wealth-management plugin, Layer 7): framing effects in how performance is presented to clients
-- **client-review-prep** (advisory-practice plugin, Layer 10): performance data is assembled into the client review meeting package
+- **statistics-fundamentals** (core plugin): return distributions, confidence intervals for projections
+- **time-value-of-money** (core plugin): future value projections, annualization math
+- **performance-metrics** (wealth-management plugin): Sharpe, Sortino, Information Ratio calculation details
+- **historical-risk** (wealth-management plugin): volatility, drawdown, VaR computation for risk dashboards
+- **asset-allocation** (wealth-management plugin): benchmark construction for multi-asset portfolios
+- **quantitative-valuation** (wealth-management plugin): forward-looking return assumptions for goal projections
+- **finance-psychology** (wealth-management plugin): framing effects in how performance is presented to clients
+- **client-review-prep** (advisory-practice plugin): performance data is assembled into the client review meeting package
 
-## Reference Implementation
-See `scripts/performance_reporting.py` for computational helpers.
+## Running the script
+Run with `uv run scripts/performance_reporting.py` (the PEP 723 header resolves numpy/scipy automatically) or with `python3 scripts/performance_reporting.py` after `pip install numpy scipy`. A bare run prints five demos: a Modified Dietz return, chain-linked TWR, an IRR solved via Brent's method, a GIPS composite summary, and a standard-period return table. Use `--verify` to assert the demo outputs match expected values (exit code 0 on PASS) and `--help` for an overview of the classes. The file is primarily meant to be imported as a module (e.g., `from performance_reporting import ModifiedDietz, MoneyWeightedReturn`).

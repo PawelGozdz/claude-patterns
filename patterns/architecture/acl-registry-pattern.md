@@ -343,7 +343,7 @@ export class AuthorizationModule {} // No onModuleInit!
 2. **Community-Communication → Geographic-Auth** (`create-event/handler.ts`)
 3. **Authorization → Auth** (`permission-migration.service.ts`)
 
-## 🎯 When to Use
+## When to Use
 
 **Use ACL Registry Pattern when:**
 

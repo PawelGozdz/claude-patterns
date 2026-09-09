@@ -11,6 +11,10 @@ Calmar, Treynor, Omega, capture ratios, batting average, and win/loss ratio.
 Part of Layer 1a (Retrospective) in the finance skills framework.
 """
 
+import argparse
+import math
+import sys
+
 import numpy as np
 
 
@@ -275,7 +279,22 @@ class PerformanceScorecard:
         return result
 
 
-if __name__ == "__main__":
+def _demo_scorecard() -> PerformanceScorecard:
+    """Build the seeded demo scorecard used by both the demo and --verify."""
+    np.random.seed(42)
+    n_days = 504
+    portfolio_returns = np.random.normal(loc=0.0004, scale=0.013, size=n_days)
+    benchmark_returns = np.random.normal(loc=0.0003, scale=0.011, size=n_days)
+    return PerformanceScorecard(
+        returns=portfolio_returns,
+        benchmark_returns=benchmark_returns,
+        risk_free_rate=0.04 / 252,
+        periods_per_year=252,
+    )
+
+
+def run_demo() -> None:
+    """Run the demonstration (default when executed with no arguments)."""
     # ----------------------------------------------------------------
     # Demo: Performance scorecard on synthetic data
     # ----------------------------------------------------------------
@@ -339,3 +358,80 @@ if __name__ == "__main__":
     print("\n" + "=" * 60)
     print("Demo complete.")
     print("=" * 60)
+
+
+def run_verify() -> int:
+    """Assert the demo outputs and the SKILL.md worked-example numbers.
+
+    Returns
+    -------
+    int
+        0 if all checks pass, 1 otherwise.
+    """
+    failures = 0
+
+    def check(name: str, actual: float, expected: float,
+              rel_tol: float = 1e-6, abs_tol: float = 1e-9) -> None:
+        nonlocal failures
+        ok = math.isclose(actual, expected, rel_tol=rel_tol, abs_tol=abs_tol)
+        status = "PASS" if ok else "FAIL"
+        print(f"[{status}] {name}: actual={actual:.10g} expected={expected:.10g}")
+        if not ok:
+            failures += 1
+
+    # SKILL.md Example 1: Sharpe = (0.12 - 0.04) / 0.15 = 0.533
+    check("SKILL.md Ex1 Sharpe ratio", (0.12 - 0.04) / 0.15, 0.533,
+          rel_tol=1e-3)
+
+    # SKILL.md Example 3: IR = (0.10 - 0.08) / 0.04 = 0.50
+    check("SKILL.md Ex3 Information Ratio", (0.10 - 0.08) / 0.04, 0.50)
+
+    # Seeded demo scorecard values
+    scorecard = _demo_scorecard()
+    check("Demo Sharpe ratio", scorecard.sharpe_ratio(), 0.4727816064)
+    check("Demo Sortino ratio", scorecard.sortino_ratio(), 0.6997682020)
+    check("Demo Information Ratio", scorecard.information_ratio(),
+          -0.1557715541)
+    check("Demo Calmar ratio", scorecard.calmar_ratio(), 0.6669373286)
+    check("Demo Treynor ratio", scorecard.treynor_ratio(), 1.4205101790)
+    check("Demo Omega ratio", scorecard.omega_ratio(), 1.1119106743)
+    check("Demo Up Capture", scorecard.up_capture(), 0.1339458972)
+    check("Demo Down Capture", scorecard.down_capture(), 0.0201295542)
+    check("Demo Batting Average", scorecard.batting_average(), 0.4940476190)
+    check("Demo Win/Loss Ratio", scorecard.win_loss_ratio(), 1.0108278858)
+
+    if failures:
+        print(f"\nFAIL: {failures} check(s) did not match expected values.")
+        return 1
+    print("\nPASS: all checks matched expected values.")
+    return 0
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description=(
+            "Risk-adjusted performance metrics via the PerformanceScorecard "
+            "class: Sharpe, Sortino, Information Ratio, Calmar, Treynor, "
+            "Omega, up/down capture, batting average, and win/loss ratio."
+        ),
+        epilog=(
+            "Run with no arguments to print a demo scorecard on seeded "
+            "synthetic data. Import as a module: "
+            "from performance_metrics import PerformanceScorecard"
+        ),
+    )
+    parser.add_argument(
+        "--verify",
+        action="store_true",
+        help="assert demo outputs and SKILL.md worked-example numbers; "
+             "exits nonzero on mismatch",
+    )
+    args = parser.parse_args()
+
+    if args.verify:
+        sys.exit(run_verify())
+    run_demo()
+
+
+if __name__ == "__main__":
+    main()

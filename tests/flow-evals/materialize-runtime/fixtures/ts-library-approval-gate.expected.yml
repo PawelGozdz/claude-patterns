@@ -1,0 +1,98 @@
+# GENERATED przez materialize-runtime.mjs (ADR 0008) — NIE edytuj ręcznie.
+# Zmiany rób w blokach (claude-patterns/blocks/ lub .claude/blocks/) i odpal setup-project.sh.
+
+schema_version: 1
+stack_blocks: [ts-library, approval-gate]
+# osie: ts-library=framework, approval-gate=process
+
+patterns:
+  always:
+    - cross-layer/conventions-pattern.md # source: ts-library
+    - typescript-library/public-api-pattern.md # source: ts-library
+  triggers:
+    # source: ts-library
+    - keywords: [breaking, semver, major, deprecat, wersj, version, migracja, migration, changeset]
+      include:
+        - typescript-library/backward-compatibility-pattern.md
+    # source: ts-library
+    - keywords: [build, bundle, eksport, export, publish, publikacj, esm, cjs, tarball, peer]
+      include:
+        - typescript-library/build-publish-pattern.md
+    # source: ts-library
+    - keywords: [test, spec, coverage, snapshot, smoke, kontrakt, contract, vitest, jest]
+      include:
+        - typescript-library/library-testing-pattern.md
+
+analyze:
+  panel:
+    # source: ts-library
+    - {stage: tech-analysis, agent: "ecc:architect"}
+    # source: ts-library
+    - {stage: tech-analysis-specialist, agent: "backend-technology-expert"}
+    # source: ts-library
+    - {stage: api-surface-analysis, agent: "library-api-guardian", when: "api|eksport|export|index\\.ts|publiczn|public|breaking|semver|deprecat|sygnatur|signature", advisory: true}
+  exit: PAUSE # source: approval-gate
+
+hooks: [check-approval-before-impl, check-human-voice]
+
+env:
+  ECC_GATEGUARD: "off" # source: ts-library
+  ECC_DISABLED_HOOKS: "pre:edit-write:gateguard-fact-force,pre:bash:gateguard-fact-force" # source: ts-library
+
+overlay:
+  agents: [stacks/typescript-library/]
+  patterns: [typescript-library/, testing/]
+  rules: [typescript/]
+
+human_voice: # język tekstu dla człowieka; nadpisz w project.yml → human_voice
+  language: pl
+  register: business
+  max_sentences: 2
+  avoid: [nazwy klas i funkcji, ścieżki plików, numery ADR/BDR, żargon warstw i wzorców]
+
+taxonomy: # rdzeń blocks/_taxonomy.yml + .claude/taxonomy.yml projektu
+  stacks:
+    - any
+    - api
+    - mobile
+    - web
+    - lib
+    - data
+    - infra
+  areas:
+    - auth
+    - authz
+    - domain
+    - app
+    - data-access
+    - events
+    - geo
+    - api-surface
+    - ui
+    - tests
+    - security
+    - observability
+    - build
+    - economy
+    - platform
+    - process
+  variants_seen:
+    app: [async, batching, concurrency, cross-context, errors, external-integration, ingestion, llm, model-lifecycle]
+    api-surface: [barrel, contract, deprecation, errors, semver]
+    data-access: [http, mapper, migration, offline, polyglot, projection, transaction]
+    domain: [aggregate, errors, moderation-buffer]
+    events: [domain, integration, outbox, queue]
+    geo: [radius, teryt, polygon, discovery]
+    observability: [audit, logging]
+    platform: [channel, gpu, nestjs, nextjs, python, svelte]
+    process: [review]
+    security: [identity, rate-limit, validation]
+    tests: [contract, e2e, fixtures, integration, load, seeding, unit]
+    ui: [accessibility, design-token, forms, i18n, navigation, state]
+
+requires_ecc: # source: ts-library
+  profile: developer
+  modules: [lang:typescript, capability:orchestration]
+
+budgets:
+  api-surface-analysis: {max_tool_calls: 20, on_limit: emit-partial} # source: ts-library

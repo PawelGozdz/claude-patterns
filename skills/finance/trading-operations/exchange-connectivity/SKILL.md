@@ -1,32 +1,9 @@
 ---
 name: exchange-connectivity
-description: "Guide the design and management of trading venue connectivity and market data infrastructure. Use when building or troubleshooting FIX sessions for order routing or drop copy, integrating exchange protocols like OUCH, ITCH, PITCH, or Pillar, designing market data feed architecture, handling trading halts or circuit breakers or LULD bands, mapping symbology across CUSIP/ISIN/SEDOL/FIGI, planning co-location or proximity hosting, designing failover and DR for exchange connectivity, implementing Rule 15c3-5 market access controls, building session scheduling for pre-market and post-market windows, resolving FIX sequence number gaps, or planning CAT reporting infrastructure."
+description: "Guide the design and management of trading venue connectivity and market data infrastructure. Owns the FIX session layer (logon, heartbeats, sequence number gaps, resend and gap recovery, disconnects). Use when building or troubleshooting FIX sessions for order routing or drop copy, integrating exchange protocols like OUCH, ITCH, PITCH, or Pillar, designing market data feed architecture (consolidated SIP vs direct feeds), handling trading halts or circuit breakers or LULD bands, planning co-location or failover and disaster recovery for exchange connectivity, implementing Rule 15c3-5 market access controls, or mapping symbology across venues and data sources. For order state machines and execution-report handling see order-lifecycle."
 ---
 
 # Exchange Connectivity
-
-## Purpose
-Guide the design and management of connectivity to trading venues and market data sources. Covers FIX session management, market data feed architecture, exchange protocols, trading halts and circuit breakers, symbology and reference data, and connectivity resilience. Enables building or evaluating trading infrastructure that maintains reliable, low-latency connections to exchanges, ATS venues, and market data providers.
-
-## Layer
-11 — Trading Operations (Order Lifecycle & Execution)
-
-## Direction
-both
-
-## When to Use
-- Designing or evaluating connectivity architecture to one or more trading venues (exchanges, ATS, ECNs)
-- Configuring or troubleshooting FIX sessions for order routing or drop-copy feeds
-- Building or integrating market data infrastructure (consolidated feeds, direct feeds, vendor feeds)
-- Implementing handling logic for trading halts, circuit breakers, and LULD bands in order management or execution systems
-- Mapping symbology across venues and data sources (ticker, CUSIP, ISIN, SEDOL, FIGI)
-- Planning co-location, proximity hosting, or extranets for low-latency connectivity
-- Designing failover, redundancy, and disaster recovery for exchange connectivity
-- Evaluating regulatory requirements for market access controls (Rule 15c3-5) or Reg SCI compliance
-- Building session scheduling logic for pre-market, regular session, and post-market trading windows
-- Addressing sequence number gaps, message recovery, or session reset scenarios in FIX
-- Normalizing market data from heterogeneous sources into a unified internal representation
-- Planning CAT (Consolidated Audit Trail) reporting infrastructure for order and execution events
 
 ## Core Concepts
 
@@ -88,14 +65,7 @@ The FIX protocol defines a session layer that handles connection establishment, 
 ### Market Data Feeds
 Market data feeds deliver price, volume, and order book information from trading venues to market participants. The architecture of market data infrastructure directly impacts a firm's ability to price securities, make trading decisions, and meet best execution obligations.
 
-**Level 1 Data (Top of Book):**
-Level 1 data provides the national best bid and offer (NBBO) and last sale information. The NBBO represents the highest bid and lowest offer across all protected exchanges for a given security. Level 1 data includes: best bid price and size, best ask price and size, last trade price and size, cumulative volume, and high/low/open/close prices. Level 1 data is sufficient for many trading and portfolio management applications but does not reveal the depth of liquidity behind the best prices.
-
-**Level 2 Data (Depth of Book):**
-Level 2 data shows the full visible order book at a single venue — all resting limit order prices and aggregate sizes at each price level. Level 2 data reveals the depth of liquidity available at and away from the NBBO. Depth-of-book data is essential for algorithmic trading strategies that analyze order book imbalance, for estimating market impact, and for understanding venue-level liquidity profiles.
-
-**Level 3 Data (Order by Order):**
-Level 3 data provides individual order-level detail — every order add, modify, cancel, and execute event, identified by a unique order ID. Level 3 feeds (such as Nasdaq ITCH and Cboe PITCH) allow recipients to reconstruct the full order book and track the lifecycle of individual orders. Level 3 data is used by market makers, high-frequency trading firms, and researchers who need the most granular view of market microstructure.
+**Data depth tiers:** Level 1 (top of book — NBBO and last sale) suffices for most portfolio and compliance workflows; Level 2 (per-venue depth of book) supports market impact estimation and book-imbalance strategies; Level 3 (order-by-order feeds such as Nasdaq ITCH and Cboe PITCH) enables full book reconstruction for market makers and latency-sensitive strategies. The architectural decision is which tier each consuming application actually needs — feed costs, bandwidth, and feed-handler complexity scale steeply with depth.
 
 **Consolidated Feeds (SIP):**
 The Securities Information Processor (SIP) is the regulatory mechanism that produces a consolidated view of quotations and trades across all U.S. equity exchanges. Two SIP plans operate:
@@ -148,15 +118,7 @@ When a trading halt is detected, systems should: (1) immediately stop sending ne
 ### Symbology and Security Identification
 Trading systems must correctly identify securities across venues, data sources, and internal systems. Multiple identification schemes exist, and a single security typically has different identifiers in different contexts.
 
-**Ticker Symbols:** Alphanumeric codes assigned by exchanges for trading purposes. Ticker symbols are exchange-specific and can change due to corporate actions (name changes, mergers), exchange transfers (a company moving its listing from NYSE to Nasdaq), or temporary conditions (e.g., appending "Q" for a company in bankruptcy, "W" for warrants, "WI" for when-issued trading). Ticker symbols are not globally unique — the same symbol may refer to different securities on different exchanges globally.
-
-**CUSIP (Committee on Uniform Securities Identification Procedures):** A 9-character identifier (6-character issuer code + 2-character issue code + 1 check digit) assigned by CUSIP Global Services (operated by S&P Global). CUSIPs are the primary identifier for U.S. and Canadian securities. A new CUSIP is assigned when a security's fundamental characteristics change (e.g., a stock split that results in a new class of shares, a merger that creates a new entity). CUSIPs are proprietary and licensed — their use in systems requires a licensing agreement with CUSIP Global Services.
-
-**ISIN (International Securities Identification Number):** A 12-character identifier (2-character country code + 9-character national identifier + 1 check digit) defined by ISO 6166. For U.S. securities, the ISIN wraps the CUSIP: ISIN = "US" + CUSIP + check digit. ISINs provide a globally unique identifier across jurisdictions and are required for cross-border settlement and regulatory reporting.
-
-**SEDOL (Stock Exchange Daily Official List):** A 7-character identifier assigned by the London Stock Exchange for securities traded on UK and Irish exchanges. SEDOLs are commonly used in international portfolio management and fund administration.
-
-**FIGI (Financial Instrument Global Identifier):** A 12-character identifier issued by Bloomberg under the Object Management Group (OMG) standard. FIGIs are open-source (freely available without licensing) and are designed to provide a single identifier that covers all asset classes and venue-specific listings. A "composite FIGI" identifies the security at a global level, while "share class FIGIs" identify venue-specific listings.
+**Identifier landscape:** Ticker symbols are exchange-assigned, change with corporate actions, and are not globally unique. CUSIP (US/Canada) is proprietary and requires a license from CUSIP Global Services; ISIN wraps the CUSIP for US securities and is required for cross-border settlement and regulatory reporting; SEDOL covers UK and Irish listings; FIGI is Bloomberg's open-license identifier with composite (global) and share-class (venue-level) granularity. The operational problems are licensing, change management, and mapping — not the identifier formats themselves.
 
 **Symbology Mapping:** A security master or symbology mapping service is required to translate between identifier types. For example, Apple Inc. common stock has ticker AAPL (on Nasdaq), CUSIP 037833100, ISIN US0378331005, and FIGI BBG000B9XRY4. When an order is routed to an exchange, the system must use the exchange's expected symbology. When market data arrives from a vendor, the system must map the vendor's identifier to the firm's internal identifier. Symbology mapping must handle: one-to-many relationships (a single corporate entity may have multiple listed securities — common stock, preferred stock, warrants, rights), changes over time (ticker changes, CUSIP changes due to corporate actions), and venue-specific suffixes or extensions.
 
@@ -209,110 +171,7 @@ Firms that connect to exchanges and trading venues are subject to specific regul
 
 ## Worked Examples
 
-### Example 1: Designing FIX Connectivity to Multiple Execution Venues for a Broker-Dealer
-
-**Scenario:** A broker-dealer is building an order routing system to connect to five U.S. equity execution venues: NYSE, Nasdaq, Cboe BZX, Cboe EDGX, and IEX. The firm needs to support smart order routing across these venues and must comply with SEC Rule 15c3-5 market access requirements.
-
-**Connectivity Architecture Decisions:**
-
-The firm must decide between FIX and proprietary protocols for each venue. For an initial build, FIX is the pragmatic choice across all five venues — it provides a uniform interface, simplifies development, and reduces the number of protocol implementations to maintain. If the firm later requires sub-millisecond latency, it can add proprietary protocol gateways (OUCH for Nasdaq, BOE for Cboe, Pillar binary for NYSE) for latency-sensitive flow while keeping FIX for less time-sensitive order types.
-
-**Session Layout:**
-- Two FIX sessions per venue (primary and backup) — 10 sessions total. Primary sessions route through one extranet (e.g., TNS); backup sessions route through a second (e.g., IPC).
-- Separate SenderCompIDs for each session. The firm applies for market participant identifiers and FIX credentials with each exchange.
-- Heartbeat interval: 30 seconds for all order sessions.
-- Sequence number persistence: sequence numbers stored to disk (using a journaling database or flat file with fsync), enabling session recovery without resetting after an application restart.
-
-**Pre-Trade Risk Controls (Rule 15c3-5):**
-The firm implements a risk gateway between the smart order router and the exchange FIX sessions. Every order passes through the risk gateway before reaching the exchange. Controls include:
-- **Price collar:** Reject orders with a limit price more than 10% away from the NBBO for liquid securities (Tier 1) or 20% for less liquid securities (Tier 2).
-- **Order size limit:** Reject single orders exceeding a configurable maximum (e.g., 50,000 shares for most equities). The maximum is adjustable by security based on average daily volume.
-- **Position/capital exposure limit:** Track net exposure per symbol and in aggregate. Reject orders that would breach the per-symbol or aggregate capital limit.
-- **Duplicative order detection:** Flag and reject orders that match a recently submitted order on symbol, side, quantity, and price within a configurable time window (e.g., 1 second).
-- **Kill switch:** A firm-wide kill switch that cancels all open orders across all venues and prevents new order submission. Triggered manually by risk management or automatically when aggregate exposure exceeds an emergency threshold.
-- **Restricted security list:** Halt-restricted and firm-restricted securities are blocked before reaching the exchange.
-
-**Operational Procedures:**
-- **Morning startup:** FIX sessions are connected at 7:00 AM ET. Sequence numbers are synchronized via ResendRequest if there is a gap from the prior session. The risk gateway is initialized with current position data from the overnight batch. Pre-market orders are accepted starting at 7:30 AM ET.
-- **Intraday monitoring:** Operations staff monitors FIX session status, heartbeat health, and latency metrics on a real-time dashboard. Alerts fire if a session disconnects, if latency exceeds 5 ms, or if the backup session has not been tested in the last 30 days.
-- **End of day:** After post-market order entry closes (5:00 PM ET), the firm reconciles all fills across venues against the internal blotter. Sequence numbers are persisted. Drop-copy sessions (separate read-only FIX sessions that receive a copy of all execution reports) are used to cross-check that no fills were missed on the primary sessions.
-
-### Example 2: Building a Market Data Infrastructure with Consolidated and Direct Feeds
-
-**Scenario:** An institutional broker-dealer is building market data infrastructure to support its algorithmic trading desk and its best execution analysis function. The algorithmic desk requires the lowest available latency for real-time trading decisions. The best execution team requires a consolidated view for transaction cost analysis. The firm trades U.S. equities listed on NYSE and Nasdaq.
-
-**Feed Architecture:**
-
-For the algorithmic desk, the firm subscribes to direct feeds from each exchange:
-- Nasdaq TotalView-ITCH (Level 3, order-by-order) — provides the full Nasdaq order book.
-- NYSE Integrated Feed via Pillar — provides depth-of-book data for NYSE-listed securities.
-- Cboe PITCH feeds for BZX, BYX, EDGX, EDGA — provides order-by-order data for Cboe venues.
-- IEX DEEP — provides price-level aggregated depth for IEX.
-
-These direct feeds are received at the firm's co-location presence in both the Nasdaq/Carteret data center and the NYSE/Mahwah data center. The firm runs a feed handler process for each exchange protocol that decodes the binary messages and publishes normalized market data events to an internal messaging bus.
-
-For the best execution team, the firm subscribes to the SIP consolidated feeds:
-- CTA/CQS (for NYSE-listed securities) — provides consolidated NBBO and last sale.
-- UTP (for Nasdaq-listed securities) — provides consolidated NBBO and last sale.
-
-The SIP feeds serve as the regulatory reference for NBBO and are used in transaction cost analysis to measure execution quality against the prevailing NBBO at the time of each order.
-
-**Normalization Layer:**
-A market data normalization service consumes the output of all feed handlers and produces a unified internal representation:
-- Each security is identified by the firm's internal security ID (mapped from exchange-specific symbology via the security master).
-- All prices are represented in decimal format with a common precision.
-- Timestamps are normalized to nanosecond UTC, preserving the original exchange timestamp and adding the firm's receipt timestamp.
-- The normalization service constructs a "direct NBBO" by comparing the top-of-book from each direct feed, providing a synthetic NBBO that is typically available several hundred microseconds before the SIP NBBO.
-- Book state is maintained for each venue, and an aggregated book across venues is available for algorithms that need full market depth.
-
-**Redundancy:**
-- Each direct feed has a primary and backup line (exchanges offer "A" and "B" feed instances with identical content sent over separate network paths). The feed handler arbitrates between the two lines, using the first-arriving copy of each message and filling gaps from the other.
-- The SIP feeds are similarly dual-redundant.
-- If a direct feed is lost entirely (both A and B lines), the system falls back to the SIP for that venue's contribution to the NBBO, and the algorithmic desk is alerted that venue-specific depth is unavailable.
-
-**Performance Monitoring:**
-- Feed handler latency is measured as the time between the exchange-timestamped event and the firm's internal publish timestamp. Target: under 10 microseconds from feed receipt to internal publish for co-located feed handlers.
-- Gap detection: each feed handler tracks sequence numbers and alerts on gaps. Gaps on market data feeds (unlike FIX order sessions) typically cannot be recovered in real time — the data is simply missed and the book must be reconstructed from the next snapshot or full book refresh.
-- Throughput monitoring: during peak message rates (e.g., market open, high-volatility events), the system monitors queue depths and processing backlogs to detect capacity issues before they cause data loss.
-
-### Example 3: Implementing Trading Halt Handling Across Order Management and Market Data Systems
-
-**Scenario:** A broker-dealer's technology team is implementing comprehensive halt handling across its order management system (OMS), smart order router (SOR), and market data platform. The firm must correctly handle market-wide circuit breakers, LULD trading pauses, and regulatory halts for individual securities.
-
-**Detection Layer:**
-Halt events are detected from multiple sources:
-- **SIP administrative messages:** The SIP disseminates trading halt and resume messages (UTP and CTA halt/resume indicators). These are the authoritative source for regulatory halts and LULD trading pauses.
-- **Direct exchange feeds:** Each exchange's proprietary feed includes halt and resume indicators specific to that venue.
-- **LULD price band messages:** The SIP publishes LULD price bands (upper and lower limit prices) for each security. The market data platform consumes these bands and tracks limit state transitions.
-
-The market data platform publishes halt events to the internal messaging bus with the following information: security identifier, halt type (MWCB Level 1/2/3, LULD pause, regulatory halt T1, regulatory halt T2, SEC suspension, exchange-specific), halt start time, affected venue(s) (all venues for MWCB and regulatory halts; specific venue for exchange-specific halts), and expected resume mechanism (auction, time-based, discretionary).
-
-**OMS Halt Handling:**
-When the OMS receives a halt event:
-1. **Order acceptance:** New orders for the halted security are flagged. For regulatory halts and MWCB, new orders are rejected with a descriptive reason code ("Security halted — regulatory"). For LULD pauses, the firm may choose to queue orders for release when trading resumes or to reject them — the decision depends on the firm's policies and the order type.
-2. **Open order management:** The OMS queries all open orders for the halted security across all venues. Depending on the halt type: some halts cause exchanges to cancel all resting orders (e.g., certain regulatory halts), some halts leave resting orders on the book (e.g., LULD pauses on some venues), and for halts that cancel resting orders, the OMS must update order status to "Canceled — halt" and notify the trader.
-3. **Trader notification:** The OMS pushes halt alerts to trader workstations and the trading desk blotter, indicating the security, halt type, and estimated resume time (if available).
-4. **Resume handling:** When a trading resume message is received, the OMS: releases any queued orders (if the firm's policy is to queue during halts), re-enables new order acceptance for the security, and alerts traders that trading has resumed.
-
-**SOR Halt Handling:**
-The smart order router maintains a real-time halt state table:
-- Before routing any child order to a venue, the SOR checks the halt state table. If the security is halted at the target venue, the order is not sent.
-- For LULD, the SOR checks the current price bands and rejects or adjusts orders with limit prices outside the bands.
-- When trading resumes with a re-opening auction, the SOR may route auction-eligible orders (e.g., LOC or MOC orders) to the primary listing exchange for the reopening cross.
-
-**Market-Wide Circuit Breaker Handling:**
-A MWCB event is the most severe halt type. When a Level 1 or Level 2 MWCB triggers:
-1. The market data platform detects the halt (via SIP or exchange messages) and publishes an all-securities halt event.
-2. The OMS immediately suspends all order entry and flags all open orders. Exchanges will cancel resting orders.
-3. The SOR stops routing. A firm-wide trading suspension is enforced.
-4. The system starts a 15-minute countdown timer. Traders are shown the countdown on their workstations.
-5. At resumption, exchanges conduct re-opening auctions. The OMS lifts the suspension and the SOR resumes routing.
-
-For a Level 3 MWCB (20% decline), trading halts for the remainder of the day. The system marks the entire session as halted and prevents any further order activity.
-
-**Testing and Validation:**
-- The firm conducts quarterly halt-handling tests using simulated halt messages injected into the market data platform. Tests cover: single-security regulatory halt, LULD pause with re-opening auction, MWCB Level 1 with 15-minute pause, and MWCB Level 3 with end-of-day halt.
-- Each test validates that: new orders are rejected or queued as expected, open orders are correctly managed, trader notifications are delivered, resume handling correctly re-enables trading, and all halt events are logged for CAT reporting.
+Three worked examples are in [references/examples.md](references/examples.md) — load for an end-to-end scenario: (1) designing FIX connectivity to five equity venues with Rule 15c3-5 controls, (2) building market data infrastructure with consolidated and direct feeds, (3) implementing trading halt handling across OMS, SOR, and market data systems.
 
 ## Common Pitfalls
 - Failing to persist FIX sequence numbers across application restarts, leading to sequence number resets that can cause duplicate order submissions or missed execution reports
@@ -329,9 +188,9 @@ For a Level 3 MWCB (20% decline), trading halts for the remainder of the day. Th
 - Assuming that a FIX session Logon means the exchange is ready to accept orders — many exchanges have separate "trading session status" messages that indicate when the matching engine transitions from pre-open to open
 
 ## Cross-References
-- **order-lifecycle** (Layer 11): Order states, order types, and the order lifecycle from creation through execution or cancellation — exchange connectivity is the transport layer that carries order lifecycle events
-- **trade-execution** (Layer 11): Execution algorithms, venue selection, and smart order routing depend on the connectivity and market data infrastructure described in this skill
-- **pre-trade-compliance** (Layer 11): Pre-trade risk controls (Rule 15c3-5) are a regulatory requirement for market access and must be integrated into the exchange connectivity architecture
-- **settlement-clearing** (Layer 11): Post-execution, trades flow from exchange connectivity systems through clearing and settlement — correct venue and execution identifiers are critical for downstream processing
-- **operational-risk** (Layer 11): Exchange connectivity failures are a significant source of operational risk, and the resilience, failover, and monitoring practices in this skill are operational risk controls
-- **books-and-records** (Layer 9): Order and execution data captured through exchange connectivity must be retained per SEC Rules 17a-3 and 17a-4, and CAT reporting obligations require comprehensive audit trail data from connectivity systems
+- **order-lifecycle** (trading-operations plugin): Order states, order types, and the order lifecycle from creation through execution or cancellation — exchange connectivity is the transport layer that carries order lifecycle events
+- **trade-execution** (trading-operations plugin): Execution algorithms, venue selection, and smart order routing depend on the connectivity and market data infrastructure described in this skill
+- **pre-trade-compliance** (trading-operations plugin): Pre-trade risk controls (Rule 15c3-5) are a regulatory requirement for market access and must be integrated into the exchange connectivity architecture
+- **settlement-clearing** (trading-operations plugin): Post-execution, trades flow from exchange connectivity systems through clearing and settlement — correct venue and execution identifiers are critical for downstream processing
+- **operational-risk** (trading-operations plugin): Exchange connectivity failures are a significant source of operational risk, and the resilience, failover, and monitoring practices in this skill are operational risk controls
+- **books-and-records** (compliance plugin): Order and execution data captured through exchange connectivity must be retained per SEC Rules 17a-3 and 17a-4, and CAT reporting obligations require comprehensive audit trail data from connectivity systems

@@ -55,6 +55,16 @@
         "hooks": [
           {
             "type": "command",
+            "command": "node \"$HOME/.claude/hooks/check-patterns-read.js\""
+          }
+        ],
+        "description": "Pattern-grounding gate: block Write/Edit on a source file when the agent has not read the SPECIFIC pattern that governs that file type (lib/pattern-routing.js). Declared by blocks/ddd/core.yml; this template was missing it until 2026-09-07. Soften via CHECK_PATTERNS_MODE=warn; sub-agent bypass via .patterns-read-sentinel."
+      },
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
             "command": "node \"$HOME/.claude/hooks/check-approval-before-impl.js\""
           }
         ],

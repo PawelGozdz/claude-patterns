@@ -1,30 +1,9 @@
 ---
 name: order-lifecycle
-description: "Guide the design and implementation of order lifecycle management in trading systems. Use when building an order state machine for an OMS or EMS, implementing or debugging FIX protocol connectivity to exchanges, handling cancel/replace race conditions, defining pre-submission validation rules (buying power, position limits, restricted lists), selecting order types and time-in-force instructions, designing multi-leg or OCO or bracket orders, building CAT-compliant audit trails, troubleshooting order rejections or unexpected state transitions, hardening an OMS against edge cases, or implementing order persistence and recovery for failover. Also covers FIX message flows, ClOrdID chaining, and partial fill aggregation."
+description: "Guide the design and implementation of order lifecycle management in trading systems. Owns FIX application-layer message flows (NewOrderSingle, ExecutionReport, cancel/replace) and order state. Use when building an order state machine for an OMS or EMS, handling cancel/replace race conditions, defining pre-submission validation rules (buying power, position limits, restricted lists), selecting order types and time-in-force instructions, designing multi-leg or OCO or bracket orders, building CAT-compliant audit trails, troubleshooting order rejections or unexpected state transitions, hardening an OMS against edge cases, or implementing order persistence and recovery for failover. Also covers execution-report handling, ClOrdID chaining, and partial fill aggregation. For FIX session management (logon, sequence gaps, disconnects) see exchange-connectivity."
 ---
 
 # Order Lifecycle
-
-## Purpose
-Guide the design and implementation of order lifecycle management in trading systems. Covers order states and transitions, FIX protocol message flows, order types and time-in-force instructions, cancel/replace workflows, order validation, and state machine design. Enables building or evaluating order management systems that correctly handle the full lifecycle from order creation through fill, cancellation, or expiration.
-
-## Layer
-11 — Trading Operations (Order Lifecycle & Execution)
-
-## Direction
-both
-
-## When to Use
-- Designing or implementing an order state machine for an order management system (OMS) or execution management system (EMS)
-- Building or debugging FIX protocol connectivity to exchanges, ECNs, or execution venues
-- Implementing cancel/replace workflows and handling race conditions between cancel requests and fills
-- Defining order validation rules for pre-submission checks (buying power, position limits, restricted lists, symbol validity)
-- Evaluating order types and time-in-force instructions for different trading strategies and market conditions
-- Designing multi-leg or contingent order structures (OCO, bracket, conditional orders)
-- Building order audit trail systems that satisfy CAT reporting and regulatory reconstruction requirements
-- Troubleshooting order rejections, unexpected state transitions, or lost order scenarios
-- Reviewing or hardening an existing OMS against edge cases in order state management
-- Implementing order persistence and recovery mechanisms for system restarts or failover scenarios
 
 ## Core Concepts
 
@@ -117,21 +96,9 @@ The Financial Information eXchange (FIX) protocol is the dominant standard for e
 - **OrderCancelReplaceRequest (MsgType=G):** Requests modification of a previously submitted order (price, quantity, or other parameters). Includes the OrigClOrdID and a new ClOrdID. The venue treats this as a cancel of the original order and acceptance of a new order with the amended terms — atomically, if possible.
 - **OrderCancelReject (MsgType=9):** The venue's response when a cancel or replace request cannot be honored. Common reasons: the order has already been filled, the order has already been canceled, or the order is in a state that does not permit cancellation (e.g., suspended during a halt).
 
-**Key FIX tags:**
+**Key FIX tags:** The tags that drive OMS state are ClOrdID (11) / OrderID (37) / OrigClOrdID (41) for order identification and chaining, OrdStatus (39) and ExecType (150) for state transitions, and CumQty (14) / LeavesQty (151) / AvgPx (6) for fill accounting. Trust the venue's LeavesQty rather than deriving remaining quantity independently — the two can diverge after partial fills and replacements.
 
-- **ClOrdID (Tag 11):** Client-assigned order identifier. Must be unique within the scope of a FIX session (or globally, depending on firm convention). Used to correlate ExecutionReports with the originating order.
-- **OrderID (Tag 37):** Venue-assigned order identifier. Assigned by the execution venue when the order is accepted.
-- **OrigClOrdID (Tag 41):** The ClOrdID of the order being canceled or replaced. Used to link cancel/replace requests to the original order.
-- **OrdStatus (Tag 39):** The current status of the order (New, Partially Filled, Filled, Canceled, Replaced, Pending Cancel, Pending Replace, Rejected, Suspended, Expired). Maps directly to the order state machine.
-- **ExecType (Tag 150):** The type of execution report (New, Trade, Canceled, Replaced, Rejected, Pending Cancel, Pending Replace, Expired). Indicates what event triggered this ExecutionReport.
-- **Side (Tag 54):** Buy (1), Sell (2), Sell Short (5), Sell Short Exempt (6).
-- **OrdType (Tag 40):** Market (1), Limit (2), Stop (3), Stop Limit (4), and others.
-- **TimeInForce (Tag 59):** Day (0), GTC (1), OPG (2), IOC (3), FOK (4), GTD (6), At the Close (7).
-- **CumQty (Tag 14):** Cumulative quantity filled so far.
-- **LeavesQty (Tag 151):** Quantity remaining to be filled (OrderQty minus CumQty).
-- **AvgPx (Tag 6):** Average execution price across all fills for this order.
-
-**FIX session vs. application layer:** FIX operates on two layers. The session layer handles connection management, heartbeats, sequence number tracking, and message recovery (gap fill and resend requests). The application layer handles business messages (orders, executions, cancels). A robust FIX implementation must handle session-level events correctly: sequence number resets, message gaps, logon/logout negotiation, and heartbeat monitoring. A lost FIX session requires reconnection and sequence number reconciliation before application-level messaging can resume.
+**FIX session vs. application layer:** FIX operates on two layers: the session layer (connection management, heartbeats, sequence numbers, gap recovery) and the application layer (orders, executions, cancels — the subject of this skill). Session-layer management is owned by the exchange-connectivity skill (trading-operations); a lost session requires reconnection and sequence reconciliation there before application-level messaging can resume.
 
 **FIX versions:** FIX 4.2 remains widely deployed and is the baseline for many venues. FIX 4.4 added improvements including better support for multi-leg orders and allocation messaging. FIX 5.0 introduced the FIXT transport layer (separating session and application protocols) and added support for market data and post-trade messaging. When connecting to a new venue, confirm which FIX version and which message extensions (if any) the venue supports.
 
@@ -199,65 +166,7 @@ Regulatory requirements mandate comprehensive audit trails for all order activit
 
 ## Worked Examples
 
-### Example 1: Designing an Order State Machine for a Broker-Dealer's OMS
-
-**Scenario:** A mid-size broker-dealer is building a new order management system to replace a legacy platform. The legacy system had a flat order status field with values like "OPEN," "DONE," and "ERROR" — insufficient for proper lifecycle tracking. The new OMS must implement a rigorous state machine that handles all order types, supports FIX connectivity to multiple execution venues, and satisfies CAT reporting requirements.
-
-**Design approach:**
-
-The engineering team starts by defining the state enumeration. Drawing from FIX OrdStatus values and operational requirements, they establish 13 states: New, PendingNew, Accepted, PartiallyFilled, Filled, PendingCancel, Canceled, PendingReplace, Replaced, Rejected, Expired, Suspended, and DoneForDay. Each state is categorized as terminal (Filled, Canceled, Replaced, Rejected, Expired) or non-terminal (all others).
-
-The transition table is implemented as an explicit allowlist. Rather than permitting any transition not explicitly forbidden (a dangerous pattern that allows invalid states through omissions), the system defines every permitted transition as a pair (from_state, to_state) with an associated trigger event (typically a FIX ExecType or an internal event). Any transition not in the allowlist is rejected and logged as an error. The transition table contains approximately 25 to 30 valid transitions.
-
-For state persistence, the team selects a write-ahead log (WAL) pattern. Before processing any inbound message (FIX ExecutionReport, cancel acknowledgment, etc.), the system writes the pending state transition to a durable log. If the system crashes mid-transition, the recovery process replays the WAL from the last checkpoint, applying each transition idempotently. Idempotency is achieved by assigning a unique event identifier (based on the FIX message sequence number and session identifier) to each transition and checking for duplicates during replay.
-
-The state machine handles the cancel-vs-fill race condition explicitly. When an order is in PendingCancel and a fill ExecutionReport arrives, the system processes the fill first (transitioning to PartiallyFilled or Filled), then evaluates whether the cancel request is still relevant. If the order is now Filled, the cancel is abandoned and the CancelReject is expected. If the order is PartiallyFilled, the cancel may still succeed for the remaining quantity. The system never drops a fill message — fills are processed with highest priority regardless of pending cancel/replace state.
-
-For CAT compliance, every state transition generates an audit event record containing: the order identifier (ClOrdID and OrderID), the previous state, the new state, the trigger event (FIX message type and key fields), the timestamp (microsecond precision, synchronized per FINRA Rule 4590), and the system component that processed the transition. These events are written to an append-only audit log and are the source data for CAT reporting.
-
-**Analysis:**
-
-The explicit-allowlist approach for state transitions is preferred over a denylist because it fails safely — a missing transition results in a rejected event (which is logged and investigated) rather than a silently accepted invalid transition. The WAL pattern ensures no state changes are lost during crashes, and idempotent replay handles the case where a message was partially processed before the crash. The cancel-vs-fill race handling prioritizes fill processing because fills represent irrevocable financial events — a fill that is dropped or delayed can cause position discrepancies, P&L errors, and regulatory issues.
-
-### Example 2: Implementing Cancel/Replace Workflows with Race Condition Handling
-
-**Scenario:** A proprietary trading desk is experiencing issues with its cancel/replace workflow. Traders frequently amend limit order prices as the market moves, but the current system occasionally produces inconsistent states: orders that appear canceled but have unrecognized fills, or replace requests that reference stale ClOrdIDs and are rejected by the venue. The desk needs a redesigned cancel/replace implementation that correctly handles all race conditions.
-
-**Design approach:**
-
-The root cause analysis reveals three problems. First, the system is not maintaining the ClOrdID chain correctly — when a replace request is submitted, the system updates the order's ClOrdID immediately rather than waiting for the venue's confirmation. If the replace is rejected, the order's ClOrdID no longer matches what the venue has on record, and subsequent requests fail. Second, the system permits concurrent cancel/replace requests — a trader can submit a price amendment while a previous amendment is still pending, creating ambiguity at the venue. Third, fill messages arriving during a Pending Replace state are being deferred rather than processed immediately, causing position tracking to lag.
-
-The redesign addresses each problem:
-
-For ClOrdID management, the system maintains two identifiers per order: the "active ClOrdID" (the ClOrdID currently acknowledged by the venue) and the "pending ClOrdID" (the ClOrdID of an outstanding cancel/replace request, if any). The active ClOrdID is updated only when the venue confirms the replace (ExecutionReport with ExecType=Replaced). If the replace is rejected (OrderCancelReject), the pending ClOrdID is discarded and the active ClOrdID remains unchanged. All new requests to the venue reference the active ClOrdID as the OrigClOrdID.
-
-For concurrency control, the system enforces a strict one-pending-request rule. While a cancel or replace request is outstanding (order is in PendingCancel or PendingReplace), new cancel/replace requests from the trader are queued internally. When the pending request is resolved (confirmed or rejected), the system dequeues the next request (if any) and submits it. If the queued request conflicts with the resolution (e.g., the trader queued a price change to $50.10 but the order filled while the previous request was pending), the queued request is discarded and the trader is notified.
-
-For fill processing during pending states, the system processes fill ExecutionReports immediately regardless of pending cancel/replace status. If the order is in PendingReplace and a fill arrives, the fill is applied (cumulative quantity and average price are updated, the order may transition to PartiallyFilled or Filled). If the fill completes the order (Filled), the pending replace is moot. If the fill is partial, the pending replace may still succeed, but the OMS recalculates whether the replace request's quantity is still valid (the new quantity must be greater than or equal to the cumulative filled quantity; otherwise the venue will reject the replace).
-
-**Analysis:**
-
-The two-identifier pattern (active ClOrdID and pending ClOrdID) eliminates the stale-reference problem because the system always knows which ClOrdID the venue considers current. The one-pending-request rule eliminates venue-side ambiguity and simplifies the OMS state machine. The immediate fill processing during pending states ensures that position tracking is always current, even when cancel/replace messages are in flight. Together, these patterns handle the fundamental race condition of cancel/replace workflows: the unavoidable latency window between sending a request and receiving the venue's response, during which fills and other events may occur.
-
-### Example 3: Building FIX Connectivity to an Execution Venue
-
-**Scenario:** A buy-side firm is establishing FIX connectivity to a new electronic communication network (ECN) to access additional liquidity for its equity trading strategies. The firm's existing OMS supports FIX 4.2 connections to two other venues. The new ECN supports FIX 4.4 and has specific requirements for message formatting, session management, and order handling.
-
-**Design approach:**
-
-The implementation proceeds through four phases: session certification, application message mapping, exception handling, and production cutover.
-
-**Session certification:** The ECN provides a certification (test) environment with a FIX acceptor endpoint. The firm's FIX engine (the initiator) must establish a session by negotiating protocol version, sender and target CompIDs, heartbeat interval, and sequence number handling. The certification process validates that the FIX engine correctly handles: logon and logout sequences, heartbeat exchange (including detection of missed heartbeats and test request/heartbeat recovery), sequence number synchronization (including gap detection and resend requests), and message-level rejection (MsgType=3, Reject) for malformed messages. Session certification typically takes one to two weeks and requires multiple rounds of testing. Common session-level issues include: incorrect CompID configuration, heartbeat interval mismatch (the ECN expects 30 seconds; the firm's engine is configured for 60), and sequence number reset policy disagreements (some venues require a daily sequence number reset at a specific time; others maintain continuous sequence numbers).
-
-**Application message mapping:** FIX 4.4 introduces fields and message structures not present in FIX 4.2. The firm must map its internal order representation to the ECN's specific FIX 4.4 requirements. Key mapping considerations include: the ECN may require specific values in Tag 1 (Account) that differ from the firm's internal account identifiers; the ECN may support order types or time-in-force values that the firm's other venues do not (or may not support order types that the firm uses elsewhere); the ECN may use custom tags (user-defined tags in the 5000+ range) for venue-specific features such as order routing preferences or self-trade prevention instructions; execution report processing must handle the ECN's specific usage of ExecType and OrdStatus, which may differ subtly from other venues (for example, some venues use ExecType=Trade for fills while others use ExecType=Fill, which was introduced in FIX 4.4 as a clearer alternative to the overloaded ExecType=Trade value from FIX 4.2).
-
-**Exception handling:** The connection must handle operational exceptions gracefully. Network disconnections require automatic reconnection with exponential backoff. During disconnection, the OMS must track which orders are "in flight" at the ECN — orders that were submitted but whose status is unknown due to the disconnection. Upon reconnection, after sequence number synchronization and gap fill processing, the OMS sends OrderStatusRequest messages for all in-flight orders to reconcile OMS state with venue state. Venue-side order cancellation (the ECN cancels orders unilaterally during a system event or end-of-day) must be detected and processed — the OMS cannot assume that an order remains active at the venue just because no cancel confirmation was received. Drop copy connections (a secondary FIX session that receives copies of all ExecutionReports) provide redundancy: if the primary session drops a message, the drop copy catches it.
-
-**Production cutover:** Before going live, the firm conducts a parallel run: orders are submitted to the new ECN while the same orders are priced (but not executed) against the existing venues to compare execution quality. The cutover plan includes: a rollback procedure (ability to stop routing to the new ECN and revert to existing venues within minutes), monitoring dashboards that track rejection rates, fill rates, and latency in real time during the first days of live trading, and an escalation path to the ECN's market operations desk for production support.
-
-**Analysis:**
-
-FIX connectivity projects are deceptively complex. The protocol standard is well-defined, but each venue interprets and extends it differently. The certification process is essential for discovering venue-specific behaviors before they cause production incidents. The most common production issues with new FIX connections are: sequence number desynchronization after an unclean disconnect (requiring manual intervention to agree on a reset point), message format differences that pass certification but cause sporadic rejections under production load (e.g., a field that the ECN expects only for certain order types), and latency spikes during high-volume periods that trigger heartbeat timeouts and session disconnects. Robust monitoring and automated reconnection logic are as important as correct message formatting.
+Three worked examples are in [references/examples.md](references/examples.md) — load for an end-to-end scenario: (1) designing an order state machine for a broker-dealer's OMS, (2) implementing cancel/replace workflows with race-condition handling, (3) integrating FIX connectivity to a new execution venue (see exchange-connectivity for session-layer detail).
 
 ## Common Pitfalls
 - Implementing the state machine as a denylist (blocking specific transitions) rather than an allowlist (permitting only explicitly defined transitions) — the denylist approach lets novel invalid transitions through silently
@@ -275,10 +184,10 @@ FIX connectivity projects are deceptively complex. The protocol standard is well
 - Not enforcing terminal state immutability, allowing application bugs to transition orders out of Filled, Canceled, or Rejected states
 
 ## Cross-References
-- **trade-execution** (Layer 11, trading-operations): Execution algorithms, venue selection, smart order routing, and market microstructure that determine how orders are executed once they leave the OMS.
-- **pre-trade-compliance** (Layer 11, trading-operations): Compliance checks that gate order submission, including restricted list screening, position limits, and regulatory constraints integrated into the order validation workflow.
-- **post-trade-compliance** (Layer 11, trading-operations): Compliance monitoring after execution, including trade surveillance, best execution analysis, and exception reporting that consumes order lifecycle data.
-- **settlement-clearing** (Layer 11, trading-operations): The downstream process after order execution — trade matching, clearing through CCP or bilateral netting, and settlement of securities and cash that completes the order lifecycle.
-- **order-management-advisor** (Layer 10, advisory-practice): Advisor-specific order management covering block trading, allocation, model-driven trading, and custodian routing that builds on the order lifecycle concepts defined here.
-- **exchange-connectivity** (Layer 11, trading-operations): Technical infrastructure for connecting to exchanges and execution venues, including FIX engine configuration, network architecture, and failover design.
-- **books-and-records** (Layer 9, compliance): Recordkeeping requirements under SEC Rules 17a-3/17a-4 and Rule 204-2 that govern retention of order tickets, execution records, and audit trail data generated throughout the order lifecycle.
+- **trade-execution** (trading-operations plugin): Execution algorithms, venue selection, smart order routing, and market microstructure that determine how orders are executed once they leave the OMS.
+- **pre-trade-compliance** (trading-operations plugin): Compliance checks that gate order submission, including restricted list screening, position limits, and regulatory constraints integrated into the order validation workflow.
+- **post-trade-compliance** (trading-operations plugin): Compliance monitoring after execution, including trade surveillance, best execution analysis, and exception reporting that consumes order lifecycle data.
+- **settlement-clearing** (trading-operations plugin): The downstream process after order execution — trade matching, clearing through CCP or bilateral netting, and settlement of securities and cash that completes the order lifecycle.
+- **order-management-advisor** (advisory-practice plugin): Advisor-specific order management covering block trading, allocation, model-driven trading, and custodian routing that builds on the order lifecycle concepts defined here.
+- **exchange-connectivity** (trading-operations plugin): Technical infrastructure for connecting to exchanges and execution venues, including FIX engine configuration, network architecture, and failover design.
+- **books-and-records** (compliance plugin): Recordkeeping requirements under SEC Rules 17a-3/17a-4 and Rule 204-2 that govern retention of order tickets, execution records, and audit trail data generated throughout the order lifecycle.

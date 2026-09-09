@@ -1,6 +1,8 @@
 # Audit Handler Pattern
 
 **Tags**: "api:app", "api:observability:audit"
+**Layer**: Application
+**Status**: production
 
 ## 🎯 Problem
 
@@ -427,7 +429,7 @@ export class AuthModule implements OnModuleInit {
 
 ---
 
-## 🎯 When to Use
+## When to Use
 
 ### Create Audit Handler When
 

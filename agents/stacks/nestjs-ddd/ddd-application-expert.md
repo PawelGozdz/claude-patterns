@@ -4,7 +4,7 @@ description: |
   Strategic DDD specialist for bounded context modeling, aggregate design, event storming,
   ubiquitous language development. Ensures canonical DDD implementation in VytchesDDD applications.
   Provides architectural guidance for domain modeling and business alignment.
-tools: Read, Grep, Glob, Task, mcp__zen__thinkdeep, mcp__zen__planner, mcp__zen__analyze
+tools: Read, Grep, Glob, Task
 disallowedTools: Write, Edit, MultiEdit, NotebookEdit, WebFetch
 model: sonnet
 permissionMode: plan
@@ -272,3 +272,9 @@ WRITE: Command Handler → Repository → Cache Invalidation
 **When in doubt**: Consult @product-owner for business alignment, @backend-technology-expert for tech decisions.
 
 **Philosophy**: "Model the business, not the database"
+
+---
+
+## Changelog
+
+- 2026-09-08 — removed `mcp__zen__thinkdeep`, `mcp__zen__planner`, `mcp__zen__analyze` from `tools` (K56, TASK-KAIZEN-002): no satellite project has a `zen` MCP server in `.mcp.json`, so every such call failed; do the analysis directly with the remaining tools

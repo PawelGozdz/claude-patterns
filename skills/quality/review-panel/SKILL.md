@@ -15,7 +15,7 @@ proposes concrete fixes, applies the ones you approve, and — unlike a single-p
 cheaper on every later run against the same branch because it only re-reviews what changed.
 
 **End goal**: a reviewed, optionally auto-fixed branch. This is a *deeper, multi-agent*
-complement to `/code-review` (single-pass, quick) — use `/code-review` for a fast sanity check,
+complement to `/ecc:code-review` (single-pass, quick) — use `/ecc:code-review` for a fast sanity check,
 `/review-panel` when you want the full panel or you're about to open/update a PR.
 
 Never commits or pushes — it stages fixes with `Edit` only. Committing is the user's call.
@@ -58,17 +58,32 @@ panel") even without the flag.
 
 ### 2a. Standard mode (default)
 
-Read `.claude/config/project.yml` for `stack_profile` if present. Pick the fixed persona set for
-that profile from the table below; if no profile or an unrecognized one, use the generic default.
+Read `.claude/config/runtime.yml` and take its top-level `stack_blocks:` list — the
+composition is what actually describes this project (ADR 0008). `stack_profile` in
+`project.yml` is only a CLAUDE.md template selector and must not be used here.
 
-| stack_profile | Personas |
+Take the **union** of the persona sets of every block that matches, then cap the panel at
+six by dropping the personas the fewest matched rows asked for. If `runtime.yml` is missing
+or nothing matches, use the generic default row.
+
+| block in `stack_blocks` | Personas |
 |---|---|
-| nestjs-ddd | eagle, security, skeptic, pragmatist, compatibility |
-| flutter-clean-arch | eagle, performance, user, nitpicker, newbie |
-| react / nextjs / frontend-generic | eagle, performance, user, nitpicker, newbie |
-| (no profile / generic) | eagle, security, pragmatist, tester, skeptic |
+| `nestjs`, `node`, any `ddd/*` (`ddd/core`, `ddd/cqrs`, `ddd/events`, `ddd/acl`, `ddd/layers`) | eagle, security, skeptic, pragmatist, compatibility |
+| `flutter`, `clean-arch`, `mobile-security` | eagle, performance, user, nitpicker, newbie |
+| `nextjs`, `sveltekit` | eagle, performance, user, nitpicker, newbie |
+| `ts-library`, `library-layers` | eagle, compatibility, tester, pragmatist, professor |
+| `kysely`, `zod`, `polyglot-store` | security, compatibility, skeptic |
+| `python`, `ml-pipeline` | eagle, security, pragmatist, tester, skeptic |
+| (no `runtime.yml` / nothing matched) | eagle, security, pragmatist, tester, skeptic |
 
-`reviewer-pragmatist` is always included regardless of profile (production-blocker baseline).
+`reviewer-pragmatist` is always included regardless of composition (production-blocker
+baseline) — it survives the cap.
+
+The first three rows are the old `stack_profile` sets carried over unchanged
+(`nestjs-ddd`, `flutter-clean-arch`, `react/nextjs/frontend-generic`). The rest are new:
+`ts-library` leans on the API-surface personas because a library's breaking change is its
+whole risk, and `python`/`ml-pipeline` had no profile row, so they inherit the generic
+default.
 
 ### 2b. Thorough mode — dynamic selection
 

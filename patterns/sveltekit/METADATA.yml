@@ -1,8 +1,16 @@
+# SvelteKit Patterns — metadane katalogu.
+# Schemat: jeden dla całego patterns/** (K84, TASK-KAIZEN-002). Walidator:
+# node scripts/validate-metadata.mjs
 category: sveltekit
-version: 1.0.0
+version: "1.0.1"
 maturity: production
 last_verified: 2026-03-31
-stack: SvelteKit 2, Svelte 5, TypeScript, Tailwind CSS, Vite
-source_project: pcu
+stack: "SvelteKit 2, Svelte 5, TypeScript, Tailwind CSS, Vite"
+source_projects: "pcu"
 patterns_count: 5
-description: SvelteKit 2 + Svelte 5 runes patterns with TypeScript and Tailwind
+description: >-
+  Wzorce SvelteKit 2 na runach Svelte 5: reaktywność ($state/$derived/$effect),
+  komponenty, routing i stany ładowania, pobieranie danych w load() oraz testy.
+
+layer: cross-layer
+stack_support: [typescript]

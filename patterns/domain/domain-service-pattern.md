@@ -1,6 +1,8 @@
 # DDD Domain Services Reference
 
 **Tags**: "api:domain"
+**Layer**: Domain
+**Status**: production
 
 **Purpose**: Cross-aggregate business logic patterns
 **Audience**: domain-application-implementer

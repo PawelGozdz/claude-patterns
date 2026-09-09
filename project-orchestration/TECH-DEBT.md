@@ -1,45 +1,10 @@
-# Technical Debt Register — {PROJECT_NAME}
-*Maintained by @tech-lead. Updated via `/tech-debt` or `/pulse`.*
-*Last review: {YYYY-MM-DD}*
+# Technical Debt Register — claude-patterns
 
----
+> **Celowo nieużywane w tym repo.** Dashboardy PM (`TEAM-STATE.md`, `KANBAN.md`,
+> `TECH-DEBT.md`) są tu szablonem referencyjnym, nie żywym stanem — backlog
+> claude-patterns żyje w `docs/tasks/` (przez symlink `tasks/`). `/pulse` nigdy tu
+> nie był odpalany i nie ma potrzeby, żeby był: to repo utrzymuje system PM dla
+> innych projektów, a nie prowadzi nim własnej pracy. Placeholdery `{PROJECT_NAME}`
+> zastąpiono tą notą 2026-09-07 (K112), żeby nikt nie brał ich za zaniedbany stan.
 
-## Debt Score
-
-| Date | Major | Minor | Score | Trend |
-|------|-------|-------|-------|-------|
-| {YYYY-MM-DD} | 0 | 0 | 0.0 | — (initial) |
-
-**Score formula**: Major × 1.0 + Minor × 0.5
-**Thresholds**: 🟢 < 2 | 🟡 2–5 | 🔴 > 5
-
----
-
-## 🔴 Major Debt (blocks features or creates risk)
-
-| ID | Description | Area | Effort | Blocks | Resolution Task |
-|----|-------------|------|--------|--------|-----------------|
-| — | — | — | — | — | — |
-
----
-
-## 🟡 Minor Debt (slows down work)
-
-| ID | Description | Area | Effort | Notes |
-|----|-------------|------|--------|-------|
-| — | — | — | — | — |
-
----
-
-## ✅ Resolved
-
-| ID | Description | Resolved Date | How |
-|----|-------------|---------------|-----|
-| — | — | — | — |
-
----
-
-## Notes
-
-*Add @tech-lead insights about debt patterns, accumulation trends, or
-systemic issues here.*
+Wzorzec do skopiowania do projektu: `templates/project-orchestration/TECH-DEBT.md`.

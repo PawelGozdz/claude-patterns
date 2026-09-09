@@ -7,7 +7,7 @@ description: |
 
   Use after any change to model loading/unloading, inference call paths,
   batching, or async wrappers in a Python ML inference service.
-tools: Read, Glob, Grep, Bash, mcp__zen__codereview, mcp__zen__analyze
+tools: Read, Glob, Grep, Bash
 disallowedTools: Write, Edit, MultiEdit, NotebookEdit
 model: sonnet
 permissionMode: dontAsk
@@ -197,3 +197,9 @@ VETO when any CRITICAL is confirmed. These are not style issues:
 
 State the veto plainly, give the fix, and do not soften it. A PASS on a confirmed
 critical finding is worse than no review.
+
+---
+
+## Changelog
+
+- 2026-09-08 — removed `mcp__zen__codereview`, `mcp__zen__analyze` from `tools` (K56, TASK-KAIZEN-002): no satellite project has a `zen` MCP server in `.mcp.json`, so every such call failed; do the analysis directly with the remaining tools

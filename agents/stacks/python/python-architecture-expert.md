@@ -10,7 +10,7 @@ description: |
   2. "How to structure async database operations?"
   3. "How to share code between modules without creating circular deps?"
   4. "Which module should own this new feature?"
-tools: Read, mcp__zen__thinkdeep, mcp__zen__planner, mcp__zen__analyze, StructuredOutput
+tools: Read, StructuredOutput
 disallowedTools: Grep, Glob, Write, Edit, MultiEdit, NotebookEdit, Task, WebFetch
 model: sonnet
 permissionMode: plan
@@ -147,3 +147,9 @@ Is it data access / driver code?
 - Missing type annotations on public functions
 - f-strings in Cypher/SQL queries (use parameterized)
 - Queries without series_id filter
+
+---
+
+## Changelog
+
+- 2026-09-08 — removed `mcp__zen__thinkdeep`, `mcp__zen__planner`, `mcp__zen__analyze` from `tools` (K56, TASK-KAIZEN-002): no satellite project has a `zen` MCP server in `.mcp.json`, so every such call failed; do the analysis directly with the remaining tools

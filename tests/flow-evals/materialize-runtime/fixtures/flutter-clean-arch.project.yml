@@ -1,0 +1,7 @@
+# Fixture kompozycji: flutter + clean-arch (alias `flutter-clean-arch`).
+project:
+  name: eval-flutter
+  description: "Fixture ewaluacyjny — kompozycja flutter-clean-arch"
+  stack_blocks: [flutter, clean-arch]
+  stack_profile: flutter-clean-arch
+  language: dart

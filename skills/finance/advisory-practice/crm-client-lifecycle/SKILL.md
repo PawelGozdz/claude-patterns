@@ -5,29 +5,6 @@ description: "Design and optimize CRM systems and client lifecycle workflows for
 
 # CRM & Client Lifecycle
 
-## Purpose
-Guide the design, implementation, and optimization of client relationship management systems and lifecycle workflows for wealth management and advisory firms. This skill covers client segmentation models, household structure management, service tier frameworks with defined SLAs, review scheduling and preparation workflows, lifecycle stage tracking from prospect through estate succession, CRM data architecture and integration with portfolio management and custodial systems, and client engagement analytics including retention risk identification and wallet share analysis. It enables a user or agent to design CRM strategies, evaluate CRM platforms, build client service programs, and troubleshoot relationship management workflows that maximize client retention, deepen relationships, and ensure systematic service delivery across the entire book of business.
-
-## Layer
-10 — Advisory Practice (Front Office)
-
-## Direction
-both
-
-## When to Use
-- Designing or evaluating a client segmentation model for an RIA or broker-dealer
-- Building household structures that link individuals, accounts, trusts, and entities
-- Defining service tier frameworks with SLAs, review cadences, and service menus
-- Designing client review scheduling workflows and preparation checklists
-- Tracking client lifecycle stages from prospect through estate succession
-- Integrating CRM with portfolio management systems, custodians, and financial planning tools
-- Identifying at-risk clients using engagement analytics and retention scoring
-- Analyzing wallet share and held-away asset opportunities
-- Building referral tracking and client satisfaction measurement programs
-- Evaluating CRM platforms (Salesforce, Wealthbox, Redtail, Microsoft Dynamics) for advisory firms
-- Designing advisor assignment and team-based service models
-- Standardizing contact logging, activity tracking, and opportunity management workflows
-
 ## Core Concepts
 
 ### Client Segmentation Models
@@ -75,7 +52,7 @@ The household is the fundamental unit of relationship management in wealth advis
 
 **Household AUM aggregation.** The CRM should display total household AUM by pulling position-level data from the portfolio management system or custodian feeds. Aggregation must handle: accounts at multiple custodians, held-away assets (employer retirement plans, outside brokerage accounts, bank accounts) that are tracked but not managed, and assets under advisement (where the firm provides guidance but does not have discretion).
 
-**Multi-generational relationships.** Wealth management relationships increasingly span generations. The CRM should support parent-child household linking so that when a client's adult child becomes a client, the advisor can see the full family relationship, track generational wealth transfer, and coordinate estate planning across generations. This is critical for client retention during the estimated $84 trillion intergenerational wealth transfer projected over the next two decades.
+**Multi-generational relationships.** Wealth management relationships increasingly span generations. The CRM should support parent-child household linking so that when a client's adult child becomes a client, the advisor can see the full family relationship, track generational wealth transfer, and coordinate estate planning across generations. This is critical for client retention during the intergenerational wealth transfer projected over the coming decades — estimated at roughly $84 trillion through 2045 (Cerulli Associates estimate, published 2022; verify current projections).
 
 **Primary and secondary advisor assignment.** Each household should have a designated primary advisor (responsible for the relationship and investment decisions) and optionally a secondary advisor or client service associate. The CRM should track these assignments and use them for routing service requests, scheduling reviews, and generating workload reports. When an advisor departs the firm, the CRM's advisor assignment data drives the client reassignment process.
 
@@ -113,18 +90,7 @@ Systematic review scheduling ensures that every client receives the review caden
 
 **Scheduling workflow.** The CRM should automate review scheduling by tracking the date of each client's last completed review and generating scheduling tasks when the next review approaches. A 60-day advance scheduling window gives the advisor and client adequate time to find a mutually convenient date. The scheduling task should include: the client's preferred meeting format (in-person, video, phone), preferred day/time, and any special preparation notes from the prior review.
 
-**Review preparation workflow.** A standardized preparation checklist ensures thoroughness and consistency:
-
-1. Pull the current portfolio summary from the PMS (allocation, performance, drift, cash position)
-2. Generate a performance report covering the period since the last review (returns vs. benchmark, attribution)
-3. Review the financial plan status (funded percentage, goal progress, assumption changes needed)
-4. Check for life events or profile changes recorded in the CRM since the last review
-5. Review all activity since the last review (calls, emails, service requests, transactions, NBA actions taken)
-6. Verify beneficiary designations are current
-7. Confirm contact information and trusted contact person designation
-8. Check for any compliance items due (suitability re-confirmation, disclosure delivery)
-9. Prepare talking points or an agenda customized to the client's current situation
-10. Pre-generate any reports or analyses the advisor plans to present
+**Review preparation workflow.** The standardized preparation checklist and pre-meeting data assembly process are covered in the client-review-prep skill (advisory-practice plugin) — the CRM's role is to trigger preparation tasks when a review is scheduled and store the resulting preparation documents on the household record.
 
 **Review documentation.** After each review, the advisor or CSA records in the CRM: meeting date, attendees, topics discussed, any changes to the investment strategy or financial plan, action items with responsible parties and deadlines, suitability confirmation (the client's objectives, risk tolerance, and financial situation were reviewed and remain appropriate or were updated), and the next review target date. This documentation satisfies the annual review requirement that regulators expect and provides a contemporaneous record in the event of a client dispute.
 
@@ -218,24 +184,7 @@ Implementation: configure the CRM with tier assignments for all 900 households. 
 
 ### Example 2: Building a client review preparation workflow
 
-**Scenario:** A 4-advisor RIA managing $800M across 400 households conducts annual reviews for all clients and quarterly reviews for its top 50 households. Review preparation is currently ad hoc — each advisor prepares differently, some spend 2 hours preparing and others spend 15 minutes, and the quality of the review experience varies widely. The firm wants to implement a standardized, CRM-driven review preparation workflow that ensures consistent quality while reducing preparation time.
-
-**Design Considerations:**
-- The firm uses Salesforce as its CRM, Orion as its PMS, and eMoney as its financial planning tool. All three systems have API capabilities.
-- Review preparation should be automated where possible — pulling data from systems rather than requiring manual assembly.
-- The workflow must accommodate different preparation depth for quarterly reviews (Tier A) versus annual reviews (Tier B and C).
-- Compliance requires that every review include suitability confirmation and beneficiary verification.
-
-**Analysis:**
-Design a three-phase workflow triggered by the CRM when a review meeting is scheduled:
-
-Phase 1 — Automated data assembly (triggered immediately when the review is scheduled, no advisor time required). The CRM initiates API calls to pull: (a) from Orion — current portfolio summary, performance since last review, benchmark comparison, asset allocation vs. target, drift analysis, realized gains/losses, and cash position; (b) from eMoney — current plan status, Monte Carlo probability, goal progress, and any alerts on assumptions that need updating; (c) from CRM — all activities since last review (calls, emails, meetings, service requests), any life events recorded, open action items from the prior review, and current contact and beneficiary information. These data elements are assembled into a standardized review preparation document stored in the CRM.
-
-Phase 2 — Advisor review and customization (15-30 minutes of advisor time, 2-3 days before the meeting). The advisor opens the pre-assembled preparation document and adds: personalized talking points based on the client's specific situation, any topics the client has requested to discuss, strategic recommendations (rebalancing, tax-loss harvesting, Roth conversion, insurance review), and questions to ask about changes in the client's life, employment, or financial situation. For Tier A quarterly reviews, this phase also includes: a market commentary tailored to the client's portfolio positioning, performance attribution discussion points, and any proactive planning opportunities identified.
-
-Phase 3 — Post-review documentation (10-15 minutes of advisor or CSA time, same day as the meeting). The CRM presents a structured review completion form with fields for: meeting date and attendees, topics discussed (checkbox list plus free text), changes to investment strategy or plan, suitability confirmation checkbox (confirming objectives, risk tolerance, and financial situation were reviewed), beneficiary verification checkbox, action items generated (with owner and due date for each), and next review target date. Completing this form closes the review task in the CRM, starts the clock for the next review scheduling trigger, and logs the compliance-required documentation.
-
-Estimated impact: preparation time drops from an average of 75 minutes (with wide variance) to a consistent 20-30 minutes because 60-70% of the work is automated. Review quality improves because every review covers the same comprehensive checklist. Compliance documentation is captured systematically rather than retroactively.
+See the client-review-prep skill (advisory-practice plugin) for the end-to-end review preparation workflow — automated data assembly, advisor customization, and post-review documentation.
 
 ### Example 3: Identifying at-risk clients using CRM analytics
 
@@ -284,11 +233,11 @@ Track the model's effectiveness by monitoring: the percentage of high-risk house
 - Implementing a CRM without advisor input on workflows and data entry requirements, producing a system that advisors view as administrative burden rather than a productivity tool
 
 ## Cross-References
-- **client-onboarding** (Layer 10, advisory-practice): Onboarding creates the initial CRM client record, household structure, and advisor assignment that the CRM manages throughout the relationship lifecycle
-- **know-your-customer** (Layer 9, compliance): KYC data collected during onboarding and periodic reviews populates CRM profile fields; CRM tracks when KYC information was last verified and flags re-verification requirements
-- **fee-billing** (Layer 10, advisory-practice): Fee tier determination depends on household AUM aggregation managed in the CRM; revenue data from the billing system feeds into CRM segmentation and revenue-per-client analytics
-- **client-reporting-delivery** (Layer 10, advisory-practice): Client reports are generated using account and household data structured in the CRM; report delivery preferences and confirmation are tracked as CRM activities
-- **next-best-action** (Layer 10, advisory-practice): CRM activity records, segmentation data, and lifecycle stage are primary inputs for next-best-action triggers; every NBA action updates the CRM activity log
-- **investment-suitability** (Layer 9, compliance): Suitability profiles stored in the CRM must be reviewed and re-confirmed at each client review; CRM tracks when the last suitability confirmation occurred and flags overdue re-certifications
-- **privacy-data-security** (Layer 9, compliance): The CRM stores sensitive nonpublic personal information protected by Regulation S-P and firm cybersecurity policies; access controls, audit logging, and data retention policies apply to all CRM records
-- **client-review-prep** (Layer 10, advisory-practice): CRM provides client segmentation, review scheduling, and activity history used in pre-meeting review preparation
+- **client-onboarding** (advisory-practice plugin): Onboarding creates the initial CRM client record, household structure, and advisor assignment that the CRM manages throughout the relationship lifecycle
+- **know-your-customer** (compliance plugin): KYC data collected during onboarding and periodic reviews populates CRM profile fields; CRM tracks when KYC information was last verified and flags re-verification requirements
+- **fee-billing** (advisory-practice plugin): Fee tier determination depends on household AUM aggregation managed in the CRM; revenue data from the billing system feeds into CRM segmentation and revenue-per-client analytics
+- **client-reporting-delivery** (advisory-practice plugin): Client reports are generated using account and household data structured in the CRM; report delivery preferences and confirmation are tracked as CRM activities
+- **next-best-action** (advisory-practice plugin): CRM activity records, segmentation data, and lifecycle stage are primary inputs for next-best-action triggers; every NBA action updates the CRM activity log
+- **investment-suitability** (compliance plugin): Suitability profiles stored in the CRM must be reviewed and re-confirmed at each client review; CRM tracks when the last suitability confirmation occurred and flags overdue re-certifications
+- **privacy-data-security** (compliance plugin): The CRM stores sensitive nonpublic personal information protected by Regulation S-P and firm cybersecurity policies; access controls, audit logging, and data retention policies apply to all CRM records
+- **client-review-prep** (advisory-practice plugin): CRM provides client segmentation, review scheduling, and activity history used in pre-meeting review preparation

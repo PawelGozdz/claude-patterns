@@ -1,7 +1,7 @@
 ---
 name: flutter-ui-verifier
 description: Flutter UI/UX Verifier with VETO POWER - Validates localization, accessibility, design system compliance, and widget tree optimization. BLOCKS task if critical UI issues found.
-tools: Read, Glob, Grep, Bash, mcp__zen__analyze, StructuredOutput
+tools: Read, Glob, Grep, Bash, StructuredOutput
 model: haiku
 permissionMode: dontAsk
 effort: low
@@ -121,3 +121,9 @@ Exhausting your hard `maxTurns` limit cuts you off **SILENTLY** — no error, no
 Batch tool calls (parallel Reads) and count your turns. At ~80% of budget STOP and emit your
 verdict/manifest NOW with an explicit `unverified_scope:`/`REMAINING:` list — honest partial
 output ALWAYS beats silence; the orchestrator dispatches a narrowed follow-up pass.
+
+---
+
+## Changelog
+
+- 2026-09-08 — removed `mcp__zen__analyze` from `tools` (K56, TASK-KAIZEN-002): no satellite project has a `zen` MCP server in `.mcp.json`, so every such call failed; do the analysis directly with the remaining tools

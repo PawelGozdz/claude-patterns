@@ -12,6 +12,10 @@ downside deviation, tracking error, and semi-variance.
 Part of Layer 1a (Retrospective) in the finance skills framework.
 """
 
+import argparse
+import math
+import sys
+
 import numpy as np
 
 
@@ -29,7 +33,14 @@ class HistoricalRiskAnalyzer:
     """
 
     def __init__(self, returns: np.ndarray, periods_per_year: int = 252):
-        self.returns = np.asarray(returns, dtype=np.float64)
+        returns = np.asarray(returns, dtype=np.float64)
+        if returns.ndim != 1:
+            raise ValueError(
+                f"returns must be a 1-D array, got {returns.ndim} dimensions."
+            )
+        if returns.size == 0:
+            raise ValueError("returns must not be empty.")
+        self.returns = returns
         self.periods_per_year = periods_per_year
 
     def annualized_volatility(self) -> float:
@@ -64,6 +75,13 @@ class HistoricalRiskAnalyzer:
         """
         highs = np.asarray(highs, dtype=np.float64)
         lows = np.asarray(lows, dtype=np.float64)
+        if highs.size == 0 or lows.size == 0:
+            raise ValueError("highs and lows must not be empty.")
+        if len(highs) != len(lows):
+            raise ValueError(
+                f"highs and lows must have the same length, "
+                f"got {len(highs)} and {len(lows)}."
+            )
         n = len(highs)
         log_hl = np.log(highs / lows)
         sigma_p = np.sqrt(np.sum(log_hl ** 2) / (4.0 * n * np.log(2.0)))
@@ -178,6 +196,11 @@ class HistoricalRiskAnalyzer:
             TE = std(r_portfolio - r_benchmark) * sqrt(periods_per_year)
         """
         benchmark_returns = np.asarray(benchmark_returns, dtype=np.float64)
+        if len(benchmark_returns) != len(self.returns):
+            raise ValueError(
+                f"benchmark_returns must have the same length as returns, "
+                f"got {len(benchmark_returns)} and {len(self.returns)}."
+            )
         active_returns = self.returns - benchmark_returns
         return float(np.std(active_returns, ddof=1) * np.sqrt(self.periods_per_year))
 
@@ -218,10 +241,15 @@ class HistoricalRiskAnalyzer:
         return result
 
 
-if __name__ == "__main__":
-    # ----------------------------------------------------------------
-    # Demo: Historical risk analysis on synthetic data
-    # ----------------------------------------------------------------
+def _demo_data() -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Build the seeded demo data used by both the demo and --verify.
+
+    Returns
+    -------
+    tuple
+        (daily_returns, highs, lows, benchmark_returns) with 504 daily
+        observations and an injected drawdown event on days 200-220.
+    """
     np.random.seed(42)
 
     # Generate 2 years of daily returns (approx 504 trading days)
@@ -230,6 +258,25 @@ if __name__ == "__main__":
 
     # Inject a drawdown event (days 200-220)
     daily_returns[200:220] = np.random.normal(loc=-0.02, scale=0.025, size=20)
+
+    # Synthetic high/low data for the Parkinson estimator
+    prices = 100.0 * np.cumprod(1.0 + daily_returns)
+    highs = prices * (1.0 + np.abs(np.random.normal(0, 0.005, n_days)))
+    lows = prices * (1.0 - np.abs(np.random.normal(0, 0.005, n_days)))
+
+    # Synthetic benchmark for tracking error
+    benchmark_returns = np.random.normal(loc=0.0003, scale=0.010, size=n_days)
+
+    return daily_returns, highs, lows, benchmark_returns
+
+
+def run_demo() -> None:
+    """Run the demonstration (default when executed with no arguments)."""
+    # ----------------------------------------------------------------
+    # Demo: Historical risk analysis on synthetic data
+    # ----------------------------------------------------------------
+    daily_returns, highs, lows, benchmark_returns = _demo_data()
+    n_days = len(daily_returns)
 
     analyzer = HistoricalRiskAnalyzer(daily_returns, periods_per_year=252)
 
@@ -242,9 +289,6 @@ if __name__ == "__main__":
     print(f"\nAnnualized Volatility (close-to-close): {vol:.4f} ({vol*100:.2f}%)")
 
     # Parkinson volatility (synthetic high/low data)
-    prices = 100.0 * np.cumprod(1.0 + daily_returns)
-    highs = prices * (1.0 + np.abs(np.random.normal(0, 0.005, n_days)))
-    lows = prices * (1.0 - np.abs(np.random.normal(0, 0.005, n_days)))
     park_vol = analyzer.parkinson_volatility(highs, lows)
     print(f"Parkinson Volatility:                   {park_vol:.4f} ({park_vol*100:.2f}%)")
 
@@ -275,7 +319,6 @@ if __name__ == "__main__":
     print(f"Ratio (SV/Var): {sv/full_var:.4f}  (0.50 = symmetric)")
 
     # Tracking error (synthetic benchmark)
-    benchmark_returns = np.random.normal(loc=0.0003, scale=0.010, size=n_days)
     te = analyzer.tracking_error(benchmark_returns)
     print(f"\nTracking Error vs Benchmark: {te:.4f} ({te*100:.2f}%)")
 
@@ -297,3 +340,116 @@ if __name__ == "__main__":
     print("\n" + "=" * 60)
     print("Demo complete.")
     print("=" * 60)
+
+
+def run_verify() -> int:
+    """Assert the demo outputs and the SKILL.md worked-example numbers.
+
+    Returns
+    -------
+    int
+        0 if all checks pass, 1 otherwise.
+    """
+    failures = 0
+
+    def check(name: str, actual: float, expected: float,
+              rel_tol: float = 1e-6, abs_tol: float = 1e-9) -> None:
+        nonlocal failures
+        ok = math.isclose(actual, expected, rel_tol=rel_tol, abs_tol=abs_tol)
+        status = "PASS" if ok else "FAIL"
+        print(f"[{status}] {name}: actual={actual:.10g} expected={expected:.10g}")
+        if not ok:
+            failures += 1
+
+    def check_true(name: str, condition: bool) -> None:
+        nonlocal failures
+        status = "PASS" if condition else "FAIL"
+        print(f"[{status}] {name}")
+        if not condition:
+            failures += 1
+
+    # SKILL.md Example 1: 0.012 * sqrt(252) ~ 19.05% annualized volatility
+    check("SKILL.md Ex1 annualized volatility", 0.012 * math.sqrt(252),
+          0.1905, rel_tol=1e-3)
+
+    # SKILL.md Example 2: max drawdown of NAV path 120,135,150,130,105,125
+    nav = np.array([120.0, 135.0, 150.0, 130.0, 105.0, 125.0])
+    nav_analyzer = HistoricalRiskAnalyzer(nav[1:] / nav[:-1] - 1.0)
+    mdd = nav_analyzer.max_drawdown()
+    check("SKILL.md Ex2 max drawdown (peak 150 to trough 105)",
+          mdd["depth"], -0.30)
+    check_true("SKILL.md Ex2 drawdown not yet recovered",
+               mdd["recovery_idx"] is None)
+
+    # Seeded demo values
+    daily_returns, highs, lows, benchmark_returns = _demo_data()
+    analyzer = HistoricalRiskAnalyzer(daily_returns, periods_per_year=252)
+    check("Demo annualized volatility", analyzer.annualized_volatility(),
+          0.2067594169)
+    check("Demo Parkinson volatility",
+          analyzer.parkinson_volatility(highs, lows), 0.0858095845)
+    demo_dd = analyzer.max_drawdown()
+    check("Demo max drawdown depth", demo_dd["depth"], -0.5007747704)
+    check_true("Demo max drawdown indices (peak 9, trough 268)",
+               demo_dd["start_idx"] == 9 and demo_dd["trough_idx"] == 268)
+    check("Demo 95% VaR", analyzer.historical_var(0.95), 0.0208487407)
+    check("Demo 99% VaR", analyzer.historical_var(0.99), 0.0385343197)
+    check("Demo downside deviation", analyzer.downside_deviation(0.0),
+          0.1587520662)
+    check("Demo semi-variance", analyzer.semi_variance(), 9.1388232586e-05)
+    check("Demo tracking error", analyzer.tracking_error(benchmark_returns),
+          0.2602205686)
+
+    # Input validation behavior
+    try:
+        HistoricalRiskAnalyzer(np.array([]))
+        check_true("Empty returns raise ValueError", False)
+    except ValueError:
+        check_true("Empty returns raise ValueError", True)
+    try:
+        analyzer.tracking_error(benchmark_returns[:-1])
+        check_true("Mismatched benchmark length raises ValueError", False)
+    except ValueError:
+        check_true("Mismatched benchmark length raises ValueError", True)
+    try:
+        analyzer.parkinson_volatility(highs, lows[:-1])
+        check_true("Mismatched highs/lows raise ValueError", False)
+    except ValueError:
+        check_true("Mismatched highs/lows raise ValueError", True)
+
+    if failures:
+        print(f"\nFAIL: {failures} check(s) did not match expected values.")
+        return 1
+    print("\nPASS: all checks matched expected values.")
+    return 0
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description=(
+            "Realized risk metrics via the HistoricalRiskAnalyzer class: "
+            "annualized and Parkinson volatility, drawdown analysis, "
+            "historical VaR, downside deviation, tracking error, "
+            "semi-variance, and rolling volatility."
+        ),
+        epilog=(
+            "Run with no arguments to print a demo analysis on seeded "
+            "synthetic data. Import as a module: "
+            "from historical_risk import HistoricalRiskAnalyzer"
+        ),
+    )
+    parser.add_argument(
+        "--verify",
+        action="store_true",
+        help="assert demo outputs and SKILL.md worked-example numbers; "
+             "exits nonzero on mismatch",
+    )
+    args = parser.parse_args()
+
+    if args.verify:
+        sys.exit(run_verify())
+    run_demo()
+
+
+if __name__ == "__main__":
+    main()

@@ -1,6 +1,25 @@
 # Domain Event Pattern
 
 **Tags**: "api:events:domain", "api:domain"
+**Level**: exhaustive
+**Layer**: Domain
+**Status**: production
+
+## When to Use
+
+**Use this pattern for:**
+- ✅ every state change an aggregate records in `domain/events/*.event.ts` — creation, moderation decision, status transition
+- ✅ events carrying personal data, which have to be split into `piiData` / `anonymizedData` / `businessData` with crypto-shredding metadata
+- ✅ cross-aggregate coordination inside one bounded context (user registered → geographic profile created)
+- ✅ anything that must leave an audit trail in `domain_events` — GDPR retention is computed from these rows
+- ✅ entities that have no `.apply()` of their own: the owning aggregate emits on their behalf (see "Entities without `.apply()`")
+
+**Do NOT use for:**
+- ❌ crossing a bounded-context boundary — that is an integration event delivered through the outbox (`integration-event-pattern.md`, `transactional-outbox-pattern.md`); a domain event never leaves its context
+- ❌ infrastructure signals (cache invalidation, health checks, background-job scheduling) — those are not business facts
+- ❌ notifying an external system directly — a domain event handler builds the integration event, it does not call the webhook
+- ❌ registering the event class for hydration — that lives in the repository `eventMap` (`repository-events-pattern.md`)
+
 
 ## 🎯 Problem
 
@@ -609,6 +628,85 @@ const eventMap: Record<string, any> = {
 
 ---
 
+---
+
+## Entities without `.apply()`
+
+Only aggregate roots extend `BaseAggregateRoot` and get `this.apply()`. An entity extends
+`BaseEntity` and has no such method, so `this.apply(new SomethingHappenedEvent(...))` does not
+compile:
+
+```typescript
+export class InstitutionalAnnouncement extends BaseEntity<InstitutionalAnnouncementProps> {
+  applyModerationDecision(): void {
+    this.apply(new InstitutionalAnnouncementModeratedEvent({ /* ... */ })); // ❌ no such method
+  }
+}
+// Property 'apply' does not exist on type 'InstitutionalAnnouncement'
+```
+
+That is a modelling signal, not a gap to work around. An entity is inside an aggregate boundary by
+definition, so the event belongs to the aggregate root that owns it. The entity method returns a
+`Result` describing what changed; the root inspects it and applies the event:
+
+```typescript
+// domain/entities/institutional-announcement.entity.ts
+export class InstitutionalAnnouncement extends BaseEntity<InstitutionalAnnouncementProps> {
+  resolve(resolvedBy: UserId, reason: string): Result<ResolutionOutcome, DomainError> {
+    if (!this.props.status.canTransitionTo(InstitutionalAnnouncementStatus.RESOLVED))
+      return Result.fail(new InvalidStatusTransitionError(this.props.status));
+
+    const previousStatus = this.props.status;
+    this.props.status = InstitutionalAnnouncementStatus.RESOLVED;
+    return Result.ok({ previousStatus, resolvedBy, reason });
+  }
+}
+
+// domain/aggregates/announcement-board.aggregate.ts
+export class AnnouncementBoard extends BaseAggregateRoot<AnnouncementBoardProps> {
+  resolveAnnouncement(id: AnnouncementId, by: UserId, reason: string): Result<void, DomainError> {
+    const announcement = this.props.announcements.find((a) => a.id.equals(id));
+    if (!announcement) return Result.fail(new AnnouncementNotFoundError(id));
+
+    const outcome = announcement.resolve(by, reason);
+    if (outcome.isFailure) return Result.fail(outcome.error);
+
+    this.apply(new AnnouncementResolvedEvent({          // ✅ root owns the event
+      piiData: {},
+      anonymizedData: {
+        previousStatus: outcome.value.previousStatus.toString(),
+        newStatus: InstitutionalAnnouncementStatus.RESOLVED,
+        sourceType: announcement.source.toString(),
+        severityLevel: announcement.severity.toString(),
+      },
+      businessData: {
+        announcementId: id.toString(),
+        resolvedBy: by.toString(),
+        reason,
+        resolvedAt: new Date(),
+      },
+      cryptoShredding: { piiFields: [], retentionPeriod: 2555, isShredded: false },
+    }));
+    return Result.ok();
+  }
+}
+```
+
+The rest then follows the normal path: the command handler calls one aggregate method, the command
+repository persists state and the emitted events in the same transaction (`repository-pattern.md`
+RP3), and handlers pick the event up from there.
+
+**Do not emit the event from the command handler.** A handler that builds a domain event itself and
+calls `eventPersistenceHandler.handleEvent()` followed by `eventDispatcher.dispatchEvent()` moves a
+domain decision into the application layer, and — because the two calls are not one atomic write —
+leaves the audit row and the dispatch able to disagree. Where the notification has to reach another
+bounded context, the outbox is the delivery mechanism, not `dispatchEvent()`; ADR-0082 classifies
+that call as an anti-pattern for integration events (`integration-event-pattern.md`).
+
+**When there genuinely is no aggregate root** — a standalone reference entity with a CRUD lifecycle
+and no invariants to guard — the honest answer is usually that it does not need a domain event
+either. If it does, promote it to an aggregate root rather than emitting around the model.
+
 ## 📚 References
 
 ### ADRs
@@ -629,7 +727,7 @@ const eventMap: Record<string, any> = {
 
 ---
 
-## 🎯 When to Use
+## Choosing Between Event Kinds
 
 ### Use Domain Events When
 

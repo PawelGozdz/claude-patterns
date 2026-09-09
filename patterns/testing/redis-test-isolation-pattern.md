@@ -7,6 +7,22 @@
 **Purpose**: Reliable Redis cache clearing to prevent race conditions and stale data in E2E tests
 **Context**: Tests use shared Redis instance, cache operations may overlap with test setup
 
+**Layer**: Testing (E2E / L3)
+**Status**: Production
+
+## When to Use
+
+**Use this pattern for:**
+- ✅ A test's assertion depends on cached data (verification level, trust score, rate-limit
+  counters) that a prior test may have populated.
+- ✅ Choosing which specific cache to clear (rate limiting, verification cache, session cache)
+  for a given test's setup.
+- ✅ Debugging a test that reads stale cache despite an existing `beforeEach` cleanup.
+
+**Do NOT use for:**
+- ❌ Clearing Postgres/DB state — that's `context.cleaner.cleanAll()`, a separate mechanism.
+- ❌ Unit tests (L1) with no Redis dependency at all.
+
 ---
 
 ## Problem Statement

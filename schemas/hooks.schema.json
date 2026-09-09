@@ -1,101 +1,90 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Claude Code Hooks Configuration",
-  "description": "Configuration for Claude Code hooks. Event types are validated at runtime and must be one of: PreToolUse, PostToolUse, PreCompact, SessionStart, SessionEnd, Stop, Notification, SubagentStop",
+  "$id": "https://github.com/claude-patterns/schemas/hooks.schema.json",
+  "title": "Claude Code hooks configuration",
+  "description": "Shape of hooks/hooks.json and the `hooks` section of templates/settings/*.json. The event name is the KEY of the `hooks` object; the `type` of an individual hook entry is the invocation kind and is always \"command\". An earlier revision of this file had those two swapped — it required `type` to be an event name — which meant it rejected every real hooks.json in this repo. Corrected 2026-09-07 against hooks/hooks.json and templates/settings/.",
+
   "$defs": {
+    "eventName": {
+      "type": "string",
+      "description": "Hook event. Values observed in this repo: PreToolUse, PostToolUse, SessionStart, SessionEnd, PreCompact, Stop, Notification, SubagentStart, SubagentStop, WorktreeCreate. Claude Code validates the real list at runtime, so this is not closed.",
+      "minLength": 1
+    },
+
     "hookItem": {
       "type": "object",
-      "required": [
-        "type",
-        "command"
-      ],
+      "required": ["type", "command"],
+      "additionalProperties": false,
       "properties": {
         "type": {
           "type": "string",
-          "enum": [
-            "PreToolUse",
-            "PostToolUse",
-            "PreCompact",
-            "SessionStart",
-            "SessionEnd",
-            "Stop",
-            "Notification",
-            "SubagentStop"
-          ],
-          "description": "Hook event type that triggers this hook"
+          "description": "Invocation kind. Every hook in this repo is \"command\".",
+          "enum": ["command"]
         },
         "command": {
+          "description": "Shell command, or argv array.",
           "oneOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            }
+            { "type": "string" },
+            { "type": "array", "items": { "type": "string" } }
           ]
         },
         "async": {
           "type": "boolean",
-          "description": "Run hook asynchronously in background without blocking"
+          "description": "Run in the background without blocking the tool call."
         },
         "timeout": {
           "type": "number",
           "minimum": 0,
-          "description": "Timeout in seconds for async hooks"
+          "description": "Seconds before the hook is abandoned."
         }
       }
     },
+
     "matcherEntry": {
       "type": "object",
-      "required": [
-        "matcher",
-        "hooks"
-      ],
+      "required": ["matcher", "hooks"],
+      "additionalProperties": false,
       "properties": {
         "matcher": {
-          "type": "string"
+          "type": "string",
+          "description": "Tool name the entry applies to, or \"*\" for all."
         },
         "hooks": {
           "type": "array",
-          "items": {
-            "$ref": "#/$defs/hookItem"
-          }
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/hookItem" }
         },
         "description": {
-          "type": "string"
+          "type": "string",
+          "description": "Why this hook exists. Not read by the runtime — read by whoever has to decide whether to keep it."
         }
+      }
+    },
+
+    "hooksMap": {
+      "type": "object",
+      "description": "Event name -> list of matcher entries.",
+      "propertyNames": { "$ref": "#/$defs/eventName" },
+      "additionalProperties": {
+        "type": "array",
+        "items": { "$ref": "#/$defs/matcherEntry" }
       }
     }
   },
+
   "oneOf": [
     {
+      "description": "hooks/hooks.json, and settings files that carry a hooks section alongside permissions.",
       "type": "object",
+      "required": ["hooks"],
       "properties": {
-        "$schema": {
-          "type": "string"
-        },
-        "hooks": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "array",
-            "items": {
-              "$ref": "#/$defs/matcherEntry"
-            }
-          }
-        }
-      },
-      "required": [
-        "hooks"
-      ]
+        "$schema": { "type": "string" },
+        "hooks": { "$ref": "#/$defs/hooksMap" }
+      }
     },
     {
-      "type": "array",
-      "items": {
-        "$ref": "#/$defs/matcherEntry"
-      }
+      "description": "A bare event map, with no wrapper object.",
+      "$ref": "#/$defs/hooksMap"
     }
   ]
 }

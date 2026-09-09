@@ -1,8 +1,9 @@
 # Repository — Rule Card
 
 **Tags**: "api:data-access"
-<!-- Egzekwowalne streszczenie repository-events-pattern.md + stub repository-pattern.md. WIĄŻĄCE.
-     Pełny wzorzec (kontekst, uzasadnienie, checklist, testy): repository-events-pattern.md
+<!-- Egzekwowalne streszczenie repository-pattern.md (RP1-RP5, RP10-RP12) + repository-events-pattern.md
+     (RP6-RP9). WIĄŻĄCE. Pełny wzorzec (kontekst, uzasadnienie, przykłady, wyjątki): repository-pattern.md;
+     szczegóły rejestracji eventMap: repository-events-pattern.md
      Verifier sprawdza KAŻDĄ regułę z ID poniżej i cytuje ją przy naruszeniu. -->
 
 **Layer**: Infrastructure · **Applies to**: `*.repository.ts` w `**/infrastructure/repositories/` lub `**/infrastructure/persistence/`; interfejsy portów w `**/domain/repositories/`; RP12/N7 dodatkowo obejmują `*.cron.ts`/`*.scheduler.ts`/`*.job.ts` w `**/infrastructure/**` i serwisy w `**/application/services/`
@@ -147,4 +148,5 @@ export class XxxQueryKyselyRepository {                                     // R
 | Brak `version` w persist/select | RP5 |
 | Cron/scheduler/service z `@Inject(DATABASE_TOKEN)` / `Kysely<Database>` zamiast portu repozytorium, BEZ `// RP12-EXCEPTION: <powód>` | **RP12 / N7** |
 
-**Pełny wzorzec**: [`repository-events-pattern.md`](./repository-events-pattern.md)
+**Pełny wzorzec**: [`repository-pattern.md`](./repository-pattern.md) — kontekst, przykłady write/read-side,
+anty-wzorce, sekcja „Wyjątki" (RP2/RP12). Rejestracja `eventMap` (RP6-RP9): [`repository-events-pattern.md`](./repository-events-pattern.md)

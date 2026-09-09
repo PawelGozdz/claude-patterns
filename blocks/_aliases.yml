@@ -1,5 +1,5 @@
-# Aliasy: skróty rozwijane przez materializację (setup-project.sh, F2)
-# oraz przez scripts/blocks-equivalence-check.mjs (F1).
+# Aliasy: skróty rozwijane przez materializację (scripts/materialize-runtime.mjs,
+# wołany przez setup-project.sh).
 #
 # `stack_profile: nestjs-ddd` w istniejących project.yml jest po migracji
 # czytany jako `stack_blocks: [nestjs, ddd, kysely]` — zero zmian w repach
@@ -12,3 +12,9 @@ aliases:
   # Biblioteka publikowana z monorepo Nx. Projekt z pojedynczym pakietem bierze
   # sam `ts-library`, bez tego aliasu.
   typescript-library: [ts-library, library-layers, nx-monorepo]
+  # `stack_profile: nextjs-app` z istniejących project.yml i szablonów — nazwa krąży
+  # po przykładach od czasów presetów, a blok nazywa się krócej (K88, TASK-KAIZEN-002).
+  # Aliasu `sveltekit` NIE MA celowo: blok nazywa się dokładnie tak samo, a `expand()`
+  # w materialize-runtime.mjs jest rekurencyjne bez wykrywania cykli — alias
+  # wskazujący na własną nazwę zapętliłby materializację każdego projektu SvelteKit.
+  nextjs-app: [nextjs]

@@ -1,6 +1,6 @@
-# Dual Identity Pattern
-
 **Tags**: "api:security:identity", "api:authz"
+
+**Layer**: Architecture
 
 ## 🎯 Problem
 
@@ -451,7 +451,7 @@ pagination) — never WHO is reading it, when the answer is "the caller."
    `authorization`, `community-communication`, `engagement`, `neighborhood-economy` — see
    `project-orchestration/TECH-DEBT.md` for the live list
 
-## 🎯 When to Use
+## When to Use 🎯
 
 **Use Dual Identity Pattern for:**
 

@@ -1,4 +1,5 @@
 ---
+name: pm2
 description: Configure PM2 process manager for Node.js application
 ---
 

@@ -4,6 +4,14 @@
 > Time-box: ~1 dzień focused. Charakter: read-mostly + jeden end-to-end test. **Zero zmian w
 > produkcyjnym claude-patterns.** Wszystko w izolowanym sandboxie.
 
+> **⚠ ARCHIWUM — spike wykonany, werdykt GO (2026-06-28).** To jest plan, nie wynik:
+> wynik i wiążąca lista RETIRE/KEEP mieszkają w
+> [ADR 0009](adr/0009-wynik-spike-fazy-0-i-lista-retire.md), notatki robocze w
+> `/opt/projects/_spike/notes/`. Opisana tu architektura jest sprzed
+> [ADR 0008](adr/0008-stack-blocks-composition.md) (2026-08-12: kompozycja bloków zamiast
+> presetów, `/analyze` + `/orchestrate` zamiast `/analyze-ddd` + `/orchestrate-ddd`).
+> Zachowany dla historii decyzji.
+
 ---
 
 ## Cel

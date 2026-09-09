@@ -21,15 +21,19 @@ change and wants a concrete "here's what breaks" report before splitting the wor
 
 ## When to Use
 
-- Backend and its consumers (mobile/web) live in **separate repositories** with no shared
+**Use this pattern for:**
+- ✅ Backend and its consumers (mobile/web) live in **separate repositories** with no shared
   monorepo tooling to catch contract drift automatically.
-- A change to the backend's API is being planned or is in progress, and you want to know its
+- ✅ A change to the backend's API is being planned or is in progress, and you want to know its
   blast radius across consumers before (or while) making the change.
-- You want to coordinate a backend change with matching client changes under the same task/PR
+- ✅ You want to coordinate a backend change with matching client changes under the same task/PR
   identifier, so the work can proceed in parallel across repos instead of serially.
 
-Don't use it as a substitute for real contract testing (schema validation in CI) — this is a
-point-in-time advisory scan a developer runs on demand, not a merge gate.
+**Do NOT use for:**
+- ❌ A substitute for real contract testing (schema validation in CI) — this is a point-in-time
+  advisory scan a developer runs on demand, not a merge gate.
+- ❌ Auto-editing consumer repos — always leave the edit to a human (see Anti-Patterns).
+- ❌ A monorepo with shared types already catching drift at compile time — no need for the scan.
 
 ## Implementation
 

@@ -5,23 +5,6 @@ description: "Plan and manage cash flow to ensure adequate liquidity while minim
 
 # Liquidity Management
 
-## Purpose
-Plan and manage cash flow to ensure adequate liquidity for all financial obligations while minimizing the opportunity cost of holding excess cash. This skill covers cash flow forecasting, laddering strategies, tiered liquidity frameworks, and income smoothing for variable earners.
-
-## Layer
-6 — Personal Finance
-
-## Direction
-Both (retrospective cash flow analysis and prospective forecasting)
-
-## When to Use
-- Building a cash flow forecast (monthly projections for 12+ months)
-- Setting up CD, bond, or T-bill ladders for structured liquidity
-- Managing irregular or variable income (freelancers, commission-based)
-- Assessing liquidity adequacy across investable assets
-- Planning for known large expenses (taxes, tuition, property taxes)
-- Optimizing sweep and cash management strategies
-
 ## Core Concepts
 
 ### Cash Flow Forecasting
@@ -45,10 +28,14 @@ Classify investable assets by time to access:
 
 | Tier | Access Time | Examples | Typical Yield |
 |------|------------|---------|---------------|
-| Tier 1 — Immediate | 0-1 day | Checking, savings, money market | Low |
-| Tier 2 — Short-term | 1-7 days | Brokerage cash, T-bills, HYSA | Moderate |
-| Tier 3 — Medium-term | 1-4 weeks | CDs (with penalty), bond funds, I-bonds (after 1yr) | Moderate-High |
+| Tier 1 — Immediate | Same day | Checking and savings at your primary bank, money market funds | Low |
+| Tier 2 — Short-term | 1-3 business days | High-yield savings at an online bank, brokerage sweep cash, T-bills, bond funds and bond ETFs | Moderate |
+| Tier 3 — Medium-term | 1-4 weeks (or penalty cost) | CDs (early-withdrawal penalty), I-bonds (after 1-year lockup) | Moderate-High |
 | Tier 4 — Long-term | 30+ days | Real estate, PE/VC, locked alternatives, retirement accounts (pre-59½) | Highest |
+
+Tier notes:
+- **Tier 1 vs Tier 2 savings:** the distinction is transfer time, not product type. A savings account at your primary bank offers same-day access (Tier 1); a high-yield savings account at an online bank typically requires a 1-3 business day ACH transfer to reach your checking account (Tier 2).
+- **Bond funds and bond ETFs:** both settle T+1 (the US moved to T+1 settlement in May 2024 for equities, ETFs, and mutual funds), so sale proceeds are available in roughly 1-3 business days including transfer to a bank. They belong in Tier 2 for access time — though, unlike deposits, the sale price is subject to market risk.
 
 ### CD Laddering
 Stagger CD maturities for regular access + higher yields:
@@ -131,14 +118,21 @@ Maintain buffer above minimum liquidity requirements:
 - Treating credit lines as liquidity (they can be revoked when most needed)
 
 ## Cross-References
-- **emergency-fund** (wealth-management plugin, Layer 6): first tier of liquidity, must be funded before optimizing
-- **lending** (wealth-management plugin, Layer 6): margin loans, HELOCs as backup liquidity (with risks)
-- **time-value-of-money** (core plugin, Layer 0): CD/bond pricing, yield calculations
-- **debt-management** (wealth-management plugin, Layer 6): debt payments are fixed cash flow obligations
-- **savings-goals** (wealth-management plugin, Layer 6): multiple goals compete for available cash flow
-- **tax-efficiency** (wealth-management plugin, Layer 5): estimated taxes, tax-loss harvesting timing
-- **fixed-income-sovereign** (wealth-management plugin, Layer 2): T-bill ladder mechanics, Treasury Direct
-- **financial-planning-workflow** (advisory-practice plugin, Layer 10): cash flow tier structure informs the liquidity analysis in comprehensive financial plans
+- **emergency-fund** (wealth-management plugin): first tier of liquidity, must be funded before optimizing
+- **lending** (wealth-management plugin): margin loans, HELOCs as backup liquidity (with risks)
+- **time-value-of-money** (core plugin): CD/bond pricing, yield calculations
+- **debt-management** (wealth-management plugin): debt payments are fixed cash flow obligations
+- **savings-goals** (wealth-management plugin): multiple goals compete for available cash flow
+- **tax-efficiency** (wealth-management plugin): estimated taxes, tax-loss harvesting timing
+- **fixed-income-sovereign** (wealth-management plugin): T-bill ladder mechanics, Treasury Direct
+- **financial-planning-workflow** (advisory-practice plugin): cash flow tier structure informs the liquidity analysis in comprehensive financial plans
+- **equity-compensation** (wealth-management plugin): option exercise costs, RSU withholding gaps, and AMT bills create planned liquidity needs in vest and exercise years
+## Running the script
+Run the reference implementation directly:
 
-## Reference Implementation
-See `scripts/liquidity_management.py` for computational helpers.
+```
+uv run scripts/liquidity_management.py     # PEP 723 header resolves dependencies automatically
+python3 scripts/liquidity_management.py    # after: pip install numpy scipy
+```
+
+A bare run prints a demo covering liquidity ratios, a 12-month cash flow projection, cash runway, liquidity tier analysis, CD ladder construction, income smoothing, and CD breakeven analysis. Use `--verify` to recompute the demo figures and assert they match this skill's worked examples (prints PASS/FAIL, exits nonzero on mismatch), and `--help` to list the available classes and functions. The file is primarily meant to be imported as a module (`from liquidity_management import LiquidityManagement`) rather than run standalone.

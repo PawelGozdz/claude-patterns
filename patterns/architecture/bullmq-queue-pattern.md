@@ -2,6 +2,8 @@
 
 **Tags**: "api:events:queue"
 
+**Layer**: Architecture
+
 ## 🎯 Problem
 
 **Inconsistent queue usage leads to runtime errors and type safety issues**:
@@ -563,7 +565,7 @@ export class DiscordModule {}
 
 - None directly, but follows NestJS best practices for BullMQ integration
 
-## 🎯 When to Use
+## When to Use 🎯
 
 ### Always Use BullMQ Queue Pattern When:
 

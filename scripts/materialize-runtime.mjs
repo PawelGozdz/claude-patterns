@@ -21,6 +21,7 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, statSy
 import { createHash } from 'node:crypto';
 import { dirname, join, posix } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { execFileSync } from 'node:child_process';
 
 let YAML;
 try {
@@ -839,6 +840,68 @@ mkdirSync(dirname(dst), { recursive: true });
 writeFileSync(dst, text);
 console.log(`  runtime.yml: ${expanded.length} bloków [${expanded.join(', ')}], hash ${hash}` +
   (paramsOut.size ? `, params: ${[...paramsOut.keys()].join(', ')}` : ''));
+
+// ── manifest instalacji (ADR 0007 D1, K66) ─────────────────────────────────
+// `runtime.yml` odpowiada na pytanie „jaki jest plan", ale nie na „z jakiego stanu
+// centrali ten plan powstał". `source_hash` zamyka tylko treść bloków — zmiana skryptów,
+// szablonów czy schematu kontraktu jest dla niego niewidoczna, więc repo z aktualnym
+// hashem potrafiło być zainstalowane z commita sprzed dwóch miesięcy i nikt tego nie
+// widział (audyt 2026-09-07, A2). Manifest datuje instalację i przypina ją do commita
+// claude-patterns; `audit-projects.mjs` porównuje go ze stanem bieżącym.
+//
+// Powstaje TU, a nie w `setup-project.sh` (jak zakładał ADR w wersji proposed): setup
+// odpala się raz przy podłączeniu projektu, materializacja przy każdej zmianie
+// kompozycji — manifest zapisany tylko przez setup byłby przestarzały od pierwszej
+// rematerializacji. Zapis jest ostatnim krokiem po `runtime.yml`, więc odzwierciedla
+// stan faktyczny, nie zamiar (ADR 0007 D1: „idempotentnie i na końcu przebiegu").
+//
+// Nieśledzony przez gita (ADR 0007 D1 / ADR 0006 D3): niesie SHA CUDZEGO repozytorium,
+// więc w diffie satelity byłby szumem bez odbiorcy.
+const gitIn = (cwd, args) => {
+  try { return execFileSync('git', args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }); }
+  catch { return null; }
+};
+
+const patternsSha = gitIn(REPO, ['rev-parse', '--short', 'HEAD'])?.trim() ?? 'unknown';
+const patternsStatus = gitIn(REPO, ['status', '--porcelain']);
+const patternsDirty = patternsStatus === null ? null : patternsStatus.trim().length > 0;
+
+// Wersja kontraktu = `version:` z METADATA.yml centrali. Świadomie NIE osobny licznik:
+// ADR 0007 D3 chce jednocyfrowej liczby kontraktów, a osobny numer, który trzeba pamiętać
+// o podbiciu, jest dokładnie tym rytuałem, przed którym ten ADR ostrzega. Porównanie
+// robi `audit-projects.mjs`: rozjazd MAJOR = błąd (format się zmienił), reszta = informacja.
+let contractVersion = 'unknown';
+try {
+  contractVersion = String(YAML.parse(readFileSync(join(REPO, 'METADATA.yml'), 'utf8'))?.version ?? 'unknown');
+} catch { /* brak METADATA.yml — manifest i tak powstaje, audyt zgłosi `unknown` */ }
+
+const installedDst = join(projectDir, '.claude/config/installed.yml');
+writeFileSync(installedDst,
+  '# Manifest instalacji (ADR 0007 D1) — generuje scripts/materialize-runtime.mjs.\n' +
+  '# NIE edytuj ręcznie i nie commituj: opisuje stan CENTRALI w momencie materializacji.\n' +
+  '# Czyta go scripts/audit-projects.mjs (ADR 0007 D2).\n' +
+  'schema_version: 1\n' +
+  `claude_patterns_sha: "${patternsSha}"\n` +
+  `claude_patterns_dirty: ${patternsDirty === null ? 'null' : patternsDirty}\n` +
+  `contract_version: "${contractVersion}"\n` +
+  `materialized_at: "${new Date().toISOString()}"\n` +
+  `blocks_hash: "${hash}"\n`);
+console.log(`  installed.yml: claude-patterns ${patternsSha}${patternsDirty ? ' (dirty)' : ''}, kontrakt ${contractVersion}`);
+
+// Wykluczenie idempotentne, tym samym mechanizmem co `broadcast.yml` z ADR 0006 D3:
+// `.git/info/exclude` zamiast `.gitignore`, bo to decyzja lokalnej instalacji, a nie
+// repozytorium — `.gitignore` byłby zmianą śledzoną w cudzym projekcie.
+const gitDir = gitIn(projectDir, ['rev-parse', '--git-dir'])?.trim();
+if (gitDir) {
+  const excludePath = join(gitDir.startsWith('/') ? gitDir : join(projectDir, gitDir), 'info/exclude');
+  try {
+    const cur = existsSync(excludePath) ? readFileSync(excludePath, 'utf8') : '';
+    if (!cur.split('\n').some((l) => l.trim() === '.claude/config/installed.yml')) {
+      mkdirSync(dirname(excludePath), { recursive: true });
+      writeFileSync(excludePath, cur + (cur.endsWith('\n') || !cur ? '' : '\n') + '.claude/config/installed.yml\n');
+    }
+  } catch (e) { warn(`nie udało się dopisać installed.yml do .git/info/exclude: ${e.message}`); }
+}
 
 // ── warstwa lokalna routingu wzorców ───────────────────────────────────────
 // hooks/lib/pattern-routing.generated.js powstaje WYŁĄCZNIE z blocks/**.yml centrali

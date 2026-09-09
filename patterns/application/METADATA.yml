@@ -1,49 +1,44 @@
-# Application Layer Patterns - Metadata
-version: "1.0"
-layer: "application"
-description: "CQRS and application orchestration patterns"
+# Application Layer Patterns — metadane katalogu.
+# Schemat: jeden dla całego patterns/** (K84, TASK-KAIZEN-002). Walidator:
+# node scripts/validate-metadata.mjs
+category: application
+version: "1.1.0"
+maturity: production
+last_verified: 2026-08-31
+stack: "TypeScript, NestJS, @vytches/ddd"
+source_projects: "LocalHero v3 (1355+ testów), juz-ide-api-1"
+patterns_count: 5
+description: >-
+  Wzorce CQRS i orkiestracji aplikacyjnej: handlery komend/zapytań z
+  auto-discovery przez dekoratory (v2.0, bez ręcznej rejestracji w providers),
+  serwisy aplikacyjne dla przepływów wielokrokowych i saga, handlery audytu
+  (ADR-0027, logowanie GDPR) oraz protokół TCC (reserve → confirm/release).
 
-stack_support:
-  - typescript
+# Opcjonalne pola starego schematu, zachowane bo niosą informację:
+layer: application
+stack_support: [typescript]
 
 patterns:
-  - name: command-handler-pattern.md
-    stacks: [typescript]
+  - file: command-handler-pattern.md
     maturity: production
     last_verified: 2026-02-05
-    description: "Command handlers with @CommandHandler auto-discovery (v2.0)"
-    version: "2.0"
-
-  - name: query-handler-pattern.md
-    stacks: [typescript]
+    description: "Handlery komend z auto-discovery @CommandHandler (v2.0)"
+  - file: query-handler-pattern.md
     maturity: production
     last_verified: 2026-02-05
-    description: "Query handlers with @QueryHandler auto-discovery (v2.0)"
-    version: "2.0"
-
-  - name: application-service-pattern.md
-    stacks: [typescript]
+    description: "Handlery zapytań z auto-discovery @QueryHandler (v2.0)"
+  - file: application-service-pattern.md
     maturity: production
     last_verified: 2026-02-05
-    description: "Application services for multi-step workflows and sagas"
-
-  - name: audit-handler-pattern.md
-    stacks: [typescript]
+    description: "Serwisy aplikacyjne dla przepływów wielokrokowych i saga"
+  - file: audit-handler-pattern.md
     maturity: production
     last_verified: 2026-02-05
-    description: "Audit handlers with method-level @EventHandler (v2.0)"
-    version: "2.0"
-
-  - name: try-confirm-cancel-pattern.md
-    stacks: [typescript]
+    description: "Handlery audytu z @EventHandler na poziomie metody (v2.0, ADR-0027)"
+  - file: try-confirm-cancel-pattern.md
     maturity: experimental
     last_verified: 2026-08-31
-    description: "Per-context application service for a reserve->confirm/release (TCC) protocol once it appears in >=3 handlers; generic params, one generic error type, per-caller translation"
-
-notes: |
-  Handler patterns (v2.0) use decorator-based auto-discovery.
-  No manual registration in module providers required.
-  CQRS patterns follow @vytches/ddd conventions.
-  Audit handlers enforce ADR-0027 (GDPR audit logging).
-
-source: "LocalHero v3 production codebase (1355+ tests)"
+    description: >-
+      Serwis aplikacyjny per kontekst dla protokołu reserve → confirm/release
+      (TCC), gdy pojawi się w >=3 handlerach; jeden typ błędu, tłumaczenie
+      per wołający

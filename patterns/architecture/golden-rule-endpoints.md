@@ -2,6 +2,9 @@
 
 **Tags**: "api:api-surface", "api:authz"
 
+**Layer**: Architecture
+**Status**: Production (4 contexts compliant: Quick Jobs, Local Shares, Service Offerings, Events)
+
 > ADR-0071
 
 ## 🎯 Problem
@@ -135,6 +138,21 @@ Layer 2 (Spec): EventVisibilitySpecification.isSatisfiedBy(item, context)
   Rule 3: approved → true
   Rule 4: owner → true
 ```
+
+## When to Use
+
+**Use this pattern for:**
+- ✅ Every REST resource that has both a public listing and an "owner sees everything" listing
+  (drafts, pending, rejected included).
+- ✅ Deciding route order and auth requirements for `/{resource}`, `/{resource}/my`,
+  `/{resource}/:id` on a new controller.
+- ✅ Reviewing a PR that adds a "my X" endpoint — checking auth guard, filter, and route order.
+
+**Do NOT use for:**
+- ❌ Endpoints with no owner-scoped variant (pure public read, e.g. reference/lookup data).
+- ❌ Admin/moderator endpoints that need role-based visibility beyond owner-vs-public (design a
+  dedicated authorization spec instead of overloading `/my`).
+- ❌ Query-param-based "mine" filters (`?organizerId=<id>`) — always a `/my` route instead.
 
 ## Powiązane patterns
 

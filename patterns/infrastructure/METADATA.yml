@@ -1,0 +1,36 @@
+# Infrastructure Layer Patterns — metadane katalogu.
+# Schemat: jeden dla całego patterns/** (K84, TASK-KAIZEN-002). Walidator:
+# node scripts/validate-metadata.mjs
+category: infrastructure
+version: "1.0.0"
+maturity: production
+last_verified: 2026-08-16
+stack: "TypeScript, NestJS, Kysely, PostgreSQL + PostGIS, Zod"
+source_projects: "LocalHero v3, juz-ide-api-1, grant-flow"
+patterns_count: 8
+description: >-
+  Warstwa infrastruktury: repozytoria (porty domenowe, mappery, dispatch
+  zdarzeń w save(), optimistic locking), mappery domena ↔ persystencja,
+  kontrolery, schematy walidacji Zod i guard rate-limitu (trzy osobne pliki po
+  splicie controller-schema), adaptery systemów zewnętrznych oraz dyscyplina
+  zapytań przestrzennych PostGIS.
+
+layer: infrastructure
+stack_support: [typescript]
+
+patterns:
+  - file: external-adapter-pattern.md
+    maturity: production
+    last_verified: 2026-08-31
+    scope: project-specific
+    project: grant-flow
+    description: "Adapter systemu zewnętrznego jako granica kontekstu"
+  - file: geo-spatial-query-pattern.md
+    maturity: production
+    last_verified: 2026-08-16
+    # Uniwersalny: „Promoted to universal 2026-08-16 (owner decision)" w nagłówku pliku.
+    # K85 (audyt 2026-09-07) chciał go oznaczyć jako project-specific — decyzja właściciela
+    # w pliku wygrywa; wyprowadzony z audytów TS-GEO-SPATIAL-QUERY-AUDIT-001/002 w juz-ide-api-1.
+    description: >-
+      PostGIS: klasa predykatu dyktuje cast i indeks, katalog przed EXPLAIN,
+      predykat przestrzenny jest kontrolą dostępu

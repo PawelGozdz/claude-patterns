@@ -1,4 +1,5 @@
 ---
+name: capture
 description: Capture insight from the current conversation as a blog draft before it disappears
 ---
 

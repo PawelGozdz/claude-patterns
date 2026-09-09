@@ -5,33 +5,6 @@ description: "Design and implement integration architectures connecting financia
 
 # Integration Patterns
 
-## Purpose
-
-Guide the design and implementation of integration architectures connecting financial systems. Covers API design conventions for financial data services, the FIX protocol for order and market data messaging, ISO 20022 XML-based financial messaging and SWIFT migration, event-driven architectures for trade and settlement event propagation, batch file processing for custodian feeds and end-of-day reconciliation, idempotency and exactly-once semantics for financial transactions, error handling and resilience patterns (retry, circuit breaker, dead letter queue, compensating transaction), data transformation and mapping between systems with different schemas and identifier conventions, and security and compliance requirements for integration infrastructure. Enables building or evaluating integration architectures that reliably connect portfolio management, trading, settlement, custodian, and reporting systems while maintaining data integrity and audit trails.
-
-## Layer
-
-13 -- Data Integration (Reference Data & Integration)
-
-## Direction
-
-both
-
-## When to Use
-
-- Designing a custodian integration architecture for an advisory firm or asset manager
-- Evaluating FIX protocol connectivity for order routing or market data
-- Implementing ISO 20022 messaging for payments, securities settlement, or SWIFT migration
-- Designing event-driven trade notification or settlement status systems
-- Building batch file processing pipelines for custodian feeds, reconciliation files, or EOD settlement
-- Implementing idempotency for financial transaction APIs to prevent duplicate processing
-- Designing retry and circuit breaker patterns for unreliable upstream systems
-- Mapping data between systems with different schemas, identifiers, or conventions
-- Evaluating API design patterns (REST, WebSocket, gRPC) for financial data services
-- Implementing mTLS, encryption, and audit logging for integration infrastructure
-- Troubleshooting integration failures causing reconciliation breaks or settlement delays
-- Trigger phrases: "FIX protocol," "ISO 20022," "event-driven," "batch processing," "custodian feed," "API design," "idempotency," "circuit breaker," "dead letter queue," "data mapping," "integration architecture," "message broker," "file feed," "SWIFT migration," "mTLS"
-
 ## Core Concepts
 
 ### 1. API Design for Financial Systems
@@ -78,7 +51,7 @@ The Financial Information eXchange (FIX) protocol is the dominant messaging stan
 
 ### 3. ISO 20022 Messaging
 
-ISO 20022 is the XML-based financial messaging standard replacing legacy formats across payments, securities, trade finance, and foreign exchange. SWIFT's migration from MT (Message Type) to ISO 20022 MX messages is the largest industry transformation currently underway.
+ISO 20022 is the XML-based financial messaging standard replacing legacy formats across payments, securities, trade finance, and foreign exchange. SWIFT's migration from MT (Message Type) to ISO 20022 MX messages for cross-border payments completed in November 2025.
 
 **Message structure:** ISO 20022 messages use XML schemas organized into business domains. Each message has a Business Application Header (BAH) containing sender, receiver, message type, and creation date, followed by the business document. Messages are identified by four-character codes within domain categories.
 
@@ -98,13 +71,13 @@ ISO 20022 is the XML-based financial messaging standard replacing legacy formats
 | pacs.009 | FI to FI financial institution credit transfer | Interbank transfer |
 | camt.053 | Bank-to-customer statement | Cash account statement |
 
-**SWIFT migration timeline:** SWIFT began coexistence (MT and MX in parallel) for cross-border payments in March 2023. Full migration from MT to MX is planned for completion by November 2025. Securities messaging migration follows on a separate timeline. During coexistence, translation services convert between MT and ISO 20022 formats, but information may be lost when translating from the richer ISO 20022 format back to constrained MT fields.
+**SWIFT migration status (as of June 2026):** SWIFT ran MT/MX coexistence for cross-border payments from March 2023 and completed the migration on November 22, 2025. ISO 20022 (CBPR+) is now the exclusive standard for cross-border payment instructions between financial institutions; the network rejects legacy MT payment instruction messages (e.g., MT103, MT202). Securities messaging migration follows on a separate, later timeline, so MT securities messages (MT535, MT548) remain in use. Firms with internal MT-based processing must translate at the boundary; note that translating from the richer ISO 20022 format back to constrained MT fields can lose information.
 
 **Comparison with legacy formats:** MT messages use fixed-field structures with limited field lengths (MT103 for customer transfers, MT202 for bank transfers, MT535 for custody statements, MT548 for settlement status). ISO 20022 provides richer, structured data -- longer reference fields, structured addresses, LEI support, purpose codes, and remittance information. ISO 15022 (the predecessor for securities) used a tagged format similar to SWIFT MT; ISO 20022 replaces both.
 
 **Implementation considerations:** ISO 20022 messages are verbose (10-50x larger than equivalent MT messages). XML parsing overhead is non-trivial at high volumes. Schema validation is essential to catch malformed messages before processing. Many firms implement a canonical internal format and translate to/from ISO 20022 at integration boundaries rather than processing ISO 20022 natively throughout.
 
-**Testing and certification:** SWIFT requires participants to complete a readiness assessment and certification testing before migrating to ISO 20022. Testing covers message format compliance, field population rules, character set handling (ISO 20022 supports extended UTF-8 characters that MT formats did not), and end-to-end transaction flow validation. Firms must maintain parallel processing capability during the coexistence period to handle both MT and MX formats from different counterparties.
+**Testing and certification:** SWIFT requires participants to complete a readiness assessment and certification testing before migrating to ISO 20022. Testing covers message format compliance, field population rules, character set handling (ISO 20022 supports extended UTF-8 characters that MT formats did not), and end-to-end transaction flow validation. With payments coexistence ended (November 2025), parallel MT/MX processing is now only required for message categories still on legacy formats, such as securities messaging.
 
 ### 4. Event-Driven Architecture
 
@@ -250,29 +223,7 @@ Financial integration infrastructure handles sensitive data (PII, account number
 
 ## Worked Examples
 
-### Example 1: Designing a Custodian Integration Architecture for a Multi-Custodian RIA
-
-**Scenario:** An RIA managing $3.5B across 4,200 accounts uses three custodians (Schwab, Fidelity, Pershing). Each custodian provides daily position and transaction files via SFTP in different formats (Schwab CSV, Fidelity fixed-width, Pershing XML). The firm's portfolio management system (Orion) needs consolidated positions by 6:00 AM ET for morning portfolio reviews and drift monitoring. The billing system needs accurate positions monthly for fee calculations. The compliance system needs daily transaction data for trade surveillance. Current state: three separate, independently maintained integration scripts with no shared logic, no monitoring, no error handling beyond email alerts, and frequent Monday-morning reconciliation breaks traced to weekend file processing failures. The scripts were built independently over five years by different developers, none of whom remain at the firm.
-
-**Design Considerations:** The firm designs a layered integration architecture. The ingestion layer deploys per-custodian file monitors on SFTP directories with expected arrival windows (Schwab by 2:00 AM, Fidelity by 3:00 AM, Pershing by 2:30 AM). Late file alerts escalate after 30 minutes past deadline; missing file alerts trigger at the deadline. Each custodian has a dedicated parser translating its native format into the firm's canonical position and transaction models. The transformation layer normalizes custodian-specific security identifiers to the firm's internal IDs via the security master cross-reference table, maps custodian transaction codes to canonical types, and enriches records with account master data (advisor, household, model assignment). The validation layer checks referential integrity (all accounts and securities exist in master data), position balance continuity (prior day ending + transactions = current day ending), and cross-custodian consistency (transfers out of one custodian match transfers into another). The loading layer writes to Orion via its API using idempotent operations keyed on custodian + account + date. Failed records route to a DLQ for operations review. A monitoring dashboard shows file arrival status, processing progress, validation pass rates, and DLQ depth per custodian.
-
-**Analysis:** The canonical data model eliminates the root cause of reconciliation breaks -- each custodian's idiosyncrasies are absorbed at the parsing boundary, and all downstream logic operates on a single unified representation. The idempotent loading design allows safe reprocessing when files are corrected and redelivered. The most significant operational improvement is the monitoring layer: problems are detected and escalated automatically rather than discovered during Monday morning reconciliation. Expected STP rate target: 97% of records loaded without manual intervention, with the remaining 3% routed to the exception queue for operations staff resolution by 7:00 AM. The architecture also simplifies adding a fourth custodian -- only a new parser is required; all downstream transformation, validation, and loading logic is reused unchanged.
-
-### Example 2: Implementing an Event-Driven Trade Notification System
-
-**Scenario:** A broker-dealer executes approximately 5,000 equity orders per day via FIX 4.4 connections to six execution venues (NYSE, Nasdaq, BATS, EDGX, IEX, and a dark pool). Post-trade, multiple downstream systems need execution data: the portfolio management system (for position updates), the compliance engine (for real-time trade surveillance under FINRA Rules 3110 and 3120), the settlement system (to generate DTC/NSCC settlement instructions within the T+1 window), the client reporting portal (for trade confirmations), and the billing system (for commission tracking). Currently, each downstream system polls the OMS database on independent schedules, causing inconsistent data views, missed trades during polling gaps, and excessive database load from six concurrent polling queries running every 30 seconds.
-
-**Design Considerations:** The firm replaces polling with an event-driven architecture using Kafka. The OMS publishes a TradeExecution event to a `trades.executions` topic immediately upon receiving each FIX ExecutionReport (MsgType=8) with ExecType=Fill or PartialFill. The event payload includes the canonical trade representation (internal trade ID, account, security, side, quantity, price, venue, timestamp, FIX execution ID as the idempotency key). Each downstream system runs an independent Kafka consumer group: the PMS consumer updates positions in real time (replacing a 5-minute batch), the compliance consumer evaluates surveillance rules within seconds of execution, the settlement consumer generates NSCC/DTC instructions with full T+1 processing time, the reporting consumer pushes confirmations to the client portal, and the billing consumer tallies commissions. Each consumer maintains its own offset and processes at its own pace. Failed processing routes messages to per-consumer DLQs. The FIX execution ID embedded in the event provides natural idempotency -- consumers that receive a redelivered event detect the duplicate via their processed-event store and skip reprocessing.
-
-**Analysis:** Event-driven delivery eliminates polling lag, reduces database load, and guarantees every consumer sees every trade. Kafka's durable log provides replay capability -- if the compliance engine is offline for maintenance, it catches up by reading from its last committed offset, processing the backlog of trades with no data loss. The partitioning strategy (partition by account) ensures per-account ordering, which is critical for correct position accumulation. The primary operational concern is Kafka cluster reliability; the firm deploys a three-broker cluster with replication factor 3 and monitors consumer lag per group as the key health metric. Schema evolution is managed through a Confluent Schema Registry enforcing backward compatibility -- new fields can be added to the TradeExecution event without breaking existing consumers. The firm retains 7 days of events in Kafka for replay and archives to cold storage for long-term regulatory retention.
-
-### Example 3: Building a Resilient Batch File Processing Pipeline for End-of-Day Settlement
-
-**Scenario:** An asset manager processes end-of-day settlement files from its prime broker (fixed-width format, delivered via SFTP by 7:00 PM ET). The file contains settlement confirmations, fails notifications, and pending instructions for approximately 2,000 transactions daily. A recent incident: the prime broker delivered a corrupted file (truncated mid-record due to a transfer failure on their side). The existing pipeline loaded the partial file without detecting the corruption, causing 400 transactions to vanish from the settlement record. The resulting reconciliation break required three days of manual investigation and reprocessing.
-
-**Design Considerations:** The firm redesigns the pipeline with defense-in-depth validation. Stage 1 (file integrity): verify the PGP signature (authenticates the source and detects tampering), validate the file checksum provided in the companion control file, confirm the record count in the trailer record matches the actual record count, verify the file sequence number is exactly one greater than the last processed file (detect gaps and duplicates). Stage 2 (record validation): parse each fixed-width record according to the specification, validate required fields are present and non-empty, validate field formats (dates, amounts, identifiers), check referential integrity against internal records (trade IDs exist, accounts are active, securities are in the security master). Stage 3 (business validation): net settlement amounts per account reconcile against expected values from internal trade records, settlement status transitions are valid (a trade cannot move from "settled" back to "pending"), and aggregate figures match control totals. Stage 4 (processing): load validated records into the settlement system using database transactions (all-or-nothing per file to prevent partial loads), write each loaded record to an audit table with the source file reference. Stage 5 (confirmation): generate a processing report with record counts by status (loaded, rejected, warning), send to operations. If any Stage 1 check fails, the entire file is rejected and the prime broker is contacted immediately for redelivery. If Stage 2 or 3 checks fail for individual records, those records route to the exception queue while valid records proceed. The pipeline is idempotent -- reprocessing the same file (identified by sequence number) replaces the previous load rather than double-counting.
-
-**Analysis:** The layered validation approach would have caught the original incident at Stage 1 (trailer record count mismatch). More importantly, it prevents an entire category of silent failures. The all-or-nothing loading within database transactions ensures the settlement record is always internally consistent. The idempotent design enables safe reprocessing, which the operations team uses regularly when the prime broker corrects and redelivers files. The companion control file (containing checksum, record count, and sequence number) is negotiated as a contractual delivery requirement with the prime broker -- firms should insist on control files in all custodian and counterparty file specifications. The five-stage pipeline adds approximately 2-3 minutes of processing time compared to direct loading, but this is negligible relative to the hours of manual investigation that a single undetected corruption event causes. Operations teams should run daily metrics on validation pass rates per stage to identify systematic issues (e.g., a rising rate of referential integrity failures may indicate a security master synchronization problem).
+Three end-to-end design scenarios (multi-custodian RIA integration architecture, event-driven trade notification with Kafka, resilient EOD settlement batch pipeline) are in `references/examples.md`. Load that file when designing a concrete integration or when the user asks for a worked architecture example.
 
 ## Common Pitfalls
 
@@ -291,12 +242,12 @@ Financial integration infrastructure handles sensitive data (PII, account number
 
 ## Cross-References
 
-- **reference-data** (Layer 13, data-integration) -- Reference data is the foundation that integrations distribute; security master, client master, and account master provide the identifiers and attributes that integration payloads carry.
-- **market-data** (Layer 13, data-integration) -- Market data feeds are a primary integration domain; real-time and delayed data distribution uses many of the same patterns (pub-sub, fan-out, conflation) described here.
-- **data-quality** (Layer 13, data-integration) -- Integration failures are a leading source of data quality issues; validation, monitoring, and exception handling at integration boundaries are the first line of defense.
-- **settlement-clearing** (Layer 11, trading-operations) -- Settlement relies on inter-system messaging between clearing firms, custodians, and depositories; settlement instruction delivery uses FIX, ISO 20022, and batch file patterns.
-- **exchange-connectivity** (Layer 11, trading-operations) -- Exchange connectivity uses FIX protocol for order routing and market data; this skill covers FIX at the protocol level while exchange-connectivity covers the operational and regulatory context.
-- **order-lifecycle** (Layer 11, trading-operations) -- Order flow across systems (OMS to broker to exchange) requires reliable integration with sequencing, acknowledgment, and error handling.
-- **stp-automation** (Layer 12, client-operations) -- STP depends on well-designed integrations; STP rate is directly constrained by the reliability and data quality of upstream integration feeds.
-- **portfolio-management-systems** (Layer 10, advisory-practice) -- PMS is a hub consuming data from many integrations (custodian positions, market data, reference data, trade confirmations) and is the primary beneficiary of robust integration architecture.
-- **books-and-records** (Layer 9, compliance) -- Integration audit trails (message logs, file processing records, transformation history) are regulatory records subject to retention and examination requirements.
+- **reference-data** (data-integration plugin) -- Reference data is the foundation that integrations distribute; security master, client master, and account master provide the identifiers and attributes that integration payloads carry.
+- **market-data** (data-integration plugin) -- Market data feeds are a primary integration domain; real-time and delayed data distribution uses many of the same patterns (pub-sub, fan-out, conflation) described here.
+- **data-quality** (data-integration plugin) -- Integration failures are a leading source of data quality issues; validation, monitoring, and exception handling at integration boundaries are the first line of defense.
+- **settlement-clearing** (trading-operations plugin) -- Settlement relies on inter-system messaging between clearing firms, custodians, and depositories; settlement instruction delivery uses FIX, ISO 20022, and batch file patterns.
+- **exchange-connectivity** (trading-operations plugin) -- Exchange connectivity uses FIX protocol for order routing and market data; this skill covers FIX at the protocol level while exchange-connectivity covers the operational and regulatory context.
+- **order-lifecycle** (trading-operations plugin) -- Order flow across systems (OMS to broker to exchange) requires reliable integration with sequencing, acknowledgment, and error handling.
+- **stp-automation** (client-operations plugin) -- STP depends on well-designed integrations; STP rate is directly constrained by the reliability and data quality of upstream integration feeds.
+- **portfolio-management-systems** (advisory-practice plugin) -- PMS is a hub consuming data from many integrations (custodian positions, market data, reference data, trade confirmations) and is the primary beneficiary of robust integration architecture.
+- **books-and-records** (compliance plugin) -- Integration audit trails (message logs, file processing records, transformation history) are regulatory records subject to retention and examination requirements.

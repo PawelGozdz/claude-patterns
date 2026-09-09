@@ -20,53 +20,21 @@
  * have no animation and a bare call is harmless, so this is advisory.
  */
 
-const fs = require('fs');
-const path = require('path');
-const { findFlutterConfig } = require('./lib/flutter-config');
-const { readStdinJsonWithRaw } = require('./lib/utils');
+const { runRuleScanner, COMMENT_LINE_C } = require('./lib/rule-scanner');
 
-const COMMENT_LINE = /^\s*(\/\/|\/\*|\*)/;
 const BARE_PUMP_AND_SETTLE = /\.pumpAndSettle\(\s*\)/;
 
-async function main() {
-  const { raw, parsed: input } = await readStdinJsonWithRaw();
-
-  try {
-    const filePath = input.tool_input?.file_path;
-
-    if (!filePath || !filePath.endsWith('_test.dart')) {
-      process.stdout.write(raw);
-      process.exit(0);
-    }
-
-    // Load project config — no config means no checks
-    const loaded = findFlutterConfig(filePath);
-    if (!loaded) {
-      process.stdout.write(raw);
-      process.exit(0);
-    }
-
-    const { config } = loaded;
-    const pumpConfig = config.pumpAndSettle?.checkBareCall;
-    if (!pumpConfig?.enabled) {
-      process.stdout.write(raw);
-      process.exit(0);
-    }
-
-    const resolvedPath = path.resolve(filePath);
-    if (!fs.existsSync(resolvedPath)) {
-      process.stdout.write(raw);
-      process.exit(0);
-    }
-
-    const content = fs.readFileSync(resolvedPath, 'utf8');
-    const lines = content.split('\n');
-    const basename = path.basename(filePath);
-
+runRuleScanner({
+  extensions: '_test.dart',
+  configFinder: 'flutter',
+  section: (config) => (config.pumpAndSettle?.checkBareCall?.enabled ? config.pumpAndSettle.checkBareCall : null),
+  // Własny skaner zamiast `rules`: komunikat ma historyczny format
+  // „at line N in <plik>", inny niż wspólny `<plik>:N —` z reportFindings.
+  // Zmiana brzmienia zerwałaby dopasowania w cudzych filtrach logów.
+  scan: ({ lines, basename }) => {
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
-      if (COMMENT_LINE.test(line)) continue;
-
+      if (COMMENT_LINE_C.test(line)) continue;
       if (BARE_PUMP_AND_SETTLE.test(line)) {
         console.error(
           `[Hook] Flutter: bare pumpAndSettle() at line ${i + 1} in ${basename} — ` +
@@ -76,12 +44,5 @@ async function main() {
         );
       }
     }
-  } catch {
-    // Invalid input — pass through
-  }
-
-  process.stdout.write(raw);
-  process.exit(0);
-}
-
-main();
+  },
+});

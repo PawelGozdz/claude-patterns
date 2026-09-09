@@ -1,0 +1,8 @@
+# Skąd pochodzi rules/common/ — pilnowane przez scripts/sync-ecc-rules.sh.
+upstream: ECC plugin (rules/common)
+upstream_version: "2.0.0"
+upstream_commit: "2bc924faf2f8e893bfe0af86b1931283693c30ae"
+synced_at: "2026-09-07"
+tracked: [agents.md, coding-style.md, git-workflow.md, hooks.md, patterns.md, security.md, testing.md]
+forked: [performance.md, development-workflow.md]
+local_only: [searching.md]

@@ -1,6 +1,23 @@
 # DDD Specifications & Policies Reference
 
 **Tags**: "api:domain"
+**Layer**: Domain
+**Status**: production
+
+## When to Use
+
+**Use this pattern for:**
+- ✅ any business rule that has a `BR-*` id — a Specification is where that rule physically lives, and nothing else may restate it (ADR-0035)
+- ✅ composing 2+ rules that gate one action into a single `PolicyBuilder.must()` chain, so a caller cannot apply half the gate
+- ✅ a rule that must be unit-tested on its own, without constructing the aggregate around it
+- ✅ cross-aggregate validation, where the rule needs two aggregates and belongs to neither — the Policy goes into a domain service
+
+**Do NOT use for:**
+- ❌ format and structure checks (email shape, UUID, string length) — those belong in the Value Object constructor, not a Specification
+- ❌ an invariant of a single aggregate expressible in one or two field checks — keep it inline in the aggregate; a Specification per `if` is noise
+- ❌ rules needing external data fetched at check time — an async Specification with an injected repository is the anti-pattern documented below; load first, then check
+- ❌ naming and composing the gate at the call site — that is `named-policy-pattern.md`
+
 
 **Purpose**: Core patterns for business rules using PolicyBuilder and Specifications
 **Audience**: domain-application-implementer

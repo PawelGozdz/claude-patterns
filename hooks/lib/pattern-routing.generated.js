@@ -25,6 +25,7 @@ const PATH_RULES = [
 
 const FILENAME_RULES = [
   { match: /\.specification\.ts$/, pattern: "domain/specification-policy-pattern.md" }, // ddd/core
+  { match: /\.rate-limits\.ts$/, pattern: "infrastructure/rate-limit-guard-pattern.md" }, // zod
   { match: /\.controller\.ts$/, pattern: "infrastructure/controller-schema-pattern.md" }, // zod
   { match: /\.repository\.ts$/, pattern: "infrastructure/repository-pattern.md" }, // kysely
   { match: /\.aggregate\.ts$/, pattern: "domain/aggregate-pattern.md" }, // ddd/core
@@ -34,6 +35,7 @@ const FILENAME_RULES = [
   { match: /\.entity\.ts$/, pattern: "domain/entity-pattern.md" }, // ddd/core
   { match: /\.mapper\.ts$/, pattern: "infrastructure/mapper-pattern.md" }, // kysely
   { match: /\.policy\.ts$/, pattern: "domain/specification-policy-pattern.md" }, // ddd/core
+  { match: /\.schema\.ts$/, pattern: "infrastructure/zod-schema-validation-pattern.md" }, // zod
   { match: /\.event\.ts$/, pattern: "domain/domain-event-pattern.md" }, // ddd/core
   { match: /\.cron\.ts$/, pattern: "infrastructure/repository-pattern.md" }, // kysely
   { match: /\.job\.ts$/, pattern: "infrastructure/repository-pattern.md" }, // kysely

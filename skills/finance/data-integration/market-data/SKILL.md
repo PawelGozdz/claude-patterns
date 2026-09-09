@@ -5,36 +5,6 @@ description: "Design and manage market data infrastructure — real-time and del
 
 # Market Data
 
-## Purpose
-
-Guide the design and management of market data infrastructure for financial services
-firms. Covers real-time and delayed market data, depth of book levels, consolidated
-tape and direct feeds, data vendor selection and management, market data licensing and
-entitlements, data distribution architecture, and market data quality management.
-Enables building or evaluating market data infrastructure that delivers accurate,
-timely data to trading, portfolio management, and client-facing systems.
-
-## Layer
-
-13 — Data Integration (Reference Data & Integration)
-
-## Direction
-
-both
-
-## When to Use
-
-- A firm is designing or upgrading its market data infrastructure
-- Questions arise about real-time vs delayed data or Level 1/2/3 requirements
-- A firm is evaluating market data vendors (Bloomberg, Refinitiv, ICE, FactSet)
-- Questions involve consolidated tape (SIP) vs direct exchange feeds
-- A firm needs to manage exchange data licensing, entitlements, or usage reporting
-- A technology team is designing ticker plants, fan-out, or distribution architecture
-- Data quality issues arise: stale quotes, missing ticks, erroneous prints
-- Trigger phrases: "market data," "Level 1/2/3," "depth of book," "consolidated tape,"
-  "SIP," "direct feed," "NBBO," "ticker plant," "B-PIPE," "data license," "non-display
-  use," "market data entitlements," "conflation," "tick data," "real-time feed"
-
 ## Core Concepts
 
 ### 1. Market Data Types
@@ -100,6 +70,8 @@ exchange uses different protocols requiring per-exchange parsers.
 | Typical consumer | Buy-side, advisory, retail | Prop trading, market making, HFT |
 
 ### 4. Market Data Vendors
+
+Cost figures throughout this skill reflect 2024-2025 list pricing; verify current pricing with vendors before budgeting.
 
 **Bloomberg:** Terminal ($20K-$25K/user/year), B-PIPE (enterprise real-time feed), Data
 License (bulk EOD/reference data), BEAP (cloud API).
@@ -212,101 +184,7 @@ excessive latency, or quality breach. Downstream systems must handle graceful de
 
 ## Worked Examples
 
-### Example 1: Market Data Infrastructure for a Mid-Size RIA
-
-**Scenario:** A $2B RIA with 3,000 client accounts needs: real-time quotes for 15 portfolio
-managers/traders, delayed data for 40 client service associates, EOD data for portfolio
-accounting and performance, historical data for research, and a client portal with current
-market values.
-
-**Data level assessment:** Level 1 is sufficient. The firm places client orders, not market
-making or HFT. This significantly reduces cost and infrastructure complexity.
-
-**Vendor evaluation:**
-
-| Option | Est. Annual Cost | Key Trade-off |
-|---|---|---|
-| Bloomberg (15 Terminals + Data License) | $375K-$425K | Deep analytics but expensive per-terminal model |
-| Refinitiv Eikon (15 seats) + DataScope | $200K-$275K | Lower cost but smaller user community |
-| FactSet (15 seats) + EOD package | $150K-$225K | Flexible pricing, strong API, less real-time trading depth |
-
-FactSet offers the best balance for this firm: real-time quotes and screening for portfolio
-managers, historical data and factor tools for research, and API access for internal systems.
-
-**Client portal data strategy:** Real-time redistribution would add $100K-$200K/year in
-exchange fees for 3,000 non-professional users. The firm selects 15-minute delayed data,
-eliminating redistribution fees and clearly labeling prices as delayed.
-
-**Exchange licensing:** 15 professional users for real-time Level 1. 40 associates on delayed
-data (no exchange license). Client portal on delayed data (no redistribution fees). One
-administrator handles monthly subscriber reporting through the vendor.
-
-**Analysis:** Total cost of approximately $175K-$250K vs $400K+ for Bloomberg-centric.
-The architecture separates real-time (licensed professionals) from delayed (everyone else),
-minimizing licensing complexity. Annual vendor reviews and usage audits ensure compliance.
-
-### Example 2: Market Data for an Electronic Trading Platform
-
-**Scenario:** A broker-dealer building an institutional equity platform with real-time
-market data display, smart order routing, execution algorithms (TWAP, VWAP), and post-trade
-TCA. Must balance latency, completeness, cost, and Reg NMS compliance.
-
-**The firm needs both SIP and direct feeds:** SIP provides the authoritative NBBO for best
-execution compliance. Direct feeds from major exchanges provide the per-exchange depth that
-smart order routing and algorithms require.
-
-**Feed selection:** Direct feeds from NYSE Arca, Nasdaq TotalView (ITCH), NYSE (Pillar),
-Cboe BZX/EDGX (PITCH), and IEX DEEP — covering the majority of volume. Lower-volume
-exchanges added later if routing analysis indicates missed liquidity.
-
-**Ticker plant design:** (1) Feed handlers per exchange with kernel bypass networking,
-(2) NBBO calculator comparing internal NBBO against SIP for validation, (3) Book builder
-maintaining per-exchange and consolidated order books, (4) Pub-sub publishing layer with
-full-rate feeds for algorithms and conflated feeds for client displays, (5) Historical
-capture for TCA, regulatory records, and strategy research.
-
-**Redistribution licensing:** Displaying real-time data to institutional clients requires
-redistribution agreements with each exchange, monthly professional user reporting, and
-per-user fees — or enterprise redistribution pricing if economical.
-
-**Analysis:** Total market data cost is substantial: direct feeds ($300K-$500K/year),
-SIP ($50K-$100K/year), ticker plant build ($200K-$400K initial), redistribution fees
-($100K-$500K/year). Market data is one of the largest operating costs for an electronic
-platform. Budget for annual exchange fee increases.
-
-### Example 3: Entitlement Management and Exchange Licensing Compliance
-
-**Scenario:** A 200-employee multi-strategy hedge fund (New York, London, Hong Kong)
-receives an NYSE audit notification. Subscriber counts have been estimated rather than
-tracked, and the fund is uncertain whether its risk system's use of NYSE pricing
-constitutes non-display use.
-
-**Data consumption inventory:** The fund catalogs all NYSE data consumers: (1) Display
-users — every Bloomberg Terminal, Eikon desktop, and internal dashboard showing NYSE
-real-time data. Result: 120 professional display users found vs 95 previously reported.
-(2) Non-display applications — algorithmic trading, risk (VaR/Greeks), portfolio valuation,
-OMS, pricing engines. Result: 8 unreported non-display applications identified.
-(3) Derived data — a daily position file with NYSE closing prices sent to the prime broker
-requires review against NYSE's derived data policy.
-
-**Remediation:** File amended subscriber reports (expect back-billing). Register non-display
-applications by category (A: trading, B: internal non-trading, C: derived/redistribution).
-Deploy an entitlement management platform (Bloomberg SSEOMS, Refinitiv DACS, or dedicated
-tools like TRG Screen). Establish provisioning/deprovisioning policies. Automate monthly
-subscriber count generation and reconciliation.
-
-**Financial exposure:**
-
-| Gap | Estimated Back-Billing |
-|---|---|
-| Display under-reporting (25 users x 12 months) | $75K-$150K |
-| Non-display applications (8, some Category A) | $200K-$500K |
-| Potential redistribution (1 flow under review) | $0-$100K |
-| **Total exposure** | **$275K-$750K** |
-
-**Analysis:** Remediation cost ($100K-$200K for entitlement system + ongoing administration)
-is modest vs audit exposure. Market data entitlement management must be a formal compliance
-function. Conduct internal audits annually before exchanges audit externally.
+Three worked scenarios (vendor selection and licensing for a mid-size RIA, SIP-plus-direct-feed architecture for an electronic trading platform, and entitlement/exchange-audit remediation with cost exposure tables) are in `references/examples.md`. Load that file when designing a concrete market data stack, comparing vendor costs, or working an entitlement compliance problem.
 
 ## Common Pitfalls
 
@@ -342,18 +220,18 @@ function. Conduct internal audits annually before exchanges audit externally.
 
 ## Cross-References
 
-- **reference-data** (Layer 13) — Security master and symbology underpin market data
+- **reference-data** (data-integration plugin) — Security master and symbology underpin market data
   infrastructure; market data systems rely on reference data for symbol mapping and
   corporate action processing.
-- **exchange-connectivity** (Layer 13) — Physical and logical exchange connections over
+- **exchange-connectivity** (trading-operations plugin) — Physical and logical exchange connections over
   which market data feeds travel; covers co-location and protocol handling.
-- **trade-execution** (Layer 12) — Smart order routers and execution algorithms consume
+- **trade-execution** (trading-operations plugin) — Smart order routers and execution algorithms consume
   Level 2/3 market data for routing decisions and execution pacing.
-- **portfolio-management-systems** (Layer 10) — PMS platforms consume market data for
+- **portfolio-management-systems** (advisory-practice plugin) — PMS platforms consume market data for
   position valuation, drift monitoring, and rebalancing triggers.
-- **performance-metrics** (Layer 1a) — EOD pricing feeds provide closing prices for daily
+- **performance-metrics** (wealth-management plugin) — EOD pricing feeds provide closing prices for daily
   return calculations; data quality directly affects computed metrics.
-- **volatility-modeling** (Layer 1b) — Implied volatility derived from OPRA options data;
+- **volatility-modeling** (wealth-management plugin) — Implied volatility derived from OPRA options data;
   GARCH/EWMA models calibrated on historical price series from market data infrastructure.
-- **equities** (Layer 2) — Equity market structure and instruments; this skill covers the
+- **equities** (wealth-management plugin) — Equity market structure and instruments; this skill covers the
   data infrastructure delivering equity market information to consuming systems.

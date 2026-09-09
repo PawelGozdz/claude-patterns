@@ -1,0 +1,8 @@
+# Fixture kompozycji: ts-library + approval-gate.
+# approval-gate wnosi `analyze.exit: PAUSE` — ten fixture pilnuje, że twarda
+# bramka approval nie zniknie z materializacji niezauważona.
+project:
+  name: eval-ts-library
+  description: "Fixture ewaluacyjny — biblioteka TS z bramką approval"
+  stack_blocks: [ts-library, approval-gate]
+  language: typescript

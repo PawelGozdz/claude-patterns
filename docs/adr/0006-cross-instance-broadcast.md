@@ -1,10 +1,13 @@
 # ADR 0006 — Cross-instance broadcast: kanał wymiany informacji między instancjami Claude Code
 
-**Status**: accepted (2026-08-09) — wdrożony w całości, pilot w biegu.
+**Status**: **retired (2026-09-07)** — pilot nie przeszedł własnego kryterium go/no-go,
+kod usunięty z repo (K99 w `TASK-KAIZEN-002`). Dokument zostaje jako zapis eksperymentu:
+specyfikacja D0-D11 i odrzucone alternatywy są warte przeczytania, zanim ktokolwiek
+zaproponuje kanał peer-to-peer między instancjami po raz drugi. Powód i dowody —
+sekcja „Wynik pilotu i powód retire" poniżej.
+Poprzedni status: accepted (2026-08-09) — wdrożony w całości, pilot w biegu.
 Wszystkie decyzje D0-D11 zaimplementowane, wszystkie OQ rozstrzygnięte
-(OQ2 należy do `juz-ide-api`, nie do tego repo). **Los ADR-a zależy od kryterium
-go/no-go** z `TASK-BROADCAST-001` (ocena ~2026-08-22): poniżej progu cały system
-jest porzucany, a ten dokument staje się zapisem nieudanego eksperymentu.
+(OQ2 należy do `juz-ide-api`, nie do tego repo).
 Dwie poprawki naniesione po testach: D1 (widoczność odpowiedzi po `reply_to`)
 oraz zawężenie `question`/`answer` do topicu `questions`.
 **Rev**: 2026-08-02 — naniesiono poprawki z review architektonicznego: ACK jako kursor
@@ -707,6 +710,46 @@ odsyła do `RUN-STATE.md`, nigdy odwrotnie.
 
 Faza 1 jest właściwym pilotażem: jeśli agenty nie zaczną pisać wartościowych wpisów,
 fazy 2-4 nie mają czego przenosić i całość należy porzucić — kosztem jednego pliku i skilla.
+
+---
+
+## Wynik pilotu i powód retire (2026-09-07)
+
+Kryterium z fazy 1 brzmiało: **≥1 wpis, który realnie zapobiegł pracy na nieaktualnym
+założeniu, i ≥30% wpisów ocenionych przez człowieka jako trafne**, ocena po dwóch tygodniach
+(~2026-08-22). Ocena nigdy się nie odbyła, bo nie było czego oceniać.
+
+Stan zastany w dniu retire (dowody: `docs/audits/2026-09-07-repo-audit.md`):
+
+- `/opt/projects/.claude-swarm/STOP` z **2026-08-09**, powód zapisany w samym pliku:
+  „koszt sesji >20 USD przy długim ciągu pustych przebiegów bez sygnału od użytkownika".
+  Kill-switch padł jedenaście dni przed terminem oceny — pilot zatrzymał koszt, nie werdykt.
+- **Zero wpisów.** `inbox/` i `claims/` puste, ani jednego pliku `events-*.jsonl`.
+  `cli.js doctor` tuż przed usunięciem: „Kanał: 0 wpisów w oknie 3 segmentów,
+  0 pominiętych linii".
+- Mimo to hooki **dalej chodziły**: pliki `state/task-emit-*.json` sześciu instancji miały
+  mtime z 2026-09-04…09-07, czyli `broadcast-inbox-inject.js` odpalał się na każdy prompt,
+  a `broadcast-task-emit.js` na każdą edycję — w pięciu satelitach naraz, przez miesiąc,
+  dla kanału bez ani jednej wiadomości.
+- Koszt utrzymania po drugiej stronie: 9 modułów `hooks/lib/broadcast/`, 3 hooki, 2 komendy,
+  skill stand-by, **47 testów** w `tests/flow-evals/broadcast/` (zielonych do ostatniego dnia)
+  i bramka w `pre-commit-guards.mjs` — utrzymywane dla zera konsumentów.
+
+**Decyzja: RETIRE.** Hipotezy z fazy 1 („czy agenty będą pisać sensowne `discovery`") nikt
+nie obalił ani nie potwierdził — została porzucona. System, który nie dowiózł dowodu w oknie,
+na jakie sam się umówił, nie ma podstawy, żeby dalej odpalać dwa procesy node na każdy prompt
+w pięciu repozytoriach.
+
+Co zostało zrobione: wpięcia wycięte z `settings.local.json` sześciu instancji
+(`cli.js install-hooks --remove`, kopie `.bak-2026-09-07` obok), kod usunięty z repo.
+
+Gdzie leży kod: pełna implementacja jest w historii gita — ostatni commit dotykający
+`hooks/lib/broadcast/` to **`4d4eac5181cdd45514a26d6d61e3956786d7c08a`**. Odtworzenie:
+`git checkout 4d4eac5 -- hooks/lib/broadcast hooks/broadcast-*.js commands/broadcast*.md skills/orchestration/broadcast-standby tests/flow-evals/broadcast templates/broadcast docs/BROADCAST.md`.
+
+Czego ten retire NIE usuwa: `/opt/projects/.claude-swarm/` (stan runtime, poza repami)
+oraz `.claude/config/broadcast.yml` w sześciu instancjach — pliki nieśledzone przez gita,
+do skasowania ręcznie przez operatora.
 
 ---
 

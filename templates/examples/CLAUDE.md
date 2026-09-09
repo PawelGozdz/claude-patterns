@@ -87,9 +87,9 @@ DEBUG=false
 
 ## Available Commands
 
-- `/tdd` - Test-driven development workflow
-- `/plan` - Create implementation plan
-- `/code-review` - Review code quality
+- skill `ecc:tdd-workflow` - Test-driven development workflow
+- `/ecc:plan` - Create implementation plan
+- `/ecc:code-review` - Review code quality
 - `/build-fix` - Fix build errors
 
 ## Git Workflow

@@ -5,25 +5,6 @@ description: "Execute a complete tax-loss harvesting workflow from candidate ide
 
 # Tax-Loss Harvesting
 
-## Purpose
-Execute a complete tax-loss harvesting (TLH) workflow from candidate identification through post-harvest monitoring. Provides decision criteria, quantitative thresholds, replacement security selection logic, wash-sale compliance tracking across accounts, and household-level coordination that go beyond the overview in the tax-efficiency skill.
-
-## Layer
-5 — Policy and Planning
-
-## Direction
-both
-
-## When to Use
-- Scanning a portfolio for unrealized losses that exceed a materiality threshold
-- Building a gain/loss budget for the current tax year to determine target harvest amount
-- Selecting replacement securities that maintain factor exposure without triggering wash-sale rules
-- Tracking the 61-day wash-sale window across taxable, IRA, and spouse accounts
-- Generating a TLH trade list coordinated with rebalancing
-- Calculating the after-tax value of a proposed harvest including state taxes and NIIT
-- Monitoring replacement positions and planning swap-back timing after the wash-sale window closes
-- Preparing TLH opportunity summaries for client reviews
-
 ## Core Concepts
 
 ### Candidate Identification
@@ -39,7 +20,7 @@ Before harvesting, build the year-to-date tax budget:
 1. **Realized gains YTD:** Sum all short-term and long-term capital gains already realized (including fund distributions).
 2. **Planned gain exposure:** Estimate gains from pending rebalancing trades, planned liquidations, or expected fund capital gain distributions.
 3. **Loss carryforward balance:** Check prior-year unused capital loss carryforwards (these offset gains before new harvests do).
-4. **Target harvest amount:** Target Harvest = (Realized Gains YTD + Planned Gains) - Loss Carryforward - $3,000 ordinary income offset. Harvest at least this amount to zero out the current-year tax bill; harvest more to build carryforward for future years.
+4. **Target harvest amount:** Target Harvest = (Realized Gains YTD + Planned Gains) - Loss Carryforward + $3,000 ordinary income offset. Harvesting this amount offsets all expected gains AND captures the full $3,000 annual deduction against ordinary income; harvest more to build carryforward for future years.
 
 ### Replacement Security Selection
 The replacement must maintain market exposure without being "substantially identical":
@@ -69,8 +50,8 @@ Translate candidates into an actionable trade list:
 Quantify the dollar value of each proposed harvest:
 
 - **Federal rate selection:** Short-term losses offset short-term gains first (up to 37% ordinary rate). Long-term losses offset long-term gains (15-20% rate). Net losses of either type can cross over to offset the other, then up to $3,000 offsets ordinary income.
-- **State tax impact:** Most states tax capital gains as ordinary income (rates 0-13.3%). Include state tax savings in the calculation; for a California resident at the 13.3% bracket, state tax roughly doubles the benefit of each harvest.
-- **NIIT interaction:** The 3.8% Net Investment Income Tax (IRC Section 1411) applies to the lesser of net investment income or MAGI exceeding $250,000 (MFJ). Harvested losses reduce net investment income, potentially eliminating NIIT exposure.
+- **State tax impact:** Most states tax capital gains as ordinary income (rates range from 0% up to California's top statutory rate on investment income of 13.3%; California's effective top rate on wage income is 14.4%+ since the 2024 SDI uncapping). Include state tax savings in the calculation; for a California resident at the 13.3% bracket, state tax roughly doubles the benefit of each harvest.
+- **NIIT interaction:** The 3.8% Net Investment Income Tax (IRC Section 1411) applies to the lesser of net investment income or MAGI exceeding $250,000 (MFJ) — a statutory threshold that is not inflation-indexed. Harvested losses reduce net investment income, potentially eliminating NIIT exposure.
 
 ### Post-Harvest Monitoring
 After executing the harvest:
@@ -96,7 +77,7 @@ TLH across a household with multiple accounts requires centralized tracking:
 | Break-Even Holding Period | T_be = Tax_Savings / (Annual_Tracking_Error_Cost + Annual_Expense_Delta) | How long replacement can be held before costs exceed benefit |
 | Wash-Sale Adjusted Basis | New_Basis = Replacement_Purchase_Price + Disallowed_Loss | Cost basis when wash sale is triggered |
 | Annual TLH Capacity | Capacity = Portfolio_Value * Expected_Volatility * Loss_Capture_Rate | Estimate of harvestable losses per year |
-| Target Harvest Amount | Target = Realized_Gains_YTD + Planned_Gains - Loss_Carryforward - 3000 | Minimum harvest to zero out current-year tax |
+| Target Harvest Amount | Target = Realized_Gains_YTD + Planned_Gains - Loss_Carryforward + 3000 | Harvest needed to offset all gains plus the $3,000 ordinary-income deduction |
 
 ## Worked Examples
 
@@ -132,19 +113,19 @@ TLH across a household with multiple accounts requires centralized tracking:
 
 **Solution:**
 1. **Gain/loss budget:**
-   - Total expected gains: $18,000 LT + $5,000 ST + $4,000 LT (planned) = $22,000 LT + $5,000 ST
+   - Total expected gains: $18,000 LT + $5,000 ST + $4,000 LT (planned) = $22,000 LT + $5,000 ST = $27,000
    - Loss carryforward: $0
-   - Target harvest: ($22,000 + $5,000) - $0 - $3,000 = **$24,000** to fully offset gains and capture the $3,000 ordinary income deduction
+   - Target harvest: $27,000 - $0 + $3,000 = **$30,000** to fully offset gains and capture the $3,000 ordinary income deduction
 2. **Candidate ranking by tax benefit:**
    - Position B: $6,500 ST * (37% + 5% + 3.8%) = $6,500 * 45.8% = **$2,977** (highest rate — harvest first)
    - Position A: $14,000 LT * (20% + 5% + 3.8%) = $14,000 * 28.8% = **$4,032** (largest absolute benefit)
    - Position C: $2,100 LT * 28.8% = **$605**
-3. **Harvest plan:** Harvest all three: $14,000 + $6,500 + $2,100 = $22,600 in total losses
+3. **Harvest plan:** Harvest all three: $14,000 + $6,500 + $2,100 = $22,600 in total losses — $7,400 short of the $30,000 target, so every harvested dollar is consumed offsetting gains and the $3,000 ordinary-income offset is not reached
    - $5,000 ST losses offset $5,000 ST gains at 45.8% = $2,290 saved
    - $1,500 remaining ST losses cross over to offset LT gains at 28.8% = $432 saved
-   - $16,100 LT losses offset $16,100 of $22,000 LT gains at 28.8% = $4,637 saved
-   - Remaining $5,900 LT gains still taxable; $3,000 ordinary income offset not reached (all losses consumed by gains)
-   - **Total tax savings: $7,359**
+   - $16,100 LT losses ($14,000 A + $2,100 C) offset $16,100 of $22,000 LT gains at 28.8% = $4,637 saved
+   - Remaining taxable LT gains: $22,000 - $16,100 - $1,500 = **$4,400** still taxable
+   - **Total tax savings: $2,290 + $432 + $4,637 = $7,359**
 4. **Coordinate with rebalancing:** Position A is also 2% overweight — its TLH sell doubles as a rebalance sell, saving one round-trip trade.
 
 ### Example 3: Wash-Sale Violation Across Accounts
@@ -174,10 +155,11 @@ TLH across a household with multiple accounts requires centralized tracking:
 - Ignoring state tax differences when calculating harvest value — states with no income tax (FL, TX, NV) reduce the benefit by 5-13 percentage points versus high-tax states
 
 ## Cross-References
-- **tax-efficiency** (wealth-management plugin, Layer 5): broader tax-aware investing context; TLH is one strategy within the overall tax-efficiency framework
-- **rebalancing** (wealth-management plugin, Layer 4): TLH trades should be coordinated with rebalancing to minimize total transaction count
-- **investment-suitability** (compliance plugin, Layer 9): replacement securities must still satisfy suitability requirements
-- **investment-policy** (wealth-management plugin, Layer 5): IPS may specify TLH policy parameters (minimum loss threshold, approved replacement pairs)
-- **performance-attribution** (wealth-management plugin, Layer 5): tax alpha from TLH should be tracked and attributed separately
-- **client-review-prep** (advisory-practice plugin, Layer 10): TLH opportunities are flagged during periodic client review preparation
-- **financial-planning-workflow** (advisory-practice plugin, Layer 10): TLH is a specific tax recommendation that may emerge from the financial plan
+- **tax-efficiency** (wealth-management plugin): broader tax-aware investing context; TLH is one strategy within the overall tax-efficiency framework
+- **rebalancing** (wealth-management plugin): TLH trades should be coordinated with rebalancing to minimize total transaction count
+- **investment-suitability** (compliance plugin): replacement securities must still satisfy suitability requirements
+- **investment-policy** (wealth-management plugin): IPS may specify TLH policy parameters (minimum loss threshold, approved replacement pairs)
+- **performance-attribution** (wealth-management plugin): tax alpha from TLH should be tracked and attributed separately
+- **client-review-prep** (advisory-practice plugin): TLH opportunities are flagged during periodic client review preparation
+- **financial-planning-workflow** (advisory-practice plugin): TLH is a specific tax recommendation that may emerge from the financial plan
+- **equity-compensation** (wealth-management plugin): recurring RSU vests and ESPP purchases can trigger wash sales against losses harvested in employer stock

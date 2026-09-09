@@ -10,7 +10,7 @@ description: |
   2. "How to structure state for this complex form?"
   3. "Which provider type for this use case?"
   4. "How to handle deep linking with auth guards?"
-tools: Read, mcp__zen__thinkdeep, mcp__zen__planner, mcp__zen__analyze, StructuredOutput
+tools: Read, StructuredOutput
 disallowedTools: Grep, Glob, Write, Edit, MultiEdit, NotebookEdit, Task, WebFetch
 model: sonnet
 permissionMode: plan
@@ -144,3 +144,9 @@ Feature has >15 files?
 **Role**: Advisory/Specialist (does NOT implement code)
 **Model**: Sonnet
 **Reports to**: User or project orchestrator
+
+---
+
+## Changelog
+
+- 2026-09-08 — removed `mcp__zen__thinkdeep`, `mcp__zen__planner`, `mcp__zen__analyze` from `tools` (K56, TASK-KAIZEN-002): no satellite project has a `zen` MCP server in `.mcp.json`, so every such call failed; do the analysis directly with the remaining tools

@@ -1,0 +1,18 @@
+# Finance Patterns — metadane katalogu.
+# Schemat: jeden dla całego patterns/** (K84, TASK-KAIZEN-002). Walidator:
+# node scripts/validate-metadata.mjs
+category: finance
+version: "1.0.0"
+maturity: stable
+last_verified: 2026-05-07
+stack: "Claude Code (84 skille finansowe zvendorowane z JoelLewis/finance_skills)"
+source_projects: "claude-patterns"
+patterns_count: 2
+description: >-
+  Dwa wzorce organizacyjne wyprowadzone z dużej kolekcji skilli domenowych:
+  organizacja 2-D (plugin × poziom wiedzy 0-7), uogólnialna poza finanse, oraz
+  6-kategoryjny system kontekstowych zastrzeżeń regulacyjnych zastępujący
+  boilerplate "to nie jest porada finansowa", który czytelnik i tak pomija.
+
+layer: cross-layer
+stack_support: [generic]

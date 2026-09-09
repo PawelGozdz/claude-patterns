@@ -81,6 +81,12 @@ Haiku ($0.25/M input, $1.25/M output) = **60x cheaper**.
 
 ### PHASE 1: File Discovery & Examples (ALWAYS DELEGATE)
 
+**`retrieve_code` returns a pointer, not content** (TASK-RAG-004 R1, 2026-09-07). `source` is a
+path RELATIVE to the repo root — open it with Read in YOUR working tree and work on what you read
+from disk. `evidence` is 12 lines justifying the hit; do NOT copy it — the index is built from
+`origin/develop` (`indexedSha`), your branch differs. Decision rule: unknown symbol name →
+`retrieve_code`; known → straight to Read/Grep.
+
 **Decision rule — `retrieve_code` (MCP tool) vs Explore/Grep/Read:**
 - **Unknown exact symbol/file name** (you know the CAPABILITY you need — e.g. "how do we handle
   optimistic locking in another aggregate" — but not where it lives) → call `retrieve_code` first.
@@ -197,7 +203,7 @@ Task(codebase-explorer) = $0.05 per search **Savings**: 40-100x
 
 - **Explore agent (Task with subagent_type='Explore')**: Cost-efficient code searches (Haiku model)
 - **@backend-technology-expert**: Performance questions
-- **@security-privacy-architect**: GDPR compliance
+- **@ecc:security-reviewer**: GDPR compliance
 
 ---
 
@@ -398,7 +404,7 @@ If unclear → **CONSULT @product-owner**
 - Tests → @test-implementer
 - Repositories → @infrastructure-implementer
 - Strategic DDD → @ddd-application-expert
-- Security design → @security-privacy-architect
+- Security design → @ecc:security-reviewer
 
 ---
 
@@ -488,7 +494,7 @@ already uses for its own "Controller / Repository / Test Patterns" section):**
 - **@ddd-application-expert**: Aggregate boundaries, bounded contexts
 - **@product-owner**: Business value, Full vs MVP
 - **@backend-technology-expert**: Performance, scalability
-- **@security-privacy-architect**: GDPR, security design
+- **@ecc:security-reviewer**: GDPR, security design
 
 ---
 
@@ -509,3 +515,10 @@ orchestration.
 
 **When in doubt**: Use Explore agent (Task with subagent_type='Explore') to study reference implementations,
 then ask strategic advisors.
+
+---
+
+## Changelog
+
+- 2026-09-08 — repointed `@security-privacy-architect` to `@ecc:security-reviewer`: the agent is retired (K97, ADR 0009 — generic OWASP/GDPR advisory is covered by ECC; the VETO verifiers stay ours)
+- 2026-09-07 — `retrieve_code` contract: `source` is repo-relative, `evidence` is proof not content, index from `origin/develop` (TASK-RAG-004 R1 / K79, TASK-KAIZEN-002)

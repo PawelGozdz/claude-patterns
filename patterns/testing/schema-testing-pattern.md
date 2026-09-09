@@ -2,6 +2,8 @@
 
 **Tags**: "api:tests:contract", "api:api-surface"
 
+**Layer**: Testing
+
 ## 🎯 Problem
 
 **Zod schemas need comprehensive testing to prevent security vulnerabilities and runtime errors.**
@@ -317,7 +319,7 @@ it('should accept page number', () => {
 - `src/shared/database/schemas/__tests__/postgis.schemas.test.ts` - Real example
 - `project-orchestration/ddd/patterns/schema-testing-pattern.md` - Full template
 
-## 🎯 When to Use
+## When to Use 🎯
 
 **Use Schema Testing Pattern for:**
 

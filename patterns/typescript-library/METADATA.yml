@@ -1,8 +1,17 @@
+# TypeScript Library Patterns — metadane katalogu.
+# Schemat: jeden dla całego patterns/** (K84, TASK-KAIZEN-002). Walidator:
+# node scripts/validate-metadata.mjs
 category: typescript-library
-version: 1.0.0
+version: "1.0.1"
 maturity: production
 last_verified: 2026-03-31
-stack: TypeScript 5.x, Nx, Vitest, pnpm
-source_project: vytches-ddd
+stack: "TypeScript 5.x, Nx, Vitest, pnpm"
+source_projects: "vytches-ddd"
 patterns_count: 5
-description: Patterns for shared TypeScript npm libraries in Nx monorepos
+description: >-
+  Wzorce dla publikowanej biblioteki TS w monorepo Nx: świadomie projektowane
+  publiczne API, zgodność wsteczna i semver, build i publikacja (ESM/CJS,
+  peer deps), testy kontraktowe i granice pakietów.
+
+layer: architecture
+stack_support: [typescript]

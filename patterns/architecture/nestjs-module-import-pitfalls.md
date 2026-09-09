@@ -2,6 +2,24 @@
 
 **Tags**: "api:platform:nestjs"
 
+**Layer**: Infrastructure
+**Status**: Production (5 incidents documented: TS-MENTIONS-001, TS-DISCORD-001)
+
+## When to Use
+
+**Use this pattern for:**
+- ✅ App hangs silently after "X dependencies initialized" with no error (Problem 1).
+- ✅ A constructor parameter is `undefined` at runtime despite being injected (Problem 2).
+- ✅ A boolean env var (`FOO=false`) behaves as `true` (Problem 3).
+- ✅ `@Interval()`/`@Cron()`/`@Timeout()` decorated methods never fire (Problem 4).
+- ✅ A `BullMQ` processor logs under the wrong context / loses structured fields (Problem 5).
+- ✅ Reviewing a new API module's `imports:` array or a class extending `BaseQueueProcessor`.
+
+**Do NOT use for:**
+- ❌ General NestJS DI questions unrelated to these five symptoms — see NestJS docs.
+- ❌ Runtime errors thrown with a clear stack trace pointing at business logic (these are
+  silent-failure pitfalls, not general error debugging).
+
 ## Problem 1 — Duplicate ContextsModule import causes silent startup hang
 
 ### Symptom

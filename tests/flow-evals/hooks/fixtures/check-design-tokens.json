@@ -1,0 +1,77 @@
+[
+  {
+    "name": "design-tokens-color-literal-warns",
+    "hook": "check-design-tokens.js",
+    "payload": {
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "app/lib/presentation/widgets/card.dart"
+      }
+    },
+    "setup": {
+      "cwd": true,
+      "files": {
+        "flutter-hooks.json": "{\"featurePath\": \"lib/features\", \"purity\": {\"noInfraImportLayers\": [\"domain\", \"application\"], \"forbiddenImports\": [\"package:flutter/\", \"package:dio/\", \"package:hive/\", \"package:shared_preferences/\", \"package:http/\", \"dart:io\", \"dart:html\"]}, \"riverpod\": {\"checkRefRead\": {\"enabled\": true, \"filePatterns\": [\"**/presentation/**/*.dart\"]}}, \"tokens\": {\"checkInlineStyles\": {\"enabled\": true, \"filePatterns\": [\"**/presentation/**/*.dart\"]}}, \"designTokens\": {\"enabled\": true, \"pathContains\": [\"/lib/\"], \"definitionPaths\": [\"lib/core/design/tokens/\", \"lib/core/theme/\"], \"allowedColors\": [\"Colors.transparent\"], \"checks\": {\"colorLiterals\": true, \"materialColors\": true, \"materialIcons\": true, \"hardShadows\": true}}, \"logging\": {\"checkDebugPrintGuard\": {\"enabled\": true, \"pathContains\": [\"/lib/\"], \"allowFiles\": []}}, \"l10n\": {\"enabled\": true, \"checkHardcodedStrings\": {\"filePatterns\": [\"**/presentation/**/*.dart\"], \"forbiddenPatterns\": [\"Text\\\\('[A-ZĄĆĘŁŃÓŚŹŻ]\", \"text: '[A-ZĄĆĘŁŃÓŚŹŻ]\", \"title: '[A-ZĄĆĘŁŃÓŚŹŻ]\", \"label: '[A-ZĄĆĘŁŃÓŚŹŻ]\", \"hintText: '[A-ZĄĆĘŁŃÓŚŹŻ]\", \"tooltip: '[A-ZĄĆĘŁŃÓŚŹŻ]\"], \"excludePaths\": [\"/l10n/\", \"/generated/\"], \"domainLayers\": {\"enabled\": true, \"filePatterns\": [\"**/domain/entities/**/*.dart\", \"**/domain/failures/**/*.dart\"]}}}, \"pumpAndSettle\": {\"checkBareCall\": {\"enabled\": true}}, \"interactiveFocus\": {\"enabled\": true, \"filePatterns\": [\"**/presentation/**/*.dart\"]}, \"skipPatterns\": [\"_test.dart\", \".g.dart\", \".freezed.dart\", \".mock.dart\"]}",
+        "app/lib/presentation/widgets/card.dart": "class C {\n  final c = Color(0xFF112233);\n}\n"
+      }
+    },
+    "expect": "pass",
+    "expect_stderr": "literał koloru"
+  },
+  {
+    "name": "design-tokens-semantic-token-silent",
+    "hook": "check-design-tokens.js",
+    "payload": {
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "app/lib/presentation/widgets/card.dart"
+      }
+    },
+    "setup": {
+      "cwd": true,
+      "files": {
+        "flutter-hooks.json": "{\"featurePath\": \"lib/features\", \"purity\": {\"noInfraImportLayers\": [\"domain\", \"application\"], \"forbiddenImports\": [\"package:flutter/\", \"package:dio/\", \"package:hive/\", \"package:shared_preferences/\", \"package:http/\", \"dart:io\", \"dart:html\"]}, \"riverpod\": {\"checkRefRead\": {\"enabled\": true, \"filePatterns\": [\"**/presentation/**/*.dart\"]}}, \"tokens\": {\"checkInlineStyles\": {\"enabled\": true, \"filePatterns\": [\"**/presentation/**/*.dart\"]}}, \"designTokens\": {\"enabled\": true, \"pathContains\": [\"/lib/\"], \"definitionPaths\": [\"lib/core/design/tokens/\", \"lib/core/theme/\"], \"allowedColors\": [\"Colors.transparent\"], \"checks\": {\"colorLiterals\": true, \"materialColors\": true, \"materialIcons\": true, \"hardShadows\": true}}, \"logging\": {\"checkDebugPrintGuard\": {\"enabled\": true, \"pathContains\": [\"/lib/\"], \"allowFiles\": []}}, \"l10n\": {\"enabled\": true, \"checkHardcodedStrings\": {\"filePatterns\": [\"**/presentation/**/*.dart\"], \"forbiddenPatterns\": [\"Text\\\\('[A-ZĄĆĘŁŃÓŚŹŻ]\", \"text: '[A-ZĄĆĘŁŃÓŚŹŻ]\", \"title: '[A-ZĄĆĘŁŃÓŚŹŻ]\", \"label: '[A-ZĄĆĘŁŃÓŚŹŻ]\", \"hintText: '[A-ZĄĆĘŁŃÓŚŹŻ]\", \"tooltip: '[A-ZĄĆĘŁŃÓŚŹŻ]\"], \"excludePaths\": [\"/l10n/\", \"/generated/\"], \"domainLayers\": {\"enabled\": true, \"filePatterns\": [\"**/domain/entities/**/*.dart\", \"**/domain/failures/**/*.dart\"]}}}, \"pumpAndSettle\": {\"checkBareCall\": {\"enabled\": true}}, \"interactiveFocus\": {\"enabled\": true, \"filePatterns\": [\"**/presentation/**/*.dart\"]}, \"skipPatterns\": [\"_test.dart\", \".g.dart\", \".freezed.dart\", \".mock.dart\"]}",
+        "app/lib/presentation/widgets/card.dart": "class C {\n  final c = AppColors.surface;\n}\n"
+      }
+    },
+    "expect": "pass",
+    "expect_silent": true
+  },
+  {
+    "name": "design-tokens-definition-file-exempt",
+    "hook": "check-design-tokens.js",
+    "payload": {
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "app/lib/core/theme/palette.dart"
+      }
+    },
+    "setup": {
+      "cwd": true,
+      "files": {
+        "flutter-hooks.json": "{\"featurePath\": \"lib/features\", \"purity\": {\"noInfraImportLayers\": [\"domain\", \"application\"], \"forbiddenImports\": [\"package:flutter/\", \"package:dio/\", \"package:hive/\", \"package:shared_preferences/\", \"package:http/\", \"dart:io\", \"dart:html\"]}, \"riverpod\": {\"checkRefRead\": {\"enabled\": true, \"filePatterns\": [\"**/presentation/**/*.dart\"]}}, \"tokens\": {\"checkInlineStyles\": {\"enabled\": true, \"filePatterns\": [\"**/presentation/**/*.dart\"]}}, \"designTokens\": {\"enabled\": true, \"pathContains\": [\"/lib/\"], \"definitionPaths\": [\"lib/core/design/tokens/\", \"lib/core/theme/\"], \"allowedColors\": [\"Colors.transparent\"], \"checks\": {\"colorLiterals\": true, \"materialColors\": true, \"materialIcons\": true, \"hardShadows\": true}}, \"logging\": {\"checkDebugPrintGuard\": {\"enabled\": true, \"pathContains\": [\"/lib/\"], \"allowFiles\": []}}, \"l10n\": {\"enabled\": true, \"checkHardcodedStrings\": {\"filePatterns\": [\"**/presentation/**/*.dart\"], \"forbiddenPatterns\": [\"Text\\\\('[A-ZĄĆĘŁŃÓŚŹŻ]\", \"text: '[A-ZĄĆĘŁŃÓŚŹŻ]\", \"title: '[A-ZĄĆĘŁŃÓŚŹŻ]\", \"label: '[A-ZĄĆĘŁŃÓŚŹŻ]\", \"hintText: '[A-ZĄĆĘŁŃÓŚŹŻ]\", \"tooltip: '[A-ZĄĆĘŁŃÓŚŹŻ]\"], \"excludePaths\": [\"/l10n/\", \"/generated/\"], \"domainLayers\": {\"enabled\": true, \"filePatterns\": [\"**/domain/entities/**/*.dart\", \"**/domain/failures/**/*.dart\"]}}}, \"pumpAndSettle\": {\"checkBareCall\": {\"enabled\": true}}, \"interactiveFocus\": {\"enabled\": true, \"filePatterns\": [\"**/presentation/**/*.dart\"]}, \"skipPatterns\": [\"_test.dart\", \".g.dart\", \".freezed.dart\", \".mock.dart\"]}",
+        "app/lib/core/theme/palette.dart": "const surface = Color(0xFF112233);\n"
+      }
+    },
+    "expect": "pass",
+    "expect_silent": true
+  },
+  {
+    "name": "design-tokens-no-config-silent",
+    "hook": "check-design-tokens.js",
+    "payload": {
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "app/lib/presentation/widgets/card.dart"
+      }
+    },
+    "setup": {
+      "cwd": true,
+      "files": {
+        "app/lib/presentation/widgets/card.dart": "class C {\n  final c = Color(0xFF112233);\n}\n"
+      }
+    },
+    "expect": "pass",
+    "expect_silent": true
+  }
+]

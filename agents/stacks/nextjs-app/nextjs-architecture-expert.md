@@ -10,7 +10,7 @@ description: |
   2. "How to structure caching with 'use cache'?"
   3. "Proxy.ts vs server-side auth check?"
   4. "How to handle this data fetching pattern?"
-tools: Read, mcp__zen__thinkdeep, mcp__zen__planner, mcp__zen__analyze, StructuredOutput
+tools: Read, StructuredOutput
 disallowedTools: Grep, Glob, Write, Edit, MultiEdit, NotebookEdit, Task, WebFetch
 model: sonnet
 permissionMode: plan
@@ -121,3 +121,9 @@ Is content static or rarely changes?
 - revalidateTag() without cacheLife profile argument
 - Client-side fetching when Server Component fetch would work
 - Manual useMemo/useCallback (React Compiler handles this)
+
+---
+
+## Changelog
+
+- 2026-09-08 — removed `mcp__zen__thinkdeep`, `mcp__zen__planner`, `mcp__zen__analyze` from `tools` (K56, TASK-KAIZEN-002): no satellite project has a `zen` MCP server in `.mcp.json`, so every such call failed; do the analysis directly with the remaining tools

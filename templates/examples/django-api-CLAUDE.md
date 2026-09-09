@@ -286,18 +286,18 @@ pytest --lf
 
 ```bash
 # Planning
-/plan "Add order refund system with Stripe integration"
+/ecc:plan "Add order refund system with Stripe integration"
 
 # Development with TDD
-/tdd                    # pytest-based TDD workflow
+/ecc:python-review + pytest   # TDD: skill ecc:tdd-workflow
 
 # Review
 /python-review          # Python-specific code review
 /security-scan          # Django security audit
-/code-review            # General quality check
+/ecc:code-review        # General quality check
 
 # Verification
-/verify                 # Build, lint, test, security scan
+/ecc:quality-gate       # Build, lint, test, security scan
 ```
 
 ## Git Workflow

@@ -5,25 +5,6 @@ description: "Analyze currency markets, exchange rate mechanics, and FX risk man
 
 # Currencies and FX
 
-## Purpose
-Analyze currency markets including spot and forward exchange rates, interest rate parity relationships, FX hedging mechanics, cross rate derivation, and carry trade dynamics. This skill is essential for international investing, currency risk management, and understanding how interest rate differentials drive forward exchange rates.
-
-## Layer
-2 — Asset Classes
-
-## Direction
-both
-
-## When to Use
-- User asks about currency analysis, exchange rates, or FX markets
-- User asks about FX hedging or managing currency risk in international portfolios
-- User asks about interest rate parity (covered or uncovered)
-- User asks about carry trades or currency carry strategies
-- User asks about cross rates or currency quoting conventions
-- User asks about forward exchange rates or forward premium/discount
-- User asks about purchasing power parity (PPP) or real exchange rates
-- User asks about currency overlay programs
-
 ## Core Concepts
 
 ### Spot Rate
@@ -119,10 +100,17 @@ Because EUR rates (3%) are lower than USD rates (5%), the EUR investor earns a p
 - CIP holds by arbitrage; UIP is a theory that often fails empirically — do not assume forward rates predict future spot rates
 
 ## Cross-References
-- **historical-risk** (wealth-management plugin, Layer 1a): return measurement in multi-currency portfolios
-- **equities** (wealth-management plugin, Layer 2): international equity investing and currency effects
-- **fixed-income-sovereign** (wealth-management plugin, Layer 2): international bond investing and rate differentials
-- **portfolio-construction** (wealth-management plugin, Layer 3): currency hedging decisions in portfolio context
+- **historical-risk** (wealth-management plugin): return measurement in multi-currency portfolios
+- **equities** (wealth-management plugin): international equity investing and currency effects
+- **fixed-income-sovereign** (wealth-management plugin): international bond investing and rate differentials
+- **asset-allocation** (wealth-management plugin): currency hedging decisions in portfolio context
 
-## Reference Implementation
-See `scripts/currencies_and_fx.py` for computational helpers.
+## Running the Script
+
+```bash
+uv run scripts/currencies_and_fx.py            # run the demo (uses PEP 723 inline deps)
+uv run scripts/currencies_and_fx.py --verify   # check demo outputs against the worked examples (exit 1 on mismatch)
+python3 scripts/currencies_and_fx.py            # alternative (stdlib only, no installs needed)
+```
+
+The demo prints the calculations covered above; its values match the worked examples in this skill. Run `--help` for a list of the classes and functions. For programmatic use, import the module rather than running it — the demo only executes under `python currencies_and_fx.py`.

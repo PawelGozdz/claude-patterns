@@ -14,6 +14,15 @@ const PROVIDER = (process.env.KR_EMBED_PROVIDER ?? "ct301").toLowerCase();
 const URL = process.env.KR_EMBED_URL ?? "http://192.168.0.150:8301/v1/embeddings/generate";
 const MODEL = process.env.KR_EMBED_MODEL ?? "multilingual-e5-large";
 
+// Hard cap on what we SEND to the embedder (the stored payload text stays whole — only the
+// vector input is clipped). e5-large has a 512-token window, so anything past ~2k characters is
+// dropped by the model anyway; the cap changes no embedding in practice, it just stops one
+// oversized chunk from taking a whole reseed down. juz-ide-api's error-codes.ts produces a single
+// 131 KB chunk and CT 301 answered 422 for its entire batch — the reseed died at 24320/31563 with
+// a status code and no indication which file caused it (2026-09-07).
+const MAX_CHARS = Number(process.env.KR_EMBED_MAX_CHARS ?? 8000);
+const clip = (t: string): string => (t.length > MAX_CHARS ? t.slice(0, MAX_CHARS) : t);
+
 export interface Embedder {
   embedPassages(texts: string[]): Promise<number[][]>;
   embedQuery(text: string): Promise<number[]>;
@@ -32,13 +41,14 @@ export class HttpEmbedder implements Embedder {
   }
 
   private async call(texts: string[], prefix: string): Promise<number[][]> {
+    const clipped = texts.map(clip);
     if (PROVIDER === "openai") {
       // OpenAI-compatible: no server prefix → prepend e5 prefix to each text ourselves.
-      const json = await postJson(URL, { model: MODEL, input: texts.map((t) => `${prefix}${t}`) });
+      const json = await postJson(URL, { model: MODEL, input: clipped.map((t) => `${prefix}${t}`) });
       return (json.data as { embedding: number[] }[]).map((d) => d.embedding);
     }
     // ct301 custom format (server prepends prefix)
-    const json = await postJson(URL, { texts, model: MODEL, prefix });
+    const json = await postJson(URL, { texts: clipped, model: MODEL, prefix });
     return json.embeddings as number[][];
   }
 

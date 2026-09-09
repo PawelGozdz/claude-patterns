@@ -30,7 +30,7 @@ overlay:
   agents: [stacks/flutter-clean-arch/]
   patterns: [flutter/, testing/]
   rules: [dart/]
-  hooks: [check-clean-arch, check-riverpod-patterns, check-flutter-imports, check-pumpandsettle, check-typography-tokens, check-design-tokens, check-l10n-hardcoded, check-approval-before-impl]
+  hooks: [check-clean-arch, check-riverpod-patterns, check-flutter-imports, check-pumpandsettle, check-typography-tokens, check-design-tokens, check-l10n-hardcoded, check-focus-wrapper, check-approval-before-impl]
 
 # Rozbrojenie kolizji z ECC (spike S3) + wymuszenie delegacji — przeniesione z presetu
 # (env należy do overlayu architektury, nie do frameworka — jak w ddd/core)

@@ -405,8 +405,15 @@ class AssetLocation:
         deferred_capacity: float,
         exempt_capacity: float,
     ) -> dict:
-        """Greedy asset location: place most tax-inefficient assets in
-        tax-advantaged accounts first.
+        """Greedy asset location across account types.
+
+        Placement order (matching the SKILL.md guidance):
+
+        1. Tax-exempt (Roth) accounts are filled first with the highest
+           expected-growth assets — all growth there is permanently tax-free.
+        2. Tax-deferred accounts are then filled with the most tax-inefficient
+           remaining assets (income generators such as bonds and REITs).
+        3. Whatever remains goes into taxable accounts.
 
         Parameters
         ----------
@@ -415,7 +422,10 @@ class AssetLocation:
             - "name": str, asset name
             - "amount": float, target allocation amount
             - "tax_inefficiency": float, score from 0 (most efficient) to 1
-              (most inefficient). Higher values should go into tax-advantaged.
+              (most inefficient). Higher values should go into tax-deferred.
+            - "expected_growth": float, optional. Expected annual return used
+              to prioritize tax-exempt (Roth) placement. If omitted,
+              "tax_inefficiency" is used as a fallback proxy.
         taxable_capacity : float
             Total capacity in taxable accounts.
         deferred_capacity : float
@@ -427,39 +437,56 @@ class AssetLocation:
         -------
         dict
             Mapping of asset names to their recommended account placement(s).
-        """
-        # Sort by tax inefficiency descending (most inefficient first)
-        sorted_assets = sorted(assets, key=lambda a: a["tax_inefficiency"], reverse=True)
 
-        placements: dict[str, list[dict]] = {}
+        Raises
+        ------
+        ValueError
+            If the total asset amounts exceed the total account capacity.
+        """
+        total_amount = sum(a["amount"] for a in assets)
+        total_capacity = taxable_capacity + deferred_capacity + exempt_capacity
+        if total_amount > total_capacity + 1e-9:
+            raise ValueError(
+                f"Total asset amount ({total_amount:,.2f}) exceeds total account "
+                f"capacity ({total_capacity:,.2f}) by "
+                f"{total_amount - total_capacity:,.2f}."
+            )
+
+        placements: dict[str, list[dict]] = {a["name"]: [] for a in assets}
+        remaining = {a["name"]: float(a["amount"]) for a in assets}
         remaining_exempt = exempt_capacity
         remaining_deferred = deferred_capacity
         remaining_taxable = taxable_capacity
 
-        for asset in sorted_assets:
-            name = asset["name"]
-            amount = asset["amount"]
-            placements[name] = []
+        def _allocate(asset_name: str, account: str, capacity: float) -> float:
+            """Place as much of an asset as fits; return the updated capacity."""
+            alloc = min(remaining[asset_name], capacity)
+            if alloc > 0:
+                placements[asset_name].append({"account": account, "amount": alloc})
+                remaining[asset_name] -= alloc
+            return capacity - alloc
 
-            # Fill tax-exempt (Roth) first for highest-growth, tax-inefficient assets
-            # Then tax-deferred, then taxable
-            if remaining_deferred > 0 and amount > 0:
-                alloc = min(amount, remaining_deferred)
-                placements[name].append({"account": "tax_deferred", "amount": alloc})
-                remaining_deferred -= alloc
-                amount -= alloc
+        # Pass 1: fill tax-exempt (Roth) with the highest expected-growth assets.
+        by_growth = sorted(
+            assets,
+            key=lambda a: a.get("expected_growth", a["tax_inefficiency"]),
+            reverse=True,
+        )
+        for asset in by_growth:
+            if remaining_exempt <= 0:
+                break
+            remaining_exempt = _allocate(asset["name"], "tax_exempt", remaining_exempt)
 
-            if remaining_exempt > 0 and amount > 0:
-                alloc = min(amount, remaining_exempt)
-                placements[name].append({"account": "tax_exempt", "amount": alloc})
-                remaining_exempt -= alloc
-                amount -= alloc
+        # Pass 2: fill tax-deferred with the most tax-inefficient remaining assets.
+        by_inefficiency = sorted(assets, key=lambda a: a["tax_inefficiency"], reverse=True)
+        for asset in by_inefficiency:
+            if remaining_deferred <= 0:
+                break
+            remaining_deferred = _allocate(asset["name"], "tax_deferred", remaining_deferred)
 
-            if remaining_taxable > 0 and amount > 0:
-                alloc = min(amount, remaining_taxable)
-                placements[name].append({"account": "taxable", "amount": alloc})
-                remaining_taxable -= alloc
-                amount -= alloc
+        # Pass 3: everything left goes into taxable.
+        for asset in assets:
+            remaining_taxable = _allocate(asset["name"], "taxable", remaining_taxable)
 
         return placements
 
@@ -522,7 +549,8 @@ class BreakevenAnalysis:
         """Future tax rate at which a Roth conversion breaks even.
 
         Assumes the tax on conversion is paid from outside funds (not from the
-        converted amount itself).
+        converted amount itself), and that the outside-fund side money would
+        otherwise grow with NO tax drag of its own.
 
         Parameters
         ----------
@@ -536,9 +564,17 @@ class BreakevenAnalysis:
         Returns
         -------
         float
-            Breakeven future tax rate. If the actual future rate exceeds this,
-            conversion is beneficial. When tax is paid from outside funds,
-            the breakeven rate equals the current rate.
+            Breakeven future tax rate, which EQUALS ``current_tax_rate``
+            under the no-side-fund-tax-drag assumption (both paths scale by
+            the same (1 + r)^n). If the actual future rate exceeds this,
+            conversion is beneficial.
+
+        Notes
+        -----
+        If the side fund used to pay the conversion tax would itself be taxed
+        (dividends and realized gains in a taxable account), the true
+        breakeven is BELOW the current rate, tilting the comparison toward
+        conversion even when the future rate merely equals the current rate.
         """
         # expected_return and years cancel out algebraically:
         # Traditional path: amount * (1+r)^n * (1 - t_future) = after-tax value
@@ -560,8 +596,10 @@ class BreakevenAnalysis:
     ) -> float:
         """Future tax rate breakeven when conversion tax is paid FROM the IRA itself.
 
-        This is less favorable than paying from outside funds because the
-        converted amount is reduced by the tax payment.
+        Paying the tax out of the converted amount leaves less principal
+        compounding tax-free in the Roth, but it does not change the
+        breakeven RATE: both paths scale by the same (1 + r)^n, so the
+        breakeven future tax rate EQUALS ``current_tax_rate``.
 
         Parameters
         ----------
@@ -575,27 +613,28 @@ class BreakevenAnalysis:
         Returns
         -------
         float
-            Breakeven future tax rate. Higher than ``current_tax_rate``
-            because paying tax from the IRA reduces the Roth principal.
+            Breakeven future tax rate, equal to ``current_tax_rate`` under
+            the no-side-fund-tax-drag assumption.
+
+        Notes
+        -----
+        If instead the conversion tax is paid from an outside side fund that
+        would itself be taxed (dividends and realized gains in a taxable
+        account), the true breakeven is BELOW the current rate, favoring
+        conversion.
         """
         # expected_return and years cancel out algebraically:
         # Traditional: amount * (1+r)^n * (1 - t_future)
-        # Roth (tax from IRA): amount*(1-t_current) * (1+r)^n
-        # Breakeven: amount*(1+r)^n*(1-t_future) = amount*(1-t_current)*(1+r)^n
-        #   1 - t_future = 1 - t_current
-        #   t_future = t_current
-        # Actually this is the same because both sides scale by (1+r)^n.
-        # The "worse" outcome is that you have less in Roth to compound.
-        # The breakeven rate is still t_current.
+        # Roth (tax from IRA): amount * (1 - t_current) * (1+r)^n
+        # Setting these equal: 1 - t_future = 1 - t_current, so
+        # t_future = t_current. Paying tax from the IRA simply leaves less
+        # money compounding in the Roth; the breakeven rate is unchanged.
         _ = (expected_return, years)  # cancel out of the algebra; kept for API symmetry
         return float(current_tax_rate)
 
 
-if __name__ == "__main__":
-    # ----------------------------------------------------------------
-    # Demo: Tax-efficient investing calculations
-    # ----------------------------------------------------------------
-
+def _demo() -> None:
+    """Demo: tax-efficient investing calculations (default bare-run output)."""
     print("=" * 65)
     print("Tax-Efficient Investing - Demo")
     print("=" * 65)
@@ -666,11 +705,11 @@ if __name__ == "__main__":
     # --- Asset Location ---
     print("\n--- Asset Location Optimization ---")
     assets = [
-        {"name": "US Bonds", "amount": 250_000, "tax_inefficiency": 0.9},
-        {"name": "REITs", "amount": 100_000, "tax_inefficiency": 0.85},
-        {"name": "International Equity", "amount": 150_000, "tax_inefficiency": 0.4},
-        {"name": "US Index Fund", "amount": 300_000, "tax_inefficiency": 0.2},
-        {"name": "Muni Bonds", "amount": 200_000, "tax_inefficiency": 0.05},
+        {"name": "US Bonds", "amount": 250_000, "tax_inefficiency": 0.9, "expected_growth": 0.04},
+        {"name": "REITs", "amount": 100_000, "tax_inefficiency": 0.85, "expected_growth": 0.07},
+        {"name": "International Equity", "amount": 150_000, "tax_inefficiency": 0.4, "expected_growth": 0.08},
+        {"name": "US Index Fund", "amount": 300_000, "tax_inefficiency": 0.2, "expected_growth": 0.09},
+        {"name": "Muni Bonds", "amount": 200_000, "tax_inefficiency": 0.05, "expected_growth": 0.03},
     ]
     placements = AssetLocation.optimal_placement(
         assets,
@@ -735,3 +774,135 @@ if __name__ == "__main__":
     print("\n" + "=" * 65)
     print("Demo complete.")
     print("=" * 65)
+
+
+def _verify() -> int:
+    """Re-run the demo computations and assert key outputs.
+
+    Where a computation corresponds to a SKILL.md worked example, the exact
+    SKILL.md numbers are asserted. Returns 0 on success, 1 on any mismatch.
+    """
+    import math
+
+    failures: list[str] = []
+
+    def check(name: str, actual: float, expected: float, rel_tol: float = 1e-3) -> None:
+        if math.isclose(actual, expected, rel_tol=rel_tol):
+            print(f"  PASS  {name}: {actual:,.6g} (expected {expected:,.6g})")
+        else:
+            failures.append(name)
+            print(f"  FAIL  {name}: {actual:,.6g} (expected {expected:,.6g})")
+
+    print("Verifying tax_efficiency.py against demo and SKILL.md worked examples...")
+
+    # --- Demo: after-tax returns and tax drag ---
+    at_income = AfterTaxReturn.income_return(0.05, 0.32)
+    check("income_return(5%, 32%)", at_income, 0.034)
+
+    at_deferred = AfterTaxReturn.deferred_gain_return(0.10, 20, 0.15)
+    check("deferred_gain_return(10%, 20y, 15%)", at_deferred, 0.092511, rel_tol=1e-4)
+
+    at_blended = AfterTaxReturn.blended_return(0.08, 0.25, 0.32, 0.10, 0.15)
+    check("blended_return", at_blended, 0.0724)
+    check("annual_drag", TaxDrag.annual_drag(0.08, at_blended), 0.0076)
+    check("tax_cost_ratio", TaxDrag.tax_cost_ratio(0.08, at_blended), 0.095)
+
+    # --- Demo: tax-loss harvesting ---
+    check("TLH immediate_benefit($10K, 15%)",
+          TaxLossHarvesting.immediate_benefit(10_000, 0.15), 1_500.0)
+    check("TLH net_benefit(10y deferral, 5%)",
+          TaxLossHarvesting.net_benefit(10_000, 0.15, 0.15, 10, 0.05), 579.13, rel_tol=1e-4)
+
+    # --- SKILL.md Example 1: asset location optimization ---
+    # Naive: $250K bonds (5% yield, 32% ordinary) + $250K equity dividends
+    # (2% yield, 15% LTCG) in taxable = $4,750. Optimal: $500K equity
+    # dividends only = $1,500. Savings = $3,250/year.
+    naive = (
+        AssetLocation.tax_drag_by_account(250_000, 0.05, 0.05, 0.32, 0.15, 0.0)
+        + AssetLocation.tax_drag_by_account(250_000, 0.10, 0.02, 0.15, 0.15, 0.0)
+    )
+    optimal = AssetLocation.tax_drag_by_account(500_000, 0.10, 0.02, 0.15, 0.15, 0.0)
+    check("Example 1: naive tax drag", naive, 4_750.0)
+    check("Example 1: optimal tax drag", optimal, 1_500.0)
+    check("Example 1: annual tax savings", naive - optimal, 3_250.0)
+
+    # --- SKILL.md Example 2: Roth conversion breakeven ---
+    # $50,000 at 24%, 7% for 20 years: 50,000 * 1.07^20 = 193,484;
+    # 12,000 * 1.07^20 = 46,436; breakeven = 46,436 / 193,484 = 24.0%.
+    growth = 1.07 ** 20
+    check("Example 2: Traditional grows to", 50_000 * growth, 193_484.22, rel_tol=1e-5)
+    check("Example 2: side fund grows to", 12_000 * growth, 46_436.21, rel_tol=1e-5)
+    check("Example 2: breakeven future rate",
+          BreakevenAnalysis.roth_conversion_breakeven(0.24, 0.07, 20), 0.24, rel_tol=1e-9)
+    check("Roth breakeven (tax from IRA) equals current rate",
+          BreakevenAnalysis.roth_conversion_breakeven_from_ira(0.24, 0.07, 20), 0.24,
+          rel_tol=1e-9)
+
+    # --- Demo: optimal placement (Roth filled with highest growth first) ---
+    assets = [
+        {"name": "US Bonds", "amount": 250_000, "tax_inefficiency": 0.9, "expected_growth": 0.04},
+        {"name": "REITs", "amount": 100_000, "tax_inefficiency": 0.85, "expected_growth": 0.07},
+        {"name": "International Equity", "amount": 150_000, "tax_inefficiency": 0.4, "expected_growth": 0.08},
+        {"name": "US Index Fund", "amount": 300_000, "tax_inefficiency": 0.2, "expected_growth": 0.09},
+        {"name": "Muni Bonds", "amount": 200_000, "tax_inefficiency": 0.05, "expected_growth": 0.03},
+    ]
+    placements = AssetLocation.optimal_placement(assets, 500_000, 300_000, 200_000)
+
+    def placed(name: str, account: str) -> float:
+        return sum(p["amount"] for p in placements[name] if p["account"] == account)
+
+    check("placement: US Index Fund in Roth", placed("US Index Fund", "tax_exempt"), 200_000.0)
+    check("placement: US Bonds in tax-deferred", placed("US Bonds", "tax_deferred"), 250_000.0)
+    check("placement: REITs in tax-deferred", placed("REITs", "tax_deferred"), 50_000.0)
+    check("placement: Muni Bonds in taxable", placed("Muni Bonds", "taxable"), 200_000.0)
+
+    # Overflow must raise ValueError instead of silently dropping the excess.
+    try:
+        AssetLocation.optimal_placement(assets, 100_000, 100_000, 100_000)
+        failures.append("placement overflow ValueError")
+        print("  FAIL  placement overflow: ValueError not raised")
+    except ValueError:
+        print("  PASS  placement overflow raises ValueError")
+
+    if failures:
+        print(f"\nFAIL: {len(failures)} check(s) failed: {', '.join(failures)}")
+        return 1
+    print("\nPASS: all checks passed.")
+    return 0
+
+
+if __name__ == "__main__":
+    import argparse
+    import sys
+
+    parser = argparse.ArgumentParser(
+        description=(
+            "Tax-efficient investing reference implementation. "
+            "Main classes: AfterTaxReturn (income, deferred-gain, and blended "
+            "after-tax returns), TaxDrag (annual/cumulative drag, tax cost ratio), "
+            "TaxLossHarvesting (immediate and NPV benefit, portfolio scan), "
+            "AssetLocation (tax drag by account, location comparison, optimal "
+            "placement), BreakevenAnalysis (LTCG holding period, Roth conversion "
+            "breakeven)."
+        ),
+        epilog=(
+            "This file is primarily meant to be imported as a module: "
+            "from tax_efficiency import AfterTaxReturn, TaxDrag, "
+            "TaxLossHarvesting, AssetLocation, BreakevenAnalysis. "
+            "Run without arguments to print a demonstration of each calculation."
+        ),
+    )
+    parser.add_argument(
+        "--verify",
+        action="store_true",
+        help=(
+            "run the demo computations and assert key outputs match the "
+            "SKILL.md worked examples; prints PASS/FAIL and exits nonzero "
+            "on mismatch"
+        ),
+    )
+    args = parser.parse_args()
+
+    if args.verify:
+        sys.exit(_verify())
+    _demo()

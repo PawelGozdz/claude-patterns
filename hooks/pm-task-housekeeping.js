@@ -10,7 +10,9 @@
  *   2. Appends a "Recently completed" entry to KANBAN.md (if it exists)
  *   3. Logs the action to stderr (visible to Claude as informational)
  *
- * Disable via env var: PM_NO_AUTO_HOUSEKEEPING=true (logs warning only)
+ * Disable via env var: PM_HOUSEKEEPING_MODE=off (logs warning only).
+ * `PM_NO_AUTO_HOUSEKEEPING=true` is the DEPRECATED spelling, still honoured so
+ * satellite projects that set it keep working (K106).
  *
  * Silent on non-task files. Never blocks (exit 0 always).
  * Sibling to pm-task-check.js (which produces the briefing — this one mutates).
@@ -22,7 +24,9 @@ const { parseFrontmatter: parseFrontmatterShared } = require('./lib/pm-tasks');
 const { readStdinJsonWithRaw } = require('./lib/utils');
 
 const MAX_STDIN = 512 * 1024;
-const AUTO_MOVE = process.env.PM_NO_AUTO_HOUSEKEEPING !== 'true';
+// PM_HOUSEKEEPING_MODE=off wyłącza przenoszenie; PM_NO_AUTO_HOUSEKEEPING=true — alias deprecated.
+const AUTO_MOVE = (process.env.PM_HOUSEKEEPING_MODE || '').toLowerCase() !== 'off'
+  && process.env.PM_NO_AUTO_HOUSEKEEPING !== 'true';
 
 // parseArrays: false — pierwotna wersja tego pliku nie parsowała inline-tablic
 // `[a, b, c]` (w przeciwieństwie do pm-task-check.js); zachowane celowo, nie
@@ -127,7 +131,7 @@ async function main() {
     if (!AUTO_MOVE) {
       console.error(
         `[pm-housekeeping] Task ${taskId} marked status: done — auto-move disabled.\n` +
-        `   Run /task-tidy to move manually, or unset PM_NO_AUTO_HOUSEKEEPING.`
+        `   Run /task-tidy to move manually, or unset PM_HOUSEKEEPING_MODE (deprecated alias: PM_NO_AUTO_HOUSEKEEPING).`
       );
       process.exit(0);
     }

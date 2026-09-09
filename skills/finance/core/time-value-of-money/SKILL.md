@@ -1,25 +1,9 @@
 ---
 name: time-value-of-money
-description: "Calculate present value, future value, NPV, IRR, loan payments, and amortization schedules across all compounding conventions. Use when the user asks about discounting cash flows, valuing an annuity or perpetuity, comparing investments with different timing, building a mortgage amortization table, or evaluating whether a project is worth pursuing. Also trigger when users mention 'what is it worth today', 'how much will I have in 20 years', 'monthly payment on a loan', 'discount rate', 'Gordon growth model', 'effective annual rate', 'continuous compounding', or ask how to compare a lump sum versus a stream of payments."
+description: "Calculate present value, future value, NPV, IRR for projects and loans, loan payments, and amortization schedules across all compounding conventions. Use when the user asks about discounting cash flows, valuing an annuity or perpetuity, comparing investments with different timing, building a mortgage amortization table, evaluating whether a project is worth pursuing, or solving for the rate that equates cash flows (project IRR, loan IRR, yield on an investment). Also trigger when users mention 'what is it worth today', 'how much will I have in 20 years', 'monthly payment on a loan', 'discount rate', 'Gordon growth model', 'effective annual rate', 'continuous compounding', or ask how to compare a lump sum versus a stream of payments. For portfolio money-weighted return (dollar-weighted IRR on an investor's contributions and withdrawals), use return-calculations instead."
 ---
 
 # Time Value of Money
-
-## Purpose
-This skill enables Claude to perform present value, future value, and discounted cash flow calculations across all standard compounding conventions. It covers annuities, perpetuities, amortization schedules, NPV, and IRR, providing the foundational building blocks for virtually all financial valuation and planning tasks.
-
-## Layer
-0 — Mathematical Foundations
-
-## Direction
-both (retrospective for valuing past cash flows, prospective for projecting future values)
-
-## When to Use
-- Discounting future cash flows
-- Building amortization tables
-- Comparing investments with different timing
-- Calculating loan payments
-- NPV or IRR analysis
 
 ## Core Concepts
 
@@ -204,20 +188,20 @@ Discount each cash flow to present value:
 PV(CF_0) = -50,000 / (1.10)^0 = -50,000.00
 PV(CF_1) =  12,000 / (1.10)^1 =  10,909.09
 PV(CF_2) =  15,000 / (1.10)^2 =  12,396.69
-PV(CF_3) =  18,000 / (1.10)^3 =  13,524.21
+PV(CF_3) =  18,000 / (1.10)^3 =  13,523.67
 PV(CF_4) =  22,000 / (1.10)^4 =  15,026.30
 PV(CF_5) =  25,000 / (1.10)^5 =  15,523.03
 ```
 
 Sum all present values:
 ```
-NPV = -50,000.00 + 10,909.09 + 12,396.69 + 13,524.21 + 15,026.30 + 15,523.03
-NPV = +$17,379.32
+NPV = -50,000.00 + 10,909.09 + 12,396.69 + 13,523.67 + 15,026.30 + 15,523.03
+NPV = +$17,378.78
 ```
 
-Since NPV is **positive ($17,379.32)**, the project creates value and should be accepted. It earns more than the 10% required rate of return.
+Since NPV is **positive ($17,378.78)**, the project creates value and should be accepted. It earns more than the 10% required rate of return.
 
-To find the IRR, we would solve for the rate where NPV = 0. Numerically, the IRR for this cash flow stream is approximately **21.0%**, well above the 10% hurdle rate.
+To find the IRR, we would solve for the rate where NPV = 0. Numerically, the IRR for this cash flow stream is approximately **21.2%** (21.18%), well above the 10% hurdle rate.
 
 ## Common Pitfalls
 - Mismatching rate and period frequency: if payments are monthly, the discount rate must be a monthly rate. Divide the annual nominal rate by 12, do not take the 12th root of `(1 + annual rate)` unless converting from EAR.
@@ -226,9 +210,14 @@ To find the IRR, we would solve for the rate where NPV = 0. Numerically, the IRR
 - Off-by-one errors in annuity due vs ordinary annuity: an annuity due shifts all payments one period earlier. Forgetting the `(1 + r)` adjustment factor will undervalue annuity-due streams.
 - Multiple IRR solutions with non-conventional cash flows: when cash flows change sign more than once (e.g., initial outflow, inflows, then a large terminal outflow), Descartes' rule allows up to as many positive real IRR solutions as there are sign changes. In such cases, use NPV profiling or the Modified IRR (MIRR) instead.
 
-## Cross-References
-- **return-calculations** (core plugin, Layer 0): CAGR is a special case of compound growth; MWR/IRR uses the same NPV=0 framework
-- **statistics-fundamentals** (core plugin, Layer 0): Discount rate estimation often relies on regression (CAPM beta) and distributional assumptions
+## Running the Script
+`scripts/time_value_of_money.py` implements every formula above as static methods on a `TimeValueOfMoney` class (`present_value`, `future_value`, `npv`, `irr`, `annuity_pv`, `annuity_fv`, `growing_annuity_pv`, `perpetuity_pv`, `fisher_rate`, `continuous_compounding`) plus an `AmortizationSchedule` class.
 
-## Reference Implementation
-See `scripts/time_value_of_money.py` for computational helpers.
+- Run: `uv run scripts/time_value_of_money.py` (PEP 723 inline metadata; stdlib-only, no third-party dependencies), or simply `python3 scripts/time_value_of_money.py`.
+- Bare invocation (or `--verify`) prints a demo of all methods **and** asserts the worked-example values above (Example 1 mortgage payment = $1,896.20; Example 2 NPV = $17,378.78 and IRR = 21.18%), exiting nonzero on any mismatch.
+- `--help` lists the available methods and import usage.
+- For programmatic use, import rather than run: `from time_value_of_money import TimeValueOfMoney, AmortizationSchedule`, then call e.g. `TimeValueOfMoney.npv(...)`.
+
+## Cross-References
+- **return-calculations** (core plugin): CAGR is a special case of compound growth; portfolio MWR uses the same NPV=0 framework and lives there
+- **statistics-fundamentals** (core plugin): Discount rate estimation often relies on regression (CAPM beta) and distributional assumptions

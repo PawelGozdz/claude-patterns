@@ -16,6 +16,35 @@ import { z } from "zod";
 import { retrieveCode, retrieveFromCollection, reload } from "./retrieve.js";
 import { CollectionNotFoundError } from "./store-qdrant.js";
 import { buildCodeIndex, reindexFile } from "./indexer.js";
+import type { Hit } from "./types.js";
+
+// How many lines of a code chunk come back as PROOF that the hit is real. The index answers
+// "where does this concept live in this repo", not "what does it say" — the content of record is
+// the file on the caller's own disk, which for twin checkouts is a different branch than the one
+// indexed. A full chunk invites copying that stale text; a short excerpt is enough to judge
+// relevance and forces the Read (TASK-RAG-004 R1.2). 0 = no truncation (escape hatch).
+const CODE_EVIDENCE_LINES = Number(process.env.KR_CODE_EVIDENCE_LINES ?? 12);
+
+const CODE_CONTRACT =
+  "`source` is RELATIVE to the repo root — open it in YOUR OWN working tree (Read), never assume " +
+  "another checkout's path. `evidence` is an excerpt justifying the hit, NOT material to copy: the " +
+  "index may have been built from a different commit than your branch (compare `indexedSha` with " +
+  "`git rev-parse HEAD`). Work on the content you read from disk.";
+
+/** Code hits ship an `evidence` excerpt INSTEAD of the stored `text` — the field is dropped, not
+ *  blanked, so nothing downstream can mistake an empty string for "this symbol has no body". */
+type CodeHit = Omit<Hit, "text"> & { evidence: string; evidenceTruncated: boolean };
+
+function toCodeHit(h: Hit): CodeHit | Hit {
+  if (CODE_EVIDENCE_LINES <= 0) return h;
+  const lines = h.text.split("\n");
+  const { text: _text, ...rest } = h;
+  return {
+    ...rest,
+    evidence: lines.slice(0, CODE_EVIDENCE_LINES).join("\n"),
+    evidenceTruncated: lines.length > CODE_EVIDENCE_LINES,
+  };
+}
 
 // Qdrant filter builder — {key,value} pairs with undefined values dropped; arrays use `any` (OR match).
 // `must` conditions ALL have to hold; `should` conditions are an OR group — AT LEAST ONE has to hold,
@@ -50,7 +79,11 @@ function buildServer(): McpServer {
     "retrieve_code",
     "Semantic top-K retrieval of EXISTING project code (per-symbol: methods/functions/types) most " +
       "relevant to a task. Killer use-case: find similar existing implementations before writing new code " +
-      "(avoids 'it doesn't exist' hallucinations + wrong signatures). Returns file + symbol + line range. " +
+      "(avoids 'it doesn't exist' hallucinations + wrong signatures). Returns repo-relative file + symbol + " +
+      "line range + a short `evidence` excerpt. " +
+      "THE RESULT IS A POINTER, NOT CONTENT: `source` is relative to the repo root, so open it in YOUR OWN " +
+      "working tree with Read and work on what you read there. Do NOT copy `evidence` — it is only proof the " +
+      "hit is relevant, and it may come from a different commit than your branch (`indexedSha`). " +
       "IMPORTANT: this server is a SHARED daemon across projects — always pass `collection` explicitly. " +
       "The value comes ONLY from the project's config (.claude/config/runtime.yml → knowledge.collection, " +
       "mirrored in .claude/config/knowledge.json). NEVER derive it from the project directory name: " +
@@ -66,7 +99,10 @@ function buildServer(): McpServer {
     async ({ query, k, collection }) => {
       try {
         const hits = await retrieveCode(query, k ?? 8, collection);
-        return { content: [{ type: "text", text: JSON.stringify(hits, null, 2) }] };
+        // The contract travels WITH the result, not only in the tool description: a subagent gets
+        // this JSON pasted into a prompt long after the description scrolled out of its context.
+        const body = { _contract: CODE_CONTRACT, hits: hits.map(toCodeHit) };
+        return { content: [{ type: "text", text: JSON.stringify(body, null, 2) }] };
       } catch (e) {
         if (e instanceof CollectionNotFoundError) {
           return { content: [{ type: "text", text:
@@ -160,11 +196,16 @@ function buildServer(): McpServer {
     "Rebuild a code collection in the dedicated Qdrant (recreate + re-embed + upsert). Run after code changes " +
       "or after swapping the embed model (KR_EMBED_*).",
     {
-      dirs: z.array(z.string()).describe("absolute or cwd-relative source dirs to index"),
+      repoRoot: z.string().optional().describe("repo root every stored path is relative to (recommended)"),
+      dirs: z.array(z.string()).describe("subdirs to index — repo-relative when repoRoot is given"),
       collection: z.string().describe("Qdrant collection, e.g. code_juzide1"),
+      ref: z.string().optional().describe("index this git ref's tree instead of the working tree, e.g. 'origin/develop'"),
+      repo: z.string().optional().describe("canonical repo name stored in the payload; defaults to basename(repoRoot)"),
     },
-    async ({ dirs, collection }) => {
-      const n = await buildCodeIndex(dirs, collection);
+    async ({ repoRoot, dirs, collection, ref, repo }) => {
+      const n = repoRoot
+        ? await buildCodeIndex({ repoRoot, dirs, collection, repo, gitRef: ref })
+        : await buildCodeIndex(dirs, collection);
       reload();
       return { content: [{ type: "text", text: `reindexed code/${collection}: ${n} chunks` }] };
     }
@@ -193,8 +234,8 @@ if (TRANSPORT === "stdio") {
       req.on("data", (c) => (body += c));
       req.on("end", async () => {
         try {
-          const { file, collection } = JSON.parse(body);
-          const chunks = await reindexFile(file, collection);
+          const { file, collection, repoRoot } = JSON.parse(body);
+          const chunks = await reindexFile(file, collection, repoRoot);
           res.writeHead(200, { "Content-Type": "application/json" }).end(JSON.stringify({ chunks }));
         } catch (e) {
           res.writeHead(500, { "Content-Type": "application/json" }).end(JSON.stringify({ error: String(e) }));

@@ -16,7 +16,7 @@
 #   ./scripts/sync-legal-skills.sh --diff             # only show diff
 #   ./scripts/sync-legal-skills.sh --verify-licenses  # re-check licenses, no copy
 #
-# Requirements: git, rsync
+# Requirements: git (rsync used when available, otherwise a cp fallback)
 
 set -euo pipefail
 
@@ -46,6 +46,81 @@ LAWVABLE_VENDORED=(
 )
 
 source "$REPO_DIR/scripts/lib/common.sh"
+
+# --- rsync-free mirroring --------------------------------------------------
+# These scripts assumed rsync. It is not installed everywhere (this repo's own
+# dev box has none, and no root to add it), and the failure mode was the bad
+# one: the script died at the *apply* step, after already copying part of the
+# tree. `sync_tree` uses rsync when present and falls back to a find+cp mirror
+# with the same semantics: drop what upstream no longer has, copy the rest,
+# honour excludes. Exclude patterns follow rsync's rule — a bare pattern
+# matches a basename at any depth, a leading `/` anchors it to the tree root.
+_sync_excluded() {
+  local rel="$1"; shift
+  local base="${rel##*/}" p
+  for p in "$@"; do
+    if [[ "$p" == /* ]]; then
+      [[ "$rel" == "${p#/}" || "$rel" == "${p#/}"/* ]] && return 0
+    else
+      [[ "$base" == $p ]] && return 0
+    fi
+  done
+  return 1
+}
+
+_mirror_dir() {
+  local src="${1%/}" dst="${2%/}"; shift 2
+  local -a excl=(); local a rel
+  for a in "$@"; do excl+=("${a#--exclude=}"); done
+  mkdir -p "$dst"
+
+  # 1. drop entries upstream no longer has
+  while IFS= read -r rel; do
+    [[ -z "$rel" ]] && continue
+    _sync_excluded "$rel" "${excl[@]}" && continue
+    [[ -e "$src/$rel" ]] || rm -rf "${dst:?}/$rel"
+  done < <(cd "$dst" && find . -mindepth 1 -depth -printf '%P\n' 2>/dev/null)
+
+  # 2. copy in everything upstream does have
+  while IFS= read -r rel; do
+    [[ -z "$rel" ]] && continue
+    _sync_excluded "$rel" "${excl[@]}" && continue
+    if [[ -d "$src/$rel" ]]; then
+      mkdir -p "$dst/$rel"
+    else
+      mkdir -p "$dst/$(dirname "$rel")"
+      rm -rf "${dst:?}/$rel"
+      cp -a "$src/$rel" "$dst/$rel"
+    fi
+  done < <(cd "$src" && find . -mindepth 1 -printf '%P\n' 2>/dev/null)
+}
+
+sync_tree() {  # sync_tree SRC/ DST/ [--exclude=PATTERN]...
+  local src="$1" dst="$2"; shift 2
+  if command -v rsync >/dev/null 2>&1; then
+    rsync -a --delete "$@" "$src" "$dst"
+  else
+    _mirror_dir "$src" "$dst" "$@"
+  fi
+}
+
+# --- LOCAL-file protection -------------------------------------------------
+# `--exclude=LOCAL-*` only covers the filename convention. CLAUDE.md actually
+# teaches a *marker* convention — a skill we wrote ourselves carries
+# `<!-- LOCAL — not synced from upstream -->` right under its frontmatter.
+# Without this, `rsync --delete` silently wipes those skills on the next sync.
+# Emits one `--exclude=/<top-level-entry>` per marked file, so the whole
+# skill folder survives, not just the marked file.
+local_excludes() {
+  local root="$1"
+  [[ -d "$root" ]] || return 0
+  grep -rlZ --include='*.md' -e 'LOCAL — not synced from upstream' \
+       -e 'LOCAL - not synced from upstream' "$root" 2>/dev/null \
+    | while IFS= read -r -d '' f; do
+        local rel="${f#"$root"/}"
+        printf -- '--exclude=/%s\n' "${rel%%/*}"
+      done | sort -u
+}
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -94,13 +169,35 @@ LICENSE_REPORT=$(mktemp)
 EVOLSB_LIC=$(grep -E "^License|^MIT License" "$WORK_EVOLSB/LICENSE" 2>/dev/null | head -1 | head -c 40) || true
 echo "evolsb/contract-review: ${EVOLSB_LIC}" > "$LICENSE_REPORT"
 
+# Resolve which upstream folder holds each vendored skill.
+#
+# lawvable renames folders (2026-06: `nda-triage-anthropic` → `nda-reviewer-anthropic`)
+# while the `name:` field inside SKILL.md stays stable. Matching on folder name alone
+# reported all 11 skills as "NO LICENSE METADATA" — a rename read as license drift.
+# Match on `name:` instead, and fall back to the folder name.
+declare -A LAWVABLE_SRC=()
+if [[ -d "$WORK_LAWVABLE/skills" ]]; then
+  for d in "$WORK_LAWVABLE"/skills/*/; do
+    [[ -f "$d/SKILL.md" ]] || continue
+    # `|| true` — a SKILL.md without a `name:` field is a skipped entry, not a
+    # fatal error; under `set -e` + pipefail grep's exit 1 would abort the scan.
+    n=$(grep -m1 '^name:' "$d/SKILL.md" | sed 's/^name: *//' | tr -d '"'"'" | tr -d '[:space:]') || true
+    [[ -n "$n" ]] && LAWVABLE_SRC["$n"]="$(basename "$d")"
+  done
+fi
+resolve_upstream() {  # our skill name -> upstream folder name
+  local want="$1"
+  if [[ -n "${LAWVABLE_SRC[$want]:-}" ]]; then echo "${LAWVABLE_SRC[$want]}"; else echo "$want"; fi
+}
+
 # lawvable per-skill
 LAWVABLE_DRIFT=()
 for s in "${LAWVABLE_VENDORED[@]}"; do
+  src=$(resolve_upstream "$s")
   # `|| true` — brak metadanych licencji jest OBSŁUGIWANĄ gałęzią niżej (NO LICENSE
   # METADATA), nie błędem; pod pipefail nonzero z grep zabiłby to przypisanie
   # przez set -e, zanim gałąź "brak metadanych" w ogóle by się wykonała.
-  meta=$(grep -E "^\s*license:" "$WORK_LAWVABLE/skills/$s/SKILL.md" 2>/dev/null | head -1 | sed 's/.*license: *//' | tr -d '"' | head -c 40) || true
+  meta=$(grep -E "^\s*license:" "$WORK_LAWVABLE/skills/$src/SKILL.md" 2>/dev/null | head -1 | sed 's/.*license: *//' | tr -d '"' | head -c 40) || true
   if [[ -z "$meta" ]]; then
     echo "lawvable/$s: ⚠️  NO LICENSE METADATA" >> "$LICENSE_REPORT"
     LAWVABLE_DRIFT+=("$s (missing metadata)")
@@ -148,8 +245,9 @@ diff -r --brief "$REPO_DIR/skills/legal/contract-review" "$WORK_EVOLSB" 2>&1 \
 
 # lawvable
 for s in "${LAWVABLE_VENDORED[@]}"; do
-  if [[ -d "$REPO_DIR/skills/legal/$s" && -d "$WORK_LAWVABLE/skills/$s" ]]; then
-    diff -r --brief "$REPO_DIR/skills/legal/$s" "$WORK_LAWVABLE/skills/$s" 2>&1 >> "$DIFF_OUT" || true
+  src=$(resolve_upstream "$s")
+  if [[ -d "$REPO_DIR/skills/legal/$s" && -d "$WORK_LAWVABLE/skills/$src" ]]; then
+    diff -r --brief "$REPO_DIR/skills/legal/$s" "$WORK_LAWVABLE/skills/$src" 2>&1 >> "$DIFF_OUT" || true
   fi
 done
 
@@ -176,22 +274,24 @@ if [[ "$MODE" == "interactive" ]]; then
   [[ ! $REPLY =~ ^[Yy]$ ]] && { echo -e "${YELLOW}Aborted.${NC}"; exit 1; }
 fi
 
-echo -e "${BLUE}[4/5]${NC} Applying with rsync..."
+echo -e "${BLUE}[4/5]${NC} Applying..."
 
 # evolsb: copy SKILL.md (renamed from skill.md) + examples + LICENSE
 mkdir -p "$REPO_DIR/skills/legal/contract-review"
 cp "$WORK_EVOLSB/skill.md" "$REPO_DIR/skills/legal/contract-review/SKILL.md"
-rsync -a --delete "$WORK_EVOLSB/examples/" "$REPO_DIR/skills/legal/contract-review/examples/"
+sync_tree "$WORK_EVOLSB/examples/" "$REPO_DIR/skills/legal/contract-review/examples/"
 cp "$WORK_EVOLSB/LICENSE" "$REPO_DIR/skills/legal/contract-review/LICENSE.upstream"
 echo "  ✓ contract-review (evolsb)"
 
 # lawvable: copy each vendored skill folder
 for s in "${LAWVABLE_VENDORED[@]}"; do
-  if [[ -d "$WORK_LAWVABLE/skills/$s" ]]; then
-    rsync -a --delete \
+  src=$(resolve_upstream "$s")
+  if [[ -d "$WORK_LAWVABLE/skills/$src" ]]; then
+    mapfile -t SKILL_LOCAL < <(local_excludes "$REPO_DIR/skills/legal/$s")
+    sync_tree "$WORK_LAWVABLE/skills/$src/" "$REPO_DIR/skills/legal/$s/" \
       --exclude='LOCAL-*' \
-      "$WORK_LAWVABLE/skills/$s/" "$REPO_DIR/skills/legal/$s/"
-    echo "  ✓ $s (lawvable)"
+      "${SKILL_LOCAL[@]}"
+    [[ "$src" != "$s" ]] && echo "  ✓ $s (lawvable, upstream folder: $src)" || echo "  ✓ $s (lawvable)"
   fi
 done
 

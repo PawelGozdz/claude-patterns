@@ -4,6 +4,16 @@
 > retrievalem; killer use-case = retrieval KODU w `/analyze-ddd`. Local-first, GDPR-safe, zero hosted DB.
 > Ref: `docs/DECISIONS-LOG.md`, `docs/orchestrate-ddd-design.md`.
 
+> **⚠ CZĘŚCIOWO HISTORYCZNY (przegląd 2026-09-07).** Nieaktualne sekcje:
+> **§2** (architektura embedded na `sqlite-vec` — zastąpiona Qdrantem za daemonem HTTP,
+> patrz [ADR 0005](adr/0005-rag-storage-and-best-practices-gate.md) i
+> `mcp-server/knowledge-retriever/src/store-qdrant.ts`), **§8** (fazy 1-5 zamknięte
+> przez TASK-RAG-001/002/003), oraz odwołania do `/analyze-ddd` i `/orchestrate-ddd`
+> w **§1** i **§5** — dziś to `/analyze` i `/orchestrate`
+> ([ADR 0008](adr/0008-stack-blocks-composition.md), 2026-08-12).
+> Nadal aktualne: §3 (korpus i chunking), §4 (narzędzia MCP — sekcja już zaktualizowana
+> po TASK-RAG-002), §6 (świeżość), §7 (eval), §9 (trade-offy).
+
 ## 1. Problem (co naprawiamy)
 Dziś retrieval jest regułowy: `/analyze-ddd` wstrzykuje *wszystkie* patterny domenowe + `pattern-routing`
 mapuje plik→wzorzec po ścieżce. Skutki: bloat kontekstu (część z 33k always-on), brak recall

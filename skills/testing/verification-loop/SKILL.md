@@ -119,7 +119,7 @@ Set a mental checkpoint:
 - After finishing a component
 - Before moving to next task
 
-Run: /verify
+Run: /ecc:quality-gate
 ```
 
 ## Integration with Hooks

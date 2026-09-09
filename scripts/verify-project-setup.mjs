@@ -129,7 +129,10 @@ if (existsSync(settingsPath)) {
   for (const h of rt.hooks ?? [])
     (raw.includes(h) ? ok : bad).push(raw.includes(h)
       ? `hook ${h}`
-      : `hook "${h}" deklarowany w runtime.yml, ale nie ma go w settings.json — odpal setup-project.sh`);
+      // Naprawa punktowa, nie cały setup: `sync-runtime-hooks.mjs` dopisuje wyłącznie
+      // brakujące wpisy (kopia settings.json.bak), więc nie ryzykuje ręcznego dostrojenia
+      // pliku ani kolejności matcherów. `setup-project.sh` woła dokładnie ten skrypt (K61).
+      : `hook "${h}" deklarowany w runtime.yml, ale nie ma go w settings.json — napraw: node scripts/sync-runtime-hooks.mjs ${projectDir} --apply`);
   const active = [...new Set([...raw.matchAll(/check-[a-z0-9-]+/g)].map((m) => m[0]))];
   const extra = active.filter((h) => !(rt.hooks ?? []).includes(h));
   if (extra.length) warnings.push(`hooki aktywne poza runtime.yml: ${extra.join(', ')} — przenieś do bloku albo project.yml (extra_hooks)`);
@@ -182,6 +185,54 @@ if (rt.params?.['decision-registry']) {
 }
 if (rt.knowledge?.collection) ok.push(`kolekcja RAG: ${rt.knowledge.collection}`);
 if (rt.taxonomy?.areas?.length) ok.push(`taksonomia: ${rt.taxonomy.areas.length} obszarów`);
+
+// ── bliźniacze instancje: spójność governance.canon ───────────────────────
+// Cztery klony jednego repo (juz-ide-api-1..4) dzielą JEDNĄ kolekcję RAG, ale każdy ma własny
+// runtime.yml. Kanon to lista dokumentów, którymi agent uzasadnia decyzje biznesowe — gdy się
+// rozjedzie, ta sama komenda w dwóch oknach dostaje inną podstawę i nikt tego nie widzi, bo
+// obie odpowiedzi są wewnętrznie spójne (api-1/3 miały docs/KANON.md, api-2/4 docs/business/
+// harmonia.md — TASK-RAG-004 R2, K80). To WARN, nie BRAK: czasem rozjazd jest zamierzony na
+// czas migracji, a ten skrypt nie ma jak odróżnić „w trakcie" od „zapomniane".
+if (rt.knowledge?.collection) {
+  const canonOf = (rtOther) => [...(rtOther.params?.governance?.canon ?? [])].sort();
+  const mine = canonOf(rt);
+  if (mine.length) {
+    const siblingsRoot = dirname(projectDir.replace(/\/+$/, ''));
+    const diverged = [];
+    let peers = [];
+    try { peers = readdirSync(siblingsRoot); } catch { /* katalog nadrzędny nieczytelny — pomiń */ }
+    for (const name of peers) {
+      const other = join(siblingsRoot, name);
+      if (other === projectDir.replace(/\/+$/, '')) continue;
+      const otherRt = join(other, '.claude/config/runtime.yml');
+      if (!existsSync(otherRt)) continue;
+      let parsed;
+      try { parsed = YAML.parse(readFileSync(otherRt, 'utf8')) ?? {}; } catch { continue; }
+      if (parsed.knowledge?.collection !== rt.knowledge.collection) continue;
+      const theirs = canonOf(parsed);
+      const missingHere = theirs.filter((f) => !mine.includes(f));
+      const missingThere = mine.filter((f) => !theirs.includes(f));
+      if (missingHere.length || missingThere.length) diverged.push({ name, missingHere, missingThere });
+    }
+    if (diverged.length) {
+      // Skrót do 3 pozycji na stronę: rozjazd bywa 60-plikowy (BDR-001..044), a pełna lista
+      // topi resztę raportu. Do decyzji „uzgodnić czy rozdzielić" wystarczy próbka + licznik.
+      const brief = (arr) => arr.length
+        ? `${arr.slice(0, 3).join(', ')}${arr.length > 3 ? ` … +${arr.length - 3}` : ''}`
+        : '—';
+      const detail = diverged.map((d) =>
+        `      ${d.name}: ma dodatkowo ${d.missingHere.length} [${brief(d.missingHere)}], ` +
+        `brakuje ${d.missingThere.length} [${brief(d.missingThere)}]`
+      ).join('\n');
+      warnings.push(
+        `governance.canon rozjechany między instancjami dzielącymi kolekcję "${rt.knowledge.collection}" ` +
+        `(${diverged.length}):\n${detail}\n      → uzgodnij kanon albo rozdziel kolekcje`
+      );
+    } else if (peers.length) {
+      ok.push(`governance.canon spójny z instancjami dzielącymi kolekcję ${rt.knowledge.collection}`);
+    }
+  }
+}
 
 if (brokenLinks.length)
   warnings.push(`zerwane dowiązania (${brokenLinks.length}): ` +
