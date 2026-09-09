@@ -67,6 +67,19 @@ function budgetFor(a, slot, fallback) {
   return typeof n === 'number' && n > 0 ? n : fallback
 }
 
+// `inner_loop.verify`/`final_gate.agent` w runtime.yml dopuszczają zapis "agent-a | agent-b"
+// (alternatywa — patrz clean-arch.yml: "flutter-quality-verifier | flutter-ui-verifier"),
+// ale agent() przyjmuje jeden agentType. Bez tego rozbicia string leciał całościowo jako
+// nazwa agenta, agent() rzucał natychmiast, ask() łapał to jako "cichą śmierć", i po dwóch
+// takich próbach warstwa kończyła ESCALATE_AND_HALT mimo że verifier nigdy się nie odpalił
+// (zaobserwowane w juz-ide-mobile-app, 2026-09-09). Minimalna łatka: pierwsza alternatywa
+// zawsze wygrywa, druga jest dziś martwa — wybór per warstwa albo uruchomienie obu i
+// scalenie werdyktów to osobna decyzja projektowa, nie bugfix.
+function firstAgentName(raw) {
+  if (!raw) return null
+  return String(raw).split('|')[0].trim() || null
+}
+
 // Kolejność warstw = kolejność z runtime.yml. Pominięte to te z `layers_done` w artefakcie
 // (checkpoint wznowienia) oraz warunkowe `optional: true`, których `create_when` nie trafia.
 function layerPlan(a, createWhenHits) {
@@ -152,13 +165,34 @@ function buildImplPrompt(a, layer, attempt, violations, silentDeaths) {
 function buildProbePrompt(a, layer) {
   const cmds = (layer.checks || []).map((c) => 'npm run ' + c)
   const scoped = (layer.dirs || []).join(' ')
+  // Pathspecy monorepo: `layer.dirs` to nazwy typu "__tests__/"/"domain/", nigdy katalogi
+  // TOP-LEVEL repo (prawdziwa ścieżka to src/contexts/<ctx>/domain/...). Literalny pathspec
+  // `-- domain/` czy `-- __tests__/` dopasowuje TYLKO katalog o tej dokładnej ścieżce od
+  // korzenia repo — czyli nic, w monorepo z zagnieżdżeniem. Magic pathspec `:(glob)**/x/**`
+  // dopasowuje x niezależnie od głębokości. Bez tego `newTestBlocks` liczy 0 zawsze,
+  // niezależnie od realnej zawartości (zweryfikowane, TASK-KAIZEN-002 audyt 2026-09-09).
+  const globScoped = (layer.dirs || [])
+    .map((d) => "':(glob)**/" + d.replace(/\/$/, '') + "/**'")
+    .join(' ') || '.'
   const run = cmds.length
     ? cmds.map((c) => c + ' > /tmp/check-' + layer.id + '.log 2>&1; echo "EXIT:$?"').join('\n')
-    : '(brak checks w runtime.yml dla tej warstwy — pomiń i zgłoś "skipped")'
+    : '(brak checks w runtime.yml dla tej warstwy — NIE uruchamiaj żadnego test runnera ani ' +
+      'typechecku z własnej inicjatywy, choćby "dla pewności"; zgłoś "skipped" dla obu pól. ' +
+      'Incydent 2026-09-09: sonda odpaliła całą suitę (301s, 34003 testy) mimo pustych checks ' +
+      'i oberwała fałszywym NO_GO od niepowiązanego, znanego-flaky testu entropii.)'
   const delta = layer.tests
-    ? '\nPolicz przyrost bloków wykonywalnych w zastage\'owanej zmianie (samo LICZENIE, ' +
-      'wynik to jedna liczba, nie treść zmian):\n' +
-      "  git diff --cached -U0 | grep -cE '^\\+\\s*(it|test|describe)\\(' \n" +
+    ? '\nPolicz przyrost bloków wykonywalnych w zmianie w drzewie roboczym (samo LICZENIE, ' +
+      'wynik to jedna liczba, nie treść zmian). Dwie pułapki naraz w jednym poleceniu: ' +
+      '`git add -N` (intent-to-add, NIE stage\'uje treści) żeby nowe nieotrackowane pliki ' +
+      'weszły do zwykłego diffa jak reszta; magic pathspec `:(glob)**/x/**` żeby ' +
+      'dopasować katalog x na dowolnej głębokości monorepo, nie tylko od korzenia:\n' +
+      // `test\(` samo nie łapie `testWidgets(` (Flutter/Dart) — po "test" jest "W", nie "(".
+      // `group(` to odpowiednik `describe(` w pakiecie test Dart. Bez obu dwóch sonda liczy
+      // 0 nawet przy realnych, przechodzących testach (fałszywy NO_GO, juz-ide-mobile-app,
+      // 2026-09-09). WL6: `git diff` i `| grep -c` MUSZĄ być w jednej linii źródła tego
+      // pliku — reguła czyta tylko pierwszą fizyczną linię za "git diff" (K93 regresja,
+      // 2026-09-09: rozbicie na dwie linie dla pathspecu zgasiło wykrywanie licznika).
+      '  git add -N -- ' + globScoped + ' 2>/dev/null; git diff -U0 -- ' + globScoped + " | grep -cE '^\\+\\s*(it|test|testWidgets|describe|group)\\(' \n" +
       'i zwróć go jako newTestBlocks.'
     : ''
   return 'Uruchom dokładnie to i NIC więcej:\n' + run +
@@ -442,7 +476,7 @@ for (const step of plan) {
     }
 
     // ── 4. weryfikacja — sekwencyjnie, ze schemą, w try/catch, z twardym limitem
-    const verifyAgent = (a.verifiers && a.verifiers.layer) || null
+    const verifyAgent = firstAgentName(a.verifiers && a.verifiers.layer)
     if (!verifyAgent) {
       log(layer.id + ': brak slotu weryfikatora w runtime.yml — warstwa zamknięta na sondzie')
       settled = { id: layer.id, status: 'GO', files: layerFiles, note: 'brak slotu verify' }
@@ -495,7 +529,7 @@ for (const step of plan) {
 // ── 5. bramka końcowa: suma checks warstw, które faktycznie weszły, raz na całości
 phase('Bramka końcowa')
 
-const finalAgent = (a.verifiers && a.verifiers.finalGate) || null
+const finalAgent = firstAgentName(a.verifiers && a.verifiers.finalGate)
 if (!finalAgent) {
   log('brak slotu final_gate w runtime.yml — kończę na werdyktach warstw')
 } else {
