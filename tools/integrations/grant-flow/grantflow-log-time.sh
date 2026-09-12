@@ -1,8 +1,22 @@
 #!/usr/bin/env bash
 # grantflow-log-time — Logowanie czasu do grant-flow
 #
-# Zależności: bash, curl, python3 lub jq — zero dodatkowych bibliotek
-# Konfiguracja: ~/.grantflow (credentials), ~/.grantflow-token, ~/.grantflow-refresh, ~/.grantflow-projects
+# Auth: PAT przez iam (TS-SSO-028/033/035 w repo iam), loopback-redirect login
+# (RFC 8252, ten sam wzorzec co `gh auth login`/`aws sso login`) przez towarzyszący
+# katalog pat-login-cli/ (kopia iam's src/tooling/pat-login-cli — jego własny README
+# nazywa się "temporary code" wprost przeznaczonym do kopiowania do konsumentów, nie
+# importu cross-repo). Stare logowanie email+hasło (/api/auth/login, /api/auth/refresh)
+# zniknęło z grant-flow przy TS-SSO-023 (2026-08-24) — ta wersja skryptu to zastępuje.
+#
+# Zależności: bash, curl, python3 lub jq, node + npx (tsx via npx) — npx/node tylko do
+# logowania przez przeglądarkę (get_token/invalidate_token), reszta zero-dependency.
+# Konfiguracja: ~/.grantflow (URL bramy + panelu iam), ~/.grantflow-projects (globalne
+# mapowanie repo → projekt), $REPO_ROOT/.grantflow (lokalne per-repo, opcjonalne, patrz
+# skills/integrations/log-time — Krok 2a)
+# Cache tokenu: ~/.cache/iam-pat-cli/ (zarządzany przez pat-login-cli, nie przez ten skrypt)
+#
+# Instalacja: patrz README.md w tym katalogu — kopiuje SIEBIE + pat-login-cli/ razem,
+# ten skrypt oczekuje pat-login-cli/ jako brata w tym samym katalogu instalacji.
 #
 # Użycie:
 #   grantflow-log-time --setup
@@ -17,15 +31,15 @@ set -euo pipefail
 
 # --- Pliki konfiguracyjne ---
 CONFIG_FILE="$HOME/.grantflow"
-TOKEN_FILE="$HOME/.grantflow-token"
-REFRESH_FILE="$HOME/.grantflow-refresh"
 PROJECTS_FILE="$HOME/.grantflow-projects"
-TOKEN_TTL=2999  # sekundy (~50 min) — margin przed wygaśnięciem 1h
+# Domyślnie ~/.local/share (nie $HOME/.local/bin, gdzie ląduje sam skrypt — bin/ per
+# konwencji trzyma tylko wykonywalne pliki, nie towarzyszące katalogi modułów). Nadpisywalne
+# przez GRANTFLOW_PAT_CLI_DIR — instalator (setup-project.sh) może umieścić to gdziekolwiek.
+PAT_CLI_DIR="${GRANTFLOW_PAT_CLI_DIR:-$HOME/.local/share/grantflow-cli/pat-login-cli}"
 
 # --- Kolory ---
 # Nie source'ujemy scripts/lib/common.sh (K41) — ten plik jest deployowany jako
-# płaska kopia do ~/.local/bin/grantflow-log-time (patrz README instalacji), bez
-# towarzyszącego katalogu lib/; source po ścieżce względnej by tam nie zadziałał.
+# płaska kopia (patrz README instalacji), bez gwarancji, że lib/ pojedzie razem.
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -75,29 +89,6 @@ except:
   fi
 }
 
-# E-mail i hasło przez zmienne środowiskowe, NIE argv — `curl -d "...$password..."` trzymał
-# hasło w gołym tekście w argumentach procesu przez cały czas requestu, widoczne w `ps aux`
-# każdemu userowi na współdzielonej maszynie; `--data @-` + env usuwa oba wektory (K23).
-json_build_login_payload() {
-  if command -v jq &>/dev/null; then
-    jq -n '{email: env.GRANTFLOW_LOGIN_EMAIL, password: env.GRANTFLOW_LOGIN_PASSWORD}'
-  else
-    python3 -c "
-import os, json
-print(json.dumps({'email': os.environ['GRANTFLOW_LOGIN_EMAIL'], 'password': os.environ['GRANTFLOW_LOGIN_PASSWORD']}))
-"
-  fi
-}
-
-json_array_len() {
-  local json="$1"
-  if command -v jq &>/dev/null; then
-    echo "$json" | jq 'length' 2>/dev/null || echo 0
-  else
-    python3 -c "import sys,json; d=json.loads(sys.stdin.read()); print(len(d) if isinstance(d,list) else 0)" <<< "$json" 2>/dev/null || echo 0
-  fi
-}
-
 # Normalizuj float: zamień przecinek na kropkę
 normalize_hours() {
   echo "${1/,/.}"
@@ -114,118 +105,51 @@ load_config() {
     echo -e "${RED}ERROR:${NC} Brak pliku ~/.grantflow. Uruchom: grantflow-log-time --setup" >&2
     exit 1
   fi
-  # Wczytaj zmienne bez eksportowania globalnego
   # shellcheck source=/dev/null
   source "$CONFIG_FILE"
-  GRANTFLOW_URL="${GRANTFLOW_URL:-http://localhost:3000}"
+  GRANTFLOW_URL="${GRANTFLOW_URL:-https://grant-flow.app.dev.juz-ide.pl}"
+  if [[ -z "${IAM_ADMIN_BASE_URL:-}" ]]; then
+    echo -e "${RED}ERROR:${NC} Brak IAM_ADMIN_BASE_URL w ~/.grantflow. Uruchom: grantflow-log-time --setup" >&2
+    exit 1
+  fi
+
+  if [[ ! -d "$PAT_CLI_DIR" ]]; then
+    echo -e "${RED}ERROR:${NC} Brak $PAT_CLI_DIR — pat-login-cli musi jechać jako katalog-brat tego skryptu, patrz README." >&2
+    exit 1
+  fi
+  if ! command -v npx &>/dev/null; then
+    echo -e "${RED}ERROR:${NC} Brak npx (Node.js) — wymagany do logowania PAT przez przeglądarkę." >&2
+    exit 1
+  fi
 }
 
 # --- Health check ---
+# Przez bramę (Caddy + oauth2-proxy) samo /api/health, mimo że @Public() w grant-flow, i tak
+# wpada pod forward_auth całego site-blocka — bez sesji/PAT dostaniemy 302, nie 200. To dowód,
+# że brama i grant-flow za nią odpowiadają (nie connection refused/timeout), nie dowód pełnego
+# zdrowia API — pełny dowód daje dopiero uwierzytelnione wywołanie w api_call. -k: Caddy w
+# środowisku dev używa `tls internal` (lokalny dev-CA), nie ma go w systemowym trust store —
+# jeśli GRANTFLOW_URL wskazuje na środowisko z prawdziwym certyfikatem, -k jest niegroźnym
+# no-opem, nie usuwać go warunkowo tylko dla dev.
 check_health() {
   local url="${1:-$GRANTFLOW_URL}"
   local http_code
-  http_code=$(curl -sf -o /dev/null -w "%{http_code}" --connect-timeout 5 "$url/api/health" 2>/dev/null) || true
-  [[ "$http_code" == "200" ]]
+  http_code=$(curl -sk -o /dev/null -w "%{http_code}" --connect-timeout 5 "$url/api/health" 2>/dev/null) || true
+  [[ -n "$http_code" && "$http_code" != "000" ]]
 }
 
-# --- Autentykacja ---
-do_login() {
-  local url="$GRANTFLOW_URL"
-  local response http_code payload
-  payload=$(GRANTFLOW_LOGIN_EMAIL="$GRANTFLOW_EMAIL" GRANTFLOW_LOGIN_PASSWORD="$GRANTFLOW_PASSWORD" json_build_login_payload)
+# --- Autentykacja (PAT przez iam, TS-SSO-028/033/035) ---
 
-  response=$(curl -sf -w "\n%{http_code}" -X POST \
-    -H "Content-Type: application/json" \
-    --data @- \
-    --connect-timeout 10 \
-    "$url/api/auth/login" <<< "$payload" 2>/dev/null) || {
-    echo -e "${RED}ERROR:${NC} grant-flow nie odpowiada pod $url" >&2
-    exit 1
-  }
-
-  http_code=$(echo "$response" | tail -1)
-  local body; body=$(echo "$response" | head -n -1)
-
-  if [[ "$http_code" != "200" && "$http_code" != "201" ]]; then
-    echo -e "${RED}ERROR:${NC} Login nieudany (HTTP $http_code). Sprawdź credentials w ~/.grantflow" >&2
-    exit 1
-  fi
-
-  local access refresh
-  # API wraps response: { status, data: { accessToken, refreshToken } }
-  access=$(json_get_nested "$body" ".data.accessToken")
-  [[ -z "$access" ]] && access=$(json_get "$body" "accessToken")
-  refresh=$(json_get_nested "$body" ".data.refreshToken")
-  [[ -z "$refresh" ]] && refresh=$(json_get "$body" "refreshToken")
-
-  if [[ -z "$access" ]]; then
-    echo -e "${RED}ERROR:${NC} Brak accessToken w odpowiedzi logowania" >&2
-    exit 1
-  fi
-
-  echo "$access" > "$TOKEN_FILE"
-  chmod 600 "$TOKEN_FILE"
-  echo "$refresh" > "$REFRESH_FILE"
-  chmod 600 "$REFRESH_FILE"
-}
-
-do_refresh() {
-  if [[ ! -f "$REFRESH_FILE" ]]; then
-    do_login
-    return
-  fi
-
-  local refresh_token; refresh_token=$(cat "$REFRESH_FILE")
-  local response http_code
-
-  response=$(curl -sf -w "\n%{http_code}" -X POST \
-    -H "Content-Type: application/json" \
-    -d "{\"refreshToken\":\"$refresh_token\"}" \
-    --connect-timeout 10 \
-    "$GRANTFLOW_URL/api/auth/refresh" 2>/dev/null) || {
-    do_login
-    return
-  }
-
-  http_code=$(echo "$response" | tail -1)
-  local body; body=$(echo "$response" | head -n -1)
-
-  if [[ "$http_code" != "200" && "$http_code" != "201" ]]; then
-    # Refresh token wygasł — zaloguj ponownie
-    do_login
-    return
-  fi
-
-  local access refresh
-  access=$(json_get_nested "$body" ".data.accessToken")
-  [[ -z "$access" ]] && access=$(json_get "$body" "accessToken")
-  refresh=$(json_get_nested "$body" ".data.refreshToken")
-  [[ -z "$refresh" ]] && refresh=$(json_get "$body" "refreshToken")
-
-  [[ -n "$access" ]] || { do_login; return; }
-
-  echo "$access" > "$TOKEN_FILE"
-  chmod 600 "$TOKEN_FILE"
-  [[ -n "$refresh" ]] && { echo "$refresh" > "$REFRESH_FILE"; chmod 600 "$REFRESH_FILE"; }
-}
-
+# Zwraca ważny PAT — z cache pat-login-cli, albo (przy pustym cache) po loopback-redirect
+# logowaniu w przeglądarce. Nigdy nie loguje samego tokenu (kontrakt pat-login-cli/log.ts).
 get_token() {
-  # Sprawdź czy token istnieje i jest świeży
-  if [[ -f "$TOKEN_FILE" ]]; then
-    local mod_time now age
-    mod_time=$(stat -c %Y "$TOKEN_FILE" 2>/dev/null || stat -f %m "$TOKEN_FILE" 2>/dev/null || echo 0)
-    now=$(date +%s)
-    age=$((now - mod_time))
-    if [[ $age -lt $TOKEN_TTL ]]; then
-      cat "$TOKEN_FILE"
-      return
-    fi
-    # Token stary — odśwież
-    do_refresh
-  else
-    do_login
-  fi
-  cat "$TOKEN_FILE"
+  (cd "$PAT_CLI_DIR" && IAM_ADMIN_BASE_URL="$IAM_ADMIN_BASE_URL" npx tsx cli.ts)
+}
+
+# Kasuje cache tokenu — kontrakt pat-login-cli/index.ts pkt 5: wywołujący na 401 MUSI
+# skasować cache, a NIE ponowić starego tokenu; kolejne get_token zrobi świeże logowanie.
+invalidate_token() {
+  (cd "$PAT_CLI_DIR" && IAM_ADMIN_BASE_URL="$IAM_ADMIN_BASE_URL" npx tsx cli.ts --invalidate) || true
 }
 
 # --- HTTP call z autentykacją ---
@@ -235,7 +159,7 @@ api_call() {
   local response http_code
 
   if [[ -n "$body" ]]; then
-    response=$(curl -sf -w "\n%{http_code}" -X "$method" \
+    response=$(curl -sk -w "\n%{http_code}" -X "$method" \
       -H "Authorization: Bearer $token" \
       -H "Content-Type: application/json" \
       -d "$body" \
@@ -245,7 +169,7 @@ api_call() {
       exit 1
     }
   else
-    response=$(curl -sf -w "\n%{http_code}" -X "$method" \
+    response=$(curl -sk -w "\n%{http_code}" -X "$method" \
       -H "Authorization: Bearer $token" \
       --connect-timeout 10 \
       "$GRANTFLOW_URL$path" 2>/dev/null) || {
@@ -257,19 +181,19 @@ api_call() {
   http_code=$(echo "$response" | tail -1)
   local resp_body; resp_body=$(echo "$response" | head -n -1)
 
-  # Retry po 401
+  # Retry po 401 — skasuj cache, wymuś świeże logowanie, ponów RAZ (nigdy pętli).
   if [[ "$http_code" == "401" ]]; then
-    do_login
+    invalidate_token
     token=$(get_token)
     if [[ -n "$body" ]]; then
-      response=$(curl -sf -w "\n%{http_code}" -X "$method" \
+      response=$(curl -sk -w "\n%{http_code}" -X "$method" \
         -H "Authorization: Bearer $token" \
         -H "Content-Type: application/json" \
         -d "$body" \
         --connect-timeout 10 \
         "$GRANTFLOW_URL$path" 2>/dev/null) || { echo -e "${RED}ERROR:${NC} grant-flow nie odpowiada" >&2; exit 1; }
     else
-      response=$(curl -sf -w "\n%{http_code}" -X "$method" \
+      response=$(curl -sk -w "\n%{http_code}" -X "$method" \
         -H "Authorization: Bearer $token" \
         --connect-timeout 10 \
         "$GRANTFLOW_URL$path" 2>/dev/null) || { echo -e "${RED}ERROR:${NC} grant-flow nie odpowiada" >&2; exit 1; }
@@ -279,7 +203,8 @@ api_call() {
   fi
 
   if [[ "$http_code" == "403" ]]; then
-    echo -e "${RED}ERROR:${NC} Brak uprawnień (HTTP 403). Sprawdź rolę w grant-flow" >&2
+    local msg; msg=$(json_get "$resp_body" "message")
+    echo -e "${RED}ERROR:${NC} Brak uprawnień (HTTP 403)${msg:+: $msg}. Sprawdź rolę/uprawnienia w grant-flow" >&2
     exit 1
   fi
 
@@ -374,7 +299,7 @@ print(f'  RAZEM:   {total:.1f}h')
 }
 
 cmd_log_entry() {
-  local project_id="$1" hours="$2" entry_date="$3" description="$4" external_reference="$5"
+  local project_id="$1" hours="$2" entry_date="$3" description="$4" external_reference="$5" task_id="$6"
 
   # Walidacje
   if ! is_uuid "$project_id"; then
@@ -397,9 +322,17 @@ cmd_log_entry() {
 
   local body="{\"projectId\":\"$project_id\",\"hours\":$hours,\"entryDate\":\"$entry_date\",\"description\":$desc_json}"
 
+  if [[ -n "$task_id" ]]; then
+    if ! is_uuid "$task_id"; then
+      echo -e "${RED}ERROR:${NC} Nieprawidłowy UUID zadania (--task-id): $task_id" >&2
+      exit 1
+    fi
+    body="${body%\}},\"taskId\":\"$task_id\"}"
+  fi
+
   if [[ -n "$external_reference" ]]; then
     local ref_json; ref_json=$(python3 -c "import json,sys; print(json.dumps(sys.argv[1]))" "$external_reference")
-    body="{\"projectId\":\"$project_id\",\"hours\":$hours,\"entryDate\":\"$entry_date\",\"description\":$desc_json,\"externalReference\":$ref_json}"
+    body="${body%\}},\"externalReference\":$ref_json}"
   fi
 
   local result; result=$(api_call POST "/api/time-entries" "$body")
@@ -414,8 +347,8 @@ cmd_log_entry() {
 cmd_status() {
   echo -e "${BLUE}Status grant-flow:${NC}"
   load_config
-  echo -e "  URL: $GRANTFLOW_URL"
-  echo -e "  Email: ${GRANTFLOW_EMAIL:-nie skonfigurowany}"
+  echo -e "  Brama (API): $GRANTFLOW_URL"
+  echo -e "  Panel iam (login PAT): $IAM_ADMIN_BASE_URL"
 
   if check_health; then
     echo -e "  API: ${GREEN}✓ działa${NC}"
@@ -424,23 +357,20 @@ cmd_status() {
     return
   fi
 
-  if [[ -f "$TOKEN_FILE" ]]; then
-    local mod_time now age
-    mod_time=$(stat -c %Y "$TOKEN_FILE" 2>/dev/null || stat -f %m "$TOKEN_FILE" 2>/dev/null || echo 0)
-    now=$(date +%s)
-    age=$((now - mod_time))
-    if [[ $age -lt $TOKEN_TTL ]]; then
-      echo -e "  Token: ${GREEN}✓ ważny${NC} (${age}s temu odświeżony)"
-    else
-      echo -e "  Token: ${YELLOW}⚠ wymaga odświeżenia${NC} (${age}s)"
-    fi
+  local cache_host
+  cache_host=$(python3 -c "
+import sys
+print(sys.argv[1].split('://', 1)[-1])
+" "$IAM_ADMIN_BASE_URL")
+  if ls "$HOME/.cache/iam-pat-cli/token-${cache_host}"*.json &>/dev/null; then
+    echo -e "  Token PAT: ${GREEN}✓ w cache${NC} (odśwież się automatycznie przy 401)"
   else
-    echo -e "  Token: ${YELLOW}⚠ brak (pierwsze logowanie przy następnym użyciu)${NC}"
+    echo -e "  Token PAT: ${YELLOW}⚠ brak (pierwsze logowanie w przeglądarce przy następnym użyciu)${NC}"
   fi
 
   if [[ -f "$PROJECTS_FILE" ]]; then
     local count; count=$(python3 -c "import json; d=json.load(open('$PROJECTS_FILE')); print(len(d))")
-    echo -e "  Projekty zmapowane: ${GREEN}$count${NC}"
+    echo -e "  Projekty zmapowane (globalnie): ${GREEN}$count${NC}"
     python3 -c "
 import json
 d = json.load(open('$PROJECTS_FILE'))
@@ -448,60 +378,73 @@ for name, uid in d.items():
     print(f'    {name} → {uid}')
 "
   else
-    echo -e "  Projekty zmapowane: ${YELLOW}0 (użyj --map <nazwa> <uuid>)${NC}"
+    echo -e "  Projekty zmapowane (globalnie): ${YELLOW}0 (użyj --map <nazwa> <uuid>)${NC}"
+  fi
+
+  local repo_root; repo_root=$(git rev-parse --show-toplevel 2>/dev/null || echo "")
+  if [[ -n "$repo_root" && -f "$repo_root/.grantflow" ]]; then
+    echo -e "  Lokalny .grantflow w tym repo: ${GREEN}✓${NC} ($repo_root/.grantflow)"
   fi
 }
 
 cmd_setup() {
-  echo -e "${BLUE}=== Konfiguracja grant-flow ===${NC}"
+  echo -e "${BLUE}=== Konfiguracja grant-flow (PAT przez iam) ===${NC}"
   echo ""
 
-  local url email password
+  if [[ ! -d "$PAT_CLI_DIR" ]]; then
+    echo -e "${RED}ERROR:${NC} Brak $PAT_CLI_DIR — pat-login-cli musi jechać jako katalog-brat tego skryptu." >&2
+    exit 1
+  fi
+  if ! command -v npx &>/dev/null; then
+    echo -e "${RED}ERROR:${NC} Brak npx (Node.js) — wymagany do logowania przez przeglądarkę." >&2
+    exit 1
+  fi
 
-  read -rp "URL grant-flow [http://localhost:3000]: " url
-  url="${url:-http://localhost:3000}"
+  local url iam_url
 
-  read -rp "Email: " email
-  read -rsp "Hasło: " password
-  echo ""
+  read -rp "URL grant-flow (przez bramę) [https://grant-flow.app.dev.juz-ide.pl]: " url
+  url="${url:-https://grant-flow.app.dev.juz-ide.pl}"
+
+  read -rp "URL panelu iam (do wydania PAT) [https://admin.app.dev.juz-ide.pl]: " iam_url
+  iam_url="${iam_url:-https://admin.app.dev.juz-ide.pl}"
 
   # Sprawdź health
-  echo -n "Sprawdzam połączenie..."
-  if ! curl -sf --connect-timeout 5 "$url/api/health" &>/dev/null; then
+  echo -n "Sprawdzam połączenie z grant-flow..."
+  if ! curl -sk --connect-timeout 5 "$url/api/health" &>/dev/null; then
     echo -e " ${RED}✗${NC}"
     echo -e "${RED}ERROR:${NC} grant-flow nie odpowiada pod $url"
-    echo "Uruchom: cd /opt/projects/grant-flow && docker compose up -d"
+    echo "Sprawdź, czy oba stosy działają: iam/platform i grant-flow (docker compose up -d w obu)."
     exit 1
   fi
   echo -e " ${GREEN}✓${NC}"
 
-  # Zapisz konfigurację. `umask 077` PRZED zapisem, nie `chmod 600` po nim — inaczej jest
-  # okno (rzędu ms, ale realne) w którym plik z hasłem w czystym tekście istnieje z
-  # uprawnieniami z domyślnego umask (K23).
-  local old_umask; old_umask=$(umask)
-  umask 077
+  # Zapisz konfigurację — bez sekretów (URL-e), ale i tak 600 z defensywnej ostrożności.
   cat > "$CONFIG_FILE" << EOF
 GRANTFLOW_URL=$url
-GRANTFLOW_EMAIL=$email
-GRANTFLOW_PASSWORD=$password
+IAM_ADMIN_BASE_URL=$iam_url
 EOF
-  umask "$old_umask"
-
-  # Testuj login
-  echo -n "Testuję login..."
-  GRANTFLOW_URL="$url"
-  GRANTFLOW_EMAIL="$email"
-  GRANTFLOW_PASSWORD="$password"
-  do_login
-  echo -e " ${GREEN}✓${NC}"
+  chmod 600 "$CONFIG_FILE"
 
   echo ""
   echo -e "${GREEN}Konfiguracja zapisana do ~/.grantflow${NC}"
   echo ""
+  echo "Testuję login PAT — zaraz otworzy się przeglądarka (albo dostaniesz link do wklejenia)."
+  echo "Zaloguj się, wybierz aplikację grant-flow, potwierdź wydanie tokenu."
 
-  # Pokaż projekty i zapytaj o mapowanie
+  GRANTFLOW_URL="$url"
+  IAM_ADMIN_BASE_URL="$iam_url"
+  get_token > /dev/null
+  echo -e "${GREEN}✓ Zalogowano${NC}"
+
+  echo ""
   echo "Dostępne projekty:"
-  local projects_json; projects_json=$(api_call GET "/api/projects?limit=100")
+  local projects_json; projects_json=$(api_call GET "/api/projects?limit=100") || {
+    echo -e "${YELLOW}⚠ Nie udało się pobrać listy — Twoja rola może nie mieć uprawnienia read.project.*.${NC}"
+    echo "Nadal możesz logować czas do znanego UUID projektu (--project <uuid> --hours ...)."
+    echo ""
+    echo -e "${GREEN}Setup zakończony.${NC} Użyj 'grantflow-log-time --status' aby sprawdzić konfigurację."
+    return
+  }
   python3 -c "
 import sys, json
 d = json.loads(sys.stdin.read())
@@ -559,6 +502,15 @@ print(d.get('$repo_name', ''))
   fi
 }
 
+# --- Auto-detekcja brancha ---
+# W przeciwieństwie do --commit (opcjonalny, jawny — commit to punkt w czasie, cięższa
+# semantyka), branch jest tani i prawie zawsze istotny dla wpisu czasu — auto-detect
+# domyślnie WŁĄCZONY, --no-branch jako opt-out. Cicho puste dla detached HEAD / poza gitem.
+detect_branch() {
+  local branch; branch=$(git branch --show-current 2>/dev/null || echo "")
+  echo "$branch"
+}
+
 # --- Parser argumentów ---
 main() {
   if [[ $# -eq 0 ]]; then
@@ -567,21 +519,23 @@ main() {
     echo "  grantflow-log-time --status"
     echo "  grantflow-log-time --list-projects [--json]"
     echo "  grantflow-log-time --project <uuid> --hours <num> [--date YYYY-MM-DD] [--description \"...\"]"
-    echo "                     [--task TS-XXX] [--commit [hash]] [--pr <branch-or-pr>]"
+    echo "                     [--task TS-XXX] [--task-id <uuid>] [--commit [hash]] [--pr <branch-or-pr>] [--no-branch]"
     echo "  grantflow-log-time --today"
     echo "  grantflow-log-time --week"
     echo "  grantflow-log-time --map <repo-name> <project-uuid>"
     echo ""
-    echo "Referencje (opcjonalne, można łączyć):"
-    echo "  --task TS-RATE-001          ID zadania z backlogu"
+    echo "Referencje (opcjonalne, można łączyć — trafiają do externalReference):"
+    echo "  --task TS-RATE-001          ID zadania z backlogu (tekst)"
+    echo "  --task-id <uuid>            ID zadania w grant-flow (pole taskId, jeśli masz UUID)"
     echo "  --commit                    git SHA bieżącego HEAD (auto-detect)"
     echo "  --commit abc1234            konkretny commit hash"
-    echo "  --pr feature/billing-rates  nazwa branch lub numer PR"
+    echo "  --pr feature/billing-rates  nazwa branch lub numer PR (nadpisuje auto-detect brancha)"
+    echo "  --no-branch                 wyłącz auto-detekcję bieżącego brancha git"
     exit 0
   fi
 
   local cmd="" project_id="" hours="" entry_date="" description="" json_flag=""
-  local task_ref="" commit_ref="" pr_ref=""
+  local task_ref="" task_id="" commit_ref="" pr_ref="" no_branch=""
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -597,6 +551,8 @@ main() {
       --date)       entry_date="$2"; shift 2 ;;
       --description) description="$2"; shift 2 ;;
       --task)       task_ref="$2"; shift 2 ;;
+      --task-id)    task_id="$2"; shift 2 ;;
+      --no-branch)  no_branch="1"; shift ;;
       --commit)
         # Jeśli podano wartość po --commit, użyj jej; inaczej auto-detect git HEAD
         if [[ $# -gt 1 && "$2" != --* ]]; then
@@ -614,13 +570,21 @@ main() {
     esac
   done
 
+  # Auto-detekcja brancha — tylko jeśli --pr nie podano jawnie (to samo pole logiczne:
+  # "gdzie w historii to się stało") i --no-branch nie zażądano.
+  local branch_ref=""
+  if [[ -z "$no_branch" && -z "$pr_ref" ]]; then
+    branch_ref=$(detect_branch)
+  fi
+
   # Złóż external_reference z dostępnych składników
   local external_reference=""
-  if [[ -n "$task_ref" || -n "$commit_ref" || -n "$pr_ref" ]]; then
+  if [[ -n "$task_ref" || -n "$commit_ref" || -n "$pr_ref" || -n "$branch_ref" ]]; then
     local parts=()
     [[ -n "$task_ref" ]] && parts+=("$task_ref")
     [[ -n "$commit_ref" ]] && parts+=("$commit_ref")
     [[ -n "$pr_ref" ]] && parts+=("$pr_ref")
+    [[ -n "$branch_ref" ]] && parts+=("branch:$branch_ref")
     external_reference=$(IFS=" | "; echo "${parts[*]}")
   fi
 
@@ -663,7 +627,7 @@ main() {
           echo -e "${RED}ERROR:${NC} grant-flow nie odpowiada pod $GRANTFLOW_URL" >&2
           exit 1
         fi
-        cmd_log_entry "$project_id" "$hours" "$entry_date" "$description" "$external_reference"
+        cmd_log_entry "$project_id" "$hours" "$entry_date" "$description" "$external_reference" "$task_id"
       else
         echo -e "${RED}ERROR:${NC} Podaj --project i --hours do zalogowania czasu" >&2
         exit 1

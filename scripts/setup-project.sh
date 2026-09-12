@@ -946,8 +946,26 @@ echo ""
 #     for every project. Per-project isolation = Qdrant collection, NOT a separate process anymore;
 #     the daemon has no way to know which project is calling, so collection must be passed explicitly
 #     on every retrieve_code call. We write it to .claude/config/knowledge.json for commands to read.
+#   • project.mcp_servers (project.yml, OPTIONAL) — a project's OWN local MCP server(s), e.g. a
+#     repo-local tool wrapping that project's own API (grant-flow's `tools/mcp-server/`,
+#     TS-MCP-001). Empty/absent for every project that doesn't declare it — this branch changes
+#     nothing for projects with no such key. "args" entries that look like a relative path get
+#     resolved against THIS checkout's PROJECT_DIR, so whoever runs this script gets the right
+#     absolute path in their own .mcp.json without hand-editing it (see
+#     TASK-MCP-SERVER-GUIDANCE-001).
 echo -e "${BLUE}[6/8] MCP configuration (.mcp.json — merge)${NC}"
 MCP_JSON="$PROJECT_DIR/.mcp.json"
+
+MCP_SERVERS_JSON='[]'
+MCP_SERVER_ITEMS=()
+while IFS= read -r item; do
+  [[ -z "$item" ]] && continue
+  MCP_SERVER_ITEMS+=("$item")
+done < <(yml_list "project.mcp_servers")
+if [[ ${#MCP_SERVER_ITEMS[@]} -gt 0 ]]; then
+  JOINED=$(IFS=,; echo "${MCP_SERVER_ITEMS[*]}")
+  MCP_SERVERS_JSON="[${JOINED}]"
+fi
 
 # Qdrant collection: explicit override (project.yml::knowledge_collection) wins — for twin
 # projects sharing one repo (e.g. juz-ide-api-1..4) that should share ONE collection, not be
@@ -968,9 +986,13 @@ echo -e "  ${GREEN}Wrote:${NC} .claude/config/knowledge.json (collection: $KR_CO
 
 if command -v node >/dev/null 2>&1; then
   MCP_JSON="$MCP_JSON" \
+  PROJECT_DIR="$PROJECT_DIR" \
+  MCP_SERVERS_JSON="$MCP_SERVERS_JSON" \
   node -e '
     const fs = require("fs");
+    const path = require("path");
     const p = process.env.MCP_JSON;
+    const projectDir = process.env.PROJECT_DIR;
     let cfg = { mcpServers: {} };
     if (fs.existsSync(p)) { try { cfg = JSON.parse(fs.readFileSync(p, "utf8")); } catch {} }
     cfg.mcpServers ??= {};
@@ -980,9 +1002,30 @@ if command -v node >/dev/null 2>&1; then
     // knowledge-retriever (code retrieval) — shared HTTP daemon, same URL for every project
     const want = { type: "http", url: "http://localhost:6403/mcp" };
     const cur = cfg.mcpServers["knowledge-retriever"];
-    if (JSON.stringify(cur) !== JSON.stringify(want)) { cfg.mcpServers["knowledge-retriever"] = want; changed = true; }
+    const krChanged = JSON.stringify(cur) !== JSON.stringify(want);
+    if (krChanged) { cfg.mcpServers["knowledge-retriever"] = want; changed = true; }
+
+    // project.mcp_servers (project.yml, optional) — see comment above this block.
+    let declared = [];
+    try { declared = JSON.parse(process.env.MCP_SERVERS_JSON || "[]"); } catch {}
+    for (const server of declared) {
+      if (!server || typeof server.name !== "string" || !server.name) continue;
+      const args = (server.args ?? []).map((a) =>
+        typeof a === "string" && a.includes("/") && !path.isAbsolute(a) ? path.join(projectDir, a) : a
+      );
+      const entry = { command: server.command, args };
+      if (server.env && typeof server.env === "object") entry.env = server.env;
+      const curEntry = cfg.mcpServers[server.name];
+      if (JSON.stringify(curEntry) !== JSON.stringify(entry)) {
+        cfg.mcpServers[server.name] = entry;
+        changed = true;
+        console.log(`  \x1b[0;32mMerged:\x1b[0m ${server.name} (local, project.yml -> mcp_servers)`);
+      }
+    }
+
     if (changed || !fs.existsSync(p)) fs.writeFileSync(p, JSON.stringify(cfg, null, 2) + "\n");
-    console.log(changed ? "  \x1b[0;32mMerged:\x1b[0m knowledge-retriever (http daemon)" : "  \x1b[1;33mUp to date:\x1b[0m .mcp.json");
+    if (krChanged) console.log("  \x1b[0;32mMerged:\x1b[0m knowledge-retriever (http daemon)");
+    if (!changed) console.log("  \x1b[1;33mUp to date:\x1b[0m .mcp.json");
   '
 else
   echo -e "  ${YELLOW}Skipped:${NC} node not found — cannot merge .mcp.json"

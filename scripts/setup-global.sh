@@ -62,7 +62,7 @@ setup_symlink() {
 }
 
 # --- Global agents (universal only — stack-specific are per-project) ---
-echo -e "${BLUE}[1/4] Agents${NC} (universal specialists — stack agents are per-project)"
+echo -e "${BLUE}[1/5] Agents${NC} (universal specialists — stack agents are per-project)"
 
 # Remove old symlink if it pointed to entire agents/ dir
 if [ -L "$USER_CLAUDE_DIR/agents" ]; then
@@ -100,11 +100,11 @@ if [[ -d "$REPO_DIR/agents/integrations" ]]; then
 fi
 echo ""
 
-echo -e "${BLUE}[2/4] Commands${NC} (slash commands: /plan, /tdd, /scaffold, etc.)"
+echo -e "${BLUE}[2/5] Commands${NC} (slash commands: /plan, /tdd, /scaffold, etc.)"
 setup_symlink "commands" "$REPO_DIR/commands"
 echo ""
 
-echo -e "${BLUE}[3/4] Hooks${NC} (universal only — stack hooks are per-project)"
+echo -e "${BLUE}[3/5] Hooks${NC} (universal only — stack hooks are per-project)"
 setup_symlink "hooks" "$REPO_DIR/hooks"
 
 # Symlink = pliki są osiągalne. Rejestracja = wpis w ~/.claude/settings.json.
@@ -116,11 +116,42 @@ else
 fi
 echo ""
 
-echo -e "${BLUE}[4/4] Output Styles${NC} (strategist voice presets)"
+echo -e "${BLUE}[4/5] Output Styles${NC} (strategist voice presets)"
 if [ -d "$REPO_DIR/output-styles" ]; then
   setup_symlink "output-styles" "$REPO_DIR/output-styles"
 else
   echo -e "  ${YELLOW}Skipped:${NC} output-styles directory missing"
+fi
+echo ""
+
+# --- grant-flow CLI (time logging — machine-level, not per-project) ---
+# Installs the CLI + its companion pat-login-cli/ module (PAT-based auth via `iam`,
+# TS-SSO-028/033/035 — see tools/integrations/grant-flow/README.md). Copying the files is
+# safe and idempotent; the interactive browser login (`--setup`) is NOT run here — it needs
+# a human to authenticate, so it stays a one-time step the user runs themselves (see "Next
+# steps" below). Without this step the CLI only got installed lazily, the first time a
+# session hit /log-time and found it missing — the e2e path from a fresh machine to logging
+# hours had no single place that finished it.
+echo -e "${BLUE}[5/5] grant-flow CLI${NC} (time logging — grantflow-log-time + pat-login-cli)"
+GRANTFLOW_SRC="$REPO_DIR/tools/integrations/grant-flow"
+if [[ -d "$GRANTFLOW_SRC" && -f "$GRANTFLOW_SRC/grantflow-log-time.sh" ]]; then
+  mkdir -p "$HOME/.local/bin" "$HOME/.local/share/grantflow-cli"
+  if [[ -d "$GRANTFLOW_SRC/pat-login-cli" ]]; then
+    rm -rf "$HOME/.local/share/grantflow-cli/pat-login-cli"
+    cp -r "$GRANTFLOW_SRC/pat-login-cli" "$HOME/.local/share/grantflow-cli/pat-login-cli"
+    echo -e "  ${GREEN}Copied:${NC} pat-login-cli/ → ~/.local/share/grantflow-cli/pat-login-cli"
+  else
+    echo -e "  ${YELLOW}Warning:${NC} pat-login-cli/ missing next to grantflow-log-time.sh — login PAT nie zadziała"
+  fi
+  cp "$GRANTFLOW_SRC/grantflow-log-time.sh" "$HOME/.local/bin/grantflow-log-time"
+  chmod +x "$HOME/.local/bin/grantflow-log-time"
+  echo -e "  ${GREEN}Installed:${NC} grantflow-log-time → ~/.local/bin/grantflow-log-time"
+  case ":$PATH:" in
+    *":$HOME/.local/bin:"*) ;;
+    *) echo -e "  ${YELLOW}Note:${NC} ~/.local/bin nie jest w PATH — dodaj do profilu shella" ;;
+  esac
+else
+  echo -e "  ${YELLOW}Skipped:${NC} tools/integrations/grant-flow/grantflow-log-time.sh not found"
 fi
 echo ""
 
@@ -149,7 +180,7 @@ done
 
 echo ""
 echo -e "${BLUE}Hook architecture:${NC}"
-echo -e "  Global:       hooks/hooks.json → ~/.claude/settings.json (sync-global-hooks.mjs, step [3/4])"
+echo -e "  Global:       hooks/hooks.json → ~/.claude/settings.json (sync-global-hooks.mjs, step [3/5])"
 echo -e "                session lifecycle, formatting, console.log, git push, subagent monitoring"
 echo -e "  Per-project:  blocks → runtime.yml → <project>/.claude/settings.json (sync-runtime-hooks.mjs)"
 echo -e "                DDD patterns, Flutter clean arch, Python layers/typing"
@@ -162,4 +193,5 @@ echo -e "Next steps:"
 # stack_profile) — od 2026-09-07 obie są zabramkowane. Jedna ścieżka: setup-project.sh.
 echo -e "  New or existing project:  ${BLUE}./scripts/setup-project.sh /path/to/project${NC}"
 echo -e "  Fleet status:             ${BLUE}node scripts/audit-projects.mjs${NC}"
+echo -e "  Log time to grant-flow:   ${BLUE}grantflow-log-time --setup${NC}  (jednorazowy login PAT przez przeglądarkę, potem /log-time w każdym repo)"
 echo ""

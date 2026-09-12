@@ -6,8 +6,9 @@ description: |
   Claude analizuje bieżącą sesję, proponuje opis i liczbę godzin,
   pyta o potwierdzenie, i wywołuje grantflow-log-time CLI.
   
-  Wymagania: ~/.grantflow skonfigurowane (URL, email, hasło).
-  CLI: grantflow-log-time musi być w PATH.
+  Wymagania: ~/.grantflow skonfigurowane (URL grant-flow + URL panelu iam) i aktywny PAT
+  (login przez przeglądarkę, cache w ~/.cache/iam-pat-cli/ — nie email+hasło od TS-SSO-023).
+  CLI: grantflow-log-time (+ pat-login-cli/) musi być w PATH.
   Setup: /grantflow setup
 tools: Bash, Read
 model: haiku
@@ -27,24 +28,25 @@ test -f ~/.grantflow && echo "configured" || echo "missing"
 Jeśli brak `~/.grantflow`: "Brak konfiguracji grant-flow. Uruchom: `/grantflow setup`" → STOP.
 
 ```bash
-source ~/.grantflow 2>/dev/null
-curl -sf "${GRANTFLOW_URL:-http://localhost:3009}/api/health" && echo "OK" || echo "OFFLINE"
-```
-
-Jeśli OFFLINE: "grant-flow nie odpowiada. Uruchom: `cd /opt/projects/grant-flow && docker compose up -d`" → STOP.
-
-```bash
 which grantflow-log-time && echo "CLI OK" || echo "CLI MISSING"
 ```
 
 Jeśli CLI MISSING:
 ```
-grantflow-log-time nie jest w PATH.
-Zainstaluj:
+grantflow-log-time nie jest w PATH. Zainstaluj CAŁY katalog (skrypt + pat-login-cli/):
+  mkdir -p ~/.local/share/grantflow-cli
+  cp -r /opt/projects/claude-patterns/tools/integrations/grant-flow/pat-login-cli ~/.local/share/grantflow-cli/pat-login-cli
   cp /opt/projects/claude-patterns/tools/integrations/grant-flow/grantflow-log-time.sh ~/.local/bin/grantflow-log-time
   chmod +x ~/.local/bin/grantflow-log-time
 ```
 → STOP.
+
+```bash
+grantflow-log-time --status
+```
+
+Jeśli status pokazuje `API: ✗ nie odpowiada`: "grant-flow (albo brama iam) nie odpowiada. Sprawdź oba stosy: iam/platform i grant-flow (docker compose up -d w obu)" → STOP.
+Jeśli status pokazuje brak aktywnego PAT: "Brak zalogowania. Uruchom: `grantflow-log-time --setup` (otworzy przeglądarkę do logowania PAT)" → STOP.
 
 ### Krok 1 — wykryj projekt
 

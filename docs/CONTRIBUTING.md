@@ -290,3 +290,23 @@ The `skills/marketing/` and `tools/marketing/` folders are **vendored** from
 2. Include a `README.md` explaining setup
 3. Use `{PLACEHOLDER}` syntax for project-specific values
 4. Document in main `README.md`
+
+## Adding / Updating a `tools/integrations/*` Entry
+
+Unlike patterns/agents/skills, a `tools/integrations/<name>/` script depends on a **contract
+owned by a different repo** (an external service's API, auth flow, or CLI) — nothing in this
+repo's CI touches that repo, so a breaking change there produces silent drift here. This is
+what happened to `grantflow-log-time.sh`: grant-flow retired its email+password endpoints
+(TS-SSO-023, 2026-08-24) and the script kept calling them for ~2 weeks until someone hit it.
+
+Every `tools/integrations/<name>/README.md` must carry an **"Ostatnio zweryfikowano"**
+section near the top, with:
+- **Data** — when it was last checked against the live contract
+- **Względem** — the exact external commit/ref/version it was checked against
+- **Co sprawdzono** — what was verified (usually: does the script still call endpoints/flags
+  that still exist)
+- **Kiedy odświeżyć** — the trigger that should make someone update this field
+
+Update this section **in the same commit** as any fix to the integration — a stale "last
+verified" field is worse than none, because it looks like reassurance. See
+`tools/integrations/grant-flow/README.md` for the worked example.

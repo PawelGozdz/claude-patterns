@@ -14,12 +14,12 @@ Skill wywołuje `grantflow-log-time` CLI, które zarządza auth, projektem i wpi
 ### Krok 0 — sprawdź czy grant-flow działa
 
 ```bash
-curl -sf http://localhost:3009/api/health
+grantflow-log-time --status
 ```
 
-Jeśli błąd: wyświetl "grant-flow nie odpowiada. Uruchom: cd /opt/projects/grant-flow && docker compose up -d" i STOP.
+Jeśli `API: ✗ nie odpowiada`: wyświetl "grant-flow (albo brama iam) nie odpowiada. Sprawdź oba stosy: iam/platform i grant-flow (docker compose up -d w obu)" i STOP.
 
-Jeśli brak `~/.grantflow`: wyświetl "Brak konfiguracji. Uruchom najpierw: /grantflow setup" i STOP.
+Jeśli `grantflow-log-time: command not found` albo status pokazuje brak `~/.grantflow`: wyświetl "Brak konfiguracji. Uruchom najpierw: grantflow-log-time --setup (otworzy przeglądarkę do logowania PAT)" i STOP.
 
 ### Krok 1 — zbierz kontekst sesji
 
@@ -92,6 +92,11 @@ grantflow-log-time \
   --date $(date +%Y-%m-%d) \
   --description "<opis>"
 ```
+
+Branch bieżącego repo trafia do referencji **automatycznie** (auto-detect w CLI) — nie
+trzeba go dopisywać ręcznie. Jeśli w rozmowie pojawił się task z backlogu / konkretny
+commit / numer PR, dopisz je jako dodatkowe flagi (`--task TS-XXX`, `--commit`, `--pr ...`)
+— trafiają razem z branchem do jednego pola `externalReference`.
 
 ### Krok 5 — potwierdź
 

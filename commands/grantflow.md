@@ -21,22 +21,27 @@ Gdy użytkownik pisze `/grantflow <sub>`, wykonaj odpowiednią akcję:
 
 ### `setup`
 
-Interaktywna konfiguracja credentials — tworzy `~/.grantflow`:
+Interaktywna konfiguracja — tworzy `~/.grantflow` i loguje przez PAT:
 
 ```bash
 grantflow-log-time --setup
 ```
 
-Jeśli `grantflow-log-time` nie jest w PATH, najpierw zainstaluj:
+Jeśli `grantflow-log-time` nie jest w PATH, najpierw zainstaluj **CAŁY katalog**, nie sam
+skrypt — potrzebny towarzyszący `pat-login-cli/`:
 ```bash
+mkdir -p ~/.local/share/grantflow-cli
+cp -r /opt/projects/claude-patterns/tools/integrations/grant-flow/pat-login-cli ~/.local/share/grantflow-cli/pat-login-cli
 cp /opt/projects/claude-patterns/tools/integrations/grant-flow/grantflow-log-time.sh ~/.local/bin/grantflow-log-time
 chmod +x ~/.local/bin/grantflow-log-time
 ```
 
 Setup wizard zapyta o:
-- URL grant-flow (domyślnie http://localhost:3009 dla lokalnego Docker)
-- Email i hasło
-- Testuje login, pokazuje projekty, opcjonalnie mapuje bieżące repo
+- URL grant-flow (przez bramę `iam`, np. `https://grant-flow.app.dev.juz-ide.pl`)
+- URL panelu `iam` (do wydania PAT, np. `https://admin.app.dev.juz-ide.pl`)
+- Otwiera przeglądarkę do loopback-redirect logowania (RFC 8252, jak `gh auth login`) —
+  **nie hasło**: od TS-SSO-023 (2026-08-24) grant-flow nie ma już logowania email+hasło.
+  Testuje login, pokazuje projekty, opcjonalnie mapuje bieżące repo
 
 ### `projects`
 
@@ -96,4 +101,4 @@ Szybkie logowanie czasu: /log-time
 
 - Brak `~/.grantflow` → "Brak konfiguracji. Uruchom: `/grantflow setup`"
 - grant-flow offline → "Uruchom: `cd /opt/projects/grant-flow && docker compose up -d`"
-- Brak `grantflow-log-time` w PATH → "Zainstaluj: `cp /opt/projects/claude-patterns/tools/integrations/grant-flow/grantflow-log-time.sh ~/.local/bin/grantflow-log-time && chmod +x ~/.local/bin/grantflow-log-time`"
+- Brak `grantflow-log-time` w PATH → "Zainstaluj CAŁY katalog (skrypt + `pat-login-cli/`) — patrz `tools/integrations/grant-flow/README.md`, sekcja Instalacja"
