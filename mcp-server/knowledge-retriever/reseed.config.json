@@ -52,6 +52,15 @@
         "frontend/src"
       ],
       "repoName": "pcu"
+    },
+    "code_ai_gateway": {
+      "_note": "ref is local 'develop', NOT 'origin/develop' — ai-gateway has no git remote configured yet (checked 2026-09-25). Switch to origin/develop once one exists, per _why_ref above.",
+      "repo": "../../../ai-gateway",
+      "ref": "develop",
+      "dirs": [
+        "src"
+      ],
+      "repoName": "ai-gateway"
     }
   }
 }
