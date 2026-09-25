@@ -100,6 +100,10 @@
  *                jako "naprawione", zanim złapał ją drogi code-quality-verifier w ostatniej
  *                dopuszczalnej próbie. Lek jest dalej deterministyczny, nie LLM-owy:
  *                `git diff --cached -U0 | grep -cE '^\+\s*(it|test|describe)\('`.
+ *   WL17 (ERROR) ścieżka no-op osiągalna po CZERWONEJ sondzie bez BLOCKED_BY_PRIOR —
+ *                odziedziczona czerwień kończyła się GO (marketing-hub TS-MH-005, 4/4 warstwy).
+ *   WL18 (WARN)  lista zmienionych plików bez nieśledzonych (git diff --name-only / status
+ *                --short) — nowe pliki niewidoczne, fałszywy ESCALATE (TS-AIG-015, TS-MH-003).
  *   WL16 (WARN)  ślepy retry implementera po cichej śmierci bez diff-sondy — cichy zgon
  *                zwykle znaczy "praca wykonana, budżet spalony na oddaniu wyniku"
  *                (TS-TOKEN-TOPUP-001/A2, api-1, 2026-08-14: kod kompletny + typecheck pass,
@@ -656,6 +660,37 @@ function lint(src) {
     if (retriesImplementer && !probesDiff) {
       const m = /\+\+\s*silent|silent\s*>=\s*\d|if\s*\(\s*!\w+\s*\)\s*\{/.exec(src);
       findings.push({ id: 'WL16', level: 'WARN', line: m ? src.slice(0, m.index).split('\n').length : 0, msg: 'retry implementera po cichej śmierci bez diff-sondy — cichy zgon zwykle znaczy „praca wykonana, budżet spalony na oddaniu wyniku", a ślepa powtórka pali drugą pełną próbę na gotowym kodzie (TS-TOKEN-TOPUP-001/A2, api-1, 2026-08-14: kod kompletny + typecheck pass, a skrypt eskalował po 2 próbach). Po nullu odpal tanią sondę `git diff --name-only` (haiku, effort low) i przy niepustym diffie jednostki idź do verify-existing zamiast re-implementacji (wzorzec: orchestrate.md §2a′ punkt 6a)' });
+    }
+  }
+
+  // WL17 — ścieżka „brak zmian" osiągalna po CZERWONEJ sondzie (marketing-hub TS-MH-005,
+  // wf_a95b083c-a06: 4/4 warstwy infra dostały GO). Sonda liczy checks na całym repo, warstwa
+  // ma wąski zakres; czerwień z wcześniejszej warstwy → runda poprawki → implementer „poza
+  // zakresem, no-op" → weryfikator no-op ocenia SAMO twierdzenie (bez wyniku sondy) → GO.
+  // Forma błędu: skrypt obsługuje twierdzenie no-op (`no_changes_reason`/`verify-noop`) i ma
+  // gałąź czerwonej sondy (`=== 'fail'`), ale nie ma blokady (`BLOCKED_BY_PRIOR`).
+  {
+    const handlesNoop = /no_changes_reason|verify-noop/.test(src);
+    const redProbe = /(typecheck|tests|lint)\s*===\s*['"`]fail['"`]/.test(src);
+    const guarded = /BLOCKED_BY_PRIOR|blockedByPrior/.test(src);
+    if (handlesNoop && redProbe && !guarded) {
+      const m = /no_changes_reason|verify-noop/.exec(src);
+      findings.push({ id: 'WL17', level: 'ERROR', line: src.slice(0, m.index).split('\n').length, msg: 'twierdzenie „brak zmian" (no-op) jest osiągalne po CZERWONEJ sondzie — weryfikator no-op nie widzi wyniku sondy i przyjmie twierdzenie, więc odziedziczona czerwień kończy się GO (marketing-hub TS-MH-005: 4/4 warstwy infra). Po NO_GO z sondy zamknij ścieżkę no-op: implementer, który nie może naprawić czerwieni w swoim zakresie, daje status BLOCKED_BY_PRIOR i przebieg staje (wzorzec: blockedByPrior() w scripts/workflow/orchestrate.template.mjs)' });
+    }
+  }
+
+  // WL18 — bramka „kod istnieje"/diff-sonda ślepa na NOWE pliki (ai-gateway TS-AIG-015,
+  // marketing-hub TS-MH-003/005). `git diff --name-only` porównuje working tree z indeksem:
+  // nie widzi ani nieśledzonych (`??`), ani w pełni zestage'owanych (`A`) plików; `git status
+  // --short` zwija nowy katalog do jednej pozycji. Zadanie tworzące same nowe pliki kończy się
+  // fałszywym „żaden plik nie zmieniony" i ESCALATE. Forma błędu: lista plików z --name-only /
+  // status --short bez źródła nieśledzonych plików per plik.
+  {
+    const listsFiles = /git diff --name-only|git status --short|git status -s\b/.test(src);
+    const seesUntracked = /ls-files\s+--others|-uall|--untracked-files=all/.test(src);
+    if (listsFiles && !seesUntracked) {
+      const m = /git diff --name-only|git status --short|git status -s\b/.exec(src);
+      findings.push({ id: 'WL18', level: 'WARN', line: src.slice(0, m.index).split('\n').length, msg: 'lista zmienionych plików z `git diff --name-only`/`git status --short` nie widzi nowych plików — nieśledzone i zestage\'owane (`A`) wypadają, a nowy katalog to jedna pozycja `?? dir/`. Zadanie tworzące same nowe pliki dostaje fałszywe „żaden plik nie zmieniony" i ESCALATE (ai-gateway TS-AIG-015, marketing-hub TS-MH-003/005). Użyj `git diff --name-only HEAD; git ls-files --others --exclude-standard` (wzorzec: treeFilesCmd() w scripts/workflow/orchestrate.template.mjs)' });
     }
   }
 

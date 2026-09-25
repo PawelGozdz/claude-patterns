@@ -39,7 +39,30 @@ patterns:                       # grounding (z Pattern Discovery) — to samo w 
   - domain/aggregate-pattern.md
   - application/command-handler-pattern.md
 
-units: []                       # Ralphinho seam — pusty = jeden unit (cały task). MVP: zostaw [].
+patterns_exclude: []            # fałszywe trafienia keywordów (np. wzorzec web na „dashboard")
+  # — ścieżki z doboru, których NIE wstrzykiwać. Wpis, który niczego nie wykluczył = ostrzeżenie.
+
+units: []                       # podział warstwy na jednostki — każda to osobny przebieg
+  # implement→verify (pod-warstwa <layer>:<id>). Pusty = warstwy z runtime.yml bez podziału.
+  # Warstwa z jednostkami NIE może być w layers_skip ani layers_scope. W dirs dopisz też
+  # pliki towarzyszące spoza katalogu (setup testów, .env.example, compose); test obok
+  # zmienianego pliku z tym samym rdzeniem nazwy (x.map.ts → x.adapter.spec.ts) wchodzi sam.
+  # - { id: audience, layer: infrastructure, dirs: ["src/contexts/audience/infrastructure/"], reason: "D3: repozytorium + kontroler" }
+  # - { id: campaigns, layer: infrastructure, dirs: ["src/contexts/campaigns/infrastructure/", "test/setup/env.ts"], checks: ["typecheck", "lint:check"] }
+
+layers_skip: []                 # warstwy z runtime.yml, których ten task NIE dotyka — z powodem.
+  # Bez tego wpisu silnik odpala implementera na każdej warstwie i po 3 próbach „zero zmian"
+  # eskaluje, bo nie odróżnia „nic do zrobienia" od „nie wykonał pracy". Typowo: task
+  # infrastrukturalny → domain i application pominięte. `id` = id warstwy z runtime.yml.
+  # - { id: domain, reason: "task nie zmienia modelu domenowego (D2)" }
+  # Skip jest CAŁKOWITY — implementer tej warstwy nie startuje. Powód mówiący „częściowo",
+  # „wyjątek", „7 z 8", „tylko dla …" zatrzymuje bramkę: to jest zawężenie, nie pominięcie.
+
+layers_scope: []                # warstwy dotknięte CZĘŚCIOWO — wchodzą, ale tylko wskazane ścieżki.
+  # Implementer, weryfikator i sonda widzą wyłącznie `dirs` (katalogi albo pojedyncze pliki,
+  # ścieżki od korzenia repo); reszta katalogów warstwy jest dla tego tasku poza zakresem.
+  # Warstwa nie może być jednocześnie w layers_skip i layers_scope.
+  # - { id: application, dirs: ["src/contexts/shares/application/"], reason: "Q2: 6 handlerów kopiuje error.message z obcej domeny; pozostałe konteksty nietknięte" }
 ---
 
 # Analiza: {TASK-ID}

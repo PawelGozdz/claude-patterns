@@ -1,7 +1,7 @@
 # Global Claude Code Agents
 
 **Purpose**: Reusable specialist and advisory agents for Claude Code projects.
-**Total**: 26 universal + 30 stack-specific = 56 agents
+**Total**: 24 universal + 32 stack-specific = 56 agents
 
 ---
 
@@ -116,7 +116,7 @@ Skill: `skills/quality/review-panel/SKILL.md` · Command: `/review-panel` · Pat
 
 ---
 
-## Stack-Specific Agents (30)
+## Stack-Specific Agents (32)
 
 Linked per-project to `.claude/agents/` via `setup-project.sh`.
 
@@ -179,6 +179,16 @@ For Astro 5 static blog / AI-first content projects.
 |-------|---------|-------|------|
 | **nextjs-architecture-expert** | App Router, RSC, data fetching patterns | Sonnet | No |
 | **nextjs-quality-verifier** | Next.js quality, performance, SSR | Sonnet | Yes |
+
+### refine-spa (2)
+
+For Vite + React 18 + Refine 5 + Ant Design panels behind an identity gateway (session cookie
+set by the proxy, no tokens in the browser). First consumer: marketing-hub (TS-MH-002).
+
+| Agent | Purpose | Model | VETO |
+|-------|---------|-------|------|
+| **refine-implementer** | Implements the web package only: Refine providers (auth / access-control / data over a JSend envelope), shell, pages, co-located L1/L2 tests and the Playwright smoke; verifies Refine signatures against installed types before writing providers | Sonnet | No |
+| **refine-quality-verifier** | Grep gates + code review for the web security invariants (no browser storage, no fetch outside providers, no `dangerouslySetInnerHTML`, no build-time secrets), provider contract, structure boundaries, web test pyramid | Sonnet | Yes |
 
 ### sveltekit (2)
 
@@ -265,4 +275,4 @@ warns when a memory directory starts looking like a run log.
 
 **Version**: 3.6.0
 **Last Updated**: 2026-08-27
-**Agent Count**: 56 (26 universal + 30 stack-specific)
+**Agent Count**: 56 (24 universal + 32 stack-specific)

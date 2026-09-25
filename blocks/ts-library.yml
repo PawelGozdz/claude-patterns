@@ -52,9 +52,17 @@ overlay:
 # pierwszym zapisie każdego nowego pliku, co w autonomicznej pętli /orchestrate zawiesza
 # implementera. Ochrona publicznego API nie stoi tutaj na GateGuardzie, tylko na warstwie
 # api-surface i bramce końcowej — te sprawdzają realny diff, nie intencję zapisu.
+#
+# `pre:config-protection` (ECC) też wyłączony — blokuje KAŻDĄ edycję istniejącego
+# eslint.config.*/prettier/biome, żeby agent nie osłabiał lintu zamiast poprawiać kod. W usłudze
+# to słuszne; w publikowanej bibliotece config lintu bywa produktem (krok 0 roadmapy `platform`
+# to eslint + boundaries + max-lines, kandydat `@juz-ide/eslint-config`), a hook nie odróżnia
+# „osłabiam regułę" od „dopisuję regułę granic" (platform 2026-09-13: zablokowana poprawka
+# eslint.config.js w repo, które ten plik dopiero buduje). Osłabienie lintu i tak wychodzi
+# w diffie przy bramce końcowej — tam jest jego miejsce, nie na PreToolUse.
 env:
   ECC_GATEGUARD: "off"
-  ECC_DISABLED_HOOKS: "pre:edit-write:gateguard-fact-force,pre:bash:gateguard-fact-force"
+  ECC_DISABLED_HOOKS: "pre:edit-write:gateguard-fact-force,pre:bash:gateguard-fact-force,pre:config-protection"
 
 analyze:
   panel:

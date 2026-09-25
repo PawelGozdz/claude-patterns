@@ -7,7 +7,7 @@
 
 **Layer**: Application · **Applies to**: `*.handler.ts` w `**/application/commands/`
 **Base**: `BaseCommandHandler<Command, Result<DTO, Error>>` · **Decorators**: `@Injectable()`, `@CommandHandler(CommandClass)`
-**ADR**: 0012, 0013, 0021, 0035
+**ADR**: 0012, 0013, 0021, 0035, 0117, 0119
 
 ## MUST
 - **CH1** — extends `BaseCommandHandler<Command, Result<DTO, Error>>`.
@@ -21,7 +21,8 @@
 - **CH9** — telemetria: `getOperationName()` i `getBoundedContext()` muszą być zaimplementowane.
 - **CH10** — handler dodany do tablicy `providers` w module — wystarczy do auto-discovery przez `VytchesExplorerService`.
 - **CH11** — jeśli `executeBusinessLogic()`/`prepare()` ma WIĘCEJ NIŻ JEDNĄ gałąź warunkową tworzącą/finalizującą TEN SAM agregat (np. `if (command.location) {...} else {...}`), każdy obowiązkowy side-effect (audit call, side-channel repo write typu `setTag`, event emission, token confirm/release) MUSI wystąpić w KAŻDEJ gałęzi, w tym samym miejscu cyklu życia. Weryfikuj przez zestawienie side-effectów obu gałęzi obok siebie — czytanie jednej gałęzi osobno tego nie złapie (real incident: `create-local-share/handler.ts`, BR-LS-TAG-001, `setTag()` brakujące w gałęzi residence-default przez 39 commitów).
-- **CH12** — operacja zewnętrzna wymagająca kompensacji na porażkę (np. rezerwacja tokenów) MUSI wykonać się w `executeBusinessLogic()` (rdzeń transakcyjny), NIGDY w `prepare()` (ADR-0118 B4). `compensate(command, prepared, error)` — hak wołany PO rollbacku — nigdy się nie odpala, gdy porażka jest WEWNĄTRZ `prepare()`, więc nic zarezerwowanego tam nie ma kanału do zwolnienia.
+- **CH12** — operacja zewnętrzna wymagająca kompensacji na porażkę (np. rezerwacja tokenów) MUSI wykonać się w `executeBusinessLogic()` (rdzeń transakcyjny), NIGDY w `prepare()` (ADR-0119 B4). `compensate(command, prepared, error)` — hak wołany PO rollbacku — nigdy się nie odpala, gdy porażka jest WEWNĄTRZ `prepare()`, więc nic zarezerwowanego tam nie ma kanału do zwolnienia.
+- **CH13** — kompensowalna rezerwacja MUSI iść przez `CompensationStack.acquire(label, acquire, compensate)` z `@vytches/ddd-resilience` — NIGDY jako ręczne pola `tokenReservationId`/`compensationReason`. `prepare()` seeduje `stack: null`; `executeBusinessLogic()` tworzy `CompensationStack.create()` i woła `.acquire()` tuż przed rezerwacją; `compensate()` woła `stack.unwind()` na TYM SAMYM obiekcie `prepared`.
 
 ## MUST NOT
 - **N1** — ❌ `userId` w klasie Command — userId pochodzi z JWT (RequestContext), nie z body (luka bezpieczeństwa, ADR-0021).
@@ -33,6 +34,8 @@
 - **N7** — ❌ brak `@Inject()` przy dowolnej zależności konstruktora.
 - **N8** — ❌ dodanie obowiązkowego side-effectu (audit, tag, event, token confirm/release) tylko do gałęzi aktualnie edytowanej, gdy handler ma ≥2 gałęzie tworzące/finalizujące ten sam agregat — patrz CH11.
 - **N9** — ❌ rezerwacja zasobu zewnętrznego wymagającego `compensate()` na porażkę, wywołana WEWNĄTRZ `prepare()` — brak kanału do jej cofnięcia, gdy TA konkretna rezerwacja zawiedzie (patrz CH12).
+- **N10** — ❌ wołanie `stack.acquire()` na instancji `CompensationStack`, na której `unwind()` już się zakończył — wpis jest przyjęty po cichu i NIGDY skompensowany (jednorazowa zatrzaskująca się instancja). Nowy przepływ = nowy `CompensationStack.create()`.
+- **N11** — ❌ ręcznie napisane pola `tokenReservationId`/`compensationReason` w nowym handlerze zamiast `CompensationStack` — to kształt, który ten mechanizm zastąpił (2 z 10 handlerów miały niekompletne ścieżki zwolnienia przed migracją).
 
 ## Minimal correct skeleton
 ```ts
@@ -118,5 +121,7 @@ export class XxxHandler extends BaseCommandHandler<
 | brak `getOperationName()` lub `getBoundedContext()` | CH9 |
 | ≥2 gałęzie tworzące ten sam agregat, side-effect (setTag/audit/event/token confirm) obecny tylko w jednej | CH11 / N8 |
 | rezerwacja/side-effect-do-kompensacji wołane wewnątrz `prepare()` | CH12 / N9 |
+| pole `tokenReservationId`/`compensationReason` zamiast `CompensationStack` | CH13 / N11 |
+| `stack.acquire()` wywołane po `stack.unwind()` na tej samej instancji | N10 |
 
 **Pełny wzorzec**: [`command-handler-pattern.md`](./command-handler-pattern.md)

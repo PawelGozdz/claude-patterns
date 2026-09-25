@@ -127,7 +127,8 @@ docs:
 
 # Entry points (slash commands)
 entry_points:
-  orchestrate: "/o"
+  analyze: "/analyze"
+  orchestrate: "/orchestrate"
   scaffold: "/scaffold"
   progress: "/progress"
 

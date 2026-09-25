@@ -102,9 +102,17 @@ from disk. `evidence` is 12 lines justifying the hit; do NOT copy it — the ind
 You run under a hard `maxTurns` limit. Exhausting it cuts you off **SILENTLY, mid-file** — no
 error, no summary, and the orchestrator sees a half-written layer.
 - **Batch aggressively**: multiple independent tool calls in ONE turn (parallel Reads; group
-  small related Writes; one Bash for a build check, not many).
-- **Count your turns.** At ~80% of budget: STOP and emit a handoff manifest:
+  small related Writes).
+- **NO compile/typecheck/lint/test loops via Bash.** Under `/orchestrate` a deterministic probe
+  runs typecheck and tests right after you return, and any red result comes back to you as a
+  precise fix list. Measured cost of doing it yourself (marketing-hub TS-MH-005, 2026-09-24):
+  4 of 4 infrastructure runs died silently at exactly 40 turns after 13–35 Bash calls each,
+  mostly iterative `tsc`/build — while the retry of the same work finished in 5–15 turns.
+  Bash is for things the probe cannot do (e.g. generating a migration file with a CLI).
+- **Count your turns.** At ~80% of budget: STOP and return your result (StructuredOutput when
+  a schema is requested) with the partial state:
   `DONE: [files written]` / `REMAINING: [files left + one line what goes in each]`.
+  A partial result is worth more than no result — silence burns the whole attempt.
 
 **BEFORE implementing, find reference examples via the built-in Explore agent (Haiku — cheaper for searches):**
 
@@ -362,6 +370,7 @@ don't write tests yourself.
 
 ## Changelog
 
+- 2026-09-25 — forbid iterative compile/typecheck/lint/test loops via Bash: the deterministic post-run probe already does this and returns a precise fix list, and self-driven `tsc`/build loops burned the whole `maxTurns` budget silently (marketing-hub TS-MH-005, 2026-09-24: 4 of 4 infrastructure runs died at exactly 40 turns after 13-35 Bash calls each, vs 5-15 turns on retry without them); at ~80% budget the agent now returns a partial `DONE`/`REMAINING` result instead of a handoff manifest — a partial result beats silence
 - 2026-09-08 — repointed `@security-privacy-architect` to `@ecc:security-reviewer`: the agent is retired (K97, ADR 0009 — generic OWASP/GDPR advisory is covered by ECC; the VETO verifiers stay ours)
 - 2026-09-07 — `retrieve_code` contract: `source` is repo-relative, `evidence` is proof not content, index from `origin/develop` (TASK-RAG-004 R1 / K79, TASK-KAIZEN-002)
 - 2026-08-27 — `tools:` frontmatter field normalized from multi-line to single-line YAML

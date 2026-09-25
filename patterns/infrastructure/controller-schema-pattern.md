@@ -421,6 +421,9 @@ The `@RateLimit` decorator and the per-context `*.rate-limits.ts` file it reads 
 8. **MUST log operations** - Audit trail for all operations
 9. **MUST use strict mode** - `.strict()` on all Zod schemas (no extra fields)
 10. **MUST use UUID validation** - All IDs validated as UUIDs
+11. **MUST keep idempotent response bodies minimal** *(only where an Idempotency-Key mechanism exists — see scope note below)* - An endpoint using `options.idempotent` (TS-INFRA-IDEMPOTENCY-002, AC-S5) returns a receipt of the action (id + confirmation fields), never a full projection that could carry a credential-like field (session token, password, OTP code, API key) — that response is replayed verbatim on retry, so caching it is equivalent to caching the credential. The automatic guard on `@AuthEndpointSchema({ idempotent: true, ... })` (`endpoint-schema.decorator.ts`, TM finding -006) only scans **top-level** field names — a nested shape (e.g. `{ data: { accessToken } }`) passes the guard silently, so this MUST is enforced by response-schema design, not only by the automated check.
+
+> **Scope note (rule 11 / CS12):** this rule applies only to repos that actually have an `Idempotency-Key` interceptor/decorator (`@Idempotent()` / `options.idempotent`) — as of 2026-09-14 that's `juz-ide-api-*` only. Repos without this mechanism (e.g. `grant-flow`, `marketing-hub`) have no `options.idempotent` to misuse, so rule 11 is vacuously satisfied — do not treat its absence as a gap to fix in those repos.
 
 ### MUST NOT
 

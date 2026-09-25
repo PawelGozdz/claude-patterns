@@ -931,6 +931,14 @@ not that nobody looked.
 - `KyselyOutboxRepository` (RP12) — the outbox poller works across aggregates by design; a
   per-aggregate repository would invert the relationship. See `transactional-outbox-pattern.md`.
 
+- `FinancialAuditLogKyselyRepository` (RP2, grant-flow `project` context, TS-AUDIT-001) — the
+  `financial_audit_log` table is an append-only projection, not a domain aggregate: it has no
+  domain events to dispatch and no `aggregate_versions` optimistic-locking row, so
+  `BaseKyselyRepository`'s dispatch/locking machinery would apply to data that was never
+  reconstituted through `create()`/`reconstituteFromPersistence()`. Checked before accepting:
+  the class has no update/delete methods (insert-only by design, TM-AUDIT-002), and writes go
+  through `TransactionHost.tx` so they still join the caller's `@Transactional` CLS context.
+
 ---
 
 ## 📚 References

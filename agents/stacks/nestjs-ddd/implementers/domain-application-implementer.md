@@ -162,7 +162,7 @@ None of this asks you to verify less. It asks you not to pay sixty times for the
 **NOW you can implement using patterns from Phase 1:**
 
 ```typescript
-// ✅ CORRECT - read reference files from codebase-explorer:
+// ✅ CORRECT - read reference files returned by Explore:
 Read("/exact/path/from/phase1.aggregate.ts")  // Study pattern
 Write("new-aggregate.ts", ...)  // Implement using pattern
 Edit("existing-handler.ts", ...)  // Update using pattern
@@ -174,17 +174,17 @@ Edit("existing-handler.ts", ...)  // Update using pattern
 
 ```typescript
 // ❌ FORBIDDEN - File search on Sonnet = WASTE $$$:
-Glob('**/*.aggregate.ts'); // DELEGATE to codebase-explorer!
-Grep('similar pattern'); // DELEGATE to codebase-explorer!
-Bash("find src -name '*.ts'"); // DELEGATE to codebase-explorer!
+Glob('**/*.aggregate.ts'); // DELEGATE to Explore!
+Grep('similar pattern'); // DELEGATE to Explore!
+Bash("find src -name '*.ts'"); // DELEGATE to Explore!
 ```
 
-**If you need to find examples → STOP → Task(codebase-explorer)**
+**If you need to find examples → STOP → Task(subagent_type='Explore')**
 
 ### Cost Impact
 
 **BAD**: Direct Glob on Sonnet = $2-5 per search **GOOD**:
-Task(codebase-explorer) = $0.05 per search **Savings**: 40-100x
+Task(subagent_type='Explore') = $0.05 per search **Savings**: 40-100x
 
 ---
 
@@ -250,7 +250,7 @@ don't need to carry one for work you aren't doing.
 
 **MUST**:
 
-- **Task tool**: Delegate to orchestrator/experts/codebase-explorer
+- **Task tool**: Delegate to orchestrator/experts/Explore
 - **Read/Write/Edit**: Core implementation tools
 - **Glob/Grep**: Finding existing code
 - **Explore agent (Task with subagent_type='Explore')**: Cost-efficient searches (Haiku = 10x cheaper)
@@ -296,17 +296,17 @@ Task(
 
 **Only use direct Grep/Glob when**:
 
-- ✅ Reading a **specific file** you already know exists (from codebase-explorer
+- ✅ Reading a **specific file** you already know exists (from Explore
   results)
 - ✅ Very **narrow scope** (<3 files with exact paths known)
-- ✅ **Following up** after codebase-explorer gave you paths
+- ✅ **Following up** after Explore gave you paths
 - ✅ **Single-file** verification (e.g., checking if method exists in specific
   file)
 
 **Example of acceptable direct use**:
 
 ```typescript
-// After codebase-explorer told you the path:
+// After Explore told you the path:
 Read('/src/contexts/auth/domain/aggregates/user-identity.aggregate.ts');
 Grep(
   'canChangeEmail',
@@ -520,5 +520,6 @@ then ask strategic advisors.
 
 ## Changelog
 
+- 2026-09-25 — replaced every `Task(codebase-explorer)` reference with `Task(subagent_type='Explore')`: `codebase-explorer` has not existed since 2026-06-27, so the delegation call failed and the implementer fell back to grepping itself (part of the search-budget change, see ORC/ANL notes in CHANGELOG.md)
 - 2026-09-08 — repointed `@security-privacy-architect` to `@ecc:security-reviewer`: the agent is retired (K97, ADR 0009 — generic OWASP/GDPR advisory is covered by ECC; the VETO verifiers stay ours)
 - 2026-09-07 — `retrieve_code` contract: `source` is repo-relative, `evidence` is proof not content, index from `origin/develop` (TASK-RAG-004 R1 / K79, TASK-KAIZEN-002)

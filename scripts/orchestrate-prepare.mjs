@@ -4,6 +4,15 @@
 //
 // Użycie:
 //   node scripts/orchestrate-prepare.mjs <TASK-ID> [--project <dir>] [--json]
+//        [--overrides <plik.json>] [--emit-script <ścieżka.mjs>]
+//
+//   --overrides    nadpisania wyjścia z pliku (zamiast ręcznej edycji kopii szablonu):
+//                  obiekty scalane głęboko, tablice zastępowane; `layers` jako mapa
+//                  { "<id>": { …pola… } }. Nieznany klucz = exit 1 (literówka nie może
+//                  przejść po cichu).
+//   --emit-script  zapisuje gotowy skrypt Workflow z WBUDOWANYMI args (przy ~150 KB args
+//                  ręczne przekazanie odpada), przepuszcza go przez workflow-lint i podaje
+//                  jego ścieżkę w `scriptPath`. Błąd lintu = exit 4, plik nie powstaje.
 //
 // ZERO LLM. Skrypt czyta trzy pliki i wypisuje JSON gotowy do podania jako `args`
 // narzędzia Workflow. Powód istnienia: `commands/orchestrate.md` §2b′ od dawna wymaga
@@ -40,9 +49,11 @@
 // Nie ma → `card: false`, treść PEŁNEGO wzorca i wpis w `warnings[]` („napisz kartę"),
 // bo pełny wzorzec w prompcie implementera to 20-36 KB przeliczane w każdej turze.
 //
-// WYJŚCIE (exit code): 0 = gotowe, 1 = błąd użycia, 2 = bramka analizy, 3 = brak/zły config.
+// WYJŚCIE (exit code): 0 = gotowe, 1 = błąd użycia, 2 = bramka analizy, 3 = brak/zły config,
+// 4 = wyemitowany skrypt nie przeszedł workflow-lint.
 
-import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, readdirSync, statSync, mkdirSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
 import { join, dirname, basename, resolve, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
@@ -56,7 +67,7 @@ const YAML = require_(join(REPO_ROOT, 'node_modules', 'yaml'));
 // satelita nie musi niczego symlinkować ani znać lokalizacji claude-patterns.
 const WORKFLOW_SCRIPT = join(REPO_ROOT, 'scripts', 'workflow', 'orchestrate.template.mjs');
 
-const EXIT = { OK: 0, USAGE: 1, GATE: 2, CONFIG: 3 };
+const EXIT = { OK: 0, USAGE: 1, GATE: 2, CONFIG: 3, LINT: 4 };
 
 function die(code, msg) {
   process.stderr.write(`✘ orchestrate-prepare: ${msg}\n`);
@@ -65,19 +76,25 @@ function die(code, msg) {
 
 // ── argumenty ────────────────────────────────────────────────────────────────────
 function parseArgs(argv) {
-  const out = { taskId: null, project: process.cwd(), json: false };
+  const out = { taskId: null, project: process.cwd(), json: false, overrides: null, emitScript: null };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--json') out.json = true;
     else if (a === '--project') out.project = argv[++i] ?? '';
     else if (a.startsWith('--project=')) out.project = a.slice('--project='.length);
+    else if (a === '--overrides') out.overrides = argv[++i] ?? '';
+    else if (a === '--emit-script') out.emitScript = argv[++i] ?? '';
     else if (a.startsWith('-')) die(EXIT.USAGE, `nieznany przełącznik: ${a}`);
     else if (!out.taskId) out.taskId = a;
     else die(EXIT.USAGE, `nadmiarowy argument: ${a}`);
   }
-  if (!out.taskId) die(EXIT.USAGE, 'brak <TASK-ID>.\n  użycie: orchestrate-prepare.mjs <TASK-ID> [--project <dir>] [--json]');
+  if (!out.taskId) die(EXIT.USAGE, 'brak <TASK-ID>.\n  użycie: orchestrate-prepare.mjs <TASK-ID> [--project <dir>] [--json] [--overrides <plik.json>] [--emit-script <ścieżka.mjs>]');
   if (!out.project) die(EXIT.USAGE, '--project bez wartości');
+  if (out.overrides === '') die(EXIT.USAGE, '--overrides bez ścieżki pliku');
+  if (out.emitScript === '') die(EXIT.USAGE, '--emit-script bez ścieżki pliku');
   out.project = resolve(out.project);
+  if (out.overrides) out.overrides = resolve(out.overrides);
+  if (out.emitScript) out.emitScript = resolve(out.emitScript);
   return out;
 }
 
@@ -194,11 +211,26 @@ const GENERIC_LAYERS = [{
   role: 'Cały kod produkcyjny — projekt nie deklaruje podziału na warstwy.',
 }];
 
-function resolveLayers(runtime, layersDone) {
+function resolveLayers(runtime, layersDone, layersSkip, layersScope, units) {
   const orch = runtime.orchestrate ?? {};
   const raw = Array.isArray(orch.layers) && orch.layers.length ? orch.layers : GENERIC_LAYERS;
   const done = new Set((layersDone ?? []).map(String));
-  return raw.map((l, i) => ({
+  // layers_skip z artefaktu: warstwa, której task NIE dotyka (z powodem z analizy). Inna klasa
+  // niż layers_done (checkpoint wznowienia) — tam praca była, tu jej nie ma i nie będzie.
+  const skipped = new Map((layersSkip ?? []).filter((s) => s && typeof s === 'object')
+    .map((s) => [String(s.id), String(s.reason ?? '')]));
+  const skipOf = (id) => done.has(id) ? 'GO z poprzedniego przebiegu (layers_done)'
+    : skipped.has(id) ? `pominięta w analizie (layers_skip): ${skipped.get(id)}` : null;
+  // layers_scope z artefaktu: warstwa WCHODZI, ale implementer i sonda widzą tylko wskazane
+  // ścieżki. Trzecia klasa obok skip/done — „dotknięta częściowo" nie da się wyrazić przez
+  // skip bez zgubienia pracy (juz-ide-api-2, 2026-09-18: application skip=true, a w jednym
+  // z ośmiu kontekstów siedziała naprawa żywego wycieku; ANL-037).
+  const scoped = new Map((layersScope ?? []).filter((s) => s && typeof s === 'object')
+    .map((s) => [String(s.id), {
+      dirs: (Array.isArray(s.dirs) ? s.dirs : [s.dirs]).filter(Boolean).map(String),
+      reason: String(s.reason ?? ''),
+    }]));
+  const base = raw.map((l, i) => ({
     index: i,
     id: String(l.id),
     dirs: (l.dirs ?? []).map(String),
@@ -208,14 +240,137 @@ function resolveLayers(runtime, layersDone) {
     tests: l.tests === true,
     optional: l.optional === true,
     createWhen: l.create_when ? String(l.create_when) : null,
+    // weryfikator PER WARSTWA (monorepo api+web: inny VETO dla apps/web niż dla domeny);
+    // brak = inner_loop.verify, jak dotąd.
+    verify: l.verify ? String(l.verify) : null,
     // wzorce przypisane wprost do warstwy (layer_contributions z innych bloków)
     layerPatterns: (l.patterns ?? []).map(String),
     checks: (l.checks ?? []).map(String),
     // checkpoint z artefaktu — warstwa z GO poprzedniego przebiegu nie startuje ponownie
-    skip: done.has(String(l.id)),
-    skipReason: done.has(String(l.id)) ? 'GO z poprzedniego przebiegu (layers_done)' : null,
+    skip: skipOf(String(l.id)) !== null,
+    skipReason: skipOf(String(l.id)),
+    // zawężenie z analizy (layers_scope) — szablon czyta `scope.dirs` ZAMIAST `dirs`
+    scope: scoped.get(String(l.id)) ?? null,
   }));
+  return expandUnits(base, units, done);
 }
+
+// units[] z artefaktu → pod-warstwy. Analiza marketing-hub TS-MH-005 zaplanowała 4 przebiegi
+// infrastruktury, a prepare (pole nieczytane) zbudował jeden — człowiek zauważył to dopiero
+// w wyjściu. Warstwa z jednostkami zostaje zastąpiona, w miejscu i kolejności z artefaktu,
+// pod-warstwami `<warstwa>:<unit>`: zakres = `dirs` jednostki (jak layers_scope), karty
+// warstwy bazowej (`base`), checks/rola jednostki albo warstwy. `layers_done` przyjmuje id
+// pod-warstwy (checkpoint per jednostka) i id warstwy bazowej (wszystkie jej jednostki).
+// Poprawność wpisów sprawdza bramka w main() — tu wejście jest już zwalidowane.
+function expandUnits(layers, units, done) {
+  const list = (Array.isArray(units) ? units : []).filter((u) => u && typeof u === 'object');
+  if (!list.length) return layers;
+  const out = [];
+  for (const layer of layers) {
+    const mine = list.filter((u) => String(u.layer) === layer.id);
+    if (!mine.length) { out.push(layer); continue; }
+    for (const u of mine) {
+      const id = `${layer.id}:${String(u.id)}`;
+      const isDone = done.has(id) || done.has(layer.id);
+      const dirs = (Array.isArray(u.dirs) ? u.dirs : [u.dirs]).filter(Boolean).map(String);
+      out.push({
+        ...layer,
+        id,
+        base: layer.id,
+        role: u.role ? String(u.role) : layer.role,
+        checks: Array.isArray(u.checks) ? u.checks.map(String) : layer.checks,
+        skip: isDone,
+        skipReason: isDone ? 'GO z poprzedniego przebiegu (layers_done)' : null,
+        scope: { dirs, reason: String(u.reason ?? u.title ?? `jednostka ${u.id}`) },
+      });
+    }
+  }
+  return out.map((l, i) => ({ ...l, index: i }));
+}
+
+// Dwie ścieżki, jedna reguła: nadpisanie, którego wyjście nie zna, to literówka — exit 1.
+// Obiekty scalane głęboko, tablice i skalary zastępowane. `layers` to mapa po id warstwy.
+// `budgets`, `env` i `createWhenHits` są otwarte (klucze definiuje projekt).
+const OPEN_OVERRIDE_KEYS = new Set(['budgets', 'env', 'createWhenHits']);
+function applyOverrides(out, overrides, path = '') {
+  const isObj = (v) => v && typeof v === 'object' && !Array.isArray(v);
+  if (!isObj(overrides)) die(EXIT.USAGE, `--overrides${path ? ' ' + path : ''}: oczekiwany obiekt JSON`);
+  const result = { ...out };
+  for (const [k, v] of Object.entries(overrides)) {
+    const here = path ? `${path}.${k}` : k;
+    if (!path && k === 'layers') {
+      if (!isObj(v)) die(EXIT.USAGE, '--overrides layers: oczekiwana mapa { "<id warstwy>": { …pola… } }');
+      const ids = new Set(out.layers.map((l) => l.id));
+      for (const id of Object.keys(v)) if (!ids.has(id)) die(EXIT.USAGE, `--overrides layers.${id}: nie ma takiej warstwy (są: ${[...ids].join(', ')})`);
+      result.layers = out.layers.map((l) => (v[l.id] ? applyOverrides(l, v[l.id], `layers.${l.id}`) : l));
+      continue;
+    }
+    const open = OPEN_OVERRIDE_KEYS.has(path.split('.')[0] || k);
+    if (!(k in out) && !open) die(EXIT.USAGE, `--overrides: nieznany klucz \`${here}\` — wyjście prepare go nie ma (literówka?)`);
+    result[k] = isObj(v) && isObj(out[k]) ? applyOverrides(out[k], v, here) : v;
+  }
+  return result;
+}
+
+// Stan repo przy starcie przebiegu: baza porównania dla bramki końcowej (lista plików z
+// drzewa, nie z raportów warstw) i pliki brudne już przed startem (bramka ma wiedzieć, że
+// nie są pracą tego taska). Brak gita = null + ostrzeżenie; szablon wraca wtedy do HEAD.
+function gitState(projectDir, warnings) {
+  const git = (...a) => spawnSync('git', ['-C', projectDir, ...a], { encoding: 'utf8' });
+  const head = git('rev-parse', 'HEAD');
+  if (head.status !== 0) {
+    warnings.push('katalog projektu nie jest repozytorium git z commitem — baseSha/dirtyAtStart puste, bramka końcowa porówna z HEAD');
+    return { baseSha: null, dirtyAtStart: [] };
+  }
+  const st = git('status', '--porcelain', '-uall');
+  const dirty = st.status === 0
+    ? st.stdout.split('\n').filter(Boolean).map((l) => l.slice(3).replace(/^.* -> /, '').replace(/^"|"$/g, ''))
+    : [];
+  return { baseSha: head.stdout.trim(), dirtyAtStart: dirty };
+}
+
+// Skrypt z wbudowanymi args. Podstawienie przez split/join, NIE String.replace ze stringiem
+// zastępczym: `$'`, `$&` i `$1` w treści kart (a karty mają przykłady z shellem i regexami)
+// są w replace wzorcami — marketing-hub zgubił na tym fragment args w ręcznej kopii.
+const ARGS_LINE = 'const a = args || {}';
+function emitScript(out, target) {
+  const src = readFileSync(WORKFLOW_SCRIPT, 'utf8');
+  const hits = src.split(ARGS_LINE).length - 1;
+  if (hits !== 1) die(EXIT.CONFIG, `szablon ${WORKFLOW_SCRIPT}: oczekiwana dokładnie jedna linia "${ARGS_LINE}", jest ${hits}`);
+  const json = JSON.stringify(out, null, 1).replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029');
+  const emitted = src.split(ARGS_LINE).join(`const a = ${json}`);
+  const { lint } = require_(join(REPO_ROOT, 'hooks', 'workflow-lint.js'));
+  const findings = lint(emitted);
+  const errors = findings.filter((x) => x.level === 'ERROR');
+  if (errors.length) {
+    process.stderr.write('✘ orchestrate-prepare: wyemitowany skrypt NIE przeszedł workflow-lint — plik nie powstał.\n');
+    for (const e of errors) process.stderr.write(`  • [${e.id}] ${e.msg.slice(0, 300)}\n`);
+    process.exit(EXIT.LINT);
+  }
+  mkdirSync(dirname(target), { recursive: true });
+  writeFileSync(target, emitted);
+  return findings.filter((x) => x.level !== 'ERROR').map((x) => `workflow-lint [${x.id}] w wyemitowanym skrypcie: ${x.msg.slice(0, 200)}`);
+}
+
+// Powód pominięcia warstwy, który mówi „częściowo" — to zawężenie zapisane w złym polu.
+// Lista celowo wąska: „tylko"/„nie dotyczy" same w sobie są w legalnych powodach
+// („zmiany tylko w infrastrukturze", „task nie dotyczy domeny"), więc nie łapiemy ich gołych.
+const PARTIAL_SKIP_MARKERS = [
+  /\bwyj[aą]t(ek|kiem)\b/i,              // „wyjątek: …", „z wyjątkiem …"
+  /\bopr[oó]cz\b/i,
+  /\bzaw[eę][zż]on/i,                    // „zawężony zakres"
+  /\bcz[eę][sś]ciow/i,                   // „częściowo"
+  /\b\d+\s+z\s+\d+\b/i,                  // „7 z 8 kontekstów"
+  /pomini[eę]t\w*\s+tylko\b/i,           // „pominięta TYLKO dla …"
+  /\btylko\s+dla\b/i,
+  /\bnie\s+jest\s+(ju[zż]\s+)?ca[lł]kowicie\b/i,
+  /\b(except|partial(ly)?|only\s+for)\b/i,
+];
+function partialSkipMarker(reason) {
+  const hit = PARTIAL_SKIP_MARKERS.find((re) => re.test(reason));
+  return hit ? String(reason.match(hit)[0]) : null;
+}
+const PATH_LIKE = /(^|[\s(])(src|apps|packages|lib|libs|test|tests)\/[\w.\-\/]+/;
 
 // ── główny bieg ──────────────────────────────────────────────────────────────────
 function main() {
@@ -263,6 +418,97 @@ function main() {
     if (unanswered.length) {
       gateFailures.push(`open_questions bez odpowiedzi: ${unanswered.join(', ')}`);
     }
+    // decisions[] — prompty czytają `choice`. Artefakt z polem `decision`/`answer`/`option`
+    // przechodził bramkę, a D1–D7 docierały do implementerów PUSTE (juz-ide-api-2, 2026-09-14):
+    // zatwierdzona decyzja, której nikt nie stosuje, jest gorsza niż brak decyzji.
+    const decisions = analysisDoc.fm?.decisions;
+    if (Array.isArray(decisions)) {
+      const ALIASES = ['decision', 'answer', 'option', 'chosen', 'wybor', 'wybór'];
+      for (const d of decisions) {
+        if (!d || typeof d !== 'object') continue;
+        const id = String(d.id ?? '?');
+        if (typeof d.choice === 'string' && d.choice.trim()) continue;
+        const alias = ALIASES.find((k) => typeof d[k] === 'string' && d[k].trim());
+        gateFailures.push(alias
+          ? `decisions[${id}]: pole \`${alias}\` zamiast \`choice\` — prompty czytają WYŁĄCZNIE \`choice\`, zmień nazwę pola`
+          : `decisions[${id}]: brak \`choice\` (albo puste) — decyzja bez treści nie trafi do żadnego agenta`);
+      }
+    }
+    // layers_skip[] — warstwy, których task nie dotyka; każda musi istnieć w runtime.yml i mieć powód.
+    const known = new Set((runtime.orchestrate?.layers ?? GENERIC_LAYERS).map((l) => String(l.id)));
+    const knownList = [...known].join(', ');
+    const skips = analysisDoc.fm?.layers_skip;
+    const skipIds = new Set();
+    if (skips !== undefined && !Array.isArray(skips)) {
+      gateFailures.push('layers_skip: musi być listą { id, reason }');
+    } else if (Array.isArray(skips)) {
+      for (const s of skips) {
+        const id = s && typeof s === 'object' ? String(s.id ?? '') : String(s ?? '');
+        skipIds.add(id);
+        if (!known.has(id)) gateFailures.push(`layers_skip: warstwa "${id}" nie istnieje w runtime.yml (są: ${knownList})`);
+        if (!s || typeof s !== 'object' || typeof s.reason !== 'string' || !s.reason.trim()) {
+          gateFailures.push(`layers_skip[${id}]: brak \`reason\` — pominięcie warstwy bez uzasadnienia to to samo, co niewykonana praca`);
+          continue;
+        }
+        // Skip jest binarny: `skip: true` w szablonie = implementer tej warstwy NIE startuje.
+        // Powód mówiący „częściowo" znaczy, że część pracy właśnie zniknęła bez śladu
+        // (juz-ide-api-2, 2026-09-18: fix żywego wycieku w jednym z ośmiu kontekstów).
+        const marker = partialSkipMarker(s.reason);
+        if (marker) {
+          gateFailures.push(
+            `layers_skip[${id}]: powód mówi „częściowo" („${marker}"), a skip jest całkowity — implementer ` +
+            `warstwy ${id} w ogóle nie wystartuje i ta część pracy zniknie. Przenieś wpis do ` +
+            `\`layers_scope: [{ id: ${id}, dirs: [<ścieżki, które task dotyka>], reason }]\` (warstwa wchodzi, zakres zawężony).`);
+        } else if (PATH_LIKE.test(s.reason)) {
+          warnings.push(`layers_skip[${id}]: powód wymienia ścieżkę w kodzie — upewnij się, że to NIE jest miejsce do zmiany (wtedy: layers_scope)`);
+        }
+      }
+    }
+    // layers_scope[] — warstwy dotknięte CZĘŚCIOWO: wchodzą, ale z zakresem zawężonym do `dirs`.
+    const scopes = analysisDoc.fm?.layers_scope;
+    if (scopes !== undefined && !Array.isArray(scopes)) {
+      gateFailures.push('layers_scope: musi być listą { id, dirs: [...], reason }');
+    } else if (Array.isArray(scopes)) {
+      for (const s of scopes) {
+        const id = s && typeof s === 'object' ? String(s.id ?? '') : String(s ?? '');
+        if (!known.has(id)) gateFailures.push(`layers_scope: warstwa "${id}" nie istnieje w runtime.yml (są: ${knownList})`);
+        if (skipIds.has(id)) gateFailures.push(`layers_scope[${id}]: warstwa jest jednocześnie w layers_skip — wybierz jedno (skip = nie wchodzi, scope = wchodzi zawężona)`);
+        const dirs = s && typeof s === 'object' ? (Array.isArray(s.dirs) ? s.dirs : (s.dirs ? [s.dirs] : [])) : [];
+        if (!dirs.length || dirs.some((d) => typeof d !== 'string' || !d.trim()))
+          gateFailures.push(`layers_scope[${id}]: brak \`dirs\` — zawężenie bez ścieżek to pełna warstwa, użyj wtedy zwykłego wpisu w runtime.yml`);
+        if (!s || typeof s !== 'object' || typeof s.reason !== 'string' || !s.reason.trim())
+          gateFailures.push(`layers_scope[${id}]: brak \`reason\` — zawężenie bez uzasadnienia wygląda jak przeoczony zakres`);
+      }
+    }
+    // units[] — podział warstwy na jednostki (pod-warstwy). Pole istniało w szablonie analizy,
+    // a prepare go nie czytał: plan 4 przebiegów infrastruktury dawał jeden (TS-MH-005).
+    // Każdy błąd wpisu zatrzymuje start — ciche pominięcie jednostki to zgubiona praca.
+    const units = analysisDoc.fm?.units;
+    const scopeIds = new Set((Array.isArray(scopes) ? scopes : []).map((x) => String(x?.id ?? '')));
+    if (units !== undefined && units !== null && !Array.isArray(units)) {
+      gateFailures.push('units: musi być listą { id, layer, dirs: [...], role?, checks?, reason? }');
+    } else if (Array.isArray(units)) {
+      const seen = new Set();
+      for (const u of units) {
+        if (!u || typeof u !== 'object') { gateFailures.push(`units: wpis "${String(u)}" nie jest obiektem { id, layer, dirs }`); continue; }
+        const id = String(u.id ?? '').trim();
+        const layer = String(u.layer ?? '').trim();
+        const tag = `units[${id || '?'}]`;
+        if (!id) gateFailures.push(`${tag}: brak \`id\``);
+        else if (/[:\s]/.test(id)) gateFailures.push(`${tag}: id bez dwukropka i spacji (staje się częścią id pod-warstwy <warstwa>:<id>)`);
+        if (seen.has(`${layer}:${id}`)) gateFailures.push(`${tag}: zdublowane id w warstwie ${layer}`);
+        seen.add(`${layer}:${id}`);
+        if (!known.has(layer)) gateFailures.push(`${tag}: \`layer\` "${layer}" nie istnieje w runtime.yml (są: ${knownList})`);
+        if (skipIds.has(layer)) gateFailures.push(`${tag}: warstwa ${layer} jest w layers_skip — jednostki pominiętej warstwy nie wystartują`);
+        if (scopeIds.has(layer)) gateFailures.push(`${tag}: warstwa ${layer} jest w layers_scope — zakres podaj w dirs jednostek, nie w obu miejscach`);
+        const dirs = Array.isArray(u.dirs) ? u.dirs : (u.dirs ? [u.dirs] : []);
+        if (!dirs.length || dirs.some((d) => typeof d !== 'string' || !d.trim()))
+          gateFailures.push(`${tag}: brak \`dirs\` — jednostka bez ścieżek to cała warstwa, wtedy nie dziel jej na jednostki`);
+        if (u.checks !== undefined && !Array.isArray(u.checks)) gateFailures.push(`${tag}: \`checks\` musi być listą nazw skryptów`);
+      }
+    }
+    const excl = analysisDoc.fm?.patterns_exclude;
+    if (excl !== undefined && excl !== null && !Array.isArray(excl)) gateFailures.push('patterns_exclude: musi być listą ścieżek wzorców');
   } else if (pauseGate) {
     gateFailures.push(
       `brak artefaktu ${relative(args.project, analysisDir)}/${args.taskId}*.analysis.md, ` +
@@ -306,26 +552,54 @@ function main() {
     if (!selection.has(p)) selection.set(p, { origin: 'analysis', matchedKeywords: [] });
   }
 
+  // patterns_exclude[] — fałszywe trafienia keywordów odrzucone w analizie (TS-MH-005: TCC na
+  // „confirm", wzorce web na „dashboard"). Wcześniej analiza mogła je tylko opisać w komentarzu.
+  const exclude = new Set((analysisDoc?.fm?.patterns_exclude ?? []).map(String));
+  const excludedHit = new Set();
+  const excluded = (p) => { if (exclude.has(p)) { excludedHit.add(p); return true; } return false; };
+
   const patterns = [];
   for (const [relPath, meta] of selection) {
+    if (excluded(relPath)) continue;
     const loaded = readPattern(relPath, args.project, warnings);
     if (loaded) patterns.push({ ...loaded, origin: meta.origin, matchedKeywords: meta.matchedKeywords });
   }
 
   // 5. warstwy + wzorce warstwowe (te dochodzą PONAD wybór globalny)
   const layersDone = analysisDoc?.fm?.layers_done ?? [];
-  const layers = resolveLayers(runtime, layersDone);
+  const layers = resolveLayers(runtime, layersDone, analysisDoc?.fm?.layers_skip ?? [], analysisDoc?.fm?.layers_scope ?? [], analysisDoc?.fm?.units ?? []);
+  // create_when warstw opcjonalnych — do 2026-09-15 NIKT tego nie liczył: szablon czytał
+  // `a.createWhenHits || {}`, więc każda warstwa `optional: true` była zawsze pomijana
+  // (api-surface w library-layers nigdy nie weszła). Ten sam haystack co dla triggerów wzorców.
+  const createWhenHits = {};
+  for (const layer of layers) {
+    if (!layer.optional || !layer.createWhen) continue;
+    try { createWhenHits[layer.id] = new RegExp(layer.createWhen, 'i').test(haystack); }
+    catch (e) { warnings.push(`create_when warstwy ${layer.id}: niepoprawny regex (${e.message}) — warstwa pominięta`); createWhenHits[layer.id] = false; }
+  }
   for (const layer of layers) {
     for (const relPath of layer.layerPatterns) {
       if (patterns.some((p) => p.path === relPath)) continue;
+      if (excluded(relPath)) continue;
       const loaded = readPattern(relPath, args.project, warnings);
       if (loaded) patterns.push({ ...loaded, origin: `layer:${layer.id}`, matchedKeywords: [] });
     }
   }
 
-  // 6. checks — per warstwa + suma dla bramki końcowej (tylko z warstw, które wejdą)
+  for (const p of exclude) {
+    if (!excludedHit.has(p)) warnings.push(`patterns_exclude: "${p}" nie był w doborze — literówka albo wzorzec już nie trafia`);
+  }
+
+  // 6. checks — per warstwa + bramka końcowa. `final_gate.checks` z bloku wchodzi ZAWSZE:
+  // suma samych warstw gubiła testy regresji dokładnie wtedy, gdy analiza pominęła warstwę
+  // testing (ORC-022, TS-MH-005), a w projektach na ddd/layers bez checks bramka nie
+  // uruchamiała niczego.
   const running = layers.filter((l) => !l.skip);
-  const finalChecks = [...new Set(running.flatMap((l) => l.checks))];
+  const gateOwn = (runtime.orchestrate?.final_gate?.checks ?? []).map(String);
+  const finalChecks = [...new Set([...gateOwn, ...running.flatMap((l) => l.checks)])];
+  if (!finalChecks.length && runtime.orchestrate?.final_gate?.agent) {
+    warnings.push('bramka końcowa bez żadnych checks (ani final_gate.checks, ani checks warstw) — oceni zmianę wyłącznie czytając kod. Dodaj final_gate.checks w bloku.');
+  }
   const checks = {
     byLayer: Object.fromEntries(layers.map((l) => [l.id, l.checks])),
     finalGate: finalChecks,
@@ -335,7 +609,9 @@ function main() {
   const innerLoop = orch.inner_loop ?? {};
   const finalGate = orch.final_gate ?? {};
 
-  const out = {
+  const git = gitState(args.project, warnings);
+
+  let out = {
     task: {
       id: args.taskId,
       project: args.project,
@@ -346,9 +622,12 @@ function main() {
       decisions: analysisDoc?.fm?.decisions ?? [],
       layersDone: layersDone.map(String),
     },
+    baseSha: git.baseSha,
+    dirtyAtStart: git.dirtyAtStart,
     layers,
     patterns,
     checks,
+    createWhenHits,
     budgets: runtime.budgets ?? {},
     knowledge: runtime.knowledge ?? {},
     humanVoice: runtime.human_voice ?? {
@@ -380,6 +659,19 @@ function main() {
     warnings,
   };
 
+  if (args.overrides) {
+    let ov;
+    try { ov = JSON.parse(readFileSync(args.overrides, 'utf8')); } catch (e) { die(EXIT.USAGE, `--overrides: nie da się wczytać ${args.overrides}: ${e.message}`); }
+    out = applyOverrides(out, ov);
+    out.overridesFile = args.overrides;
+  }
+  if (args.emitScript) {
+    out.scriptPath = args.emitScript;
+    out.argsEmbedded = true;
+    const lintWarns = emitScript(out, args.emitScript);
+    out.warnings.push(...lintWarns);
+  }
+
   if (args.json) {
     process.stdout.write(JSON.stringify(out, null, 2) + '\n');
   } else {
@@ -388,23 +680,26 @@ function main() {
     w(`  projekt      ${out.task.project}`);
     w(`  analiza      ${out.task.analysisFile ?? '(brak, dozwolone)'}`);
     w(`  task         ${out.task.taskFile ?? '(brak)'}`);
-    w(`  warstwy      ${layers.map((l) => l.id + (l.skip ? ' (pominięta)' : '')).join(' → ')}`);
+    w(`  warstwy      ${out.layers.map((l) => l.id + (l.skip ? ' (pominięta)' : l.scope ? ` (zawężona: ${l.scope.dirs.join(', ')})` : '')).join(' → ')}`);
     w(`  verify       ${out.verifiers.layer ?? '(brak slotu)'} · final_gate ${out.verifiers.finalGate ?? '(brak slotu)'}`);
-    w(`  wzorce       ${patterns.length} (${patterns.filter((p) => p.card).length} kart, ${patterns.filter((p) => !p.card).length} pełnych)`);
-    for (const p of patterns) {
+    w(`  wzorce       ${out.patterns.length} (${out.patterns.filter((p) => p.card).length} kart, ${out.patterns.filter((p) => !p.card).length} pełnych)`);
+    for (const p of out.patterns) {
       w(`    ${p.card ? 'karta' : 'PEŁNY'}  ${p.path}  [${p.origin}${p.matchedKeywords.length ? ' ← ' + p.matchedKeywords.join(', ') : ''}]`);
     }
-    w(`  checks       final_gate: ${finalChecks.join(', ') || '(brak)'}`);
+    w(`  checks       final_gate: ${out.checks.finalGate.join(', ') || '(brak)'}`);
+    w(`  baza         ${out.baseSha ?? '(brak gita)'}${out.dirtyAtStart.length ? ` · brudne przed startem: ${out.dirtyAtStart.length}` : ''}`);
     w(`  kolekcja RAG ${out.knowledge.collection ?? '(brak)'}`);
-    w(`  skrypt       ${out.scriptPath}`);
-    if (warnings.length) {
+    w(`  skrypt       ${out.scriptPath}${out.argsEmbedded ? ' (args wbudowane — Workflow({scriptPath}) bez args)' : ''}`);
+    if (out.warnings.length) {
       w('  ostrzeżenia:');
-      for (const x of warnings) w(`    ⚠ ${x}`);
+      for (const x of out.warnings) w(`    ⚠ ${x}`);
     }
     w('');
     w('  Pełny JSON pod `args`: dopisz --json');
   }
-  process.exit(EXIT.OK);
+  // NIE process.exit(): przy stdout w potoku exit() ucina niezapisany bufor — `--json | …`
+  // urywał się na 64 KB, a args realnego przebiegu mają ~190 KB (TS-MH-005, 2026-09-24).
+  process.exitCode = EXIT.OK;
 }
 
 main();

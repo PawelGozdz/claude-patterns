@@ -6,26 +6,52 @@
     "code_juz_ide_api": {
       "repo": "../../../juz-ide-api-1",
       "ref": "origin/develop",
-      "dirs": ["src"],
+      "dirs": [
+        "src"
+      ],
       "repoName": "juz-ide-api"
     },
     "code_juz_ide_mobile_app": {
       "repo": "../../../juz-ide-mobile-app",
       "ref": "origin/develop",
-      "dirs": ["lib"],
+      "dirs": [
+        "lib"
+      ],
       "repoName": "juz-ide-mobile-app"
     },
     "code_grant_flow": {
       "repo": "../../../grant-flow",
       "ref": "origin/develop",
-      "dirs": ["src"],
+      "dirs": [
+        "src"
+      ],
       "repoName": "grant-flow"
     },
     "code_universal_learning_system": {
       "repo": "../../../universal-learning-system",
       "ref": "origin/develop",
-      "dirs": ["src"],
+      "dirs": [
+        "src"
+      ],
       "repoName": "universal-learning-system"
+    },
+    "code_ai_os_bot": {
+      "repo": "../../../ai-os-bot",
+      "ref": "origin/develop",
+      "dirs": [
+        "src"
+      ],
+      "repoName": "ai-os-bot"
+    },
+    "code_pcu": {
+      "repo": "../../../pcu",
+      "ref": "origin/develop",
+      "dirs": [
+        "core",
+        "mcp_server",
+        "frontend/src"
+      ],
+      "repoName": "pcu"
     }
   }
 }

@@ -96,6 +96,8 @@ function layerPlan(a, createWhenHits) {
 // Karty dla warstwy: wzorce przypisane wprost do niej + wszystko, co weszło globalnie.
 // Implementer dostaje KARTĘ (forma decyzyjna, ~2-8 KB); pełny wzorzec (20-36 KB) trafia tu
 // tylko wtedy, gdy karty po prostu nie ma — i `orchestrate-prepare` mówi o tym w warnings.
+// `layerId` to id warstwy BAZOWEJ: pod-warstwa z `units[]` (`infrastructure:audience`) niesie
+// `base: 'infrastructure'` i dostaje karty swojej warstwy, nie pustą listę.
 function cardsFor(a, layerId) {
   const all = a.patterns || []
   const own = all.filter((p) => p.origin === 'layer:' + layerId)
@@ -103,12 +105,16 @@ function cardsFor(a, layerId) {
   return own.concat(rest)
 }
 
-function renderCards(cards) {
+function baseId(layer) {
+  return layer.base || layer.id
+}
+
+function renderCards(cards, heading) {
   if (!cards.length) return ''
   const body = cards.map((p) =>
     '--- ' + p.path + (p.card ? ' (karta reguł)' : ' (PEŁNY wzorzec — karty brak)') + ' ---\n' + p.content,
   ).join('\n')
-  return '\n=== KARTY REGUŁ — obowiązujące dla tej warstwy ===\n' + body +
+  return '\n=== KARTY REGUŁ — ' + (heading || 'obowiązujące dla tej warstwy') + ' ===\n' + body +
     '\n=== koniec kart ===\n\n' +
     'Masz komplet reguł POWYŻEJ. NIE czytaj pełnych wzorców i nie szukaj ich w repo ani ' +
     'w innych projektach. Gdy brakuje Ci PRZYKŁADU istniejącej implementacji (sygnatura ' +
@@ -119,6 +125,25 @@ function renderCards(cards) {
     'nie Twój powód do eksploracji.\n'
 }
 
+// Koszt implementera to w ~90% cache-read, czyli kontekst rosnący z każdą turą (metryki
+// 2026-09-15: ~2,5 M tokenów cache-read na krok implementera). Każdy wynik Grepa i każdy pełny
+// Read zostaje w kontekście do końca i jest płacony przy każdej kolejnej turze. Lokalizowanie
+// idzie więc do Explore (Haiku, osobny kontekst — wraca sam wniosek), a własny Read/Grep tylko
+// tam, gdzie implementer faktycznie edytuje. Agenci stackowi mają to w swoich plikach; ten blok
+// obowiązuje też `general-purpose`, który żadnego pliku agenta nie ma.
+const SEARCH_BUDGET =
+  '\n\nSZUKANIE W REPO — trzy zasady, bo Twój kontekst jest kosztem:\n' +
+  '1. LOKALIZOWANIE („gdzie jest X", „które pliki dotykają Y", „czy istnieje helper Z", ' +
+  '„jak wygląda podobny handler") → JEDNO zbiorcze wywołanie subagenta Explore (Task, ' +
+  'subagent_type: Explore) z listą wszystkich pytań naraz; z jego odpowiedzi bierzesz ścieżki ' +
+  'i linie, nie treść. Sam nie grepuj po src/ ani po całym pakiecie.\n' +
+  '2. CZYTANIE → Read wyłącznie plików, które będziesz edytować, i tych, których sygnatury ' +
+  'importujesz; plik > 300 linii czytaj z offset/limit wokół miejsca, które Cię interesuje.\n' +
+  '3. WŁASNY Grep/Glob tylko celowany: konkretny symbol w konkretnym katalogu, z limitem ' +
+  'wyników — nigdy wzorzec ogólny po całym drzewie.\n' +
+  'Zbiorczy Explore na starcie warstwy jest tańszy niż trzy własne grepy; dziesięć własnych ' +
+  'grepów jest droższych niż cała implementacja.'
+
 // Zakaz cofania — obowiązuje KAŻDY prompt implementera i KAŻDY prompt naprawczy.
 // Cofnięcie to jedyny sposób, w jaki zweryfikowana praca znika NIE ZOSTAWIAJĄC ŚLADU
 // w diffie, który człowiek ogląda przed commitem.
@@ -128,14 +153,45 @@ const NO_REVERT =
   'Plik, który uważasz za spoza swojego zakresu, ZGŁOŚ w raporcie i zostaw nietknięty. ' +
   'Do zapisania i przywrócenia stanu używaj `cp`, nigdy gita.'
 
-function scopeBlock(layer) {
-  const dirs = (layer.dirs || []).join(', ') || '(cały projekt)'
-  return 'ZAKRES WARSTWY\n  id: ' + layer.id + '\n  katalogi: ' + dirs +
-    (layer.role ? '\n  rola: ' + layer.role : '') +
-    '\nPlik spoza tych katalogów jest POZA ZAKRESEM, nie brakujący.'
+// Zakres warstwy, jaki widzi implementer, weryfikator i sonda. Analiza może go ZAWĘZIĆ
+// (`layers_scope` w artefakcie → `layer.scope.dirs`): warstwa wchodzi, ale tylko wskazane
+// ścieżki. To nie to samo co `skip` — tam implementer nie startuje wcale (ANL-037).
+function effectiveDirs(layer) {
+  if (layer.scope && Array.isArray(layer.scope.dirs) && layer.scope.dirs.length) return layer.scope.dirs
+  return layer.dirs || []
 }
 
-function buildImplPrompt(a, layer, attempt, violations, silentDeaths) {
+function scopeBlock(layer) {
+  const dirs = (layer.dirs || []).join(', ') || '(cały projekt)'
+  const narrowed = layer.scope && layer.scope.dirs && layer.scope.dirs.length
+    ? '\n  ZAWĘŻENIE Z ANALIZY (layers_scope): tylko ' + layer.scope.dirs.join(', ') +
+      (layer.scope.reason ? '\n  powód: ' + layer.scope.reason : '') +
+      '\n  Reszta katalogów tej warstwy jest POZA ZAKRESEM tego tasku — nie dotykaj jej, ' +
+      'nawet jeśli widzisz tam ten sam problem; zgłoś w raporcie.'
+    : ''
+  // Pliki towarzyszące (marketing-hub TS-MH-005): zawężenie do `role-permissions.map.ts`
+  // zostawiało `role-permissions.adapter.spec.ts` obok „poza zakresem", a `pnpm -r test`
+  // stawał na nim na czerwono w każdej kolejnej warstwie.
+  return 'ZAKRES WARSTWY\n  id: ' + layer.id + '\n  katalogi: ' + dirs +
+    (layer.role ? '\n  rola: ' + layer.role : '') + narrowed +
+    '\nPlik spoza tych katalogów jest POZA ZAKRESEM, nie brakujący.' +
+    '\nWYJĄTEK — pliki towarzyszące: test (*.spec.*, *.test.*) w tym samym katalogu i z tym samym ' +
+    'rdzeniem nazwy co plik z zakresu (x.map.ts → x.adapter.spec.ts) należy do zakresu. Gdy ' +
+    'zmieniasz kontrakt pliku, zaktualizuj jego test obok.'
+}
+
+// Czerwień sondy, której implementer nie może naprawić w swoim zakresie, nie jest „brakiem
+// zmian" — to blokada. Bez tej instrukcji implementer zwracał no-op, weryfikator no-op
+// oceniał samo twierdzenie (bez wyniku sondy) i warstwa dostawała GO (TS-MH-005: 4/4 warstwy).
+const RED_PROBE_RULE =
+  '\n\nCZERWONA SONDA: poprzednia próba skończyła się czerwonym typecheckiem/testami (szczegóły ' +
+  'w POPRAWCE niżej). Napraw to, jeśli przyczyna leży w Twoim zakresie. Jeśli leży POZA nim ' +
+  '(plik innej warstwy, wcześniejszy błąd w repo) — NIE poprawiaj cudzego pliku i zwróć ' +
+  'changed_files: [] z no_changes_reason „POZA ZAKRESEM: <plik:linia> — <co jest czerwone>". ' +
+  'Przebieg zatrzyma się jako BLOCKED_BY_PRIOR do decyzji człowieka; to poprawny wynik, ' +
+  'nie porażka.'
+
+function buildImplPrompt(a, layer, attempt, violations, silentDeaths, probeRed) {
   const spec = 'ZADANIE ' + a.task.id + (a.task.title ? ' — ' + a.task.title : '') +
     (a.task.taskFile ? '\nSpec: ' + a.task.taskFile + ' (przeczytaj go)' : '') +
     (a.task.analysisFile ? '\nAnaliza (zatwierdzona): ' + a.task.analysisFile : '')
@@ -145,7 +201,11 @@ function buildImplPrompt(a, layer, attempt, violations, silentDeaths) {
     : ''
   const turns = budgetFor(a, 'implement', DEFAULTS.implTurns)
   const soft = '\n\nBUDŻET: ~' + turns + ' tur. Gdy się kończy — NATYCHMIAST oddaj wynik ' +
-    'w wymaganej formie ze stanem częściowym. Częściowy wynik jest wart więcej niż brak wyniku.'
+    'w wymaganej formie ze stanem częściowym. Częściowy wynik jest wart więcej niż brak wyniku. ' +
+    // TS-MH-005: 4/4 ciche śmierci implementera infra na dokładnie 40. turze, po 13-35 wywołaniach
+    // Bash — głównie pętle kompilacji. Sonda robi to samo raz, tanio, zaraz po implementerze.
+    'Nie uruchamiaj kompilacji ani testów w pętli — sonda zrobi to zaraz po Tobie, a czerwień ' +
+    'wróci do Ciebie jako lista poprawek.'
   const silent = silentDeaths
     ? '\n\nUWAGA: ' + silentDeaths + ' poprzednia(e) próba(y) tej warstwy skończyły się BEZ wyniku ' +
       '— budżet tur wyczerpany. Zakres jest najpewniej za duży. Zrób NAJMNIEJSZY kompletny ' +
@@ -155,8 +215,33 @@ function buildImplPrompt(a, layer, attempt, violations, silentDeaths) {
   const fix = violations
     ? '\n\nPOPRAWKA (próba ' + attempt + ') — napraw dokładnie te naruszenia i nic poza nimi:\n' + violations
     : ''
-  return spec + decisions + '\n\n' + scopeBlock(layer) + '\n' + renderCards(cardsFor(a, layer.id)) +
-    soft + silent + fix + NO_REVERT
+  const noop = '\n\nGDY WARSTWA NIE WYMAGA ZMIAN: jeśli po przeczytaniu specu i analizy stwierdzisz, że ' +
+    'ten task nie dotyka tej warstwy (np. zmiana czysto infrastrukturalna, model domenowy bez zmian), ' +
+    'NIE pisz niczego na siłę. Zwróć changed_files: [] i no_changes_reason z konkretnym uzasadnieniem: ' +
+    'co sprawdziłeś i dlaczego nic tu nie trzeba (odwołaj się do decyzji D-x lub jednostek pracy z analizy). ' +
+    'Pusta lista BEZ no_changes_reason liczy się jako niewykonana praca.'
+  // Przy poprawce (violations) nie powtarzamy bloku SZUKANIE — implementer ma listę
+  // plik/linia/reguła, nie ma czego lokalizować; blok tylko dokładałby kontekstu.
+  return spec + decisions + '\n\n' + scopeBlock(layer) + '\n' + renderCards(cardsFor(a, baseId(layer))) +
+    (violations ? '' : SEARCH_BUDGET) + soft + silent + (probeRed ? RED_PROBE_RULE : '') + fix + noop + NO_REVERT
+}
+
+// Pliki w drzewie roboczym — JEDNO polecenie dla bramki „kod istnieje", diff-sondy po cichej
+// śmierci i listy plików bramki końcowej, żeby nie rozjechały się ponownie.
+//   • `git diff --name-only <baza>` — śledzone, zmienione względem bazy, staged i unstaged
+//     razem (sam `git diff --name-only` porównuje working tree z INDEKSEM, więc plik w pełni
+//     zestage'owany — `A` — był niewidoczny);
+//   • `git ls-files --others --exclude-standard` — nieśledzone, KAŻDY plik osobno (`git status
+//     --short` zwija nowy katalog do jednej pozycji `?? contexts/audience/`).
+// ai-gateway TS-AIG-015 i marketing-hub TS-MH-003/005: fałszywe „żaden plik nie zmieniony"
+// przy zadaniach tworzących same nowe pliki.
+function treeFilesCmd(base) {
+  return 'git diff --name-only ' + (base || 'HEAD') + '; git ls-files --others --exclude-standard'
+}
+
+function buildTreeProbePrompt(base) {
+  return 'W repo uruchom dokładnie: ' + treeFilesCmd(base) + '\nNIC więcej — nie czytaj plików, ' +
+    'nie analizuj, nie poprawiaj. Zwróć połączoną listę ścieżek z obu poleceń (bez duplikatów).'
 }
 
 // Sonda: deterministyczne bramki uruchomione RAZ, tanio, bez czytania kodu. Verifier
@@ -164,15 +249,22 @@ function buildImplPrompt(a, layer, attempt, violations, silentDeaths) {
 // się kilkadziesiąt razy, a każde 16-23 KB wyjścia zostaje w kontekście na resztę przebiegu.
 function buildProbePrompt(a, layer) {
   const cmds = (layer.checks || []).map((c) => 'npm run ' + c)
-  const scoped = (layer.dirs || []).join(' ')
+  const scoped = effectiveDirs(layer).join(' ')
   // Pathspecy monorepo: `layer.dirs` to nazwy typu "__tests__/"/"domain/", nigdy katalogi
   // TOP-LEVEL repo (prawdziwa ścieżka to src/contexts/<ctx>/domain/...). Literalny pathspec
   // `-- domain/` czy `-- __tests__/` dopasowuje TYLKO katalog o tej dokładnej ścieżce od
   // korzenia repo — czyli nic, w monorepo z zagnieżdżeniem. Magic pathspec `:(glob)**/x/**`
   // dopasowuje x niezależnie od głębokości. Bez tego `newTestBlocks` liczy 0 zawsze,
   // niezależnie od realnej zawartości (zweryfikowane, TASK-KAIZEN-002 audyt 2026-09-09).
-  const globScoped = (layer.dirs || [])
-    .map((d) => "':(glob)**/" + d.replace(/\/$/, '') + "/**'")
+  // Zawężenie z `layers_scope` może wskazać pojedynczy PLIK (…/error-codes.ts) — wtedy
+  // bez końcowego `/**`, bo `plik.ts/**` nie dopasuje niczego.
+  // Dla pliku dochodzą testy z jego katalogu (pliki towarzyszące — patrz scopeBlock).
+  const globScoped = effectiveDirs(layer)
+    .map((d) => {
+      if (!/\.[a-z0-9]+$/i.test(d)) return "':(glob)**/" + d.replace(/\/$/, '') + "/**'"
+      const sp = splitPath(d)
+      return "':(glob)**/" + d + "' ':(glob)**/" + sp.dir + sp.stem + ".*.spec.*' ':(glob)**/" + sp.dir + sp.stem + ".*.test.*'"
+    })
     .join(' ') || '.'
   const run = cmds.length
     ? cmds.map((c) => c + ' > /tmp/check-' + layer.id + '.log 2>&1; echo "EXIT:$?"').join('\n')
@@ -192,7 +284,11 @@ function buildProbePrompt(a, layer) {
       // 2026-09-09). WL6: `git diff` i `| grep -c` MUSZĄ być w jednej linii źródła tego
       // pliku — reguła czyta tylko pierwszą fizyczną linię za "git diff" (K93 regresja,
       // 2026-09-09: rozbicie na dwie linie dla pathspecu zgasiło wykrywanie licznika).
-      '  git add -N -- ' + globScoped + ' 2>/dev/null; git diff -U0 -- ' + globScoped + " | grep -cE '^\\+\\s*(it|test|testWidgets|describe|group)\\(' \n" +
+      // `diff HEAD`, nie gołe `diff`: bez bazy porównanie idzie working tree ↔ indeks, więc
+      // plik zestage'owany przez agenta (`A`/`AM`) liczył 0 (ai-gateway TS-AIG-015, 3 próby
+      // i ESCALATE na gotowych testach). `.each/.only/.skip/.concurrent` przed `(`, bo
+      // `describe.each(` to nadal blok wykonywalny.
+      '  git add -N -- ' + globScoped + ' 2>/dev/null; git diff HEAD -U0 -- ' + globScoped + " | grep -cE '^\\+\\s*(it|test|testWidgets|describe|group)(\\.(each|only|skip|concurrent))?\\(' \n" +
       'i zwróć go jako newTestBlocks.'
     : ''
   return 'Uruchom dokładnie to i NIC więcej:\n' + run +
@@ -205,16 +301,36 @@ function buildProbePrompt(a, layer) {
 
 // Sonda stanu drzewa po cichej śmierci implementera. Cicha śmierć zwykle znaczy „praca
 // wykonana, budżet spalony na oddaniu wyniku", nie „praca niezrobiona".
-function buildDiffProbePrompt() {
-  return 'W repo uruchom: git diff --name-only oraz git status --short. NIC więcej — ' +
-    'nie czytaj plików, nie analizuj, nie poprawiaj. Zwróć listę ścieżek.'
+function buildDiffProbePrompt(base) {
+  return buildTreeProbePrompt(base)
 }
 
 // Jeden kanoniczny builder promptu weryfikatora — WL10 liczy go RAZ dla wszystkich wywołań.
 // Ręczne składanie promptu per-warstwa jest dokładnie tym, co zawiodło w incydencie
 // TS-REP-PIPELINE-001-F3a-remediation.
-function buildVerifierPrompt(a, layer, probe, changedFiles, mode) {
+function buildVerifierPrompt(a, layer, probe, changedFiles, mode, noopClaim, priorViolations) {
   const calls = budgetFor(a, 'verify', DEFAULTS.verifyCalls)
+  if (mode === 'verify-noop') {
+    const spec = 'ZADANIE ' + a.task.id + (a.task.title ? ' — ' + a.task.title : '') +
+      (a.task.taskFile ? '\nSpec: ' + a.task.taskFile : '') +
+      (a.task.analysisFile ? '\nAnaliza (zatwierdzona): ' + a.task.analysisFile : '')
+    // Twierdzenie „brak zmian" po NO_GO weryfikatora oceniane BEZ tamtych naruszeń to ta sama
+    // dziura co no-op po czerwonej sondzie: świeży weryfikator widzi tylko twierdzenie.
+    const prior = priorViolations
+      ? '\n\nPOPRZEDNIA RUNDA ZGŁOSIŁA NARUSZENIA w tej warstwie (implementer twierdzi teraz, ' +
+        'że nic nie trzeba zmieniać). GO tylko wtedy, gdy KAŻDE z nich jest nieaktualne albo ' +
+        'faktycznie poza zakresem — napisz to przy każdym:\n' + priorViolations
+      : ''
+    return 'TRYB: implementer twierdzi, że ta warstwa NIE wymaga zmian dla tego taska. Nie oceniasz ' +
+      'kodu — oceniasz TWIERDZENIE. Przeczytaj spec i analizę (decyzje, jednostki pracy), sprawdź ' +
+      'celowanym odczytem, czy w zakresie warstwy jest cokolwiek, co task każe zmienić.\n\n' +
+      spec + '\n\n' + scopeBlock(layer) + '\n\nUZASADNIENIE IMPLEMENTERA:\n' + noopClaim + prior + '\n\n' +
+      'GO = zgadzasz się, warstwa faktycznie nie ma nic do zrobienia (w uzasadnieniu napisz, co ' +
+      'sprawdziłeś). NO_GO = task WYMAGA zmian w tej warstwie — w naruszeniach wypisz KONKRETNIE ' +
+      'co (plik/moduł, czego brakuje); to trafi do implementera jako lista poprawek.\n' +
+      'TWARDY LIMIT: ' + calls + ' wywołań narzędzi. Werdykt na podstawie tego, co wiesz, gdy budżet ' +
+      'się kończy; brak werdyktu wywraca cały przebieg.'
+  }
   const facts = probe
     ? 'FAKTY Z SONDY (już wykonane, traktuj jak dane wejściowe):\n' +
       '  typecheck: ' + probe.typecheck + '\n  testy: ' + probe.tests +
@@ -231,20 +347,38 @@ function buildVerifierPrompt(a, layer, probe, changedFiles, mode) {
       'FAKTYCZNY, nie raport. Braki zgłoś jako naruszenia do punktowej poprawki.\n'
     : ''
   return existing + scopeBlock(layer) + '\n\n' + facts + files +
-    renderCards(cardsFor(a, layer.id)) +
+    renderCards(cardsFor(a, baseId(layer))) +
     '\nOceń zgodność zmiany z regułami powyżej. Zwróć werdykt GO albo NO_GO i listę naruszeń ' +
     '(plik, linia, reguła, co poprawić).\n' +
+    'CZYTAJ TYLKO zmienione pliki z listy (Read z offset/limit, gdy plik > 300 linii); plik spoza ' +
+    'listy otwieraj wyłącznie, gdy zmieniony plik go importuje i bez niego nie da się ocenić ' +
+    'reguły. Nie grepuj po całym drzewie „dla kontekstu" — każdy wynik zostaje w Twoim kontekście ' +
+    'do końca i jest płacony przy każdym kolejnym wywołaniu.\n' +
     'TWARDY LIMIT: ' + calls + ' wywołań narzędzi. Gdy budżet się kończy — wydaj werdykt ' +
     'natychmiast, na podstawie tego, co już wiesz. Werdykt częściowy z uzasadnieniem jest ' +
     'poprawnym wynikiem; brak werdyktu wywraca cały przebieg.'
 }
 
-function buildFinalGatePrompt(a, checks, changedFiles) {
+// Lista plików przychodzi z DRZEWA (sonda treeFilesCmd względem bazy przebiegu), nie z sumy
+// raportów warstw: warstwa zakończona no-op oddaje `files: []`, więc bramka nie widziała
+// infrastruktury, migracji ani kontraktów (TS-MH-005 — weryfikator sam zajrzał do HEAD).
+// Karty: wszystkie wzorce przebiegu — bramka oceniała całość zmiany bez reguł.
+function buildFinalGatePrompt(a, checks, changedFiles, treeSource) {
   const calls = budgetFor(a, 'final-gate', DEFAULTS.verifyCalls)
+  const dirty = (a.dirtyAtStart || []).length
+    ? 'Pliki BRUDNE JUŻ PRZED startem przebiegu (nie są pracą tego taska, chyba że je zmienił — ' +
+      'oceń tylko, jeśli są na liście wyżej i dotyczą taska):\n  ' + a.dirtyAtStart.join('\n  ') + '\n'
+    : ''
+  const source = treeSource === 'layers'
+    ? '(UWAGA: sonda drzewa nie zwróciła wyniku — lista złożona z raportów warstw, może być ' +
+      'niepełna; sprawdź `' + treeFilesCmd(a.baseSha) + '` sam, jednym wywołaniem.)\n'
+    : ''
   return 'BRAMKA KOŃCOWA dla ' + a.task.id + ' — oceniasz CAŁOŚĆ zmiany, nie ostatnią warstwę. ' +
     'To ostatnie miejsce, w którym wychodzi regresja MIĘDZY warstwami.\n\n' +
     (checks.length ? 'Deterministyczne bramki do wykonania raz, na całości: ' + checks.join(', ') + '\n' : '') +
-    (changedFiles.length ? 'Pliki objęte zmianą:\n  ' + changedFiles.join('\n  ') + '\n' : '') +
+    (changedFiles.length ? 'Pliki objęte zmianą (z drzewa, względem bazy przebiegu):\n  ' + changedFiles.join('\n  ') + '\n' : '') +
+    source + dirty +
+    renderCards(a.patterns || [], 'wszystkie wzorce tego przebiegu') +
     '\nZwróć werdykt GO albo NO_GO i listę naruszeń.\n' +
     'TWARDY LIMIT: ' + calls + ' wywołań narzędzi. Gdy budżet się kończy — wydaj werdykt ' +
     'natychmiast na podstawie zebranych dowodów.' + NO_REVERT
@@ -269,10 +403,64 @@ function formatViolations(violations) {
 
 // Czy plik należy do zakresu tej warstwy. Bez tego zawężenia każdy cudzy zapis w drzewie
 // wyglądałby jak praca wykonana przez martwego implementera.
+// Rozbicie ścieżki na katalog (z końcowym '/', albo '') i rdzeń nazwy — część przed pierwszą
+// kropką: `role-permissions.map.ts` → `role-permissions`.
+function splitPath(p) {
+  const s = String(p)
+  const cut = s.lastIndexOf('/')
+  const name = cut === -1 ? s : s.slice(cut + 1)
+  return { dir: cut === -1 ? '' : s.slice(0, cut + 1), stem: name.split('.')[0] }
+}
+
+// Plik towarzyszący = test (*.spec.* / *.test.*) w tym samym katalogu i z tym samym rdzeniem
+// nazwy co plik z zakresu: `role-permissions.map.ts` → `role-permissions.adapter.spec.ts`,
+// `env.schema.ts` → `env.schema.spec.ts`. Zakres podany katalogiem obejmuje je i tak.
+function isCompanion(scopeFile, file) {
+  if (!/\.[a-z0-9]+$/i.test(scopeFile) || !/\.(spec|test)\.[a-z0-9]+$/i.test(file)) return false
+  const s = splitPath(scopeFile)
+  const f = splitPath(file)
+  if (!s.stem || s.stem !== f.stem) return false
+  return s.dir === '' ? true : f.dir.slice(-s.dir.length) === s.dir
+}
+
 function layerTouches(layer, file) {
-  const dirs = layer.dirs || []
+  const dirs = effectiveDirs(layer)
   if (!dirs.length) return true
-  return dirs.some((d) => String(file).indexOf(String(d).replace(/\/+$/, '')) !== -1)
+  const f = String(file)
+  return dirs.some((d) => {
+    const s = String(d).replace(/\/+$/, '')
+    return f.indexOf(s) !== -1 || isCompanion(s, f)
+  })
+}
+
+// Implementer po CZERWONEJ sondzie twierdzi „nic do zrobienia" → to nie jest no-op do
+// potwierdzenia, tylko blokada. Weryfikator no-op nie widzi sondy i przyjąłby twierdzenie
+// (TS-MH-005: 4/4 warstwy infra dostały GO na odziedziczonej czerwieni). Zwraca `settled`
+// albo null, gdy ścieżka no-op jest dozwolona.
+function blockedByPrior(layer, probeRed, noopClaim) {
+  if (!probeRed || !noopClaim) return null
+  return {
+    id: layer.id,
+    status: 'BLOCKED_BY_PRIOR',
+    reason: 'sonda na czerwono, a implementer twierdzi, że w zakresie warstwy nie ma nic do ' +
+      'naprawy: ' + noopClaim + '\n' + probeRed,
+    files: [],
+  }
+}
+
+// Statusy, po których przebieg staje (kolejne warstwy trafiłyby na to samo).
+function haltsRun(status) {
+  return status === 'ESCALATE_AND_HALT' || status === 'BLOCKED_BY_PRIOR'
+}
+
+// Lista plików dla bramki końcowej: drzewo (gdy sonda odpowiedziała) ∪ raporty warstw.
+function finalFileList(treeFiles, layerFiles) {
+  const out = []
+  for (const f of (treeFiles || []).concat(layerFiles || [])) {
+    const s = String(f).trim()
+    if (s && out.indexOf(s) === -1) out.push(s)
+  }
+  return out
 }
 
 // Sonda mierzy PRZYROST, nie tylko zieloność. „typecheck pass + testy pass + niepusty diff"
@@ -316,6 +504,9 @@ const IMPL_SCHEMA = {
     summary: { type: 'string' },
     notes: { type: 'string' },
     gap: { type: 'string' },
+    // „ta warstwa nie wymaga zmian dla tego taska" — z uzasadnieniem. Pusta lista plików BEZ
+    // tego pola to niewykonana praca (powtórka); Z tym polem — twierdzenie do zweryfikowania.
+    no_changes_reason: { type: 'string' },
   },
 }
 
@@ -368,6 +559,10 @@ for (const step of plan) {
   let mode = 'implement'
   let layerFiles = []
   let settled = null
+  let noopClaim = null
+  // Wynik ostatniej CZERWONEJ sondy tej warstwy (null po zielonej). Po czerwieni ścieżka
+  // no-op jest zamknięta — patrz blockedByPrior().
+  let probeRed = null
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     // ── 1. implementacja (albo, po cichej śmierci, weryfikacja istniejącego stanu)
@@ -378,7 +573,7 @@ for (const step of plan) {
       )
       let impl = null
       try {
-        impl = await ask(buildImplPrompt(a, layer, attempt, violations, silentDeaths), implOpts)
+        impl = await ask(buildImplPrompt(a, layer, attempt, violations, silentDeaths, probeRed), implOpts)
       } catch (e) {
         log(layer.id + ': implementer rzucił mimo helpera — ' + (e && e.message ? e.message : String(e)))
         impl = null
@@ -393,7 +588,7 @@ for (const step of plan) {
         )
         let probeDiff = null
         try {
-          probeDiff = await ask(buildDiffProbePrompt(), diffOpts)
+          probeDiff = await ask(buildDiffProbePrompt(a.baseSha), diffOpts)
         } catch (e) {
           probeDiff = null
         }
@@ -413,7 +608,56 @@ for (const step of plan) {
       } else {
         silentDeaths = 0
         layerFiles = impl.changed_files || []
+        noopClaim = (!layerFiles.length && typeof impl.no_changes_reason === 'string' && impl.no_changes_reason.trim())
+          ? impl.no_changes_reason.trim() : null
       }
+    }
+
+    // ── 1b. „nic do zrobienia" z uzasadnieniem — twierdzenie, nie wynik. Weryfikator je
+    // potwierdza (GO bez plików) albo obala (naruszenia → punktowa poprawka). Bez tej gałęzi
+    // trzy próby „zero zmian" kończyły się ESCALATE na warstwie, której task w ogóle nie dotyka
+    // (juz-ide-api-2, 2026-09-14). Analiza powinna to przewidzieć w layers_skip (albo zawęzić
+    // przez layers_scope, gdy warstwa jest dotknięta częściowo); to jest siatka.
+    if (noopClaim && mode === 'implement') {
+      const blocked = blockedByPrior(layer, probeRed, noopClaim)
+      if (blocked) {
+        log(layer.id + ': BLOCKED_BY_PRIOR — czerwień sondy poza zakresem warstwy, decyzja człowieka')
+        settled = blocked
+        break
+      }
+      const noopVerifier = firstAgentName(layer.verify || (a.verifiers && a.verifiers.layer))
+      if (!noopVerifier) {
+        log(layer.id + ': implementer zgłasza brak zmian („' + noopClaim + '"), brak slotu verify — przyjmuję')
+        settled = { id: layer.id, status: 'GO', files: [], note: 'no-op (niezweryfikowany): ' + noopClaim }
+        break
+      }
+      const noopOpts = Object.assign(
+        { label: layer.id + '-verify-noop', agentType: noopVerifier, maxTurns: budgetFor(a, 'verify', DEFAULTS.verifyCalls), schema: VERDICT_SCHEMA },
+        modelFor('verify'),
+      )
+      let noopVerdict = null
+      try {
+        noopVerdict = await ask(buildVerifierPrompt(a, layer, null, [], 'verify-noop', noopClaim, violations), noopOpts)
+      } catch (e) {
+        noopVerdict = null
+      }
+      const noopDecision = decideVerdict(noopVerdict, attempt, maxAttempts)
+      if (noopDecision.next === 'go') {
+        log(layer.id + ': brak zmian potwierdzony przez weryfikatora — ' + noopClaim)
+        settled = { id: layer.id, status: 'GO', files: [], attempts: attempt, note: 'no-op: ' + noopClaim }
+        break
+      }
+      if (noopDecision.next === 'escalate') {
+        settled = { id: layer.id, status: 'ESCALATE_AND_HALT', reason: noopDecision.reason }
+        break
+      }
+      violations = noopDecision.next === 'silent'
+        ? 'weryfikator nie ocenił twierdzenia o braku zmian — wykonaj pracę warstwy albo uzasadnij precyzyjniej'
+        : 'twierdzenie „brak zmian" ODRZUCONE przez weryfikatora:\n' + noopDecision.reason
+      log(layer.id + ': ' + violations)
+      noopClaim = null
+      mode = 'implement'
+      continue
     }
 
     // ── 2. bramka „kod istnieje" — mierzymy drzewo, nie raport agenta
@@ -423,7 +667,7 @@ for (const step of plan) {
     )
     let gate = null
     try {
-      gate = await ask('W repo uruchom: git diff --name-only oraz git diff --stat. NIC więcej — nie czytaj plików, nie analizuj.', gateOpts)
+      gate = await ask(buildTreeProbePrompt(a.baseSha), gateOpts)
     } catch (e) {
       gate = null
     }
@@ -455,6 +699,7 @@ for (const step of plan) {
       violations = 'deterministyczna bramka na czerwono (typecheck: ' + probe.typecheck +
         ', testy: ' + probe.tests + ')\n' + (probe.tail || '')
       log(layer.id + ': sonda NO_GO — bez analizy kodu, prosto do poprawki')
+      probeRed = violations
       mode = 'implement'
       if (attempt >= maxAttempts) {
         settled = { id: layer.id, status: 'ESCALATE_AND_HALT', reason: violations }
@@ -463,6 +708,7 @@ for (const step of plan) {
       continue
     }
 
+    probeRed = null
     const deltaFail = deltaGateFails(layer, probe, layerFiles)
     if (deltaFail) {
       violations = deltaFail
@@ -476,7 +722,9 @@ for (const step of plan) {
     }
 
     // ── 4. weryfikacja — sekwencyjnie, ze schemą, w try/catch, z twardym limitem
-    const verifyAgent = firstAgentName(a.verifiers && a.verifiers.layer)
+    // `layers[].verify` (per warstwa, np. refine-quality-verifier dla apps/web w monorepo)
+    // ma pierwszeństwo przed slotem inner_loop.verify.
+    const verifyAgent = firstAgentName(layer.verify || (a.verifiers && a.verifiers.layer))
     if (!verifyAgent) {
       log(layer.id + ': brak slotu weryfikatora w runtime.yml — warstwa zamknięta na sondzie')
       settled = { id: layer.id, status: 'GO', files: layerFiles, note: 'brak slotu verify' }
@@ -519,15 +767,30 @@ for (const step of plan) {
   report.layers.push(settled)
   for (const f of settled.files || []) if (allChangedFiles.indexOf(f) === -1) allChangedFiles.push(f)
 
-  if (settled.status === 'ESCALATE_AND_HALT') {
-    log('ESCALATE_AND_HALT na warstwie ' + layer.id + ' — ' + settled.reason)
+  if (haltsRun(settled.status)) {
+    log(settled.status + ' na warstwie ' + layer.id + ' — ' + settled.reason)
     return report
   }
   log('warstwa ' + layer.id + ' — GO. Dopisz jej id do layers_done w artefakcie analizy (checkpoint wznowienia).')
 }
 
-// ── 5. bramka końcowa: suma checks warstw, które faktycznie weszły, raz na całości
+// ── 5. bramka końcowa: checks z final_gate ∪ checks warstw, które weszły — raz, na całości.
+// Lista plików z DRZEWA względem bazy przebiegu, nie z raportów warstw (no-op oddaje []).
 phase('Bramka końcowa')
+
+const treeOpts = Object.assign(
+  { label: 'final-tree-probe', maxTurns: DEFAULTS.diffProbeTurns, schema: DIFF_PROBE_SCHEMA },
+  modelFor('probe'),
+)
+let tree = null
+try {
+  tree = await ask(buildTreeProbePrompt(a.baseSha), treeOpts)
+} catch (e) {
+  tree = null
+}
+const treeSource = tree && tree.files ? 'tree' : 'layers'
+const finalFiles = finalFileList(tree && tree.files, allChangedFiles)
+if (treeSource === 'layers') log('sonda drzewa przed bramką końcową bez wyniku — lista plików z raportów warstw (może być niepełna)')
 
 const finalAgent = firstAgentName(a.verifiers && a.verifiers.finalGate)
 if (!finalAgent) {
@@ -539,7 +802,7 @@ if (!finalAgent) {
   )
   let final = null
   try {
-    final = await ask(buildFinalGatePrompt(a, (a.checks && a.checks.finalGate) || [], allChangedFiles), finalOpts)
+    final = await ask(buildFinalGatePrompt(a, (a.checks && a.checks.finalGate) || [], finalFiles, treeSource), finalOpts)
   } catch (e) {
     final = null
   }
@@ -551,6 +814,6 @@ if (!finalAgent) {
 }
 
 // ── 6. wyjście: staged, NIE zacommitowane. Commit robi człowiek.
-report.staged = allChangedFiles
-log('Gotowe. Stan: staged, not committed — ' + allChangedFiles.length + ' plików. Commit robi człowiek.')
+report.staged = finalFiles
+log('Gotowe. Stan: staged, not committed — ' + finalFiles.length + ' plików. Commit robi człowiek.')
 return report

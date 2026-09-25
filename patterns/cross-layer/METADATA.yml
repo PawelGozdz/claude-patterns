@@ -4,7 +4,7 @@
 category: cross-layer
 version: "1.0.0"
 maturity: production
-last_verified: 2026-09-04
+last_verified: 2026-09-19
 stack: "TypeScript, NestJS, @vytches/ddd; konwencje i logowanie stack-agnostyczne w warstwie zasad"
 source_projects: "LocalHero v3, juz-ide-api-1"
 patterns_count: 11

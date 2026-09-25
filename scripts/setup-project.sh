@@ -1037,7 +1037,10 @@ echo -e "${BLUE}[7/9] Project Management System${NC}"
 PM_DIR="$PROJECT_DIR/project-orchestration"
 PM_TEMPLATE="$PATTERNS_REPO/templates/project-orchestration"
 
-if [[ -d "$PM_DIR" ]]; then
+# Test na TEAM-STATE.md, nie na sam katalog: krok 5 zakłada project-orchestration/analysis/
+# (TEMPLATE.md) ZANIM tu dojdziemy, więc dla świeżego projektu katalog już istnieje i szablon
+# PM nigdy nie był kopiowany (marketing-hub 2026-09-14: pm_system: true, zero dashboardów).
+if [[ -f "$PM_DIR/TEAM-STATE.md" ]]; then
   echo -e "  ${YELLOW}Already exists:${NC} project-orchestration/ (preserved)"
 
   # Check if pm-task-check hook is configured in project settings
@@ -1052,7 +1055,9 @@ elif [[ -d "$PM_TEMPLATE" ]]; then
   # Check if project.yml has pm_system enabled
   PM_ENABLED=$(yml_get "project.pm_system")
   if [[ "$PM_ENABLED" == "true" ]]; then
-    cp -r "$PM_TEMPLATE" "$PM_DIR"
+    # -n: katalog może już mieć analysis/TEMPLATE.md z kroku 5 — dokładamy, nie nadpisujemy.
+    mkdir -p "$PM_DIR"
+    cp -rn "$PM_TEMPLATE"/. "$PM_DIR"/
     echo -e "  ${GREEN}Created:${NC} project-orchestration/ (from template)"
     echo -e "  ${GREEN}  Next:${NC} Edit TEAM-STATE.md with project name, then run /pulse"
 

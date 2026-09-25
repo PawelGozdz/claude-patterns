@@ -109,7 +109,7 @@ patterns:
 
 agents:
   universal: 24
-  stack_specific: 30
+  stack_specific: 32
   categories:
     universal:
       - backend-technology-expert
@@ -145,6 +145,7 @@ agents:
       - nextjs-app (2)
       - python (2)
       - python-ml (2)
+      - refine-spa (2)
       - sveltekit (2)
       - typescript-library (2)
 

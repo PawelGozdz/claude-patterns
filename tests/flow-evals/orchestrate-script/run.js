@@ -11,6 +11,8 @@
  */
 
 const path = require('path');
+const fs = require('fs');
+const os = require('os');
 const { spawnSync } = require('child_process');
 
 const REPO = path.resolve(__dirname, '..', '..', '..');
@@ -246,6 +248,109 @@ const CASES = (c) => [
       if (!props.includes('changed_files')) return 'schema implementera nie zwraca listy zmienionych plików';
       if (!c.VERDICT_SCHEMA.properties.verdict) return 'schema weryfikatora bez pola verdict';
       if (!c.CHECKS_SCHEMA.properties.newTestBlocks) return 'schema sondy bez pomiaru przyrostu';
+      return null;
+    },
+  },
+  // ── nowe pliki: bramka, diff-sonda i przyrost (TS-AIG-015, TS-MH-003/005) ─────────
+  {
+    name: 'tree-command-sees-untracked-and-staged-files',
+    run() {
+      const cmd = c.treeFilesCmd();
+      if (!/git diff --name-only HEAD/.test(cmd)) return 'lista plików nie porównuje z HEAD (plik "A" niewidoczny): ' + cmd;
+      if (!/git ls-files --others --exclude-standard/.test(cmd)) return 'lista plików bez nieśledzonych: ' + cmd;
+      if (!/git diff --name-only abc123/.test(c.treeFilesCmd('abc123'))) return 'baza przebiegu zignorowana';
+      if (c.buildDiffProbePrompt('abc123').indexOf(c.treeFilesCmd('abc123')) === -1) return 'diff-sonda używa innego polecenia niż bramka';
+      if (/status --short/.test(c.buildDiffProbePrompt())) return 'diff-sonda nadal na git status --short (zwija katalogi)';
+      return null;
+    },
+  },
+  {
+    name: 'new-files-visible-in-real-git-tree-untracked-A-AM',
+    run() {
+      const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'orch-tree-'));
+      const sh = (cmd) => spawnSync('bash', ['-c', cmd], { cwd: dir, encoding: 'utf8' });
+      try {
+        sh('git init -q && git config user.email t@t && git config user.name t && mkdir -p src/__tests__ && echo x > README && git add README && git commit -qm init');
+        fs.writeFileSync(path.join(dir, 'src/__tests__/a.spec.ts'), "describe('a', () => {\n  it('x', () => {})\n  it.each([1])('y', () => {})\n})\n");
+        const probe = c.buildProbePrompt(ARGS, L.testing);
+        const countLine = probe.split('\n').find((l) => /^\s*git add -N/.test(l));
+        if (!countLine) return 'brak polecenia liczącego przyrost';
+        const states = [['untracked', ''], ['A', 'git add -A'], ['AM', "echo \"  it('z', () => {})\" >> src/__tests__/a.spec.ts"]];
+        for (const [name, prep] of states) {
+          if (prep) sh(prep);
+          const files = sh(c.treeFilesCmd()).stdout;
+          if (!/src\/__tests__\/a\.spec\.ts/.test(files)) return 'stan ' + name + ': bramka nie widzi nowego pliku (' + files.trim() + ')';
+          const n = Number(sh(countLine.trim()).stdout.trim());
+          if (!(n >= 3)) return 'stan ' + name + ': przyrost bloków = ' + n + ' (oczekiwane >= 3, w tym it.each)';
+        }
+        return null;
+      } finally {
+        fs.rmSync(dir, { recursive: true, force: true });
+      }
+    },
+  },
+
+  // ── fałszywe GO: no-op po czerwonej sondzie (TS-MH-005) ───────────────────────────
+  {
+    name: 'noop-after-red-probe-is-blocked-not-go',
+    run() {
+      const b = c.blockedByPrior(L.infrastructure, 'typecheck: fail\nsrc/domain/x.ts(3): TS2322', 'POZA ZAKRESEM: src/domain/x.ts:3');
+      if (!b || b.status !== 'BLOCKED_BY_PRIOR') return 'no-op po czerwonej sondzie nie jest blokadą: ' + JSON.stringify(b);
+      if (!/TS2322/.test(b.reason)) return 'powód blokady nie niesie wyniku sondy';
+      if (!c.haltsRun('BLOCKED_BY_PRIOR')) return 'BLOCKED_BY_PRIOR nie zatrzymuje przebiegu';
+      if (c.haltsRun('GO')) return 'GO zatrzymuje przebieg';
+      if (c.blockedByPrior(L.infrastructure, null, 'nic do zrobienia') !== null) return 'no-op bez czerwieni zablokowany (powinien iść do weryfikatora)';
+      const p = c.buildImplPrompt(ARGS, L.infrastructure, 2, 'deterministyczna bramka na czerwono', 0, 'typecheck: fail');
+      if (!/CZERWONA SONDA/.test(p) || !/BLOCKED_BY_PRIOR/.test(p)) return 'implementer po czerwieni nie wie, jak zgłosić czerwień spoza zakresu';
+      if (/CZERWONA SONDA/.test(c.buildImplPrompt(ARGS, L.infrastructure, 1, null, 0, null))) return 'reguła czerwonej sondy w pierwszej próbie';
+      return null;
+    },
+  },
+  {
+    name: 'noop-verifier-sees-prior-violations',
+    run() {
+      const p = c.buildVerifierPrompt(ARGS, L.infrastructure, null, [], 'verify-noop', 'nic do zrobienia', '1. brak mappera X');
+      if (!/brak mappera X/.test(p)) return 'weryfikator no-op nie widzi naruszeń z poprzedniej rundy';
+      return null;
+    },
+  },
+
+  // ── bramka końcowa: pliki z drzewa + karty (TS-MH-005) ───────────────────────────
+  {
+    name: 'final-gate-gets-tree-files-and-cards',
+    run() {
+      const files = c.finalFileList(['src/infra/a.ts', 'db/migrations/1.sql'], ['src/infra/a.ts', 'src/domain/b.ts']);
+      if (JSON.stringify(files) !== JSON.stringify(['src/infra/a.ts', 'db/migrations/1.sql', 'src/domain/b.ts'])) return 'suma drzewo ∪ warstwy niepoprawna: ' + files.join(',');
+      const withDirty = Object.assign({}, ARGS, { dirtyAtStart: ['notes.md'] });
+      const p = c.buildFinalGatePrompt(withDirty, ['test'], files, 'tree');
+      if (!/KARTA REPOZYTORIUM/.test(p) || !/KARTA KONWENCJE/.test(p)) return 'bramka końcowa bez kart wzorców';
+      if (!/db\/migrations\/1\.sql/.test(p)) return 'plik z drzewa nie trafił do bramki';
+      if (!/BRUDNE JUŻ PRZED startem[\s\S]*notes\.md/.test(p)) return 'brak listy plików brudnych przed startem';
+      if (!/sonda drzewa nie zwróciła wyniku/.test(c.buildFinalGatePrompt(ARGS, [], files, 'layers'))) return 'brak ostrzeżenia o liście z raportów warstw';
+      return null;
+    },
+  },
+
+  // ── pliki towarzyszące i pod-warstwy (TS-MH-005) ─────────────────────────────────
+  {
+    name: 'companion-spec-belongs-to-file-scope',
+    run() {
+      const layer = { id: 'infrastructure', dirs: ['infrastructure/'], scope: { dirs: ['src/auth/role-permissions.map.ts'], reason: 'r' } };
+      if (!c.layerTouches(layer, 'src/auth/role-permissions.adapter.spec.ts')) return 'spec obok pliku z zakresu poza zakresem';
+      if (!c.layerTouches(layer, 'apps/api/src/auth/role-permissions.map.spec.ts')) return 'spec w monorepo (prefiks pakietu) poza zakresem';
+      if (c.layerTouches(layer, 'src/auth/other.spec.ts')) return 'spec innego pliku zaliczony do zakresu';
+      if (c.layerTouches(layer, 'src/billing/role-permissions.adapter.spec.ts')) return 'spec z innego katalogu zaliczony do zakresu';
+      if (c.layerTouches(layer, 'src/auth/role-permissions.adapter.ts')) return 'nie-test obok zaliczony do zakresu';
+      if (!/role-permissions\.\*\.spec\.\*/.test(c.buildProbePrompt(ARGS, Object.assign({}, layer, { tests: true, checks: [] })))) return 'sonda przyrostu nie liczy specu towarzyszącego';
+      return null;
+    },
+  },
+  {
+    name: 'unit-sub-layer-gets-base-layer-cards',
+    run() {
+      const sub = { id: 'infrastructure:audience', base: 'infrastructure', dirs: ['src/infrastructure/'], scope: { dirs: ['contexts/audience/'], reason: 'unit' } };
+      if (!/KARTA REPOZYTORIUM/.test(c.buildImplPrompt(ARGS, sub, 1, null, 0))) return 'pod-warstwa nie dostała kart warstwy bazowej';
+      if (!/KARTA REPOZYTORIUM/.test(c.buildVerifierPrompt(ARGS, sub, null, ['x'], 'implement'))) return 'weryfikator pod-warstwy bez kart warstwy bazowej';
       return null;
     },
   },

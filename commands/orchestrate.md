@@ -27,20 +27,25 @@ nie gdy chcesz ją WYKONAĆ.
 ```
 1. znacznik przebiegu  → .claude/run-state/orchestrating.json (włącza STRICT)
 2. przygotowanie       → node <claude-patterns>/scripts/orchestrate-prepare.mjs {TASK-ID} --project . --json
-                         zero LLM: bramki wejścia + warstwy + karty reguł + checks + budżety
-3. silnik              → Workflow({ scriptPath: <scriptPath z kroku 2>, args: <JSON z kroku 2> })
+                           --emit-script .claude/run-state/{TASK-ID}.workflow.mjs [--overrides <plik.json>]
+                         zero LLM: bramki wejścia + warstwy (+ units) + karty reguł + checks + budżety
+3. silnik              → Workflow({ scriptPath: <scriptPath z kroku 2> })   // args wbudowane
+                         (bez --emit-script: Workflow({ scriptPath, args: <JSON z kroku 2> }))
                          kanoniczny skrypt: scripts/workflow/orchestrate.template.mjs
 4. wyjście             → bramka końcowa, git add, HALT: "staged, not committed"
 ```
 
 Krok 2 kończy się kodem wyjścia: `0` = jedź dalej, `2` = bramka analizy nie przeszła
-(wypisz jego stderr i STOP), `3` = brak/zła kompozycja bloków (wypisz i STOP).
+(wypisz jego stderr i STOP), `3` = brak/zła kompozycja bloków (wypisz i STOP), `4` = wyemitowany
+skrypt nie przeszedł `workflow-lint` (wypisz i STOP), `1` = błąd użycia, w tym nieznany klucz
+w `--overrides`.
 **Nie obchodź kodu 2 ani 3** — to są te same bramki, które wcześniej stały tu jako proza.
 
 Krok 3 jest jedynym miejscem, gdzie powstaje kod. Skryptu nie pisz od nowa: jest kanoniczny,
 przechodzi `hooks/workflow-lint.js` bez naruszeń i ma eval
 (`tests/flow-evals/orchestrate-script/run.js`). Gdy realnie potrzebujesz odstępstwa —
-skopiuj plik, zmień kopię, przepuść przez lint i opisz odstępstwo w raporcie.
+użyj `--overrides <plik.json>` (budżety, `checks` warstwy, `layers: { "<id>": {…} }`); ręczna
+kopia szablonu to ostateczność — wtedy przepuść ją przez lint i opisz odstępstwo w raporcie.
 
 Po awarii: `Workflow({scriptPath, resumeFromRunId})` — ukończone wywołania wracają z cache.
 
@@ -72,7 +77,7 @@ poza Twoją uwagą — to jednocześnie lista kandydatów do zautomatyzowania.
 | ORC-019 | verify bez `Bash` w `tools` | STOP z komunikatem, nie przepuszczaj warstwy po cichu | tylko prompt | — |
 | ORC-020 | warstwa `optional: true` | oceń `create_when` wobec faktycznego wyniku poprzednich warstw; pominięcie odnotuj | `orchestrate.template.mjs` (ocenę `create_when` podaje koordynator) | — |
 | ORC-021 | warstwa `tests: true` | implementer dostaje minimalny input (ścieżki + ID reguł), nie treść kodu | `orchestrate.template.mjs` | — |
-| ORC-022 | bramka końcowa | suma `checks` ze wszystkich warstw, które faktycznie weszły, raz na całości | `orchestrate-prepare.mjs` (`checks.finalGate`) | [ORC-022](docs/decisions/orchestrate-rule-history.md#orc-022) |
+| ORC-022 | bramka końcowa | `final_gate.checks` z bloku (ZAWSZE) ∪ `checks` warstw, które weszły, raz na całości | `orchestrate-prepare.mjs` (`checks.finalGate`, ostrzeżenie przy pustej liście) | [ORC-022](docs/decisions/orchestrate-rule-history.md#orc-022) |
 | ORC-023 | artefakt ma `layers_done:` | POMIŃ te warstwy, zrób sanity check zamiast pełnego verify | `orchestrate-prepare.mjs` (`layers[].skip`) | — |
 | ORC-024 | GO warstwy | NATYCHMIAST dopisz jej id do `layers_done:` — `Edit`, nigdy `Write` | tylko prompt | [ORC-024](docs/decisions/orchestrate-rule-history.md#orc-024) |
 | ORC-025 | wznowienie | `final_gate` uruchamiaj ZAWSZE, także po wznowieniu | `orchestrate.template.mjs` | — |
@@ -112,6 +117,10 @@ poza Twoją uwagą — to jednocześnie lista kandydatów do zautomatyzowania.
 | ORC-058 | KAŻDA ścieżka wyjścia | usuń `.claude/run-state/orchestrating.json` — także po eskalacji i po odmowie z bramek | tylko prompt | [ORC-058](docs/decisions/orchestrate-rule-history.md#orc-058) |
 | ORC-059 | raport końcowy | najpierw 2-4 zdania rejestrem `human_voice`, potem przebieg maszyny | hook `check-human-voice` (gdy zainstalowany) | [ORC-059](docs/decisions/orchestrate-rule-history.md#orc-059) |
 | ORC-060 | raport końcowy | nie zaczynaj od tabeli warstw | tylko prompt | [ORC-060](docs/decisions/orchestrate-rule-history.md#orc-059) |
+| ORC-062 | czerwona sonda + implementer „brak zmian" | NIE weryfikuj twierdzenia no-op — status `BLOCKED_BY_PRIOR`, przebieg staje, decyzja człowieka | `orchestrate.template.mjs` (`blockedByPrior`) · `workflow-lint WL17` | [ORC-062](docs/decisions/orchestrate-rule-history.md#orc-062) |
+| ORC-063 | lista zmienionych plików | jedno polecenie dla bramki, diff-sondy i bramki końcowej: `git diff --name-only <baza>; git ls-files --others --exclude-standard`; bramka końcowa z drzewa, nie z raportów warstw, i z kartami | `orchestrate.template.mjs` (`treeFilesCmd`) · `workflow-lint WL18` | [ORC-063](docs/decisions/orchestrate-rule-history.md#orc-063) |
+| ORC-064 | artefakt ma `units[]` | każda jednostka = pod-warstwa `<warstwa>:<id>` z zakresem `dirs`; `layers_done` przyjmuje id pod-warstw; zły wpis = exit 2 | `orchestrate-prepare.mjs` | [ORC-064](docs/decisions/orchestrate-rule-history.md#orc-064) |
+| ORC-065 | odstępstwo od kanonu | `--overrides <plik.json>` + `--emit-script`, nie ręczna kopia z `String.replace` | `orchestrate-prepare.mjs` (lint wyemitowanego skryptu, exit 4) | [ORC-065](docs/decisions/orchestrate-rule-history.md#orc-065) |
 
 ## Co zrobić z regułą „tylko prompt"
 

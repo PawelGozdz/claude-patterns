@@ -25,9 +25,127 @@ and none of it is instruction — it is history.
   `type` swapped, so it rejected every real hooks configuration in the repo.
 
 ### Added
+- `orchestrate-prepare.mjs --overrides <file.json>` and `--emit-script <path>`:
+  overrides merge into the output (unknown key = exit 1), and the emitted script
+  embeds the args, passes `workflow-lint` (exit 4 otherwise) and becomes the
+  `scriptPath` (ORC-065).
+- `patterns_exclude[]` in the analysis artifact drops false keyword hits from
+  pattern selection (ANL-038).
+- Rule cards for `zod-schema-validation` and `rate-limit-guard`.
 - `schemas/block.schema.json` — describes `blocks/*.yml`, derived from the real
   blocks and checked against `BLOCK_KEYS` in `materialize-runtime.mjs`.
 - `docs/CONTRIBUTING.md` — the "how to add a …" procedures, moved from CLAUDE.md.
+
+### Changed
+- `/orchestrate` implementer and verifier prompts now carry a search budget:
+  locating goes to one batched `Explore` (Haiku) call, `Read` only touches
+  files being edited (offset/limit above 300 lines), own `Grep` only targeted.
+  Metrics to 2026-09-15 put ~90% of implementer cost in cache-read — context
+  growing with every turn — and the stack agents already said "delegate
+  discovery"; `general-purpose` (libraries, `node`) never heard it. Baseline
+  for the comparison (since 2026-08-15, per step): `domain-application-implementer`
+  2.2 M cache-read / $0.81, `infrastructure-implementer` 2.1 M / $0.74,
+  `general-purpose` 2.8 M / $0.87 — check `workflow-metrics-report.mjs --by agentType`.
+- `domain-application-implementer.md` still told the agent to call
+  `Task(codebase-explorer)`, an agent that has not existed since 2026-06-27;
+  the call failed and the implementer fell back to grepping itself.
+
+- `agents/stacks/refine-spa/` — `refine-implementer` and `refine-quality-verifier`
+  (VETO) for Vite + React + Refine + Ant Design panels behind an identity
+  gateway. First consumer: marketing-hub (TS-MH-002); linked through a block's
+  `overlay.agents: [stacks/refine-spa/]`.
+- `layers[].verify` — a layer may name its own verifier; `inner_loop.verify`
+  stays the default. Needed the moment one repo holds an API and a web panel:
+  the DDD `code-quality-verifier` has nothing to say about a React provider.
+
+### Fixed
+- `lint:check` temporarily removed from `checks` in `ddd/layers`, `flat-service` and
+  grant-flow's local block: the checks added a day earlier ran lint on `domain`/`application`
+  for the first time, surfacing real pre-existing debt (277-2463 errors, up to ~5 minutes per
+  run) unrelated to any task, which halted every run with ESCALATE_AND_HALT. `typecheck` stays.
+  Fixed one real, isolated `import/order` violation in marketing-hub instead of weakening its
+  check. See TASK-ORCH-LINT-BASELINE-001 for the per-project re-enable criterion.
+- `/orchestrate` could report GO for work nobody checked (marketing-hub
+  TS-MH-005, 4 of 4 infrastructure layers). After a red probe the implementer
+  could answer "nothing to do here", and the no-op verifier judged that claim
+  without seeing the probe result. A red probe now closes the no-op path: the
+  layer ends as `BLOCKED_BY_PRIOR` and the run stops for a human decision
+  (ORC-062, `workflow-lint` WL17).
+- The "code exists" gate, the silent-death diff probe and the test-block counter
+  did not see new files (untracked or fully staged), so tasks that only add files
+  ended in a false ESCALATE (ai-gateway TS-AIG-015, marketing-hub TS-MH-003/005).
+  All three now share one command that lists untracked files one by one and
+  compares against `HEAD`. The counter also catches `describe.each(` and
+  `it.each(` (ORC-063, WL18).
+- The final gate got its file list from layer reports (no-op layers report
+  none) and no pattern cards. It now lists files from the working tree relative
+  to the run's `baseSha`, receives every card of the run and is told which files
+  were already dirty before the run started (ORC-063).
+- The final gate lost its regression tests whenever analysis skipped the testing
+  layer; on `ddd/layers` it ran no checks at all. Blocks can now declare
+  `final_gate.checks`, which always run. `ddd/layers` and `flat-service` declare
+  `typecheck, lint:check, test`, and the `ddd/layers` layers got their own
+  `checks` (ORC-022).
+- `units[]` in the analysis artifact was silently ignored: four planned
+  infrastructure passes became one. Prepare now expands each unit into a
+  sub-layer `<layer>:<unit>` and rejects malformed entries with exit 2 (ORC-064).
+- `orchestrate-prepare.mjs --json` piped into another process was cut at 64 KB:
+  `process.exit()` right after `stdout.write` dropped the unflushed buffer, and
+  real args are ~140-190 KB. It now sets `process.exitCode` instead.
+- `library-layers` declares `final_gate.checks: ["test"]`.
+- A test file next to a scoped file (same directory, same name stem) now counts
+  as in scope, so narrowing to `x.map.ts` no longer strands `x.adapter.spec.ts`.
+
+- Optional layers never ran. `layerPlan()` read `a.createWhenHits`, but
+  `orchestrate-prepare.mjs` never computed it, so every `optional: true` layer
+  reported "create_when nie trafił" — including `api-surface` in
+  `library-layers`, which has therefore never executed. Prepare now matches
+  `create_when` against the same haystack the pattern triggers use.
+- `env:` declared by blocks never left `runtime.yml`. `materialize-runtime.mjs`
+  merged it correctly, but nothing copied it into `.claude/settings.json`, so
+  `ECC_GATEGUARD: off` in `ts-library`, `ddd/core` and `clean-arch` was a
+  statement, not a setting — every project on those blocks still ran GateGuard.
+  `sync-runtime-hooks.mjs` now syncs `env` the same way it syncs hooks: adds
+  missing keys, unions list-valued ones (`ECC_DISABLED_HOOKS`), leaves hand-set
+  scalars alone and reports the conflict.
+- `ts-library` also disables ECC's `pre:config-protection`. It blocks every edit
+  to an existing `eslint.config.*`, which is right for a service and wrong for a
+  published library whose lint config is part of the product — `platform`
+  (2026-09-13) could not fix the `eslint.config.js` it was scaffolding.
+- `setup-project.sh` never copied the PM dashboards into a fresh project: step 5
+  creates `project-orchestration/analysis/TEMPLATE.md` first, so step 7 saw the
+  directory, said "already exists" and skipped `TEAM-STATE.md`, `KANBAN.md`,
+  `tasks/`. It now tests for `TEAM-STATE.md` and copies without overwriting.
+- `/orchestrate` escalated on layers the task never touched: three "zero
+  changes" attempts on `domain` (or `application`, for infrastructure-only
+  work) looked identical to an implementer that did nothing. Two fixes — the
+  analysis now declares `layers_skip: [{ id, reason }]` (ANL-036; prepare
+  rejects unknown ids and missing reasons), and an implementer may return
+  `changed_files: [] + no_changes_reason`, which the layer verifier confirms
+  (`verify-noop` → GO without files) or rejects with concrete gaps.
+- Decisions D1–Dn reached agent prompts empty when the analysis spelled the
+  field `decision` instead of `choice`; `orchestrate-prepare.mjs` now fails
+  the gate and names the field to rename.
+- `layers_skip` silently dropped partial work: an analysis that skipped
+  `application` "for 7 of 8 contexts" got `skip: true` for the whole layer,
+  and the one context that mattered — a live data leak fix — would never have
+  reached an implementer (juz-ide-api-2, 2026-09-18). New `layers_scope:
+  [{ id, dirs, reason }]` narrows a layer instead of dropping it (implementer
+  prompt, verifier prompt, probe pathspec and file attribution all follow the
+  narrowed `dirs`, single files included); prepare now rejects a skip whose
+  reason says "partially" ("wyjątek", "N z M", "tylko dla", …) and a layer
+  listed in both fields (ANL-037).
+- `templates/project.yml.example` still advertised `entry_points.orchestrate: "/o"`,
+  a command that no longer exists; every project scaffolded from it (nest-kit,
+  platform, auth, grant-flow) inherited the dead value. Now `/analyze` +
+  `/orchestrate`, and the four project.yml files are corrected in place.
+- `verify-project-setup.mjs` reported "setup kompletny" for a project whose
+  `runtime.yml` had no `orchestrate` section at all (ai-gateway: `node + zod +
+  approval-gate`, no architecture-axis block). `/orchestrate` would have fallen
+  back to `GENERIC_LAYERS` — one `general-purpose` layer with no verifier and
+  no final gate. The verifier now fails on missing `orchestrate.layers` or an
+  empty `inner_loop.verify`, and warns on an empty `final_gate.agent`.
+  ai-gateway itself now composes `flat-service`.
 
 ### Deferred
 - The marketing skills sync. Upstream renamed 20 of the 42 skills we vendor;

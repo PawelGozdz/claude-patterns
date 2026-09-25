@@ -282,13 +282,164 @@ CASES.push({
   },
 });
 
+// ── TS-MH-005 (marketing-hub): formy, które analiza wyraża, a prepare gubił ──────
+const withFm = (extra) => analysisFm({}).split('\n---\n\n# Analiza').join('\n' + extra + '\n---\n\n# Analiza');
+const RUNTIME_GATE_CHECKS = RUNTIME_DDD.split(
+  'final_gate: {agent: "security-e2e-verifier", on_fail: ESCALATE_AND_HALT}').join(
+  'final_gate: {agent: "security-e2e-verifier", on_fail: ESCALATE_AND_HALT, checks: ["test", "lint:check"]}');
+
+CASES.push({
+  name: 'final-gate-checks-survive-skipped-testing-layer',
+  build: () => makeProject({
+    taskId: 'TS-FIX-001', runtime: RUNTIME_GATE_CHECKS,
+    analysis: withFm('layers_skip:\n  - { id: testing, reason: "task nie dotyka testów" }'),
+    task: taskFile('Dodaj aggregate.'),
+  }),
+  check(r) {
+    if (r.code !== 0) return `oczekiwano exit 0, było ${r.code} (${r.stderr.trim()})`;
+    const fg = r.json.checks.finalGate;
+    if (!fg.includes('test')) return 'final_gate.checks z bloku zgubione przy pominiętej warstwie testing: ' + fg.join(',');
+    if (!fg.includes('typecheck')) return 'checks warstw, które weszły, zgubione';
+    if (fg[0] !== 'test') return 'final_gate.checks nie idą pierwsze';
+    return null;
+  },
+});
+
+CASES.push({
+  name: 'units-expand-into-sub-layers',
+  build: () => makeProject({
+    taskId: 'TS-FIX-001',
+    analysis: withFm('layers_done: ["domain:audience"]\nunits:\n  - { id: audience, layer: domain, dirs: [contexts/audience/] }\n  - { id: campaigns, layer: domain, dirs: [contexts/campaigns/], checks: ["lint:check"], role: "Kampanie" }'),
+    task: taskFile('Dodaj aggregate.'),
+  }),
+  check(r) {
+    if (r.code !== 0) return `oczekiwano exit 0, było ${r.code} (${r.stderr.trim()})`;
+    const ids = r.json.layers.map((l) => l.id);
+    if (JSON.stringify(ids) !== JSON.stringify(['domain:audience', 'domain:campaigns', 'testing'])) return 'kolejność/rozwinięcie jednostek: ' + ids.join(',');
+    const [a, c] = r.json.layers;
+    if (!a.skip) return 'layers_done z id pod-warstwy nie zadziałał';
+    if (c.skip) return 'pod-warstwa bez checkpointu pominięta';
+    if (c.base !== 'domain') return 'pod-warstwa bez base (karty warstwy bazowej)';
+    if (JSON.stringify(c.scope.dirs) !== '["contexts/campaigns/"]') return 'zakres jednostki nie trafił do scope';
+    if (JSON.stringify(c.checks) !== '["lint:check"]' || c.role !== 'Kampanie') return 'checks/rola jednostki zignorowane';
+    return null;
+  },
+});
+
+CASES.push({
+  name: 'units-invalid-entry-exit-2',
+  build: () => makeProject({
+    taskId: 'TS-FIX-001',
+    analysis: withFm('units:\n  - { id: audience, layer: infra, dirs: [contexts/audience/] }\n  - { id: x, layer: domain }'),
+    task: taskFile('Cokolwiek.'),
+  }),
+  check(r) {
+    if (r.code !== 2) return `oczekiwano exit 2, było ${r.code}`;
+    if (!/units\[audience\]: `layer` "infra" nie istnieje/.test(r.stderr)) return 'brak powodu: nieznana warstwa';
+    if (!/units\[x\]: brak `dirs`/.test(r.stderr)) return 'brak powodu: jednostka bez dirs';
+    return null;
+  },
+});
+
+CASES.push({
+  name: 'patterns-exclude-drops-false-trigger-hit',
+  build: () => makeProject({
+    taskId: 'TS-FIX-001',
+    analysis: withFm('patterns_exclude: [domain/fixture-nocard-pattern.md, domain/literowka-pattern.md]').split('  - domain/fixture-nocard-pattern.md\n').join(''),
+    task: taskFile('Dodaj nowy aggregate.'),
+  }),
+  check(r) {
+    if (r.code !== 0) return `oczekiwano exit 0, było ${r.code} (${r.stderr.trim()})`;
+    if (r.json.patterns.some((p) => p.path === 'domain/fixture-nocard-pattern.md')) return 'wzorzec z patterns_exclude nadal w doborze';
+    if (!r.json.warnings.some((w) => /patterns_exclude: "domain\/literowka-pattern.md"/.test(w))) return 'brak ostrzeżenia o wpisie, który nic nie wykluczył';
+    return null;
+  },
+});
+
+CASES.push({
+  name: 'overrides-merge-and-reject-unknown-key',
+  build: () => {
+    const root = makeProject({ taskId: 'TS-FIX-001', analysis: analysisFm({}), task: taskFile('Dodaj aggregate.') });
+    write(root, 'ok.json', JSON.stringify({ budgets: { implement: { max_turns: 60 } }, layers: { testing: { checks: ['test:l1'] } } }));
+    write(root, 'bad.json', JSON.stringify({ budgts: {} }));
+    write(root, 'badlayer.json', JSON.stringify({ layers: { nope: { checks: [] } } }));
+    return root;
+  },
+  check(r, root) {
+    const ok = run(root, 'TS-FIX-001', ['--overrides', path.join(root, 'ok.json')]);
+    if (ok.code !== 0) return 'poprawne nadpisanie odrzucone: ' + ok.stderr.trim();
+    if (ok.json.budgets.implement.max_turns !== 60 || !ok.json.budgets.verify) return 'budżety nie scalone głęboko';
+    if (JSON.stringify(ok.json.layers.find((l) => l.id === 'testing').checks) !== '["test:l1"]') return 'nadpisanie warstwy po id nie zadziałało';
+    const bad = run(root, 'TS-FIX-001', ['--overrides', path.join(root, 'bad.json')]);
+    if (bad.code !== 1 || !/nieznany klucz `budgts`/.test(bad.stderr)) return 'literówka w nadpisaniu przeszła: ' + bad.code;
+    const bl = run(root, 'TS-FIX-001', ['--overrides', path.join(root, 'badlayer.json')]);
+    if (bl.code !== 1 || !/layers.nope/.test(bl.stderr)) return 'nieznana warstwa w nadpisaniu przeszła';
+    return null;
+  },
+});
+
+// `$'`, `$&` i `$1` to wzorce zastępcze String.replace — na nich ręczna kopia szablonu gubiła args.
+const DOLLAR_CARD = "- echo $'a b' i $& oraz $1";
+
+CASES.push({
+  name: 'emit-script-embeds-args-verbatim-and-passes-lint',
+  build: () => {
+    const root = makeProject({ taskId: 'TS-FIX-001', analysis: analysisFm({}), task: taskFile('Dodaj aggregate.') });
+    write(root, '.claude/knowledge/patterns/cross-layer/conventions-pattern_summary.md', '# Karta\n\n## Reguły\n' + DOLLAR_CARD + '\n');
+    return root;
+  },
+  check(r, root) {
+    const target = path.join(root, 'out', 'wf.mjs');
+    const e = run(root, 'TS-FIX-001', ['--emit-script', target]);
+    if (e.code !== 0) return 'emisja nie powiodła się: ' + e.stderr.trim();
+    if (e.json.scriptPath !== target || !e.json.argsEmbedded) return 'scriptPath nie wskazuje wyemitowanego pliku';
+    const src = fs.readFileSync(target, 'utf8');
+    if (src.indexOf('const a = args || {}') !== -1) return 'linia args nie podmieniona';
+    if (src.indexOf(JSON.stringify(DOLLAR_CARD).slice(1, -1)) === -1) return 'treść karty zniekształcona przy wbudowaniu ($\' / $& / $1)';
+    const lint = spawnSync('node', [path.join(REPO, 'hooks', 'workflow-lint.js'), target], { encoding: 'utf8' });
+    if (lint.status !== 0) return 'wyemitowany skrypt nie przechodzi workflow-lint: ' + lint.stdout.slice(-300);
+    return null;
+  },
+});
+
+CASES.push({
+  name: 'git-base-and-dirty-at-start-recorded',
+  build: () => {
+    const root = makeProject({ taskId: 'TS-FIX-001', analysis: analysisFm({}), task: taskFile('Dodaj aggregate.') });
+    spawnSync('bash', ['-c', 'git init -q && git config user.email t@t && git config user.name t && git add -A && git commit -qm init && echo x > notes.md'], { cwd: root });
+    return root;
+  },
+  check(r) {
+    if (r.code !== 0) return `oczekiwano exit 0, było ${r.code}`;
+    if (!/^[0-9a-f]{40}$/.test(r.json.baseSha || '')) return 'brak baseSha: ' + r.json.baseSha;
+    if (JSON.stringify(r.json.dirtyAtStart) !== '["notes.md"]') return 'dirtyAtStart: ' + JSON.stringify(r.json.dirtyAtStart);
+    return null;
+  },
+});
+
+// process.exit() zaraz po stdout.write ucinał JSON w potoku na 64 KB (TS-MH-005: ~190 KB args).
+CASES.push({
+  name: 'large-json-output-not-truncated-in-pipe',
+  build: () => {
+    const root = makeProject({ taskId: 'TS-FIX-001', analysis: analysisFm({}), task: taskFile('Dodaj aggregate.') });
+    write(root, '.claude/knowledge/patterns/cross-layer/conventions-pattern_summary.md', '# Karta\n\n## Reguły\n' + '- reguła numer x\n'.repeat(12000));
+    return root;
+  },
+  check(r) {
+    if (r.code !== 0) return 'exit ' + r.code;
+    if (!r.json) return 'JSON ucięty w potoku (' + r.stdout.length + ' B)';
+    if (r.stdout.length < 150000) return 'fixture za mały, test niczego nie dowodzi: ' + r.stdout.length;
+    return null;
+  },
+});
+
 // ── bieg ─────────────────────────────────────────────────────────────────────────
 let failed = 0;
 for (const c of CASES) {
   let root;
   try {
     root = c.build();
-    const err = c.check(run(root, 'TS-FIX-001'));
+    const err = c.check(run(root, 'TS-FIX-001'), root);
     if (err) { failed++; process.stdout.write(`  ❌ ${c.name} — ${err}\n`); }
     else process.stdout.write(`  ✅ ${c.name}\n`);
   } catch (e) {

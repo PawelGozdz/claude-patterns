@@ -18,5 +18,10 @@ orchestrate:
         tags: ["any:tests"],
         role: "Testy kolokowane z kodem: jednostkowe i integracyjne." }
   inner_loop: { verify: "ecc:typescript-reviewer", max_attempts: 3, on_max: ESCALATE_AND_HALT }
-  final_gate: { agent: "ecc:security-reviewer", on_fail: ESCALATE_AND_HALT }
+  # checks wchodzą ZAWSZE (ORC-022); brak skryptu = "skipped" w raporcie (ORC-017).
+  # lint:check wyjęty (2026-09-25): nazwa skryptu i baseline nie były potwierdzone na żadnym
+  # realnym projekcie tego bloku. Dodaj go per-projekt lokalnym blokiem po sprawdzeniu, że
+  # `npm run lint:check` jest tam czysty — nie zakładaj domyślnie.
+  final_gate: { agent: "ecc:security-reviewer", on_fail: ESCALATE_AND_HALT,
+                checks: ["typecheck", "test"] }
   exit: STAGE_NOT_COMMIT

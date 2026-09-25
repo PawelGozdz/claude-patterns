@@ -62,7 +62,7 @@ $CLAUDE_PATTERNS/
 │   ├── requirements.txt         # Python dependencies
 │   ├── settings.json.example    # Example Claude settings
 │   └── README.md                # MCP setup & usage guide
-├── agents/                      # Agent definitions (24 universal + 30 stack-specific)
+├── agents/                      # Agent definitions (24 universal + 32 stack-specific)
 │   ├── README.md                # Agent setup & usage guide
 │   ├── universal/               # Stack-agnostic agents (linked to ~/.claude/agents/)
 │   │   ├── backend-technology-expert.md
@@ -1156,7 +1156,7 @@ cat .claude/settings.json  # Ensure patterns path is correct
 
 **Key Documentation**:
 - `patterns/README.md` — Full pattern index (108 patterns)
-- `agents/README.md` — Agent catalog (54 agents)
+- `agents/README.md` — Agent catalog (56 agents)
 - `commands/README.md` — Command catalog (33 commands)
 - `patterns/orchestration/project-management-system.md` — PM system docs
 

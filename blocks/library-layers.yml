@@ -50,5 +50,7 @@ orchestrate:
   # Bramka końcowa: library-quality-verifier ma jawne VETO i dostęp do Bash, więc realnie
   # URUCHOMI bramki repo, zamiast czytać kod i zgadywać. library-api-guardian tego nie
   # potrafi (advisory, bez Bash) — dlatego siedzi w panelu analizy bloku `ts-library`.
-  final_gate: { agent: "library-quality-verifier", on_fail: ESCALATE_AND_HALT }
+  # final_gate.checks wchodzą ZAWSZE, także gdy analiza pominie warstwę testing
+  # (claude-patterns ORC-022, 2026-09-24). Brak skryptu = "skipped" w raporcie.
+  final_gate: { agent: "library-quality-verifier", on_fail: ESCALATE_AND_HALT, checks: ["test"] }
   exit: STAGE_NOT_COMMIT

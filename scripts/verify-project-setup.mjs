@@ -156,9 +156,23 @@ if (dddLib) {
   const pkgPath = join(projectDir, 'package.json');
   if (!existsSync(pkgPath)) warnings.push(`blok ddd/core deklaruje ${dddLib}, ale projekt nie ma package.json`);
   else {
-    const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'));
-    const declared = { ...(pkg.dependencies ?? {}), ...(pkg.devDependencies ?? {}), ...(pkg.peerDependencies ?? {}) };
-    if (!declared[dddLib]) bad.push(`blok ddd/core zakłada bibliotekę ${dddLib}, której nie ma w package.json`);
+    // Monorepo (marketing-hub 2026-09-15): biblioteka domeny siedzi w apps/api/package.json,
+    // root ma tylko skrypty workspace. Root wygrywa, gdy deklaruje; inaczej pierwszy pakiet
+    // workspace, który ją ma. Katalogi po konwencji pnpm/npm workspaces — bez parsowania globów.
+    const pkgFiles = [pkgPath];
+    for (const ws of ['apps', 'packages', 'libs', 'services']) {
+      const wsDir = join(projectDir, ws);
+      if (!existsSync(wsDir)) continue;
+      for (const d of readdirSync(wsDir, { withFileTypes: true }))
+        if (d.isDirectory() && existsSync(join(wsDir, d.name, 'package.json'))) pkgFiles.push(join(wsDir, d.name, 'package.json'));
+    }
+    let declared = {};
+    for (const f of pkgFiles) {
+      const pkg = JSON.parse(readFileSync(f, 'utf8'));
+      const deps = { ...(pkg.dependencies ?? {}), ...(pkg.devDependencies ?? {}), ...(pkg.peerDependencies ?? {}) };
+      if (deps[dddLib]) { declared = deps; break; }
+    }
+    if (!declared[dddLib]) bad.push(`blok ddd/core zakłada bibliotekę ${dddLib}, której nie ma w package.json (root ani apps/*, packages/*)`);
     else {
       ok.push(`biblioteka domeny: ${dddLib}@${declared[dddLib]}`);
       const min = rt.params['ddd/core'].ddd_library_min_version;
@@ -232,6 +246,18 @@ if (rt.knowledge?.collection) {
       ok.push(`governance.canon spójny z instancjami dzielącymi kolekcję ${rt.knowledge.collection}`);
     }
   }
+}
+
+// Brak sekcji `orchestrate` w runtime.yml = żaden blok osi architektury nie wszedł. /orchestrate
+// nie odmawia — schodzi na GENERIC_LAYERS (`general-purpose`, jedna warstwa) BEZ weryfikatora
+// pętli i BEZ bramki końcowej, czyli implementer sam sobie wystawia GO. Do 2026-09-19 raport mówił
+// „setup kompletny", bo sprawdzał tylko to, na co runtime wskazuje (ai-gateway: node+zod+approval-gate).
+if (!rt.orchestrate?.layers?.length) {
+  bad.push('runtime.yml bez `orchestrate.layers` — /orchestrate pójdzie na GENERIC_LAYERS bez verify i final_gate; ' +
+    'dodaj blok osi architektury do stack_blocks (flat-service | ddd/layers | library-layers | clean-arch)');
+} else {
+  if (!rt.orchestrate.inner_loop?.verify) bad.push('orchestrate.inner_loop.verify pusty — pętla implement→verify nie ma weryfikatora');
+  if (!rt.orchestrate.final_gate?.agent) warnings.push('orchestrate.final_gate.agent pusty — brak VETO na całości zmiany');
 }
 
 if (brokenLinks.length)

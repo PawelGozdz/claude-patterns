@@ -123,6 +123,11 @@ w raporcie — nie milcz, ale nie rób tego domyślnie.
 Raz, na całości zmiany. To ostatnie miejsce, gdzie wychodzi regresja między warstwami
 (testy zielone przed warstwą `api-surface`, czerwone po niej).
 
+**Zmiana 2026-09-24 (TS-MH-005):** suma samych warstw gubiła testy regresji dokładnie wtedy, gdy
+analiza pominęła warstwę testing, a w projektach na `ddd/layers` (warstwy bez `checks`) bramka nie
+uruchamiała niczego. Blok deklaruje teraz `final_gate.checks`, które wchodzą zawsze, przed sumą
+`checks` warstw. Prepare ostrzega, gdy bramka zostaje bez żadnego checka.
+
 <a id="orc-024"></a>
 
 ### ORC-024 — checkpoint `layers_done` dopisywany `Edit`, nie `Write`
@@ -238,6 +243,14 @@ jednostki SĄ zmienione → idź do VERIFY-EXISTING (weryfikacja od zera + punkt
 NIE do re-implementacji. Dopasowanie pliku do ZAKRESU jednostki jest konieczne — NIE samo
 „diff niepusty": inne jednostki tego przebiegu już zmieniły drzewo, więc bez zawężenia każdy
 cudzy diff wyglądałby jak wykonana praca.
+
+**Dopisek 2026-09-24 (TS-MH-005, `wf_a95b083c-a06`):** diff-sonda uratowała pracę, ale nie tury.
+`infrastructure-implementer` zamilkł 4 razy na 4, każdorazowo na dokładnie 40. turze, po 13–35
+wywołaniach Bash (głównie iteracyjny `tsc`/build); powtórka tej samej pracy kończyła się w 5–15
+turach. Rozmiar kart nie był przyczyną: warstwy domeny z identycznymi 75 KB kart kończyły się
+poprawnie, a `domain-application-implementer` nie ma Bash. Definicja agenta i prompt implementera
+zakazują teraz pętli kompilacji/testów, bo sonda robi to zaraz po implementerze
+(TASK-ORCH-IMPL-SILENT-001).
 
 <a id="orc-039"></a>
 
@@ -469,6 +482,70 @@ Nie zaczynaj raportu od tabeli warstw. Człowiek, który odpalił orkiestrację 
 wraca po odpowiedź „czy to jest gotowe do commita", nie po przebieg maszyny — przebieg jest
 dowodem dla tej odpowiedzi, więc idzie pod nią.
 
+<a id="orc-062"></a>
+
+### ORC-062 — po czerwonej sondzie nie ma „braku zmian", jest `BLOCKED_BY_PRIOR` (2026-09-24)
+
+marketing-hub, TS-MH-005, run `wf_a95b083c-a06`. Sonda uruchamia `checks` na całym repo, a warstwa
+ma wąski zakres. Czerwony lint z wcześniejszej warstwy wyszedł w sondzie infrastruktury, pętla
+wróciła do implementera z listą naruszeń, a implementer odpowiedział `changed_files: []`
+z uzasadnieniem „poza zakresem". Gałąź no-op (dodana 2026-09-14 dla warstw, których task nie
+dotyka) zawołała weryfikatora, który ocenił samo twierdzenie, bez wyniku sondy i bez naruszeń,
+zgodził się i dał GO. Tak skończyły 4 z 4 warstw infrastruktury.
+
+Po czerwonej sondzie ścieżka no-op jest zamknięta. Implementer, który nie może naprawić czerwieni
+w swoim zakresie, zgłasza „POZA ZAKRESEM: plik:linia", warstwa dostaje status `BLOCKED_BY_PRIOR`
+i przebieg staje jak przy `ESCALATE_AND_HALT`, bo kolejne warstwy trafiłyby na tę samą czerwień.
+Rozważana była sonda bazowa na starcie każdej warstwy (odróżnienie „moja czerwień / odziedziczona"
+bez udziału człowieka). Odrzucona na razie: dokłada jedno wywołanie na warstwę, a przyczyna
+odziedziczonej czerwieni i tak wymaga decyzji, czy wracać do wcześniejszej warstwy. Przy okazji
+weryfikator no-op dostaje naruszenia z poprzedniej rundy, bo ta sama dziura istniała po NO_GO
+weryfikatora. Źródło czerwieni zamknięto osobno: warstwy `ddd/layers` dostały `checks`, więc lint
+domeny wychodzi w warstwie domeny, nie w infrastrukturze. Egzekwuje `workflow-lint WL17` (ERROR).
+
+<a id="orc-063"></a>
+
+### ORC-063 — jedna lista plików z drzewa: bramka, diff-sonda i bramka końcowa (2026-09-24)
+
+Dwa satelity, ten sam błąd. ai-gateway TS-AIG-015 (`wf_895a3077-bdc`): jednostka tworzyła same
+nowe pliki testów, `git diff --name-only` ich nie widział (nieśledzone), sonda przyrostu po
+`git add` agenta też nie (`git diff` bez bazy porównuje z indeksem), i po trzech próbach przyszedł
+ESCALATE na zielonych testach. marketing-hub TS-MH-003/005: to samo plus `git status --short`
+zwijający nowy katalog do `?? contexts/audience/`. Każdy przebieg w marketing-hub łatał to w kopii
+skryptu.
+
+Teraz wszystkie trzy miejsca używają jednego polecenia, `git diff --name-only <baza>; git ls-files
+--others --exclude-standard`, a sonda przyrostu `git diff HEAD`. Bramka końcowa dostaje listę z tej
+samej sondy względem `baseSha` zapisanego przez prepare, a nie sumę raportów warstw (warstwa no-op
+oddawała `files: []`, więc bramka nie widziała infrastruktury ani migracji), oraz karty wszystkich
+wzorców przebiegu, których wcześniej nie dostawała wcale. Pliki brudne już przed startem idą do
+bramki osobno (`dirtyAtStart`). Licznik bloków łapie też `describe.each(`/`it.each(`.
+Egzekwuje `workflow-lint WL18` (WARN) i eval w trzech stanach drzewa (nieśledzony, `A`, `AM`).
+
+<a id="orc-064"></a>
+
+### ORC-064 — `units[]` z analizy to pod-warstwy, nie komentarz (2026-09-24)
+
+Analiza TS-MH-005 zaplanowała cztery przebiegi infrastruktury, prepare zbudował jeden: pole `units`
+stało w szablonie analizy, ale nic go nie czytało. Człowiek zauważył to dopiero w wyjściu prepare.
+Prepare rozwija teraz każdą jednostkę `{ id, layer, dirs, role?, checks?, reason? }` w pod-warstwę
+`<warstwa>:<id>` w miejscu warstwy bazowej. Zakres działa jak `layers_scope`, karty idą z warstwy
+bazowej (`base`), a `layers_done` przyjmuje id pod-warstwy. Wpis bez `dirs`, z nieznaną warstwą,
+z warstwą w `layers_skip`/`layers_scope` albo ze zdublowanym id zatrzymuje start (exit 2).
+To domyka pytanie zostawione otwarte w ANL-037.
+
+<a id="orc-065"></a>
+
+### ORC-065 — nadpisania przez plik i skrypt z wbudowanymi args (2026-09-24)
+
+Przy ~150 KB args nie da się ich przekazać ręcznie, więc każdy przebieg w marketing-hub kończył się
+własnym skryptem kopiującym szablon i podmieniającym treść. Raz zgubił fragment args na `$'`
+w `String.replace` (ten sam błąd zrobiono zresztą przy pisaniu evala do tej zmiany). Prepare ma
+teraz `--overrides <plik.json>` (głębokie scalenie; `layers` jako mapa po id; nieznany klucz
+= exit 1) i `--emit-script <ścieżka>`: zapisuje szablon z wbudowanym `const a = …` przez
+split/join, przepuszcza go przez `workflow-lint` (błąd = exit 4, plik nie powstaje) i podaje go
+w `scriptPath`.
+
 ---
 
 ## `/analyze` — reguły ANL
@@ -694,3 +771,85 @@ narzędzia wypada z kontekstu długo przed pierwszym wywołaniem; dlatego kontra
 Ta sama zmiana co ORC-061, dla wywołań RAG w kroku 0.b. Panel advisory nie pisze kodu, więc ryzyko
 jest mniejsze, ale cytowanie `evidence` jako „stanu kodu" w artefakcie analizy wprowadza w błąd
 człowieka zatwierdzającego analizę.
+
+<a id="anl-036"></a>
+### ANL-036 — warstwy, których task nie dotyka, deklaruje analiza, nie odkrywa silnik (2026-09-14)
+
+juz-ide-api-2, task infrastrukturalny: implementer warstwy `domain` trzy razy oddał zero zmian —
+słusznie, task nie dotykał modelu domenowego, co potwierdzała zatwierdzona decyzja w analizie.
+Silnik widział tylko „bramka «kod istnieje» nie przeszła" i po `max_attempts` eskalował; ten sam
+obraz daje zwykle warstwa `application`, gdy robota jest wyłącznie w infrastrukturze. Dwa poziomy
+naprawy, bo to dwa różne momenty:
+
+1. **Analiza wie wcześniej.** Jednostki pracy są rozpisane w `/analyze`, więc tam wiadomo, które
+   `dirs` z `runtime.yml` nikt nie ruszy. Nowe pole `layers_skip: [{ id, reason }]` w artefakcie;
+   `orchestrate-prepare.mjs` mapuje je na `skip` warstwy (obok `layers_done`, które jest checkpointem
+   wznowienia — inna klasa: tam praca była, tu jej nie będzie) i odrzuca wpis bez `reason` albo
+   z nieznanym `id`. Powód jest obowiązkowy, bo pominięcie bez uzasadnienia wygląda identycznie
+   jak niewykonana praca — a o to właśnie chodzi, żeby dało się je odróżnić.
+2. **Siatka w silniku.** Gdy analiza tego nie przewidziała, implementer może oddać
+   `changed_files: []` + `no_changes_reason`. To nie wynik, tylko twierdzenie: weryfikator warstwy
+   dostaje tryb `verify-noop` (spec + analiza + uzasadnienie, bez sondy) i albo potwierdza (GO bez
+   plików, `note: no-op`), albo obala listą konkretnych braków, która wraca do implementera jako
+   poprawka. Pusta lista bez powodu nadal jest niewykonaną pracą.
+
+Ten sam przebieg ujawnił drugi błąd: decyzje D1–D7 docierały do promptów puste, bo artefakt
+nazwał pole `decision`, a prompty czytają `choice`. Bramka prepare przepuszczała to bez słowa.
+Teraz każda decyzja bez `choice` (albo z aliasem `decision`/`answer`/`option`) zatrzymuje start
+z komunikatem, które pole przemianować — zatwierdzona decyzja, której nikt nie stosuje, jest gorsza
+niż brak decyzji, bo człowiek myśli, że ją wyegzekwowano.
+
+<a id="anl-037"></a>
+### ANL-037 — warstwa dotknięta częściowo to zawężenie (`layers_scope`), nie pominięcie (2026-09-18)
+
+juz-ide-api-2, TS-ERROR-MAPPER-001: zatwierdzona analiza wpisała warstwę `application` do
+`layers_skip` z powodem „pominięta TYLKO dla 7 z 8 kontekstów — NIE dotyczy
+neighborhood-economy/shares; implementer dostaje zawężony zakres". Autor artefaktu wyraził w
+polu binarnym coś, czego pole nie umie przenieść. `orchestrate-prepare.mjs` dopasowuje skip po
+samym `id`, więc `application` dostało `skip: true`, a szablon Workflow (`layerPlan`, `if (l.skip)
+return { run: false }`) nie odpaliłby implementera wcale. W tym „jednym z ośmiu" kontekstów siedziała
+naprawa żywego wycieku na produkcji (D6: poziom zaufania, próg dostępu nierezydenta i promień GPS
+w treści 422, `create-local-share/handler.ts:1269`). Silnik zgubiłby ją po cichu, z zielonym
+raportem — dokładnie to, co ANL-036 miało odróżniać od niewykonanej pracy. Ten sam błąd był w
+wpisie dla `domain` („Wyjątek: `error-codes.ts` może dostać nowe wpisy"). Człowiek złapał to
+czytając wyjście prepare przed startem, nie silnik.
+
+Dwie rzeczy, bo to dwa różne braki:
+
+1. **Brak formy na „częściowo".** Nowe pole `layers_scope: [{ id, dirs, reason }]`: warstwa
+   WCHODZI, ale `dirs` (katalogi albo pojedyncze pliki, ścieżki od korzenia repo) zastępują
+   `dirs` z `runtime.yml` wszędzie, gdzie zakres ma znaczenie — blok `ZAKRES WARSTWY` w prompcie
+   implementera i weryfikatora (z powodem i zakazem dotykania reszty warstwy „nawet jeśli widzisz
+   tam ten sam problem"), pathspec sondy (`:(glob)**/<dir>/**`, dla pliku bez `/**`) oraz
+   `layerTouches` przy atrybucji zmienionych plików. Trzecia klasa obok `layers_done` (checkpoint)
+   i `layers_skip` (praca nie istnieje). Prepare odrzuca wpis bez `dirs`, bez `reason`, z nieznanym
+   `id` oraz warstwę wpisaną w obie listy naraz.
+2. **Bramka na złe pole.** Powód w `layers_skip` zawierający „wyjątek"/„z wyjątkiem", „oprócz",
+   „zawężon-", „częściow-", „N z M", „pominięta tylko", „tylko dla", „nie jest (już) całkowicie",
+   `except`/`partial`/`only for` zatrzymuje start z komunikatem, do jakiego pola przenieść wpis.
+   Lista jest celowo wąska: gołe „tylko" i „nie dotyczy" siedzą w legalnych powodach („zmiany
+   tylko w infrastrukturze", „task nie dotyczy domeny") — zbyt szeroka reguła wypchnęłaby autorów
+   w ogólnikowe powody, czyli w gorszy wzorzec (ta sama pułapka co WL1 w `workflow-lint`). Powód
+   wymieniający ścieżkę w kodzie (`src/…`) daje tylko ostrzeżenie. Testowane dwukierunkowo: oba
+   realne powody z artefaktu zatrzymują (trafienia „Wyjątek", „zawężon"), kanoniczny powód z
+   szablonu przechodzi bez słowa.
+
+Czego to NIE robi: nie rozstrzyga, gdzie kończy się „zawężenie", a zaczyna „osobna jednostka
+pracy" (`units[]`, seam Ralphinho). Dziś `units: []` i jeden unit na task; gdy units wejdą, scope per
+unit będzie naturalniejszy niż scope per warstwa — to wtedy do przemyślenia, nie teraz.
+
+<a id="anl-038"></a>
+### ANL-038 — jednostki, pliki towarzyszące i fałszywe trafienia wzorców mają swoje pola (2026-09-24)
+
+marketing-hub, TS-MH-005. Analiza wyraziła trzy rzeczy, których silnik nie umiał przenieść.
+Podział infrastruktury na cztery obszary poszedł do `units`, którego nikt nie czytał (ORC-064).
+Zawężenie do `role-permissions.map.ts` zostawiło `role-permissions.adapter.spec.ts` poza zakresem,
+a `pnpm -r run test` zatrzymywał się na nim w każdej kolejnej warstwie; to samo z `env.schema.ts`
+i nową wymaganą zmienną w setupie testów L2/L3. Fałszywe trafienia keywordów (TCC na „confirm",
+wzorce web na „dashboard") analiza opisała w komentarzu, a karty i tak weszły do promptów.
+
+Od teraz: `units[]` ma formę i bramkę. Test w tym samym katalogu i z tym samym rdzeniem nazwy co
+plik z zakresu należy do zakresu automatycznie. Resztę plików towarzyszących (setup testów,
+`.env.example`, compose) analiza dopisuje do `dirs` jednostki albo `layers_scope`, bo tego silnik
+nie zgadnie. `patterns_exclude: [<ścieżka wzorca>]` usuwa wzorzec z doboru, a wpis, który niczego
+nie wykluczył, daje ostrzeżenie (literówka).

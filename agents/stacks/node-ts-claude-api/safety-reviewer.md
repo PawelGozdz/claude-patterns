@@ -28,7 +28,7 @@ For each LLM call site found in the codebase:
 - [ ] **Kill switch**: `kill-switch.isEnabled()` checked before starting any action
 - [ ] **Permissions**: `permissions.check(persona, action)` called before write operations
 - [ ] **Audit log**: `audit-logger.log({ model, tokens, persona, action })` after every LLM call
-- [ ] **Iteration cap**: autonomous loops break after 3 iterations maximum
+- [ ] **Iteration cap**: autonomous loops break after 3 iterations maximum by default — a project may declare a different explicit limit in its own CLAUDE.md/project.yml; that value governs instead
 - [ ] **No credentials**: `grep -r "sk-\|ANTHROPIC_API_KEY\s*=" src/` returns zero results
 
 ## VETO conditions (block task)

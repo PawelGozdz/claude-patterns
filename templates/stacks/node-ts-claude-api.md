@@ -29,7 +29,7 @@ Changing platform = rewrite `src/clients/<old>/` → `src/clients/<new>/` only.
 2. **Kill switch**: every action checks `core/safety/kill-switch.ts` first (Redis flag)
 3. **Permissions**: every action checks `core/safety/permissions.ts` (per persona)
 4. **Audit log**: every LLM call logged to `ai_analytics.llm_audit`
-5. **Iteration cap**: hard limit 3 iterations per autonomous task (enforced in router)
+5. **Iteration cap**: hard limit 3 iterations per autonomous task by default (enforced in router) — a project may declare a different explicit limit in its own `project.yml`/`CLAUDE.md`; that value governs for this repo
 6. **Cost cap**: daily $20 — Helicone alert + auto-pause
 7. **No credentials**: all secrets from Azure Key Vault via env vars — NEVER hardcoded
 

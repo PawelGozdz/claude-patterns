@@ -46,6 +46,9 @@
 # typescript-library
 .claude/agents/library-api-guardian.md
 .claude/agents/library-quality-verifier.md
+# refine-spa
+.claude/agents/refine-implementer.md
+.claude/agents/refine-quality-verifier.md
 # universal (linked by setup-global.sh — not per-project)
 .claude/agents/tech-lead.md
 

@@ -245,13 +245,16 @@ export class PostCommentHandler extends BaseCommandHandler<
 **Solution**: `BaseCommandHandler<TCommand, TResult, TPrepared = void>` exposes an optional `prepare(command): Promise<TPrepared>` hook. It runs inside `runWithContext()` (so `RequestContextService` is available) but BEFORE `executeTransactional()` — the only method carrying `@Transactional()`. Its return value is passed as the second argument to `executeBusinessLogic(command, prepared)`. Default implementation is a no-op returning `undefined`, so the ~40 existing handlers with single-argument `executeBusinessLogic(command)` are unaffected (`TPrepared` defaults to `void`).
 
 ```typescript
+import { CompensationStack } from '@vytches/ddd-resilience';
+
 // TPrepared shape (abridged — see create-local-share/handler.ts for the full type)
 type PreparedGeography = Result<
   {
     // ...pola geo... (category, shareLatitude, shareLongitude, city,
     // isNonResidentPosting, nonResidentFee, resolvedLocation)
-    tokenReservationId: string | null; // ✅ seeded null by prepare() — see compensate() below
-    compensationReason: string | null; // ✅ seeded null by prepare() — see compensate() below
+    stack: CompensationStack | null; // ✅ seeded null by prepare(); created lazily by
+    //    executeBusinessLogic() right before the token reservation — see
+    //    "Post-Rollback Compensation Hook" and "CompensationStack" below
   },
   LocalSharesDomainError
 >;
@@ -266,8 +269,8 @@ export class CreateLocalShareHandler extends BaseCommandHandler<
     // ACL call to geographic-auth / pricing — outside the tx boundary
     const geoResult = await this.resolveGeography(command);
     if (geoResult.isFailure) return geoResult;
-    // tokenReservationId/compensationReason start null — nothing reserved yet
-    return Result.ok({ ...geoResult.value, tokenReservationId: null, compensationReason: null });
+    // stack starts null — no CompensationStack exists yet, nothing reserved
+    return Result.ok({ ...geoResult.value, stack: null });
   }
 
   // ✅ Receives the already-resolved value, never re-calls the ACL itself
@@ -297,60 +300,110 @@ export class CreateLocalShareHandler extends BaseCommandHandler<
 
 ---
 
-### Post-Rollback Compensation Hook: `compensate()` (ADR-0118, B4)
+### Post-Rollback Compensation Hook: `compensate()` (ADR-0119, B4)
 
 **Problem**: side effects that live OUTSIDE the `@Transactional()` boundary — most commonly a token-economy reservation made via a synchronous ACL call — do NOT roll back automatically when the transaction does. `@Transactional()` only undoes the DB writes inside `executeBusinessLogic()`; a token reservation confirmed/left dangling by an external service needs its own, explicit release.
 
-**Mechanism**: `BaseCommandHandler.compensate(command, prepared, error)` is called from `executeWithContext()`'s catch block, AFTER the transaction has already rolled back — and ONLY when `prepare()` itself ran to completion (tracked internally via a `prepareCompleted` flag, not "prepared is truthy", since `TPrepared` may legitimately be `void`). A failure INSIDE `prepare()` has nothing to compensate — nothing was reserved yet — so `compensate()` is skipped in that case. The only channel `compensate()` has to learn what happened during the transaction is the SAME `prepared` object `prepare()` returned and `executeBusinessLogic()` mutated — there is no other parameter carrying state forward.
+**Mechanism**: `BaseCommandHandler.compensate(command, prepared, error)` is called from `executeWithContext()`'s catch block, AFTER the transaction has already rolled back — and ONLY when `prepare()` itself ran to completion (tracked internally via a `prepareCompleted` flag, not "prepared is truthy", since `TPrepared` may legitimately be `void`). A failure INSIDE `prepare()` has nothing to compensate — nothing was reserved yet — so `compensate()` is skipped in that case. The only channel `compensate()` has to learn what happened during the transaction is the SAME `prepared` object `prepare()` returned and `executeBusinessLogic()` mutated — there is no other parameter carrying state forward. `error` is the domain error already unwrapped from the rollback exception (`BusinessLogicFailureException.originalError`), not the raw thrown value.
 
 **Key consequence (falsified during Faza 2/3, drives a new rule)**: because `compensate()` is never invoked when `prepare()` itself fails, any operation that would need compensation on ITS OWN failure (e.g. reserving tokens) MUST run inside `executeBusinessLogic()` (the transactional core), never in `prepare()` — even when it's a pure ACL call with no DB access of its own. Putting it in `prepare()` would create a reservation with no way to release it if that very call is what fails. This is the new rule **CH12/N9** below.
 
-**Reference implementation** (`boost-local-share/handler.ts` — simpler than `create-local-share/handler.ts`, which additionally has a `CONFIRM_FAILED` exception path, see below):
+**Implementation mechanism (as of TS-ARCH-HANDLER-CONTRACT-001 Faza 5, DEC-COMPENSATE-LIBRARY-SEQUENCING)**: the compensable side effect is registered through a **`CompensationStack`** (`@vytches/ddd-resilience` — see the dedicated subsection below), NOT hand-rolled `tokenReservationId`/`compensationReason` fields. `prepare()` seeds the carrier's `stack` field to `null`; `executeBusinessLogic()` lazily creates the stack and calls `stack.acquire(label, acquire, compensate)` immediately before the reservation, INSIDE the transaction; `compensate()` calls `stack.unwind()` on the same carrier object and logs (never throws) any reported failures.
+
+**Reference implementation — UPDATE-shape** (`boost-local-share/handler.ts`; simpler than the CREATE-shape example below, which additionally has a `CONFIRM_FAILED` exception path):
 
 ```typescript
+import { CompensationStack } from '@vytches/ddd-resilience';
+
 interface PreparedBoost {
-  tokenReservationId: string | null;
-  compensationReason: string | null;
+  stack: CompensationStack | null;
 }
 
+// prepare() stays intentionally empty-but-typed: zero I/O, no aggregate load
+// (the mutated aggregate is loaded WITH a lock inside executeBusinessLogic()).
+// It only seeds the carrier executeBusinessLogic() fills in and compensate() reads back.
 protected override async prepare(_command: BoostLocalShareCommand): Promise<PreparedBoost> {
-  return { tokenReservationId: null, compensationReason: null };
+  return { stack: null };
 }
 
-// ...in executeBusinessLogic(), after each failure that follows a successful reservation:
-//   prepared.compensationReason = 'DOMAIN_VALIDATION_FAILED'; // (or another specific reason)
-//   return Result.fail(...);
+// ...inside executeBusinessLogic(), INSIDE the transaction, right before reserving:
+//   const stack = CompensationStack.create();
+//   prepared.stack = stack;
+//   let releaseReason: string | null = null; // set per failure branch below, read by the compensate closure
+//   const reserved = await stack.acquire(
+//     'token-reservation',
+//     () => this.tokenReservationService.reserve({ ... }),          // acquire: performs the side effect
+//     async (value) => {                                             // compensate: undoes it — reads the
+//       if (!releaseReason) return;                                  // outer `releaseReason` closure variable
+//       await this.tokenReservationService.releaseReservation({
+//         reservationId: value.tokenReservationId,
+//         reason: releaseReason,
+//       });
+//     }
+//   );
+//   // ...later, on a failure branch that must release: releaseReason = 'DOMAIN_VALIDATION_FAILED'; return Result.fail(...);
 
 protected override async compensate(
   _command: BoostLocalShareCommand,
   prepared: PreparedBoost,
   _error: Error
 ): Promise<void> {
-  const { tokenReservationId: reservationId, compensationReason: reason } = prepared;
-  if (!reservationId || !reason) return;
-  await this.tokenReservationService.releaseReservation({
-    reservationId,
-    actionType: TOKEN_ACTION_TYPE,
-    radiusBucket: TOKEN_RESERVATION_BUCKET_SENTINEL,
-    reason,
-  });
+  const failures = await prepared.stack?.unwind();
+  if (failures && failures.length > 0) {
+    this.logger.warn('CompensationStack unwind reported failures', { failures });
+  }
 }
 ```
 
-**Known exception**: `create-local-share/handler.ts` has one path (`CONFIRM_FAILED`) where compensation is done MANUALLY instead of going through this hook — it has a hard ordering requirement with a Tier-2 audit entry (the audit call must happen AFTER the reservation is released but BEFORE the rollback; `compensate()` by definition runs AFTER the rollback, which is too late for that ordering). Read that handler's `CONFIRM_FAILED` branch as the documented boundary of this pattern before assuming `compensate()` covers every release path.
+**Known exception**: `create-local-share/handler.ts` has one path (`CONFIRM_FAILED`) where compensation is done MANUALLY instead of going through this hook — it has a hard ordering requirement with a Tier-2 audit entry (the audit call must happen AFTER the reservation is released but BEFORE the rollback; `compensate()` by definition runs AFTER the rollback, which is too late for that ordering). That branch never sets `releaseReason`, so its registered `stack` entry becomes a guarded no-op if `unwind()` ever runs for it. Read that handler's `CONFIRM_FAILED` branch as the documented boundary of this pattern before assuming `compensate()` covers every release path.
 
 **MUST**:
-- Seed the mutable `prepared` carrier's compensation fields (e.g. `tokenReservationId`, `compensationReason`) to `null`/unset in `prepare()`
-- Set `compensationReason` (or equivalent) in EVERY `executeBusinessLogic()` failure branch that follows a successful external reservation
+- Seed the mutable `prepared` carrier's `stack: CompensationStack | null` field to `null` in `prepare()` — never construct the stack there (nothing to reserve yet)
+- Create the `CompensationStack` and call `stack.acquire(label, acquire, compensate)` inside `executeBusinessLogic()`, immediately before the reservation — `acquire` and its `compensate` closure MUST be registered together, in the same call
 - Keep `compensate()`'s scope to ONLY what this handler itself called directly — never a queue/fan-out/event publish (that consumer owns its own retry semantics)
 
 **MUST NOT**:
 - NEVER reserve an external resource that needs compensation-on-failure inside `prepare()` — see CH12/N9 below
 - NEVER let a `compensate()` error shadow the original business failure already being returned — log and continue, as `BaseCommandHandler` does
+- NEVER hand-roll a `tokenReservationId`/`compensationReason` pair for a new handler — use `CompensationStack`; the hand-rolled shape is what this mechanism replaced (it left 2 of 10 handlers with incomplete release paths before the migration)
 
 ---
 
-### CREATE-shape vs. UPDATE-shape (ADR-0118 A2–A4)
+### `CompensationStack` (`@vytches/ddd-resilience`)
+
+**What it is**: a LIFO stack pairing "resource acquired outside the DB transaction" with "how to undo it" — reservations, cross-context calls, external API side effects that a database rollback cannot touch. In-process, in-memory only — not a durable saga log; if the process dies mid-flight, unexecuted compensations are lost with it.
+
+```typescript
+import { CompensationStack } from '@vytches/ddd-resilience';
+
+const stack = CompensationStack.create();
+
+const reservationId = await stack.acquire(
+  'inventory-reservation',              // label — identifies this entry in a CompensationFailure
+  () => inventoryClient.reserve(orderId, items),  // acquire — performs the side effect
+  (id) => inventoryClient.release(id)             // compensate — undoes it, given acquire()'s resolved value
+);
+
+// ...later, explicitly (e.g. from `compensate()`):
+const failures = await stack.unwind(); // readonly CompensationFailure[] — never throws
+```
+
+**MUST**:
+- Register `acquire`/`compensate` together in ONE `stack.acquire()` call — the API has no path to acquire a resource without also filing its undo function. If `acquire` itself rejects, nothing is registered (there is nothing to compensate for)
+- Treat `unwind()` as idempotent but the STACK INSTANCE as single-use: once `unwind()` has resolved (success or failure), any later `acquire()` on the SAME instance is silently never compensated. Create a fresh `CompensationStack.create()` per flow, never reuse one across flows
+- Keep exactly ONE entry per `CompensationStack` instance unless you have a specific reason not to — the library has no per-participant retry or partial-failure tracking beyond the flat `CompensationFailure[]` list; coordinating several resources under shared guarantees belongs in a separate durable saga primitive, not this one
+- Treat any irreversible step (e.g. a payment confirm) as closing the stack from that point on — make it the LAST operation in the flow. Compensation can only undo what came before it, never something already confirmed
+
+**MUST NOT**:
+- NEVER run compensations concurrently (`Promise.all`) — `unwind()` already runs them sequentially, most-recently-acquired first, specifically so one failing compensation can't hide the rest as unhandled rejections
+- NEVER assume a `compensate` closure you pass actually reverses what `acquire` did — nothing in the library enforces that correspondence; it is a caller responsibility, so keep the pairing narrow and obviously symmetric
+- NEVER call `stack.acquire()` after `stack.unwind()` has been called on that instance — it is accepted silently and never compensated, which is a silent data-loss bug, not a thrown error
+
+**When to use `runCompensated(stack, fn)` instead of manual `acquire`/`unwind`**: the library also exports a `runCompensated()` helper that wraps a whole flow, auto-unwinding on `Result.fail` or a thrown error and leaving the stack armed on success. `BaseCommandHandler`'s hook split (`prepare()`/`executeBusinessLogic()`/`compensate()` as three SEPARATE invocations across a rollback boundary) does not fit `runCompensated()`'s single-call shape — that helper is for a flow that stays within one function, not one split across a framework-managed transaction lifecycle. Every reference implementation in this codebase therefore uses manual `stack.acquire()` + `stack.unwind()`, not `runCompensated()`.
+
+---
+
+### CREATE-shape vs. UPDATE-shape (ADR-0119 A2–A4)
 
 The three-phase split (`prepare()` / `executeBusinessLogic()` / `compensate()`) looks different depending on whether the handler creates a NEW aggregate or mutates an EXISTING one. Deciding which phase an operation belongs to comes down to one question: **does it need an ID created inside this transaction, or does it have to roll back together with the save?** Yes → the transactional core. No → `prepare()`.
 
@@ -371,7 +424,7 @@ A conditional **value** (one decision, one variable, used identically afterward)
 
 #### UPDATE-shape
 
-`prepare()` is typically EMPTY or NARROW — an empty `prepare()` is CORRECT here, not a gap to fill. Do NOT add a "preview" read just to satisfy the general "I/O before the transaction" instinct; there is nothing to resolve before the transaction when the operation's only job is to mutate an aggregate that already exists. The mutated aggregate is ALWAYS loaded WITH a lock (`findByIdWithLock()`) INSIDE the transactional core — NEVER in `prepare()`, which has no lock semantics and would let a concurrent write race the load. When the handler also needs a compensable side effect (e.g. a token reservation for a paid update), `prepare()` stays narrow: it seeds the mutable compensation carrier (`{ tokenReservationId: null, compensationReason: null }`) with zero I/O — see `compensate()` above for why the reservation call itself still has to happen inside `executeBusinessLogic()`. **Reference**: `boost-local-share/handler.ts` — the lock (`findByIdWithLock`) happens BEFORE the pricing quote/reservation, and both live inside the transactional core.
+`prepare()` is typically EMPTY or NARROW — an empty `prepare()` is CORRECT here, not a gap to fill. Do NOT add a "preview" read just to satisfy the general "I/O before the transaction" instinct; there is nothing to resolve before the transaction when the operation's only job is to mutate an aggregate that already exists. The mutated aggregate is ALWAYS loaded WITH a lock (`findByIdWithLock()`) INSIDE the transactional core — NEVER in `prepare()`, which has no lock semantics and would let a concurrent write race the load. When the handler also needs a compensable side effect (e.g. a token reservation for a paid update), `prepare()` stays narrow: it seeds the mutable compensation carrier (`{ stack: null }`, see `CompensationStack` above) with zero I/O — see `compensate()` above for why the reservation call itself still has to happen inside `executeBusinessLogic()`. **Reference**: `boost-local-share/handler.ts` — the lock (`findByIdWithLock`) happens BEFORE the pricing quote/reservation, and both live inside the transactional core.
 
 ---
 
@@ -408,7 +461,8 @@ A conditional **value** (one decision, one variable, used identically afterward)
 9. **@Transactional**: Inherited from BaseCommandHandler, auto-commit on success, auto-rollback on error. Pre-transaction I/O (e.g. ACL calls) belongs in `prepare()`, which runs before the transaction opens (ADR-0117) — NEVER inside `executeBusinessLogic()`
 10. **Error handling**: Return `Result.fail(error)`, NEVER throw exceptions
 11. **Branch side-effect parity**: if `executeBusinessLogic()`/`prepare()` has multiple branches that create/finalize the same aggregate, every mandatory side-effect (audit call, side-channel repo write, event emission, token confirm/release) MUST be present in EVERY branch, at the equivalent lifecycle point — see "Branch Side-Effect Parity" above
-12. **External operation needing compensation-on-failure belongs in `executeBusinessLogic()`**: a reservation of an external resource (e.g. a token-economy reservation) that would need `compensate()` to release it on failure MUST be made inside `executeBusinessLogic()` (the transactional core), NEVER in `prepare()` — `compensate()` is never invoked when `prepare()` itself fails (ADR-0118 B4), so nothing reserved there has any way to be released if that same call is what fails — see "Post-Rollback Compensation Hook" above
+12. **External operation needing compensation-on-failure belongs in `executeBusinessLogic()`**: a reservation of an external resource (e.g. a token-economy reservation) that would need `compensate()` to release it on failure MUST be made inside `executeBusinessLogic()` (the transactional core), NEVER in `prepare()` — `compensate()` is never invoked when `prepare()` itself fails (ADR-0119 B4), so nothing reserved there has any way to be released if that same call is what fails — see "Post-Rollback Compensation Hook" above
+13. **Register a compensable reservation through `CompensationStack.acquire(label, acquire, compensate)`** (`@vytches/ddd-resilience`), never as hand-rolled `tokenReservationId`/`compensationReason` fields — `acquire` and its `compensate` closure MUST be registered together in one call, and `compensate()` (the handler hook) MUST call `stack.unwind()` on the same carrier `prepare()` seeded — see "CompensationStack" above
 
 ### MUST NOT
 
@@ -421,7 +475,9 @@ A conditional **value** (one decision, one variable, used identically afterward)
 7. **NEVER forget correlation ID** - auto-added by BaseCommandHandler
 8. **NEVER re-run pre-transaction I/O inside `executeBusinessLogic()`** - if it must finish before the transaction opens, it belongs in `prepare()`, and its result is consumed, not re-fetched (ADR-0117)
 9. **NEVER add a mandatory side-effect to only the branch you're editing** - a multi-branch aggregate-creation handler needs the same audit/tag/event/token call in every branch that creates the aggregate, not just the one under active change
-10. **NEVER reserve an external resource that needs `compensate()` on failure inside `prepare()`** - there is no channel to release it if THAT reservation is what fails, since `compensate()` only runs when `prepare()` completed (ADR-0118 B4)
+10. **NEVER reserve an external resource that needs `compensate()` on failure inside `prepare()`** - there is no channel to release it if THAT reservation is what fails, since `compensate()` only runs when `prepare()` completed (ADR-0119 B4)
+11. **NEVER call `CompensationStack.acquire()` after that instance's `unwind()` has already run** - the entry is accepted silently and never compensated (single-use latch); create a fresh `CompensationStack.create()` per flow
+12. **NEVER run multiple `CompensationStack.unwind()`-registered compensations concurrently** - the library already runs them sequentially inside `unwind()`; don't wrap `stack.acquire()` calls in `Promise.all()`
 
 ---
 
@@ -868,13 +924,16 @@ describe('CreateUserProfileHandler (L2)', () => {
 - **ADR-0012**: CQRS Structure - Command/Query separation
 - **ADR-0013**: Hybrid Error Handling - Result pattern in application layer
 - **ADR-0021**: Validation Layer Separation - Format validation at API, business rules in domain
-- **ADR-0117**: Pre-Transaction `prepare()` Hook - I/O that must complete before the transaction boundary opens
-- **ADR-0118**: Command Handler Lifecycle Contract - `compensate()` post-rollback hook (B4), CREATE-shape/UPDATE-shape (A2-A4)
+- **ADR-0117**: Pre-Transaction `prepare()` Hook - I/O that must complete before the transaction boundary opens (mechanism unchanged by ADR-0119: hook signature, `TPrepared` generic, call site)
+- **ADR-0119**: Command Handler Lifecycle Contract - extends ADR-0117 to the full three-phase contract (`prepare()`/`executeBusinessLogic()`/`compensate()`), `compensate()` post-rollback hook (B4, `CompensationStack`-based), CREATE-shape/UPDATE-shape (A2-A4), conditional-value-vs-conditional-flow taxonomy. **Note**: an earlier version of this pattern cited "ADR-0118" for this material — that number was independently reused in the source repo for an unrelated re-moderation ADR; the lifecycle contract is ADR-0119
 
 ### Implementation Files
 - `src/contexts/engagement/application/commands/post-comment/handler.ts` (~250L)
 - `src/contexts/auth/application/commands/register-user/handler.ts`
 - `src/shared/application/base/base-command-handler.ts` (base class)
+- `src/contexts/neighborhood-economy/application/shares/commands/create-local-share/handler.ts` (`prepare()`/`compensate()` CREATE-shape reference)
+- `src/contexts/neighborhood-economy/application/shares/commands/boost-local-share/handler.ts` (`prepare()`/`compensate()` UPDATE-shape reference)
+- `@vytches/ddd-resilience` package — `CompensationStack` (`patterns/compensation-stack.d.ts`)
 
 ### Related Patterns
 - [aggregate-pattern.md](../domain/aggregate-pattern.md) - Aggregates handle business rules
@@ -910,11 +969,18 @@ describe('CreateUserProfileHandler (L2)', () => {
 
 ---
 
-**Version**: 2.3
+**Version**: 2.4
 **Created**: 2026-01-04
-**Last Updated**: 2026-08-31
+**Last Updated**: 2026-09-17
 **Maintained By**: @project-orchestrator
 **Primary Users**: domain-application-implementer, code-quality-verifier
+
+**v2.4 Changes** (2026-09-17):
+- **Citation fix**: replaced all "ADR-0118" citations for the compensation/lifecycle-contract material with **ADR-0119** — in the source repo (`juz-ide-api-1`), ADR-0118 was independently reused for an unrelated re-moderation ADR after this pattern was first written against a draft numbering; ADR-0119 is the accepted "Command Handler Lifecycle Contract"
+- **Implementation refresh**: `compensate()`'s reference implementations now use `CompensationStack` (`@vytches/ddd-resilience`) instead of the hand-rolled `tokenReservationId`/`compensationReason` field pair the pattern previously documented — this is what the real `create-local-share/handler.ts` and `boost-local-share/handler.ts` migrated to (TS-ARCH-HANDLER-CONTRACT-001 Faza 5, DEC-COMPENSATE-LIBRARY-SEQUENCING). The `PreparedGeography`/`PreparedBoost` carrier shapes updated to `{ stack: CompensationStack | null }`
+- **New subsection**: "`CompensationStack` (`@vytches/ddd-resilience`)" — documents the library API itself (`create()`, `acquire(label, acquire, compensate)`, `unwind()`), its LIFO/idempotent-but-single-use semantics, the one-entry-per-stack recommendation, and why `runCompensated()` doesn't fit this handler's three-phase, rollback-spanning hook split
+- New MUST rule 13 and MUST NOT rules 11-12 for `CompensationStack` usage; corresponding Rule Card IDs `CH13`/`N10`/`N11` added to `command-handler-pattern_summary.md`
+- Confirmed query handlers have NO `prepare()`/`compensate()` equivalent (`base-query-handler.ts` has neither) — this hook pair is command-handler-only, by design (queries have nothing to compensate)
 
 **v2.3 Changes** (2026-08-31):
 - Added "CREATE-shape vs. UPDATE-shape" subsection (ADR-0118 A2–A4) — prepare()/executeBusinessLogic()/compensate() phase assignment criterion, plus the 4-class branch taxonomy table (optional input / disjoint union / aggregate state / product policy) for handlers with multiple aggregate-creation paths

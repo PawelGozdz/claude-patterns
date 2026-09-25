@@ -198,6 +198,35 @@ card/feed/badge/detail-screen-specific. Decyzja: `UX-POLISH-001-FOLLOWUPS-020`
 
 ---
 
+## Semantics dla chipów/selektorów z zaznaczeniem (Wzorzec #1, UI-CONSISTENCY-AUDIT-002)
+
+Selektory chipowe (sort/theme/language switcher, radio-granularity, payment method/gateway,
+owner/identity toggle, residence selector itd.) często reimplementują stan zaznaczenia
+wyłącznie wizualnie (kolor/obwódka) — czytnik ekranu wtedy nie wie, że element jest
+"zaznaczony", tylko że jest klikalny (albo wcale). Przepis:
+
+```dart
+Semantics(
+  button: true,
+  selected: isSelected,
+  label: optionLabel, // treściwa etykieta, nie sam kolor/ikonka
+  child: ExcludeSemantics(
+    child: <istniejące drzewo GestureDetector/chip — bez zmian>,
+  ),
+)
+```
+
+`ExcludeSemantics` jest konieczny, żeby czytnik ekranu nie odczytał zagnieżdżonego tekstu
+podwójnie (raz z zewnętrznego `Semantics.label`, raz z dziecka).
+
+**Świadomie NIE buduj nowego współdzielonego widgetu** w `core/design/components` dla tego
+wzorca — kształty są zbyt różne (rząd chipów vs kolumna kafli vs dialog radio), więc wspólny
+widget wymuszałby refaktor layoutu i większe ryzyko regresji wizualnej niż punktowa naprawa
+istniejącego drzewa. Żywy przykład implementacji: `lib/core/ui/components/residence_selector.dart`
+(`_ResidenceOption`, naprawiony 2026-09-15, task `UI-CONSISTENCY-AUDIT-002-SENIOR-A11Y-FIX-001`).
+
+---
+
 ## Enforced by
 
 - `check-clean-arch.js` hook — forbidden imports in domain/application

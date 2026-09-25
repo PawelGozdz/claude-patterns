@@ -37,7 +37,7 @@ hooks: [check-approval-before-impl, check-human-voice]
 
 env:
   ECC_GATEGUARD: "off" # source: ts-library
-  ECC_DISABLED_HOOKS: "pre:edit-write:gateguard-fact-force,pre:bash:gateguard-fact-force" # source: ts-library
+  ECC_DISABLED_HOOKS: "pre:edit-write:gateguard-fact-force,pre:bash:gateguard-fact-force,pre:config-protection" # source: ts-library
 
 overlay:
   agents: [stacks/typescript-library/]

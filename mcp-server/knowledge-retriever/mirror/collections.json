@@ -40,5 +40,21 @@
     "ref": "origin/develop",
     "sha": "c4aa4bec52fdfa8492dd1a961f60452627f8a0e6",
     "indexedAt": "2026-09-07T22:13:04.565Z"
+  },
+  "code_ai_os_bot": {
+    "model": "ct301:multilingual-e5-large",
+    "dim": 1024,
+    "repo": "ai-os-bot",
+    "ref": "origin/develop",
+    "sha": "e8657eb998ec1e106f96cd892eb1cf7704f41f00",
+    "indexedAt": "2026-09-17T20:44:04.311Z"
+  },
+  "code_pcu": {
+    "model": "ct301:multilingual-e5-large",
+    "dim": 1024,
+    "repo": "pcu",
+    "ref": "origin/develop",
+    "sha": "550fc907ebfd8513e27119b5bef2732e74f4dadc",
+    "indexedAt": "2026-09-23T15:22:00.022Z"
   }
 }

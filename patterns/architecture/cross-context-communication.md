@@ -293,7 +293,9 @@ row counts/checksums against the source context.
 
 ## Pattern 5: Future — Per-Context Queues (juz-ide-api TS-INFRA-002)
 
-**Not yet implemented in ULS.** juz-ide-api has migrated to this.
+**Not yet implemented in ULS.** juz-ide-api migrated to this in TS-INFRA-002, then evolved
+further under queue-proliferation cost pressure — see the NFR subsection below before
+adopting this pattern for a new project.
 
 Instead of one `INTEGRATION_EVENTS` queue with central switch processor, each context has:
 - Its own queue: `INTEGRATION_AUTHORIZATION`, `INTEGRATION_TRUST`, etc.
@@ -302,6 +304,38 @@ Instead of one `INTEGRATION_EVENTS` queue with central switch processor, each co
 
 **Benefits**: No switch statement, independent scaling, per-context retry settings.
 **Migration path**: When ULS grows beyond 6 active contexts, follow juz-ide-api TS-INFRA-002 pattern.
+
+### NFR: cost of queue proliferation (juz-ide-api TS-ARCH-BULLMQ-QUEUE-CONSOLIDATION-001, 2026-09-14)
+
+**This is a partial, explicitly-scoped revision of the benefit claimed above and of Pattern 3's
+"dedicated queue per workload" default — not a silent "Pattern 5 superseded".** TS-INFRA-002's
+one-queue-per-context choice was correct for its own tradeoff (independent scaling, no switch
+statement) and remains correct advice **when the number of contexts/workloads is small**. What
+changed is the denominator: juz-ide-api combined Pattern 3 (dedicated queue per workload) and
+Pattern 5 (dedicated queue per context) and accumulated **41 `QueueName` entries** — each BullMQ
+`Queue`+`Worker` pair carries a fixed Redis cost independent of its actual traffic (stalled-job
+polling every `stalledInterval`, lock renewal per active job, idle long-poll `bzpopmin`).
+Production measurement: ~2M Redis operations/day, ~93% of it idle long-poll across 41 mostly-quiet
+workers, not real event traffic. At small plan tiers (juz-ide-api: Redis Cloud "Fixed 250MB",
+50GB/month transfer) this idle cost alone can approach the plan's transfer budget.
+
+**The fix was NOT abandoning per-context isolation** — it was collapsing the PHYSICAL queue count
+(41 → 9) while keeping per-context/per-workload LOGICAL isolation via a runtime registry
+(`JobHandlerRegistryService`, `bullmq-queue-pattern.md`'s "Registry Dispatch Pattern"): many
+`IJobHandler`s share one physical queue+Worker, each looked up by a routing key at dispatch time,
+so no processor needs to import across context boundaries the way a single shared `switch`
+would have required (the exact problem Pattern 5 replaced INTEGRATION_EVENTS's old switch
+processor to solve — Pattern 5's original diagnosis was correct, it just didn't have a physical
+Worker cost cap yet).
+
+**When to still reach for a genuinely dedicated queue** (Pattern 3/5 as originally written):
+retention/compliance semantics that cannot be shared (juz-ide-api's `GDPR_ERASURE`:
+`removeOnFail: false` legal-audit retention), or a workload whose throughput alone justifies
+isolated Worker concurrency tuning (`WORK_HEAVY`, `WORK_SERIAL` — see `queue.types.ts`'s 5-class
+taxonomy). **When to use registry dispatch instead**: everything else, especially once queue
+count starts climbing past what fits comfortably in the hosting plan's connection/transfer
+budget — this is a plan-tier-dependent threshold, not a fixed context count, so re-evaluate
+against your own plan's numbers rather than copying juz-ide-api's "41" verbatim.
 
 ---
 
@@ -341,5 +375,5 @@ src/shared/domain/integration-events/
 
 ---
 
-*Derived from ULS production code + juz-ide-api TS-INFRA-002 migration*
-*Last updated: 2026-04-02*
+*Derived from ULS production code + juz-ide-api TS-INFRA-002 migration + TS-ARCH-BULLMQ-QUEUE-CONSOLIDATION-001 (Faza 2, 2026-09-14) NFR*
+*Last updated: 2026-09-14*

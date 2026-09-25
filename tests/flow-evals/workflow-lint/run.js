@@ -277,7 +277,7 @@ let probe
 try {
   probe = await agent("uruchom: git diff --cached -U0 | grep -cE '^\\\\+\\\\s*(it|test|describe)\\\\(' i zwróć newTestBlocks", { label: 'testing-checks', effort: 'low', schema: CHECKS_SCHEMA })
 } catch (e) { probe = null }
-const diff = await agent('run: git diff --name-only', { label: 'gate:code-exists' })
+const diff = await agent('run: git diff --name-only HEAD; git ls-files --others --exclude-standard', { label: 'gate:code-exists' })
 if (!diff) { log('ESCALATE'); return { escalated: true } }
 `;
 
@@ -288,7 +288,7 @@ let probe
 try {
   probe = await agent("uruchom: git diff --cached -U0 | grep -E '^\\\\+' i zwróć newTestBlocks", { label: 'testing-checks', effort: 'low', schema: CHECKS_SCHEMA })
 } catch (e) { probe = null }
-const diff = await agent('run: git diff --name-only', { label: 'gate:code-exists' })
+const diff = await agent('run: git diff --name-only HEAD; git ls-files --others --exclude-standard', { label: 'gate:code-exists' })
 if (!diff) { log('ESCALATE'); return { escalated: true } }
 `;
 
@@ -299,6 +299,20 @@ const CANONICAL = fs.readFileSync(
   path.resolve(__dirname, '..', '..', '..', 'scripts', 'workflow', 'orchestrate.template.mjs'),
   'utf8',
 );
+
+
+// WL17/WL18 — testowane na REALNEJ formie błędu: kanoniczny skrypt z wyciętą blokadą
+// (tak wyglądał przed TS-MH-005) i z bramką bez nieśledzonych (przed TS-AIG-015).
+const CANONICAL_NO_BLOCKED_BY_PRIOR = CANONICAL.split('BLOCKED_BY_PRIOR').join('BLOCKED_X').split('blockedByPrior').join('blockedX');
+const CANONICAL_GATE_BLIND_TO_NEW_FILES = CANONICAL.split('; git ls-files --others --exclude-standard').join('');
+const NOOP_AFTER_RED_GUARDED = `
+export const meta = { name: 'noop-guarded', description: 'x', phases: [] }
+const probe = { typecheck: 'fail' }
+if (probe.typecheck === 'fail') { log('red') }
+const impl = { no_changes_reason: 'poza zakresem' }
+if (impl.no_changes_reason && probe.typecheck === 'fail') { log('BLOCKED_BY_PRIOR'); return { status: 'BLOCKED_BY_PRIOR' } }
+log('ESCALATE')
+`;
 
 const CASES = [
   { name: 'canonical-orchestrate-script-passes-clean', src: CANONICAL, expectErrors: [], expectWarns: [] },
@@ -321,6 +335,9 @@ const CASES = [
   { name: 'no-delta-measure-warns-wl15', src: WL15_NO_DELTA_MEASURE, expectErrors: [], expectWarns: ['WL15'] },
   { name: 'sequential-comment-mentions-parallel-passes', src: SEQUENTIAL_COMMENT_MENTIONS_PARALLEL, expectErrors: [], expectWarns: [] },
   { name: 'verify-hidden-in-helper-errors-wl2', src: WL2_VERIFY_HIDDEN_IN_HELPER, expectErrors: ['WL2'], expectWarns: [] },
+  { name: 'wl17-canonical-without-blocked-by-prior-errors', src: CANONICAL_NO_BLOCKED_BY_PRIOR, expectErrors: ['WL17'], expectWarns: [] },
+  { name: 'wl17-noop-after-red-guarded-passes', src: NOOP_AFTER_RED_GUARDED, expectErrors: ['WL3'], expectWarns: [] },
+  { name: 'wl18-canonical-gate-blind-to-new-files-warns', src: CANONICAL_GATE_BLIND_TO_NEW_FILES, expectErrors: [], expectWarns: ['WL18'] },
 ];
 
 let failed = 0;

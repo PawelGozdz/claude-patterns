@@ -82,9 +82,35 @@ for (const name of missing) {
   added.push(`${name} → ${spec.event} (${spec.matcher})`);
 }
 
-console.log(`${projectDir.split('/').pop()}: deklarowanych ${declared.length}, brakujących ${missing.length}`);
+// `env:` z runtime.yml (ECC_GATEGUARD, ECC_DISABLED_HOOKS…) — do 2026-09-14 materializacja
+// zapisywała je do runtime.yml i na tym się kończyło: żaden skrypt nie przenosił ich do
+// settings.json, więc blok „wyłączający GateGuard" wyłączał go tylko na papierze
+// (platform: config-protection blokował eslint.config.js mimo ts-library w kompozycji).
+// Ta sama zasada co przy hookach: dopisujemy brakujące, sumujemy listy, nie ruszamy
+// ustawionych ręcznie skalarów — a konflikt zgłaszamy, nie rozstrzygamy po cichu.
+const LIST_ENV = [/^ECC_DISABLED_HOOKS$/];
+const envAdded = [], envConflict = [];
+for (const [k, v] of Object.entries(rt.env ?? {})) {
+  const val = String(v);
+  const prev = settings.env?.[k];
+  if (prev === undefined) { (settings.env ??= {})[k] = val; envAdded.push(`${k}=${val}`); continue; }
+  if (prev === val) continue;
+  if (LIST_ENV.some((rx) => rx.test(k))) {
+    const merged = [...new Set([...String(prev).split(','), ...val.split(',')].map((x) => x.trim()).filter(Boolean))];
+    if (merged.length === String(prev).split(',').filter(Boolean).length) continue;
+    settings.env[k] = merged.join(',');
+    envAdded.push(`${k}=${settings.env[k]} (suma)`);
+    continue;
+  }
+  envConflict.push(`${k}: settings.json ma "${prev}", runtime.yml — "${val}"`);
+}
+
+console.log(`${projectDir.split('/').pop()}: deklarowanych ${declared.length}, brakujących ${missing.length}, env do dopisania ${envAdded.length}`);
 for (const a of added) console.log(`  + ${a}`);
+for (const e of envAdded) console.log(`  + env ${e}`);
 for (const u of unknown) console.error(`  ! ${u} — nie ustaliłem zdarzenia (brak w katalogach i w nagłówku pliku), dopnij ręcznie`);
+for (const c of envConflict) console.error(`  ! env ${c} — zostawiam wartość z settings.json, uzgodnij ręcznie`);
+added.push(...envAdded);
 if (added.length && APPLY) {
   copyFileSync(settingsPath, `${settingsPath}.bak`);
   writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n');

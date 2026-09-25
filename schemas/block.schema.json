@@ -167,7 +167,8 @@
               "checks": { "type": "array", "items": { "type": "string" } },
               "tests": { "type": "boolean" },
               "optional": { "type": "boolean" },
-              "create_when": { "type": "string" }
+              "create_when": { "type": "string" },
+              "verify": { "type": "string" }
             }
           }
         },
@@ -185,7 +186,12 @@
           "additionalProperties": false,
           "properties": {
             "agent": { "type": "string" },
-            "on_fail": { "type": "string" }
+            "on_fail": { "type": "string" },
+            "checks": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Skrypty package.json uruchamiane przez bramkę końcową ZAWSZE, niezależnie od tego, które warstwy weszły (sumowane z checks warstw). Bez tego pominięcie warstwy testing gubiło testy regresji (ORC-022, TS-MH-005)."
+            }
           }
         }
       }
