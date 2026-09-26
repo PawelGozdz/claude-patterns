@@ -108,7 +108,15 @@ function listInbox() {
 }
 
 function upsert(args) {
-  const signature = args.rule ? slugify(args.rule) : `${args.trigger}-${slugify(args.reason.slice(0, 50))}`;
+  // Sam `rule_ref` to za gruba sygnatura dla reguł-bezpieczników ogólnego przeznaczenia
+  // (np. ORC-062/BLOCKED_BY_PRIOR odpala na dowolnej warstwie z dowolnego powodu) — bez
+  // `--layer` w sygnaturze różne, niepowiązane przyczyny na różnych warstwach tego samego
+  // czy różnych projektów zlewały się w jeden plik (2026-09-26: DEV-orc-062.md pochłonął
+  // nowy, inny problem — PII guard w testing:l1-l2 — pod już zamkniętym `status: dismissed`
+  // z domain:rules). `--layer`, gdy podany, wchodzi do sygnatury razem z regułą.
+  const signature = args.rule
+    ? slugify(args.layer ? `${args.rule}-${args.layer}` : args.rule)
+    : `${args.trigger}-${slugify(args.reason.slice(0, 50))}`;
   const id = `DEV-${signature}`;
   mkdirSync(INBOX_DIR, { recursive: true });
   const target = join(INBOX_DIR, `${id}.md`);
@@ -128,9 +136,21 @@ function upsert(args) {
     if (!m) die(EXIT.WRITE, `${target}: uszkodzony frontmatter — popraw ręcznie zanim skrypt dopisze kolejne wystąpienie`);
     fm = YAML.parse(m[1]) || {};
     body = m[2];
+    const wasClosed = fm.status === 'dismissed' || fm.status === 'promoted';
     fm.occurrences = (fm.occurrences || 0) + 1;
     fm.last_seen = today;
     fm.projects = Array.from(new Set([...(fm.projects || []), args.project]));
+    if (wasClosed) {
+      // Nowe wystąpienie po zamknięciu NIE oznacza automatycznie, że to ten sam, już
+      // rozstrzygnięty problem — sygnatura bywa współdzielona przez różne przyczyny
+      // (patrz komentarz przy `signature` wyżej). Reopen zamiast cichego dopisania pod
+      // zamkniętym statusem — dismissed_reason/resolution zostają jako historia DECYZJI
+      // O POPRZEDNIM wystąpieniu, nie jako wyrok na to nowe.
+      fm.reopened_at = today;
+      fm.reopened_from_status = fm.status;
+      fm.status = 'proposed';
+      process.stderr.write(`⚠ report-deviation: ${id} był "${fm.reopened_from_status}", nowe wystąpienie go REOPEN'uje do "proposed" — sprawdź, czy to ten sam problem co poprzednio\n`);
+    }
     if (!body.includes('## Occurrences')) body += `\n## Occurrences\n\n`;
     body = body.replace(/(## Occurrences\r?\n\r?\n)/, `$1${occurrenceLine}\n`);
   } else {

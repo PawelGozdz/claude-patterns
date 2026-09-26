@@ -7,9 +7,18 @@ natrafi na `ESCALATE_AND_HALT`, `BLOCKED_BY_PRIOR`, `NO_GO` bramki końcowej, na
 `workflow-lint` przy `--emit-script`, albo agent sam zaznaczy (`deviation_note`), że trafił
 na sytuację nieopisaną w zasadach.
 
-Jeden plik na **sygnaturę** (rule_ref jeśli znany, inaczej slug trigger+reason), nie na
-zdarzenie — powtarzający się problem zwiększa `occurrences` i dopisuje projekt do
-`projects[]` zamiast tworzyć duplikat. To licznik częstości/kosztu, nie log.
+Jeden plik na **sygnaturę** (`rule_ref` + `--layer` gdy oba podane, inaczej slug
+trigger+reason — ORC-068, 2026-09-26: sam `rule_ref` zlewał różne przyczyny tej samej
+ogólnej reguły na różnych warstwach w jeden plik), nie na zdarzenie — powtarzający się
+problem zwiększa `occurrences` i dopisuje projekt do `projects[]` zamiast tworzyć duplikat.
+To licznik częstości/kosztu, nie log.
+
+**Jeśli widzisz `reopened_at`/`reopened_from_status` w frontmatterze** — ten rekord był
+`dismissed` albo `promoted`, a przyszło nowe wystąpienie tej samej sygnatury, więc wrócił do
+`proposed` automatycznie (ORC-068). Przeczytaj WSZYSTKIE wpisy w `## Occurrences`, nie tylko
+stary `dismissed_reason`/`resolution` — nowe wystąpienie może być zupełnie innym problemem,
+który tylko przypadkiem dzieli sygnaturę ze starym (patrz `docs/decisions/
+orchestrate-rule-history.md#orc-068` dla przykładu).
 
 Walidatory tego repo (`validate-tasks.mjs`, `tasks-digest.mjs`, `count-assets.mjs`,
 `audit-projects.mjs`) celowo NIE widzą tego katalogu — czytają `docs/tasks/` płytko i

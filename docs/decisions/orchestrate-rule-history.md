@@ -593,6 +593,32 @@ status` dzieją się w agencie orkiestrującym poza `Workflow()` (skrypt szablon
 dostępu do filesystemu), więc nie da się tego zamknąć w deterministycznym `workflow-lint`
 tak jak ORC-063; kandydat do automatyzacji, gdyby powtórzyło się częściej.
 
+<a id="orc-068"></a>
+
+### ORC-068 — sygnatura zgłoszenia potrzebuje warstwy, zamknięty status trzeba reopen'ować (2026-09-26)
+
+Godzinę po uruchomieniu ORC-066/067 przyszły dwa kolejne zgłoszenia BLOCKED_BY_PRIOR
+(ORC-062) z marketing-hub, z dwóch RÓŻNYCH warstw i dwóch RÓŻNYCH przyczyn: `domain:rules`
+(import/order zalane szumem z monorepo, już zdiagnozowane i naprawione) i `testing:l1-l2`
+(globalny guard PII czerwony po kolumnie z innego kontekstu — realna, otwarta decyzja, nie
+błąd). Sygnatura zgłoszenia dla znanej reguły to był goły `rule_ref` (`upsert()` w
+`report-deviation.mjs`), więc oba trafiły do JEDNEGO pliku, `DEV-orc-062.md` — a `upsert()`
+dopisywał kolejne wystąpienie bez sprawdzenia `status`, więc drugi, zupełnie inny problem
+wylądował po cichu pod już zamkniętym `status: dismissed` z pierwszego. Widoczny w
+podsumowaniu pre-commit (top wg `occurrences`), ale z etykietą "dismissed" — łatwo pominąć.
+
+Sygnatura dla znanej reguły to teraz `rule_ref` + `--layer` razem (gdy `--layer` podany),
+nie sam `rule_ref` — reguły-bezpieczniki ogólnego przeznaczenia (ORC-062 i podobne) odpalają
+z dowolnego powodu na dowolnej warstwie, więc bez warstwy w sygnaturze różne przyczyny się
+zlewają. Dodatkowo `upsert()` sprawdza `status` istniejącego rekordu: nowe wystąpienie na
+rekordzie `dismissed`/`promoted` ustawia `status: proposed` z powrotem (`reopened_at`,
+`reopened_from_status` w frontmatterze) i wypisuje ostrzeżenie na stderr — stary
+`dismissed_reason`/`resolution` zostaje jako historia decyzji o POPRZEDNIM wystąpieniu, nie
+jako wyrok na nowe. `DEV-orc-062.md` ręcznie rozdzielony na `DEV-orc-062-domain-rules.md`
+(dismissed, naprawione) i `DEV-orc-062-testing-l1-l2.md` (proposed, czeka na decyzję
+marketing-hub). Egzekwuje `report-deviation.mjs`; krok 5 `commands/orchestrate.md` dostał
+przypomnienie, żeby zawsze podawać `--layer`, gdy dotyczy warstwy.
+
 ---
 
 ## `/analyze` — reguły ANL

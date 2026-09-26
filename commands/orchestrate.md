@@ -46,6 +46,9 @@ nie gdy chcesz ją WYKONAĆ.
                            --trigger <halt|blocked_by_prior|no_go|workflow_lint|agent_note>
                            [--rule <ORC-NNN|WLn>] --reason "<tekst>" [--task {TASK-ID}]
                            [--run-id <id z Workflow>] [--layer <id warstwy>]
+                         PODAWAJ --layer zawsze, gdy dotyczy warstwy — wchodzi do sygnatury
+                         zgłoszenia (ORC-068), bez tego różne przyczyny tej samej ogólnej reguły
+                         (np. ORC-062 na dwóch różnych warstwach) zlewają się w jeden rekord.
                          Błąd tego wywołania → jedna uwaga w treści HALT, nic więcej.
 ```
 
@@ -137,6 +140,7 @@ poza Twoją uwagą — to jednocześnie lista kandydatów do zautomatyzowania.
 | ORC-065 | odstępstwo od kanonu | `--overrides <plik.json>` + `--emit-script`, nie ręczna kopia z `String.replace` | `orchestrate-prepare.mjs` (lint wyemitowanego skryptu, exit 4) | [ORC-065](docs/decisions/orchestrate-rule-history.md#orc-065) |
 | ORC-066 | odstępstwo od zasad w satelicie (halt/no_go/lint/adnotacja) | zgłoś do `docs/tasks/_inbox/` w claude-patterns, nie tylko do logu przebiegu — dedup po sygnaturze, licznik `occurrences` | `report-deviation.mjs` · krok 5 (`commands/orchestrate.md`) | [ORC-066](docs/decisions/orchestrate-rule-history.md#orc-066) |
 | ORC-067 | krok 4, HALT "staged, not committed" | `git add` NAJPIERW, `git status --short` PO — HALT z werdyktem zweryfikowanym, nie z wyliczonej listy plików | krok 4 (`commands/orchestrate.md`, tylko prompt) | [ORC-067](docs/decisions/orchestrate-rule-history.md#orc-067) |
+| ORC-068 | sygnatura zgłoszenia (krok 5) | `rule_ref` + `--layer` razem w sygnaturze; nowe wystąpienie na rekordzie `dismissed`/`promoted` REOPEN'uje go do `proposed` zamiast dopisać się po cichu | `report-deviation.mjs` | [ORC-068](docs/decisions/orchestrate-rule-history.md#orc-068) |
 
 ## Co zrobić z regułą „tylko prompt"
 
