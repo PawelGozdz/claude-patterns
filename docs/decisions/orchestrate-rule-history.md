@@ -546,6 +546,53 @@ teraz `--overrides <plik.json>` (głębokie scalenie; `layers` jako mapa po id; 
 split/join, przepuszcza go przez `workflow-lint` (błąd = exit 4, plik nie powstaje) i podaje go
 w `scriptPath`.
 
+<a id="orc-066"></a>
+
+### ORC-066 — odstępstwa z satelitów wracają do claude-patterns automatycznie (2026-09-25)
+
+Miesiące rozwoju tego repo, a jedynym kanałem „satelita natrafił na coś dziwnego → ktoś to
+naprawi centralnie" był człowiek ręcznie czytający output workflow i zakładający
+`docs/tasks/TASK-ORCH-*.md` — dowód: pięć takich plików dodanych tego samego dnia, każdy z
+polem `source:` cytującym konkretny run, którego treść ktoś musiał ręcznie skopiować. Problemy
+powtarzały się średnio co kilka dni, czasem po zmarnowaniu milionów tokenów w satelicie, zanim
+ktokolwiek je zauważył.
+
+`Workflow()` zwraca cały obiekt `report` do agenta orkiestrującego, a ten agent ma już dziś
+Bash/Write i resolvowaną ścieżkę `<claude-patterns>` (używa jej w kroku 2). Krok 5 wykorzystuje
+dokładnie to: po HALT-cie (ESCALATE_AND_HALT/BLOCKED_BY_PRIOR którejkolwiek warstwy, NO_GO bramki
+końcowej, exit 4 workflow-lint przy `--emit-script`, albo niepuste `deviation_note` od
+implementera/verifiera) agent wywołuje `report-deviation.mjs`, który tworzy lub aktualizuje jeden
+plik w `docs/tasks/_inbox/` na sygnaturę problemu (rule_ref jeśli znany, inaczej slug reasonu) —
+powtarzający się problem zwiększa `occurrences` i dopisuje projekt zamiast mnożyć duplikaty.
+Zero zmian w logice halt/status samego `orchestrate.template.mjs` poza jednym dodatkiem: opcjonalne
+`deviation_note` w `IMPL_SCHEMA`/`VERDICT_SCHEMA`, żeby trigger 4. (adnotacja agenta) miał gdzie
+wylądować. Zapis tylko `git add`-uje plik w claude-patterns, nigdy nie commituje — triage robi
+człowiek (`docs/tasks/_inbox/README.md`). Egzekwuje `report-deviation.mjs` + krok 5
+`commands/orchestrate.md`; widoczność bez nowego nawyku daje informacyjny wpis w
+`scripts/pre-commit-guards.mjs` (uczy z `docs/adr/0006-cross-instance-broadcast.md`, gdzie
+podobny mechanizm padł po zerze realnych wpisów, bo nikt go nie czytał).
+
+<a id="orc-067"></a>
+
+### ORC-067 — HALT "staged" musi być zweryfikowany `git status`, nie wyliczoną listą (2026-09-26)
+
+Pierwszego dnia działania ORC-066 przyszło zgłoszenie z ai-os-bot (BOT-009, run
+`wf_d9d51f1a-69a`, `docs/tasks/_inbox/DEV-orc-057.md`): finalny raport przebiegu twierdził
+„8 plików staged", ale `git status` po zakończeniu pokazywał ZERO realnie zastage'owanych —
+working tree miał je jako modified/untracked. Krok 4 był jednym zdaniem prozy („git add,
+HALT") bez wymogu weryfikacji, więc agent orkiestrujący zbudował komunikat HALT z listy
+plików z `report` (ta lista istnieje dla potrzeb bramki końcowej, nie jako dowód realnego
+stanu working tree), zamiast z faktycznego stanu po `git add`. Koordynator naprawił to
+ręcznie (`git add` tej samej listy) przed HALT-em, żeby obietnica „staged, not committed"
+była prawdziwa w chwili raportu.
+
+Krok 4 wymaga teraz dwuetapowo: `git add` plików z `report`, POTEM `git status --short` jako
+niezależne potwierdzenie — treść HALT-u powstaje z tego zweryfikowanego stanu, nie z samej
+listy. Egzekwuje wyłącznie prompt w `commands/orchestrate.md` (krok 4) — `git add`/`git
+status` dzieją się w agencie orkiestrującym poza `Workflow()` (skrypt szablonu nie ma
+dostępu do filesystemu), więc nie da się tego zamknąć w deterministycznym `workflow-lint`
+tak jak ORC-063; kandydat do automatyzacji, gdyby powtórzyło się częściej.
+
 ---
 
 ## `/analyze` — reguły ANL

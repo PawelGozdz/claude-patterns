@@ -507,6 +507,10 @@ const IMPL_SCHEMA = {
     // „ta warstwa nie wymaga zmian dla tego taska" — z uzasadnieniem. Pusta lista plików BEZ
     // tego pola to niewykonana praca (powtórka); Z tym polem — twierdzenie do zweryfikowania.
     no_changes_reason: { type: 'string' },
+    // Pole FAKTOGRAFICZNE (nie self-ocena, więc nie podlega WL1): „trafiłem na sytuację, którą
+    // reguły/wzorce nie opisują" — nie blokuje pracy, tylko zgłasza się do docs/tasks/_inbox/
+    // w claude-patterns przez krok 5 /orchestrate (ORC-066), zamiast ginąć w logu przebiegu.
+    deviation_note: { type: 'string' },
   },
 }
 
@@ -517,6 +521,9 @@ const VERDICT_SCHEMA = {
     verdict: { type: 'string', enum: ['GO', 'NO_GO'] },
     violations: { type: 'array', items: { type: 'string' } },
     rationale: { type: 'string' },
+    // Patrz IMPL_SCHEMA.deviation_note — to samo pole, dostępne też weryfikatorowi/bramce
+    // końcowej (jedyny schemat obu, patrz VERDICT_SCHEMA powyżej w komentarzu buildera).
+    deviation_note: { type: 'string' },
   },
 }
 
@@ -563,6 +570,10 @@ for (const step of plan) {
   // Wynik ostatniej CZERWONEJ sondy tej warstwy (null po zielonej). Po czerwieni ścieżka
   // no-op jest zamknięta — patrz blockedByPrior().
   let probeRed = null
+  // ORC-066: ostatnia niepusta adnotacja „to nie jest udokumentowane" od implementera albo
+  // weryfikatora tej warstwy — dopisywana do `settled` tuż przed `report.layers.push`, żeby
+  // krok 5 /orchestrate mógł ją zgłosić do docs/tasks/_inbox/ w claude-patterns.
+  let deviationNote = null
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     // ── 1. implementacja (albo, po cichej śmierci, weryfikacja istniejącego stanu)
@@ -610,6 +621,7 @@ for (const step of plan) {
         layerFiles = impl.changed_files || []
         noopClaim = (!layerFiles.length && typeof impl.no_changes_reason === 'string' && impl.no_changes_reason.trim())
           ? impl.no_changes_reason.trim() : null
+        if (typeof impl.deviation_note === 'string' && impl.deviation_note.trim()) deviationNote = impl.deviation_note.trim()
       }
     }
 
@@ -641,6 +653,7 @@ for (const step of plan) {
       } catch (e) {
         noopVerdict = null
       }
+      if (noopVerdict && typeof noopVerdict.deviation_note === 'string' && noopVerdict.deviation_note.trim()) deviationNote = noopVerdict.deviation_note.trim()
       const noopDecision = decideVerdict(noopVerdict, attempt, maxAttempts)
       if (noopDecision.next === 'go') {
         log(layer.id + ': brak zmian potwierdzony przez weryfikatora — ' + noopClaim)
@@ -740,6 +753,7 @@ for (const step of plan) {
     } catch (e) {
       verdict = null
     }
+    if (verdict && typeof verdict.deviation_note === 'string' && verdict.deviation_note.trim()) deviationNote = verdict.deviation_note.trim()
 
     const decision = decideVerdict(verdict, attempt, maxAttempts)
     if (decision.next === 'go') {
@@ -764,6 +778,7 @@ for (const step of plan) {
   }
 
   if (!settled) settled = { id: layer.id, status: 'ESCALATE_AND_HALT', reason: 'pętla warstwy zamknęła się bez werdyktu' }
+  if (deviationNote) settled.deviation_note = deviationNote
   report.layers.push(settled)
   for (const f of settled.files || []) if (allChangedFiles.indexOf(f) === -1) allChangedFiles.push(f)
 

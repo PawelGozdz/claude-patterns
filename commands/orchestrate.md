@@ -22,7 +22,7 @@ Ten plik jest **rejestrem reguł**, nie instrukcją do odtwarzania z prozy. Uzas
 `docs/decisions/orchestrate-rule-history.md` — zaglądaj tam, gdy chcesz regułę ZMIENIĆ,
 nie gdy chcesz ją WYKONAĆ.
 
-## Przebieg — cztery kroki
+## Przebieg — pięć kroków
 
 ```
 1. znacznik przebiegu  → .claude/run-state/orchestrating.json (włącza STRICT)
@@ -32,13 +32,27 @@ nie gdy chcesz ją WYKONAĆ.
 3. silnik              → Workflow({ scriptPath: <scriptPath z kroku 2> })   // args wbudowane
                          (bez --emit-script: Workflow({ scriptPath, args: <JSON z kroku 2> }))
                          kanoniczny skrypt: scripts/workflow/orchestrate.template.mjs
-4. wyjście             → bramka końcowa, git add, HALT: "staged, not committed"
+4. wyjście             → bramka końcowa, `git add` plików z `report` (nie z pamięci), POTEM
+                           `git status --short` żeby POTWIERDZIĆ że dokładnie te pliki są
+                           realnie staged — HALT "staged, not committed" buduj z tego
+                           zweryfikowanego `git status`, nie z samej listy z `report`
+                           (ORC-067: raport twierdził „8 staged", realnie 0 — ai-os-bot BOT-009)
+5. zgłoszenie odstępstw → best-effort, NIE blokuje HALT z kroku 4 i niczego w nim nie zmienia.
+                         Dla KAŻDEGO z: warstwa w `report` ze statusem ESCALATE_AND_HALT/
+                         BLOCKED_BY_PRIOR, `report.finalGate.verdict !== 'GO'`, krok 2 zakończony
+                         exit 4 (workflow-lint — rule id z `[WLn]` w stderr), niepuste
+                         `deviation_note` w dowolnym wyniku warstwy/bramki końcowej — wywołaj:
+                         node <claude-patterns>/scripts/report-deviation.mjs --project {nazwa}
+                           --trigger <halt|blocked_by_prior|no_go|workflow_lint|agent_note>
+                           [--rule <ORC-NNN|WLn>] --reason "<tekst>" [--task {TASK-ID}]
+                           [--run-id <id z Workflow>] [--layer <id warstwy>]
+                         Błąd tego wywołania → jedna uwaga w treści HALT, nic więcej.
 ```
 
 Krok 2 kończy się kodem wyjścia: `0` = jedź dalej, `2` = bramka analizy nie przeszła
 (wypisz jego stderr i STOP), `3` = brak/zła kompozycja bloków (wypisz i STOP), `4` = wyemitowany
-skrypt nie przeszedł `workflow-lint` (wypisz i STOP), `1` = błąd użycia, w tym nieznany klucz
-w `--overrides`.
+skrypt nie przeszedł `workflow-lint` (wypisz, zgłoś przez krok 5 i STOP), `1` = błąd użycia, w tym
+nieznany klucz w `--overrides`.
 **Nie obchodź kodu 2 ani 3** — to są te same bramki, które wcześniej stały tu jako proza.
 
 Krok 3 jest jedynym miejscem, gdzie powstaje kod. Skryptu nie pisz od nowa: jest kanoniczny,
@@ -121,6 +135,8 @@ poza Twoją uwagą — to jednocześnie lista kandydatów do zautomatyzowania.
 | ORC-063 | lista zmienionych plików | jedno polecenie dla bramki, diff-sondy i bramki końcowej: `git diff --name-only <baza>; git ls-files --others --exclude-standard`; bramka końcowa z drzewa, nie z raportów warstw, i z kartami | `orchestrate.template.mjs` (`treeFilesCmd`) · `workflow-lint WL18` | [ORC-063](docs/decisions/orchestrate-rule-history.md#orc-063) |
 | ORC-064 | artefakt ma `units[]` | każda jednostka = pod-warstwa `<warstwa>:<id>` z zakresem `dirs`; `layers_done` przyjmuje id pod-warstw; zły wpis = exit 2 | `orchestrate-prepare.mjs` | [ORC-064](docs/decisions/orchestrate-rule-history.md#orc-064) |
 | ORC-065 | odstępstwo od kanonu | `--overrides <plik.json>` + `--emit-script`, nie ręczna kopia z `String.replace` | `orchestrate-prepare.mjs` (lint wyemitowanego skryptu, exit 4) | [ORC-065](docs/decisions/orchestrate-rule-history.md#orc-065) |
+| ORC-066 | odstępstwo od zasad w satelicie (halt/no_go/lint/adnotacja) | zgłoś do `docs/tasks/_inbox/` w claude-patterns, nie tylko do logu przebiegu — dedup po sygnaturze, licznik `occurrences` | `report-deviation.mjs` · krok 5 (`commands/orchestrate.md`) | [ORC-066](docs/decisions/orchestrate-rule-history.md#orc-066) |
+| ORC-067 | krok 4, HALT "staged, not committed" | `git add` NAJPIERW, `git status --short` PO — HALT z werdyktem zweryfikowanym, nie z wyliczonej listy plików | krok 4 (`commands/orchestrate.md`, tylko prompt) | [ORC-067](docs/decisions/orchestrate-rule-history.md#orc-067) |
 
 ## Co zrobić z regułą „tylko prompt"
 

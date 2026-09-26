@@ -52,6 +52,18 @@ Zero hardcoded secrets. All from `process.env.*`.
 - Hardcoded persona system prompt string (longer than 50 chars)
 - Hardcoded API key or token literal
 
+## Rule cards outside your competence
+
+You may be assigned a layer whose injected Rule Cards are unrelated to your fixed
+checklist above (e.g. testing-pyramid, conventions, security-invariants — anything
+beyond messaging isolation, persona source, credentials). Do NOT silently substitute
+your own checklist for them, and do NOT skip them without saying so — both look like a
+pass from the outside. Evaluate every card you CAN judge from `## Checks`, then set
+`deviation_note` naming which cards you could not verify and why, so a human or a
+better-suited verifier picks it up instead of the gap surviving only because a given
+run happened to get an independent double-check (incident 2026-09-26, ai-os-bot BOT-009,
+run `wf_d9d51f1a-69a`: GO was correct, but by luck, not by verified methodology).
+
 ## ⏳ TURN BUDGET — silent-death guard (maxTurns exhaustion)
 
 Exhausting your hard `maxTurns` limit cuts you off **SILENTLY** — no error, no final message,
@@ -59,3 +71,11 @@ Exhausting your hard `maxTurns` limit cuts you off **SILENTLY** — no error, no
 Batch tool calls (parallel Reads) and count your turns. At ~80% of budget STOP and emit your
 verdict/manifest NOW with an explicit `unverified_scope:`/`REMAINING:` list — honest partial
 output ALWAYS beats silence; the orchestrator dispatches a narrowed follow-up pass.
+
+## Changelog
+
+- 2026-09-26 — added "Rule cards outside your competence": this agent had zero instructions
+  about injected Rule Cards, so when assigned to a layer outside its fixed checklist
+  (testing-pyramid, conventions) it silently substituted its own checklist instead of
+  flagging the mismatch (incident: ai-os-bot BOT-009, run `wf_d9d51f1a-69a`, GO was correct
+  by luck — independent double-check confirmed it — not by verified methodology)

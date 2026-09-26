@@ -30,6 +30,7 @@
 // w tym samym commicie.
 
 import { execFileSync } from 'node:child_process';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -158,10 +159,45 @@ results.push({
   output: changelogErrors.join('\n'),
 });
 
+// ORC-066: podsumowanie docs/tasks/_inbox/ (zgłoszenia odstępstw z /orchestrate w satelitach,
+// patrz scripts/report-deviation.mjs). CELOWO informacyjne, poza `results`/`failed` — nigdy
+// nie blokuje commita. docs/adr/0006-cross-instance-broadcast.md padło, bo nikt nie czytał
+// osobnego kanału; ten wpis daje widoczność w nawyku, który tu realnie działa — pre-commit.
+function printInboxSummary() {
+  const dir = join(REPO, 'docs', 'tasks', '_inbox');
+  if (!existsSync(dir)) return;
+  const files = readdirSync(dir).filter((f) => f.endsWith('.md') && f !== 'README.md');
+  if (!files.length) return;
+
+  const rows = [];
+  for (const f of files) {
+    const raw = readFileSync(join(dir, f), 'utf8');
+    const m = raw.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+    if (!m) continue;
+    const fm = {};
+    for (const line of m[1].split(/\r?\n/)) {
+      const kv = line.match(/^([a-z_]+):\s*(.*)$/);
+      if (kv) fm[kv[1]] = kv[2].trim().replace(/^['"]|['"]$/g, '');
+    }
+    rows.push(fm);
+  }
+  if (!rows.length) return;
+
+  rows.sort((x, y) => Number(y.occurrences || 0) - Number(x.occurrences || 0));
+  const oldest = rows.reduce((min, r) => (r.first_seen && (!min || r.first_seen < min) ? r.first_seen : min), null);
+
+  console.log(`\nℹ inbox: ${rows.length} pozycji w docs/tasks/_inbox/ (najstarsza od ${oldest || '?'}), top wg occurrences:`);
+  for (const r of rows.slice(0, 3)) {
+    console.log(`  ${r.occurrences || '?'}x  ${r.id || '?'}  [${r.trigger || '?'}]  status=${r.status || '?'}`);
+  }
+  console.log('  → node scripts/report-deviation.mjs --list  (pełny przegląd / triage)\n');
+}
+
 const failed = results.filter((r) => !r.ok);
 
 if (!failed.length) {
   console.log(`✔ pre-commit: wszystkie bramki przeszły (${results.map((r) => r.label).join(', ')})`);
+  printInboxSummary();
   process.exit(0);
 }
 
@@ -171,4 +207,5 @@ for (const r of failed) {
   console.error(r.output || '(brak outputu)');
   console.error('');
 }
+printInboxSummary();
 process.exit(1);
