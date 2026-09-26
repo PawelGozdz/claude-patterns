@@ -619,6 +619,35 @@ jako wyrok na nowe. `DEV-orc-062.md` ręcznie rozdzielony na `DEV-orc-062-domain
 marketing-hub). Egzekwuje `report-deviation.mjs`; krok 5 `commands/orchestrate.md` dostał
 przypomnienie, żeby zawsze podawać `--layer`, gdy dotyczy warstwy.
 
+<a id="orc-069"></a>
+
+### ORC-069 — `GO` z niezweryfikowanym zakresem to nie czysty `GO` (2026-09-26)
+
+Konwencja "TURN BUDGET — silent-death guard" istnieje w promptach ~20 agentów-weryfikatorów
+we wszystkich stackach od 2026-07-02: przy ~80% budżetu tur agent ma dać częściowy werdykt z
+`unverified_scope:` (pliki niesprawdzone) zamiast ginąć po cichu, a `code-quality-verifier.md`
+wprost obiecuje "the orchestrator dispatches a narrowed second pass on `unverified_scope`".
+Przez dwa miesiące nic tej obietnicy nie realizowało: `unverified_scope` nie było polem
+`VERDICT_SCHEMA`, a `decideVerdict()` sprawdzało wyłącznie `verdict.verdict === 'GO'` —
+uczciwie przyznane „nie zdążyłem sprawdzić X" przechodziło identycznie jak pełna weryfikacja.
+Ujawnione 2026-09-26 przez ORC-066: marketing-hub TS-MH-010, warstwa `testing:l1-l2`
+(jednostka 105 plików) — weryfikator po ~13/15 turach zgłosił `unverified_scope` i mimo to
+dał GO, choć realnie było 11 czerwonych testów; błąd wyszedł dopiero jako `BLOCKED_BY_PRIOR`
+na KOLEJNEJ jednostce (`infrastructure:cli-request-id`), o jeden krok za późno.
+
+`unverified_scope: string[]` jest teraz w `VERDICT_SCHEMA` (pole faktograficzne, nie
+self-ocena — WL1 OK). `decideVerdict()`: `GO` z niepustym `unverified_scope` to czwarta,
+odróżniona ścieżka — w pętli warstwy konsumuje próbę jak `NO_GO` (świeży budżet tur na
+kolejną rundę weryfikatora), a po wyczerpaniu prób eskaluje z jawnym powodem. Bramka końcowa
+nie ma pętli retry (jeden strzał), więc tam `GO` z niepustym `unverified_scope` jest od razu
+wymuszane na `NO_GO`. Nie jest to pełna realizacja obietnicy „narrowed second pass" (to
+wymagałoby osobnej, węższej ścieżki weryfikacji zamiast reużycia pętli implement→verify) —
+świadomie prostszy, bezpieczny wariant: kolejna pełna próba dostaje świeży budżet tur, co w
+praktyce daje weryfikatorowi szansę dokończyć to, czego nie zdążył. Egzekwuje
+`orchestrate.template.mjs` (`decideVerdict`, sekcja bramki końcowej); eval:
+`verdict-go-with-unverified-scope-is-not-clean-go` w `tests/flow-evals/orchestrate-script/
+run.js`.
+
 ---
 
 ## `/analyze` — reguły ANL

@@ -1,6 +1,9 @@
 ---
 id: DEV-agent_note-refine-providers-prv2-check-bez-redirectto-na-4
-status: proposed
+status: promoted
+resolution: >
+  Przeniesione do docs/tasks/TASK-ORCH-PATTERN-GAPS-001.md (2026-09-26) razem z innymi
+  znaleziskami kart wzorców z tego samego dnia.
 trigger: agent_note
 rule_ref: null
 first_seen: 2026-09-26

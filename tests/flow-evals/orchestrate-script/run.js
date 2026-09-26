@@ -164,6 +164,22 @@ const CASES = (c) => [
     },
   },
 
+  // ── GO z niezweryfikowanym zakresem nie jest czystym GO (marketing-hub TS-MH-010,
+  // testing:l1-l2: GO mimo 11 czerwonych testów, weryfikator wyczerpał budżet tur) ────
+  {
+    name: 'verdict-go-with-unverified-scope-is-not-clean-go',
+    run() {
+      const retry = c.decideVerdict({ verdict: 'GO', unverified_scope: ['a.spec.ts', 'b.spec.ts'] }, 1, 3);
+      if (retry.next !== 'fix') return 'GO z unverified_scope powinien konsumować próbę (fix), nie iść czysto';
+      if (!/a\.spec\.ts/.test(retry.reason) || !/b\.spec\.ts/.test(retry.reason)) return 'reason nie wymienia niezweryfikowanych ścieżek';
+      const exhausted = c.decideVerdict({ verdict: 'GO', unverified_scope: ['a.spec.ts'] }, 3, 3);
+      if (exhausted.next !== 'escalate') return 'GO z unverified_scope po wyczerpaniu prób powinien eskalować, nie przejść czysto';
+      const clean = c.decideVerdict({ verdict: 'GO', unverified_scope: [] }, 1, 3);
+      if (clean.next !== 'go') return 'pusta tablica unverified_scope nie powinna blokować czystego GO';
+      return null;
+    },
+  },
+
   // ── zakres jednostki / warstwy ────────────────────────────────────────────────
   {
     name: 'layer-touches-scopes-diff-to-layer',

@@ -1,6 +1,11 @@
 ---
 id: DEV-agent_note-bramka-koncowa-go-ale-security-e2e-verifier-zg-os
-status: proposed
+status: dismissed
+dismissed_reason: >
+  Nie blad - system zadzialal poprawnie. finalGate wykryl obca, brudna zmiane w working
+  tree (wpiecie marketing-hub w platform/), a orchestrator poprawnie zawezil git add
+  tylko do plikow wlasnego taska, zweryfikowane przez git status --short. Dobry przyklad
+  dzialania mechanizmu, nie odstepstwo.
 trigger: agent_note
 rule_ref: null
 first_seen: 2026-09-26

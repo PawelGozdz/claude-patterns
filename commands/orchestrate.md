@@ -141,6 +141,7 @@ poza Twoją uwagą — to jednocześnie lista kandydatów do zautomatyzowania.
 | ORC-066 | odstępstwo od zasad w satelicie (halt/no_go/lint/adnotacja) | zgłoś do `docs/tasks/_inbox/` w claude-patterns, nie tylko do logu przebiegu — dedup po sygnaturze, licznik `occurrences` | `report-deviation.mjs` · krok 5 (`commands/orchestrate.md`) | [ORC-066](docs/decisions/orchestrate-rule-history.md#orc-066) |
 | ORC-067 | krok 4, HALT "staged, not committed" | `git add` NAJPIERW, `git status --short` PO — HALT z werdyktem zweryfikowanym, nie z wyliczonej listy plików | krok 4 (`commands/orchestrate.md`, tylko prompt) | [ORC-067](docs/decisions/orchestrate-rule-history.md#orc-067) |
 | ORC-068 | sygnatura zgłoszenia (krok 5) | `rule_ref` + `--layer` razem w sygnaturze; nowe wystąpienie na rekordzie `dismissed`/`promoted` REOPEN'uje go do `proposed` zamiast dopisać się po cichu | `report-deviation.mjs` | [ORC-068](docs/decisions/orchestrate-rule-history.md#orc-068) |
+| ORC-069 | weryfikator zwraca `GO` z niepustym `unverified_scope` | NIE jest to czysty GO: w pętli warstwy konsumuje próbę (`fix`) albo eskaluje po wyczerpaniu; na jednorazowej bramce końcowej wymuszone jako `NO_GO` | `orchestrate.template.mjs` (`decideVerdict`, bramka końcowa) | [ORC-069](docs/decisions/orchestrate-rule-history.md#orc-069) |
 
 ## Co zrobić z regułą „tylko prompt"
 

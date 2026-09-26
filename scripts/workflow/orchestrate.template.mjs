@@ -389,6 +389,19 @@ function buildFinalGatePrompt(a, checks, changedFiles, treeSource) {
 function decideVerdict(verdict, attempt, maxAttempts) {
   if (!verdict) return { next: 'silent', reason: 'brak wyniku weryfikatora' }
   const v = String(verdict.verdict || '').toUpperCase()
+  // GO z niepustym unverified_scope to CZWARTA awaria, nie czysty GO: weryfikator uczciwie
+  // przyznał (konwencja "TURN BUDGET" w promptach weryfikatorów), że nie zdążył sprawdzić
+  // części zakresu, ale bez tej rozróżnicy GO przechodziło identycznie jak pełna weryfikacja —
+  // obietnica z tych promptów ("orchestrator dispatches a narrowed follow-up pass") nigdzie
+  // się nie realizowała (marketing-hub TS-MH-010, testing:l1-l2, jednostka 105 plików: GO mimo
+  // 11 czerwonych testów, czerwień wyszła dopiero jako BLOCKED_BY_PRIOR na kolejnej jednostce).
+  const unverified = Array.isArray(verdict.unverified_scope) ? verdict.unverified_scope.filter(Boolean) : []
+  if (v === 'GO' && unverified.length) {
+    if (attempt >= maxAttempts) {
+      return { next: 'escalate', reason: 'GO z niezweryfikowanym zakresem po ' + maxAttempts + ' próbach — nigdy nie sprawdzono: ' + unverified.join(', ') }
+    }
+    return { next: 'fix', reason: 'weryfikator dał GO, ale nie zdążył sprawdzić (unverified_scope): ' + unverified.join(', ') + ' — kolejna próba dostaje świeży budżet tur na dokończenie weryfikacji' }
+  }
   if (v === 'GO') return { next: 'go', reason: null }
   if (attempt >= maxAttempts) {
     return { next: 'escalate', reason: 'wyczerpane ' + maxAttempts + ' prób, ostatni werdykt NO_GO' }
@@ -524,6 +537,11 @@ const VERDICT_SCHEMA = {
     // Patrz IMPL_SCHEMA.deviation_note — to samo pole, dostępne też weryfikatorowi/bramce
     // końcowej (jedyny schemat obu, patrz VERDICT_SCHEMA powyżej w komentarzu buildera).
     deviation_note: { type: 'string' },
+    // Ścieżki, których weryfikator NIE zdążył sprawdzić (budżet tur) — patrz sekcja "TURN
+    // BUDGET" w promptach weryfikatorów. Pole FAKTOGRAFICZNE (nie self-ocena — WL1 OK).
+    // decideVerdict() i jednorazowa bramka końcowa traktują GO z niepustym unverified_scope
+    // jak NIE-czysty GO, nie jak pełną weryfikację (patrz komentarz przy decideVerdict).
+    unverified_scope: { type: 'array', items: { type: 'string' } },
   },
 }
 
@@ -822,6 +840,15 @@ if (!finalAgent) {
     final = null
   }
   report.finalGate = final || { verdict: 'NO_GO', violations: ['bramka końcowa nie zwróciła werdyktu'] }
+  // Bramka końcowa nie ma pętli retry (jeden strzał) — GO z niepustym unverified_scope nie może
+  // więc "skonsumować próby" jak w decideVerdict(); jedyna bezpieczna reakcja to potraktować to
+  // jak NO_GO, żeby uczciwie przyznana luka trafiła do człowieka zamiast do cichego stage'owania.
+  const finalUnverified = Array.isArray(report.finalGate.unverified_scope) ? report.finalGate.unverified_scope.filter(Boolean) : []
+  if (String(report.finalGate.verdict).toUpperCase() === 'GO' && finalUnverified.length) {
+    report.finalGate.verdict = 'NO_GO'
+    report.finalGate.violations = (report.finalGate.violations || []).concat(
+      'GO z niezweryfikowanym zakresem (unverified_scope), bramka końcowa nie ma retry: ' + finalUnverified.join(', '))
+  }
   if (String(report.finalGate.verdict).toUpperCase() !== 'GO') {
     log('ESCALATE_AND_HALT — bramka końcowa: ' + formatViolations(report.finalGate.violations))
     return report

@@ -1,6 +1,10 @@
 ---
 id: DEV-agent_note-weryfikator-go-z-unverified-scope-app-module-ts-t
-status: proposed
+status: promoted
+resolution: >
+  Naprawione 2026-09-26 jako ORC-069 (docs/decisions/orchestrate-rule-history.md#orc-069) —
+  ten sam wzorzec co DEV-agent_note-weryfikator-go-po-13-15-tur-z-unverified-scope-w: GO z
+  niepustym unverified_scope teraz konsumuje próbę zamiast przechodzić czysto.
 trigger: agent_note
 rule_ref: null
 first_seen: 2026-09-26
