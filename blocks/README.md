@@ -21,7 +21,7 @@ stack_blocks: [nestjs, ./moj-blok]           # `./` = blok lokalny z .claude/blo
 
 ```yaml
 name: <nazwa>                # płaska (nestjs) lub namespace (ddd/core)
-axis: framework|architecture|persistence|validation|security|process  # jedna oś na blok
+axis: framework|architecture|persistence|validation|security|process|ui  # jedna oś na blok
 requires: []                 # zależności; brak = twardy błąd materializacji
 
 patterns:                    # półka 1 i 2 (patrz niżej)
@@ -87,7 +87,7 @@ Agenta-proxy decydującego per task NIE budujemy — rozstrzygnięte w OQ4 ADR 0
 ## Osie (`axis:`)
 
 Każdy blok deklaruje dokładnie jedną oś — `framework`, `architecture`, `persistence`,
-`validation`, `security` lub `process`. Oś odpowiada na pytanie „co ten blok reprezentuje
+`validation`, `security`, `process` lub `ui` (od ADR 0010: reguły wyglądu ekranów). Oś odpowiada na pytanie „co ten blok reprezentuje
 w składzie projektu", niezależnie od tego, co konkretnie wnosi (wzorce, agentów, warstwy).
 
 Warstwy orchestracji (`orchestrate.layers`) należą wyłącznie do osi `architecture` —
@@ -279,6 +279,7 @@ go w settings.json". Warstwa globalna ma swój odpowiednik: `hooks/hooks.json` �
 | `library-layers` | architektura | `orchestrate.layers` (implementation→testing→api-surface opcjonalna), `inner_loop` verify `ecc:typescript-reviewer`, `final_gate` `library-quality-verifier` | `ts-library` |
 | `nx-monorepo` | architektura | granice pakietów i graf zależności w monorepo Nx (bez warstw orchestracji); panel: boundary-analysis (`ecc:architect`, wąski `when:`) | — |
 | `nextjs` | framework | Next.js 16 App Router: wzorce RSC/`use cache`/proxy.ts/Server Actions/auth/style/testy, panel: threat-model + `nextjs-architecture-expert` + `nextjs-quality-verifier` (advisory), overlay `stacks/nextjs-app/` — **bez półki `always`** (brak kart, a karty z `cross-layer/` są nestjsowe) | — |
+| `design-system` | ui | skille `design-tokens`/`ui-patterns`/`screen-build`/`visual-check` (+ `/new-screen`), agent `ui-reviewer`, hook `check-ui-tokens` (ESLint z regułami designu po zapisie `.ts`/`.tsx` w `src/`) — ADR 0010 | — |
 | `sveltekit` | framework | SvelteKit 2 na runach Svelte 5: wzorce run/komponentów/routingu/`load()`/testów, panel: threat-model + `sveltekit-architecture-expert` + `sveltekit-quality-verifier` (advisory), overlay `stacks/sveltekit/` — **bez półki `always`** (jw.) | — |
 
 Aliasy: `blocks/_aliases.yml` — 5 zdefiniowanych: `ddd`, `nestjs-ddd`, `flutter-clean-arch`,

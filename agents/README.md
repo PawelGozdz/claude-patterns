@@ -1,7 +1,7 @@
 # Global Claude Code Agents
 
 **Purpose**: Reusable specialist and advisory agents for Claude Code projects.
-**Total**: 24 universal + 32 stack-specific = 56 agents
+**Total**: 24 universal + 33 stack-specific = 57 agents
 
 ---
 
@@ -116,7 +116,7 @@ Skill: `skills/quality/review-panel/SKILL.md` · Command: `/review-panel` · Pat
 
 ---
 
-## Stack-Specific Agents (32)
+## Stack-Specific Agents (33)
 
 Linked per-project to `.claude/agents/` via `setup-project.sh`.
 
@@ -189,6 +189,15 @@ set by the proxy, no tokens in the browser). First consumer: marketing-hub (TS-M
 |-------|---------|-------|------|
 | **refine-implementer** | Implements the web package only: Refine providers (auth / access-control / data over a JSend envelope), shell, pages, co-located L1/L2 tests and the Playwright smoke; verifies Refine signatures against installed types before writing providers | Sonnet | No |
 | **refine-quality-verifier** | Grep gates + code review for the web security invariants (no browser storage, no fetch outside providers, no `dangerouslySetInnerHTML`, no build-time secrets), provider contract, structure boundaries, web test pyramid | Sonnet | Yes |
+
+### design-system (1)
+
+For the juz-ide design system block (`blocks/design-system.yml`, axis `ui`, ADR 0010). Linked into
+any project that lists `design-system` in `stack_blocks`; first consumer: marketing-hub.
+
+| Agent | Purpose | Model | VETO |
+|-------|---------|-------|------|
+| **ui-reviewer** | Reviews screenshots (light/dark × desktop/mobile) for contrast, hierarchy, spacing, edge states, overflow, dark mode and fit with the `ui-patterns` skill; returns findings tied to rules, never edits code | Opus | No |
 
 ### sveltekit (2)
 
@@ -275,4 +284,4 @@ warns when a memory directory starts looking like a run log.
 
 **Version**: 3.6.0
 **Last Updated**: 2026-08-27
-**Agent Count**: 56 (24 universal + 32 stack-specific)
+**Agent Count**: 57 (24 universal + 33 stack-specific)

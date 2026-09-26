@@ -1,0 +1,37 @@
+# Blok: design-system — reguły systemu designu juz-ide w repozytoriach aplikacji (ADR 0010).
+#
+# Zastępuje plugin `claude-plugins` z pierwotnego planu wdrożenia (ADR 0001 odrzuca
+# plugin/marketplace). Reguły docierają do aplikacji tym samym torem co reszta:
+# project.yml → setup-project.sh → symlinki + runtime.yml.
+#
+# Włączenie w project.yml aplikacji — DWIE linie, bo skille nie są częścią overlayu bloku
+# (setup-project.sh linkuje skille po kategoriach z `skills:`):
+#   stack_blocks: [..., design-system]
+#   skills: [..., design-system]
+#
+# Co wnosi:
+#   - skille (kategoria skills/design-system/): design-tokens, ui-patterns, screen-build,
+#     visual-check (= komenda /visual-check), new-screen (komenda /new-screen przez
+#     commands/new-screen.md — skill ma disable-model-invocation: true)
+#   - agent ui-reviewer (ocenia zrzuty, bez prawa zapisu)
+#   - hook check-ui-tokens: ESLint projektu + reguły designu na zapisanym .ts/.tsx w src/
+#
+# Wzorce i parametry: świadomie brak. Wzorce ekranów żyją w skillu ui-patterns (proza,
+# zatwierdzona przez użytkownika), nie w patterns/ — nie ma jeszcze drugiej aplikacji,
+# która potwierdziłaby kształt kodu (reguła „uniwersalne dopiero po drugim użyciu”).
+# Parametrów nie ma, bo hook i skille nie potrzebują niczego od projektu: system
+# (tooling/product) i link do canvasu aplikacja podaje w CLAUDE-LOCAL.md.
+#
+# Oś `ui` (ADR 0010). Bez `orchestrate.layers` — warstwę `web` wnosi blok architektury
+# projektu. Bez panelu /analyze na razie: ocena wizualna dzieje się na zrzutach
+# (/visual-check), a nie na etapie analizy tekstu zadania.
+#
+# Flutter: hooki check-design-tokens / check-typography-tokens i wzorzec
+# flutter/design-token-pattern.md pozostają w bloku `flutter` — tu ich nie dublujemy.
+name: design-system
+axis: ui
+requires: []
+
+overlay:
+  agents: [stacks/design-system/]
+  hooks: [check-ui-tokens]

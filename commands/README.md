@@ -29,7 +29,7 @@
 Planowanie i TDD idą do ECC: `/ecc:plan`, skill `ecc:tdd-workflow` (plus `ecc:<lang>-test`
 dla konkretnego języka) — patrz [ADR 0009](../docs/adr/0009-wynik-spike-fazy-0-i-lista-retire.md).
 
-## Quality & Review (4)
+## Quality & Review (5)
 
 | Command | Purpose | Model |
 |---------|---------|-------|
@@ -37,6 +37,7 @@ dla konkretnego języka) — patrz [ADR 0009](../docs/adr/0009-wynik-spike-fazy-
 | `/pr-ops` | List/triage open PRs, classify comments blocking/question/resolved (read-only) | Sonnet |
 | `/api-schema-sync` | Cross-repo OpenAPI drift check: backend vs mobile/web consumers | Sonnet |
 | `/build-fix` | Diagnose and fix TypeScript build errors with minimal changes | — |
+| `/new-screen` | Build a UI screen from the `ui-patterns` skill, take light/dark × desktop/mobile screenshots, have `ui-reviewer` assess them (needs block `design-system`; `/visual-check` is the skill itself) | — |
 
 Bramki jakości, przegląd jednoprzebiegowy i pokrycie testami idą do ECC:
 `/ecc:quality-gate` (skill `ecc:verification-loop`), `/ecc:code-review`, `/ecc:test-coverage`.

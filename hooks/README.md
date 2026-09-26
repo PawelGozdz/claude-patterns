@@ -314,6 +314,7 @@ if you add one, add its row.
 | `check-context-isolation.js` | Stop | Detect cross-context imports in modified TypeScript files |
 | `check-debugprint-guard.js` | PostToolUse | `debugPrint()`/`print()` without `kDebugMode` guard (Flutter) |
 | `check-design-tokens.js` | PostToolUse | Visual literals used instead of design tokens |
+| `check-ui-tokens.js` | PostToolUse | Runs the project's ESLint plus design rules (colour literals, `style` outside the positioning whitelist, off-scale spacing, antd style overrides) on a saved `.ts`/`.tsx` in `src/`; findings go to the model via `additionalContext` JSON on stdout (block `design-system`, ADR 0010) |
 | `check-flutter-imports.js` | Stop | Detect cross-feature imports in modified Dart files |
 | `check-focus-wrapper.js` | PostToolUse | Bare `GestureDetector(` in a file with no `Focus(`/`FocusableActionDetector(`/`SoftPressable(`/Material tap widget (WCAG SC 2.4.7). Config `interactiveFocus` in `flutter-hooks.json`; wired via `blocks/clean-arch.yml` `overlay.hooks` (K53) |
 | `check-l10n-hardcoded.js` | PostToolUse | Hardcoded UI text instead of localization keys |

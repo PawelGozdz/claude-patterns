@@ -56,5 +56,13 @@
     "ref": "origin/develop",
     "sha": "550fc907ebfd8513e27119b5bef2732e74f4dadc",
     "indexedAt": "2026-09-23T15:22:00.022Z"
+  },
+  "code_ai_gateway": {
+    "model": "ct301:multilingual-e5-large",
+    "dim": 1024,
+    "repo": "ai-gateway",
+    "ref": "develop",
+    "sha": "1f2dce4c9d5483b872b1f371bbc42e922c8ff924",
+    "indexedAt": "2026-09-25T21:20:48.187Z"
   }
 }

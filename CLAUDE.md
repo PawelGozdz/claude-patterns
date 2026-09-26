@@ -27,11 +27,11 @@ symlinks. Think carefully before removing or renaming anything.
 
 ```
 patterns/       108 production patterns (58 core + 45 stack-specific + 1 marketing + 2 finance + 2 legal)
-agents/         24 universal + 32 stack-specific agents
-skills/         194 skills across 23 categories (42 marketing + 91 finance + 12 legal + others)
-hooks/          42 hooks (39 js + 3 sh, incl. pm-task-check.js — PM, per-project)
+agents/         24 universal + 33 stack-specific agents
+skills/         199 skills across 24 categories (42 marketing + 91 finance + 12 legal + others)
+hooks/          43 hooks (40 js + 3 sh, incl. pm-task-check.js — PM, per-project)
 templates/      CLAUDE.md composition + project-orchestration/ + per-stack settings and hook configs
-commands/       33 global commands (PM, orchestration, quality, marketing, finance, legal)
+commands/       34 global commands (PM, orchestration, quality, marketing, finance, legal)
 tools/          External tool reference (vendored): marketing/ (CLIs + integrations)
 tests/          Eval frameworks (vendored): finance-evals/ (grade_responses.py + iterations)
 rules/          Language-specific coding rules

@@ -2,7 +2,7 @@
 
 version: "3.6.0"
 created: "2026-02-05"
-last_updated: "2026-08-27"  # K13 (TASK-KAIZEN-001): liczniki wyrównane do realnego stanu drzewa
+last_updated: "2026-09-26"  # blok design-system (ADR 0010): +5 skilli, +1 agent, +1 hook, +1 komenda
 author: "LocalHero Team"
 source_project: "LocalHero v3"
 license: "MIT"
@@ -109,7 +109,7 @@ patterns:
 
 agents:
   universal: 24
-  stack_specific: 32
+  stack_specific: 33
   categories:
     universal:
       - backend-technology-expert
@@ -146,11 +146,12 @@ agents:
       - python (2)
       - python-ml (2)
       - refine-spa (2)
+      - design-system (1)            # ADR 0010 — ui-reviewer
       - sveltekit (2)
       - typescript-library (2)
 
 commands:
-  total: 33
+  total: 34
   categories:  # NIE zweryfikowane przez count-assets.mjs (K13) — przypisanie komendy do
                # kategorii wymaga czytania treści, nie prostego liczenia; suma poniżej (26)
                # nie sumuje się do total: 45, bo lista nie nadążyła za nowymi komendami
@@ -170,8 +171,8 @@ commands:
     meta: 1           # skill-create
 
 skills:
-  total_categories: 23
-  total_skills: 194  # 49 internal + 42 vendored marketing + 91 vendored finance + 12 vendored legal
+  total_categories: 24
+  total_skills: 199  # 54 internal + 42 vendored marketing + 91 vendored finance + 12 vendored legal
   orchestration_skills:
     - pulse
     - pm-status
@@ -274,7 +275,7 @@ skills:
     jurisdictions_supported: ["PL", "EU general", "US", "UK", "FR (limited)"]
 
 hooks:
-  total: 42  # 39 .js + 3 .sh, płasko w hooks/ (lib/ to kod dzielony, nie osobne hooki); 53→42 po K98/K99 (ADR 0009)
+  total: 43  # 40 .js + 3 .sh, płasko w hooks/ (lib/ to kod dzielony, nie osobne hooki); 53→42 po K98/K99 (ADR 0009)
 
 templates:
   stack_presets: 10

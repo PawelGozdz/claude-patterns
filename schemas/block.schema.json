@@ -16,8 +16,8 @@
 
     "axis": {
       "type": "string",
-      "description": "Which dimension of the stack this block occupies. Two blocks on the same axis conflict. Only a block with axis 'architecture' may contribute orchestrate.layers (materialize-runtime.mjs:424).",
-      "enum": ["architecture", "framework", "persistence", "process", "security", "validation"]
+      "description": "Which dimension of the stack this block occupies. Exclusivity between blocks on one axis is NOT enforced by the materializer (ADR 0010). Only a block with axis 'architecture' may contribute orchestrate.layers (materialize-runtime.mjs:424).",
+      "enum": ["architecture", "framework", "persistence", "process", "security", "ui", "validation"]
     },
 
     "requires": {

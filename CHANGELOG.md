@@ -10,6 +10,20 @@ and none of it is instruction — it is history.
 
 ## [Unreleased]
 
+### Added
+- Block `design-system` (axis `ui`, ADR 0010) for the juz-ide design system — replaces
+  the `claude-plugins` plugin from the rollout plan (ADR 0001 rejects plugins). Adds the
+  skill category `skills/design-system/`: `design-tokens` (full token list generated from
+  the `design-system` repo by `scripts/generate-reference.mjs`, never hand-copied),
+  `ui-patterns` (screen patterns approved by the user on 2026-09-26), `screen-build`,
+  `visual-check` (Playwright capture script, light/dark × desktop/mobile) and
+  `new-screen` with its `/new-screen` command wrapper; agent
+  `agents/stacks/design-system/ui-reviewer.md` (read-only screenshot review); hook
+  `hooks/check-ui-tokens.js`, which runs the project's ESLint plus design rules on a
+  saved `.ts`/`.tsx` and reports through `additionalContext` JSON on stdout.
+- New axis value `ui` in `schemas/block.schema.json`. The schema no longer claims that two
+  blocks on one axis conflict — the materializer never enforced that (ADR 0010).
+
 ### Changed
 - `skills/finance/` and `skills/legal/` re-synced from upstream after four
   months. Legal picked up 11 renamed upstream folders (licenses unchanged,

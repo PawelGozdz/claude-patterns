@@ -62,7 +62,7 @@ $CLAUDE_PATTERNS/
 │   ├── requirements.txt         # Python dependencies
 │   ├── settings.json.example    # Example Claude settings
 │   └── README.md                # MCP setup & usage guide
-├── agents/                      # Agent definitions (24 universal + 32 stack-specific)
+├── agents/                      # Agent definitions (24 universal + 33 stack-specific)
 │   ├── README.md                # Agent setup & usage guide
 │   ├── universal/               # Stack-agnostic agents (linked to ~/.claude/agents/)
 │   │   ├── backend-technology-expert.md
@@ -79,6 +79,7 @@ $CLAUDE_PATTERNS/
 │       ├── flutter-clean-arch/  # 7 agents (arch, quality, UI, security, performance)
 │       ├── node-ts-claude-api/  # 3 agents (implementer, safety, architecture)
 │       ├── astro-static/        # 2 agents (content, implementer)
+│       ├── design-system/       # 1 agent (ui-reviewer — screenshot review, ADR 0010)
 │       ├── nextjs-app/          # 2 agents (arch, quality)
 │       ├── sveltekit/           # 2 agents (arch, quality)
 │       ├── python/              # 2 agents (arch, quality)
@@ -142,7 +143,7 @@ $CLAUDE_PATTERNS/
 ├── hooks/                       # PostToolUse/Stop hooks
 │   ├── pm-task-check.js         # [NEW] PM briefing when task files change
 │   └── ...                      # (other hooks)
-├── commands/                    # Global commands (33 — symlinked to ~/.claude/commands/)
+├── commands/                    # Global commands (34 — symlinked to ~/.claude/commands/)
 │   ├── README.md                # Command catalog & usage guide
 │   ├── pulse.md                 # PM: full team sync
 │   ├── pm-status.md             # PM: quick state read (~$0)
@@ -519,8 +520,8 @@ cd ~/projects/claude-patterns
 
 **What this does**:
 - Creates per-file symlinks in `~/.claude/agents/` for 24 universal agents
-- Creates `~/.claude/commands/` symlink (33 commands)
-- Creates `~/.claude/hooks/` symlink (42 hooks)
+- Creates `~/.claude/commands/` symlink (34 commands)
+- Creates `~/.claude/hooks/` symlink (43 hooks)
 - Idempotent — safe to run multiple times
 
 ### Step 2: Project Setup (once per project)
@@ -1156,8 +1157,8 @@ cat .claude/settings.json  # Ensure patterns path is correct
 
 **Key Documentation**:
 - `patterns/README.md` — Full pattern index (108 patterns)
-- `agents/README.md` — Agent catalog (56 agents)
-- `commands/README.md` — Command catalog (33 commands)
+- `agents/README.md` — Agent catalog (57 agents)
+- `commands/README.md` — Command catalog (34 commands)
 - `patterns/orchestration/project-management-system.md` — PM system docs
 
 ---
