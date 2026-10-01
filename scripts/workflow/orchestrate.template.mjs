@@ -276,9 +276,19 @@ function buildProbePrompt(a, layer) {
   const pkgLookup = firstDir
     ? '_pkgdir() { d="' + firstDir + '"; while [ "$d" != "." ] && [ "$d" != "/" ] && [ -n "$d" ]; do ' +
       '[ -f "$d/package.json" ] && { echo "$d"; return; }; d=$(dirname "$d"); done; echo "."; }; ' +
-      'PKGROOT=$(_pkgdir)\n'
+      'PKGROOT=$(_pkgdir)\n' +
+      // ORC-085: nazwy `checks` z bloków monorepo to nazwy skryptów ROOTA (`typecheck:web`), a
+      // sonda biegnie w katalogu pakietu, gdzie skrypt nazywa się `typecheck` — wszystko
+      // wychodziło „skipped" (grant-flow TS-UI-003, apps/web). Kolejność: dokładna nazwa w
+      // pakiecie → nazwa bez sufiksu po „:" w pakiecie → dokładna nazwa w korzeniu repo.
+      // Sufiks wolno odciąć TYLKO gdy równa się nazwie katalogu pakietu (`:web` dla apps/web) i
+      // tylko ostatni segment — inaczej `lint:check` → `lint` (z --fix) zmieniałoby pliki.
+      '_chk() { s="$1"; b="${s%:*}"; sfx="${s##*:}"; bn=$(basename "$PKGROOT"); ' +
+      'if [ "$PKGROOT" != "." ] && grep -q "\\"$s\\"[[:space:]]*:" "$PKGROOT/package.json" 2>/dev/null; then (cd "$PKGROOT" && npm run "$s"); ' +
+      'elif [ "$PKGROOT" != "." ] && [ "$b" != "$s" ] && [ "$sfx" = "$bn" ] && grep -q "\\"$b\\"[[:space:]]*:" "$PKGROOT/package.json" 2>/dev/null; then (cd "$PKGROOT" && npm run "$b"); ' +
+      'else npm run "$s"; fi; }\n'
     : ''
-  const cmds = (layer.checks || []).map((c) => firstDir ? '(cd "$PKGROOT" && npm run ' + c + ')' : 'npm run ' + c)
+  const cmds = (layer.checks || []).map((c) => firstDir ? '_chk ' + c : 'npm run ' + c)
   const scoped = effectiveDirs(layer).join(' ')
   // Pathspecy monorepo: `layer.dirs` to nazwy typu "__tests__/"/"domain/", nigdy katalogi
   // TOP-LEVEL repo (prawdziwa ścieżka to src/contexts/<ctx>/domain/...). Literalny pathspec
@@ -377,7 +387,7 @@ function buildDiffProbePrompt(base) {
 // Ręczne składanie promptu per-warstwa jest dokładnie tym, co zawiodło w incydencie
 // TS-REP-PIPELINE-001-F3a-remediation.
 function buildVerifierPrompt(a, layer, probe, changedFiles, mode, noopClaim, priorViolations) {
-  const calls = budgetFor(a, 'verify', DEFAULTS.verifyCalls)
+  const calls = scaledBudget(a, 'verify', (changedFiles || []).length)
   if (mode === 'verify-noop') {
     const spec = 'ZADANIE ' + a.task.id + (a.task.title ? ' — ' + a.task.title : '') +
       (a.task.taskFile ? '\nSpec: ' + a.task.taskFile : '') +
@@ -441,6 +451,11 @@ function buildVerifierPrompt(a, layer, probe, changedFiles, mode, noopClaim, pri
     'listy otwieraj wyłącznie, gdy zmieniony plik go importuje i bez niego nie da się ocenić ' +
     'reguły. Nie grepuj po całym drzewie „dla kontekstu" — każdy wynik zostaje w Twoim kontekście ' +
     'do końca i jest płacony przy każdym kolejnym wywołaniu.\n' +
+    // ORC-085: grant-flow TS-UI-003 — weryfikator kończył po 7-12 z 15 wywołań z niepustym
+    // unverified_scope: „czytaj tylko zmienione" + „TWARDY LIMIT" czytał jako zachętę do
+    // pośpiechu. unverified_scope jest dla plików, na które BUDŻETU ZABRAKŁO.
+    'Nie kończ przed wyczerpaniem budżetu, dopóki na liście są pliki, których nie przeczytałeś: ' +
+    '`unverified_scope` służy plikom, na które zabrakło budżetu, nie plikom pominiętym z wyboru.\n' +
     'TWARDY LIMIT: ' + calls + ' wywołań narzędzi. Gdy budżet się kończy — wydaj werdykt ' +
     'natychmiast, na podstawie tego, co już wiesz. Werdykt częściowy z uzasadnieniem jest ' +
     'poprawnym wynikiem; brak werdyktu wywraca cały przebieg.'
@@ -451,7 +466,7 @@ function buildVerifierPrompt(a, layer, probe, changedFiles, mode, noopClaim, pri
 // infrastruktury, migracji ani kontraktów (TS-MH-005 — weryfikator sam zajrzał do HEAD).
 // Karty: wszystkie wzorce przebiegu — bramka oceniała całość zmiany bez reguł.
 function buildFinalGatePrompt(a, checks, changedFiles, treeSource, knownGaps) {
-  const calls = budgetFor(a, 'final-gate', DEFAULTS.verifyCalls)
+  const calls = scaledBudget(a, 'final-gate', (changedFiles || []).length)
   // ORC-084: luki, które warstwy już zapisały jako GO_WITH_GAPS — bramka nie wymusza za nie NO_GO
   // (filterKnownLayerGaps), ale ma je sprawdzić celowanym odczytem, jeśli starczy budżetu.
   const gapsBlock = (knownGaps || []).length
@@ -614,8 +629,34 @@ function layerGapsAcceptable(decision, verdict, probe) {
   if (!Array.isArray(decision.gaps) || !decision.gaps.length) return false
   if (!verdict || String(verdict.verdict || '').toUpperCase() !== 'GO') return false
   if (Array.isArray(verdict.violations) && verdict.violations.length) return false
+  return probeHasGreenEvidence(probe)
+}
+
+// „skipped" to brak dowodu, nie zieleń: ślepa sonda (wszystko skipped, np. złe nazwy
+// skryptów — ORC-085) nie może uzasadniać przejścia dalej. Wymagamy co najmniej jednego
+// faktycznego `pass` (typecheck albo testy) i zera `fail`.
+function probeHasGreenEvidence(probe) {
   if (!probe) return false
-  return probe.typecheck !== 'fail' && probe.tests !== 'fail'
+  if (probe.typecheck === 'fail' || probe.tests === 'fail') return false
+  return probe.typecheck === 'pass' || probe.tests === 'pass'
+}
+
+// ORC-086: weryfikator dwukrotnie bez wyniku (padł/przekroczył budżet) to awaria maszyny, nie
+// werdykt o kodzie. Przy zielonej sondzie i niepustym zakresie warstwa idzie dalej jako
+// GO_WITH_GAPS z luką „warstwa niezweryfikowana" (domyka bramka końcowa i człowiek), zamiast
+// zatrzymywać przebieg. Bez dowodu zielonej sondy albo bez zmian w zakresie — halt jak dotąd.
+function silentVerifierGapsAcceptable(probe, files) {
+  return probeHasGreenEvidence(probe) && Array.isArray(files) && files.length > 0
+}
+
+// ORC-085: domyślne 15 wywołań na weryfikatora/bramkę dla jednostki ~37 plików (grant-flow
+// TS-UI-003, web-bootstrap) zostawiało `unverified_scope` w 5 z 6 prób. Bez jawnego
+// `budgets.<slot>` budżet rośnie z liczbą plików ponad 10 (po 1 wywołaniu na plik), do 50.
+// Jawny wpis w runtime.yml zawsze wygrywa.
+function scaledBudget(a, slot, nFiles) {
+  const explicit = budgetFor(a, slot, null)
+  if (explicit != null) return explicit
+  return Math.min(50, DEFAULTS.verifyCalls + Math.max(0, (nFiles || 0) - 10))
 }
 
 // Bramka końcowa nie wymusza NO_GO za pozycje, które warstwa już zapisała jako znaną lukę
@@ -987,6 +1028,14 @@ for (const step of plan) {
       probe = null
     }
 
+    // ORC-085: warstwa ma skonfigurowane checks, a sonda zwróciła „skipped" dla obu — ślepa
+    // sonda (złe nazwy skryptów/brak skryptów). Głośno, nie po cichu: weryfikator dostaje
+    // fakty „skipped" jako brak dowodu, a GO_WITH_GAPS wymaga co najmniej jednego `pass`.
+    if (probe && (layer.checks || []).length && probe.typecheck === 'skipped' && probe.tests === 'skipped') {
+      log(layer.id + ': UWAGA — sonda ślepa (checks ' + layer.checks.join(', ') + ' → wszystko skipped); sprawdź nazwy skryptów w pakiecie (ORC-085)')
+      report.warnings = (report.warnings || []).concat(layer.id + ': sonda ślepa — checks ' + layer.checks.join(', ') + ' wszystkie skipped')
+    }
+
     if (typecheckRedIsLaterLayers(probe, layer, plan.map((s) => s.layer))) {
       log(layer.id + ': typecheck czerwony wyłącznie w plikach późniejszych warstw — odroczony (ORC-082)')
       probe = Object.assign({}, probe, { typecheck: 'deferred' })
@@ -1028,7 +1077,7 @@ for (const step of plan) {
       break
     }
     const verifyOpts = Object.assign(
-      { label: layer.id + '-verify', agentType: verifyAgent, maxTurns: budgetFor(a, 'verify', DEFAULTS.verifyCalls), schema: VERDICT_SCHEMA },
+      { label: layer.id + '-verify', agentType: verifyAgent, maxTurns: scaledBudget(a, 'verify', layerFiles.length), schema: VERDICT_SCHEMA },
       modelFor('verify'),
     )
     let verdict = null
@@ -1057,6 +1106,13 @@ for (const step of plan) {
     if (decision.next === 'silent') {
       silentDeaths++
       if (silentDeaths >= 2) {
+        if (silentVerifierGapsAcceptable(probe, layerFiles)) {
+          const gap = ['(cała warstwa ' + layer.id + ') weryfikator dwukrotnie bez wyniku — nieoceniona semantycznie, sonda zielona']
+          settled = { id: layer.id, status: 'GO_WITH_GAPS', files: layerFiles, attempts: attempt, gaps: gap }
+          report.gaps.push({ layer: layer.id, items: gap })
+          log(layer.id + ': weryfikator bez wyniku 2x, sonda zielona — GO z luką, przebieg idzie dalej (ORC-086)')
+          break
+        }
         settled = { id: layer.id, status: 'ESCALATE_AND_HALT', reason: 'weryfikator dwukrotnie bez wyniku', cause: 'machine' }
         break
       }
@@ -1111,7 +1167,7 @@ if (!finalAgent) {
   log('brak slotu final_gate w runtime.yml — kończę na werdyktach warstw')
 } else {
   const finalOpts = Object.assign(
-    { label: 'final-gate', agentType: finalAgent, maxTurns: budgetFor(a, 'final-gate', DEFAULTS.verifyCalls), schema: VERDICT_SCHEMA },
+    { label: 'final-gate', agentType: finalAgent, maxTurns: scaledBudget(a, 'final-gate', finalFiles.length), schema: VERDICT_SCHEMA },
     modelFor('final'),
   )
   let final = null

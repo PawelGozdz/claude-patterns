@@ -76,6 +76,25 @@ kopia szablonu to ostateczność — wtedy przepuść ją przez lint i opisz ods
 
 Po awarii: `Workflow({scriptPath, resumeFromRunId})` — ukończone wywołania wracają z cache.
 
+## Po zatrzymaniu — kiedy pytać człowieka (ORC-086)
+
+Zatrzymanie z `cause === 'machine'` to awaria maszyny, nie werdykt o kodzie — **nie wklejaj
+użytkownikowi problemu z pytaniem „co robimy"**, tylko załatw to sam, w tej kolejności:
+
+1. `halt-diagnostician` (ORC-055) — raz, żeby ustalić przyczynę. Nie ruszaj `layers_done`,
+   `decisions[]` ani artefaktu ręcznie przed diagnozą.
+2. Jeśli przyczyna jest mechaniczna i odwracalna (budżet weryfikatora/sondy, nazwy `checks`,
+   cache sondy, brak zależności do doinstalowania) — popraw przez `--overrides` i wznów **raz**
+   (`resumeFromRunId`). Drugie zatrzymanie z tej samej przyczyny = wtedy dopiero raport do człowieka.
+3. Pytaj człowieka tylko, gdy: `cause === 'code'` (kod ma błędy, których 3 próby nie naprawiły),
+   naprawa wymaga zmiany kompozycji bloków, artefaktu analizy, decyzji produktowej albo sekretu
+   (np. token rejestru pakietów), albo wznowienie już raz zawiodło.
+
+Raport z zatrzymania: przyczyna w jednym zdaniu, co zrobiłeś, co zostało, **jedna rekomendacja**
+(nie lista wariantów A/B/C do wyboru, gdy jedna jest oczywista). Zasada ogólna: zatrzymanie jest
+dla problemu poważnego (kod nie przechodzi, brak dowodu, że działa, decyzja człowieka) —
+niepełna weryfikacja przy zielonej sondzie to luka w raporcie (`GO_WITH_GAPS`), nie przystanek.
+
 ## Rejestr reguł
 
 Kolumna **mechanizm** mówi, co regułę egzekwuje. „tylko prompt" znaczy: nic jej nie sprawdza
@@ -167,6 +186,8 @@ poza Twoją uwagą — to jednocześnie lista kandydatów do zautomatyzowania.
 | ORC-082 | typecheck warstwy (pełny pakiet) czerwony od zmiany portu/konstruktora, której implementacja należy do późniejszej warstwy | odrocz czerwień, gdy KAŻDY błąd TS leży w dirs późniejszej warstwy; własny zakres, wcześniejsze warstwy i błędy bez ścieżki nadal blokują | `orchestrate.template.mjs` (`typecheckRedIsLaterLayers`) | [ORC-082](docs/decisions/orchestrate-rule-history.md#orc-082) |
 | ORC-083 | krok 5 zgłasza każde `finalGate.verdict !== 'GO'` i każdy halt, także gdy winien jest kod | silnik tagi `cause` (`code`/`machine`) na haltach warstw i bramce końcowej; krok 5 zgłasza tylko `machine` | `orchestrate.template.mjs` (`decideVerdict`, pętla warstwy, bramka końcowa) · krok 5 | [ORC-083](docs/decisions/orchestrate-rule-history.md#orc-083) |
 | ORC-084 | warstwa: GO bez naruszeń, ale `unverified_scope` po wszystkich próbach, sonda zielona | status `GO_WITH_GAPS` zamiast `ESCALATE_AND_HALT`: przebieg idzie dalej, luki w `report.gaps` → bramka końcowa (nie liczy ich drugi raz) → człowiek; NO_GO bramki wymuszone samym unverified_scope → pliki staged z flagą „wymaga przeglądu” | `orchestrate.template.mjs` (`layerGapsAcceptable`, `filterKnownLayerGaps`, bramka końcowa) · krok 4 | [ORC-084](docs/decisions/orchestrate-rule-history.md#orc-084) |
+| ORC-085 | sonda w katalogu pakietu nie zna nazw skryptów roota (`typecheck:web`) → wszystko `skipped`; domyślne 15 wywołań na jednostkę ~40 plików | `_chk`: nazwa w pakiecie → bez sufiksu w pakiecie → w korzeniu; ślepa sonda = log + `report.warnings`; budżet verify/bramki = 15 + (pliki−10), cap 50, jawny wpis wygrywa; GO_WITH_GAPS wymaga ≥1 `pass` | `orchestrate.template.mjs` (`buildProbePrompt`, `scaledBudget`, `layerGapsAcceptable`) | [ORC-085](docs/decisions/orchestrate-rule-history.md#orc-085) |
+| ORC-086 | halt maszyny (`cause: machine`) i pytania do człowieka w środku pracy | silnik: weryfikator 2x bez wyniku + sonda zielona → `GO_WITH_GAPS`; agent: sekcja „Po zatrzymaniu": diagnostician → `--overrides` + 1 wznowienie, pytaj tylko przy `code`/zmianie kompozycji/sekrecie | `orchestrate.template.mjs` (`silentVerifierGapsAcceptable`) · sekcja „Po zatrzymaniu" (prompt) | [ORC-086](docs/decisions/orchestrate-rule-history.md#orc-086) |
 
 ## Co zrobić z regułą „tylko prompt"
 

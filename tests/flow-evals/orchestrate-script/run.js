@@ -387,6 +387,7 @@ const CASES = (c) => [
       const dec = c.decideVerdict(go, 3, 3, layer, [layer]);
       if (dec.next !== 'escalate' || !dec.gaps || dec.gaps[0] !== 'apps/web/src/AuthGate.tsx') return 'decideVerdict nie zwrócił gaps: ' + JSON.stringify(dec);
       const green = { typecheck: 'pass', tests: 'skipped' };
+      if (c.layerGapsAcceptable(dec, go, { typecheck: 'skipped', tests: 'skipped' })) return 'ślepa sonda (wszystko skipped) nie może przejść jako GO_WITH_GAPS (ORC-085)';
       if (!c.layerGapsAcceptable(dec, go, green)) return 'zielona sonda + zero naruszeń powinno przejść jako GO_WITH_GAPS';
       if (c.layerGapsAcceptable(dec, go, { typecheck: 'fail', tests: 'pass' })) return 'czerwony typecheck nie może przejść';
       if (c.layerGapsAcceptable(dec, go, { typecheck: 'pass', tests: 'fail' })) return 'czerwone testy nie mogą przejść';
@@ -405,6 +406,44 @@ const CASES = (c) => [
       if (r.absorbed.length !== 1) return 'znana luka powinna być wchłonięta: ' + JSON.stringify(r);
       const none = c.filterKnownLayerGaps(['x/y.ts'], []);
       if (none.kept.length !== 1 || none.absorbed.length !== 0) return 'brak znanych luk nie zmienia listy';
+      return null;
+    },
+  },
+
+  // ── ORC-085: sonda, budżet ──────────────────────────────────────────────────────────────
+  {
+    name: 'probe-prompt-falls-back-from-suffixed-script-names',
+    run() {
+      const layer = { id: 'web', dirs: ['apps/web/'], checks: ['typecheck:web', 'test:web'] };
+      const p = c.buildProbePrompt({ task: { id: 'T' } }, layer);
+      if (!p.includes('_chk() {')) return 'brak funkcji _chk w prompcie sondy';
+      if (!p.includes('_chk typecheck:web') || !p.includes('_chk test:web')) return 'checks nie idą przez _chk';
+      if (!p.includes('"$sfx" = "$bn"')) return 'brak osłony: sufiks odcinany tylko gdy równa się nazwie katalogu pakietu (lint:check → lint niosłoby --fix)';
+      if (p.includes('npm run typecheck:web)')) return 'stare bezpośrednie (cd && npm run <check>) nadal w prompcie';
+      return null;
+    },
+  },
+  {
+    name: 'scaled-budget-grows-with-files-and-explicit-wins',
+    run() {
+      if (c.scaledBudget({}, 'verify', 5) !== 15) return 'mała jednostka powinna mieć 15';
+      if (c.scaledBudget({}, 'verify', 37) !== 42) return '37 plików → 15+27=42, jest ' + c.scaledBudget({}, 'verify', 37);
+      if (c.scaledBudget({}, 'verify', 500) !== 50) return 'cap 50';
+      if (c.scaledBudget({ budgets: { verify: { max_tool_calls: 20 } } }, 'verify', 37) !== 20) return 'jawny budżet musi wygrać';
+      return null;
+    },
+  },
+
+  // ── ORC-086: weryfikator bez wyniku przy zielonej sondzie nie zatrzymuje ─────────────────
+  {
+    name: 'silent-verifier-gaps-require-green-probe-and-changed-files',
+    run() {
+      const green = { typecheck: 'pass', tests: 'skipped' };
+      if (!c.silentVerifierGapsAcceptable(green, ['a/b.ts'])) return 'zielona sonda + zmiany powinny przejść jako GO_WITH_GAPS';
+      if (c.silentVerifierGapsAcceptable(green, [])) return 'brak zmian w zakresie nie może przejść';
+      if (c.silentVerifierGapsAcceptable({ typecheck: 'skipped', tests: 'skipped' }, ['a/b.ts'])) return 'ślepa sonda nie może przejść';
+      if (c.silentVerifierGapsAcceptable({ typecheck: 'fail', tests: 'pass' }, ['a/b.ts'])) return 'czerwona sonda nie może przejść';
+      if (c.silentVerifierGapsAcceptable(null, ['a/b.ts'])) return 'brak sondy nie może przejść';
       return null;
     },
   },
@@ -507,7 +546,8 @@ const CASES = (c) => [
     run() {
       const p = c.buildProbePrompt(ARGS, L.infrastructure);
       if (!/_pkgdir\(\)/.test(p)) return 'brak lookupu package.json dla warstwy z dirs';
-      if (!/cd "\$PKGROOT" && npm run lint/.test(p)) return 'polecenie checka nie jest scope\'owane przez PKGROOT';
+      // ORC-085: check idzie przez `_chk <nazwa>`, które uruchamia go w `cd "$PKGROOT"`.
+      if (!/_chk lint/.test(p) || !/cd "\$PKGROOT" && npm run "\$s"/.test(p)) return 'polecenie checka nie jest scope\'owane przez PKGROOT';
       if (!/PKGROOT wyjdzie jako "\."/.test(p)) return 'brak instrukcji zgłoszenia świadomego pełnego zakresu, gdy nie znaleziono package.json';
       const noDirs = c.buildProbePrompt(ARGS, { id: 'whole', dirs: [], checks: ['typecheck'] });
       if (/_pkgdir\(\)/.test(noDirs)) return 'warstwa bez dirs nie powinna dostać lookupu (nie ma czego zawężać)';

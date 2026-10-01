@@ -1507,3 +1507,64 @@ Ryzyko: realny błąd w niesprawdzonym pliku wyjdzie dopiero w bramce końcowej 
 pętli warstwy. Haltem zostają: czerwona sonda, naruszenia po wyczerpaniu prób, brak wyniku
 weryfikatora/sondy. Evale: `layer-gaps-acceptable-requires-green-probe-and-zero-violations`,
 `final-gate-absorbs-known-layer-gaps`.
+
+<a id="orc-085"></a>
+
+### ORC-085 — ślepa sonda, budżet weryfikatora skalowany z liczbą plików, GO_WITH_GAPS wymaga dowodu (2026-10-01)
+
+grant-flow TS-UI-003, warstwa `web:web-bootstrap` (diagnoza halt-diagnostician, 6 prób w 2
+przebiegach): zatrzymanie nie wynikało z kodu, tylko z trzech przyczyn maszyny.
+
+1. **Sonda nigdy nie działała.** `checks` warstwy `web` w bloku to nazwy skryptów ROOTA
+   (`typecheck:web`, `lint:check:web`, `test:web`, `build:web`), a sonda biegnie w katalogu
+   pakietu (`apps/web`), gdzie skrypty nazywają się `typecheck`, `lint:check`, `test`. Wszystkie
+   checks wychodziły `skipped`, weryfikator dopisywał brak Phase-0 do niezweryfikowanego.
+   Dotyczy każdego monorepo z sufiksowanymi nazwami (także upstream `blocks/monorepo-layers.yml`).
+   Poprawka: `_chk` w sondzie — dokładna nazwa w pakiecie → nazwa bez OSTATNIEGO segmentu po „:" w pakiecie,
+   tylko gdy ten segment równa się nazwie katalogu pakietu (`:web` dla `apps/web`) → dokładna nazwa w korzeniu repo.
+   Osłona jest konieczna: pierwsza wersja odcinała wszystko po pierwszym „:" i `lint:check:web` schodziło do
+   `lint` (z `--fix` w grant-flow), czyli sonda zmieniałaby pliki — wykryte testem na prawdziwym układzie grant-flow. Ślepa sonda (checks skonfigurowane, oba wyniki `skipped`)
+   daje głośny log i `report.warnings`.
+2. **Budżet weryfikatora.** Domyślne 15 wywołań na jednostkę ~37 plików: 5 z 6 prób GO z
+   `unverified_scope`, a weryfikator kończył po 7-12 wywołaniach, bo prompt („czytaj tylko
+   zmienione", „TWARDY LIMIT") czytał jako zachętę do pośpiechu. Teraz `scaledBudget()`: bez
+   jawnego `budgets.<slot>` budżet = 15 + (pliki - 10), do 50, dla weryfikatora warstwy i bramki
+   końcowej (jawny wpis wygrywa). Prompt dodaje: nie kończ przed wyczerpaniem budżetu, dopóki
+   są nieprzeczytane pliki z listy; `unverified_scope` jest dla plików, na które budżetu zabrakło.
+3. **Środowisko (poza silnikiem).** Brak `NPM_TOKEN` → `pnpm install` 404 na `@juz-ide/tokens`,
+   próby 1-2 stracone. Silnik tego nie rozwiąże; do ustawienia przed startem przebiegu.
+
+**Korekta ORC-084.** `layerGapsAcceptable` dopuszczał `skipped` jako „zieloną sondę", więc przy
+ślepej sondzie (wszystko `skipped`) GO_WITH_GAPS przeszłoby bez żadnego dowodu, że kod działa —
+dokładnie przypadek TS-UI-003. Teraz wymaga co najmniej jednego `pass` (typecheck albo testy).
+
+Nie rozstrzyga: podziału zbyt dużej jednostki (decyzja analizy/`units[]`) — budżet skalowany do
+50 pokrywa ~40 plików, powyżej warto dzielić. Eval: `probe-prompt-falls-back-from-suffixed-script-names`,
+`scaled-budget-grows-with-files-and-explicit-wins`, rozszerzony `layer-gaps-acceptable-...`.
+
+<a id="orc-086"></a>
+
+### ORC-086 — zatrzymanie tylko dla poważnych problemów (2026-10-01)
+
+Użytkownik: orchestratory przerywają w środku pracy i wklejają problemy z pytaniem „co dalej".
+Przegląd wszystkich punktów zatrzymania (`ESCALATE_AND_HALT`/`BLOCKED_BY_PRIOR`/bramka końcowa):
+
+Zostają haltem (poważne — kod lub brak dowodu): sonda czerwona po wyczerpaniu prób
+(`code`), NO_GO weryfikatora z naruszeniami po wyczerpaniu prób (`code`), twierdzenie no-op
+sprzeczne z zadaniem (`code`), brak przyrostu testów w warstwie testowej (`code`),
+BLOCKED_BY_PRIOR (czerwień odziedziczona), GO_WITH_GAPS bez dowodu zielonej sondy (sonda ślepa
+lub brak wyniku), brak zmian w zakresie warstwy po wszystkich próbach, NO_GO bramki końcowej z
+własnymi naruszeniami.
+
+Przestają zatrzymywać: GO z `unverified_scope` przy zielonej sondzie (ORC-084), oraz — nowość —
+weryfikator dwukrotnie bez wyniku (padł/przekroczył budżet) przy zielonej sondzie i niepustym
+zakresie warstwy: `GO_WITH_GAPS` z luką „cała warstwa niezweryfikowana" (`silentVerifierGapsAcceptable`,
+wspólny helper `probeHasGreenEvidence` z ORC-084/085). Bez dowodu zielonej sondy nadal halt.
+
+Zmiana drugiej połowy problemu — zachowania głównego agenta: do `commands/orchestrate.md`
+dodana sekcja „Po zatrzymaniu": zatrzymanie `machine` → halt-diagnostician → mechaniczna
+naprawa przez `--overrides` + jedno wznowienie, bez pytania; człowiek dopiero przy `code`,
+zmianie kompozycji/analizy/sekretu albo gdy wznowienie już raz zawiodło; raport z jedną
+rekomendacją zamiast listy wariantów. To nadal reguła „tylko prompt" (egzekwuje ją tylko uwaga
+agenta), ale opiera się na polu `cause` ustawianym mechanicznie przez silnik (ORC-083).
+Eval: `silent-verifier-gaps-require-green-probe-and-changed-files`.
