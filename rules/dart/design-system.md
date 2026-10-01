@@ -1,5 +1,18 @@
 # Flutter Design System Rules (DS-007)
 
+## Wyjątek DS-007 dla nowego kodu wg kanwy D (DESIGN-SYSTEM-009, D1)
+
+Nowy kod pisany wg kanwy Claude Design (Canvas D / `JuzIdeTheme`) czyta kolor i typografię
+przez `context.colors`/`context.text`/`context.spacing`/`context.accents`
+(`lib/core/design/theme/app_theme_context.dart`, cienka `BuildContext` extension nad
+`Theme.of(context)`/`JuzIdeTokens`) — **nie** przez `AppTypography.*`/`LocalHeroDesignTokens.*`.
+`AppTypography.*`/`LocalHeroDesignTokens.*` pozostają obowiązkowe wyłącznie dla kodu
+niezmigrowanego na Canvas D. Ikony (`AppIcons.*`/`Symbols.*`, sekcja niżej) — bez zmian, wyjątek
+dotyczy tylko koloru/typografii/spacingu. Zob. `project-orchestration/tasks/
+DESIGN-SYSTEM-009-JUZIDE-D-MIGRATION.md`, decyzja D1.
+
+---
+
 ## CRITICAL: AppTypography — zero hardkodowanych TextStyle
 
 NEVER używaj `TextStyle(fontSize: ...)` bezpośrednio w kodzie prezentacji.

@@ -10,6 +10,7 @@ const PATH_RULES = [
   { match: "/infrastructure/controllers/", pattern: "infrastructure/controller-schema-pattern.md" }, // zod
   { match: "/infrastructure/persistence/", pattern: "infrastructure/repository-pattern.md" }, // kysely
   { match: "/domain/specifications/", pattern: "domain/specification-policy-pattern.md" }, // ddd/core
+  { match: "apps/web/src/providers/", pattern: "refine-spa/refine-providers-pattern.md" }, // refine-spa
   { match: "/application/commands/", pattern: "application/command-handler-pattern.md" }, // ddd/cqrs
   { match: "/application/services/", pattern: "application/application-service-pattern.md" }, // ddd/cqrs
   { match: "/domain/value-objects/", pattern: "domain/value-object-pattern.md" }, // ddd/core
@@ -21,6 +22,7 @@ const PATH_RULES = [
   { match: "/domain/policies/", pattern: "domain/specification-policy-pattern.md" }, // ddd/core
   { match: "/domain/services/", pattern: "domain/domain-service-pattern.md" }, // ddd/core
   { match: "/domain/events/", pattern: "domain/domain-event-pattern.md" }, // ddd/core
+  { match: "apps/web/src/", pattern: "refine-spa/web-structure-pattern.md" }, // refine-spa
 ];
 
 const FILENAME_RULES = [

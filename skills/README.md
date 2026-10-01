@@ -1,6 +1,6 @@
 # Skills — Category Index
 
-**Total**: 194 skills across 23 categories. This table is the index — there is no
+**Total**: 198 skills across 23 categories. This table is the index — there is no
 per-category README to fall through to. Only the three vendored toolkits
 (`finance/`, `marketing/`, `legal/`) carry their own `README.md`, because they
 document upstream provenance and licensing; everywhere else the skill's own
@@ -12,7 +12,7 @@ document upstream provenance and licensing; everywhere else the skill's own
 | [finance/](finance/) | 91 | Vendored investment/compliance/advisory/trading skills (JoelLewis/finance_skills, MIT), plugin-aware |
 | [marketing/](marketing/) | 42 | Vendored CRO/copy/SEO/paid/growth/RevOps skills (coreyhaines31/marketingskills, MIT) |
 | [legal/](legal/) | 12 | Vendored contract/GDPR/NDA/compliance skills (license-fragmented — see `EXTERNAL.md`) |
-| [design-system/](design-system/) | 5 | juz-ide design system (block `design-system`, ADR 0010): `design-tokens`, `ui-patterns`, `screen-build`, `visual-check` (`/visual-check`), `new-screen` (`/new-screen`) |
+| [design-system/](design-system/) | 9 | juz-ide design system (block `design-system`, ADR 0010): `design-tokens`, `ui-patterns`, `screen-build`, `visual-check` (`/visual-check`), `new-screen` (`/new-screen`), `flutter-theme`, `token-change` (`/token-bump`), `design-audit` (`/design-audit`), `canvas-backup` (`/canvas-backup`) |
 | [orchestration/](orchestration/) | 8 | Project management (`/pulse`, `/task-health`, `/sprint`) |
 | [security/](security/) | 4 | `/security-review`, `/security-check`, `/threat-model`, `/incident` |
 | [decision-frameworks/](decision-frameworks/) | 3 | ADR authoring and related decision-record tooling |

@@ -11,6 +11,39 @@ and none of it is instruction — it is history.
 ## [Unreleased]
 
 ### Added
+- Two global blocks, `refine-spa` (framework axis) and `monorepo-layers` (architecture
+  axis, requires `ddd/core`), promoted from a local draft in `marketing-hub`
+  (`.claude/blocks/web.yml` + `layers-monorepo.yml`, TS-MH-002, 2026-09-15) — step zero
+  before `grant-flow` adopts a Refine admin panel (wdrozenie/POSTEP.md "Faza 4",
+  2026-09-27). `refine-spa` overlays the already-global `agents/stacks/refine-spa/`
+  (`refine-implementer`, `refine-quality-verifier`) and adds 4 patterns in
+  `patterns/refine-spa/` (security invariants, structure, providers, testing —
+  `⚠ project-specific: marketing-hub`, the only real consumer so far). `monorepo-layers`
+  brings `orchestrate.layers` for a pnpm `apps/api`+`apps/web`+`packages/contracts`
+  monorepo (domain→application→infrastructure→web optional→testing), with the `web`
+  layer VETO'd by `refine-quality-verifier`. Deliberately kept as a **hard requirement**
+  on the apps/api+apps/web shape rather than parameterized — `grant-flow` today is a flat
+  single package, and generalizing the block's `checks:` (which assume named pnpm
+  workspace packages) for a structure with zero validated real adopters would be
+  guesswork; full rationale in `blocks/monorepo-layers.yml`'s header comment. Whether/how
+  `grant-flow` restructures into this shape is left to its own session.
+- Faza 5B of the juz-ide design system rollout — 4 skills, 2 agents, 3 commands in the
+  `design-system` block, plus a documented exception to the "no Flutter here" convention
+  for cross-stack audit/governance tooling (`blocks/design-system.yml` comment updated):
+  `flutter-theme` (Flutter equivalent of `design-tokens`; documents what
+  `juz_ide_tokens`/`generate-dart.ts` generates — `ColorScheme.fromSeed`, `TextTheme`,
+  `JuzIdeTokens` `ThemeExtension` — and what it doesn't, deferring to
+  `patterns/flutter/design-token-pattern.md` for animation/shadow/icon tokens),
+  `token-change` (`/token-bump <patch|minor|major>` — 9-step procedure + the
+  patch/minor/major decision table, dist-tag channels, deprecation lifecycle),
+  `design-audit` (`/design-audit [repo…]` — dispatches `pattern-auditor` + `token-drift`
+  per repo, decides when a mechanical migration PR is safe vs. report-only),
+  `canvas-backup` (`/canvas-backup <url>` — backs up a Claude Design canvas's source
+  files + rendered PNGs to `design-archive/<date>/`, with a
+  `scripts/render-artboards.mjs` Playwright renderer); agents `pattern-auditor`
+  (screens outside `ui-patterns`, duplicated components, missing edge states) and
+  `token-drift` (token literals, deprecated-token usage, `@juz-ide/tokens`/
+  `juz_ide_tokens` version skew across repos) in `agents/stacks/design-system/`.
 - Block `design-system` (axis `ui`, ADR 0010) for the juz-ide design system — replaces
   the `claude-plugins` plugin from the rollout plan (ADR 0001 rejects plugins). Adds the
   skill category `skills/design-system/`: `design-tokens` (full token list generated from
@@ -37,6 +70,15 @@ and none of it is instruction — it is history.
   CLAUDE.md, emitted only when the composition includes the `ddd/core` block.
 - `schemas/hooks.schema.json` corrected — it had the event name and the entry
   `type` swapped, so it rejected every real hooks configuration in the repo.
+- `patterns/flutter/design-token-pattern.md` (+ its rule card) and
+  `skills/flutter/flutter-brand-motion/SKILL.md` — added a status note: `juz-ide-mobile-app`'s
+  Flutter design-token rollout (`wdrozenie` Faza 5, część A, 2026-09-26) now provides
+  `juz_ide_tokens` (`JuzIdeTheme`/`JuzIdeTokens`) as the canonical source for color/typography/
+  spacing in new code; `LocalHeroDesignTokens`/`AppTypography` remain canonical only for motion,
+  shadow/border helpers, icons, and un-migrated `v1_*`/`brutalist_*` widgets. Flags
+  `.claude/rules/dart/design-system.md` (DS-007) in `juz-ide-mobile-app`, enforced by the
+  `flutter-quality-verifier`/`flutter-ui-verifier` agents, as not yet reconciled with the new
+  system — content-only, no rule/tag changes, not yet reseeded.
 
 ### Added
 - `orchestrate-prepare.mjs --overrides <file.json>` and `--emit-script <path>`:

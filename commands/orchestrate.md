@@ -37,11 +37,21 @@ nie gdy chcesz ją WYKONAĆ.
                            realnie staged — HALT "staged, not committed" buduj z tego
                            zweryfikowanego `git status`, nie z samej listy z `report`
                            (ORC-067: raport twierdził „8 staged", realnie 0 — ai-os-bot BOT-009)
+                         ORC-084: `report.stageForReview` (NO_GO bramki końcowej wymuszone WYŁĄCZNIE
+                           przez unverified_scope, zero własnych naruszeń) → `git add` te pliki też i
+                           HALT z adnotacją „WYMAGA PRZEGLĄDU"; wypisz `report.gaps` (luki warstw
+                           GO_WITH_GAPS, per warstwa) i `finalGate.absorbed_gaps` w treści HALT.
+                           GO_WITH_GAPS = warstwa zamknięta (dopisz do `layers_done:`), luki do przeglądu.
 5. zgłoszenie odstępstw → best-effort, NIE blokuje HALT z kroku 4 i niczego w nim nie zmienia.
                          Dla KAŻDEGO z: warstwa w `report` ze statusem ESCALATE_AND_HALT/
-                         BLOCKED_BY_PRIOR, `report.finalGate.verdict !== 'GO'`, krok 2 zakończony
+                         BLOCKED_BY_PRIOR ORAZ `cause === 'machine'`, `report.finalGate.verdict
+                         !== 'GO'` ORAZ `report.finalGate.cause === 'machine'`, krok 2 zakończony
                          exit 4 (workflow-lint — rule id z `[WLn]` w stderr), niepuste
-                         `deviation_note` w dowolnym wyniku warstwy/bramki końcowej — wywołaj:
+                         `deviation_note` w dowolnym wyniku warstwy/bramki końcowej — wywołaj.
+                         `cause === 'code'` (weryfikator sam znalazł naruszenia w kodzie, sonda
+                         na czerwono, brak nowych testów) to NIE odstępstwo maszyny — nie zgłaszaj,
+                         wypisz tylko w treści HALT. Brak pola `cause` = traktuj jak `machine`
+                         (stary skrypt). ORC-083:
                          node <claude-patterns>/scripts/report-deviation.mjs --project {nazwa}
                            --trigger <halt|blocked_by_prior|no_go|workflow_lint|agent_note>
                            [--rule <ORC-NNN|WLn>] --reason "<tekst>" [--task {TASK-ID}]
@@ -88,7 +98,7 @@ poza Twoją uwagą — to jednocześnie lista kandydatów do zautomatyzowania.
 | ORC-013 | warstwa ma `tags:` | nie interpretuj — są śladem, dlaczego wzorzec trafił tutaj | — (dane, nie reguła) | — |
 | ORC-014 | uruchamianie `checks` | werdykt z kodu wyjścia `$?`, nie z treści outputu | `orchestrate.template.mjs` (sonda) | [ORC-014](docs/decisions/orchestrate-rule-history.md#orc-014) |
 | ORC-015 | uruchamianie `checks` | `<cmd> > /tmp/check-<nazwa>.log 2>&1; echo "EXIT:$?"`; przy `EXIT:0` nie czytaj logu | `orchestrate.template.mjs` (sonda) | [ORC-015](docs/decisions/orchestrate-rule-history.md#orc-015) |
-| ORC-016 | monorepo | zawężaj `checks` do dotkniętego pakietu; pełny zakres tylko świadomie i z adnotacją | tylko prompt (zależy od treści `checks` w bloku) | [ORC-016](docs/decisions/orchestrate-rule-history.md#orc-016) |
+| ORC-016 | monorepo | zawężaj `checks` do dotkniętego pakietu; pełny zakres tylko świadomie i z adnotacją | `orchestrate.template.mjs` (`buildProbePrompt`, lookup `package.json` przez sondę-Bash — silnik nie ma fs) | [ORC-016](docs/decisions/orchestrate-rule-history.md#orc-016) |
 | ORC-017 | brak skryptu w `package.json` | pomiń i ZARAPORTUJ pominięcie | `orchestrate.template.mjs` (prompt sondy) | [ORC-017](docs/decisions/orchestrate-rule-history.md#orc-017) |
 | ORC-018 | niezerowy kod z `checks` | `NO-GO` natychmiast, `violations[]` = wyjście skryptu; nie analizuj dalej | `orchestrate.template.mjs` | — |
 | ORC-019 | verify bez `Bash` w `tools` | STOP z komunikatem, nie przepuszczaj warstwy po cichu | tylko prompt | — |
@@ -128,7 +138,7 @@ poza Twoją uwagą — to jednocześnie lista kandydatów do zautomatyzowania.
 | ORC-052 | sesja blisko limitu kontekstu | STOP przed uruchomieniem Workflow, poproś o świeżą sesję | tylko prompt | [ORC-052](docs/decisions/orchestrate-rule-history.md#orc-052) |
 | ORC-053 | budżety wyglądają na za duże | nie zaciskaj domyślnych; podnoś przez `budgets:` w project.yml | tylko prompt | [ORC-053](docs/decisions/orchestrate-rule-history.md#orc-053) |
 | ORC-054 | Workflow zakończył się `failed` | przeczytaj `journal.jsonl`, popraw, wznów `resumeFromRunId` — nigdy od zera bez diagnozy | tylko prompt | [ORC-054](docs/decisions/orchestrate-rule-history.md#orc-054) |
-| ORC-055 | fork diagnostyczny po `ESCALATE_AND_HALT` | prompt MUSI jawnie zakazać wywołań `Agent`/`Workflow`/`Task` | tylko prompt | [ORC-055](docs/decisions/orchestrate-rule-history.md#orc-055) |
+| ORC-055 | fork diagnostyczny po `ESCALATE_AND_HALT`/`BLOCKED_BY_PRIOR` | użyj `subagent_type: halt-diagnostician` (`agents/universal/halt-diagnostician.md`) — `disallowedTools: Agent, Workflow, Task` na poziomie definicji agenta, nie sam prompt | `agents/universal/halt-diagnostician.md` | [ORC-055](docs/decisions/orchestrate-rule-history.md#orc-055) |
 | ORC-056 | bramka końcowa | `orchestrate.final_gate` ze slotu; `on_fail: ESCALATE_AND_HALT` — wypisz werdykt i stój | `orchestrate.template.mjs` | — |
 | ORC-057 | `exit: STAGE_NOT_COMMIT` | `git add` zmienionych plików, raport, HALT — commit robi człowiek | tylko prompt (skrypt oddaje listę `staged`) | — |
 | ORC-058 | KAŻDA ścieżka wyjścia | usuń `.claude/run-state/orchestrating.json` — także po eskalacji i po odmowie z bramek | tylko prompt | [ORC-058](docs/decisions/orchestrate-rule-history.md#orc-058) |
@@ -142,6 +152,21 @@ poza Twoją uwagą — to jednocześnie lista kandydatów do zautomatyzowania.
 | ORC-067 | krok 4, HALT "staged, not committed" | `git add` NAJPIERW, `git status --short` PO — HALT z werdyktem zweryfikowanym, nie z wyliczonej listy plików | krok 4 (`commands/orchestrate.md`, tylko prompt) | [ORC-067](docs/decisions/orchestrate-rule-history.md#orc-067) |
 | ORC-068 | sygnatura zgłoszenia (krok 5) | `rule_ref` + `--layer` razem w sygnaturze; nowe wystąpienie na rekordzie `dismissed`/`promoted` REOPEN'uje go do `proposed` zamiast dopisać się po cichu | `report-deviation.mjs` | [ORC-068](docs/decisions/orchestrate-rule-history.md#orc-068) |
 | ORC-069 | weryfikator zwraca `GO` z niepustym `unverified_scope` | NIE jest to czysty GO: w pętli warstwy konsumuje próbę (`fix`) albo eskaluje po wyczerpaniu; na jednorazowej bramce końcowej wymuszone jako `NO_GO` | `orchestrate.template.mjs` (`decideVerdict`, bramka końcowa) | [ORC-069](docs/decisions/orchestrate-rule-history.md#orc-069) |
+| ORC-070 | pozycja `unverified_scope` leżąca w dirs INNEJ warstwy tego samego przebiegu | odfiltruj przed sprawdzeniem ORC-069 — to nie luka tej warstwy; wolny tekst i ścieżki nieprzypisane do żadnej warstwy nadal liczone konserwatywnie | `orchestrate.template.mjs` (`decideVerdict`, filtr `ownUnverified`) | [ORC-070](docs/decisions/orchestrate-rule-history.md#orc-070) |
+| ORC-071 | treść `unverified_scope` samo-przyznaje „poza zakresem" (prozą, bez ścieżki dopasowywalnej przez ORC-070) | odfiltruj i tak — ufaj słowu weryfikatora niezależnie od formatu; prompt dostaje dodatkowo twardą regułę formatu (1 wpis = 1 ścieżka) | `orchestrate.template.mjs` (`decideVerdict`, `SELF_ADMITS_OUT_OF_SCOPE`) | [ORC-071](docs/decisions/orchestrate-rule-history.md#orc-071) |
+| ORC-072 | bramka końcowa (jednorazowa, bez retry) trafia na `unverified_scope` bez sposobu na jawną adjudykację | renderuj `a.task.decisions` w promptcie bramki końcowej (ten sam kanał co warstwy mają przez `layer.scope.reason`) | `orchestrate.template.mjs` (`buildFinalGatePrompt`) | [ORC-072](docs/decisions/orchestrate-rule-history.md#orc-072) |
+| ORC-073 | sonda: „ostatnie 40 linii" loga może gubić błąd we własnym zakresie za cudzym ogonem (monorepo, wspólny `lint:check`) | grep po własnym `dirs` NAJPIERW, w całości; `tail` tylko jako fallback gdy grep pusty | `orchestrate.template.mjs` (`buildProbePrompt`, `scopeGrep`) | [ORC-073](docs/decisions/orchestrate-rule-history.md#orc-073) |
+| ORC-074 | `GO` z niepustym `unverified_scope` (ORC-069) i próby jeszcze zostały | to nie `fix` (kod nie ma czego naprawiać) — `reverify`: pomiń implementera, idź prosto w sondę+verify ze świeżym budżetem tur | `orchestrate.template.mjs` (`decideVerdict`, pętla warstwy) | [ORC-074](docs/decisions/orchestrate-rule-history.md#orc-074) |
+| ORC-075 | plik towarzyszący (WYJĄTEK w `scopeBlock`) brakuje, ale osobna jednostka `tests: true` tego samego przebiegu ma go w swoim zakresie | to JEJ praca — nie zgłaszaj jako naruszenie tej warstwy | `orchestrate.template.mjs` (`scopeBlock`) | [ORC-075](docs/decisions/orchestrate-rule-history.md#orc-075) |
+| ORC-076 | bramka końcowa dostaje `unverified_scope` z self-admission (ORC-071), ale NIE woła `decideVerdict()` | filtruj tym samym `filterSelfAdmittedOutOfScope()` (moduł-scope) przed sprawdzeniem, czy `GO` jest czysty | `orchestrate.template.mjs` (blok bramki końcowej) | [ORC-076](docs/decisions/orchestrate-rule-history.md#orc-076) |
+| ORC-077 | etykiety sond `diff-probe`/`diff-gate`/`checks` stałe per warstwa, niezależne od próby | dopisz numer próby do etykiety — inaczej cache silnika Workflow (klucz: etykieta+prompt) zamraża wynik pierwszej próby na retry tej samej warstwy | `orchestrate.template.mjs` (pętla warstwy, `label`) | [ORC-077](docs/decisions/orchestrate-rule-history.md#orc-077) |
+| ORC-078 | pathspec sondy testów z prefiksem `lib/` (dirs Fluttera) nigdy nie trafia w `test/`, które tego segmentu nie ma | dodaj wariant pathspecu bez `lib/` OBOK oryginalnego | `orchestrate.template.mjs` (`buildProbePrompt`, `globScoped`) | [ORC-078](docs/decisions/orchestrate-rule-history.md#orc-078) |
+| ORC-079 | plik analizy/task tego przebiegu w `unverified_scope` bramki końcowej, bez frazy self-admission (ORC-076 go nie łapie) | filtruj po ŚCIEŻCE (`a.task.analysisFile`/`taskFile`), nie po prozie — nie zależy od tego, jak weryfikator to nazwie | `orchestrate.template.mjs` (`filterOwnTaskArtifacts`, blok bramki końcowej) | [ORC-079](docs/decisions/orchestrate-rule-history.md#orc-079) |
+| ORC-080 | weryfikator (LLM) nie trzyma się jawnej decyzji z `a.task.decisions[]` renderowanej w prompcie (ORC-072) — powtarza zaadjudykowaną pozycję jako unverified | filtruj mechanicznie po `id` decyzji wymienionym w treści pozycji (`\bD7\b`), nie ufaj że LLM "zastosował" tekst | `orchestrate.template.mjs` (`filterAdjudicatedByDecision`, blok bramki końcowej) | [ORC-080](docs/decisions/orchestrate-rule-history.md#orc-080) |
+| ORC-081 | prompt weryfikatora podaje wynik sondy pod inną nazwą niż ta, której oczekuje definicja agenta (`checks`) | nazwij blok faktów obiektem `checks` (`checks.typecheck`, `checks.tests`), nazwami z instrukcji agenta | `orchestrate.template.mjs` (`buildVerifierPrompt`) | [ORC-081](docs/decisions/orchestrate-rule-history.md#orc-081) |
+| ORC-082 | typecheck warstwy (pełny pakiet) czerwony od zmiany portu/konstruktora, której implementacja należy do późniejszej warstwy | odrocz czerwień, gdy KAŻDY błąd TS leży w dirs późniejszej warstwy; własny zakres, wcześniejsze warstwy i błędy bez ścieżki nadal blokują | `orchestrate.template.mjs` (`typecheckRedIsLaterLayers`) | [ORC-082](docs/decisions/orchestrate-rule-history.md#orc-082) |
+| ORC-083 | krok 5 zgłasza każde `finalGate.verdict !== 'GO'` i każdy halt, także gdy winien jest kod | silnik tagi `cause` (`code`/`machine`) na haltach warstw i bramce końcowej; krok 5 zgłasza tylko `machine` | `orchestrate.template.mjs` (`decideVerdict`, pętla warstwy, bramka końcowa) · krok 5 | [ORC-083](docs/decisions/orchestrate-rule-history.md#orc-083) |
+| ORC-084 | warstwa: GO bez naruszeń, ale `unverified_scope` po wszystkich próbach, sonda zielona | status `GO_WITH_GAPS` zamiast `ESCALATE_AND_HALT`: przebieg idzie dalej, luki w `report.gaps` → bramka końcowa (nie liczy ich drugi raz) → człowiek; NO_GO bramki wymuszone samym unverified_scope → pliki staged z flagą „wymaga przeglądu” | `orchestrate.template.mjs` (`layerGapsAcceptable`, `filterKnownLayerGaps`, bramka końcowa) · krok 4 | [ORC-084](docs/decisions/orchestrate-rule-history.md#orc-084) |
 
 ## Co zrobić z regułą „tylko prompt"
 

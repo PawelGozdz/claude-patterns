@@ -19,6 +19,15 @@ designing anything non-trivial, this skill only distills the motion-relevant sub
 - `/opt/projects/juz-ide-api-1/docs/brand/brand-principles.md` — persuasion constitution
   ("jak traktujemy w produkcie = jak mówimy w marketingu"), applies to motion too
 
+> **Status [2026-09-27]:** motion tokens below (`Duration`/`Curve`) are still current — the new
+> `juz_ide_tokens` package (Faza 5 część A, `wdrozenie/POSTEP.md`) does not export motion values
+> yet (checked in `design-system/scripts/lib/generate-dart.ts`: color/typography/spacing/status
+> only). Colors used inside these examples (`v1Cream`, `v1Latte`, `v1Coffee`) describe the
+> palette being phased out (`mobile_design_replace`, `wdrozenie/KONFIGURACJA.md`) — for any NEW
+> component, get the equivalent color from `JuzIdeTheme`/`JuzIdeTokens` (`lib/main.dart`) instead
+> of these constants; keep using the `LocalHeroDesignTokens.animation*` duration/curve constants
+> and `getSoftShadow()`/`getSoftBorder()` as-is until a motion/shadow token export exists.
+
 ## Brand thesis → what it means for motion
 
 > "Aplikacja będzie przekonywać wizualnym pięknem, ale zatrzymywać funkcjonalnościami."

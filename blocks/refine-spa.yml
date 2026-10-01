@@ -1,0 +1,85 @@
+# Blok: refine-spa — framework/runtime: panel Vite + React + Refine + Ant Design (SPA
+# za wspólną bramą `iam`). Oś frameworka, więc BEZ `orchestrate.layers` — układ katalogów
+# monorepo (apps/api + apps/web + packages/contracts) i warstwa implementacji `web` wnosi
+# blok osi architektury `monorepo-layers`, nie ten.
+#
+# PROMOCJA (2026-09-27, krok zerowy przed `grant-flow-ui`, patrz wdrozenie/POSTEP.md
+# „Faza 4"): ten blok był lokalnym SZKICEM w `marketing-hub/.claude/blocks/web.yml`
+# (TS-MH-002, 2026-09-15) z komentarzem „drugi konsument: grant-flow-ui" — ten moment
+# właśnie nastąpił. Treść (triggers, panel, pattern_routing) przeniesiona 1:1, ścieżki
+# wzorców przepisane z `.claude/knowledge/patterns-local/web/` na globalne
+# `patterns/refine-spa/`. Karty wzorców mają `**Scope**: project-specific (marketing-hub)`
+# — jedyny realny, działający konsument na razie to `marketing-hub`; zdejmij tę linię
+# w każdej karcie, gdy `grant-flow` (albo inny projekt) faktycznie wdroży ten sam kształt.
+#
+# ZAŁOŻENIE STRUKTURALNE (decyzja architektoniczna, patrz `blocks/monorepo-layers.yml`
+# nagłówek dla pełnego uzasadnienia (a) vs (b)): ten blok i `monorepo-layers` zakładają
+# wspólnie pnpm monorepo `apps/api/` + `apps/web/` + `packages/contracts/`. Projekt, który
+# nie ma tej struktury (np. `grant-flow` dziś — jeden pakiet, kod w `src/`), musi ją
+# najpierw przyjąć (osobna decyzja, własna sesja) zanim doda ten blok do `stack_blocks`.
+#
+# Czego ten blok NIE robi, i dlaczego (dziedziczone z `web.yml`):
+# - nie wnosi `orchestrate.layers` — patrz wyżej.
+# - nie nakłada `rules/tsx` z claude-patterns: te reguły są pod Next.js (Server
+#   Components, proxy.ts), nie pod SPA. Styl kodu niesie karta web-structure.
+# - nie usuwa slotów `ddd/core` z panelu `/analyze`: repo z tym blokiem ma zwykle też
+#   część API (agregaty, porty), więc ddd-modeling i pattern-fit mają tam co robić.
+name: refine-spa
+axis: framework
+requires: []
+
+# Agenci stacku refine-spa: już globalni w agents/stacks/refine-spa/
+# (refine-implementer, refine-quality-verifier) — patrz agents/README.md i
+# METADATA.yml (agents.categories.stacks). setup-project.sh linkuje ten katalog
+# do .claude/agents/ przez overlay.agents poniżej.
+overlay:
+  agents: [stacks/refine-spa/]
+  # Bez tej linii setup-project.sh nie linkuje patterns/refine-spa/ do projektu, a karty web
+  # są ogłaszane przez /analyze, których projekt nie może otworzyć (verify-project-setup).
+  patterns: [refine-spa/]
+
+patterns:
+  # Półka `always` celowo pusta: karty webowe wchodzą tylko do tasków, które mówią o web.
+  # Zadanie czysto API nie ma ich widzieć.
+  triggers:
+    - keywords: [apps/web, refine, react, vite, frontend, "ant design", antd, spa, panel web, dashboard]
+      include:
+        - refine-spa/web-security-invariants-pattern.md
+        - refine-spa/web-structure-pattern.md
+    - keywords: [authprovider, accessControlProvider, dataprovider, provider, cookie, sesja web, uprawnien, permission, jsend]
+      include:
+        - refine-spa/refine-providers-pattern.md
+    - keywords: [playwright, "testing library", rtl, msw, jsdom, e2e web, smoke]
+      include:
+        - refine-spa/web-testing-pattern.md
+    - keywords: [csp, localstorage, sessionstorage, xss, sanitiz, markdown]
+      include:
+        - refine-spa/web-security-invariants-pattern.md
+
+analyze:
+  panel:
+    # ecc:architect jako analiza architektury panelu (agent-ekspert Refine nie istnieje;
+    # implementer i verifier refine-spa już tak — patrz overlay wyżej).
+    - { stage: web-analysis, agent: "ecc:architect",
+        when: "apps/web|\\bweb\\b|refine|react|vite|frontend|\\bspa\\b|ant design|antd|panel",
+        advisory: true }
+    # web-review: refine-quality-verifier zamiast ecc:react-reviewer — zna karty
+    # WS*/PRV*/WST*/WT* i działa jako advisory w /analyze (bez VETO), VETO ma dopiero jako
+    # `verify` warstwy `web` w bloku `monorepo-layers`.
+    - { stage: web-review, agent: "refine-quality-verifier",
+        when: "apps/web|\\bweb\\b|refine|react|vite|frontend|\\bspa\\b|ant design|antd|panel",
+        advisory: true }
+
+budgets:
+  web-analysis: { max_tool_calls: 15, on_limit: emit-partial }
+  web-review: { max_tool_calls: 12, on_limit: emit-partial }
+
+# Mapowanie „plik → wzorzec, który nim rządzi" dla bramek hookowych (check-patterns-read).
+# Zakres wąski i po ścieżce: providery mają swoją kartę, reszta apps/web kartę struktury.
+# Bezpieczeństwo (WS1-WS7) pilnuje trigger słów + stage web-review, nie routing.
+pattern_routing:
+  paths:
+    - match: "apps/web/src/providers/"
+      pattern: "refine-spa/refine-providers-pattern.md"
+    - match: "apps/web/src/"
+      pattern: "refine-spa/web-structure-pattern.md"

@@ -1,0 +1,116 @@
+# Blok: monorepo-layers — oś architektury dla monorepo pnpm apps/api + apps/web +
+# packages/contracts. ZASTĘPUJE `ddd/layers` (alias `ddd` rozwija się do
+# ddd/core + ddd/layers + …, więc project.yml wymienia składniki `ddd` wprost, bez
+# ddd/layers, gdy używa tego bloku — warstwy może wnieść tylko jeden blok osi
+# architektury, ADR 0008).
+#
+# PROMOCJA (2026-09-27, krok zerowy przed `grant-flow-ui`, patrz wdrozenie/POSTEP.md
+# „Faza 4"): ten blok był lokalnym SZKICEM w `marketing-hub/.claude/blocks/layers-monorepo.yml`
+# (TS-MH-002, 2026-09-15), oznaczonym w kodzie jako „kandydat na blok globalny
+# monorepo-layers w claude-patterns po drugim konsumencie (grant-flow + grant-flow-ui)".
+# Ten moment właśnie nastąpił — treść przeniesiona bez zmian (patrz decyzja strukturalna
+# poniżej: dlaczego BEZ zmian, nie sparametryzowana).
+#
+# ═══════════════════════════════════════════════════════════════════════════════════
+# DECYZJA ARCHITEKTONICZNA (a) vs (b) — nie rozstrzygnięta po cichu, jak zażądano.
+# ═══════════════════════════════════════════════════════════════════════════════════
+# Problem: ten blok ma zaszyte ścieżki `apps/api/src/`, `apps/web/`, `packages/contracts/`
+# — zakłada strukturę monorepo identyczną jak `marketing-hub`. `grant-flow` (drugi
+# planowany konsument) DZIŚ nie jest monorepo — jeden pakiet backendowy, kod w `src/`,
+# bez `apps/web`.
+#
+# Opcja (a) rozważona i ODRZUCONA: sparametryzować ścieżki (`params: { api_root: ... }`,
+# podstawienie `${api_root}` w `dirs:`) — mechanizm ISTNIEJE w silniku
+# (`materialize-runtime.mjs`, `substituteParams` działa na każdym węźle-scalarze
+# dokumentu, nie tylko w `analyze.panel`, patrz `blocks/ddd/core.yml` → `ddd_library`
+# dla precedensu) i BYŁBY technicznie wykonalny dla samych `dirs:`. Odrzucona mimo to,
+# bo parametryzacja tylko ścieżek byłaby półśrodkiem: `checks:` tej warstwy
+# (`typecheck:api`, `lint:check:api`, `test:api`, `*:web`) to nazwy skryptów
+# `pnpm --filter <pakiet> run <skrypt>` w root `package.json` — wymagają PRAWDZIWEGO
+# workspace pnpm z nazwanymi pakietami `api`/`web`, nie tylko katalogów o innej nazwie.
+# Sparametryzowanie samych `dirs:` przy hardkodowanych `checks:` cichcem psuje się dla
+# każdego consumera bez workspace pnpm. Pełna parametryzacja (ścieżki + nazwy skryptów +
+# założenie workspace) oznaczałaby projektowanie generycznego zachowania dla struktury
+# (płaski pakiet + osobny UI, bez pnpm workspace), która ma ZERO zwalidowanych realnych
+# konsumentów — czyste zgadywanie, wbrew własnej zasadzie tego repo (`docs/CONTRIBUTING.md`
+# „Promoting a Project Refactor to a Pattern", pkt 3: uniwersalne dopiero po DRUGIM
+# realnym, niezależnym użyciu TEGO SAMEGO kształtu — a `grant-flow` to inny kształt,
+# nie drugie użycie monorepo-shape).
+#
+# Opcja (b) WYBRANA: ten blok NARZUCA strukturę apps/api+apps/web+packages/contracts jako
+# twardy wymóg (bez zmian względem szkicu `marketing-hub`). Nazwa bloku (`monorepo-layers`,
+# nie `layers` czy `web-layers`) to świadomie część kontraktu, nie kosmetyka — cała jego
+# wartość (checks per-pakiet, VETO warstwy `web`, granica `packages/contracts`) wynika z
+# bycia monorepo pnpm. Decyzję „czy i jak przekształcić `grant-flow` w monorepo" ZOSTAWIAMY
+# sesji w `grant-flow` — to osobny, następny krok, z pełnym kontekstem tamtego repo
+# (gałąź `feature/TS-RATE-003-rate-card-per-role` z aktywną, dużą pracą, worktree od
+# `develop`), którego ta sesja (claude-patterns) nie ma i nie powinna zgadywać.
+#
+# Jeśli w przyszłości POWSTANIE drugi realny konsument o kształcie „płaski pakiet +
+# osobny UI, bez pnpm workspace" — to jest moment na sparametryzowanie (albo osobny blok
+# `flat-layers-with-ui`), nie teraz, i nie na podstawie jednego hipotetycznego przypadku.
+# ═══════════════════════════════════════════════════════════════════════════════════
+#
+# Pozostałe uzasadnienia (dziedziczone z `layers-monorepo.yml`, bez zmian):
+# - `ddd/layers` zna jeden pakiet (`domain/`, `application/`, `infrastructure/`,
+#   `__tests__/`). Dopasowanie ścieżek jest podłańcuchowe, więc `apps/api/src/.../domain/`
+#   nadal trafia — ale `apps/web/**` i `packages/contracts/**` nie należały do ŻADNEJ
+#   warstwy: bramka „kod istnieje" nie widziała zmian w panelu ani w kontraktach (obejście
+#   z TS-MH-001: ręczne nadpisania args prepare). Ten blok kończy z obejściem.
+# - Warstwa `web` ma WŁASNEGO implementera i WŁASNE VETO (`refine-implementer`,
+#   `refine-quality-verifier` z `agents/stacks/refine-spa/`, linkowane przez overlay
+#   bloku `refine-spa`). `code-quality-verifier` (DDD) nie ma nic do powiedzenia o panelu
+#   React; `layers[].verify` nadpisuje slot `inner_loop.verify` tylko dla tej warstwy.
+# - `web` jest `optional` z `create_when`: zadanie czysto API nie odpala implementera
+#   panelu. Analiza może dodatkowo pominąć warstwę przez `layers_skip`.
+name: monorepo-layers
+axis: architecture
+requires: [ddd/core]
+
+orchestrate:
+  layers:
+    # checks warstw DDD: bez nich lint/typecheck domeny wychodził dopiero w sondzie
+    # infrastructure jako cudza czerwień. `lint:check`, nie `lint` (--fix).
+    # Zawężone do pakietu (ORC-016): root-owe `typecheck`/`lint:check`/`test` to
+    # `pnpm -r run ...` (całe monorepo) — implementer widział dziesiątki niepowiązanych
+    # warningów z shared/** obok realnych błędów we własnych plikach i uznał całość za
+    # poza zakresem. `typecheck:api`/`lint:check:api`/`test:api`/`*:web` w root
+    # package.json to `pnpm --filter <pkg> run ...`, per-pakiet.
+    - { id: domain, dirs: [apps/api/src/, domain/], agent: "domain-application-implementer",
+        tags: ["api:domain"], checks: ["typecheck:api", "lint:check:api"],
+        role: "Model domenowy w apps/api: agregaty, encje, VO, zdarzenia, specyfikacje. Zero I/O, zero frameworka." }
+    - { id: application, dirs: [application/], agent: "domain-application-implementer",
+        tags: ["api:app"], checks: ["typecheck:api", "lint:check:api"],
+        role: "Przypadki użycia w apps/api: handlery komend i zapytań orkiestrujące domenę. Bez reguł biznesowych." }
+    - { id: infrastructure,
+        dirs: [infrastructure/, apps/api/src/app/, apps/api/src/shared/, packages/contracts/, docker-compose.yaml, infra/],
+        agent: "infrastructure-implementer",
+        tags: ["api:data-access", "api:api-surface"],
+        checks: ["typecheck:api", "lint:check:api"],
+        role: "Styk ze światem w apps/api + wspólne kontrakty (packages/contracts, Zod — jedyne źródło DTO dla api i web). Repozytoria, kontrolery, mappery, adaptery, compose." }
+    - { id: web, dirs: [apps/web/], agent: "refine-implementer", verify: "refine-quality-verifier",
+        optional: true,
+        create_when: "apps/web|\\bweb\\b|refine|react|vite|frontend|\\bspa\\b|ant design|antd|panel|dashboard",
+        tags: ["web:ui"],
+        checks: ["typecheck:web", "lint:check:web", "test:web", "build:web"],
+        role: "Panel apps/web (Vite + React + Refine + AntD): providery, shell, strony i ICH testy L1/L2 + smoke Playwright. Konsumuje packages/contracts, nie deklaruje własnych DTO. API i kontrakty są POZA zakresem — zgłoś potrzebę, nie implementuj." }
+    - { id: testing, dirs: [__tests__/, apps/api/test/], agent: "test-implementer", tests: true,
+        tags: ["api:tests"],
+        # lint:check:api: sonda tej warstwy sprawdzała pierwotnie tylko `test:api`, więc
+        # błędy lint w nowych plikach testowych przechodziły niezauważone.
+        checks: ["test:api", "lint:check:api"],
+        role: "Testy API (apps/api): piramida L1/L2/L3. Testy panelu pisze warstwa web — test RTL wymaga autora komponentu." }
+  inner_loop: { verify: "code-quality-verifier", max_attempts: 3, on_max: ESCALATE_AND_HALT }
+  # final_gate.checks wchodzą ZAWSZE, także gdy analiza pominie warstwę testing (ORC-022).
+  # format:check/validate:br:api/build: realne CI je uruchamia, final_gate.checks musi
+  # mieć je też, inaczej naruszenia przechodzą niezauważone przez wiele warstw.
+  final_gate: { agent: "security-e2e-verifier", on_fail: ESCALATE_AND_HALT,
+                checks: ["typecheck", "lint:check", "test", "format:check", "validate:br:api", "build"] }
+  exit: STAGE_NOT_COMMIT
+
+ralphinho:
+  units: single
+  worktree: shared
+  fan_out: sequential
+  merge_stage: noop
+  guardrails: { push_only: "claude/*", max_attempts_per_layer: 3 }

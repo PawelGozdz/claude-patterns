@@ -1,8 +1,8 @@
 # Global Claude Code Patterns Repository
 
-**Version**: 3.6.0
+**Version**: 3.8.0
 **Created**: 2026-02-05
-**Updated**: 2026-08-27
+**Updated**: 2026-09-27
 **Purpose**: Reusable patterns, agents, skills, project management, marketing skills, finance skills, and legal skills for Claude Code
 
 ---
@@ -45,7 +45,7 @@ $CLAUDE_PATTERNS/
 ├── README.md                    # This file
 ├── METADATA.yml                 # Repository metadata
 ├── .gitignore                   # Git exclusions
-├── patterns/                    # Production patterns (58 core + 45 stack-specific + 1 marketing + 2 finance + 2 legal)
+├── patterns/                    # Production patterns (58 core + 49 stack-specific + 1 marketing + 2 finance + 2 legal)
 │   ├── README.md                # Pattern index & usage guide
 │   ├── domain/                  # Domain layer (8 patterns)
 │   ├── application/             # Application layer (5 patterns)
@@ -62,7 +62,7 @@ $CLAUDE_PATTERNS/
 │   ├── requirements.txt         # Python dependencies
 │   ├── settings.json.example    # Example Claude settings
 │   └── README.md                # MCP setup & usage guide
-├── agents/                      # Agent definitions (24 universal + 33 stack-specific)
+├── agents/                      # Agent definitions (25 universal + 35 stack-specific)
 │   ├── README.md                # Agent setup & usage guide
 │   ├── universal/               # Stack-agnostic agents (linked to ~/.claude/agents/)
 │   │   ├── backend-technology-expert.md
@@ -79,7 +79,7 @@ $CLAUDE_PATTERNS/
 │       ├── flutter-clean-arch/  # 7 agents (arch, quality, UI, security, performance)
 │       ├── node-ts-claude-api/  # 3 agents (implementer, safety, architecture)
 │       ├── astro-static/        # 2 agents (content, implementer)
-│       ├── design-system/       # 1 agent (ui-reviewer — screenshot review, ADR 0010)
+│       ├── design-system/       # 3 agents (ui-reviewer, pattern-auditor, token-drift — ADR 0010)
 │       ├── nextjs-app/          # 2 agents (arch, quality)
 │       ├── sveltekit/           # 2 agents (arch, quality)
 │       ├── python/              # 2 agents (arch, quality)
@@ -143,7 +143,7 @@ $CLAUDE_PATTERNS/
 ├── hooks/                       # PostToolUse/Stop hooks
 │   ├── pm-task-check.js         # [NEW] PM briefing when task files change
 │   └── ...                      # (other hooks)
-├── commands/                    # Global commands (34 — symlinked to ~/.claude/commands/)
+├── commands/                    # Global commands (37 — symlinked to ~/.claude/commands/)
 │   ├── README.md                # Command catalog & usage guide
 │   ├── pulse.md                 # PM: full team sync
 │   ├── pm-status.md             # PM: quick state read (~$0)
@@ -519,8 +519,8 @@ cd ~/projects/claude-patterns
 ```
 
 **What this does**:
-- Creates per-file symlinks in `~/.claude/agents/` for 24 universal agents
-- Creates `~/.claude/commands/` symlink (34 commands)
+- Creates per-file symlinks in `~/.claude/agents/` for 25 universal agents
+- Creates `~/.claude/commands/` symlink (37 commands)
 - Creates `~/.claude/hooks/` symlink (43 hooks)
 - Idempotent — safe to run multiple times
 
@@ -1156,11 +1156,11 @@ cat .claude/settings.json  # Ensure patterns path is correct
 - Production-tested patterns since 2026-01-06
 
 **Key Documentation**:
-- `patterns/README.md` — Full pattern index (108 patterns)
-- `agents/README.md` — Agent catalog (57 agents)
-- `commands/README.md` — Command catalog (34 commands)
+- `patterns/README.md` — Full pattern index (112 patterns)
+- `agents/README.md` — Agent catalog (60 agents)
+- `commands/README.md` — Command catalog (37 commands)
 - `patterns/orchestration/project-management-system.md` — PM system docs
 
 ---
-**Version**: 3.6.0
-**Last Updated**: 2026-08-27
+**Version**: 3.8.0
+**Last Updated**: 2026-09-27

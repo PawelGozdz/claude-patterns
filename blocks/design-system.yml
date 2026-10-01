@@ -12,8 +12,13 @@
 # Co wnosi:
 #   - skille (kategoria skills/design-system/): design-tokens, ui-patterns, screen-build,
 #     visual-check (= komenda /visual-check), new-screen (komenda /new-screen przez
-#     commands/new-screen.md — skill ma disable-model-invocation: true)
-#   - agent ui-reviewer (ocenia zrzuty, bez prawa zapisu)
+#     commands/new-screen.md — skill ma disable-model-invocation: true), flutter-theme,
+#     token-change (komenda /token-bump), design-audit (komenda /design-audit),
+#     canvas-backup (komenda /canvas-backup) — te trzy ostatnie też przez
+#     commands/*.md, disable-model-invocation: true (Faza 5B, 2026-09-27)
+#   - agenty: ui-reviewer (ocenia zrzuty), pattern-auditor (wzorce ekranów, duplikacja
+#     komponentów, brakujące stany), token-drift (literały, zdeprecjonowane tokeny,
+#     rozjazd wersji) — wszystkie bez prawa zapisu, bez VETO
 #   - hook check-ui-tokens: ESLint projektu + reguły designu na zapisanym .ts/.tsx w src/
 #
 # Wzorce i parametry: świadomie brak. Wzorce ekranów żyją w skillu ui-patterns (proza,
@@ -26,8 +31,16 @@
 # projektu. Bez panelu /analyze na razie: ocena wizualna dzieje się na zrzutach
 # (/visual-check), a nie na etapie analizy tekstu zadania.
 #
-# Flutter: hooki check-design-tokens / check-typography-tokens i wzorzec
+# Flutter: hooki check-design-tokens / check-typography-tokens i TREŚĆ wzorca
 # flutter/design-token-pattern.md pozostają w bloku `flutter` — tu ich nie dublujemy.
+#
+# Wyjątek udokumentowany (Faza 5B, 2026-09-27): procedury audytu/governance tokenów są
+# cross-stack z natury (skanują web + Flutter w jednym przebiegu — design-audit,
+# pattern-auditor, token-drift) albo istnieją tu jako odpowiednik czegoś już w tej
+# kategorii (flutter-theme = odpowiednik design-tokens dla Fluttera; uzupełnia
+# design-token-pattern.md, nie powiela go — dokładnie ten sam podział co design-tokens
+# ma już w swojej sekcji "## Flutter"). `juz-ide-mobile-app` ma OBA bloki aktywne
+# równolegle: `flutter` dla lintów/wzorca, `design-system` dla tych procedur.
 name: design-system
 axis: ui
 requires: []

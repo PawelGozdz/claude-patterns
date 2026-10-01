@@ -20,16 +20,20 @@
 // `projects[]`), a nie stosem duplikatów. Świadomie bez locka na współbieżny zapis z
 // dwóch terminali naraz — akceptowalne dla best-effort telemetrii niskiej częstotliwości.
 //
-// Skrypt tylko `git add` (staguje) wynikowy plik w claude-patterns — nigdy nie commituje.
-// Triage (promote do docs/tasks/TASK-ORCH-NNN.md albo status: dismissed) robi człowiek,
-// patrz docs/tasks/_inbox/README.md.
+// Skrypt NIGDY nie commituje ani nie staguje. Nowy/reopened wpis (status: proposed) zostaje
+// nietrackowany — to CELOWE: `git status` w claude-patterns ma pokazywać nietriage'owane
+// zgłoszenia jako `??`, a zestagowane (`A`/`M`) jako te, które człowiek/agent już przejrzał
+// i rozstrzygnął (dismissed/promoted). Do 2026-09-27 skrypt sam robił `git add` na każdym
+// zapisie (także reopen), więc `git status` nie odróżniał nowego od przetriage'owanego —
+// wszystko wyglądało jednakowo zestagowane. Triage (promote do docs/tasks/TASK-ORCH-NNN.md
+// albo status: dismissed) robi człowiek — i to on/ona (albo agent w jego imieniu) staguje
+// plik, edytując `status:`, patrz docs/tasks/_inbox/README.md.
 //
 // Wyjście (exit code): 0 = zapisano, 1 = błąd użycia lub błąd zapisu. Wołający (Krok 5
 // w commands/orchestrate.md) traktuje niezerowy exit jako niebłokujący — dopisuje uwagę
 // do treści HALT i jedzie dalej, nie przerywa przebiegu /orchestrate z tego powodu.
 
 import { readFileSync, writeFileSync, existsSync, readdirSync, mkdirSync } from 'node:fs';
-import { spawnSync } from 'node:child_process';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
@@ -169,11 +173,6 @@ function upsert(args) {
 
   const out = `---\n${YAML.stringify(fm).trimEnd()}\n---\n\n${body.replace(/^\n+/, '')}`;
   writeFileSync(target, out);
-
-  const add = spawnSync('git', ['-C', REPO_ROOT, 'add', target], { encoding: 'utf8' });
-  if (add.status !== 0) {
-    process.stderr.write(`⚠ report-deviation: zapisano ${target}, ale \`git add\` nie powiódł się: ${add.stderr || add.error}\n`);
-  }
 
   console.log(`inbox: ${id} occurrences=${fm.occurrences}`);
 }

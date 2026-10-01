@@ -14,6 +14,13 @@ this shape.
 
 (pliki definiujące tokeny są zwolnione z DT1-DT3 dla samych siebie, ale muszą stosować DT5)
 
+> **Uwaga [2026-09-27]:** DT1/DT2/DT3 mówią „token lub odpowiednik” — w `juz-ide-mobile-app` to
+> dziś DWA równoległe zestawy: nowy `JuzIdeTheme`/`JuzIdeTokens` (`juz_ide_tokens`, kanon dla
+> koloru/typografii/spacingu w NOWYM kodzie) i stary `LocalHeroDesignTokens`/`AppTypography`
+> (kanon dla animacji/cienia/bordera/ikon, i wciąż jedyny system w niezmigrowanych
+> `v1_*`/`brutalist_*`). Pełny kontekst i nierozstrzygnięta kwestia DS-007 vs nowy system:
+> [`design-token-pattern.md`](./design-token-pattern.md).
+
 ## MUST
 
 - **DT1** — Kolor w widgecie/prezentacji przez nazwany token (`AppColors.*`, `*DesignTokens.*`

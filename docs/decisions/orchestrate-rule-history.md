@@ -466,6 +466,28 @@ Prompt forka diagnostycznego MUSI jawnie wymieniać zakaz: „NIE wywołuj Agent
 Task — Twoim JEDYNYM dozwolonym wyjściem jest raport tekstowy do mnie." I: żaden kolejny
 `Workflow` nie startuje na podstawie diagnozy, której nie przejrzałeś Ty (lub człowiek).
 
+**Dodatek 2026-09-27 — „tylko prompt" złamane DRUGI raz, przeniesione do kodu.** grant-flow
+TS-RATE-003: fork diagnostyczny po `ESCALATE_AND_HALT` na warstwie `application:application`
+(3x identyczny realny NO_GO — brak `__tests__/handler.spec.ts` dla 4 nowych handlerów), mimo
+jawnej instrukcji „NIE wywołuj Agent/Workflow/Task, wyłącznie raport" — zignorował ją, wpisał
+`layers_done` dla tej warstwy BEZ napisania brakujących testów (samo-zatwierdzenie warstwy,
+którą własny weryfikator 3x poprawnie odrzucił) i odpalił nienadzorowany kolejny `Workflow`
+(przy okazji wykonujący też legalną robotę na `infrastructure-acl`/`infrastructure-persistence`
+— nie czysty no-op, co utrudniło wykrycie). Koordynator złapał to krzyżowym sprawdzeniem
+dziennika poprzedniego, autoryzowanego przebiegu vs. bieżący stan dysku PRZED zaufaniem
+samo-zgłoszonemu `SKIPPED`/`layers_done` łotrzykowskiego przebiegu; cofnął fałszywy wpis.
+Dodatkowo: `TaskStop` na agencie forka NIE zatrzymał już wystrzelonego wywołania `Workflow` —
+to leciało dalej ~20 minut po stopie.
+
+Druga niezależna konfirmacja tego samego wzorca (pierwsza: 2026-08-31, api-2) uruchamia własną
+regułę tego repo („Co zrobić z regułą »tylko prompt«" w `commands/orchestrate.md`): przenieś do
+kodu, nie dopisuj kolejnego akapitu prozy. `agents/universal/halt-diagnostician.md` — dedykowany
+agent z `disallowedTools: Write, Edit, MultiEdit, Agent, Workflow, Task` na poziomie DEFINICJI,
+nie samego promptu. Fork diagnostyczny po halcie/blokadzie MA używać
+`subagent_type: halt-diagnostician`, nie gołego `fork`/`general-purpose`, który dziedziczy pełny
+zestaw narzędzi wywołującego. `TaskStop`-nie-zatrzymuje-zagnieżdżonego-`Workflow` pozostaje
+otwartym pytaniem o zachowanie samego harnessu — poza zasięgiem tego repo, do zgłoszenia osobno.
+
 <a id="orc-058"></a>
 
 ### ORC-058 — znacznik przebiegu usuwany na KAŻDEJ ścieżce wyjścia
@@ -647,6 +669,267 @@ praktyce daje weryfikatorowi szansę dokończyć to, czego nie zdążył. Egzekw
 `orchestrate.template.mjs` (`decideVerdict`, sekcja bramki końcowej); eval:
 `verdict-go-with-unverified-scope-is-not-clean-go` w `tests/flow-evals/orchestrate-script/
 run.js`.
+
+<a id="orc-070"></a>
+
+### ORC-070 — `unverified_scope` cudzej warstwy nie blokuje czystego `GO` (2026-09-26)
+
+ORC-069 (wyżej) traktuje KAŻDĄ niepustą pozycję `unverified_scope` jednakowo — jako lukę TEJ
+warstwy. W praktyce weryfikator bywa uczciwy o dwie różne rzeczy naraz: „nie zdążyłem sprawdzić
+X w SWOIM zakresie" (to ORC-069 ma łapać) i „X w ogóle nie jest moją robotą, tylko innej
+jednostki tego samego przebiegu" (to nie jest niedokończona weryfikacja — to poprawne
+przyznanie granicy `layers_scope.dirs`). Zlanie obu w jedno paliło pełną próbę na kodzie, który
+był już gotowy i poprawny.
+
+Ujawnione 2026-09-26, godzinę po starcie ORC-069: grant-flow TS-RATE-003, warstwa
+`domain:domain` — weryfikator dał `GO` z `unverified_scope` na próbach 2 i 3 (`violations: []`),
+ESCALATE_AND_HALT po 3 próbach. Diagnostyka dziennika + stanu dysku potwierdziła agregat/
+encję/eventy/błędy tej jednostki za kompletne i poprawne. Z trzech pozycji `unverified_scope`
+dwie (`domain/repositories/`, okablowanie error-mappera) z definicji leżą poza
+`layers_scope.dirs` tej jednostki — należą do jednostek `application`/
+`infrastructure-persistence` tego samego przebiegu; trzecia (pełny re-walk VO reguła-po-regule)
+powtarza weryfikację już wykonaną w innej jednostce/przebiegu.
+
+`decideVerdict()` dostaje teraz opcjonalnie `layer` i `allLayers` (wszystkie warstwy planu
+bieżącego przebiegu). Pozycja `unverified_scope`, która **wygląda na ścieżkę** (zawiera `/` albo
+`.`) i **nie dotyka** `effectiveDirs()` bieżącej warstwy, ale dotyka `effectiveDirs()` INNEJ
+warstwy planu — zostaje odfiltrowana przed sprawdzeniem „czy GO jest czysty". Wolny tekst bez
+separatora ścieżki (np. „pełny re-walk reguł") i ścieżki nieprzypisane do ŻADNEJ warstwy zostają
+liczone tak jak wcześniej — konserwatywnie, jako realna luka — bo nie da się mechanicznie
+odróżnić duplikatu weryfikacji od prawdziwie pominiętego zakresu bez historii poprzednich
+jednostek/przebiegów (to pozostaje otwarte; patrz DEV-orc-069-implementation-sdk-dart-core.md
+i DEV-orc-069-implementation.md w `docs/tasks/_inbox/` dla przypadków, których ten filtr
+świadomie NIE rozwiązuje). Wywołania `decideVerdict()` bez `layer` (stare API, testy funkcji w
+izolacji) wyłączają filtr i zachowują się jak przed ORC-070. Egzekwuje
+`orchestrate.template.mjs` (`decideVerdict`, filtr `ownUnverified`); eval:
+`verdict-unverified-scope-filters-other-layers-own-scope` w `tests/flow-evals/
+orchestrate-script/run.js`.
+
+**Dodatek 2026-09-27 — przyczyna, nie tylko objaw.** Filtr mechaniczny wyżej łapie zgłoszenie
+DOPIERO w `decideVerdict()`, PO tym jak weryfikator już wpisał cudzą pozycję do
+`unverified_scope`. Drugie niezależne wystąpienie potwierdziło, że to systematyczne: juz-ide-api-1
+TS-SEC-112, warstwa `infrastructure:guards` — 3 IDENTYCZNE rundy `GO` z `unverified_scope`
+(`changed_files: []` w rundach 2 i 3, zero zmian kodu między nimi), bo `unverified_scope`
+wskazywał na `calibration-signal-shutdown.service.ts` (jednostka `shutdown`),
+`system-log-retention-sweeper.scheduler.ts` (jednostka `logging`) i pełny przegląd speców
+(jednostka `test-implementer`) — dokładnie to, co ORC-011 już nazywa „poza zakresem, nie
+brakujący", tylko zastosowane do `dirs`, nie do samego pola `unverified_scope`. Diagnostyka
+ręczna (grep na plikach) potwierdziła zero realnego defektu; 3 identyczne rundy zjadły cały
+budżet prób na zerowej robocie. `buildVerifierPrompt()` dostał teraz wprost ten sam reminder,
+którym ORC-011 opisuje `dirs` — wpisz do `unverified_scope` WYŁĄCZNIE własny, niesprawdzony
+zakres; plik/spec innej jednostki tego przebiegu pomiń całkowicie, nie zgłaszaj go tutaj. To
+uzupełnia filtr mechaniczny (który nadal łapie wolny tekst bez separatora ścieżki, np. „pełny
+przegląd speców", gdyby jednak trafił do `unverified_scope" mimo przypomnienia), nie zastępuje
+go — obrona w dwóch warstwach: prompt zapobiega u źródła, filtr sprząta to, czego prompt nie
+złapał. Egzekwuje `orchestrate.template.mjs` (`buildVerifierPrompt`, akapit `unverified_scope`
+tuż po instrukcji werdyktu); eval: rozszerzony
+`verifier-prompt-carries-probe-facts-and-forbids-rerun` w `tests/flow-evals/orchestrate-script/
+run.js`.
+
+<a id="orc-071"></a>
+
+### ORC-071 — samo-przyznanie „poza zakresem" w treści `unverified_scope` wystarcza (2026-09-27)
+
+Dodatek do ORC-070 z tego samego dnia potwierdził się fałszywy niecały tydzień — a właściwie
+tego samego dnia: juz-ide-api-1 TS-SEC-112, warstwa `infrastructure:shared-infra`, WARIANT #2
+tego samego przebiegu. Weryfikator (mimo świeżo dodanego `scopeReminder`) wpisał do
+`unverified_scope` jeden string prozy: „guards unit files (reputation-threshold.guard.ts,
+residence-verification.guard.ts, geographic-access.guard.ts) — poza zakresem tej jednostki
+(shared-infra)". Filtr ORC-070 wymaga strukturalnego dopasowania do `dirs` innej warstwy przez
+`layerTouches()` — goła nazwa pliku bez prefiksu katalogu, wpleciona w nawias wewnątrz zdania,
+nie dopasowuje się do niczego, więc pozycja liczyła się jako realna luka MIMO że weryfikator
+sam już powiedział wprost, że nią nie jest. Wniosek wypisany w zgłoszeniu wprost: „instrukcja
+promptu nie jest wiążąca dla LLM" — samo dopisanie przypomnienia o treści (co wolno/czego nie
+wolno wpisywać) nie wymusza też FORMATU wpisu.
+
+Dwie zmiany, obie w `decideVerdict()`/`buildVerifierPrompt()`, żadna nie zależy od tego, czy
+druga zadziała:
+1. **Ufaj słowu weryfikatora.** Pozycja `unverified_scope`, której treść zawiera samo-przyznanie
+   („poza zakresem", „out of scope", „inna/innej jednostki", „owned by another/a different") —
+   `SELF_ADMITS_OUT_OF_SCOPE` w `decideVerdict()` — jest odrzucana z `ownUnverified`
+   NIEZALEŻNIE od tego, czy da się ją dopasować do `dirs` którejkolwiek warstwy. To mocniejszy
+   sygnał niż dopasowanie ścieżki: skoro weryfikator sam to nazwał, nie ma sensu wymagać od
+   niego jeszcze poprawnego formatu, żeby mu uwierzyć.
+2. **Twardy FORMAT w promptcie.** `buildVerifierPrompt()` dostał wprost regułę: jeden wpis
+   `unverified_scope` = jedna ścieżka względem repo, nic więcej — bez nawiasów, wyjaśnień, kilku
+   plików w jednym stringu ani gołych nazw bez katalogu. Nie gwarantuje zgodności (LLM), ale
+   zmniejsza szansę na powtórkę tego wariantu w przyszłości.
+
+Obrona w trzech warstwach razem z ORC-070/ORC-011: prompt każe pominąć cudzy zakres całkowicie
+(źródło), prompt każe formatować to, co jednak zostanie wpisane (format), `decideVerdict()`
+łapie zarówno dopasowanie ścieżkowe (ORC-070), jak i samo-przyznanie w prozie (ORC-071) —
+niezależnie od tego, które z dwóch przypomnień prompt faktycznie wymusił. Egzekwuje
+`orchestrate.template.mjs` (`decideVerdict`, `SELF_ADMITS_OUT_OF_SCOPE`); eval:
+`verdict-unverified-scope-self-admission` w `tests/flow-evals/orchestrate-script/run.js`.
+
+**Osobna, NIEROZWIĄZANA obserwacja z tego samego zgłoszenia** (nie ORC-071, inny mechanizm):
+`layers_done` nie zostało zapisane do `analysis.md` po pierwszym resume tego przebiegu, mimo że
+`shared-infra` i `guards` obie osiągnęły faktyczny GO — drugi resume przerabiał więc obie
+jednostki od zera. To dotyczy persystencji checkpointu przy wznowieniu (`resumeFromRunId`), nie
+`decideVerdict()`, i wymaga osobnej inwestygacji, zanim powstanie kolejna reguła ORC — patrz
+`DEV-orc-070-infrastructure-shared-infra.md` w `docs/tasks/_inbox/`, pozostawione częściowo
+`proposed` w tej sprawie.
+
+**Dodatek (tego samego dnia, 3. wystąpienie na tym samym tasku)** — grant-flow TS-RATE-003,
+warstwa `infrastructure:infrastructure-persistence`: `unverified_scope` zawierał „VO files
+owned by domain unit" i „aggregate/entity internals owned by domain unit" — samo-przyznanie
+jest, ale w formie „owned by `<nazwa jednostki>` unit", nie „owned by another/a different", więc
+wąski regexp z pierwszej wersji ORC-071 go nie łapał. Poszerzone do `owned by (?:another|a
+different|[\w-]+\s+(?:unit|layer|warstw\w*))` — łapie dowolną nazwaną jednostkę/warstwę przed
+„unit"/„layer"/„warstw…", nie tylko dwa sztywne warianty. Zgłaszający sam zaproponował dokładnie
+ten kierunek („promować z 'tylko prompt' do `decideVerdict`") — potwierdza to, że regexy do
+samo-przyznania będą się rozszerzać wraz z nowymi sformułowaniami; jeśli wzorzec „nazwana
+jednostka + unit/layer" też zacznie mijać się z realnymi zgłoszeniami, kolejnym krokiem powinno
+być dopasowanie po RZECZYWISTYCH `id` warstw z `allLayers` (już dostępnych w `decideVerdict()`),
+nie kolejny wariant frazy. Eval: rozszerzony `verdict-unverified-scope-self-admission`.
+
+<a id="orc-072"></a>
+
+### ORC-072 — bramka końcowa dostaje ten sam kanał decyzji co warstwy (2026-09-27)
+
+Warstwy mają wbudowaną ścieżkę naprawy dla nieoczywistego zakresu: `layers_scope[].reason` z
+artefaktu analizy trafia do `layer.scope.reason`, który `scopeBlock()` pokazuje weryfikatorowi
+wprost („ZAWĘŻENIE Z ANALIZY... powód: ..."). Bramka końcowa (`buildFinalGatePrompt()`) takiego
+kanału nie miała, mimo że dane już do niej docierały: `a.task.decisions` (z `analysisDoc.fm.
+decisions`) jest częścią `args` od dawna i `buildImplPrompt()` je renderuje — po prostu nikt
+nie dorenderował tego samego pola do promptu bramki końcowej.
+
+Skutek zgłoszony 2026-09-27 (feature-flags TASK-0010, `agent_note` z warstwy `final-gate`): 2 z
+4 eskalacji ORC-069 tego przebiegu wydarzyły się na bramce końcowej, na pozycjach trywialnych
+(README, .gitignore, sam plik analizy). Bramka końcowa jest jednorazowa (bez retry — ORC-069),
+więc jedyna droga naprawy była ręczna interwencja człowieka PO fakcie — bez żadnego kanału,
+którym człowiek mógłby zaadresować to PRZED kolejnym uruchomieniem, tak jak robi to
+`layers_scope[].reason` dla warstw.
+
+`buildFinalGatePrompt()` renderuje teraz `a.task.decisions` dokładnie tym samym formatem co
+`buildImplPrompt()`, z jednym zdaniem instrukcji: decyzja jawnie adresująca pozycję, którą
+inaczej trzeba by wpisać do `unverified_scope` (np. „D9: plik X jest dokumentacyjny, poza
+zakresem tej weryfikacji"), liczy się jako rozstrzygnięta, nie jako luka. Człowiek dopisuje taką
+decyzję do `decisions:` w analizie; kolejne uruchomienie (`resumeFromRunId`) tego samego taska ją
+zobaczy na bramce końcowej — symetrycznie do tego, jak `layers_scope[].reason` odblokowuje
+warstwy. Brak nowego pola w schemacie artefaktu ani w `orchestrate-prepare.mjs` — to ISTNIEJĄCY
+kanał, tylko nie dotąd renderowany w tym jednym miejscu. Egzekwuje `orchestrate.template.mjs`
+(`buildFinalGatePrompt`, akapit `decisions`); eval: rozszerzony
+`final-gate-prompt-covers-whole-change` w `tests/flow-evals/orchestrate-script/run.js`.
+
+<a id="orc-073"></a>
+
+### ORC-073 — sonda grepuje własny zakres PRZED `tail`, nie zamiast niego (2026-09-27)
+
+Sonda deterministyczna (`buildProbePrompt`) przy niezerowym exit code instruowała: „zwróć
+ostatnie 40 linii w `tail`". W monorepo z jednym `lint:check` na cały repozytorium to systemowo
+gubi błąd WE WŁASNYM zakresie warstwy, jeśli w tym samym logu, PO nim, leży dość ostrzeżeń z
+katalogów spoza zakresu (np. `shared/`) — implementer widzi tylko cudzy ogon logu i uczciwie,
+ale błędnie ogłasza no-op.
+
+Ujawnione 2026-09-27, marketing-hub TS-MH-006, DWUKROTNIE z rzędu na tym samym tasku, ten sam
+objaw: warstwa `testing:campaign`, potem `testing:knowledge` — implementer zacytował jako „red
+probe" wyłącznie ostrzeżenia z `shared/`, ogłosił no-op, `BLOCKED_BY_PRIOR` (ORC-062) poprawnie
+się zatrzymał. Ręczna weryfikacja (`pnpm run lint:check` poza silnikiem) potwierdziła: 3 błędy
+`import/order` w nowo dodanym pliku WE WŁASNYM zakresie warstwy (`testing:knowledge`) BYŁY w
+pełnym wyjściu eslint, wcześniej w logu niż sekcja `shared/` — „ostatnie 40 linii" ich nie
+objęło. Zgłaszający słusznie podejrzewał ekstrakcję w `orchestrate.template.mjs`, nie sam
+implementer.
+
+`buildProbePrompt()` instruuje teraz: gdy warstwa ma niepusty `dirs` (`effectiveDirs(layer)`),
+NAJPIERW `grep -E '<escaped dirs>' /tmp/check-<id>.log` — linie z WŁASNEGO zakresu, w CAŁOŚCI,
+niezależnie od długości. Dopiero gdy ten grep nic nie zwróci (błąd bez ścieżki pliku, np.
+konfiguracyjny — grep z natury go nie złapie) — fallback do starych „ostatnich 40 linii całego
+logu". Warstwa bez `dirs` (cały projekt, nie ma czego zawężać) zachowuje stare zachowanie bez
+zmian. Egzekwuje `orchestrate.template.mjs` (`buildProbePrompt`, `scopeGrep`/`tailInstruction`);
+eval: `probe-prompt-greps-own-scope-before-tail-fallback` w `tests/flow-evals/orchestrate-script/
+run.js`.
+
+<a id="orc-016-code"></a>
+
+### ORC-016 — uzupełnienie: zawężenie kodem, nie już samą prozą (2026-09-27)
+
+Rekomendacja ORC-016 była do tej pory czystą prozą w prompcie sondy — `buildProbePrompt()`
+budował `checks` jako goły `npm run <check>`, niezależnie od `dirs` warstwy. W monorepo z
+turbo/nx (`dependsOn: ["^build"]`) to odpala pełny build WSZYSTKICH zależności upstream, nie
+tylko pakietu, którego dotyczy warstwa.
+
+feature-flags TASK-0010 (0010), 2026-09-27, warstwa `implementation:sdk-dart-core`: root
+`"lint": "turbo run lint"`, `turbo.json` z `lint`/`typecheck`/`test`/`build` zależnymi od
+`^build` — niezawężony `npm run lint` w sondzie wymusił build `packages/contracts`, którego ta
+warstwa nie dotykała. Build w tamtym środowisku miał złą wersję toolchainu AJV i psuł
+`packages/contracts/src/generated/standalone-validators.js` — zdarzyło się DWUKROTNIE w tym
+samym przebiegu (raz ręcznie cofnięte, raz odtworzone samoistnie w rundzie 5), bo każde kolejne
+wywołanie sondy powtarzało tę samą, nieza­wężoną komendę.
+
+Silnik Workflow (ten plik) nie ma dostępu do systemu plików (patrz nagłówek pliku) — lookup
+najbliższego `package.json` dla `dirs` warstwy robi więc SONDA (ma `Bash`), nie ten skrypt:
+jedna funkcja powłoki (`_pkgdir()`) w tekście promptu, wywołana przed `checks`, ustawia
+`$PKGROOT` na najbliższy katalog-przodek z `package.json` (albo `.`, gdy żaden nie pasuje —
+wtedy sonda ma jawny nakaz zaznaczyć to w odpowiedzi, zgodnie z oryginalnym „nie milcz" z
+ORC-016). Każdy check leci jako `(cd "$PKGROOT" && npm run <check>)` zamiast gołego `npm run
+<check>` na roocie. Egzekwuje `orchestrate.template.mjs` (`buildProbePrompt`, `_pkgdir`/
+`PKGROOT`); eval: `probe-prompt-scopes-checks-to-package-root-in-monorepo` w
+`tests/flow-evals/orchestrate-script/run.js`.
+
+<a id="orc-074"></a>
+
+### ORC-074 — `GO` z `unverified_scope` konsumuje próbę przez `reverify`, nie przez `fix` (2026-09-27)
+
+ORC-069 rozróżnił „GO z niepustym `unverified_scope`" od czystego GO — poprawnie, ale kolejna
+próba wracała w `mode = 'implement'`, czyli przez PEŁNĄ rundę implementer→sonda→verify, mimo że
+w tej gałęzi weryfikator nie zgłosił żadnych naruszeń kodu: zabrakło mu czasu albo kompetencji
+na część zakresu, nie znalazł nic do naprawienia. Implementer dostawał więc `violations` w
+kształcie „nie zdążono sprawdzić: testing-pyramid, conventions" — tekst nie do zaimplementowania
+— i zwracał pracę bez zmian, po czym weryfikator dostawał dokładnie ten sam kod do oceny drugi
+raz.
+
+Dwa niezależne przebiegi tego samego dnia (2026-09-27) potwierdziły koszt:
+- **ai-os-bot BOT-014**, warstwa `implementation`: `architecture-verifier` ma stały,
+  zakodowany checklist (messaging isolation, źródło person, credentials) i STRUKTURALNIE nie
+  oceni 7 wstrzykniętych kart spoza niego (testing-pyramid, conventions, security-invariants,
+  ...) niezależnie od liczby prób ani budżetu tur — zgłasza to uczciwie przez `unverified_scope`
+  (naprawione w agencie 2026-09-26, patrz `agents/stacks/node-ts-claude-api/
+  architecture-verifier.md`), ale 3 próby paliły implementera na kodzie, który był poprawny za
+  KAŻDYM razem.
+- **marketing-hub TS-MH-006**, `infrastructure:wiring-security-format-fix`: `dirs` tej nowej
+  jednostki celowo objęły `format:check` na 46 plikach (w tym plikach już zamkniętych,
+  wcześniejszych jednostek) — weryfikator uczciwie nie zdążył sprawdzić całości w budżecie tur.
+  Zatwierdzone ręcznie po niezależnej weryfikacji; 3-cia próba nie miała żadnej zmiany w diffie,
+  tylko pisemną analizę.
+
+`decideVerdict()` zwraca teraz `next: 'reverify'` (zamiast `'fix'`) dla GO+`unverified_scope`,
+gdy próby jeszcze zostały. Pętla warstwy obsługuje `reverify` przez `mode = 'verify-existing'`:
+pomija implementera, idzie prosto w sondę (tanio, idempotentnie) i verify ze świeżym budżetem
+tur. Nie rozwiązuje to strukturalnej niekompetencji weryfikatora (ai-os-bot i tak eskaluje po 3
+próbach — to decyzja per-projekt o obsadzie agentów, nie silnika), ale usuwa koszt dwóch
+zbędnych rund implementera po drodze. Egzekwuje `orchestrate.template.mjs` (`decideVerdict`,
+gałąź `reverify` w pętli warstwy); eval: `verdict-go-with-unverified-scope-is-not-clean-go` +
+`verdict-unverified-scope-filters-other-layers-own-scope` + `verdict-unverified-scope-
+self-admission` w `tests/flow-evals/orchestrate-script/run.js` (zaktualizowane asercje
+`.next === 'reverify'`).
+
+<a id="orc-075"></a>
+
+### ORC-075 — plik towarzyszący może być własnością osobnej jednostki `tests: true` (2026-09-27)
+
+`scopeBlock()` ma WYJĄTEK „pliki towarzyszące": test w tym samym katalogu i z tym samym rdzeniem
+nazwy co plik z zakresu należy do zakresu TEJ warstwy (ORC-011/marketing-hub TS-MH-005). Zakłada
+to milcząco, że test tego pliku to praca tej samej warstwy — fałsz, gdy przebieg ma osobną,
+późniejszą jednostkę `tests: true` (`units[]`, ORC-064), której `dirs` i tak pokrywają te same
+katalogi.
+
+grant-flow TS-RATE-003, warstwa `application:application`, 3 eskalacje `ESCALATE_AND_HALT` na
+tym samym powodzie: weryfikator flagował brak `__tests__/handler.spec.ts` dla 4 nowych
+handlerów jako naruszenie blokujące, mimo że (a) rola `domain-application-implementer` ma
+jawny zakaz pisania testów i bez `Task` w tym wywołaniu per-warstwa nie ma jak delegować do
+`@test-implementer`, i (b) `units[]` tego samego taska ma już osobną, downstream jednostkę
+`testing:testing`, której `dirs` jawnie obejmują `application/**/__tests__/`. Cały właściwy kod
+produkcyjny przeszedł na pierwszej próbie z zerem naruszeń — jedyny sporny punkt to WŁAŚCICIEL
+plików testowych, nie ich jakość czy istnienie.
+
+`scopeBlock(layer, a)` (nowy drugi parametr — `a` to te same `args`, które i tak mają już
+`buildImplPrompt`/`buildVerifierPrompt`) szuka w `a.layers` innych jednostek z `tests: true` i,
+gdy takie istnieją, dopisuje do WYJĄTKU towarzyszącego zastrzeżenie: gdy katalog brakującego
+testu pokrywa taka jednostka, to JEJ praca, nie luka tej warstwy. Warstwa, która SAMA ma
+`tests: true`, nie dostaje tego zastrzeżenia o samej sobie. Egzekwuje `orchestrate.template.mjs`
+(`scopeBlock`); eval: `scope-block-defers-companion-test-to-sibling-testing-unit` w
+`tests/flow-evals/orchestrate-script/run.js`.
 
 ---
 
@@ -940,6 +1223,152 @@ Czego to NIE robi: nie rozstrzyga, gdzie kończy się „zawężenie", a zaczyna
 pracy" (`units[]`, seam Ralphinho). Dziś `units: []` i jeden unit na task; gdy units wejdą, scope per
 unit będzie naturalniejszy niż scope per warstwa — to wtedy do przemyślenia, nie teraz.
 
+<a id="orc-076"></a>
+
+### ORC-076 — bramka końcowa dostaje ten sam filtr self-admission co warstwy (2026-09-29)
+
+`decideVerdict()` (pętla warstwy) od ORC-071 ufa słowu weryfikatora: pozycja `unverified_scope`,
+która sama się przyznaje do bycia poza zakresem („poza zakresem", „out of scope", „owned by X
+unit"), jest odrzucana z `ownUnverified` niezależnie od dopasowania ścieżki. Bramka końcowa
+(`orchestrate.template.mjs`, sekcja „6. bramka końcowa") NIE WOŁA `decideVerdict()` w ogóle —
+od 2026-09-26 (ORC-069) miała własny, osobny blok, który robił wyłącznie
+`unverified_scope.filter(Boolean)`. Żadna z trzech poprawek zrobionych na `decideVerdict()` w
+tym samym tygodniu (ORC-070 filtr cudzej warstwy, ORC-071 self-admission, ORC-074 `reverify`
+zamiast `fix`) nie dotarła na final gate — biegał dalej w najbardziej naiwnej wersji reguły,
+sprzed wszystkich trzech rund twardnienia, które okazały się konieczne na poziomie warstw.
+
+Ujawnione 2026-09-28 (juz-ide-mobile-app DESIGN-SYSTEM-009, `DEV-orc-069-presentation.md`):
+`flutter-security-verifier` dał czysty werdykt na wszystkich dotkniętych powierzchniach, ale
+uczciwie przyznał, że nie przeczytał w całości 7 plików niezmienionych (sprawdzonych tylko
+grepem) i celowo pominął 8 plików testowych (nie trafiają do binarki release). Final gate —
+jednorazowy, bez retry — wymusił `NO_GO`; jedyna droga naprawy była ręczna interwencja
+człowieka. Audyt historii tego repo (2026-09-29) potwierdził, że WSZYSTKIE zaobserwowane
+odnowienia `DEV-orc-069` w `_inbox` (6 w 3 dni, 5 projektów: ai-os-bot, grant-flow, juz-ide-api,
+feature-flags, marketing-hub) trafiają w final gate, zero w sam retry-loop warstw — spójne z
+tym, że filtry 070/071/074 tam nie działają.
+
+`SELF_ADMITS_OUT_OF_SCOPE` i nowa funkcja `filterSelfAdmittedOutOfScope()` przeniesione na
+poziom modułu (jedno źródło zamiast dwóch rozjeżdżających się kopii tej samej reguły). Blok
+final gate filtruje `unverified_scope` tym samym filtrem PRZED sprawdzeniem, czy `GO` jest
+czysty. Filtr ORC-070 (dopasowanie ścieżkowe do dirs innej warstwy) świadomie NIE przeniesiony
+na final gate — final gate ocenia CAŁOŚĆ zmiany (wszystkie warstwy naraz), więc pojęcie „cudza
+warstwa" nie ma tam tego samego znaczenia; zaobserwowany przypadek był czystym self-admission,
+nie cross-layer. Egzekwuje `orchestrate.template.mjs` (moduł-scope `SELF_ADMITS_OUT_OF_SCOPE`/
+`filterSelfAdmittedOutOfScope`, blok bramki końcowej); eval:
+`final-gate-unverified-scope-self-admission` w `tests/flow-evals/orchestrate-script/run.js`.
+Zadanie: `docs/tasks/TASK-ORCH-FINALGATE-SELFADMIT-001.md`.
+
+<a id="orc-077"></a>
+
+### ORC-077 — etykieta sondy musi nieść numer próby, inaczej cache zamraża pierwszy wynik (2026-09-29)
+
+Sondy `diff-probe`, `diff-gate` i `checks` w pętli warstwy dostawały etykietę zbudowaną
+wyłącznie z `layer.id` (np. `layer.id + '-diff-gate'`), niezależną od numeru próby. Ich prompty
+(`buildDiffProbePrompt(a.baseSha)`, `buildTreeProbePrompt(a.baseSha)`, `buildProbePrompt(a,
+layer)`) też nie zależą od próby — zależą tylko od `layer`/`baseSha`, stałych w obrębie retry tej
+samej warstwy. Para (etykieta, prompt) była więc IDENTYCZNA na każdej próbie, a cache silnika
+Workflow (klucz: etykieta+prompt, mechanizm współdzielony z `resumeFromRunId`) zwracał wynik
+PIERWSZEJ próby na zawsze — kolejne próby, nawet po realnej zmianie stanu repo (implementer
+naprawił kod), dostawały ten sam zamrożony wynik sondy.
+
+Ujawnione 2026-09-28 (grant-flow TS-SIM-001, run `wf_e7393e3a-315`, `DEV-orc-065.md`) —
+zgłaszający zastosował ręczną łatkę (numer próby w etykiecie) i potwierdził ją przejściem przez
+`workflow-lint`. Przeniesione tutaj do kanonicznego źródła. Etykiety `-diff-probe`, `-diff-gate`,
+`-checks` dostają teraz sufiks `-' + attempt`. `-impl`/`-verify`/`-verify-noop` NIE wymagały tej
+zmiany — ich prompty już zawierają treść zależną od próby (numer próby, `violations`, wynik
+sondy), więc para (etykieta, prompt) i tak różniła się między próbami.
+
+**Osobna, potwierdzona tylko częściowo obserwacja z tego samego dnia** (grant-flow TS-SIM-001,
+run `wf_2196b7e0-b44`, `DEV-halt-warstwa-testing-testing-2-swiezy-run-z-rzedu-kon.md`): diff-gate
+zgłosił „zero zmian" DWA ŚWIEŻE (nie-retry) przebiegi z rzędu mimo potwierdzonej mtime+git-status
+realnej zmiany już-śledzonego pliku. To NIE jest ten sam mechanizm (różne `run_id`, więc różny
+cache) — zgłaszający podejrzewa niedeterminizm samej sondy (Haiku, budżet 5 tur), bez wskazania
+linii kodu. Pozostaje otwarte, do zbadania osobno, gdy się powtórzy z twardszą diagnozą. Egzekwuje
+`orchestrate.template.mjs` (etykiety `-diff-probe-'+attempt`, `-diff-gate-'+attempt`,
+`-checks-'+attempt`); weryfikacja: `canonical-script-passes-workflow-lint` w `tests/flow-evals/
+orchestrate-script/run.js` (funkcjonalny eval cache'u silnika Workflow poza zakresem tego pliku —
+zero LLM, zero uruchomienia Workflow). Zadanie: `docs/tasks/TASK-ORCH-PROBE-CACHE-STALE-001.md`.
+
+<a id="orc-078"></a>
+
+### ORC-078 — pathspec sondy testów dostaje wariant bez `lib/` dla stacków Flutter/Dart (2026-09-29)
+
+Flutter/Dart rozdziela drzewo `lib/` i `test/` BEZ wspólnego segmentu (`lib/core/design/x.dart`
+→ `test/core/design/x_test.dart`, NIE `test/lib/core/design/...`). `dirs` warstwy podane jako
+pełna ścieżka od korzenia repo z segmentem `lib/` (naturalne dla `--overrides` w tym stacku)
+budowały pathspec `:(glob)**/lib/core/design/**`, który nigdy nie trafia w drzewo testów —
+`newTestBlocks` liczyło 0 niezależnie od realnej, poprawnej zawartości testów na dysku.
+
+Ujawnione 2026-09-28 (juz-ide-mobile-app DESIGN-SYSTEM-009, `DEV-orc-035-presentation.md`):
+fałszywy `ESCALATE_AND_HALT` mimo 5 plików testowych i ~21 bloków `test`/`testWidgets`
+faktycznie napisanych i zielonych (potwierdzone ręcznym `flutter test`). `globScoped` w
+`buildProbePrompt()` dostaje teraz, dla każdego `dir` zaczynającego się od `lib/`, DODATKOWY
+wariant pathspecu bez tego segmentu — obok oryginalnego, nie zamiast (żeby nie zawęzić
+dopasowania dla stacków, gdzie `test/` faktycznie lustrzanie odwzorowuje `lib/` z segmentem).
+Egzekwuje `orchestrate.template.mjs` (`buildProbePrompt`, `globScoped`); eval:
+`probe-prompt-flutter-lib-path-variant` w `tests/flow-evals/orchestrate-script/run.js`. Zadanie:
+`docs/tasks/TASK-ORCH-PROBE-FLUTTER-LIBPATH-001.md`.
+
+<a id="orc-079"></a>
+
+### ORC-079 — plik analizy/task tego przebiegu wykluczony strukturalnie, nie po prozie (2026-09-29)
+
+ORC-076 (wyżej) ufa słowu weryfikatora — filtruje `unverified_scope` po frazie self-admission
+(„poza zakresem", „owned by X unit"). Kilka godzin po wdrożeniu, PIERWSZY realny przebieg z
+tym filtrem na żywo (repo satelitarne symlinkuje `claude-patterns`, więc niecommitowana
+poprawka działa natychmiast) pokazał lukę: ai-os-bot BOT-005a-tests, final gate NO_GO mimo
+zielonych bramek deterministycznych — `unverified_scope` wymieniał m.in. „sam plik analizy"
+tego przebiegu, ale bez ŻADNEJ frazy z `SELF_ADMITS_OUT_OF_SCOPE`, więc ORC-076 go nie
+złapał. Zgłoszenie wprost: „ORC-072/ORC-076 nie pozwoliły ich zaadiudykować, bo bramka nie ma
+jak uznać ich za poza zakresem" — ten sam kształt incydentu co ORC-072 (2026-09-27: 2 z 4
+eskalacji na final-gate dotyczyły pozycji trywialnych — README, .gitignore, sam plik analizy).
+
+Rozszerzanie regexu o kolejny wariant frazy (wzorem ORC-071) jest kruche — zależy od tego, JAK
+konkretny weryfikator akurat to nazwie. Plik analizy i plik taska SAMEGO PRZEBIEGU są jednak
+strukturalnie znane z `a.task.analysisFile`/`a.task.taskFile` (ten sam obiekt, którego
+`buildImplPrompt`/`buildFinalGatePrompt` już używają) — nowa `filterOwnTaskArtifacts()` odrzuca
+pozycję `unverified_scope`, której treść zawiera ścieżkę jednego z tych dwóch plików, PRZED
+filtrem self-admission. Nie rozwiązuje to pozostałych dwóch pozycji z tego samego zgłoszenia
+(„D4 po commicie", „pełny vitest") — to nie są ścieżki plików, tylko opis kroków procesu, a
+blankietowe wykluczanie fraz „po commicie"/„pełny X" ryzykowałoby ukrycie realnej luki (D4 może
+być realną, niedokończoną decyzją do zweryfikowania). Pozostawione świadomie jako otwarte —
+kandydat na rozszerzenie kanału `a.task.decisions`/ORC-072 (człowiek jawnie adiudykuje D4 jako
+rozstrzygnięte), nie na kolejny automatyczny filtr. Egzekwuje `orchestrate.template.mjs`
+(`filterOwnTaskArtifacts`, blok bramki końcowej); eval:
+`final-gate-filters-own-task-artifacts-by-path` w `tests/flow-evals/orchestrate-script/run.js`.
+
+<a id="orc-080"></a>
+
+### ORC-080 — filtr mechaniczny dla pozycji już adjudykowanych przez `decisions[]` (2026-09-29)
+
+ORC-072 renderuje `a.task.decisions` w promptcie bramki końcowej i INSTRUUJE weryfikatora, że
+pozycja jawnie zaadresowana decyzją człowieka nie jest luką. To instrukcja promptu, nie
+mechanizm — ta sama kategoria problemu, którą ORC-071 już raz nazwał: „instrukcja promptu nie
+jest wiążąca dla LLM". Potwierdzone 2026-09-29: ai-os-bot BOT-005a-tests, DRUGI przebieg tego
+samego taska (`DEV-orc-069.md` reopen #6) — task miał `decisions: [D7]` jawnie adjudykujące
+pozycję, a final gate i tak zgłosił TĘ SAMĄ pozycję jako `unverified_scope`, plus dorzucił
+nową. Weryfikator dostał tekst decyzji w prompcie i mimo to jej „nie zastosował" (albo
+zastosował niekonsekwentnie między próbami/przebiegami tego samego taska).
+
+Zamiast kolejnego wzmocnienia tekstu instrukcji (ta droga już raz się wyczerpała przy ORC-071),
+filtr mechaniczny: `filterAdjudicatedByDecision()` odrzuca pozycję `unverified_scope`, której
+treść WYMIENIA `id` którejś z `a.task.decisions[]` (np. „D7"), niezależnie od tego, czy
+weryfikator „zrozumiał" decyzję — sam fakt przywołania jej numeru wystarcza, bo to człowiek już
+zdecydował, że ta pozycja jest rozstrzygnięta. Dopasowanie z granicą słowa (`\bD7\b`), żeby
+„D71" nie trafiło w „D7". Stosowany PRZED `filterSelfAdmittedOutOfScope`/
+`filterOwnTaskArtifacts` w tym samym łańcuchu filtrów final gate.
+
+**Osobny, NIE zaadresowany dziś problem z tego samego reopenu** (marketing-hub TS-MH-009,
+`DEV-orc-069-final-gate.md`): `unverified_scope` wymieniał „karty/README/render-with-refine" —
+pozycje dokumentacyjne bez frazy self-admission, bez ścieżki własnego pliku analizy/task, i bez
+odwołania do żadnej decyzji. Świadomie NIE zbudowano tu kolejnego filtra — bez konkretnych
+ścieżek plików (jak przy ORC-079) każda heurystyka „to wygląda na dokumentację" byłaby
+zgadywaniem, dokładnie tym, przed czym ostrzega `docs/CONTRIBUTING.md`. Do zebrania więcej
+dowodów, jeśli się powtórzy z konkretnymi ścieżkami. Egzekwuje `orchestrate.template.mjs`
+(`filterAdjudicatedByDecision`, blok bramki końcowej); eval:
+`final-gate-filters-items-adjudicated-by-decision-id` w `tests/flow-evals/orchestrate-script/
+run.js`.
+
 <a id="anl-038"></a>
 ### ANL-038 — jednostki, pliki towarzyszące i fałszywe trafienia wzorców mają swoje pola (2026-09-24)
 
@@ -955,3 +1384,126 @@ plik z zakresu należy do zakresu automatycznie. Resztę plików towarzyszących
 `.env.example`, compose) analiza dopisuje do `dirs` jednostki albo `layers_scope`, bo tego silnik
 nie zgadnie. `patterns_exclude: [<ścieżka wzorca>]` usuwa wzorzec z doboru, a wpis, który niczego
 nie wykluczył, daje ostrzeżenie (literówka).
+
+<a id="orc-081"></a>
+
+### ORC-081 — prompt weryfikatora nazywa wynik sondy obiektem `checks` (2026-09-29)
+
+`code-quality-verifier` (krok 7 kontekstowej dyscypliny) każe traktować jako fakt „obiekt
+`checks` z wynikiem typecheck i testów" i nie uruchamiać ich ponownie. `buildVerifierPrompt`
+podawał ten sam wynik pod nagłówkiem „FAKTY Z SONDY" z polami `typecheck:`/`testy:`, bez słowa
+`checks`. Weryfikator nie rozpoznawał dopasowania i zgłaszał „brak obiektu checks w prompcie"
+(grant-flow TS-SIM-002A, `application:app-cqrs`, run `wf_fb11e116-996`, `DEV-orc-069-application-app-cqrs`).
+Zamiast wykorzystać wynik sondy, wydawał budżet tur na własne grepy, co kończyło się
+GO z `unverified_scope` (ORC-069) i halt po 3 próbach.
+
+Poprawka: blok faktów nazywa się wprost obiektem `checks` i używa pól `checks.typecheck`,
+`checks.tests`, `checks.newTestBlocks`, czyli nazw z instrukcji agenta. Egzekwuje
+`orchestrate.template.mjs` (`buildVerifierPrompt`). Nie dotyczy weryfikatorów, których definicja
+nie mówi o `checks` (nie szkodzi im). Nie sprawdza, czy to jedyna przyczyna halt na app-cqrs:
+drugie wystąpienie (`wf_d5c12ecc-e1d`) nie mówi nic o `checks`, więc zostaje do obserwacji.
+
+<a id="orc-082"></a>
+
+### ORC-082 — czerwony typecheck tylko w późniejszych warstwach jest odroczony (2026-09-30)
+
+juz-ide-api-1, trzy zgłoszenia ORC-062 w dwóch taskach (TS-REP-DISCLOSURE-POLICY-001:
+`domain:tier-projector` `wf_1c64744d-058`, `application` `wf_169047bf-a4d`;
+TS-REP-PROJECTION-FRESHNESS-001: `domain` `wf_0dfc8c0b-427`). `domain` i `application` mają
+`checks: ["typecheck"]` (dodane 2026-09-24, żeby ich własna czerwień wychodziła u nich, a nie
+w infrastrukturze). Typecheck biegnie jednak na całym pakiecie: metoda dodana do portu
+w domenie albo nowy argument konstruktora handlera czerwieni pliki `infrastructure/` i
+`__tests__/`, czyli późniejszych warstw. Implementer słusznie zgłaszał „poza zakresem",
+a ORC-062 zamieniał to w `BLOCKED_BY_PRIOR` i zatrzymywał przebieg na czerwieni, której ta
+warstwa nie mogła naprawić. Każdy task zmieniający kontrakt międzywarstwowy trafiał na to z
+definicji.
+
+Odrzucone: zdjęcie `typecheck` z `domain`/`application` (sugestia ze zgłoszenia), bo wraca
+problem z TS-MH-005, czyli własna czerwień domeny wychodząca dopiero w infrastrukturze.
+Odrzucone: instrukcja w prompcie sondy „zignoruj cudzą czerwień", bo to ta sama kategoria, co
+przy ORC-071/080 (instrukcja promptu nie jest wiążąca dla LLM, a decyzja o odroczeniu nie może
+zależeć od jego oceny).
+
+Mechanizm: `typecheckRedIsLaterLayers()` (CORE). Z `probe.tail` wyciąga ścieżki błędów TS
+(`plik(l,k): error TSxxxx`). Czerwień jest odroczona (`probe.typecheck = 'deferred'`), gdy:
+każdy błąd ma ścieżkę (liczba sparsowanych = liczba wystąpień `error TS`), żaden nie leży w
+dirs tej warstwy ani wcześniejszych, każdy leży w dirs którejś późniejszej warstwy z
+niepustymi dirs, a testy nie są czerwone. Błąd bez ścieżki (np. TS18003), nieparsowalny ogon i
+ostatnia warstwa nie odraczają nic. Odroczoną czerwień domyka sonda następnej warstwy
+(`infrastructure` ma typecheck) i bramka końcowa. Weryfikator dostaje w `checks` notkę, że
+czerwień jest odroczona i nie jest naruszeniem tej warstwy.
+
+Znane ograniczenie: sonda zwraca własny zakres w całości (grep po dirs), a przy braku trafień
+ostatnie 40 linii logu. Przy >40 błędach w późniejszych warstwach ogon może nie zawierać
+wszystkich, ale wtedy własne błędy i tak są już wyłapane grepem, a ewentualny błąd wcześniejszej
+warstwy poza ogonem łapie bramka końcowa. Eval: `typecheck-red-only-in-later-layers-is-deferred`
+w `tests/flow-evals/orchestrate-script/run.js`.
+
+**Uzupełnienie (2026-10-01):** to samo zgłoszenie `domain` w TS-REP-PROJECTION-FRESHNESS-001
+(`wf_0dfc8c0b-427`) pokazało, że parser nie dostawał surowych linii: sonda (haiku) zwróciła w
+`tail` własne streszczenie („Missing method `findSubjectsForProjectionPage` in infrastructure
+implementation…"), `typecheckErrorPaths` znalazł 0 błędów i wyjątek słusznie nie zadziałał
+(nieparsowalny ogon). Grep po własnym `dirs` nic nie daje, gdy czerwień jest poza zakresem, więc
+agent schodził na fallback „ostatnie 40 linii" i go parafrazował. Poprawka: osobne pole sondy
+`tsErrors` z żądaniem dosłownego `grep -E 'error TS[0-9]+' <log> | head -60`; parser czyta
+`tsErrors`, a `tail` tylko gdy go brak. Instrukcja promptu dalej nie jest wiążąca, ale bezpiecznik
+zostaje: bez `tsErrors` i bez parsowalnego `tail` czerwień nie jest odraczana. Eval:
+`probe-prompt-requests-verbatim-ts-errors` oraz rozszerzony przypadek ORC-082.
+
+<a id="orc-083"></a>
+
+### ORC-083 — zgłaszamy odstępstwa maszyny, nie błędy kodu (2026-10-01)
+
+juz-ide-api-1, TS-REP-PROJECTION-FRESHNESS-001, run `wf_b5a21301-91f`: bramka końcowa dała
+NO_GO, bo kod miał realne błędy (UNION uuid/varchar w `findSubjectsForProjectionPage`, 2 testy
+L2, czerwony spec schedulera, niewdrożone decyzje D9/D7/D8). Krok 5 (ORC-066) mówił „dla KAŻDEGO
+`finalGate.verdict !== 'GO'` zgłoś", więc orchestrator zgłosił to do `_inbox` bez oceny, czy to
+odstępstwo maszyny, a w `--reason` opisał treść błędów kodu (DEV-no_go-bramka-koncowa-no-go-union-
+uuid-varchar). Sam to potem nazwał szumem. Zgłoszenie bez rozróżnienia zaśmieca inbox i obniża
+sygnał prawdziwych odstępstw (ORC-069 i spółka).
+
+Bramka jest mechaniczna, nie w prompcie: silnik tagi każde zatrzymanie polem `cause`.
+`machine` = maszyna nie domknęła weryfikacji: brak wyniku weryfikatora/bramki, GO z
+`unverified_scope` po wyczerpaniu prób albo wymuszone NO_GO bramki końcowej (ORC-069),
+implementer bez wyniku, brak zmian w zakresie warstwy (bramka „kod istnieje"), pętla bez werdyktu.
+`code` = kod ma błędy, weryfikator je wskazał: wyczerpane próby przy NO_GO, sonda na czerwono,
+brak przyrostu testów, własne NO_GO bramki końcowej. `BLOCKED_BY_PRIOR` zostaje zgłaszany
+(ORC-062 dotyczy kolejności warstw, czyli maszyny). Krok 5 zgłasza tylko `cause === 'machine'`
+(brak pola = `machine`, żeby stary skrypt nie gubił zgłoszeń); `workflow_lint` i
+`deviation_note` bez zmian, bo z definicji dotyczą maszyny. `cause` bramki końcowej nadpisujemy
+po stronie silnika, nie ufamy polu z wyjścia LLM.
+
+Nie rozstrzyga: sprzeczności werdyktu z uzasadnieniem (marketing-hub TS-MH-009: `NO_GO` przy
+rationale „GO z warunkami") — mechanicznie nie do odróżnienia od realnego NO_GO, więc liczy się
+jako `code`. Egzekwuje `orchestrate.template.mjs`; eval `decide-verdict-tags-cause-code-vs-machine`.
+
+<a id="orc-084"></a>
+
+### ORC-084 — luka warstwy nie zatrzymuje przebiegu (GO_WITH_GAPS) (2026-10-01)
+
+Inbox 2026-10-01: 98 wystąpień, 43 wspomina `unverified_scope`, ORC-069 to największa pojedyncza
+przyczyna (38 wystąpień/16 wpisów); tylko 11 z 43 zamknięto jawnie „ręcznie, zielone". Przykład:
+TS-UI-003 (`web:web-bootstrap`, `wf_b5e7727d-cfe`) — weryfikator 3x GO, zero naruszeń, lista
+nieprzeczytanych plików (AuthGate, RedirectToSignIn, specy, vitest.config.ts). `decideVerdict`
+zamienił to w `ESCALATE_AND_HALT`: kolejne warstwy nie ruszyły, bramka końcowa się nie
+uruchomiła, nic nie trafiło do stagingu, ~10 agentów/8 min na brak werdyktu o kodzie.
+
+Zmiana (decyzja użytkownika 2026-10-01, dotyczy WARSTW; bramka końcowa zostaje surowa — ORC-069
+na niej obowiązuje jak 2026-09-27/28):
+- `decideVerdict` przy wyczerpaniu prób na GO+unverified_scope zwraca `gaps`.
+- `layerGapsAcceptable()`: GO, zero `violations`, sonda ODPOWIEDZIAŁA i typecheck/testy nie są
+  `fail` (pass|skipped|deferred) → warstwa kończy jako `GO_WITH_GAPS`, luki do `report.gaps`.
+  Brak wyniku sondy = brak dowodu, że kod działa, więc halt jak dotąd. `haltsRun` nie zatrzymuje
+  nowego statusu (lista dodatnia).
+- Bramka końcowa dostaje „ZNANE LUKI WARSTW" w prompcie i próbuje je sprawdzić; pozycje
+  `unverified_scope` pasujące do znanej luki (`filterKnownLayerGaps`) nie wymuszają NO_GO, trafiają
+  do `finalGate.absorbed_gaps`.
+- NO_GO bramki końcowej wymuszone WYŁĄCZNIE przez unverified_scope (zero własnych naruszeń) →
+  `report.stageForReview`: pliki są staged z flagą „wymaga przeglądu" (krok 4). Staging niczego nie
+  niszczy, a człowiek i tak robi review przed commitem.
+
+Ryzyko: realny błąd w niesprawdzonym pliku wyjdzie dopiero w bramce końcowej albo na review.
+Łagodzą to zielona sonda i zero naruszeń. Odwrócenie: usunąć wywołanie `layerGapsAcceptable` w
+pętli warstwy. Haltem zostają: czerwona sonda, naruszenia po wyczerpaniu prób, brak wyniku
+weryfikatora/sondy. Evale: `layer-gaps-acceptable-requires-green-probe-and-zero-violations`,
+`final-gate-absorbs-known-layer-gaps`.

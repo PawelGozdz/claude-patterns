@@ -109,7 +109,7 @@ taxonomy: # rdzeń blocks/_taxonomy.yml + .claude/taxonomy.yml projektu
     events: [domain, integration, outbox, queue]
     geo: [radius, teryt, polygon, discovery]
     observability: [audit, logging]
-    platform: [channel, gpu, nestjs, nextjs, python, svelte]
+    platform: [channel, gpu, nestjs, nextjs, python, react, svelte]
     process: [review]
     security: [identity, rate-limit, validation]
     tests: [contract, e2e, fixtures, integration, load, seeding, unit]

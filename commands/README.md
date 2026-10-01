@@ -1,7 +1,7 @@
 # Global Claude Code Commands
 
 **Location**: `~/.claude/commands/` -> `/opt/projects/claude-patterns/commands/`
-**Commands**: 33 active
+**Commands**: 37 active
 
 ---
 
@@ -41,6 +41,14 @@ dla konkretnego języka) — patrz [ADR 0009](../docs/adr/0009-wynik-spike-fazy-
 
 Bramki jakości, przegląd jednoprzebiegowy i pokrycie testami idą do ECC:
 `/ecc:quality-gate` (skill `ecc:verification-loop`), `/ecc:code-review`, `/ecc:test-coverage`.
+
+## Design System (3)
+
+| Command | Purpose | Model |
+|---------|---------|-------|
+| `/design-audit` | Audit design-system consistency: dispatches `pattern-auditor` + `token-drift` per connected repo, severity-graded report | Sonnet |
+| `/token-bump` | Change a design token in the `design-system` repo: rebuild all outputs, validate, PR with the patch/minor/major decision table | — |
+| `/canvas-backup` | Back up a Claude Design canvas (source files + rendered PNGs) to `design-archive/<date>/` | — |
 
 ## Security (5)
 
@@ -122,5 +130,5 @@ Historia sesji i checkpointy gitowe idą do ECC: `/ecc:sessions` (`/ecc:save-ses
 
 ---
 
-**Version**: 3.6.0
-**Last Updated**: 2026-09-07
+**Version**: 3.7.0
+**Last Updated**: 2026-09-27

@@ -1,0 +1,19 @@
+# Refine SPA Patterns — metadane katalogu.
+# Schemat: jeden dla całego patterns/** (K84, TASK-KAIZEN-002). Walidator:
+# node scripts/validate-metadata.mjs
+category: refine-spa
+version: "1.0.0"
+maturity: stable
+last_verified: 2026-09-27
+stack: "Vite, React 19, Refine (@refinedev/core + @refinedev/antd), Ant Design, TypeScript"
+source_projects: "marketing-hub (TS-MH-002)"
+patterns_count: 4
+description: >-
+  Wzorce panelu Refine SPA za bramą iam: niezmienniki bezpieczeństwa (sesja w cookie,
+  ruch tylko do /api/*), struktura features/ per bounded context, providery
+  auth/accessControl/data (koperta JSend), piramida testów L1 (Vitest)/L2 (RTL)/L3
+  (Playwright smoke). Promowane 2026-09-27 z lokalnego szkicu marketing-hub
+  (drugi konsument: grant-flow-ui) — patrz Scope: project-specific w każdym pliku.
+
+layer: cross-layer
+stack_support: [typescript]

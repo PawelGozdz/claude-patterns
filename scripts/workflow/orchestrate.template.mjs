@@ -161,7 +161,7 @@ function effectiveDirs(layer) {
   return layer.dirs || []
 }
 
-function scopeBlock(layer) {
+function scopeBlock(layer, a) {
   const dirs = (layer.dirs || []).join(', ') || '(cały projekt)'
   const narrowed = layer.scope && layer.scope.dirs && layer.scope.dirs.length
     ? '\n  ZAWĘŻENIE Z ANALIZY (layers_scope): tylko ' + layer.scope.dirs.join(', ') +
@@ -172,12 +172,26 @@ function scopeBlock(layer) {
   // Pliki towarzyszące (marketing-hub TS-MH-005): zawężenie do `role-permissions.map.ts`
   // zostawiało `role-permissions.adapter.spec.ts` obok „poza zakresem", a `pnpm -r test`
   // stawał na nim na czerwono w każdej kolejnej warstwie.
+  // ORC-075: WYJĄTEK towarzyszący zakłada, że test tego pliku to praca TEJ warstwy — fałsz,
+  // gdy ten sam przebieg ma osobną, późniejszą jednostkę `tests: true` (np. `testing:testing`
+  // z units[], ORC-064), której `dirs` i tak pokrywają te same katalogi. Bez tego zastrzeżenia
+  // implementer bez uprawnień do pisania testów (rola zakazuje delegacji, layer bez Task) i
+  // weryfikator NO_GO'owali brak pliku towarzyszącego 3x, mimo że test-authoring już jest
+  // zaplanowany w tym samym przebiegu (grant-flow TS-RATE-003, application:application).
+  const testingUnits = layer.tests
+    ? []
+    : (a && Array.isArray(a.layers) ? a.layers : []).filter((l) => l && l.tests === true)
+  const deferNote = testingUnits.length
+    ? '\n  Jeśli katalog brakującego pliku towarzyszącego pokrywa się z zakresem osobnej ' +
+      'jednostki tego przebiegu z `tests: true` (' + testingUnits.map((l) => l.id).join(', ') +
+      ') — to JEJ praca, nie luka tej warstwy; nie zgłaszaj tego jako naruszenie tutaj.'
+    : ''
   return 'ZAKRES WARSTWY\n  id: ' + layer.id + '\n  katalogi: ' + dirs +
     (layer.role ? '\n  rola: ' + layer.role : '') + narrowed +
     '\nPlik spoza tych katalogów jest POZA ZAKRESEM, nie brakujący.' +
     '\nWYJĄTEK — pliki towarzyszące: test (*.spec.*, *.test.*) w tym samym katalogu i z tym samym ' +
     'rdzeniem nazwy co plik z zakresu (x.map.ts → x.adapter.spec.ts) należy do zakresu. Gdy ' +
-    'zmieniasz kontrakt pliku, zaktualizuj jego test obok.'
+    'zmieniasz kontrakt pliku, zaktualizuj jego test obok.' + deferNote
 }
 
 // Czerwień sondy, której implementer nie może naprawić w swoim zakresie, nie jest „brakiem
@@ -222,7 +236,7 @@ function buildImplPrompt(a, layer, attempt, violations, silentDeaths, probeRed) 
     'Pusta lista BEZ no_changes_reason liczy się jako niewykonana praca.'
   // Przy poprawce (violations) nie powtarzamy bloku SZUKANIE — implementer ma listę
   // plik/linia/reguła, nie ma czego lokalizować; blok tylko dokładałby kontekstu.
-  return spec + decisions + '\n\n' + scopeBlock(layer) + '\n' + renderCards(cardsFor(a, baseId(layer))) +
+  return spec + decisions + '\n\n' + scopeBlock(layer, a) + '\n' + renderCards(cardsFor(a, baseId(layer))) +
     (violations ? '' : SEARCH_BUDGET) + soft + silent + (probeRed ? RED_PROBE_RULE : '') + fix + noop + NO_REVERT
 }
 
@@ -248,7 +262,23 @@ function buildTreeProbePrompt(base) {
 // dostaje jej wynik jako FAKT i ma zakaz ponawiania — inaczej ten sam typecheck wykonuje
 // się kilkadziesiąt razy, a każde 16-23 KB wyjścia zostaje w kontekście na resztę przebiegu.
 function buildProbePrompt(a, layer) {
-  const cmds = (layer.checks || []).map((c) => 'npm run ' + c)
+  // ORC-016 (2026-09-27 uzupełnienie kodem — do tej pory czysta proza): goły `npm run <check>`
+  // w monorepo z turbo/nx (`dependsOn: ["^build"]`) buduje WSZYSTKIE zależności upstream, nie
+  // tylko pakiet tej warstwy. Silnik Workflow nie ma dostępu do fs (patrz nagłówek pliku), więc
+  // lookup najbliższego package.json robi SONDA (ma Bash) — jedna funkcja powłoki, nie Node.
+  // Zaobserwowane jako powtarzalne uszkodzenie packages/contracts/src/generated/* w feature-flags
+  // (2026-09-27, TASK-0010, 2x w tym samym przebiegu: root `lint`→`turbo run lint`, złej wersji
+  // toolchainu AJV psującej build kontraktów, którego ta warstwa w ogóle nie dotykała).
+  const dirs = effectiveDirs(layer)
+  const firstDir = dirs.length
+    ? (/\.[a-z0-9]+$/i.test(dirs[0]) ? splitPath(dirs[0]).dir : dirs[0]).replace(/\/+$/, '')
+    : null
+  const pkgLookup = firstDir
+    ? '_pkgdir() { d="' + firstDir + '"; while [ "$d" != "." ] && [ "$d" != "/" ] && [ -n "$d" ]; do ' +
+      '[ -f "$d/package.json" ] && { echo "$d"; return; }; d=$(dirname "$d"); done; echo "."; }; ' +
+      'PKGROOT=$(_pkgdir)\n'
+    : ''
+  const cmds = (layer.checks || []).map((c) => firstDir ? '(cd "$PKGROOT" && npm run ' + c + ')' : 'npm run ' + c)
   const scoped = effectiveDirs(layer).join(' ')
   // Pathspecy monorepo: `layer.dirs` to nazwy typu "__tests__/"/"domain/", nigdy katalogi
   // TOP-LEVEL repo (prawdziwa ścieżka to src/contexts/<ctx>/domain/...). Literalny pathspec
@@ -259,7 +289,16 @@ function buildProbePrompt(a, layer) {
   // Zawężenie z `layers_scope` może wskazać pojedynczy PLIK (…/error-codes.ts) — wtedy
   // bez końcowego `/**`, bo `plik.ts/**` nie dopasuje niczego.
   // Dla pliku dochodzą testy z jego katalogu (pliki towarzyszące — patrz scopeBlock).
+  // ORC-078 (docs/decisions/orchestrate-rule-history.md#orc-078): Flutter/Dart rozdziela
+  // lib/ i test/ BEZ wspólnego segmentu (lib/core/design/x.dart -> test/core/design/
+  // x_test.dart, NIE test/lib/core/design/...). `dirs` z prefiksem lib/ (pełna ścieżka od
+  // korzenia repo, jak w --overrides) budowały pathspec `:(glob)**/lib/core/design/**`,
+  // który nigdy nie trafia w drzewo testów — newTestBlocks liczyło 0 niezależnie od realnej
+  // zawartości (juz-ide-mobile-app DESIGN-SYSTEM-009, DEV-orc-035-presentation). Dopisujemy
+  // wariant BEZ segmentu lib/ OBOK oryginalnego (nie zamiast) — nie zawęża dopasowania dla
+  // stacków, gdzie test/ faktycznie lustrzanie odwzorowuje lib/ z segmentem.
   const globScoped = effectiveDirs(layer)
+    .flatMap((d) => (/^lib\//.test(d) ? [d, d.replace(/^lib\//, '')] : [d]))
     .map((d) => {
       if (!/\.[a-z0-9]+$/i.test(d)) return "':(glob)**/" + d.replace(/\/$/, '') + "/**'"
       const sp = splitPath(d)
@@ -267,7 +306,12 @@ function buildProbePrompt(a, layer) {
     })
     .join(' ') || '.'
   const run = cmds.length
-    ? cmds.map((c) => c + ' > /tmp/check-' + layer.id + '.log 2>&1; echo "EXIT:$?"').join('\n')
+    ? pkgLookup + cmds.map((c) => c + ' > /tmp/check-' + layer.id + '.log 2>&1; echo "EXIT:$?"').join('\n') +
+      (firstDir
+        ? '\nGdy $PKGROOT wyjdzie jako "." (brak package.json na ścieżce do zakresu warstwy) — ' +
+          'checks poleciały na PEŁNYM repo; zaznacz to WPROST w swojej odpowiedzi (ORC-016: ' +
+          'świadome pełne uruchomienie, nie milczące domyślne).'
+        : '')
     : '(brak checks w runtime.yml dla tej warstwy — NIE uruchamiaj żadnego test runnera ani ' +
       'typechecku z własnej inicjatywy, choćby "dla pewności"; zgłoś "skipped" dla obu pól. ' +
       'Incydent 2026-09-09: sonda odpaliła całą suitę (301s, 34003 testy) mimo pustych checks ' +
@@ -291,8 +335,32 @@ function buildProbePrompt(a, layer) {
       '  git add -N -- ' + globScoped + ' 2>/dev/null; git diff HEAD -U0 -- ' + globScoped + " | grep -cE '^\\+\\s*(it|test|testWidgets|describe|group)(\\.(each|only|skip|concurrent))?\\(' \n" +
       'i zwróć go jako newTestBlocks.'
     : ''
+  // „Ostatnie 40 linii" gubi błąd, gdy PO nim w tym samym logu leży dużo ostrzeżeń z
+  // katalogów spoza zakresu warstwy (monorepo, jeden `lint:check` na cały repo) — implementer
+  // widzi tylko cudzy ogon i ogłasza no-op, mimo że błąd W JEGO zakresie jest wcześniej w tym
+  // samym pliku (marketing-hub TS-MH-006, testing:knowledge, 2x z rzędu na tym samym tasku:
+  // 3 błędy import/order w nowo dodanym pliku warstwy zgubione za ostrzeżeniami z shared/).
+  // Grep po własnym zakresie NAJPIERW — błąd w Twoich plikach nie może zniknąć za cudzym
+  // ogonem logu, niezależnie od jego długości; tail zostaje jako fallback dla błędów bez
+  // ścieżki (np. konfiguracyjnych), których grep z natury nie złapie.
+  const scopeGrep = effectiveDirs(layer)
+    .map((d) => String(d).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+    .join('|')
+  const tailInstruction = scopeGrep
+    ? ' Przy niezerowym: NAJPIERW `grep -E \'' + scopeGrep + '\' /tmp/check-' + layer.id + '.log` — ' +
+      'linie z Twojego WŁASNEGO zakresu, w CAŁOŚCI, niezależnie od tego, ile linii to da. ' +
+      'Dopiero gdy ten grep nic nie znajdzie (błąd bez ścieżki pliku, np. konfiguracyjny) — ' +
+      'zwróć ostatnie 40 linii CAŁEGO logu w `tail`.'
+    : ' Przy niezerowym — zwróć ostatnie 40 linii w `tail`.'
+  // ORC-082 (uzupełnienie): surowe linie błędów TS jako OSOBNE pole. ORC-082 parsował `tail`, a `tail` agent
+  // sondy potrafił sparafrazować („Missing method X…") — parser nie widział błędu, wyjątek
+  // nie zadziałał i warstwa domain stanęła na BLOCKED_BY_PRIOR (juz-ide-api-1, 2026-09-30).
+  const tsErrorsInstruction = cmds.length
+    ? ' Przy niezerowym typecheck dodatkowo zwróć w `tsErrors` WYNIK DOSŁOWNIE (bez streszczania, ' +
+      'parafrazy i komentarza): `grep -E \'error TS[0-9]+\' /tmp/check-' + layer.id + '.log | head -60`.'
+    : ''
   return 'Uruchom dokładnie to i NIC więcej:\n' + run +
-    '\nPrzy EXIT:0 NIE otwieraj pliku logu wcale. Przy niezerowym — zwróć ostatnie 40 linii w `tail`.' +
+    '\nPrzy EXIT:0 NIE otwieraj pliku logu wcale.' + tailInstruction + tsErrorsInstruction +
     delta +
     '\nNIC nie czytaj, nie analizuj, nie poprawiaj, nie komentuj kodu.' +
     (scoped ? '\nZakres zmiany: ' + scoped : '') +
@@ -324,7 +392,7 @@ function buildVerifierPrompt(a, layer, probe, changedFiles, mode, noopClaim, pri
     return 'TRYB: implementer twierdzi, że ta warstwa NIE wymaga zmian dla tego taska. Nie oceniasz ' +
       'kodu — oceniasz TWIERDZENIE. Przeczytaj spec i analizę (decyzje, jednostki pracy), sprawdź ' +
       'celowanym odczytem, czy w zakresie warstwy jest cokolwiek, co task każe zmienić.\n\n' +
-      spec + '\n\n' + scopeBlock(layer) + '\n\nUZASADNIENIE IMPLEMENTERA:\n' + noopClaim + prior + '\n\n' +
+      spec + '\n\n' + scopeBlock(layer, a) + '\n\nUZASADNIENIE IMPLEMENTERA:\n' + noopClaim + prior + '\n\n' +
       'GO = zgadzasz się, warstwa faktycznie nie ma nic do zrobienia (w uzasadnieniu napisz, co ' +
       'sprawdziłeś). NO_GO = task WYMAGA zmian w tej warstwie — w naruszeniach wypisz KONKRETNIE ' +
       'co (plik/moduł, czego brakuje); to trafi do implementera jako lista poprawek.\n' +
@@ -332,9 +400,13 @@ function buildVerifierPrompt(a, layer, probe, changedFiles, mode, noopClaim, pri
       'się kończy; brak werdyktu wywraca cały przebieg.'
   }
   const facts = probe
-    ? 'FAKTY Z SONDY (już wykonane, traktuj jak dane wejściowe):\n' +
-      '  typecheck: ' + probe.typecheck + '\n  testy: ' + probe.tests +
-      (probe.newTestBlocks != null ? '\n  nowe bloki testowe: ' + probe.newTestBlocks : '') +
+    ? 'FAKTY Z SONDY — obiekt `checks` (już wykonane, traktuj jak dane wejściowe):\n' +
+      '  checks.typecheck: ' + probe.typecheck + '\n  checks.tests: ' + probe.tests +
+      (probe.newTestBlocks != null ? '\n  checks.newTestBlocks: ' + probe.newTestBlocks : '') +
+      (probe.typecheck === 'deferred'
+        ? '\n  (typecheck: czerwień wyłącznie w plikach PÓŹNIEJSZYCH warstw — odroczona do ich sond, ' +
+          'nie jest naruszeniem tej warstwy; nie zgłaszaj jej)'
+        : '') +
       '\nNIE uruchamiaj typechecku ani testów ponownie — zostały już wykonane, a ich powtórzenie ' +
       'niczego nie ustala i kosztuje pełne wyjście w Twoim kontekście.\n'
     : 'Sonda nie zwróciła wyniku — odnotuj to w uzasadnieniu werdyktu.\n'
@@ -346,10 +418,25 @@ function buildVerifierPrompt(a, layer, probe, changedFiles, mode, noopClaim, pri
     ? 'TRYB: praca leży już w drzewie roboczym (implementer zakończył bez raportu). Oceniaj STAN ' +
       'FAKTYCZNY, nie raport. Braki zgłoś jako naruszenia do punktowej poprawki.\n'
     : ''
-  return existing + scopeBlock(layer) + '\n\n' + facts + files +
+  // ORC-070 (docs/decisions/orchestrate-rule-history.md#orc-070): filtr mechaniczny w
+  // decideVerdict() łapie tylko pozycje wyglądające na ścieżkę, przypisane do dirs INNEJ
+  // warstwy — poniższy akapit adresuje przyczynę (ORC-011 już to mówi o `dirs`, ale nie o
+  // samym polu `unverified_scope`), nie tylko objaw (juz-ide-api-1 TS-SEC-112,
+  // infrastructure:guards: 3 identyczne rundy GO z unverified_scope wskazującym pliki spoza
+  // dirs tej jednostki, zero realnej luki).
+  const scopeReminder =
+    'POLE `unverified_scope` (budżet tur): wyłącznie pliki z TWOJEGO WŁASNEGO zakresu (dirs ' +
+    'powyżej), których nie zdążyłeś sprawdzić. Plik albo spec spoza Twojego zakresu — inna ' +
+    'jednostka tego przebiegu go pokrywa — NIE jest niezweryfikowanym zakresem: pomiń go ' +
+    'całkowicie, nie wpisuj tutaj (ORC-011: poza zakresem, nie brakujący).\n' +
+    'FORMAT: jeden wpis tej tablicy = jedna ścieżka względem repo (np. `src/foo/bar.ts`), nic ' +
+    'więcej — bez nawiasów, wyjaśnień, kilku plików w jednym stringu ani gołych nazw plików bez ' +
+    'katalogu. Zdanie prozą zamiast ścieżki nie da się mechanicznie rozpoznać jako „poza ' +
+    'zakresem" po drugiej stronie.\n'
+  return existing + scopeBlock(layer, a) + '\n\n' + facts + files +
     renderCards(cardsFor(a, baseId(layer))) +
     '\nOceń zgodność zmiany z regułami powyżej. Zwróć werdykt GO albo NO_GO i listę naruszeń ' +
-    '(plik, linia, reguła, co poprawić).\n' +
+    '(plik, linia, reguła, co poprawić).\n' + scopeReminder +
     'CZYTAJ TYLKO zmienione pliki z listy (Read z offset/limit, gdy plik > 300 linii); plik spoza ' +
     'listy otwieraj wyłącznie, gdy zmieniony plik go importuje i bez niego nie da się ocenić ' +
     'reguły. Nie grepuj po całym drzewie „dla kontekstu" — każdy wynik zostaje w Twoim kontekście ' +
@@ -363,8 +450,16 @@ function buildVerifierPrompt(a, layer, probe, changedFiles, mode, noopClaim, pri
 // raportów warstw: warstwa zakończona no-op oddaje `files: []`, więc bramka nie widziała
 // infrastruktury, migracji ani kontraktów (TS-MH-005 — weryfikator sam zajrzał do HEAD).
 // Karty: wszystkie wzorce przebiegu — bramka oceniała całość zmiany bez reguł.
-function buildFinalGatePrompt(a, checks, changedFiles, treeSource) {
+function buildFinalGatePrompt(a, checks, changedFiles, treeSource, knownGaps) {
   const calls = budgetFor(a, 'final-gate', DEFAULTS.verifyCalls)
+  // ORC-084: luki, które warstwy już zapisały jako GO_WITH_GAPS — bramka nie wymusza za nie NO_GO
+  // (filterKnownLayerGaps), ale ma je sprawdzić celowanym odczytem, jeśli starczy budżetu.
+  const gapsBlock = (knownGaps || []).length
+    ? '\n\nZNANE LUKI WARSTW (warstwy zamknęły je jako GO_WITH_GAPS: zero naruszeń, sonda zielona, ' +
+      'weryfikator nie zdążył ich przeczytać). Sprawdź je celowanym odczytem, jeśli starczy budżetu; ' +
+      'niesprawdzone NIE powodują NO_GO — trafią do raportu dla człowieka:\n' +
+      knownGaps.map((g) => '- ' + g.layer + ': ' + g.items.join(', ')).join('\n')
+    : ''
   const dirty = (a.dirtyAtStart || []).length
     ? 'Pliki BRUDNE JUŻ PRZED startem przebiegu (nie są pracą tego taska, chyba że je zmienił — ' +
       'oceń tylko, jeśli są na liście wyżej i dotyczą taska):\n  ' + a.dirtyAtStart.join('\n  ') + '\n'
@@ -373,21 +468,80 @@ function buildFinalGatePrompt(a, checks, changedFiles, treeSource) {
     ? '(UWAGA: sonda drzewa nie zwróciła wyniku — lista złożona z raportów warstw, może być ' +
       'niepełna; sprawdź `' + treeFilesCmd(a.baseSha) + '` sam, jednym wywołaniem.)\n'
     : ''
+  // Warstwy dostają kanał na jawną adjudykację nieoczywistego zakresu (layer.scope.reason,
+  // patrz scopeBlock()) — bramka końcowa go NIE MIAŁA, mimo że `a.task.decisions` już do niej
+  // dociera (ten sam pole, którego buildImplPrompt() używa od dawna, tu po prostu nie było
+  // renderowane). Bez tego jedyna droga naprawy „GO z unverified_scope na czymś trywialnym
+  // (README, .gitignore, sam plik analizy)" na jednorazowej, bez-retry bramce była ręczna
+  // interwencja człowieka — inaczej niż warstwy, które mają wbudowaną ścieżkę (feature-flags
+  // TASK-0010, 2 z 4 eskalacji ORC-069 tego przebiegu były na final-gate). Człowiek dopisuje
+  // decyzję do `decisions:` w analizie, resume tego samego taska ją zobaczy tutaj.
+  const decisions = (a.task.decisions || []).length
+    ? '\n\nDECYZJE ZATWIERDZONE PRZEZ CZŁOWIEKA — stosuj, nie re-decyduj. Jeśli któraś jawnie ' +
+      'adresuje pozycję, którą inaczej wpisałbyś do unverified_scope (np. „D9: plik X jest ' +
+      'dokumentacyjny/niefunkcjonalny, poza zakresem tej weryfikacji"), potraktuj to jako ' +
+      'rozstrzygnięte przez człowieka, nie jako niezweryfikowaną lukę:\n' +
+      a.task.decisions.map((d) => '- ' + d.id + ' ' + (d.topic || '') + ': ' + (d.choice || '')).join('\n')
+    : ''
   return 'BRAMKA KOŃCOWA dla ' + a.task.id + ' — oceniasz CAŁOŚĆ zmiany, nie ostatnią warstwę. ' +
     'To ostatnie miejsce, w którym wychodzi regresja MIĘDZY warstwami.\n\n' +
     (checks.length ? 'Deterministyczne bramki do wykonania raz, na całości: ' + checks.join(', ') + '\n' : '') +
     (changedFiles.length ? 'Pliki objęte zmianą (z drzewa, względem bazy przebiegu):\n  ' + changedFiles.join('\n  ') + '\n' : '') +
-    source + dirty +
+    source + dirty + decisions + gapsBlock +
     renderCards(a.patterns || [], 'wszystkie wzorce tego przebiegu') +
     '\nZwróć werdykt GO albo NO_GO i listę naruszeń.\n' +
     'TWARDY LIMIT: ' + calls + ' wywołań narzędzi. Gdy budżet się kończy — wydaj werdykt ' +
     'natychmiast na podstawie zebranych dowodów.' + NO_REVERT
 }
 
+// ORC-071 (docs/decisions/orchestrate-rule-history.md#orc-071): weryfikator czasem PISZE
+// PROZĄ, że pozycja unverified_scope jest poza jego zakresem ("... - poza zakresem tej
+// jednostki (shared-infra)", "owned by domain unit"), zamiast realnej luki. Wydzielone na
+// poziom modułu (ORC-076, docs/decisions/orchestrate-rule-history.md#orc-076) tak, żeby
+// final gate — który NIE woła decideVerdict() (jest jednorazowy, bez pętli retry, patrz
+// sekcja „6. bramka końcowa") — mógł stosować DOKŁADNIE ten sam filtr zamiast trzymać
+// osobną, dużo bardziej naiwną kopię tej samej reguły.
+const SELF_ADMITS_OUT_OF_SCOPE = /poza zakresem|out[- ]of[- ]scope|inn(?:ej|a) jednostk|owned by (?:another|a different|[\w-]+\s+(?:unit|layer|warstw\w*))/i
+function filterSelfAdmittedOutOfScope(items) {
+  return items.filter((item) => !SELF_ADMITS_OUT_OF_SCOPE.test(item))
+}
+
+// ORC-079 (docs/decisions/orchestrate-rule-history.md#orc-079): plik analizy/task TEGO
+// przebiegu bywa wymieniony w unverified_scope ("sam plik analizy", "plik taska") —
+// strukturalnie NIGDY nie jest kodem produkcyjnym do przeglądu final gate, to artefakt
+// PROCESU tego przebiegu. Filtrujemy po ŚCIEŻCE (a.task.analysisFile/taskFile), nie po
+// kolejnym wariancie frazy w SELF_ADMITS_OUT_OF_SCOPE — bezpieczniejsze, bo nie zależy od
+// tego, JAK weryfikator to nazwie (ai-os-bot BOT-005a-tests, 2026-09-29: pozycja "plik
+// analizy" nie zawierała żadnej z fraz self-admission, więc ORC-076 sam jej nie złapał).
+function filterOwnTaskArtifacts(items, task) {
+  const paths = [task && task.analysisFile, task && task.taskFile].filter(Boolean)
+  if (!paths.length) return items
+  return items.filter((item) => !paths.some((p) => item.includes(p)))
+}
+
+// ORC-080 (docs/decisions/orchestrate-rule-history.md#orc-080): buildFinalGatePrompt()
+// renderuje a.task.decisions (ORC-072) i INSTRUUJE weryfikatora, że pozycja jawnie
+// zaadresowana decyzją nie jest luką — ale to instrukcja promptu, nie mechanizm. Lekcja z
+// ORC-071 ("instrukcja promptu nie jest wiążąca dla LLM") dotyczy też tego kanału: ai-os-bot
+// BOT-005a-tests (2026-09-29, drugi przebieg tego samego taska) miał D7 jawnie adjudykujące
+// pozycję, a bramka końcowa i tak zgłosiła TĘ SAMĄ pozycję jako unverified_scope. Filtr
+// mechaniczny — jeśli pozycja WYMIENIA id decyzji (np. "D7"), odfiltruj ją niezależnie od
+// tego, czy weryfikator "zastosował" ją w rozumowaniu, czy tylko przepisał numer.
+function filterAdjudicatedByDecision(items, decisions) {
+  const ids = (decisions || []).map((d) => d && d.id).filter(Boolean)
+  if (!ids.length) return items
+  const rx = ids.map((id) => new RegExp('\\b' + id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b'))
+  return items.filter((item) => !rx.some((r) => r.test(item)))
+}
+
 // Decyzja po weryfikacji. Trzy różne awarie, trzy różne reakcje — zlanie ich w jedno
 // („no to spróbuj jeszcze raz") jest tym, co pali trzecią pełną próbę na gotowym kodzie.
-function decideVerdict(verdict, attempt, maxAttempts) {
-  if (!verdict) return { next: 'silent', reason: 'brak wyniku weryfikatora' }
+// `layer`/`allLayers` opcjonalne — brak (np. stare wywołanie, testy jednostkowe funkcji w
+// izolacji) po prostu wyłącza filtr ORC-070 i wraca do zachowania sprzed niego.
+function decideVerdict(verdict, attempt, maxAttempts, layer, allLayers) {
+  // ORC-083: `cause` odróżnia „kod ma błędy" ('code') od „maszyna nie domknęła weryfikacji"
+  // ('machine') — tylko drugie jest odstępstwem orkiestracji wartym zgłoszenia (krok 5).
+  if (!verdict) return { next: 'silent', reason: 'brak wyniku weryfikatora', cause: 'machine' }
   const v = String(verdict.verdict || '').toUpperCase()
   // GO z niepustym unverified_scope to CZWARTA awaria, nie czysty GO: weryfikator uczciwie
   // przyznał (konwencja "TURN BUDGET" w promptach weryfikatorów), że nie zdążył sprawdzić
@@ -396,17 +550,87 @@ function decideVerdict(verdict, attempt, maxAttempts) {
   // się nie realizowała (marketing-hub TS-MH-010, testing:l1-l2, jednostka 105 plików: GO mimo
   // 11 czerwonych testów, czerwień wyszła dopiero jako BLOCKED_BY_PRIOR na kolejnej jednostce).
   const unverified = Array.isArray(verdict.unverified_scope) ? verdict.unverified_scope.filter(Boolean) : []
-  if (v === 'GO' && unverified.length) {
+  // ORC-070: pozycja unverified_scope, która wygląda na ścieżkę (ma `/` albo `.`) i leży
+  // WYŁĄCZNIE w dirs innej warstwy tego samego przebiegu, nigdy w dirs tej warstwy — to nie
+  // luka TEJ warstwy, tylko cudza robota, którą zweryfikuje własny weryfikator tamtej warstwy.
+  // Bez tego rozróżnienia weryfikator, który uczciwie wymienia sąsiedni katalog spoza swojego
+  // layers_scope.dirs, sam sobie wymuszał NO_GO (grant-flow TS-RATE-003, domain:domain: 2 z 3
+  // pozycji to domain/repositories/ i error-mapper wiring, należące do jednostek
+  // application/infrastructure-persistence tego samego przebiegu — diagnostyka po fakcie
+  // potwierdziła kod tej warstwy za kompletny i poprawny). Wolny tekst bez separatora ścieżki
+  // (np. „VO rule-by-rule re-walk") zostaje liczony konserwatywnie dalej — nie da się
+  // mechanicznie odróżnić duplikatu weryfikacji od realnej luki bez historii poprzednich jednostek.
+  // ORC-071: weryfikator czasem PISZE PROZĄ, że pozycja jest poza zakresem ("... — poza
+  // zakresem tej jednostki (shared-infra)"), zamiast podać czystą ścieżkę — dopasowanie po
+  // dirs w ownUnverified wymaga pełnej ścieżki, więc goła nazwa pliku w nawiasie ("guards unit
+  // files (reputation-threshold.guard.ts, ...)") nic nie dopasowuje i pozycja liczy się jako
+  // realna luka, mimo że sam weryfikator już powiedział, że nie jest. Instrukcja formatu w
+  // promptcie nie jest wiążąca dla LLM (juz-ide-api-1 TS-SEC-112, infrastructure:shared-infra,
+  // wariant #2 tego samego dnia po dodaniu scopeReminder) — ufamy więc słowu weryfikatora: gdy
+  // sam stwierdza brak zakresu, nie próbujemy tego jeszcze raz strukturalnie potwierdzać.
+  // ORC-071 dodatek (grant-flow TS-RATE-003, infrastructure:infrastructure-persistence, 3.
+  // wystąpienie tego samego kształtu): "owned by domain unit" nie łapało się na wąskie
+  // "owned by (another|a different)" — werset szerszy o dowolną nazwę jednostki/warstwy przed
+  // "unit"/"layer"/"warstw…", nie tylko "another"/"a different". (SELF_ADMITS_OUT_OF_SCOPE
+  // przeniesiona na poziom modułu w ORC-076 — patrz komentarz nad definicją, wyżej.)
+  const ownUnverified = layer
+    ? unverified.filter((item) => {
+      if (SELF_ADMITS_OUT_OF_SCOPE.test(item)) return false
+      if (!/[/.]/.test(item)) return true
+      if (layerTouches(layer, item)) return true
+      const claimedElsewhere = (allLayers || []).some((l) =>
+        l.id !== layer.id && effectiveDirs(l).length && layerTouches(l, item))
+      return !claimedElsewhere
+    })
+    : unverified
+  if (v === 'GO' && ownUnverified.length) {
     if (attempt >= maxAttempts) {
-      return { next: 'escalate', reason: 'GO z niezweryfikowanym zakresem po ' + maxAttempts + ' próbach — nigdy nie sprawdzono: ' + unverified.join(', ') }
+      return { next: 'escalate', cause: 'machine', gaps: ownUnverified, reason: 'GO z niezweryfikowanym zakresem po ' + maxAttempts + ' próbach — nigdy nie sprawdzono: ' + ownUnverified.join(', ') }
     }
-    return { next: 'fix', reason: 'weryfikator dał GO, ale nie zdążył sprawdzić (unverified_scope): ' + unverified.join(', ') + ' — kolejna próba dostaje świeży budżet tur na dokończenie weryfikacji' }
+    // ORC-074: to NIE jest 'fix' (kod nie ma czego naprawiać — weryfikator nie zgłosił
+    // naruszeń, tylko brak czasu/kompetencji na część zakresu), więc kolejna próba nie
+    // powinna wracać do implementera. `next: 'reverify'` każe pętli warstwy przejść od razu
+    // w tryb 'verify-existing' (świeży budżet tur TYLKO dla weryfikatora) zamiast pełnego
+    // implement→verify. Bez tego rozróżnienia (ai-os-bot BOT-014, warstwa `implementation`;
+    // marketing-hub TS-MH-006, `infrastructure:wiring-security-format-fix`) 3 próby paliły
+    // implementera na kodzie, który już był poprawny — 3-cia próba w obu przypadkach nie
+    // miała żadnej zmiany w diffie, tylko pisemną analizę weryfikatora.
+    return { next: 'reverify', reason: 'weryfikator dał GO, ale nie zdążył sprawdzić (unverified_scope): ' + ownUnverified.join(', ') + ' — kolejna próba dostaje świeży budżet tur wyłącznie na dokończenie weryfikacji, bez powrotu do implementera' }
   }
   if (v === 'GO') return { next: 'go', reason: null }
   if (attempt >= maxAttempts) {
-    return { next: 'escalate', reason: 'wyczerpane ' + maxAttempts + ' prób, ostatni werdykt NO_GO' }
+    return { next: 'escalate', cause: 'code', reason: 'wyczerpane ' + maxAttempts + ' prób, ostatni werdykt NO_GO' }
   }
   return { next: 'fix', reason: formatViolations(verdict.violations) }
+}
+
+// ORC-084 (docs/decisions/orchestrate-rule-history.md#orc-084): warstwa, której weryfikator dał
+// GO bez ani jednego naruszenia, ale nie domknął zakresu po wszystkich próbach, NIE zatrzymuje
+// przebiegu — kończy jako GO_WITH_GAPS, a luki jadą w raporcie do bramki końcowej i człowieka.
+// Warunek: sonda ODPOWIEDZIAŁA i nie jest czerwona (typecheck/testy pass|skipped|deferred);
+// brak wyniku sondy = brak dowodu, że kod działa, więc halt jak dotąd.
+function layerGapsAcceptable(decision, verdict, probe) {
+  if (!decision || decision.next !== 'escalate') return false
+  if (!Array.isArray(decision.gaps) || !decision.gaps.length) return false
+  if (!verdict || String(verdict.verdict || '').toUpperCase() !== 'GO') return false
+  if (Array.isArray(verdict.violations) && verdict.violations.length) return false
+  if (!probe) return false
+  return probe.typecheck !== 'fail' && probe.tests !== 'fail'
+}
+
+// Bramka końcowa nie wymusza NO_GO za pozycje, które warstwa już zapisała jako znaną lukę
+// (GO_WITH_GAPS) — trafiają do raportu dla człowieka, bez drugiego liczenia. Dopasowanie po
+// ścieżce/tekście luki zawartym w pozycji bramki (albo odwrotnie).
+function filterKnownLayerGaps(items, knownGaps) {
+  const known = (knownGaps || []).flatMap((g) => (g && g.items) || []).map(String).filter(Boolean)
+  if (!known.length) return { kept: items, absorbed: [] }
+  const absorbed = []
+  const kept = items.filter((item) => {
+    const hit = known.some((k) => item.includes(k) || k.includes(item))
+    if (hit) absorbed.push(item)
+    return !hit
+  })
+  return { kept, absorbed }
 }
 
 function formatViolations(violations) {
@@ -444,6 +668,34 @@ function layerTouches(layer, file) {
     const s = String(d).replace(/\/+$/, '')
     return f.indexOf(s) !== -1 || isCompanion(s, f)
   })
+}
+
+// ORC-082 (docs/decisions/orchestrate-rule-history.md#orc-082): typecheck warstwy biegnie na
+// całym pakiecie, więc zmiana portu/konstruktora w domain/application czerwieni pliki WŁAŚCIWE
+// późniejszym warstwom (infrastructure, testing) — cudzą czerwień, której ta warstwa nie może
+// naprawić (juz-ide-api-1, 3 zgłoszenia, 2 taski). Odroczona jest TYLKO czerwień, w której
+// KAŻDY błąd TS ma ścieżkę w dirs późniejszej warstwy i żaden nie leży w dirs tej warstwy ani
+// wcześniejszych. Błąd bez ścieżki (globalny/konfiguracyjny) albo nieparsowalny ogon = brak
+// odroczenia. Odroczoną czerwień domyka sonda następnej warstwy i bramka końcowa (typecheck).
+function typecheckErrorPaths(tail) {
+  const text = String(tail || '')
+  const total = (text.match(/\berror\s+TS\d+/g) || []).length
+  const re = /^\s*(\S+\.(?:tsx?|mts|cts))[(:]\d+[,:]\d+\)?:?\s*(?:-\s*)?error\s+TS\d+/gm
+  const paths = []
+  let m
+  while ((m = re.exec(text)) !== null) paths.push(m[1])
+  return { total, paths }
+}
+
+function typecheckRedIsLaterLayers(probe, layer, allLayers) {
+  if (!probe || probe.typecheck !== 'fail' || probe.tests === 'fail') return false
+  const { total, paths } = typecheckErrorPaths(probe.tsErrors || probe.tail)
+  if (!paths.length || paths.length !== total) return false
+  const idx = (allLayers || []).findIndex((l) => l.id === layer.id)
+  if (idx < 0) return false
+  const later = allLayers.slice(idx + 1).filter((l) => effectiveDirs(l).length)
+  if (!later.length) return false
+  return paths.every((p) => !layerTouches(layer, p) && later.some((l) => layerTouches(l, p)))
 }
 
 // Implementer po CZERWONEJ sondzie twierdzi „nic do zrobienia" → to nie jest no-op do
@@ -495,6 +747,7 @@ const CHECKS_SCHEMA = {
     tests: { type: 'string', enum: ['pass', 'fail', 'skipped'] },
     newTestBlocks: { type: 'number' },
     tail: { type: 'string' },
+    tsErrors: { type: 'string' },
   },
 }
 
@@ -566,7 +819,7 @@ async function ask(prompt, opts) {
 const a = args || {}
 const maxAttempts = (a.verifiers && a.verifiers.maxAttempts) || DEFAULTS.maxAttempts
 const plan = layerPlan(a, (a.createWhenHits) || {})
-const report = { taskId: a.task && a.task.id, layers: [], finalGate: null, exit: a.exit || 'STAGE_NOT_COMMIT' }
+const report = { taskId: a.task && a.task.id, layers: [], gaps: [], finalGate: null, exit: a.exit || 'STAGE_NOT_COMMIT' }
 const allChangedFiles = []
 
 phase('Warstwy')
@@ -611,8 +864,14 @@ for (const step of plan) {
       if (!impl) {
         // Cicha śmierć: ZANIM powtórzysz pełną implementację, sprawdź, czy praca już nie leży
         // w drzewie. Ślepa powtórka pali drugie ~40 tur na gotowym kodzie.
+        // ORC-077 (docs/decisions/orchestrate-rule-history.md#orc-077): etykieta MUSI nieść
+        // numer próby. Bez niego (do 2026-09-29) była stała per warstwa, a prompt tej sondy
+        // (buildDiffProbePrompt(a.baseSha)) też nie zależy od próby — para (label, prompt)
+        // identyczna na każdym retry tej samej warstwy, więc cache silnika Workflow zamrażał
+        // wynik PIERWSZEJ próby na zawsze, nawet po realnej zmianie stanu repo (grant-flow
+        // TS-SIM-001, DEV-orc-065).
         const diffOpts = Object.assign(
-          { label: layer.id + '-diff-probe', maxTurns: DEFAULTS.diffProbeTurns, schema: DIFF_PROBE_SCHEMA },
+          { label: layer.id + '-diff-probe-' + attempt, maxTurns: DEFAULTS.diffProbeTurns, schema: DIFF_PROBE_SCHEMA },
           modelFor('probe'),
         )
         let probeDiff = null
@@ -629,7 +888,7 @@ for (const step of plan) {
         } else {
           silentDeaths++
           if (silentDeaths >= 2) {
-            settled = { id: layer.id, status: 'ESCALATE_AND_HALT', reason: 'dwa kolejne wyjścia bez wyniku — zakres za duży na budżet, podziel warstwę' }
+            settled = { id: layer.id, status: 'ESCALATE_AND_HALT', reason: 'dwa kolejne wyjścia bez wyniku — zakres za duży na budżet, podziel warstwę', cause: 'machine' }
             break
           }
           continue
@@ -672,14 +931,14 @@ for (const step of plan) {
         noopVerdict = null
       }
       if (noopVerdict && typeof noopVerdict.deviation_note === 'string' && noopVerdict.deviation_note.trim()) deviationNote = noopVerdict.deviation_note.trim()
-      const noopDecision = decideVerdict(noopVerdict, attempt, maxAttempts)
+      const noopDecision = decideVerdict(noopVerdict, attempt, maxAttempts, layer, plan.map((s) => s.layer))
       if (noopDecision.next === 'go') {
         log(layer.id + ': brak zmian potwierdzony przez weryfikatora — ' + noopClaim)
         settled = { id: layer.id, status: 'GO', files: [], attempts: attempt, note: 'no-op: ' + noopClaim }
         break
       }
       if (noopDecision.next === 'escalate') {
-        settled = { id: layer.id, status: 'ESCALATE_AND_HALT', reason: noopDecision.reason }
+        settled = { id: layer.id, status: 'ESCALATE_AND_HALT', reason: noopDecision.reason, cause: noopDecision.cause || 'code' }
         break
       }
       violations = noopDecision.next === 'silent'
@@ -692,8 +951,9 @@ for (const step of plan) {
     }
 
     // ── 2. bramka „kod istnieje" — mierzymy drzewo, nie raport agenta
+    // ORC-077: numer próby w etykiecie — patrz komentarz przy '-diff-probe' wyżej, ten sam bug.
     const gateOpts = Object.assign(
-      { label: layer.id + '-diff-gate', maxTurns: DEFAULTS.diffProbeTurns, schema: DIFF_PROBE_SCHEMA },
+      { label: layer.id + '-diff-gate-' + attempt, maxTurns: DEFAULTS.diffProbeTurns, schema: DIFF_PROBE_SCHEMA },
       modelFor('probe'),
     )
     let gate = null
@@ -707,7 +967,7 @@ for (const step of plan) {
       violations = 'bramka „kod istnieje": żaden plik w zakresie warstwy nie został zmieniony'
       log(layer.id + ': ' + violations)
       if (attempt >= maxAttempts) {
-        settled = { id: layer.id, status: 'ESCALATE_AND_HALT', reason: violations }
+        settled = { id: layer.id, status: 'ESCALATE_AND_HALT', reason: violations, cause: 'machine' }
         break
       }
       continue
@@ -715,8 +975,9 @@ for (const step of plan) {
     if (changed.length) layerFiles = changed
 
     // ── 3. sonda deterministyczna (typecheck/testy/przyrost) — RAZ, tanio, przed verify
+    // ORC-077: numer próby w etykiecie — patrz komentarz przy '-diff-probe' wyżej, ten sam bug.
     const probeOpts = Object.assign(
-      { label: layer.id + '-checks', maxTurns: DEFAULTS.probeTurns, schema: CHECKS_SCHEMA },
+      { label: layer.id + '-checks-' + attempt, maxTurns: DEFAULTS.probeTurns, schema: CHECKS_SCHEMA },
       modelFor('probe'),
     )
     let probe = null
@@ -726,6 +987,11 @@ for (const step of plan) {
       probe = null
     }
 
+    if (typecheckRedIsLaterLayers(probe, layer, plan.map((s) => s.layer))) {
+      log(layer.id + ': typecheck czerwony wyłącznie w plikach późniejszych warstw — odroczony (ORC-082)')
+      probe = Object.assign({}, probe, { typecheck: 'deferred' })
+    }
+
     if (probe && (probe.typecheck === 'fail' || probe.tests === 'fail')) {
       violations = 'deterministyczna bramka na czerwono (typecheck: ' + probe.typecheck +
         ', testy: ' + probe.tests + ')\n' + (probe.tail || '')
@@ -733,7 +999,7 @@ for (const step of plan) {
       probeRed = violations
       mode = 'implement'
       if (attempt >= maxAttempts) {
-        settled = { id: layer.id, status: 'ESCALATE_AND_HALT', reason: violations }
+        settled = { id: layer.id, status: 'ESCALATE_AND_HALT', reason: violations, cause: 'code' }
         break
       }
       continue
@@ -746,7 +1012,7 @@ for (const step of plan) {
       log(layer.id + ': ' + deltaFail)
       mode = 'implement'
       if (attempt >= maxAttempts) {
-        settled = { id: layer.id, status: 'ESCALATE_AND_HALT', reason: deltaFail }
+        settled = { id: layer.id, status: 'ESCALATE_AND_HALT', reason: deltaFail, cause: 'code' }
         break
       }
       continue
@@ -773,21 +1039,36 @@ for (const step of plan) {
     }
     if (verdict && typeof verdict.deviation_note === 'string' && verdict.deviation_note.trim()) deviationNote = verdict.deviation_note.trim()
 
-    const decision = decideVerdict(verdict, attempt, maxAttempts)
+    const decision = decideVerdict(verdict, attempt, maxAttempts, layer, plan.map((s) => s.layer))
     if (decision.next === 'go') {
       settled = { id: layer.id, status: 'GO', files: layerFiles, attempts: attempt }
       break
     }
+    if (decision.next === 'escalate' && layerGapsAcceptable(decision, verdict, probe)) {
+      settled = { id: layer.id, status: 'GO_WITH_GAPS', files: layerFiles, attempts: attempt, gaps: decision.gaps }
+      report.gaps.push({ layer: layer.id, items: decision.gaps })
+      log(layer.id + ': GO z lukami (ORC-084) — sonda zielona, zero naruszeń, przebieg idzie dalej; luki w raporcie: ' + decision.gaps.join(', '))
+      break
+    }
     if (decision.next === 'escalate') {
-      settled = { id: layer.id, status: 'ESCALATE_AND_HALT', reason: decision.reason, files: layerFiles }
+      settled = { id: layer.id, status: 'ESCALATE_AND_HALT', reason: decision.reason, files: layerFiles, cause: decision.cause || 'machine' }
       break
     }
     if (decision.next === 'silent') {
       silentDeaths++
       if (silentDeaths >= 2) {
-        settled = { id: layer.id, status: 'ESCALATE_AND_HALT', reason: 'weryfikator dwukrotnie bez wyniku' }
+        settled = { id: layer.id, status: 'ESCALATE_AND_HALT', reason: 'weryfikator dwukrotnie bez wyniku', cause: 'machine' }
         break
       }
+      mode = 'verify-existing'
+      continue
+    }
+    if (decision.next === 'reverify') {
+      // ORC-074: GO z unverified_scope — kod jest OK, weryfikatorowi zabrakło czasu/kompetencji
+      // na część zakresu. 'verify-existing' pomija implementera i idzie prosto do sondy+verify
+      // ze świeżym budżetem tur, zamiast palić pełną rundę implement→verify na niezmienionym kodzie.
+      log(layer.id + ': ' + decision.reason)
+      violations = null
       mode = 'verify-existing'
       continue
     }
@@ -795,7 +1076,7 @@ for (const step of plan) {
     mode = 'implement'
   }
 
-  if (!settled) settled = { id: layer.id, status: 'ESCALATE_AND_HALT', reason: 'pętla warstwy zamknęła się bez werdyktu' }
+  if (!settled) settled = { id: layer.id, status: 'ESCALATE_AND_HALT', reason: 'pętla warstwy zamknęła się bez werdyktu', cause: 'machine' }
   if (deviationNote) settled.deviation_note = deviationNote
   report.layers.push(settled)
   for (const f of settled.files || []) if (allChangedFiles.indexOf(f) === -1) allChangedFiles.push(f)
@@ -835,21 +1116,45 @@ if (!finalAgent) {
   )
   let final = null
   try {
-    final = await ask(buildFinalGatePrompt(a, (a.checks && a.checks.finalGate) || [], finalFiles, treeSource), finalOpts)
+    final = await ask(buildFinalGatePrompt(a, (a.checks && a.checks.finalGate) || [], finalFiles, treeSource, report.gaps), finalOpts)
   } catch (e) {
     final = null
   }
-  report.finalGate = final || { verdict: 'NO_GO', violations: ['bramka końcowa nie zwróciła werdyktu'] }
+  // ORC-083: `cause` — 'machine' = bramka nie dała werdyktu albo NO_GO wymuszone przez
+  // unverified_scope (ORC-069); 'code' = weryfikator sam znalazł naruszenia w kodzie.
+  report.finalGate = final
+    ? Object.assign({}, final, { cause: undefined })
+    : { verdict: 'NO_GO', violations: ['bramka końcowa nie zwróciła werdyktu'], cause: 'machine' }
   // Bramka końcowa nie ma pętli retry (jeden strzał) — GO z niepustym unverified_scope nie może
   // więc "skonsumować próby" jak w decideVerdict(); jedyna bezpieczna reakcja to potraktować to
   // jak NO_GO, żeby uczciwie przyznana luka trafiła do człowieka zamiast do cichego stage'owania.
-  const finalUnverified = Array.isArray(report.finalGate.unverified_scope) ? report.finalGate.unverified_scope.filter(Boolean) : []
+  // ORC-076 (docs/decisions/orchestrate-rule-history.md#orc-076): do 2026-09-29 ten blok nie
+  // wołał decideVerdict() w ogóle i nie miał filtra self-admission (ORC-071) — KAŻDE szczere
+  // przyznanie "poza zakresem tej bramki" (plik niezmieniony, sprawdzony tylko grepem; test
+  // niewysyłany w binarce release) liczyło się identycznie jak realna, niedokończona
+  // weryfikacja. Ten sam filtr co w decideVerdict(), zastosowany tu wprost.
+  // ORC-079: dodatkowo filtr strukturalny (po ścieżce, nie po prozie) dla pliku analizy/task
+  // tego przebiegu — patrz komentarz przy definicji filterOwnTaskArtifacts.
+  // ORC-080: i filtr mechaniczny dla pozycji już adjudykowanych przez a.task.decisions —
+  // patrz komentarz przy definicji filterAdjudicatedByDecision.
+  const finalUnverifiedAll = Array.isArray(report.finalGate.unverified_scope)
+    ? filterSelfAdmittedOutOfScope(filterOwnTaskArtifacts(filterAdjudicatedByDecision(report.finalGate.unverified_scope.filter(Boolean), a.task.decisions), a.task))
+    : []
+  // ORC-084: pozycje już zapisane przez warstwy jako znane luki (GO_WITH_GAPS) nie wymuszają NO_GO
+  const knownSplit = filterKnownLayerGaps(finalUnverifiedAll, report.gaps)
+  const finalUnverified = knownSplit.kept
+  if (knownSplit.absorbed.length) report.finalGate.absorbed_gaps = knownSplit.absorbed
   if (String(report.finalGate.verdict).toUpperCase() === 'GO' && finalUnverified.length) {
+    // ORC-084: NO_GO wymuszone WYŁĄCZNIE przez unverified_scope (zero własnych naruszeń) —
+    // pliki idą do stagingu z flagą „wymaga przeglądu"; człowiek i tak robi review przed commitem.
+    if (!(report.finalGate.violations || []).length) report.stageForReview = finalFiles
     report.finalGate.verdict = 'NO_GO'
+    report.finalGate.cause = 'machine'
     report.finalGate.violations = (report.finalGate.violations || []).concat(
       'GO z niezweryfikowanym zakresem (unverified_scope), bramka końcowa nie ma retry: ' + finalUnverified.join(', '))
   }
   if (String(report.finalGate.verdict).toUpperCase() !== 'GO') {
+    if (!report.finalGate.cause) report.finalGate.cause = 'code'
     log('ESCALATE_AND_HALT — bramka końcowa: ' + formatViolations(report.finalGate.violations))
     return report
   }

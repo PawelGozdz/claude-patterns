@@ -1,7 +1,7 @@
 # Global Claude Code Agents
 
 **Purpose**: Reusable specialist and advisory agents for Claude Code projects.
-**Total**: 24 universal + 33 stack-specific = 57 agents
+**Total**: 25 universal + 35 stack-specific = 60 agents
 
 ---
 
@@ -14,6 +14,7 @@
     legal-strategist.md           -> agents/universal/
     marketing-strategist.md       -> agents/universal/
     project-orchestrator.md       -> agents/universal/
+    halt-diagnostician.md         -> agents/universal/
     state-reader.md               -> agents/universal/
     tech-lead.md                  -> agents/universal/
     product-owner.md              -> agents/universal/
@@ -31,11 +32,12 @@ project/.claude/agents/        <- stack agents (per-project, via setup-project.s
 
 Linked globally to `~/.claude/agents/` via `setup-global.sh`.
 
-### Orchestration (1)
+### Orchestration (2)
 
 | Agent | Purpose | Model | Writes Code |
 |-------|---------|-------|-------------|
 | **project-orchestrator** | Composition-driven orchestration: reads `.claude/config/runtime.yml` for layers, agent slots and pattern selection, runs the implement→verify loop per layer, enforces the final gate | Sonnet | No |
+| **halt-diagnostician** | Read-only diagnosis of `ESCALATE_AND_HALT`/`BLOCKED_BY_PRIOR` — journal + git state + analysis artifact, text report only. `disallowedTools` blocks `Agent`/`Workflow`/`Task` at the tool level (ORC-055 — a prompt-only prohibition failed twice in real runs) | Sonnet | No |
 
 Mirror of the `/orchestrate` command, callable from `Task()` for async/delegated orchestration. Everything stack-specific comes from the project's `stack_blocks:` composition (ADR 0008).
 
@@ -190,14 +192,20 @@ set by the proxy, no tokens in the browser). First consumer: marketing-hub (TS-M
 | **refine-implementer** | Implements the web package only: Refine providers (auth / access-control / data over a JSend envelope), shell, pages, co-located L1/L2 tests and the Playwright smoke; verifies Refine signatures against installed types before writing providers | Sonnet | No |
 | **refine-quality-verifier** | Grep gates + code review for the web security invariants (no browser storage, no fetch outside providers, no `dangerouslySetInnerHTML`, no build-time secrets), provider contract, structure boundaries, web test pyramid | Sonnet | Yes |
 
-### design-system (1)
+### design-system (3)
 
 For the juz-ide design system block (`blocks/design-system.yml`, axis `ui`, ADR 0010). Linked into
 any project that lists `design-system` in `stack_blocks`; first consumer: marketing-hub.
+Documented exception (Faza 5B, 2026-09-27): `pattern-auditor`/`token-drift` are cross-stack
+audit agents — they also scan Flutter repos (`juz-ide-mobile-app`) alongside web ones, even
+though Flutter's own hooks/pattern content stay in the `flutter` block (see the block's YAML
+comment).
 
 | Agent | Purpose | Model | VETO |
 |-------|---------|-------|------|
 | **ui-reviewer** | Reviews screenshots (light/dark × desktop/mobile) for contrast, hierarchy, spacing, edge states, overflow, dark mode and fit with the `ui-patterns` skill; returns findings tied to rules, never edits code | Opus | No |
+| **pattern-auditor** | Audits repos for screens built outside `ui-patterns`, duplicated components, missing mandatory edge states; dispatched by `/design-audit` | Sonnet | No |
+| **token-drift** | Audits repos for token literals, deprecated-token usage, and `@juz-ide/tokens`/`juz_ide_tokens` version skew across repos; dispatched by `/design-audit` | Sonnet | No |
 
 ### sveltekit (2)
 
@@ -282,6 +290,6 @@ warns when a memory directory starts looking like a run log.
 
 ---
 
-**Version**: 3.6.0
-**Last Updated**: 2026-08-27
-**Agent Count**: 57 (24 universal + 33 stack-specific)
+**Version**: 3.7.0
+**Last Updated**: 2026-09-27
+**Agent Count**: 59 (24 universal + 35 stack-specific)

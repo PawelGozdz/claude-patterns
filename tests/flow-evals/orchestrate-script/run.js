@@ -137,6 +137,15 @@ const CASES = (c) => [
       if (!/TWARDY LIMIT: 12/.test(p)) return 'brak twardego limitu z budżetu';
       if (!/wydaj werdykt/i.test(p)) return 'brak frazy wymuszającej werdykt przy wyczerpaniu budżetu';
       if (/git diff\b(?!.*--)/.test(p)) return 'prompt każe zrobić pełny diff';
+      // ORC-070 reinforcement (juz-ide-api-1 TS-SEC-112, infrastructure:guards: 3 identyczne
+      // rundy GO z unverified_scope wskazującym pliki spoza dirs tej jednostki) ──────────────
+      if (!/unverified_scope.*wyłącznie pliki z TWOJEGO WŁASNEGO zakresu/is.test(p)) {
+        return 'brak przypomnienia, że unverified_scope to tylko własny zakres warstwy (ORC-070)';
+      }
+      if (!/ORC-011/.test(p)) return 'przypomnienie o unverified_scope nie odwołuje się do ORC-011';
+      // ORC-071: format wpisu (jedna ścieżka, bez prozy) — juz-ide-api-1 TS-SEC-112,
+      // infrastructure:shared-infra: goła nazwa pliku w nawiasie nie dopasowała się do filtra.
+      if (!/FORMAT:.*jedna ścieżka/is.test(p)) return 'brak twardej instrukcji formatu unverified_scope (ORC-071)';
       return null;
     },
   },
@@ -170,12 +179,232 @@ const CASES = (c) => [
     name: 'verdict-go-with-unverified-scope-is-not-clean-go',
     run() {
       const retry = c.decideVerdict({ verdict: 'GO', unverified_scope: ['a.spec.ts', 'b.spec.ts'] }, 1, 3);
-      if (retry.next !== 'fix') return 'GO z unverified_scope powinien konsumować próbę (fix), nie iść czysto';
+      // ORC-074: GO+unverified_scope konsumuje próbę, ale przez 'reverify' (świeży budżet
+      // TYLKO dla weryfikatora), nie 'fix' (który wraca do implementera na nic-do-naprawienia).
+      if (retry.next !== 'reverify') return 'GO z unverified_scope powinien iść w reverify (nie fix, nie czysty GO)';
       if (!/a\.spec\.ts/.test(retry.reason) || !/b\.spec\.ts/.test(retry.reason)) return 'reason nie wymienia niezweryfikowanych ścieżek';
       const exhausted = c.decideVerdict({ verdict: 'GO', unverified_scope: ['a.spec.ts'] }, 3, 3);
       if (exhausted.next !== 'escalate') return 'GO z unverified_scope po wyczerpaniu prób powinien eskalować, nie przejść czysto';
       const clean = c.decideVerdict({ verdict: 'GO', unverified_scope: [] }, 1, 3);
       if (clean.next !== 'go') return 'pusta tablica unverified_scope nie powinna blokować czystego GO';
+      return null;
+    },
+  },
+
+  // ── ORC-070: unverified_scope, który leży wyłącznie w dirs INNEJ warstwy tego samego
+  // przebiegu, nie jest luką TEJ warstwy (grant-flow TS-RATE-003, domain:domain: 2/3 pozycji
+  // to domain/repositories/ i error-mapper wiring, należące do application/
+  // infrastructure-persistence — diagnostyka po fakcie potwierdziła tę warstwę za kompletną) ──
+  {
+    name: 'verdict-unverified-scope-filters-other-layers-own-scope',
+    run() {
+      const allLayers = ARGS.layers;
+      // pozycja jednoznacznie należąca do warstwy domain — odfiltrowana, GO przechodzi czysto
+      const foreign = c.decideVerdict(
+        { verdict: 'GO', unverified_scope: ['src/domain/aggregate.ts'] }, 1, 3, L.infrastructure, allLayers,
+      );
+      if (foreign.next !== 'go') return 'pozycja z dirs innej warstwy powinna zostać odfiltrowana (GO czysty)';
+      // pozycja spoza dirs KAŻDEJ warstwy — nieznana, liczona konserwatywnie jako realna luka
+      // (ORC-074: GO+unverified_scope idzie w 'reverify', nie 'fix' — patrz test dedykowany)
+      const unknown = c.decideVerdict(
+        { verdict: 'GO', unverified_scope: ['src/other/random.ts'] }, 1, 3, L.infrastructure, allLayers,
+      );
+      if (unknown.next !== 'reverify') return 'ścieżka nieprzypisana do żadnej warstwy powinna nadal blokować czysty GO';
+      // wolny tekst bez separatora ścieżki — bez zmian, liczony konserwatywnie
+      const freeform = c.decideVerdict(
+        { verdict: 'GO', unverified_scope: ['pełny re-walk reguł'] }, 1, 3, L.infrastructure, allLayers,
+      );
+      if (freeform.next !== 'reverify') return 'wolny tekst bez ścieżki nie powinien być cicho odfiltrowany';
+      // mieszanka: jedna cudza, jedna własna — własna wystarcza, by zablokować czysty GO
+      const mixed = c.decideVerdict(
+        { verdict: 'GO', unverified_scope: ['src/domain/aggregate.ts', 'src/infrastructure/repo.ts'] }, 1, 3, L.infrastructure, allLayers,
+      );
+      if (mixed.next !== 'reverify' || !/src\/infrastructure\/repo\.ts/.test(mixed.reason) || /src\/domain\/aggregate\.ts/.test(mixed.reason)) {
+        return 'mieszanka cudza+własna: reason powinien wymieniać tylko własną pozycję';
+      }
+      // bez `layer` (stare wywołanie) — brak filtra, zachowanie sprzed ORC-070
+      const noLayer = c.decideVerdict({ verdict: 'GO', unverified_scope: ['src/domain/aggregate.ts'] }, 1, 3);
+      if (noLayer.next !== 'reverify') return 'wywołanie bez layer powinno zachować stare zachowanie (brak filtra)';
+      return null;
+    },
+  },
+
+  // ── ORC-071: weryfikator pisze PROZĄ zamiast czystej ścieżki (juz-ide-api-1 TS-SEC-112,
+  // infrastructure:shared-infra: "guards unit files (reputation-threshold.guard.ts, ...) —
+  // poza zakresem tej jednostki (shared-infra)" — gołe nazwy plików w nawiasie nie dopasowują
+  // się do dirs innej warstwy, więc filtr ścieżkowy ORC-070 sam nie wystarczał) ──────────────
+  {
+    name: 'verdict-unverified-scope-self-admission',
+    run() {
+      const allLayers = ARGS.layers;
+      const prose = c.decideVerdict(
+        { verdict: 'GO', unverified_scope: [
+          'guards unit files (reputation-threshold.guard.ts, residence-verification.guard.ts) — poza zakresem tej jednostki (shared-infra)',
+        ] }, 1, 3, L.infrastructure, allLayers,
+      );
+      if (prose.next !== 'go') return 'samo-przyznanie "poza zakresem" w prozie powinno odfiltrować pozycję (GO czysty)';
+      const proseEn = c.decideVerdict(
+        { verdict: 'GO', unverified_scope: ['helper.ts is out of scope for this unit'] }, 1, 3, L.infrastructure, allLayers,
+      );
+      if (proseEn.next !== 'go') return 'wariant angielski "out of scope" powinien też zostać odfiltrowany';
+      // grant-flow TS-RATE-003, infrastructure:infrastructure-persistence (3. wystąpienie) —
+      // "owned by domain unit", nie tylko "owned by another/a different"
+      const ownedByNamed = c.decideVerdict(
+        { verdict: 'GO', unverified_scope: ['VO files owned by domain unit'] }, 1, 3, L.infrastructure, allLayers,
+      );
+      if (ownedByNamed.next !== 'go') return '"owned by <nazwa> unit" powinno też zostać odfiltrowane';
+      // wolny tekst BEZ samo-przyznania nadal blokuje — nie odfiltrowujemy na wyrost
+      // (ORC-074: GO+unverified_scope idzie w 'reverify', nie 'fix')
+      const stillBlocks = c.decideVerdict(
+        { verdict: 'GO', unverified_scope: ['nie zdążyłem sprawdzić helper.ts'] }, 1, 3, L.infrastructure, allLayers,
+      );
+      if (stillBlocks.next !== 'reverify') return 'tekst bez frazy "poza zakresem" nie powinien być odfiltrowany';
+      return null;
+    },
+  },
+
+  // ── ORC-076: final gate (jednorazowy, bez retry — NIE woła decideVerdict()) dostaje ten sam
+  // filtr self-admission co warstwy, zamiast osobnej, dużo bardziej naiwnej kopii reguły
+  // (juz-ide-mobile-app DESIGN-SYSTEM-009: 7 plików niezmienionych sprawdzonych grepem + 8
+  // plików testowych celowo pominiętych jako niewysyłane w release — GO z self-admission
+  // wymuszał NO_GO na jednorazowej bramce, bez możliwości naprawy) ──────────────────────────
+  {
+    name: 'final-gate-unverified-scope-self-admission',
+    run() {
+      const filtered = c.filterSelfAdmittedOutOfScope([
+        '7 plików niezmienionych sprawdzonych tylko grepem — poza zakresem tej bramki',
+        'test/canvas_d_test.dart is out of scope for this release binary',
+        'src/real/gap.ts',
+      ]);
+      if (filtered.length !== 1 || filtered[0] !== 'src/real/gap.ts') {
+        return 'filterSelfAdmittedOutOfScope nie odfiltrował self-admission albo usunął realną lukę: ' + JSON.stringify(filtered);
+      }
+      return null;
+    },
+  },
+
+  // ── ORC-079: plik analizy/task tego przebiegu wymieniony w unverified_scope BEZ frazy
+  // self-admission (ai-os-bot BOT-005a-tests, 2026-09-29: "plik analizy" nie zawierał żadnej
+  // frazy z SELF_ADMITS_OUT_OF_SCOPE, więc ORC-076 go nie złapał) — filtr po ścieżce, nie prozie ─
+  {
+    name: 'final-gate-filters-own-task-artifacts-by-path',
+    run() {
+      const task = { analysisFile: 'project-orchestration/analysis/TS-FIX-001.analysis.md', taskFile: 'project-orchestration/tasks/TS-FIX-001.md' };
+      const filtered = c.filterOwnTaskArtifacts([
+        'project-orchestration/analysis/TS-FIX-001.analysis.md — sam plik analizy',
+        'plik taska: project-orchestration/tasks/TS-FIX-001.md',
+        'src/real/gap.ts',
+      ], task);
+      if (filtered.length !== 1 || filtered[0] !== 'src/real/gap.ts') {
+        return 'filterOwnTaskArtifacts nie odfiltrował pliku analizy/taska albo usunął realną lukę: ' + JSON.stringify(filtered);
+      }
+      // task bez analysisFile/taskFile (pola null) nie powinien wywalić się ani nic zjeść
+      const noTask = c.filterOwnTaskArtifacts(['src/real/gap.ts'], { analysisFile: null, taskFile: null });
+      if (noTask.length !== 1) return 'task bez analysisFile/taskFile nie powinien zmieniać listy';
+      return null;
+    },
+  },
+
+  // ── ORC-080: weryfikator (LLM) nie trzyma się jawnej decyzji człowieka w decisions[]
+  // (ai-os-bot BOT-005a-tests, 2026-09-29: D7 jawnie adjudykowało pozycję, final gate i tak
+  // zgłosił ją jako unverified) — filtr mechaniczny po id decyzji, nie ufanie że LLM
+  // "zastosował" tekst promptu (ta sama lekcja co ORC-071) ────────────────────────────────
+  {
+    name: 'final-gate-filters-items-adjudicated-by-decision-id',
+    run() {
+      const decisions = [{ id: 'D7', topic: 'zakres testów dat', choice: 'poza zakresem tej bramki' }];
+      const filtered = c.filterAdjudicatedByDecision([
+        'D7: treść testów dat pominięta zgodnie z decyzją',
+        'zobacz D7 dla uzasadnienia',
+        'src/real/gap.ts',
+      ], decisions);
+      if (filtered.length !== 1 || filtered[0] !== 'src/real/gap.ts') {
+        return 'filterAdjudicatedByDecision nie odfiltrował pozycji z id decyzji albo usunął realną lukę: ' + JSON.stringify(filtered);
+      }
+      // "D71" nie powinno dopasować "D7" (granica słowa, nie samo startsWith)
+      const noFalseMatch = c.filterAdjudicatedByDecision(['plik D71-legacy.ts do przeglądu'], decisions);
+      if (noFalseMatch.length !== 1) return 'filterAdjudicatedByDecision dopasował "D71" do id "D7" (fałszywe trafienie)';
+      const noDecisions = c.filterAdjudicatedByDecision(['src/real/gap.ts'], []);
+      if (noDecisions.length !== 1) return 'brak decisions[] nie powinien zmieniać listy';
+      return null;
+    },
+  },
+
+  // ── ORC-082: typecheck czerwony tylko w późniejszych warstwach jest odroczony ──────────
+  {
+    name: 'typecheck-red-only-in-later-layers-is-deferred',
+    run() {
+      const layers = [{ id: 'domain', dirs: ['domain/'] }, { id: 'application', dirs: ['application/'] }, { id: 'infrastructure', dirs: ['infrastructure/'] }, { id: 'testing', dirs: ['__tests__/'] }];
+      const red = (tail) => ({ typecheck: 'fail', tests: 'skipped', tail });
+      const infra = "src/contexts/x/infrastructure/repo.ts(12,3): error TS2420: Class incorrectly implements interface.";
+      const own = "src/contexts/x/domain/agg.ts(5,1): error TS2322: Type mismatch.";
+      const app = "src/contexts/x/application/h.ts(9,2): error TS2554: Expected 10 arguments.";
+      if (!c.typecheckRedIsLaterLayers(red(infra), layers[0], layers)) return 'czerwień tylko w infrastructure nie została odroczona dla domain';
+      if (!c.typecheckRedIsLaterLayers(red(app + '\n' + infra), layers[0], layers)) return 'czerwień w application+infrastructure nie została odroczona dla domain';
+      if (c.typecheckRedIsLaterLayers(red(own + '\n' + infra), layers[0], layers)) return 'błąd we WŁASNYM zakresie został odroczony';
+      if (c.typecheckRedIsLaterLayers(red(app), layers[2], layers)) return 'błąd w WCZEŚNIEJSZEJ warstwie został odroczony';
+      if (c.typecheckRedIsLaterLayers(red(infra), layers[3], layers)) return 'ostatnia warstwa nie może odraczać';
+      if (c.typecheckRedIsLaterLayers(red(infra + '\nerror TS18003: No inputs were found in config file'), layers[0], layers)) return 'błąd bez ścieżki został odroczony';
+      if (c.typecheckRedIsLaterLayers(red('coś nieparsowalnego'), layers[0], layers)) return 'nieparsowalny ogon został odroczony';
+      if (c.typecheckRedIsLaterLayers({ typecheck: 'fail', tests: 'fail', tail: infra }, layers[0], layers)) return 'czerwone testy nie mogą być odroczone';
+      // uzupełnienie ORC-082: sparafrazowany `tail` + surowe `tsErrors` → odroczone
+      const paraphrase = { typecheck: 'fail', tests: 'skipped', tail: 'Missing method foo in infrastructure implementation', tsErrors: infra };
+      if (!c.typecheckRedIsLaterLayers(paraphrase, layers[0], layers)) return 'surowe tsErrors nie zostały użyte mimo sparafrazowanego tail';
+      if (c.typecheckRedIsLaterLayers({ typecheck: 'fail', tests: 'skipped', tail: 'Missing method foo in infrastructure implementation' }, layers[0], layers)) return 'sparafrazowany tail bez tsErrors został odroczony';
+      return null;
+    },
+  },
+  {
+    name: 'probe-prompt-requests-verbatim-ts-errors',
+    run() {
+      const p = c.buildProbePrompt(ARGS, { id: 'domain', dirs: ['domain/'], checks: ['typecheck'] });
+      if (!/tsErrors/.test(p) || !/error TS\[0-9\]\+/.test(p)) return 'prompt sondy nie żąda surowych linii błędów TS w tsErrors';
+      if (!/DOSŁOWNIE/.test(p)) return 'brak żądania dosłowności';
+      return null;
+    },
+  },
+
+  // ── ORC-083: cause code vs machine ─────────────────────────────────────────────────────
+  {
+    name: 'decide-verdict-tags-cause-code-vs-machine',
+    run() {
+      const exhausted = c.decideVerdict({ verdict: 'NO_GO', violations: ['x'] }, 3, 3);
+      if (exhausted.next !== 'escalate' || exhausted.cause !== 'code') return 'wyczerpane NO_GO powinno mieć cause=code: ' + JSON.stringify(exhausted);
+      const unver = c.decideVerdict({ verdict: 'GO', unverified_scope: ['src/a/b.ts'] }, 3, 3);
+      if (unver.next !== 'escalate' || unver.cause !== 'machine') return 'GO z unverified_scope po próbach powinno mieć cause=machine: ' + JSON.stringify(unver);
+      const silent = c.decideVerdict(null, 1, 3);
+      if (silent.next !== 'silent' || silent.cause !== 'machine') return 'brak wyniku powinien mieć cause=machine: ' + JSON.stringify(silent);
+      return null;
+    },
+  },
+
+  // ── ORC-084: GO_WITH_GAPS ──────────────────────────────────────────────────────────────
+  {
+    name: 'layer-gaps-acceptable-requires-green-probe-and-zero-violations',
+    run() {
+      const layer = { id: 'web', dirs: ['apps/web/'] };
+      const go = { verdict: 'GO', unverified_scope: ['apps/web/src/AuthGate.tsx'] };
+      const dec = c.decideVerdict(go, 3, 3, layer, [layer]);
+      if (dec.next !== 'escalate' || !dec.gaps || dec.gaps[0] !== 'apps/web/src/AuthGate.tsx') return 'decideVerdict nie zwrócił gaps: ' + JSON.stringify(dec);
+      const green = { typecheck: 'pass', tests: 'skipped' };
+      if (!c.layerGapsAcceptable(dec, go, green)) return 'zielona sonda + zero naruszeń powinno przejść jako GO_WITH_GAPS';
+      if (c.layerGapsAcceptable(dec, go, { typecheck: 'fail', tests: 'pass' })) return 'czerwony typecheck nie może przejść';
+      if (c.layerGapsAcceptable(dec, go, { typecheck: 'pass', tests: 'fail' })) return 'czerwone testy nie mogą przejść';
+      if (c.layerGapsAcceptable(dec, go, null)) return 'brak wyniku sondy nie może przejść';
+      if (c.layerGapsAcceptable(dec, { verdict: 'GO', violations: ['x'], unverified_scope: ['a/b.ts'] }, green)) return 'naruszenia blokują GO_WITH_GAPS';
+      if (c.haltsRun('GO_WITH_GAPS')) return 'GO_WITH_GAPS zatrzymuje przebieg';
+      return null;
+    },
+  },
+  {
+    name: 'final-gate-absorbs-known-layer-gaps',
+    run() {
+      const known = [{ layer: 'web', items: ['apps/web/src/AuthGate.tsx'] }];
+      const r = c.filterKnownLayerGaps(['apps/web/src/AuthGate.tsx', 'src/real/new-gap.ts'], known);
+      if (r.kept.length !== 1 || r.kept[0] !== 'src/real/new-gap.ts') return 'nowa luka powinna zostać: ' + JSON.stringify(r);
+      if (r.absorbed.length !== 1) return 'znana luka powinna być wchłonięta: ' + JSON.stringify(r);
+      const none = c.filterKnownLayerGaps(['x/y.ts'], []);
+      if (none.kept.length !== 1 || none.absorbed.length !== 0) return 'brak znanych luk nie zmienia listy';
       return null;
     },
   },
@@ -221,11 +450,68 @@ const CASES = (c) => [
       return null;
     },
   },
+  // ── ORC-078: Flutter/Dart rozdziela lib/ i test/ BEZ wspólnego segmentu
+  // (lib/core/design/x.dart -> test/core/design/x_test.dart) — dirs z prefiksem lib/ (pełna
+  // ścieżka od korzenia, jak w --overrides) budowały pathspec, który nigdy nie trafiał w
+  // drzewo testów (juz-ide-mobile-app DESIGN-SYSTEM-009, newTestBlocks zawsze 0) ─────────────
+  {
+    name: 'probe-prompt-flutter-lib-path-variant',
+    run() {
+      const flutterLayer = { id: 'presentation', dirs: ['lib/core/design/'], checks: [], tests: true };
+      const plainLayer = { id: 'presentation-plain', dirs: ['core/design/'], checks: [], tests: true };
+      const p = c.buildProbePrompt(ARGS, flutterLayer);
+      if (!p.includes(":(glob)**/lib/core/design/**'")) return 'brak oryginalnego wariantu pathspecu z prefiksem lib/';
+      if (!p.includes(":(glob)**/core/design/**'")) return 'brak wariantu bez segmentu lib/ — test/ w Flutterze go nie ma';
+      // dir bez prefiksu lib/, tego samego kształtu poza tym — nie powinien dostać dodatkowego
+      // wariantu (bez regresji dla stacków, gdzie test/ faktycznie lustrzanie odwzorowuje lib/).
+      // Liczymy wystąpienia KONKRETNYCH złożonych pathspeców (split-count), nie ogólne
+      // ":(glob)**/" — ten wzorzec pojawia się też w przykładzie w treści instrukcji ("x").
+      const plain = c.buildProbePrompt(ARGS, plainLayer);
+      const countOf = (haystack, needle) => haystack.split(needle).length - 1;
+      if (countOf(plain, ":(glob)**/core/design/**'") !== 2) return 'warstwa bez lib/ powinna mieć dokładnie 2 wystąpienia swojego pathspecu (add -N + diff)';
+      if (countOf(p, ":(glob)**/lib/core/design/**'") !== 2) return 'wariant z lib/ powinien wystąpić 2 razy (add -N + diff)';
+      if (countOf(p, ":(glob)**/core/design/**'") !== 2) return 'wariant bez lib/ powinien wystąpić 2 razy (add -N + diff)';
+      return null;
+    },
+  },
+  // ── marketing-hub TS-MH-006, testing:knowledge (2x z rzędu, ten sam objaw): "ostatnie 40
+  // linii" gubiło błąd w zakresie warstwy, gdy log kończył się ostrzeżeniami z shared/ ──────
+  {
+    name: 'probe-prompt-greps-own-scope-before-tail-fallback',
+    run() {
+      const p = c.buildProbePrompt(ARGS, L.testing);
+      if (!/NAJPIERW `grep -E '/.test(p)) return 'brak grepa po własnym zakresie przed tail';
+      if (!new RegExp('grep -E \'' + 'src/__tests__/'.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&') + '\'').test(p)) {
+        return 'wzorzec grepa nie zawiera dirs warstwy testowej';
+      }
+      if (!/dopiero gdy ten grep nic nie znajdzie/i.test(p)) return 'brak fallbacku do pełnego tail, gdy grep pusty';
+      const noDirs = c.buildProbePrompt(ARGS, { id: 'whole', dirs: [], checks: ['typecheck'] });
+      if (/NAJPIERW `grep -E '/.test(noDirs)) return 'warstwa bez dirs nie powinna dostać instrukcji grepa (nie ma czego zawężać)';
+      if (!/zwróć ostatnie 40 linii w `tail`/.test(noDirs)) return 'warstwa bez dirs powinna zachować prosty fallback do tail';
+      return null;
+    },
+  },
   {
     name: 'probe-prompt-handles-layer-without-checks',
     run() {
       const p = c.buildProbePrompt(ARGS, L['api-surface']);
       if (!/brak checks w runtime.yml/.test(p)) return 'warstwa bez checks nie jest jawnie raportowana';
+      return null;
+    },
+  },
+  // ── ORC-016: checks zawężone do pakietu w monorepo (feature-flags TASK-0010: goły
+  // `npm run lint` → root `turbo run lint` → build WSZYSTKICH zależności upstream, w tym
+  // packages/contracts, uszkodzone 2x w tym samym przebiegu, mimo że warstwa go nie dotykała) ──
+  {
+    name: 'probe-prompt-scopes-checks-to-package-root-in-monorepo',
+    run() {
+      const p = c.buildProbePrompt(ARGS, L.infrastructure);
+      if (!/_pkgdir\(\)/.test(p)) return 'brak lookupu package.json dla warstwy z dirs';
+      if (!/cd "\$PKGROOT" && npm run lint/.test(p)) return 'polecenie checka nie jest scope\'owane przez PKGROOT';
+      if (!/PKGROOT wyjdzie jako "\."/.test(p)) return 'brak instrukcji zgłoszenia świadomego pełnego zakresu, gdy nie znaleziono package.json';
+      const noDirs = c.buildProbePrompt(ARGS, { id: 'whole', dirs: [], checks: ['typecheck'] });
+      if (/_pkgdir\(\)/.test(noDirs)) return 'warstwa bez dirs nie powinna dostać lookupu (nie ma czego zawężać)';
+      if (!/^npm run typecheck/m.test(noDirs)) return 'warstwa bez dirs powinna zachować goły npm run';
       return null;
     },
   },
@@ -250,6 +536,12 @@ const CASES = (c) => [
       if (!/CAŁOŚĆ zmiany/.test(p)) return 'bramka końcowa nie deklaruje zakresu całościowego';
       if (!/typecheck, lint, test/.test(p)) return 'suma checks nie trafiła do bramki końcowej';
       if (!/ZAKAZ COFANIA/.test(p)) return 'bramka końcowa bez zakazu cofania';
+      // feature-flags TASK-0010: bramka końcowa nie miała kanału na decyzje człowieka
+      // adresujące unverified_scope (2/4 eskalacji ORC-069 tego przebiegu były na final-gate)
+      if (!/DECYZJE ZATWIERDZONE PRZEZ CZŁOWIEKA/.test(p)) return 'bramka końcowa nie widzi a.task.decisions';
+      if (!/D1 temat: wybór A/.test(p)) return 'decyzja z fixture nie została wyrenderowana w treści';
+      const noDecisions = c.buildFinalGatePrompt({ ...ARGS, task: { ...ARGS.task, decisions: [] } }, ARGS.checks.finalGate, ['src/a.ts']);
+      if (/DECYZJE ZATWIERDZONE/.test(noDecisions)) return 'brak decyzji powinien pominąć cały akapit, nie renderować pusty';
       return null;
     },
   },
@@ -358,6 +650,27 @@ const CASES = (c) => [
       if (c.layerTouches(layer, 'src/billing/role-permissions.adapter.spec.ts')) return 'spec z innego katalogu zaliczony do zakresu';
       if (c.layerTouches(layer, 'src/auth/role-permissions.adapter.ts')) return 'nie-test obok zaliczony do zakresu';
       if (!/role-permissions\.\*\.spec\.\*/.test(c.buildProbePrompt(ARGS, Object.assign({}, layer, { tests: true, checks: [] })))) return 'sonda przyrostu nie liczy specu towarzyszącego';
+      return null;
+    },
+  },
+  // ── ORC-075: plik towarzyszący, którego katalog jednostka `tests: true` tego samego
+  // przebiegu już pokrywa, to nie luka TEJ warstwy (grant-flow TS-RATE-003,
+  // application:application: 3 eskalacje na "brak __tests__/handler.spec.ts", mimo że
+  // domain-application-implementer ma zakaz pisania testów i unit 'testing:testing' z tym
+  // samym przebiegu już deklaruje dirs pokrywające te same pliki) ─────────────────────────
+  {
+    name: 'scope-block-defers-companion-test-to-sibling-testing-unit',
+    run() {
+      const p = c.buildImplPrompt(ARGS, L.infrastructure, 1, null, 0);
+      if (!/tests: true.*testing/.test(p) && !/testing.*tests: true/.test(p) && !/\(testing\)/.test(p)) {
+        return 'warstwa nietestowa nie widzi odesłania do jednostki testing (tests: true) tego przebiegu';
+      }
+      if (!/to JEJ praca, nie luka tej warstwy/.test(p)) return 'brak jawnej deferencji pliku towarzyszącego';
+      const pTesting = c.buildVerifierPrompt(ARGS, L.testing, null, ['src/__tests__/a.spec.ts'], 'implement');
+      if (/to JEJ praca, nie luka tej warstwy/.test(pTesting)) return 'jednostka testing nie powinna dostać deferencji do samej siebie';
+      const noSiblings = { task: ARGS.task, layers: [L.infrastructure] };
+      const pNoSiblings = c.buildImplPrompt(noSiblings, L.infrastructure, 1, null, 0);
+      if (/to JEJ praca, nie luka tej warstwy/.test(pNoSiblings)) return 'bez jednostki tests:true w przebiegu deferencja nie powinna się pojawić';
       return null;
     },
   },

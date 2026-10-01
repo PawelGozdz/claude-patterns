@@ -9,6 +9,35 @@ in a second codebase. Excluded from `retrieve_patterns` by default; pass
 `project: "juz-ide-mobile-app"` to include it. Promote to universal once a second project adopts
 this shape.
 
+> **Status w `juz-ide-mobile-app` [2026-09-27]:** kolor (`ColorScheme`), typografia (`TextTheme`)
+> i skala odstępów mają teraz kanoniczne źródło POZA tym repo — generowany pakiet
+> `juz_ide_tokens` (`/opt/projects/design-system/packages/tokens_dart`, `JuzIdeTheme.light`/
+> `.dark` + `JuzIdeTokens` ThemeExtension), podłączony w `lib/main.dart`
+> (`wdrozenie/POSTEP.md`, „Faza 5 — Flutter i audyt, część A”, 2026-09-26). Nowy kod ma
+> korzystać z TYCH tokenów dla koloru/typografii/spacingu, nie dopisywać nowych wpisów do
+> `LocalHeroDesignTokens`/`AppTypography` pokazanych niżej.
+>
+> `LocalHeroDesignTokens`/`AppTypography` pozostają jedynym źródłem dla: **animacji**
+> (`Duration`/`Curve`), **helperów cienia/bordera** (`getSoftShadow()`/`getSoftBorder()`) i
+> **ikon** (`AppIcons.*`) — te warstwy nie zostały jeszcze wyeksportowane do `juz_ide_tokens`
+> (sprawdzone w `design-system/scripts/lib/generate-dart.ts`, 2026-09-27: generator eksportuje
+> tylko `ColorScheme`/`TextTheme`/`space*`/`statusOk|Warn|Info`). Nadal obowiązkowe dla
+> WSZYSTKICH nowych widgetów, nie tylko `v1_*`/`brutalist_*`.
+>
+> Kod/hex poniżej opisuje **system, który jest wycofywany** (decyzja `mobile_design_replace`,
+> `wdrozenie/KONFIGURACJA.md`: zastąpić, nie łączyć) — dziś aktualny tylko dla niezmigrowanych
+> `v1_*`/`brutalist_*`. NIE kopiować tych wartości do nowego kodu. Kanon dla koloru/typografii
+> nowych ekranów: `design-system/claude-design/components/<Nazwa>/README.md` (który token w
+> którym miejscu/stanie) + `juz-ide-mobile-app/docs/design/SCREEN-CANVAS-REFERENCE.md` (mapa
+> wszystkich źródeł: canvas na żywo, komponenty, wytyczne).
+>
+> **Nieustalone [2026-09-27], flagowane, nie rozstrzygnięte tutaj:** `.claude/rules/dart/
+> design-system.md` (DS-007) w `juz-ide-mobile-app`, egzekwowane przez agenty
+> `flutter-quality-verifier`/`flutter-ui-verifier`, wciąż literalnie nakazuje `AppTypography.*`
+> dla WSZYSTKIEGO tekstu — nie rozróżnia nowego/starego systemu. Jak to pogodzić (czy
+> `AppTypography` dostaje wewnętrzny refaktor na `Theme.of(context)`, czy DS-007 dostaje wyjątek
+> dla nowych ekranów) to decyzja do podjęcia w sesji w `juz-ide-mobile-app`, nie rozstrzygana
+> przez ten wpis.
 
 ## What This Is
 

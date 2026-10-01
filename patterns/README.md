@@ -4,9 +4,9 @@
 
 This knowledge base contains production-enforced patterns for DDD/CQRS projects. Each pattern is derived from real implementations (2-3 verified code examples) and includes comprehensive anti-patterns sections.
 
-**Version**: 3.13
-**Last Updated**: 2026-08-31
-**Status**: PRODUCTION (58 core patterns + 45 stack-specific + 1 marketing + 2 finance + 2 legal = 108 total)
+**Version**: 3.14
+**Last Updated**: 2026-09-27
+**Status**: PRODUCTION (58 core patterns + 49 stack-specific + 1 marketing + 2 finance + 2 legal = 112 total)
 
 **⚠ project-specific** marker = derived from ONE project's codebase, not yet validated in a second
 one. Marked in the pattern's own `**Scope**:` line (see `CLAUDE.md` → "Adding a New Pattern"). These
@@ -37,9 +37,12 @@ patterns/
 ├── ai-ml/              # GPU inference patterns - 7 patterns (per-project)
 ├── python/             # Python-specific patterns - 7 patterns (per-project)
 ├── sveltekit/          # SvelteKit-specific patterns - 5 patterns (per-project)
-└── typescript-library/ # TS library-specific patterns - 5 patterns (per-project)
-                        #   public-api, backward-compat, package-boundary, build-publish,
-                        #   library-testing (+ rule-cards _summary.md, one per pattern)
+├── typescript-library/ # TS library-specific patterns - 5 patterns (per-project)
+│                       #   public-api, backward-compat, package-boundary, build-publish,
+│                       #   library-testing (+ rule-cards _summary.md, one per pattern)
+└── refine-spa/         # Refine SPA (Vite+React+AntD) patterns - 4 patterns
+                        #   ⚠ project-specific (marketing-hub): security-invariants,
+                        #   structure, providers, testing (+ rule-cards _summary.md, one per pattern)
 ```
 
 ---
@@ -363,6 +366,21 @@ Stack-specific patterns for `stack_profile: typescript-library` projects (public
 - [library-testing-pattern.md](typescript-library/library-testing-pattern.md)
 - [package-boundary-pattern.md](typescript-library/package-boundary-pattern.md)
 - [public-api-pattern.md](typescript-library/public-api-pattern.md)
+
+---
+
+### Refine SPA (4 patterns, ⚠ project-specific: marketing-hub)
+
+Stack-specific patterns for a Refine (Vite + React + Ant Design) panel behind a shared
+`iam` auth gateway. Promoted 2026-09-27 from a local draft in `marketing-hub` (TS-MH-002),
+paired with the `refine-spa` + `monorepo-layers` blocks. Only one real consumer so far —
+pass `project: "marketing-hub"` to `retrieve_patterns` to include them, or drop the
+`**Scope**` line once a second project (e.g. `grant-flow`) adopts the same shape.
+
+- [refine-providers-pattern.md](refine-spa/refine-providers-pattern.md)
+- [web-security-invariants-pattern.md](refine-spa/web-security-invariants-pattern.md)
+- [web-structure-pattern.md](refine-spa/web-structure-pattern.md)
+- [web-testing-pattern.md](refine-spa/web-testing-pattern.md)
 
 ---
 
