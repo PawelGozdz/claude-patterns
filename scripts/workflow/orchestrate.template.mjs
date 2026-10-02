@@ -151,7 +151,12 @@ const NO_REVERT =
   '\n\nZAKAZ COFANIA: `git checkout`, `git restore`, `git stash` i `git reset` są zakazane ' +
   'na KAŻDEJ ścieżce, zero wyjątków — także „to tylko mój plik" i „przywracam, jak było". ' +
   'Plik, który uważasz za spoza swojego zakresu, ZGŁOŚ w raporcie i zostaw nietknięty. ' +
-  'Do zapisania i przywrócenia stanu używaj `cp`, nigdy gita.'
+  'Do zapisania i przywrócenia stanu używaj `cp`, nigdy gita.' +
+  // ORC-087: ai-os-bot BOT-023 — implementery warstwy zacommitowały 4 commity mimo
+  // STAGE_NOT_COMMIT; prompt nigdzie tego nie zakazywał (tylko cofanie).
+  '\nZAKAZ COMMITOWANIA: `git commit`, `git commit --amend`, `git push`, `git tag` i `git rebase` ' +
+  'są zakazane — przebieg kończy się „staged, not committed", commit robi człowiek. Zmiany ' +
+  'zostają w drzewie roboczym; `git add` jest zbędny (robi go orchestrator po bramce końcowej).'
 
 // Zakres warstwy, jaki widzi implementer, weryfikator i sonda. Analiza może go ZAWĘZIĆ
 // (`layers_scope` w artefakcie → `layer.scope.dirs`): warstwa wchodzi, ale tylko wskazane
@@ -191,7 +196,15 @@ function scopeBlock(layer, a) {
     '\nPlik spoza tych katalogów jest POZA ZAKRESEM, nie brakujący.' +
     '\nWYJĄTEK — pliki towarzyszące: test (*.spec.*, *.test.*) w tym samym katalogu i z tym samym ' +
     'rdzeniem nazwy co plik z zakresu (x.map.ts → x.adapter.spec.ts) należy do zakresu. Gdy ' +
-    'zmieniasz kontrakt pliku, zaktualizuj jego test obok.' + deferNote
+    'zmieniasz kontrakt pliku, zaktualizuj jego test obok.' +
+    // ORC-087: ai-gateway TS-AIG-013 — zatwierdzona zależność (prom-client) nie mogła zostać
+    // dodana, bo `package.json`/lockfile leżą poza `src/`; warstwa stanęła na BLOCKED_BY_PRIOR.
+    // grant-flow TS-UI-003 dotknął .npmrc/package.json/pnpm-workspace.yaml z tego samego powodu.
+    '\nWYJĄTEK — manifesty zależności: `package.json` (korzenia i pakietu warstwy), lockfile ' +
+    '(`pnpm-lock.yaml`, `package-lock.json`, `yarn.lock`), `pnpm-workspace.yaml` i `.npmrc` ' +
+    'wolno zmienić WYŁĄCZNIE wtedy, gdy zatwierdzona analiza/decyzja wymaga nowej zależności ' +
+    'lub konfiguracji workspace — to praca tej warstwy, nie plik spoza zakresu. Weryfikator ' +
+    'nie zgłasza ich jako „poza zakresem".' + deferNote
 }
 
 // Czerwień sondy, której implementer nie może naprawić w swoim zakresie, nie jest „brakiem
@@ -255,7 +268,9 @@ function treeFilesCmd(base) {
 
 function buildTreeProbePrompt(base) {
   return 'W repo uruchom dokładnie: ' + treeFilesCmd(base) + '\nNIC więcej — nie czytaj plików, ' +
-    'nie analizuj, nie poprawiaj. Zwróć połączoną listę ścieżek z obu poleceń (bez duplikatów).'
+    'nie analizuj, nie poprawiaj. Zwróć połączoną listę ścieżek z obu poleceń (bez duplikatów).' +
+    // ORC-087: wykrycie commitów implementera mimo STAGE_NOT_COMMIT (liczba commitów od bazy).
+    (base ? ' Dodatkowo zwróć w `commits` wynik `git rev-list --count ' + base + '..HEAD` (liczba).' : '')
 }
 
 // Sonda: deterministyczne bramki uruchomione RAZ, tanio, bez czytania kodu. Verifier
@@ -288,7 +303,14 @@ function buildProbePrompt(a, layer) {
       'elif [ "$PKGROOT" != "." ] && [ "$b" != "$s" ] && [ "$sfx" = "$bn" ] && grep -q "\\"$b\\"[[:space:]]*:" "$PKGROOT/package.json" 2>/dev/null; then (cd "$PKGROOT" && npm run "$b"); ' +
       'else npm run "$s"; fi; }\n'
     : ''
-  const cmds = (layer.checks || []).map((c) => firstDir ? '_chk ' + c : 'npm run ' + c)
+  // ORC-088: wpis `checks` ze spacją to KOMENDA dosłowna (`flutter analyze`, `go vet ./...`),
+  // bez spacji — nazwa skryptu package.json. Flutter/Dart nie ma package.json, więc przy
+  // samych nazwach skryptów checks było puste, sonda „skipped", weryfikatory nie kompilowały,
+  // a realny błąd wychodził dopiero z ręcznego `flutter test` (juz-ide-mobile-app
+  // DESIGN-SYSTEM-009, `presentation`, 9 wystąpień). Komendy dosłowne biegną z korzenia repo.
+  const isLiteralCheck = (c) => /\s/.test(String(c).trim())
+  const hasLiteral = (layer.checks || []).some(isLiteralCheck)
+  const cmds = (layer.checks || []).map((c) => isLiteralCheck(c) ? String(c).trim() : (firstDir ? '_chk ' + c : 'npm run ' + c))
   const scoped = effectiveDirs(layer).join(' ')
   // Pathspecy monorepo: `layer.dirs` to nazwy typu "__tests__/"/"domain/", nigdy katalogi
   // TOP-LEVEL repo (prawdziwa ścieżka to src/contexts/<ctx>/domain/...). Literalny pathspec
@@ -369,7 +391,11 @@ function buildProbePrompt(a, layer) {
     ? ' Przy niezerowym typecheck dodatkowo zwróć w `tsErrors` WYNIK DOSŁOWNIE (bez streszczania, ' +
       'parafrazy i komentarza): `grep -E \'error TS[0-9]+\' /tmp/check-' + layer.id + '.log | head -60`.'
     : ''
-  return 'Uruchom dokładnie to i NIC więcej:\n' + run +
+  const literalMapping = hasLiteral
+    ? '\nMapowanie wyników: komenda zawierająca `analyze`, `typecheck`, `tsc` albo `vet` → pole ' +
+      '`typecheck`; komenda zawierająca `test` → pole `tests` (EXIT:0 = pass, niezerowy = fail).'
+    : ''
+  return 'Uruchom dokładnie to i NIC więcej:\n' + run + literalMapping +
     '\nPrzy EXIT:0 NIE otwieraj pliku logu wcale.' + tailInstruction + tsErrorsInstruction +
     delta +
     '\nNIC nie czytaj, nie analizuj, nie poprawiaj, nie komentuj kodu.' +
@@ -798,6 +824,7 @@ const DIFF_PROBE_SCHEMA = {
   properties: {
     files: { type: 'array', items: { type: 'string' } },
     dirty: { type: 'boolean' },
+    commits: { type: 'number' },
   },
 }
 
@@ -1159,6 +1186,14 @@ try {
   tree = null
 }
 const treeSource = tree && tree.files ? 'tree' : 'layers'
+// ORC-087: implementer zacommitował mimo STAGE_NOT_COMMIT — nie zatrzymuje przebiegu (diff względem
+// bazy nadal działa), ale trafia do raportu, żeby człowiek nie zdziwił się historią.
+if (tree && typeof tree.commits === 'number' && tree.commits > 0) {
+  log('UWAGA: ' + tree.commits + ' commit(ów) od bazy przebiegu mimo STAGE_NOT_COMMIT (ORC-087)')
+  report.warnings = (report.warnings || []).concat(
+    'implementery zacommitowały ' + tree.commits + ' commit(ów) od bazy ' + a.baseSha +
+    ' — przejrzyj `git log ' + a.baseSha + '..HEAD`; spłaszczenie do stagingu: `git reset --soft ' + a.baseSha + '`')
+}
 const finalFiles = finalFileList(tree && tree.files, allChangedFiles)
 if (treeSource === 'layers') log('sonda drzewa przed bramką końcową bez wyniku — lista plików z raportów warstw (może być niepełna)')
 
@@ -1176,11 +1211,34 @@ if (!finalAgent) {
   } catch (e) {
     final = null
   }
+  // ORC-087: bramka końcowa bez wyniku (padła/wyczerpała budżet bez werdyktu) to awaria maszyny,
+  // nie werdykt — juz-ide-api-1 TS-REP-FACET-TIER-EXPOSURE-001 (33 plików, 2x cicho, także po
+  // podniesieniu budżetu do 60) i grant-flow TS-UI-003 (`agent empty result`). Jedno ponowienie
+  // z innym kształtem zadania: werdykt najpóźniej po ~70% budżetu, najpierw checks i pliki
+  // najwyższego ryzyka, reszta do unverified_scope. Inna etykieta (cache silnika, ORC-077).
+  if (!final) {
+    const retryCalls = scaledBudget(a, 'final-gate', finalFiles.length)
+    log('bramka końcowa bez wyniku — ponawiam raz z werdyktem po ~70% budżetu (ORC-087)')
+    try {
+      final = await ask(
+        buildFinalGatePrompt(a, (a.checks && a.checks.finalGate) || [], finalFiles, treeSource, report.gaps) +
+          '\n\nPOPRZEDNIE WYWOŁANIE NIE ZWRÓCIŁO WYNIKU (budżet wyczerpany bez werdyktu). Wydaj werdykt ' +
+          'NAJPÓŹNIEJ po ' + Math.floor(retryCalls * 0.7) + ' wywołaniach: najpierw deterministyczne bramki, ' +
+          'potem pliki najwyższego ryzyka (migracje, auth, kontrakty, publiczne API); resztę wpisz do ' +
+          '`unverified_scope`. Werdykt częściowy jest poprawnym wynikiem, jego brak nie.',
+        Object.assign({}, finalOpts, { label: 'final-gate-retry' }),
+      )
+    } catch (e) {
+      final = null
+    }
+  }
   // ORC-083: `cause` — 'machine' = bramka nie dała werdyktu albo NO_GO wymuszone przez
   // unverified_scope (ORC-069); 'code' = weryfikator sam znalazł naruszenia w kodzie.
   report.finalGate = final
     ? Object.assign({}, final, { cause: undefined })
-    : { verdict: 'NO_GO', violations: ['bramka końcowa nie zwróciła werdyktu'], cause: 'machine' }
+    : { verdict: 'NO_GO', violations: ['bramka końcowa nie zwróciła werdyktu (także po ponowieniu)'], cause: 'machine' }
+  // ORC-087: brak werdyktu przy wszystkich warstwach GO — pliki idą do stagingu z flagą przeglądu.
+  if (!final) report.stageForReview = finalFiles
   // Bramka końcowa nie ma pętli retry (jeden strzał) — GO z niepustym unverified_scope nie może
   // więc "skonsumować próby" jak w decideVerdict(); jedyna bezpieczna reakcja to potraktować to
   // jak NO_GO, żeby uczciwie przyznana luka trafiła do człowieka zamiast do cichego stage'owania.

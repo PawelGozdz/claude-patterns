@@ -18,11 +18,15 @@ dismissed_reason: >
   nie uruchomił kodu", tylko zwykłe GO+unverified_scope po 3 próbach (rodzina
   ORC-069/warstwa, nie final gate). Nie wzmacnia diagnozy poprzednich dwóch
   wystąpień — bez zmian, nadal do obserwacji.
+resolution_note: >
+  2026-10-02: wystąpienie 9 wskazało przyczynę źródłową całego wpisu — warstwy Flutter nie miały
+  checks (silnik znał tylko npm run). Naprawione jako ORC-088: checks jako komendy dosłowne,
+  clean-arch dostał flutter analyze/test. Wcześniejsza diagnoza „do obserwacji” nieaktualna.
 trigger: halt
 rule_ref: ORC-069
 first_seen: 2026-09-28
-last_seen: 2026-09-29
-occurrences: 8
+last_seen: 2026-10-01
+occurrences: 9
 projects:
   - juz-ide-mobile-app
 reopened_at: 2026-09-29
@@ -33,6 +37,7 @@ reopened_from_status: dismissed
 
 ## Occurrences
 
+- 2026-10-01 juz-ide-mobile-app (DESIGN-SYSTEM-009) run `wf_124a640a-894` warstwa `presentation` — Bramka końcowa NO_GO wymuszona samym unverified_scope: projekt Flutter nie ma checks (analyze/test) w runtime.yml, bo checks to nazwy skryptów package.json; weryfikatorzy nie kompilują. Realny błąd (overflow arkusza w trybie Duży) wyszedł dopiero przy ręcznym flutter test.
 - 2026-09-29 juz-ide-mobile-app (DESIGN-SYSTEM-009) run `wf_59bf80d6-dbb` warstwa `presentation` — GO z niezweryfikowanym zakresem po 3 probach (runda 7, stany D-Bledy/D-Komunikaty); domkniete recznie: analyze + test zielone
 - 2026-09-29 juz-ide-mobile-app (DESIGN-SYSTEM-009) run `wf_521cc448-edc` warstwa `presentation` — ESCALATE po 3 próbach: GO z unverified_scope (ekrany 872/699 linii); po przebiegu 6 lintów i 1 padający test; naprawione ręcznie
 - 2026-09-29 juz-ide-mobile-app (DESIGN-SYSTEM-009) run `wf_f1141169-462` warstwa `presentation` — ESCALATE po 3 próbach: GO z unverified_scope (15 plików); dodatkowo 3 błędy kompilacji i 2 padające testy po przebiegu; naprawione ręcznie

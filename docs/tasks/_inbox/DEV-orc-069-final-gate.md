@@ -30,12 +30,14 @@ resolution: >
 trigger: no_go
 rule_ref: ORC-069
 first_seen: 2026-09-27
-last_seen: 2026-09-30
-occurrences: 4
+last_seen: 2026-10-02
+occurrences: 6
 projects:
   - feature-flags
   - marketing-hub
   - juz-ide-api-1
+  - ai-os-bot
+  - ai-gateway
 reopened_at: 2026-09-30
 reopened_from_status: dismissed
 ---
@@ -44,6 +46,8 @@ reopened_from_status: dismissed
 
 ## Occurrences
 
+- 2026-10-02 ai-gateway (TS-AIG-042) run `wf_0894943d-43a` warstwa `final-gate` — Bramka końcowa NO_GO (cause machine) wymuszona samym unverified_scope; weryfikator nie czytał 4 plików usage/ ani TM/analizy. Wcześniej warstwa testing:usage-tests stanęła, bo scope.dirs=src/usage/ obejmował kod innej warstwy (layerTouches po podciągu) — obejście przez --overrides scope.
+- 2026-10-02 ai-os-bot (BOT-023) run `wf_d2fa907c-705` warstwa `final_gate` — Bramka końcowa NO_GO (cause: machine) wymuszone wyłącznie przez unverified_scope przy zielonym typecheck/lint/439 testach; warstwa testing GO_WITH_GAPS
 - 2026-09-30 juz-ide-api-1 (TS-REP-DISCLOSURE-POLICY-001) run `wf_6e32b591-791` warstwa `final_gate` — Bramka końcowa: typecheck 0 błędów, 12347 testów zielonych, security bez VETO, ale GO z niepustym unverified_scope (test L2 integration nieuruchomiony przez heavy-test lock; treść dokumentów sprawdzona tylko obecnością) => wymuszone NO_GO wg ORC-069. Bramka nie ma L2 w checks.
 - 2026-09-29 marketing-hub (TS-MH-009) run `wf_5b6ca007-502` warstwa `final-gate` — Bramka końcowa: rationale GO, ale niepusty unverified_scope (karty/README/render-with-refine) wymuszony NO_GO bez retry; luki to dokumentacja pokryta zielonymi checks
 - 2026-09-27 feature-flags (0010) run `wf_2a6df522-a59` warstwa `final-gate` — Drugie wystąpienie NO_GO bramki końcowej TASK-0010, tym razem po wyczyszczeniu wcześniejszej anomalii i czystym GO wszystkich 5 warstw/jednostek + zielonych deterministycznych checkach (turbo test/lint 16/16, flutter test/analyze na obu pakietach Dart). Werdykt bramki: 'No cross-layer regression detected', a mimo to GO wymuszone na NO_GO przez 3 pozycje unverified_scope: (1) treść fixture'ów JSON nie przejrzana bajt-po-bajcie poza potwierdzeniem, że przechodzą przez pełny, zielony test suite (142/142) i walidację schematu — warstwa static-corpus-fixtures już to zweryfikowała niezależnie; (2) README.md i .gitignore nowego pakietu — pliki niefunkcjonalne; (3) sam artefakt analizy zadania (dokument planistyczny, nie wysyłany kod). Żaden z 3 punktów nie jest realnym ryzykiem jakości kodu.

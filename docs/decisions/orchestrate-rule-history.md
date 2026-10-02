@@ -1568,3 +1568,61 @@ zmianie kompozycji/analizy/sekretu albo gdy wznowienie już raz zawiodło; rapor
 rekomendacją zamiast listy wariantów. To nadal reguła „tylko prompt" (egzekwuje ją tylko uwaga
 agenta), ale opiera się na polu `cause` ustawianym mechanicznie przez silnik (ORC-083).
 Eval: `silent-verifier-gaps-require-green-probe-and-changed-files`.
+
+<a id="orc-087"></a>
+
+### ORC-087 — commity implementera, manifesty zależności, bramka końcowa bez wyniku (2026-10-01)
+
+Cztery zgłoszenia z jednego dnia, trzy realne luki silnika:
+
+1. **Commity mimo `STAGE_NOT_COMMIT`** (ai-os-bot BOT-023, 4 commity implementerów:
+   d9e569e, d3d1d7f, 0c4fca8, 7b22ed0). Prompt implementera zakazywał tylko cofania
+   (`NO_REVERT`), nigdzie commitowania. Poprawka: `ZAKAZ COMMITOWANIA` w tej samej stałej
+   (obowiązuje implementera i prompt naprawczy) + sonda drzewa przed bramką końcową zwraca
+   `commits` (`git rev-list --count <baza>..HEAD`); >0 nie zatrzymuje przebiegu (diff względem bazy
+   działa), ale ląduje w `report.warnings` z poleceniem spłaszczenia (`git reset --soft <baza>`).
+2. **Manifesty zależności poza zakresem warstwy** (ai-gateway TS-AIG-013: zatwierdzona zależność
+   `prom-client` nie mogła zostać dodana, bo `package.json`/lockfile leżą poza `src/` → wcześniej
+   BLOCKED_BY_PRIOR; grant-flow TS-UI-003 dotknął `.npmrc`/`package.json`/`pnpm-workspace.yaml` z tego
+   samego powodu). `scopeBlock` (czytają go implementer, weryfikator i sonda) dostał wyjątek:
+   `package.json`, lockfile, `pnpm-workspace.yaml`, `.npmrc` wolno zmienić, gdy zatwierdzona
+   analiza/decyzja wymaga nowej zależności lub konfiguracji workspace. Celowo nie przez
+   `layerTouches` — to rozszerzyłoby „kod istnieje" i listy plików każdej warstwy o manifesty.
+3. **Bramka końcowa bez wyniku** (juz-ide-api-1 TS-REP-FACET-TIER-EXPOSURE-001: 33 plików, 2x cicho,
+   także przy budżecie 60; grant-flow TS-UI-003 `agent empty result`). Jednorazowa bramka nie miała
+   żadnej reakcji na ciszę. Teraz jedno ponowienie (etykieta `final-gate-retry`, ORC-077) z
+   poleceniem: werdykt najpóźniej po ~70% budżetu, najpierw checks i pliki najwyższego ryzyka,
+   reszta do `unverified_scope`. Dalsze milczenie = NO_GO `machine` + `report.stageForReview`
+   (wszystkie warstwy były GO, pliki idą do przeglądu zamiast zostać puste w stagingu).
+   Przyczyna ciszy po stronie agenta (brak treści błędu w journalu) pozostaje nieustalona —
+   ponowienie to łagodzenie, nie diagnoza.
+
+Nie zmieniono: `DEV-agent_note-deviation-note-…` (ai-os-bot: stała lista weryfikatora
+nie sprawdza kart reguł CV/SI/SEP/…) — to konfiguracja slotu weryfikatora w projekcie
+(`bot-verifiers`), nie silnik; `DEV-no_go-…` ai-gateway (unverified_scope przy zielonej sondzie) i
+ai-os-bot (brak Postgresa dla testu integracyjnego) to uczciwe luki środowiskowe — przeszły przez
+`stageForReview` (ORC-084), tak jak zaprojektowano. Evale: `impl-prompt-forbids-commits-and-scope-allows-dependency-manifests`,
+`tree-probe-asks-for-commit-count-since-base`.
+
+<a id="orc-088"></a>
+
+### ORC-088 — `checks` jako komendy dosłowne; Flutter dostaje analyze/test (2026-10-02)
+
+juz-ide-mobile-app (DESIGN-SYSTEM-009), `presentation`, wystąpienie 9 z `DEV-orc-069-presentation`:
+bramka końcowa NO_GO wymuszona samym `unverified_scope`, a „realny błąd (overflow arkusza w trybie
+Duży) wyszedł dopiero przy ręcznym `flutter test`". Przyczyna wszystkich wcześniejszych wystąpień
+tego wpisu („weryfikator nie uruchamia kodu", testy `SemanticsFlag` niekompilujące się, 5
+padających testów canvas_d): warstwy Flutter w `blocks/clean-arch.yml` nie miały żadnych
+`checks`, a silnik umiał tylko `npm run <skrypt>` — Flutter nie ma `package.json`. Sonda zwracała
+„skipped", weryfikatorzy dostawali brak dowodu, a ORC-084/085 słusznie nie pozwala przejść dalej
+przy ślepej sondzie.
+
+Poprawka: wpis `checks` ze spacją jest KOMENDĄ dosłowną uruchamianą z korzenia repo
+(`flutter analyze`), bez spacji — nazwą skryptu package.json (`_chk`, ORC-085). Sonda mapuje wynik:
+komenda z `analyze`/`typecheck`/`tsc`/`vet` → pole `typecheck`, z `test` → `tests`. Blok
+`clean-arch`: `domain`/`application` → `flutter analyze`; `data`/`presentation` (tests: true) →
+`flutter analyze` + `flutter test`; `final_gate.checks` → oba. `flutter analyze` łapie też testy,
+które się nie kompilują. Koszt: pełny `flutter test` (~500 testów w juz-ide-mobile-app) na dwóch
+warstwach i raz w bramce — świadomie, bo to jedyny sposób, by overflow w widget teście wyszedł
+przed review. Projekty: `juz-ide-mobile-app`, `_uls-mobile-app` zmaterializowane; goldeny
+`flutter-clean-arch` odświeżone. Eval: `probe-runs-literal-check-commands-without-npm`.

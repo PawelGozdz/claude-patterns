@@ -73,8 +73,8 @@ dismissed_reason: >
 trigger: no_go
 rule_ref: ORC-069
 first_seen: 2026-09-27
-last_seen: 2026-09-30
-occurrences: 10
+last_seen: 2026-10-01
+occurrences: 11
 projects:
   - ai-os-bot
   - grant-flow
@@ -89,6 +89,7 @@ reopened_from_status: dismissed
 
 ## Occurrences
 
+- 2026-10-01 ai-os-bot (BOT-023) run `wf_dd0479bb-47b` — Bramka końcowa NO_GO (cause=machine) wymuszona samym unverified_scope: brak Postgresa dla ragRetriever.integration.test.ts, nieczytane migracja 005/ftsQuery/plStopwords/contextPacker/rag-eval; po stronie człowieka dopiero te testy przeszły (17/18, 1 błąd testu SHOW lc_ctype).
 - 2026-09-30 grant-flow (TS-SIM-002A) run `wf_45bf4694-8fd` — Bramka koncowa TS-SIM-002A: NO_GO wymuszony przez unverified_scope (brak L3, nieprzejrzane 2 jednoliniowe zmiany encji, createLogContext), przy zerze znalezisk DREAD>=9; werdykt de facto GO z warunkami. Limit 15 wywolan na bramce dla diffu 112 plikow.
 - 2026-09-29 ai-os-bot (BOT-005a-tests) run `wf_375943cb-7cb` — Drugi przebieg: bramka końcowa NO_GO z ORC-069 (GO + niepusty unverified_scope, jednorazowa bramka bez retry) mimo zielonych bramek (tsc, eslint, vitest grant-flow 71/71). Mimo D7 (jawna adjudykacja pozycji spoza zakresu) bramka zgłosiła nowy punkt, tym razem w zakresie (treść testów dat vs D6) i powtórzyła pozycje D7 jako unverified. Główna sesja zweryfikowała odczytem zgodność testów dat z D6.
 - 2026-09-29 ai-os-bot (BOT-005a-tests) run `wf_0ac1f3a4-d9e` — Bramka końcowa NO_GO wymuszone przez ORC-069 (GO z niepustym unverified_scope, jednorazowa bramka bez retry) mimo zielonych bramek deterministycznych (tsc, eslint 0 errors, vitest grant-flow 58/58). unverified_scope dotyczył kroków poza zakresem warstwy (D4 po commicie, plik analizy, pełny vitest) — ORC-072/ORC-076 nie pozwoliły ich zaadiudykować, bo bramka nie ma jak uznać ich za poza zakresem.

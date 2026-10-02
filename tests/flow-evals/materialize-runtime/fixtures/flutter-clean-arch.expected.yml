@@ -60,16 +60,21 @@ analyze:
 
 orchestrate: # source: clean-arch
   layers:
-    - {id: domain, dirs: [domain/], agent: "flutter-implementer"}
-    - {id: application, dirs: [application/], agent: "flutter-implementer", optional: true, create_when: "decisions[].application_layer == true (kryterium ADR-A)"}
-    - {id: data, dirs: [data/], agent: "flutter-implementer", tests: true}
-    - {id: presentation, dirs: [presentation/], agent: "flutter-implementer", tests: true}
+    # checks (ORC-088, 2026-10-02): wpis ze spacją = komenda dosłowna z korzenia repo (Flutter nie
+    # ma package.json). Bez nich sonda była „skipped", weryfikatory nie kompilowały i realny błąd
+    # (overflow w widget teście) wychodził dopiero z ręcznego `flutter test` — 9 wystąpień
+    # DEV-orc-069-presentation. `flutter analyze` łapie też testy, które się nie kompilują;
+    # pełny `flutter test` tylko tam, gdzie warstwa pisze testy (data, presentation).
+    - {id: domain, dirs: [domain/], agent: "flutter-implementer", checks: ["flutter analyze"]}
+    - {id: application, dirs: [application/], agent: "flutter-implementer", optional: true, create_when: "decisions[].application_layer == true (kryterium ADR-A)", checks: ["flutter analyze"]}
+    - {id: data, dirs: [data/], agent: "flutter-implementer", tests: true, checks: ["flutter analyze", "flutter test"]}
+    - {id: presentation, dirs: [presentation/], agent: "flutter-implementer", tests: true, checks: ["flutter analyze", "flutter test"]}
   inner_loop: {verify: "flutter-quality-verifier | flutter-ui-verifier", max_attempts: 3, on_max: ESCALATE_AND_HALT}
   # Bramka końcowa = bezpieczeństwo, analogicznie do ddd/core (security-e2e-verifier).
   # Jakość/wzorce są już wymuszone w inner_loop przy każdej warstwie; ostatni zamek
   # przed staged sprawdza to, czego nie widać w pojedynczej warstwie: sekrety, logi,
   # pinning, deep linki i realność kanałów natywnych.
-  final_gate: {agent: "flutter-security-verifier", on_fail: ESCALATE_AND_HALT}
+  final_gate: {agent: "flutter-security-verifier", on_fail: ESCALATE_AND_HALT, checks: ["flutter analyze", "flutter test"]}
   exit: STAGE_NOT_COMMIT
 
 hooks: [check-patterns-read, check-clean-arch, check-riverpod-patterns, check-flutter-imports, check-pumpandsettle, check-typography-tokens, check-design-tokens, check-l10n-hardcoded, check-focus-wrapper, check-approval-before-impl, check-human-voice]

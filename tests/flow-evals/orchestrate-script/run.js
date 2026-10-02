@@ -448,6 +448,42 @@ const CASES = (c) => [
     },
   },
 
+  // ── ORC-087: zakaz commitów, manifesty w zakresie, sonda commitów ───────────────────────
+  {
+    name: 'impl-prompt-forbids-commits-and-scope-allows-dependency-manifests',
+    run() {
+      const impl = c.buildImplPrompt(ARGS, L.infrastructure, 1, null, 0);
+      if (!/ZAKAZ COMMITOWANIA/.test(impl) || !/git commit/.test(impl)) return 'prompt implementera nie zakazuje commitów';
+      const scope = c.scopeBlock(L.infrastructure, ARGS);
+      if (!/manifesty zależności/.test(scope) || !/pnpm-lock\.yaml/.test(scope) || !/\.npmrc/.test(scope)) return 'scopeBlock nie dopuszcza manifestów zależności';
+      return null;
+    },
+  },
+  {
+    name: 'tree-probe-asks-for-commit-count-since-base',
+    run() {
+      const p = c.buildTreeProbePrompt('abc123');
+      if (!/rev-list --count abc123\.\.HEAD/.test(p) || !/`commits`/.test(p)) return 'sonda drzewa nie pyta o liczbę commitów od bazy';
+      if (/rev-list/.test(c.buildTreeProbePrompt(null))) return 'bez bazy sonda nie powinna pytać o commity';
+      return null;
+    },
+  },
+
+  // ── ORC-088: checks jako komendy dosłowne (Flutter) ─────────────────────────────────────
+  {
+    name: 'probe-runs-literal-check-commands-without-npm',
+    run() {
+      const layer = { id: 'presentation', dirs: ['presentation/'], checks: ['flutter analyze', 'flutter test'] };
+      const p = c.buildProbePrompt({ task: { id: 'T' } }, layer);
+      if (!/^flutter analyze > \/tmp\/check-presentation\.log/m.test(p)) return 'komenda dosłowna nie jest uruchamiana bezpośrednio: ' + p.slice(0, 300);
+      if (/npm run flutter/.test(p) || /_chk flutter/.test(p)) return 'komenda dosłowna nie może iść przez npm/_chk';
+      if (!/Mapowanie wyników/.test(p)) return 'brak mapowania wyników komend dosłownych na typecheck/tests';
+      const npmOnly = c.buildProbePrompt({ task: { id: 'T' } }, { id: 'web', dirs: ['apps/web/'], checks: ['typecheck'] });
+      if (/Mapowanie wyników/.test(npmOnly)) return 'sama nazwa skryptu nie powinna dostać mapowania';
+      return null;
+    },
+  },
+
   // ── zakres jednostki / warstwy ────────────────────────────────────────────────
   {
     name: 'layer-touches-scopes-diff-to-layer',

@@ -42,6 +42,7 @@ nie gdy chcesz ją WYKONAĆ.
                            HALT z adnotacją „WYMAGA PRZEGLĄDU"; wypisz `report.gaps` (luki warstw
                            GO_WITH_GAPS, per warstwa) i `finalGate.absorbed_gaps` w treści HALT.
                            GO_WITH_GAPS = warstwa zamknięta (dopisz do `layers_done:`), luki do przeglądu.
+                           `report.warnings` (ślepa sonda, commity implementera) wypisz w treści HALT.
 5. zgłoszenie odstępstw → best-effort, NIE blokuje HALT z kroku 4 i niczego w nim nie zmienia.
                          Dla KAŻDEGO z: warstwa w `report` ze statusem ESCALATE_AND_HALT/
                          BLOCKED_BY_PRIOR ORAZ `cause === 'machine'`, `report.finalGate.verdict
@@ -188,6 +189,8 @@ poza Twoją uwagą — to jednocześnie lista kandydatów do zautomatyzowania.
 | ORC-084 | warstwa: GO bez naruszeń, ale `unverified_scope` po wszystkich próbach, sonda zielona | status `GO_WITH_GAPS` zamiast `ESCALATE_AND_HALT`: przebieg idzie dalej, luki w `report.gaps` → bramka końcowa (nie liczy ich drugi raz) → człowiek; NO_GO bramki wymuszone samym unverified_scope → pliki staged z flagą „wymaga przeglądu” | `orchestrate.template.mjs` (`layerGapsAcceptable`, `filterKnownLayerGaps`, bramka końcowa) · krok 4 | [ORC-084](docs/decisions/orchestrate-rule-history.md#orc-084) |
 | ORC-085 | sonda w katalogu pakietu nie zna nazw skryptów roota (`typecheck:web`) → wszystko `skipped`; domyślne 15 wywołań na jednostkę ~40 plików | `_chk`: nazwa w pakiecie → bez sufiksu w pakiecie → w korzeniu; ślepa sonda = log + `report.warnings`; budżet verify/bramki = 15 + (pliki−10), cap 50, jawny wpis wygrywa; GO_WITH_GAPS wymaga ≥1 `pass` | `orchestrate.template.mjs` (`buildProbePrompt`, `scaledBudget`, `layerGapsAcceptable`) | [ORC-085](docs/decisions/orchestrate-rule-history.md#orc-085) |
 | ORC-086 | halt maszyny (`cause: machine`) i pytania do człowieka w środku pracy | silnik: weryfikator 2x bez wyniku + sonda zielona → `GO_WITH_GAPS`; agent: sekcja „Po zatrzymaniu": diagnostician → `--overrides` + 1 wznowienie, pytaj tylko przy `code`/zmianie kompozycji/sekrecie | `orchestrate.template.mjs` (`silentVerifierGapsAcceptable`) · sekcja „Po zatrzymaniu" (prompt) | [ORC-086](docs/decisions/orchestrate-rule-history.md#orc-086) |
+| ORC-087 | implementer commituje mimo `STAGE_NOT_COMMIT`; zatwierdzona zależność poza zakresem warstwy (package.json/lockfile) → BLOCKED_BY_PRIOR; bramka końcowa milczy | `ZAKAZ COMMITOWANIA` w prompcie + `commits` z sondy drzewa → `report.warnings`; wyjątek manifestów zależności w `scopeBlock`; bramka końcowa: 1 ponowienie z werdyktem po ~70% budżetu, dalej NO_GO `machine` + `stageForReview` | `orchestrate.template.mjs` (`NO_REVERT`, `scopeBlock`, `buildTreeProbePrompt`, bramka końcowa) | [ORC-087](docs/decisions/orchestrate-rule-history.md#orc-087) |
+| ORC-088 | stack bez package.json (Flutter): `checks` puste, sonda „skipped", weryfikatory nie kompilują | wpis `checks` ze spacją = komenda dosłowna z korzenia repo (`flutter analyze`), mapowana na `typecheck`/`tests`; `clean-arch`: analyze na warstwach, + test na data/presentation i w bramce końcowej | `orchestrate.template.mjs` (`buildProbePrompt`) · `blocks/clean-arch.yml` | [ORC-088](docs/decisions/orchestrate-rule-history.md#orc-088) |
 
 ## Co zrobić z regułą „tylko prompt"
 
