@@ -16,11 +16,14 @@ resolution: >
   realna luka w bibliotece wzorców, nie błąd silnika ani config — przeniesiona
   do docs/tasks/TASK-ORCH-PATTERN-GAPS-001.md razem z innymi znaleziskami kart
   wzorców z tego samego przebiegu.
+note_2026_10_03: >
+  UPDATE: przyczyna ciszy ustalona w iam TS-SSO-056 — maxTurns: 20 we frontmatterze security-e2e-verifier (ORC-092). Wpis do zamknięcia po pierwszym przebiegu bez ciszy.
+  Dodano report.askErrors (ORC-090) — powód ciszy agenta zapisany w raporcie przebiegu. Przyczyna ciszy bramki końcowej nadal nieustalona; wpis zostaje otwarty do czasu pierwszego raportu z askErrors.
 trigger: no_go
 rule_ref: ORC-056
 first_seen: 2026-09-26
-last_seen: 2026-10-01
-occurrences: 3
+last_seen: 2026-10-03
+occurrences: 4
 projects:
   - marketing-hub
   - grant-flow
@@ -32,6 +35,7 @@ reopened_from_status: dismissed
 
 ## Occurrences
 
+- 2026-10-03 grant-flow (TS-UI-004) run `wf_97803515-a19` — bramka koncowa nie zwrocila werdyktu takze po ponowieniu (wszystkie warstwy GO); weryfikatory GO mimo czerwonego lint:check:web, niezaladowanego spec-a API (.openapi is not a function) i pustego FEATURE_ROUTES
 - 2026-10-01 grant-flow (TS-UI-003) run `wf_37265908-528` — bramka koncowa nie zwrocila werdyktu (agent empty result) po obu warstwach GO; cause=machine
 - 2026-09-28 marketing-hub (TS-MH-009) run `wf_2fdefa38-8c4` — final gate NO_GO: format:check rc=1 (request-scope.ts, README.md, visual.spec.ts), test:visual 4/8 (StartPage->Dashboard bez aktualizacji baseline), D4 staleTime, D8 test:e2e:web, D10 karty, WARN blad useCan
 - 2026-09-26 marketing-hub (TS-MH-010) run `wf_83d565e9-cc8` — Bramka końcowa: VETO-1 krytyczny (JIT z guarda dispatchuje komendę na każde żądanie → wpis audytu + wyścig SELECT..FOR UPDATE na głowie łańcucha, 500 przy równoległych) przeszedł przez 15 GO warstw; brak karty na efekty uboczne komend z guarda i współbieżne dopisywanie do łańcucha. VETO-2/3: validate:br i format:check są w CI, a nie w checks warstw.

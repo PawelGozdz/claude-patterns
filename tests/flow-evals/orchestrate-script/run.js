@@ -484,6 +484,118 @@ const CASES = (c) => [
     },
   },
 
+  // ── ORC-089: nazwa pliku analizy bez ścieżki też jest artefaktem przebiegu ──────────────
+  {
+    name: 'own-task-artifacts-filter-matches-bare-file-name',
+    run() {
+      const task = { analysisFile: 'docs/tasks/analysis/TS-AIG-043.analysis.md', taskFile: 'docs/tasks/TS-AIG-043.md' };
+      const out = c.filterOwnTaskArtifacts([
+        'TS-AIG-043.analysis.md nieprzeczytany',
+        'docs/tasks/analysis/TS-AIG-043.analysis.md',
+        'src/usage/real-gap.ts',
+      ], task);
+      if (out.length !== 1 || out[0] !== 'src/usage/real-gap.ts') return 'nazwa/ścieżka pliku analizy nie została odfiltrowana albo realna luka zniknęła: ' + JSON.stringify(out);
+      const short = c.filterOwnTaskArtifacts(['a.md w tle'], { analysisFile: 'x/a.md' });
+      if (short.length !== 1) return 'zbyt krótka nazwa (<6 znaków) nie może być filtrem';
+      return null;
+    },
+  },
+
+  // ── ORC-090: odroczenie typechecku w monorepo, pliki brudne przed startem ────────────────
+  {
+    name: 'typecheck-deferral-handles-package-relative-paths-in-monorepo',
+    run() {
+      const layers = [
+        { id: 'application', dirs: ['apps/api/src/contexts/x/application/'] },
+        { id: 'infrastructure', dirs: ['apps/api/src/contexts/x/infrastructure/'] },
+        { id: 'testing', dirs: ['__tests__/'], scope: { dirs: ['apps/api/src/contexts/x/__tests__/unit/'] } },
+      ];
+      const red = (tail) => ({ typecheck: 'fail', tests: 'skipped', tsErrors: tail });
+      const infra = 'src/contexts/x/infrastructure/repo.ts(12,3): error TS2420: Class incorrectly implements interface.';
+      const own = 'src/contexts/x/application/h.ts(5,1): error TS2322: Type mismatch.';
+      const spec = 'src/contexts/x/__tests__/integration/create.spec.ts(9,2): error TS2554: Expected 10 arguments.';
+      if (!c.typecheckRedIsLaterLayers(red(infra), layers[0], layers)) return 'ścieżka względna pakietu w późniejszej warstwie (infrastructure) nie została odroczona';
+      if (!c.typecheckRedIsLaterLayers(red(infra + '\n' + spec), layers[0], layers)) return 'plik poza zawężeniem, ale w pełnych dirs późniejszej warstwy (testing), nie został odroczony';
+      if (c.typecheckRedIsLaterLayers(red(own + '\n' + infra), layers[0], layers)) return 'błąd we własnym zakresie (ścieżka względna) został odroczony';
+      if (c.typecheckRedIsLaterLayers(red(own), layers[1], layers)) return 'błąd w WCZEŚNIEJSZEJ warstwie (ścieżka względna) został odroczony';
+      return null;
+    },
+  },
+  {
+    name: 'stageable-files-exclude-dirty-at-start-unless-layer-changed-them',
+    run() {
+      const out = c.stageableFiles(['src/a.ts', '.claude/x.md', 'KANBAN.md', 'src/b.ts'], ['.claude/x.md', 'KANBAN.md', 'src/b.ts'], ['src/b.ts']);
+      if (JSON.stringify(out) !== JSON.stringify(['src/a.ts', 'src/b.ts'])) return 'brudne przed startem pliki nie zostały wykluczone / zmienione przez warstwę zniknęły: ' + JSON.stringify(out);
+      if (c.stageableFiles(['x'], undefined, undefined).length !== 1) return 'brak dirtyAtStart nie zmienia listy';
+      return null;
+    },
+  },
+
+  // ── ORC-091: drobne ustalenia naprawiane od razu ─────────────────────────────────────────
+  {
+    name: 'minor-findings-collected-grouped-and-formatted',
+    run() {
+      if (c.collectMinor({ minor_findings: [' a.ts:3 — nit — popraw ', '', 'b.ts'] }).length !== 2) return 'collectMinor nie odfiltrował pustych / nie przycinał';
+      if (c.collectMinor(null).length !== 0 || c.collectMinor({}).length !== 0) return 'brak pola minor_findings → pusta lista';
+      if (c.collectMinor({ minor_findings: Array.from({ length: 40 }, (_, i) => 'x' + i) }).length !== 25) return 'limit 25 ustaleń';
+      const txt = c.formatMinorFix(['a.ts:3 — nit — popraw']);
+      if (!/nie blokują/.test(txt) || !/1\. a\.ts:3/.test(txt) || !/deviation_note/.test(txt)) return 'formatMinorFix: brak instrukcji/numeracji: ' + txt;
+      const layers = [{ id: 'domain', dirs: ['domain/'] }, { id: 'infrastructure', dirs: ['infrastructure/'] }];
+      const g = c.groupFindingsByLayer(['src/x/infrastructure/repo.ts:9 — nit', 'src/x/domain/agg.ts — nit', 'bez ścieżki'], layers, 'domain');
+      if (!g.infrastructure || g.infrastructure.length !== 1) return 'ustalenie ze ścieżką infrastructure nie trafiło do infrastructure: ' + JSON.stringify(g);
+      if (!g.domain || g.domain.length !== 2) return 'domain powinno mieć ustalenie ze ścieżką + zapasowe: ' + JSON.stringify(g);
+      return null;
+    },
+  },
+  {
+    name: 'verifier-and-final-gate-prompts-offer-minor-findings-and-impl-gets-analysis-minors',
+    run() {
+      const layer = L.infrastructure;
+      const v = c.buildVerifierPrompt(ARGS, layer, { typecheck: 'pass', tests: 'pass' }, ['a.ts'], 'implement');
+      if (!/minor_findings/.test(v)) return 'prompt weryfikatora warstwy nie wspomina minor_findings';
+      const off = c.buildVerifierPrompt(Object.assign({}, ARGS, { autoFixMinor: false }), layer, { typecheck: 'pass', tests: 'pass' }, ['a.ts'], 'implement');
+      if (/minor_findings/.test(off)) return 'autoFixMinor=false powinno wyłączyć blok';
+      const f = c.buildFinalGatePrompt(ARGS, [], ['a.ts'], 'tree', []);
+      if (!/minor_findings/.test(f)) return 'prompt bramki końcowej nie wspomina minor_findings';
+      const withMinors = Object.assign({}, ARGS, { task: Object.assign({}, ARGS.task, { minorFixes: ['README: literówka w nagłówku'] }) });
+      const impl = c.buildImplPrompt(withMinors, layer, 1, null, 0, null);
+      if (!/DROBNE POPRAWKI Z ANALIZY/.test(impl) || !/literówka/.test(impl)) return 'implementer nie dostał drobnych poprawek z analizy';
+      const fixPass = c.buildImplPrompt(withMinors, layer, 2, 'naruszenie X', 0, null);
+      if (/DROBNE POPRAWKI Z ANALIZY/.test(fixPass)) return 'przy poprawce nie dokładamy drobnych poprawek z analizy';
+      return null;
+    },
+  },
+
+  // ── ORC-093: właściciel pliku po specyficzności (katch-all w wcześniejszej warstwie) ─────
+  {
+    name: 'typecheck-deferral-owner-by-specificity-with-catch-all-domain-dirs',
+    run() {
+      // układ grant-flow: domain ma katch-all apps/api/src/
+      const layers = [
+        { id: 'domain', dirs: ['apps/api/src/', 'domain/'] },
+        { id: 'application', dirs: ['application/'] },
+        { id: 'infrastructure', dirs: ['infrastructure/', 'apps/api/src/app/', 'apps/api/src/shared/'] },
+        { id: 'testing', dirs: ['__tests__/', 'apps/api/test/'] },
+      ];
+      const red = (tail) => ({ typecheck: 'fail', tests: 'skipped', tsErrors: tail });
+      const err = (p) => p + '(1,1): error TS2322: x.';
+      const infraAbs = err('apps/api/src/contexts/t/infrastructure/repo.ts');
+      const infraRel = err('src/contexts/t/infrastructure/repo.ts');
+      const ctrl = err('apps/api/src/app/api/c.ts');
+      const ownApp = err('apps/api/src/contexts/t/application/h.ts');
+      const domEventInInfra = err('apps/api/src/contexts/t/infrastructure/persistence/domain-event.ts');
+      const spec = err('apps/api/src/contexts/t/__tests__/a.spec.ts');
+      if (!c.typecheckRedIsLaterLayers(red(infraAbs), layers[1], layers)) return 'infrastructure (ścieżka z prefiksem) przy katch-all domain nie została odroczona';
+      if (!c.typecheckRedIsLaterLayers(red(infraRel), layers[1], layers)) return 'infrastructure (ścieżka względna pakietu) nie została odroczona';
+      if (!c.typecheckRedIsLaterLayers(red(ctrl + '\n' + domEventInInfra), layers[1], layers)) return 'kontroler (prefiks apps/api/src/app/) / plik domain-event.ts w infrastructure nie został odroczony';
+      if (!c.typecheckRedIsLaterLayers(red(spec), layers[1], layers)) return 'plik w __tests__ (testing) nie został odroczony';
+      if (c.typecheckRedIsLaterLayers(red(ownApp), layers[1], layers)) return 'błąd we WŁASNYM zakresie (application) został odroczony';
+      if (c.typecheckRedIsLaterLayers(red(ownApp + '\n' + infraAbs), layers[1], layers)) return 'mieszanka własny+późniejszy została odroczona';
+      if (c.typecheckRedIsLaterLayers(red(err('apps/api/src/contexts/t/domain/agg.ts')), layers[1], layers)) return 'błąd w WCZEŚNIEJSZEJ warstwie (domain) został odroczony';
+      return null;
+    },
+  },
+
   // ── zakres jednostki / warstwy ────────────────────────────────────────────────
   {
     name: 'layer-touches-scopes-diff-to-layer',

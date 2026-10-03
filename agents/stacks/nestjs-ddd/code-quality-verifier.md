@@ -6,7 +6,7 @@ model: sonnet
 permissionMode: dontAsk
 effort: medium
 memory: project
-maxTurns: 30
+maxTurns: 60
 skills:
   - testing/verification-loop
   - quality/coding-standards
@@ -297,6 +297,7 @@ Works with: @security-e2e-verifier (final security/E2E), @ddd-application-expert
 
 ## Changelog
 
+- 2026-10-03 — `maxTurns` podniesione do 60: limit z frontmattera wygrywa z budżetem ze skryptu orkiestracji (`scaledBudget` sięga 50), a przy mniejszym agent kończył bez StructuredOutput, czyli milcząca bramka końcowa w iam, grant-flow i juz-ide-api-1 (ORC-092).
 - 2026-09-04 — scommitowano zaległe zmiany z 08-29/08-31 (parity side-effectów między gałęziami handlera **CH11**, check D1/D2 `resolveTargetArea(`→`checkResidenceGuardrail(`); bez zmian treści względem wpisów poniżej
 - 2026-08-31 - dodano check D1/D2 (ADR-0118, TS-ARCH-HANDLER-CONTRACT-001): resolveTargetArea( wymaga checkResidenceGuardrail( w tym samym zakresie, znany wyjatek create-service-offering (SEC-GEO-GUARDRAIL-SVCOFFER-001, sledzony osobno w docs/security/security-gaps.md)
 - 2026-08-29 — added branch side-effect parity check: CQRS checklist bullet + Verification Workflow step 1 instruction to diff side-effects across a handler's branches instead of reading each in isolation, tied to new command-handler-pattern rule **CH11**/**N8** (root-caused from `create-local-share/handler.ts` missing `setTag()` on one branch for 39 commits, `juz-ide-api-3`, BR-LS-TAG-001)

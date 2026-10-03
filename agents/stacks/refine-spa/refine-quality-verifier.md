@@ -7,7 +7,7 @@ model: sonnet
 permissionMode: dontAsk
 effort: medium
 memory: project
-maxTurns: 30
+maxTurns: 60
 skills:
   - testing/verification-loop
   - quality/coding-standards
@@ -171,6 +171,7 @@ follow-up pass.
 
 ## Changelog
 
+- 2026-10-03 — `maxTurns` podniesione do 60: limit z frontmattera wygrywa z budżetem ze skryptu orkiestracji (`scaledBudget` sięga 50), a przy mniejszym agent kończył bez StructuredOutput, czyli milcząca bramka końcowa w iam, grant-flow i juz-ide-api-1 (ORC-092).
 - 2026-09-25 — first commit into claude-patterns (agent drafted 2026-09-15, staged and reviewed now); no content change since creation
 - 2026-09-15 — created for marketing-hub TS-MH-002 as the VETO gate for the web layer
   (the DDD `code-quality-verifier` checks aggregates/CQRS and has nothing to say about a

@@ -315,6 +315,44 @@ function applyOverrides(out, overrides, path = '') {
 // Stan repo przy starcie przebiegu: baza porównania dla bramki końcowej (lista plików z
 // drzewa, nie z raportów warstw) i pliki brudne już przed startem (bramka ma wiedzieć, że
 // nie są pracą tego taska). Brak gita = null + ostrzeżenie; szablon wraca wtedy do HEAD.
+// ORC-092: `maxTurns` z frontmattera agenta WYGRYWA z budżetem przekazanym przez skrypt (iam
+// TS-SSO-056: security-e2e-verifier z maxTurns: 20 kończył bez StructuredOutput przy budżecie 42,
+// a `--overrides` go nie podnosił; ta sama „cicha" bramka końcowa w grant-flow i juz-ide-api-1).
+// Ostrzegamy PRZED startem, gdy limit agenta jest mniejszy niż to, co skrypt mu obiecuje
+// (verify/final-gate do 50, implementer 40 — albo jawny budget z runtime.yml).
+function agentTurnCapWarnings(projectDir, out) {
+  const budget = (slot, fallback) => {
+    const b = out.budgets?.[slot] ?? {};
+    const n = b.max_tool_calls ?? b.max_turns;
+    return typeof n === 'number' && n > 0 ? n : fallback;
+  };
+  const need = new Map();
+  const add = (spec, turns, role) => {
+    for (const name of String(spec ?? '').split('|').map((s) => s.trim()).filter(Boolean)) {
+      if (name.includes(':')) continue; // agenci z pluginów (ecc:*) nie mają lokalnego pliku
+      const key = `${name}/${role}`;
+      if (!need.has(key)) need.set(key, { name, turns, role });
+    }
+  };
+  add(out.verifiers?.layer, budget('verify', 50), 'verify');
+  add(out.verifiers?.finalGate, budget('final-gate', 50), 'final-gate');
+  for (const l of out.layers ?? []) {
+    add(l.verify, budget('verify', 50), 'verify');
+    add(l.agent, budget('implement', 40), 'implement');
+  }
+  const found = [];
+  for (const { name, turns, role } of need.values()) {
+    const file = join(projectDir, '.claude', 'agents', `${name}.md`);
+    if (!existsSync(file)) continue;
+    const head = readFileSync(file, 'utf8').split('\n').slice(0, 40).join('\n');
+    const m = head.match(/^maxTurns:\s*(\d+)/m);
+    if (m && Number(m[1]) < turns) {
+      found.push(`agent "${name}" (rola ${role}) ma maxTurns: ${m[1]} w definicji — wygrywa z budżetem skryptu (do ${turns}); przy większym zakresie kończy BEZ werdyktu. Podnieś maxTurns w .claude/agents/${name}.md do ≥ ${turns}.`);
+    }
+  }
+  return found;
+}
+
 function gitState(projectDir, warnings) {
   const git = (...a) => spawnSync('git', ['-C', projectDir, ...a], { encoding: 'utf8' });
   const head = git('rev-parse', 'HEAD');
@@ -620,8 +658,13 @@ function main() {
       title: taskDoc?.fm?.title ? String(taskDoc.fm.title) : null,
       type: taskDoc?.fm?.type ? String(taskDoc.fm.type) : null,
       decisions: analysisDoc?.fm?.decisions ?? [],
+      // ORC-091: drobne rzeczy znalezione w analizie (nie blokujące, łatwe) — implementer
+      // warstwy robi te z jej zakresu przy okazji, zamiast czekać na ręczne zlecenie.
+      minorFixes: Array.isArray(analysisDoc?.fm?.minor_fixes) ? analysisDoc.fm.minor_fixes.map(String) : [],
       layersDone: layersDone.map(String),
     },
+    // ORC-091: false (przez --overrides) wyłącza automatyczne naprawianie drobnych ustaleń.
+    autoFixMinor: true,
     baseSha: git.baseSha,
     dirtyAtStart: git.dirtyAtStart,
     layers,
@@ -658,6 +701,7 @@ function main() {
     },
     warnings,
   };
+  warnings.push(...agentTurnCapWarnings(args.project, out));
 
   if (args.overrides) {
     let ov;

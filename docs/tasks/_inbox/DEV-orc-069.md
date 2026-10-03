@@ -73,14 +73,15 @@ dismissed_reason: >
 trigger: no_go
 rule_ref: ORC-069
 first_seen: 2026-09-27
-last_seen: 2026-10-01
-occurrences: 11
+last_seen: 2026-10-03
+occurrences: 13
 projects:
   - ai-os-bot
   - grant-flow
   - juz-ide-api
   - feature-flags
   - marketing-hub
+  - ai-gateway
 reopened_at: 2026-09-30
 reopened_from_status: dismissed
 ---
@@ -89,6 +90,8 @@ reopened_from_status: dismissed
 
 ## Occurrences
 
+- 2026-10-03 ai-gateway (TS-AIG-070) run `wf_865f6bd2-00a` — Bramka końcowa NO_GO (cause=machine) wyłącznie przez unverified_scope: 4 pozycje poza zasięgiem weryfikacji (ręczny test tsx --env-file, kontrola .env serwera, sekret Caddy↔grant-flow, 2 ostrzeżenia lint) — zero własnych naruszeń; wymuszone stageForReview (ORC-084). Pozycje 2-3 to z natury ręczne warunki wdrożenia i nigdy nie będą weryfikowalne przez bramkę.
+- 2026-10-03 ai-os-bot (BOT-007) run `wf_7adb99d3-d9b` — Bramka końcowa: uzasadnienie mówi GO dla 007a (brak naruszeń, 562 testy zielone), ale NO_GO wymuszone wyłącznie przez niepuste unverified_scope: elementy poza repo (ai-gateway/iam), prawdziwy Discord, test:integration poza final_gate.checks i pliki .claude/** brudne przed przebiegiem. Silnik zaliczył .claude/**, KANBAN i BOT-024 (dirtyAtStart) do stageForReview i je zastage'ował; ręcznie zdjęte z indeksu.
 - 2026-10-01 ai-os-bot (BOT-023) run `wf_dd0479bb-47b` — Bramka końcowa NO_GO (cause=machine) wymuszona samym unverified_scope: brak Postgresa dla ragRetriever.integration.test.ts, nieczytane migracja 005/ftsQuery/plStopwords/contextPacker/rag-eval; po stronie człowieka dopiero te testy przeszły (17/18, 1 błąd testu SHOW lc_ctype).
 - 2026-09-30 grant-flow (TS-SIM-002A) run `wf_45bf4694-8fd` — Bramka koncowa TS-SIM-002A: NO_GO wymuszony przez unverified_scope (brak L3, nieprzejrzane 2 jednoliniowe zmiany encji, createLogContext), przy zerze znalezisk DREAD>=9; werdykt de facto GO z warunkami. Limit 15 wywolan na bramce dla diffu 112 plikow.
 - 2026-09-29 ai-os-bot (BOT-005a-tests) run `wf_375943cb-7cb` — Drugi przebieg: bramka końcowa NO_GO z ORC-069 (GO + niepusty unverified_scope, jednorazowa bramka bez retry) mimo zielonych bramek (tsc, eslint, vitest grant-flow 71/71). Mimo D7 (jawna adjudykacja pozycji spoza zakresu) bramka zgłosiła nowy punkt, tym razem w zakresie (treść testów dat vs D6) i powtórzyła pozycje D7 jako unverified. Główna sesja zweryfikowała odczytem zgodność testów dat z D6.

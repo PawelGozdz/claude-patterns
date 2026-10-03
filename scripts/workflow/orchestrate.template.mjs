@@ -242,6 +242,13 @@ function buildImplPrompt(a, layer, attempt, violations, silentDeaths, probeRed) 
   const fix = violations
     ? '\n\nPOPRAWKA (próba ' + attempt + ') — napraw dokładnie te naruszenia i nic poza nimi:\n' + violations
     : ''
+  // ORC-091: drobne rzeczy znalezione w ANALIZIE (nie blokujące, łatwe) — tylko przy pierwszej
+  // próbie warstwy (przy poprawce implementer ma już konkretną listę).
+  const minorFromAnalysis = !violations && (a.task.minorFixes || []).length && a.autoFixMinor !== false
+    ? '\n\nDROBNE POPRAWKI Z ANALIZY (nie blokujące, łatwe): wykonaj te, które leżą w zakresie TEJ warstwy, ' +
+      'przy okazji, mechanicznie (bez zmiany zachowania i bez refaktoru); resztę pomiń:\n' +
+      a.task.minorFixes.map((x, i) => (i + 1) + '. ' + x).join('\n')
+    : ''
   const noop = '\n\nGDY WARSTWA NIE WYMAGA ZMIAN: jeśli po przeczytaniu specu i analizy stwierdzisz, że ' +
     'ten task nie dotyka tej warstwy (np. zmiana czysto infrastrukturalna, model domenowy bez zmian), ' +
     'NIE pisz niczego na siłę. Zwróć changed_files: [] i no_changes_reason z konkretnym uzasadnieniem: ' +
@@ -250,7 +257,7 @@ function buildImplPrompt(a, layer, attempt, violations, silentDeaths, probeRed) 
   // Przy poprawce (violations) nie powtarzamy bloku SZUKANIE — implementer ma listę
   // plik/linia/reguła, nie ma czego lokalizować; blok tylko dokładałby kontekstu.
   return spec + decisions + '\n\n' + scopeBlock(layer, a) + '\n' + renderCards(cardsFor(a, baseId(layer))) +
-    (violations ? '' : SEARCH_BUDGET) + soft + silent + (probeRed ? RED_PROBE_RULE : '') + fix + noop + NO_REVERT
+    (violations ? '' : SEARCH_BUDGET) + soft + silent + (probeRed ? RED_PROBE_RULE : '') + fix + minorFromAnalysis + noop + NO_REVERT
 }
 
 // Pliki w drzewie roboczym — JEDNO polecenie dla bramki „kod istnieje", diff-sondy po cichej
@@ -472,7 +479,7 @@ function buildVerifierPrompt(a, layer, probe, changedFiles, mode, noopClaim, pri
   return existing + scopeBlock(layer, a) + '\n\n' + facts + files +
     renderCards(cardsFor(a, baseId(layer))) +
     '\nOceń zgodność zmiany z regułami powyżej. Zwróć werdykt GO albo NO_GO i listę naruszeń ' +
-    '(plik, linia, reguła, co poprawić).\n' + scopeReminder +
+    '(plik, linia, reguła, co poprawić).\n' + scopeReminder + (a.autoFixMinor !== false ? MINOR_REMINDER : '') +
     'CZYTAJ TYLKO zmienione pliki z listy (Read z offset/limit, gdy plik > 300 linii); plik spoza ' +
     'listy otwieraj wyłącznie, gdy zmieniony plik go importuje i bez niego nie da się ocenić ' +
     'reguły. Nie grepuj po całym drzewie „dla kontekstu" — każdy wynik zostaje w Twoim kontekście ' +
@@ -531,9 +538,17 @@ function buildFinalGatePrompt(a, checks, changedFiles, treeSource, knownGaps) {
     source + dirty + decisions + gapsBlock +
     renderCards(a.patterns || [], 'wszystkie wzorce tego przebiegu') +
     '\nZwróć werdykt GO albo NO_GO i listę naruszeń.\n' +
+    (a.autoFixMinor !== false ? MINOR_REMINDER : '') +
     'TWARDY LIMIT: ' + calls + ' wywołań narzędzi. Gdy budżet się kończy — wydaj werdykt ' +
     'natychmiast na podstawie zebranych dowodów.' + NO_REVERT
 }
+
+// ORC-091: wspólny akapit dla weryfikatorów warstw i bramki końcowej.
+const MINOR_REMINDER =
+  'POLE `minor_findings`: ostrzeżenia i nity ŁATWE do mechanicznego naprawienia (do kilku linii, bez ' +
+  'zmiany zachowania, bez decyzji) wpisz TUTAJ, nie do `violations`, i nie zmieniaj przez nie werdyktu — ' +
+  'orchestrator każe je naprawić od razu. Format wpisu: `plik:linia — problem — konkretna poprawka`. ' +
+  '`violations` zostaje dla rzeczy blokujących.\n'
 
 // ORC-071 (docs/decisions/orchestrate-rule-history.md#orc-071): weryfikator czasem PISZE
 // PROZĄ, że pozycja unverified_scope jest poza jego zakresem ("... - poza zakresem tej
@@ -557,7 +572,15 @@ function filterSelfAdmittedOutOfScope(items) {
 function filterOwnTaskArtifacts(items, task) {
   const paths = [task && task.analysisFile, task && task.taskFile].filter(Boolean)
   if (!paths.length) return items
-  return items.filter((item) => !paths.some((p) => item.includes(p)))
+  // ORC-089: weryfikator podaje często samą nazwę pliku („TS-AIG-043.analysis.md"), nie ścieżkę —
+  // pełne dopasowanie ścieżki jej nie łapało (ai-gateway TS-AIG-043). Nazwy plików tasku/analizy
+  // zawierają id zadania, więc są jednoznaczne; krótszych niż 6 znaków nie używamy (ryzyko
+  // przypadkowego trafienia w niezwiązaną pozycję).
+  const needles = paths.flatMap((p) => {
+    const base = String(p).slice(String(p).lastIndexOf('/') + 1)
+    return base.length >= 6 && base !== p ? [p, base] : [p]
+  })
+  return items.filter((item) => !needles.some((n) => item.includes(n)))
 }
 
 // ORC-080 (docs/decisions/orchestrate-rule-history.md#orc-080): buildFinalGatePrompt()
@@ -754,15 +777,109 @@ function typecheckErrorPaths(tail) {
   return { total, paths }
 }
 
+// ORC-090 (docs/decisions/orchestrate-rule-history.md#orc-090): `tsc` odpalony w pakiecie podaje
+// ścieżki WZGLĘDEM PAKIETU (`src/app/api/x.ts`), a `dirs` warstw w monorepo mają prefiks
+// (`apps/api/src/app/api/`) — `layerTouches` (indexOf) tego nie trafia, więc odroczenie ORC-082
+// nie działało w monorepo (grant-flow TS-UI-004, application). Do ścieżek względnych pakietu
+// dopasowujemy dir z odciętymi 1-2 początkowymi segmentami (zostają ≥2 segmenty, żeby `src/`
+// nie łapało wszystkiego), a własność późniejszej warstwy liczymy po PEŁNYCH `dirs`, nie po
+// zawężonych (`layers_scope`): plik spoza zawężenia, ale w katalogach późniejszej warstwy, nadal
+// jest jej, nie „niczyj".
+// ORC-093 (docs/decisions/orchestrate-rule-history.md#orc-093): właściciela pliku wyznaczamy
+// po SPECYFICZNOŚCI dopasowania, nie przez „czy którakolwiek warstwa pasuje". grant-flow
+// TS-TIME-READALL-001: `domain` ma `dirs: [apps/api/src/, domain/]` (katch-all na cały src), więc
+// sprawdzenie „czy wcześniejsza warstwa pasuje" (ORC-090) uznawało KAŻDY plik za domenowy i
+// odroczenie znów nie działało. Ranking: (1) nazwa katalogu-segmentu (`infrastructure/`,
+// `__tests__/`) pasująca do SEGMENTU ścieżki (bez nazwy pliku — `domain-event.ts` nie jest
+// domeną) wygrywa z (2) dopasowaniem prefiksu/wielosegmentowego; w obrębie rangi wygrywa dłuższy
+// dir. Remis = brak właściciela (nie odraczamy).
+function layerMatchScore(layer, file) {
+  const f = String(file)
+  const dirSegs = f.split('/').slice(0, -1)
+  let best = null
+  for (const d0 of (layer.dirs || []).concat(effectiveDirs(layer))) {
+    const d = String(d0).replace(/\/+$/, '')
+    if (!d || /\.[a-z0-9]+$/i.test(d)) continue
+    let score = null
+    if (d.indexOf('/') === -1) {
+      if (dirSegs.indexOf(d) !== -1) score = { seg: 1, len: d.length }
+    } else {
+      const segs = d.split('/')
+      const rel = [1, 2].some((k) => segs.length > k + 1 && f.startsWith(segs.slice(k).join('/') + '/'))
+      if (f.indexOf(d) !== -1 || rel) score = { seg: 0, len: d.length }
+    }
+    if (score && (!best || score.seg > best.seg || (score.seg === best.seg && score.len > best.len))) best = score
+  }
+  return best
+}
+
+function ownerLayerOf(file, layers) {
+  let best = null
+  let owner = null
+  let tie = false
+  for (const l of layers) {
+    const s = layerMatchScore(l, file)
+    if (!s) continue
+    if (!best || s.seg > best.seg || (s.seg === best.seg && s.len > best.len)) { best = s; owner = l; tie = false }
+    else if (s.seg === best.seg && s.len === best.len) tie = true
+  }
+  return tie ? null : owner
+}
+
 function typecheckRedIsLaterLayers(probe, layer, allLayers) {
   if (!probe || probe.typecheck !== 'fail' || probe.tests === 'fail') return false
   const { total, paths } = typecheckErrorPaths(probe.tsErrors || probe.tail)
   if (!paths.length || paths.length !== total) return false
-  const idx = (allLayers || []).findIndex((l) => l.id === layer.id)
-  if (idx < 0) return false
-  const later = allLayers.slice(idx + 1).filter((l) => effectiveDirs(l).length)
-  if (!later.length) return false
-  return paths.every((p) => !layerTouches(layer, p) && later.some((l) => layerTouches(l, p)))
+  const withDirs = (allLayers || []).filter((l) => (l.dirs || []).length || effectiveDirs(l).length)
+  const myIdx = withDirs.findIndex((l) => l.id === layer.id)
+  if (myIdx < 0 || myIdx === withDirs.length - 1) return false
+  return paths.every((p) => {
+    const owner = ownerLayerOf(p, withDirs)
+    return !!owner && withDirs.findIndex((l) => l.id === owner.id) > myIdx
+  })
+}
+
+// ORC-091 (docs/decisions/orchestrate-rule-history.md#orc-091): drobne ustalenia (ostrzeżenia,
+// nity, łatwe poprawki) naprawia agent od razu, zamiast czekać na ręczne zlecenie przy każdym
+// przebiegu. Weryfikator wpisuje je do `minor_findings` (nie do `violations`).
+function collectMinor(verdict) {
+  const raw = verdict && Array.isArray(verdict.minor_findings) ? verdict.minor_findings : []
+  return raw.map((x) => String(x).trim()).filter(Boolean).slice(0, 25)
+}
+
+function formatMinorFix(items) {
+  return 'DROBNE USTALENIA WERYFIKATORA — nie blokują werdyktu, ale są łatwe: popraw KAŻDE w zakresie ' +
+    'tej warstwy, mechanicznie (bez zmiany zachowania, bez refaktoru, bez nowych decyzji). Pozycję, ' +
+    'która wymaga decyzji albo wykracza poza kilka linii, POMIŃ i opisz w `deviation_note`. Nic poza listą:\n' +
+    items.map((x, i) => (i + 1) + '. ' + x).join('\n')
+}
+
+// Przypisanie ustaleń do warstw po ŚCIEŻKACH wspomnianych w tekście ustalenia; reszta idzie do
+// warstwy zapasowej. Zwraca mapę { idWarstwy: [ustalenia] }.
+function groupFindingsByLayer(items, layers, fallbackId) {
+  const groups = {}
+  for (const item of items) {
+    const tokens = String(item).match(/[\w@.\-/]+\.[a-z0-9]{1,6}/gi) || []
+    let owner = null
+    for (const t of tokens) {
+      const l = ownerLayerOf(t, layers)
+      if (l) { owner = l.id; break }
+    }
+    const id = owner || fallbackId
+    if (!id) continue
+    ;(groups[id] = groups[id] || []).push(item)
+  }
+  return groups
+}
+
+// ORC-090: pliki BRUDNE JUŻ PRZED startem przebiegu (a.dirtyAtStart) nie są pracą tego taska —
+// ai-os-bot BOT-007: stageForReview zastage'ował `.claude/**`, KANBAN i cudze pliki, które
+// człowiek musiał ręcznie zdejmować z indeksu. Wyjątek: plik, który zmieniła któraś warstwa tego
+// przebiegu (jest w jej raporcie), zostaje.
+function stageableFiles(finalFiles, dirtyAtStart, layerFiles) {
+  const dirty = (dirtyAtStart || []).map(String)
+  const mine = (layerFiles || []).map(String)
+  return (finalFiles || []).filter((f) => dirty.indexOf(f) === -1 || mine.indexOf(f) !== -1)
 }
 
 // Implementer po CZERWONEJ sondzie twierdzi „nic do zrobienia" → to nie jest no-op do
@@ -863,6 +980,9 @@ const VERDICT_SCHEMA = {
     // decideVerdict() i jednorazowa bramka końcowa traktują GO z niepustym unverified_scope
     // jak NIE-czysty GO, nie jak pełną weryfikację (patrz komentarz przy decideVerdict).
     unverified_scope: { type: 'array', items: { type: 'string' } },
+    // ORC-091: drobne ustalenia (ostrzeżenia, nity, łatwe mechaniczne poprawki) — NIE blokują
+    // werdyktu; orchestrator każe je naprawić implementerowi zamiast czekać na ręczne zlecenie.
+    minor_findings: { type: 'array', items: { type: 'string' } },
   },
 }
 
@@ -875,11 +995,17 @@ const VERDICT_SCHEMA = {
 // WYJĄTEK, a nie zwraca null — guard `if (!wynik)` go nie złapie, a nieobsłużony kończy
 // CAŁY przebieg jako `failed`. Helper sprowadza oba tryby awarii do jednego: null.
 // Nazwa dowolna, ale MUSI wołać `await agent(` — po tym rozpoznaje go workflow-lint.
+// ORC-090: powód każdej „ciszy" trafia do `report.askErrors` (ten sam obiekt co `askErrors`),
+// bo journal nie niesie treści błędu — bramka końcowa milczała po ponowieniu w 3 projektach
+// (juz-ide-api-1, grant-flow x2) i nie dało się ustalić dlaczego.
+const askErrors = []
 async function ask(prompt, opts) {
   try {
     return await agent(prompt, opts)
   } catch (e) {
-    log((opts && opts.label ? opts.label : 'agent') + ': brak wyniku — ' + (e && e.message ? e.message : String(e)))
+    const msg = e && e.message ? e.message : String(e)
+    log((opts && opts.label ? opts.label : 'agent') + ': brak wyniku — ' + msg)
+    askErrors.push({ label: opts && opts.label ? opts.label : 'agent', message: String(msg).slice(0, 400) })
     return null
   }
 }
@@ -887,7 +1013,7 @@ async function ask(prompt, opts) {
 const a = args || {}
 const maxAttempts = (a.verifiers && a.verifiers.maxAttempts) || DEFAULTS.maxAttempts
 const plan = layerPlan(a, (a.createWhenHits) || {})
-const report = { taskId: a.task && a.task.id, layers: [], gaps: [], finalGate: null, exit: a.exit || 'STAGE_NOT_COMMIT' }
+const report = { taskId: a.task && a.task.id, layers: [], gaps: [], minorFindings: [], askErrors, finalGate: null, exit: a.exit || 'STAGE_NOT_COMMIT' }
 const allChangedFiles = []
 
 phase('Warstwy')
@@ -902,6 +1028,9 @@ for (const step of plan) {
 
   let violations = null
   let silentDeaths = 0
+  // ORC-091: jedno przejście naprawcze drobnych ustaleń weryfikatora na warstwę
+  let minorPassDone = false
+  let cleanupNext = false
   let mode = 'implement'
   let layerFiles = []
   let settled = null
@@ -917,6 +1046,8 @@ for (const step of plan) {
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     // ── 1. implementacja (albo, po cichej śmierci, weryfikacja istniejącego stanu)
     if (mode === 'implement') {
+      const isCleanup = cleanupNext
+      cleanupNext = false
       const implOpts = Object.assign(
         { label: layer.id + '-impl', agentType: layer.agent, maxTurns: budgetFor(a, 'implement', DEFAULTS.implTurns), schema: IMPL_SCHEMA },
         modelFor('implement'),
@@ -966,6 +1097,9 @@ for (const step of plan) {
         layerFiles = impl.changed_files || []
         noopClaim = (!layerFiles.length && typeof impl.no_changes_reason === 'string' && impl.no_changes_reason.trim())
           ? impl.no_changes_reason.trim() : null
+        // ORC-091: przejście naprawcze, w którym implementer nic nie zmienił, to nie „brak zmian
+        // warstwy" do weryfikacji twierdzenia — warstwa była już GO, idziemy zwykłą ścieżką.
+        if (isCleanup) noopClaim = null
         if (typeof impl.deviation_note === 'string' && impl.deviation_note.trim()) deviationNote = impl.deviation_note.trim()
       }
     }
@@ -1063,7 +1197,7 @@ for (const step of plan) {
       report.warnings = (report.warnings || []).concat(layer.id + ': sonda ślepa — checks ' + layer.checks.join(', ') + ' wszystkie skipped')
     }
 
-    if (typecheckRedIsLaterLayers(probe, layer, plan.map((s) => s.layer))) {
+    if (typecheckRedIsLaterLayers(probe, layer, plan.filter((s) => s.run).map((s) => s.layer))) {
       log(layer.id + ': typecheck czerwony wyłącznie w plikach późniejszych warstw — odroczony (ORC-082)')
       probe = Object.assign({}, probe, { typecheck: 'deferred' })
     }
@@ -1117,6 +1251,19 @@ for (const step of plan) {
 
     const decision = decideVerdict(verdict, attempt, maxAttempts, layer, plan.map((s) => s.layer))
     if (decision.next === 'go') {
+      // ORC-091: GO z drobnymi ustaleniami → jedno przejście naprawcze implementera, potem zwykła
+      // sonda + weryfikacja. Zostaje zapas 2 prób (przejście + ewentualna poprawka po nim), żeby
+      // opcjonalne sprzątanie nie mogło zatrzymać warstwy, która była już GO.
+      const minors = a.autoFixMinor !== false ? collectMinor(verdict) : []
+      if (minors.length && !minorPassDone && attempt + 2 <= maxAttempts) {
+        minorPassDone = true
+        cleanupNext = true
+        log(layer.id + ': GO z ' + minors.length + ' drobnymi ustaleniami — przejście naprawcze przed zamknięciem warstwy (ORC-091)')
+        violations = formatMinorFix(minors)
+        mode = 'implement'
+        continue
+      }
+      if (minors.length) report.minorFindings.push({ layer: layer.id, items: minors })
       settled = { id: layer.id, status: 'GO', files: layerFiles, attempts: attempt }
       break
     }
@@ -1205,9 +1352,54 @@ if (!finalAgent) {
     { label: 'final-gate', agentType: finalAgent, maxTurns: scaledBudget(a, 'final-gate', finalFiles.length), schema: VERDICT_SCHEMA },
     modelFor('final'),
   )
+  // ORC-091: runda naprawcza po bramce końcowej. Ustalenia [BLOKUJĄCE] (violations z cause=code) i
+  // [DROBNE] (minor_findings) idą do implementera warstwy, która jest ich właścicielem (po
+  // ścieżkach; reszta do ostatniej warstwy produkcyjnej), po każdej naprawie biegnie sonda warstwy.
+  // Zwraca false, gdy implementer zamilkł albo sonda po naprawie jest czerwona.
+  const repairFinalFindings = async (blocking, minor) => {
+    const ranLayers = plan.filter((s) => s.run).map((s) => s.layer)
+    const implLayers = ranLayers.filter((l) => l.agent)
+    const fallback = (implLayers.filter((l) => !l.tests).slice(-1)[0] || implLayers.slice(-1)[0] || {}).id
+    const items = blocking.map((x) => '[BLOKUJĄCE] ' + x).concat(minor.map((x) => '[DROBNE] ' + x))
+    const groups = groupFindingsByLayer(items, implLayers, fallback)
+    let ok = true
+    for (const id of Object.keys(groups)) {
+      const layer = implLayers.find((l) => l.id === id)
+      if (!layer) continue
+      const text = 'USTALENIA BRAMKI KOŃCOWEJ do poprawy w zakresie TEJ warstwy (pozycje [BLOKUJĄCE] ' +
+        'obowiązkowe; [DROBNE] mechanicznie, bez zmiany zachowania; pozycję wymagającą decyzji albo ' +
+        'spoza zakresu warstwy POMIŃ i opisz w `deviation_note`):\n' + groups[id].map((x, i) => (i + 1) + '. ' + x).join('\n')
+      const fixOpts = Object.assign(
+        { label: layer.id + '-final-fix', agentType: layer.agent, maxTurns: budgetFor(a, 'implement', DEFAULTS.implTurns), schema: IMPL_SCHEMA },
+        modelFor('implement'),
+      )
+      const fixed = await ask(buildImplPrompt(a, layer, 2, text, 0, null), fixOpts)
+      if (!fixed) {
+        ok = false
+        report.warnings = (report.warnings || []).concat(layer.id + ': naprawa po bramce końcowej — implementer bez wyniku')
+        continue
+      }
+      for (const f of fixed.changed_files || []) {
+        if (allChangedFiles.indexOf(f) === -1) allChangedFiles.push(f)
+        if (finalFiles.indexOf(f) === -1) finalFiles.push(f)
+      }
+      const prOpts = Object.assign({ label: layer.id + '-final-fix-checks', maxTurns: DEFAULTS.probeTurns, schema: CHECKS_SCHEMA }, modelFor('probe'))
+      const pr = await ask(buildProbePrompt(a, layer), prOpts)
+      if (pr && (pr.typecheck === 'fail' || pr.tests === 'fail')) {
+        ok = false
+        report.warnings = (report.warnings || []).concat(layer.id + ': sonda czerwona po naprawie ustaleń bramki końcowej (typecheck: ' + pr.typecheck + ', testy: ' + pr.tests + ')')
+      }
+    }
+    report.finalFix = { blocking: blocking.length, minor: minor.length, layers: Object.keys(groups) }
+    return ok
+  }
+
+  let roundExtra = ''
+  for (let round = 1; round <= 2; round++) {
+  const gateOpts = round === 1 ? finalOpts : Object.assign({}, finalOpts, { label: 'final-gate-r2' })
   let final = null
   try {
-    final = await ask(buildFinalGatePrompt(a, (a.checks && a.checks.finalGate) || [], finalFiles, treeSource, report.gaps), finalOpts)
+    final = await ask(buildFinalGatePrompt(a, (a.checks && a.checks.finalGate) || [], finalFiles, treeSource, report.gaps) + roundExtra, gateOpts)
   } catch (e) {
     final = null
   }
@@ -1221,12 +1413,12 @@ if (!finalAgent) {
     log('bramka końcowa bez wyniku — ponawiam raz z werdyktem po ~70% budżetu (ORC-087)')
     try {
       final = await ask(
-        buildFinalGatePrompt(a, (a.checks && a.checks.finalGate) || [], finalFiles, treeSource, report.gaps) +
+        buildFinalGatePrompt(a, (a.checks && a.checks.finalGate) || [], finalFiles, treeSource, report.gaps) + roundExtra +
           '\n\nPOPRZEDNIE WYWOŁANIE NIE ZWRÓCIŁO WYNIKU (budżet wyczerpany bez werdyktu). Wydaj werdykt ' +
           'NAJPÓŹNIEJ po ' + Math.floor(retryCalls * 0.7) + ' wywołaniach: najpierw deterministyczne bramki, ' +
           'potem pliki najwyższego ryzyka (migracje, auth, kontrakty, publiczne API); resztę wpisz do ' +
           '`unverified_scope`. Werdykt częściowy jest poprawnym wynikiem, jego brak nie.',
-        Object.assign({}, finalOpts, { label: 'final-gate-retry' }),
+        Object.assign({}, finalOpts, { label: 'final-gate-retry' + (round === 1 ? '' : '-r2') }),
       )
     } catch (e) {
       final = null
@@ -1238,7 +1430,7 @@ if (!finalAgent) {
     ? Object.assign({}, final, { cause: undefined })
     : { verdict: 'NO_GO', violations: ['bramka końcowa nie zwróciła werdyktu (także po ponowieniu)'], cause: 'machine' }
   // ORC-087: brak werdyktu przy wszystkich warstwach GO — pliki idą do stagingu z flagą przeglądu.
-  if (!final) report.stageForReview = finalFiles
+  if (!final) report.stageForReview = stageableFiles(finalFiles, a.dirtyAtStart, allChangedFiles)
   // Bramka końcowa nie ma pętli retry (jeden strzał) — GO z niepustym unverified_scope nie może
   // więc "skonsumować próby" jak w decideVerdict(); jedyna bezpieczna reakcja to potraktować to
   // jak NO_GO, żeby uczciwie przyznana luka trafiła do człowieka zamiast do cichego stage'owania.
@@ -1261,20 +1453,47 @@ if (!finalAgent) {
   if (String(report.finalGate.verdict).toUpperCase() === 'GO' && finalUnverified.length) {
     // ORC-084: NO_GO wymuszone WYŁĄCZNIE przez unverified_scope (zero własnych naruszeń) —
     // pliki idą do stagingu z flagą „wymaga przeglądu"; człowiek i tak robi review przed commitem.
-    if (!(report.finalGate.violations || []).length) report.stageForReview = finalFiles
+    if (!(report.finalGate.violations || []).length) report.stageForReview = stageableFiles(finalFiles, a.dirtyAtStart, allChangedFiles)
     report.finalGate.verdict = 'NO_GO'
     report.finalGate.cause = 'machine'
     report.finalGate.violations = (report.finalGate.violations || []).concat(
       'GO z niezweryfikowanym zakresem (unverified_scope), bramka końcowa nie ma retry: ' + finalUnverified.join(', '))
   }
+  const fgNotGo = String(report.finalGate.verdict).toUpperCase() !== 'GO'
+  if (fgNotGo && !report.finalGate.cause) report.finalGate.cause = 'code'
+  // ORC-091: ustalenia bramki, które agent może naprawić sam — blokujące (cause=code, do 8 sztuk;
+  // więcej to nie „łatwe poprawki") i drobne. Runda 1 → naprawa → przy blokujących ponowna bramka
+  // (runda 2); same drobne: naprawa + sonda, bez ponownej bramki (werdykt zostaje).
+  const minorFinal = a.autoFixMinor !== false ? collectMinor(report.finalGate) : []
+  const blockingFinal = fgNotGo && report.finalGate.cause === 'code' && a.autoFixMinor !== false ? (report.finalGate.violations || []) : []
+  if (round === 1 && (blockingFinal.length || minorFinal.length) && blockingFinal.length <= 8) {
+    log('bramka końcowa: ' + blockingFinal.length + ' blokujących i ' + minorFinal.length + ' drobnych ustaleń — runda naprawcza (ORC-091)')
+    const repaired = await repairFinalFindings(blockingFinal, minorFinal)
+    if (repaired && blockingFinal.length) {
+      report.finalGateRound1 = report.finalGate
+      roundExtra = '\n\nRUNDA 2 (po naprawie): poprzednia runda zgłosiła ustalenia, które implementer poprawił:\n' +
+        blockingFinal.concat(minorFinal).map((x, i) => (i + 1) + '. ' + x).join('\n') +
+        '\nZweryfikuj poprawki i całość. Poprawione pozycje NIE są już naruszeniami; zgłoś tylko to, co nadal zachodzi albo powstało przy poprawce.'
+      continue
+    }
+    if (!repaired && !blockingFinal.length) {
+      // naprawa drobiazgów zepsuła sondę — to nasze naruszenie, nie szum
+      report.finalGate.verdict = 'NO_GO'
+      report.finalGate.cause = 'code'
+      report.finalGate.violations = (report.finalGate.violations || []).concat('naprawa drobnych ustaleń zostawiła czerwoną sondę lub implementer bez wyniku (patrz report.warnings)')
+    }
+  } else if (minorFinal.length) {
+    report.minorFindings.push({ layer: 'final-gate', items: minorFinal })
+  }
   if (String(report.finalGate.verdict).toUpperCase() !== 'GO') {
-    if (!report.finalGate.cause) report.finalGate.cause = 'code'
     log('ESCALATE_AND_HALT — bramka końcowa: ' + formatViolations(report.finalGate.violations))
     return report
+  }
+  break
   }
 }
 
 // ── 6. wyjście: staged, NIE zacommitowane. Commit robi człowiek.
-report.staged = finalFiles
+report.staged = stageableFiles(finalFiles, a.dirtyAtStart, allChangedFiles)
 log('Gotowe. Stan: staged, not committed — ' + finalFiles.length + ' plików. Commit robi człowiek.')
 return report

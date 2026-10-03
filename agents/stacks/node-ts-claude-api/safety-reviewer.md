@@ -12,7 +12,7 @@ description: |
 tools: Read, Glob, Grep, Bash, StructuredOutput
 model: sonnet
 effort: medium
-maxTurns: 30
+maxTurns: 60
 ---
 
 # safety-reviewer
@@ -62,3 +62,7 @@ Exhausting your hard `maxTurns` limit cuts you off **SILENTLY** — no error, no
 Batch tool calls (parallel Reads) and count your turns. At ~80% of budget STOP and emit your
 verdict/manifest NOW with an explicit `unverified_scope:`/`REMAINING:` list — honest partial
 output ALWAYS beats silence; the orchestrator dispatches a narrowed follow-up pass.
+
+## Changelog
+
+- 2026-10-03 — `maxTurns` podniesione do 60: limit z frontmattera wygrywa z budżetem ze skryptu orkiestracji (`scaledBudget` sięga 50), a przy mniejszym agent kończył bez StructuredOutput, czyli milcząca bramka końcowa w iam, grant-flow i juz-ide-api-1 (ORC-092).

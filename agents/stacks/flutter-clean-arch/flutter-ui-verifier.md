@@ -6,7 +6,7 @@ model: haiku
 permissionMode: dontAsk
 effort: low
 memory: project
-maxTurns: 30
+maxTurns: 60
 skills:
   - flutter/flutter-clean-arch
 ---
@@ -126,4 +126,5 @@ output ALWAYS beats silence; the orchestrator dispatches a narrowed follow-up pa
 
 ## Changelog
 
+- 2026-10-03 — `maxTurns` podniesione do 60: limit z frontmattera wygrywa z budżetem ze skryptu orkiestracji (`scaledBudget` sięga 50), a przy mniejszym agent kończył bez StructuredOutput, czyli milcząca bramka końcowa w iam, grant-flow i juz-ide-api-1 (ORC-092).
 - 2026-09-08 — removed `mcp__zen__analyze` from `tools` (K56, TASK-KAIZEN-002): no satellite project has a `zen` MCP server in `.mcp.json`, so every such call failed; do the analysis directly with the remaining tools

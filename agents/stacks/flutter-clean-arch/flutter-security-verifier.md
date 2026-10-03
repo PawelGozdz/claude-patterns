@@ -22,7 +22,7 @@ model: sonnet
 permissionMode: dontAsk
 effort: medium
 memory: project
-maxTurns: 30
+maxTurns: 60
 skills:
   - flutter/flutter-clean-arch
   - testing/verification-loop
@@ -202,4 +202,5 @@ orkiestrator dośle zawężony przebieg.
 
 ## Changelog
 
+- 2026-10-03 — `maxTurns` podniesione do 60: limit z frontmattera wygrywa z budżetem ze skryptu orkiestracji (`scaledBudget` sięga 50), a przy mniejszym agent kończył bez StructuredOutput, czyli milcząca bramka końcowa w iam, grant-flow i juz-ide-api-1 (ORC-092).
 - 2026-09-08 — `@security-privacy-architect` → `@ecc:security-reviewer`: agent wycofany (K97, ADR 0009 — advisory OWASP/GDPR pokrywa ECC, VETO zostaje po naszej stronie)

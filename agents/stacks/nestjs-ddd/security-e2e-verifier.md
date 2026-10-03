@@ -6,7 +6,7 @@ model: opus
 permissionMode: dontAsk
 effort: max
 memory: project
-maxTurns: 20
+maxTurns: 60
 skills:
   - security/security-review
   - security/threat-model
@@ -478,6 +478,7 @@ When any file in `src/contexts/b2g-contracts/` is in scope, run these checks in 
 
 ## Changelog
 
+- 2026-10-03 — `maxTurns` podniesione do 60: limit z frontmattera wygrywa z budżetem ze skryptu orkiestracji (`scaledBudget` sięga 50), a przy mniejszym agent kończył bez StructuredOutput, czyli milcząca bramka końcowa w iam, grant-flow i juz-ide-api-1 (ORC-092).
 - 2026-09-07 — repointed `@security-privacy-architect` to `@ecc:security-reviewer`: the agent is retired (K97, ADR 0009 — generic OWASP/GDPR advisory is covered by ECC; the VETO verifiers stay ours)
 - 2026-08-18 — migrated `**Version**`/`**Maintainer**` footer to an append-only `## Changelog` (Keep-a-Changelog format, TASK-GUARDRAILS-001 Sekcja 3); history below reconstructed from `git log -p`
 - 2026-08-15 — added context-cost discipline section (no process diagnostics, `git diff --stat` only, scoped greps, trust an upstream probe's typecheck/test result instead of re-running)

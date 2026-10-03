@@ -1626,3 +1626,134 @@ które się nie kompilują. Koszt: pełny `flutter test` (~500 testów w juz-ide
 warstwach i raz w bramce — świadomie, bo to jedyny sposób, by overflow w widget teście wyszedł
 przed review. Projekty: `juz-ide-mobile-app`, `_uls-mobile-app` zmaterializowane; goldeny
 `flutter-clean-arch` odświeżone. Eval: `probe-runs-literal-check-commands-without-npm`.
+
+<a id="orc-089"></a>
+
+### ORC-089 — plik analizy podany samą nazwą też jest artefaktem przebiegu (2026-10-02)
+
+ai-gateway TS-AIG-043 (`wf_1dd26808-11c`): bramka końcowa NO_GO wyłącznie z `unverified_scope` —
+jedyna pozycja to nieprzeczytany plik analizy, podany jako `TS-AIG-043.analysis.md`, bez ścieżki.
+`filterOwnTaskArtifacts` (ORC-079) dopasowywał tylko pełną ścieżkę z `a.task.analysisFile`/
+`taskFile`, więc go nie złapał — ta sama luka co przy ORC-070 (goła nazwa pliku zamiast ścieżki).
+Poprawka: dopasowanie także po nazwie pliku (część po ostatnim `/`), bo nazwy plików tasku i
+analizy zawierają id zadania i są jednoznaczne; nazwy krótsze niż 6 znaków nie są używane jako
+filtr. Nie dotyczy pozycji innych niż te dwa artefakty. Eval:
+`own-task-artifacts-filter-matches-bare-file-name`.
+
+<a id="orc-090"></a>
+
+### ORC-090 — odroczenie typechecku w monorepo, pliki brudne przed startem, powód ciszy agenta (2026-10-03)
+
+Trzy luki silnika z jednego dnia zgłoszeń:
+
+1. **ORC-082 nie działał w monorepo** (grant-flow TS-UI-004, `application`, `DEV-orc-082-application`
+   i drugie wystąpienie `DEV-orc-062-application`). `tsc` w pakiecie podaje ścieżki względem
+   pakietu (`src/app/api/x.ts`), a `dirs` warstw mają prefiks (`apps/api/src/app/api/`);
+   `layerTouches` (indexOf) tego nie trafiał, więc czerwień „tylko w późniejszych warstwach"
+   dalej zatrzymywała przebieg. Dodatkowo plik testu poza zawężeniem `layers_scope` nie należał
+   do żadnej warstwy (zawężone `dirs`), choć leżał w katalogach warstwy testowej.
+   Poprawka: `layerOwnsPath()` — dodatkowo dopasowuje dir z odciętymi 1-2 początkowymi
+   segmentami (zostają ≥2 segmenty), a własność liczy po PEŁNYCH `dirs` (nie tylko zawężonych);
+   `typecheckRedIsLaterLayers` sprawdza teraz wprost także warstwy WCZEŚNIEJSZE (wcześniej tylko
+   „nie w tej, jest w późniejszej", co przy zachodzących dirs mogło odroczyć błąd wcześniejszej).
+2. **stageForReview/staged brały pliki brudne przed startem** (ai-os-bot BOT-007: silnik zastage'ował
+   `.claude/**`, KANBAN i cudzy BOT-024; człowiek zdejmował je z indeksu ręcznie). Dotyczyło też
+   zwykłego `report.staged`. Poprawka: `stageableFiles()` odfiltrowuje `a.dirtyAtStart`, chyba że
+   plik jest w raporcie którejś warstwy tego przebiegu (task go faktycznie zmienił).
+3. **Cisza agenta bez śladu przyczyny** (`DEV-orc-056`: bramka końcowa milczała także po
+   ponowieniu w grant-flow TS-UI-004; wcześniej juz-ide-api-1, grant-flow TS-UI-003). Journal nie
+   niesie treści błędu. `ask()` zapisuje powód do `report.askErrors` (etykieta + komunikat do 400
+   znaków). To diagnostyka, nie naprawa: przyczyna ciszy pozostaje nieustalona, wpis zostaje otwarty.
+
+Nie zmieniono: zgłoszenie z DEV-orc-056, że weryfikatory dały GO mimo czerwonego `lint:check:web`,
+niezaładowanego spec-a API i pustego FEATURE_ROUTES — brak mechanicznego tropu; po ORC-085 sonda
+widzi `lint:check`, a lint w `checks` warstwy `web` jest jedynym, co by to złapało przed bramką.
+Eval: `typecheck-deferral-handles-package-relative-paths-in-monorepo`,
+`stageable-files-exclude-dirty-at-start-unless-layer-changed-them`.
+
+<a id="orc-091"></a>
+
+### ORC-091 — drobne ustalenia naprawia agent od razu (2026-10-03)
+
+Użytkownik: przy każdym przebiegu musiał ręcznie wpisywać „napraw też ostrzeżenia, NO_GO i inne
+drobne rzeczy, które da się łatwo naprawić" — w kółko to samo. Do tej pory ostrzeżenia
+weryfikatora ginęły w uzasadnieniu (nie było dla nich pola), a NO_GO bramki końcowej z konkretnymi,
+łatwymi naruszeniami kończył przebieg (bramka jednorazowa, bez pętli naprawczej, w przeciwieństwie
+do warstw).
+
+Zmiana (domyślnie włączona; `--overrides {"autoFixMinor": false}` wyłącza):
+- **Pole `minor_findings`** w `VERDICT_SCHEMA` (weryfikatorzy warstw i bramka końcowa): ostrzeżenia i
+  nity łatwe do mechanicznego naprawienia, format `plik:linia — problem — poprawka`; NIE zmieniają
+  werdyktu, `violations` zostaje dla rzeczy blokujących (`MINOR_REMINDER` w obu promptach).
+- **Pętla warstwy:** GO z drobnymi ustaleniami → jedno przejście naprawcze implementera
+  (`formatMinorFix`), potem zwykła sonda i weryfikacja. Tylko gdy zostają 2 próby zapasu
+  (`attempt + 2 <= maxAttempts`), żeby opcjonalne sprzątanie nie mogło zatrzymać warstwy, która była
+  już GO; puste przejście nie jest traktowane jako „brak zmian warstwy". Nienaprawione drobiazgi →
+  `report.minorFindings`.
+- **Bramka końcowa:** runda naprawcza. Ustalenia `[BLOKUJĄCE]` (violations przy `cause=code`, do 8) i
+  `[DROBNE]` trafiają do implementera warstwy-właściciela (po ścieżkach, `groupFindingsByLayer`; reszta
+  do ostatniej warstwy produkcyjnej), po naprawie biegnie sonda warstwy. Przy blokujących — ponowna
+  bramka (runda 2, `final-gate-r2`, z listą poprawionych pozycji); przy samych drobnych — naprawa +
+  sonda, werdykt zostaje; czerwona sonda po naprawie drobiazgów → NO_GO `code` (zepsuliśmy to sami).
+  Runda 2 nie ma kolejnej naprawy. `report.finalFix`, `report.finalGateRound1`.
+- **Analiza:** pole `minor_fixes: [...]` w artefakcie analizy (drobne rzeczy znalezione przy analizie) →
+  `a.task.minorFixes` → sekcja „DROBNE POPRAWKI Z ANALIZY" w pierwszym prompcie implementera warstwy
+  (tylko w zakresie warstwy, mechanicznie).
+
+Czego NIE robi: nie naprawia pozycji, które wymagają decyzji (implementer pomija je i opisuje w
+`deviation_note`); `unverified_scope` nadal nie jest „drobnym ustaleniem" (luki weryfikacji to
+ORC-084); nie rusza zatrzymań `code` po 3 próbach warstwy. Koszt: jedna dodatkowa iteracja
+implementer+weryfikator na warstwę z drobiazgami, i do jednej dodatkowej bramki końcowej przy
+blokujących naruszeniach. Eval: `minor-findings-collected-grouped-and-formatted`,
+`verifier-and-final-gate-prompts-offer-minor-findings-and-impl-gets-analysis-minors`.
+
+<a id="orc-092"></a>
+
+### ORC-092 — limit tur z definicji agenta wygrywa z budżetem skryptu (2026-10-03)
+
+iam TS-SSO-056 (`wf_1a61c8ae-2af`): bramka końcowa 2x bez werdyktu (brak StructuredOutput);
+zgłaszający ustalił przyczynę: `security-e2e-verifier` ma w frontmatterze `maxTurns: 20`, a
+`budgets.final-gate` z `--overrides` go nie podnosi — bramkę wykonano ręcznie. To jest szukana od
+kilku tur przyczyna „cichej" bramki końcowej (DEV-orc-056: juz-ide-api-1, grant-flow TS-UI-003 i
+TS-UI-004): bramka z 33-112 plikami potrzebuje więcej niż 20 tur, więc agent ginął na limicie
+przed oddaniem werdyktu, niezależnie od `scaledBudget` (ORC-085) i ponowienia (ORC-087), które
+liczyły na budżet skryptu. Ten sam sufit dotyczył weryfikatorów warstw (30 tur wobec budżetu do 50).
+
+Poprawka (konfiguracja, nie silnik):
+- `maxTurns: 60` (ponad sufit `scaledBudget` = 50) w 12 centralnych definicjach weryfikatorów i
+  bramek: security-e2e-verifier (20), code-quality-verifier, library-quality-verifier,
+  python-quality-verifier, flutter-quality/ui/security-verifier, sveltekit/nextjs/refine
+  quality-verifier, architecture-verifier, safety-reviewer (30), każda z wpisem w `## Changelog`;
+  oraz w 6 lokalnych kopiach: ai-gateway `aig-code-verifier`/`aig-security-gate`, ai-os-bot
+  `bot-code-verifier`/`bot-safety-gate`, iam `code-quality-verifier`/`security-e2e-verifier`.
+  Implementerzy (40) i doradczy recenzenci bez zmian.
+- `orchestrate-prepare` ostrzega PRZED startem, gdy `maxTurns` agenta ze slotów verify/final-gate/
+  implementer (plik `.claude/agents/<nazwa>.md` projektu) jest mniejszy niż budżet, który skrypt mu
+  obiecuje (do 50 dla weryfikatorów, 40 dla implementera, albo jawny `budgets.*`) — `agentTurnCapWarnings`.
+  Agenci z pluginów (`ecc:*`) są pomijani (brak lokalnego pliku).
+
+Zmiany w lokalnych agentach ai-gateway, ai-os-bot i iam leżą w tych repozytoriach niezcommitowane.
+Przyczyna wcześniejszych „cichych" bramek jest teraz ustalona; `report.askErrors` (ORC-090) zostaje
+jako diagnostyka dla pozostałych przypadków ciszy.
+
+<a id="orc-093"></a>
+
+### ORC-093 — właściciel pliku po specyficzności dopasowania (2026-10-03)
+
+grant-flow TS-TIME-READALL-001 (`wf_5ef0c74e-e85`): ORC-082 znów nie odroczył czerwonego typechecku
+(`DEV-orc-082-application` reopen, wystąpienie 2) — `application` stanęła na BLOCKED_BY_PRIOR przy
+błędach w `infrastructure`. Przyczyną była moja zmiana z ORC-090: sprawdzanie „czy któraś
+WCZEŚNIEJSZA warstwa pasuje do ścieżki" wobec `domain` z `dirs: [apps/api/src/, domain/]`
+(katch-all na cały `src` w `.claude/blocks/monorepo-layers-grant-flow.yml`) uznawało każdy plik
+`apps/api/src/**` za domenowy, a goły dir `domain` dopasowywał się też do nazw plików
+(`domain-event.ts`). ORC-090 poprawiał ścieżki względne pakietu, ale otworzył to drugie okno.
+
+Poprawka: `layerMatchScore`/`ownerLayerOf` wyznaczają JEDNEGO właściciela pliku: nazwa
+katalogu-segmentu (`infrastructure/`, `__tests__/`) pasująca do SEGMENTU ścieżki — bez nazwy
+pliku — wygrywa z dopasowaniem prefiksu/wielosegmentowego (katch-all przegrywa); w obrębie rangi
+wygrywa dłuższy dir; remis = brak właściciela (nie odraczamy). `typecheckRedIsLaterLayers` odracza
+tylko, gdy KAŻDA ścieżka ma właściciela o indeksie większym niż bieżąca warstwa. `groupFindingsByLayer`
+(ORC-091) używa tego samego właściciela. Do porównania brane są tylko warstwy, które faktycznie
+biegną w przebiegu (`plan` z `run`) — odroczenie do pominiętej warstwy ukryłoby błąd do bramki
+końcowej. Wbudowany katch-all w bloku grant-flow zostaje: jest tam zamierzony, silnik ma go
+rozumieć. Eval: `typecheck-deferral-owner-by-specificity-with-catch-all-domain-dirs` (układ grant-flow).
