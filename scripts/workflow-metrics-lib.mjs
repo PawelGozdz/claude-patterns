@@ -88,7 +88,13 @@ export const readTranscriptUsage = transcriptUsage.readTranscriptUsage;
 // LUB wpis cennika niekompletny (ręcznie edytowany prices.json nie może zatruć sum NaN-em).
 export function estimateCostUsd(usage, model, prices) {
   if (!usage || !model || !prices?.models) return null;
-  const m = prices.models[model] || prices.models[model.replace(/-\d{8}$/, '')];
+  // Wyszukiwanie ceny: dokładny model → bez daty (-20251001) → bez sufiksu kontekstu ([1m]) →
+  // bez podwersji (claude-sonnet-5-5 → claude-sonnet-5). Ostatni krok to SZACUNEK po rodzinie:
+  // do 2026-10-03 modele claude-sonnet-5-5 / claude-opus-5-5 / opus-5[1m] nie miały wpisu, więc
+  // ~20% kroków (te najdroższe) miało koszt null/0 i suma przebiegów była zaniżona.
+  const base = model.replace(/\[[^\]]*\]$/, '');
+  const candidates = [model, model.replace(/-\d{8}$/, ''), base, base.replace(/-\d{8}$/, ''), base.replace(/-\d+$/, '')];
+  const m = candidates.map((k) => prices.models[k]).find(Boolean);
   if (!m) return null;
   for (const field of ['input', 'output', 'cacheWrite5m', 'cacheRead']) {
     if (!Number.isFinite(m[field])) return null;

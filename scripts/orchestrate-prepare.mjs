@@ -661,10 +661,19 @@ function main() {
       // ORC-091: drobne rzeczy znalezione w analizie (nie blokujące, łatwe) — implementer
       // warstwy robi te z jej zakresu przy okazji, zamiast czekać na ręczne zlecenie.
       minorFixes: Array.isArray(analysisDoc?.fm?.minor_fixes) ? analysisDoc.fm.minor_fixes.map(String) : [],
+      // ORC-097: task wrażliwy na bezpieczeństwo = analiza ma threat_model (link do TM); wtedy
+      // bramka końcowa dostaje model sesji zamiast domyślnego Sonneta.
+      securitySensitive: (() => {
+        const tm = analysisDoc?.fm?.threat_model;
+        return Boolean(tm) && !/^(null|none|n\/a|brak|-)$/i.test(String(tm).trim());
+      })(),
       layersDone: layersDone.map(String),
     },
     // ORC-091: false (przez --overrides) wyłącza automatyczne naprawianie drobnych ustaleń.
     autoFixMinor: true,
+    // ORC-097: model bramki końcowej — auto (Sonnet; model sesji dla tasków z threat_model) |
+    // inherit | sonnet | opus | haiku; z runtime.yml `final_gate.model`.
+    finalGateModel: finalGate.model ? String(finalGate.model) : 'auto',
     baseSha: git.baseSha,
     dirtyAtStart: git.dirtyAtStart,
     layers,

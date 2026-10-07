@@ -77,6 +77,14 @@ async function main() {
   check('niepełny cennik → null (nie NaN)',
     estimateCostUsd(usage, 'x-model', { models: { 'x-model': { input: 2, output: 10 } } }) === null);
 
+  // ORC-097: model bez własnego wpisu (podwersja, sufiks kontekstu) liczony SZACUNKIEM po rodzinie
+  const fam = { models: { 'claude-opus-5': { input: 5, output: 25, cacheWrite5m: 6.25, cacheRead: 0.5 } } };
+  const famUsage = { inputTokens: 0, outputTokens: 1e6, cacheWriteTokens: 0, cacheReadTokens: 0 };
+  check('estimateCostUsd falls back to the model family (opus-5-5, [1m])',
+    estimateCostUsd(famUsage, 'claude-opus-5-5', fam) === 25 &&
+    estimateCostUsd(famUsage, 'claude-opus-5-5[1m]', fam) === 25 &&
+    estimateCostUsd(famUsage, 'claude-unknown-9', fam) === null);
+
   // ── E2: budget-regression na spreparowanym workflow-steps ────────────────────
   process.stdout.write('\nE2 budget-regression\n');
   const mkStep = (runId, label, costUsd, outcome) => ({

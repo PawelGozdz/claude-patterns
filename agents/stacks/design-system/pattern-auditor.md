@@ -65,7 +65,13 @@ czterech w kodzie (nie tylko na zrzucie — czasem stan istnieje, ale zrzutu nie
 
 ## Procedura
 
-1. **Skanuj** pliki ekranów repo (Glob wg konwencji repo).
+1. **Skanuj** ekrany repo: trasy z routera (`App.tsx`/definicje tras) są źródłem prawdy, a
+   konwencje nazw (`*.page.tsx`, `*Screen.tsx`) tylko uzupełniają. Komponenty z
+   `@juz-ide/react-ui` oceniaj po kontrakcie (nie czytaj `node_modules`): użycie
+   `AppShell`/`NotFoundPage`/`BootstrapError` z biblioteki = zgodne. Ekrany infrastrukturalne
+   (bootstrap, przekierowanie do logowania, 404) nie mają zasobu, więc 4 stany brzegowe ich nie
+   dotyczą. Brak `Glob`/`Grep` w środowisku: użyj `find`/`grep` w trybie odczytu, zawsze
+   ograniczonego do katalogów kodu UI, nigdy rekurencyjnie od korzenia repo.
 2. **Klasyfikuj** każdy: zgodny / niezgodny (z powodem) dla każdej z 3 kategorii wyżej.
 3. **Krzyżuj** z `ui-patterns`/`screen-build` — cytuj regułę, nie tylko obserwację.
 4. **Raportuj.**
@@ -75,6 +81,13 @@ czterech w kodzie (nie tylko na zrzucie — czasem stan istnieje, ale zrzutu nie
 > Każde `<N>` niżej to placeholder, nie przykładowa wartość: wypełnij je z własnego
 > liczenia dla TEGO repo. Nie kopiuj przykładowych liczb do raportu — wymyślona liczba
 > wygląda stabilnie i zatruwa następny audyt (few-shot-as-data trap).
+
+Waga (każde znalezisko dostaje prefiks, `<data>` podaje wywołujący):
+
+- `[BLOKUJĄCE]` — naruszenie twardego zakazu z `ui-patterns#Zakazy` albo brak któregoś z 4 stanów
+  brzegowych na ekranie, który ma zasób danych,
+- `[ISTOTNE]` — odstępstwo od wzorca (Lista/Formularz/Szczegóły) albo duplikacja komponentu,
+- `[DROBNE]` — drift stylistyczny, jeszcze nie krytyczny.
 
 ```
 [PATTERN AUDIT] <repo> — <data>
@@ -87,6 +100,12 @@ DUPLIKACJA KOMPONENTÓW (⚠️)
 
 BRAKUJĄCE STANY (❌)
 - <plik> — brak stanu: <pusty|ładowanie|błąd|brak uprawnień>
+
+DO PRZEGLĄDU (wymaga osądu człowieka)
+- <plik> — <wątpliwość>
+
+ODSTĘPSTWA UDOKUMENTOWANE (pominięte, tylko do wiadomości)
+- <plik>:<linia> — <komentarz/PR, który je uzasadnia>
 
 ZGODNE (✅, skrócone do liczby)
 - Ekranów zgodnych: <N>/<N>
@@ -104,4 +123,6 @@ Ekranów audytowanych: <N> | zgodnych: <N> | z odstępstwem: <N>
 
 ## Changelog
 
+- 2026-10-07 — zmiany z 2026-10-03 (po pierwszym audycie na żywych repo) przejrzane i zatwierdzone przed commitem; bez zmian treści.
+- 2026-10-03 — po pierwszym audycie na żywych repo: mapowanie wag, sekcje „do przeglądu”/„udokumentowane”, wykrywanie ekranów po trasach, komponenty z `react-ui` po kontrakcie, ekrany infrastrukturalne bez 4 stanów, fallback bez Glob/Grep.
 - 2026-10-01 — agent dodany (blok design-system, /design-audit): audyt spójności wzorców UI per repo, tylko odczyt.

@@ -1,0 +1,37 @@
+[
+  {
+    "name": "subagent-commit-during-orchestrate-denied",
+    "hook": "block-subagent-commit.js",
+    "payload": { "agent_id": "a1", "tool_name": "Bash", "tool_input": { "command": "git add -A && git commit -m wip" } },
+    "setup": { "cwd": true, "files": { ".claude/run-state/orchestrating.json": "{\"task\":\"T\"}" } },
+    "expect": "deny"
+  },
+  {
+    "name": "subagent-checkout-during-orchestrate-denied",
+    "hook": "block-subagent-commit.js",
+    "payload": { "agent_id": "a1", "tool_name": "Bash", "tool_input": { "command": "git checkout -- src/a.ts" } },
+    "setup": { "cwd": true, "files": { ".claude/run-state/orchestrating.json": "{\"task\":\"T\"}" } },
+    "expect": "deny"
+  },
+  {
+    "name": "main-session-commit-passes-even-during-orchestrate",
+    "hook": "block-subagent-commit.js",
+    "payload": { "tool_name": "Bash", "tool_input": { "command": "git commit -m done" } },
+    "setup": { "cwd": true, "files": { ".claude/run-state/orchestrating.json": "{\"task\":\"T\"}" } },
+    "expect": "pass"
+  },
+  {
+    "name": "subagent-commit-without-orchestrate-marker-passes",
+    "hook": "block-subagent-commit.js",
+    "payload": { "agent_id": "a1", "tool_name": "Bash", "tool_input": { "command": "git commit -m x" } },
+    "setup": { "cwd": true },
+    "expect": "pass"
+  },
+  {
+    "name": "subagent-readonly-git-passes-during-orchestrate",
+    "hook": "block-subagent-commit.js",
+    "payload": { "agent_id": "a1", "tool_name": "Bash", "tool_input": { "command": "git diff --name-only HEAD; git add -N -- src; git status --short" } },
+    "setup": { "cwd": true, "files": { ".claude/run-state/orchestrating.json": "{\"task\":\"T\"}" } },
+    "expect": "pass"
+  }
+]

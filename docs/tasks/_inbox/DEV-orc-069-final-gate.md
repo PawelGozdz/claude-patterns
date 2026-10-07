@@ -1,6 +1,6 @@
 ---
 id: DEV-orc-069-final-gate
-status: proposed
+status: promoted
 resolution: >
   Reopen (marketing-hub TS-MH-009, 2026-09-29) — nowy wariant: unverified_scope
   wymieniał "karty/README/render-with-refine" (dokumentacja pokryta zielonymi
@@ -27,6 +27,9 @@ resolution: >
   nie sprawdzony ręcznie, brak deps:circular/madge) to INNY, wciąż realny
   problem — brakujące tooling w feature-flags, nie coś do zamaskowania decyzją.
   Zostaje do naprawienia w tamtym projekcie.
+  Aktualizacja 2026-10-04: wariant NO_GO bramki końcowej z samego unverified_scope przy zerze
+  naruszeń i zielonych checks pokrywa ORC-098 (sonda silnika + GO z lukami). Wystąpienie z
+  juz-ide-api-1 (brak L2 w final_gate.checks) pozostaje sprawą configu projektu.
 trigger: no_go
 rule_ref: ORC-069
 first_seen: 2026-09-27

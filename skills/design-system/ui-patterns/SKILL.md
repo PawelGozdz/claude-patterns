@@ -35,6 +35,14 @@ pakietu Refine dla antd, więc ekran składa się z komponentów antd (`Table`, 
 - **Pusty wynik filtrowania ≠ pusty zasób.** Pusty filtr: „Brak wyników dla tych filtrów” +
   „Wyczyść filtry”. Pusty zasób: stan pusty (niżej) z akcją główną.
 
+**Klocki w paczce `react-ui` (≥ 0.6.0) — użyj ich zamiast budować od zera:** `PageHeader` (tytuł +
+akcje), `ListFilters` (wyszukiwarka + chipy + slot na filtry rozszerzone, bez własnego stanu),
+`ListState` (ładowanie, 403, błąd z ponowieniem, pusty wynik filtrów z „Wyczyść filtry”, pusty zasób z
+akcją; aplikacja mapuje swój błąd na `ListError`), `StatusPill`, `listPagination`/`paginationTotal`.
+Wzór: `grant-flow` `features/projects/ProjectsList.page.tsx`. Filtry muszą leżeć POZA `ListState`, żeby
+pusty wynik nie zabierał kontrolek. Filtrowanie po stronie klienta tylko gdy API zwraca cały zbiór;
+przy stronicowaniu po stronie serwera filtr bez parametru w API objąłby jedną stronę — nie dodawaj go.
+
 ```tsx
 const { tableQuery, setFilters, setSorters } = useTable({ resource: 'accounts' });
 // Table: sortowanie w columns[].sorter + onChange → setSorters; total z tableQuery.data?.total
@@ -61,6 +69,41 @@ const { tableQuery, setFilters, setSorters } = useTable({ resource: 'accounts' }
 - **Metadane jako lista definicji** (`<Descriptions>`), nie tabela.
 - **Powiązane rekordy w zakładkach** (`<Tabs>`), nie jedna długa strona.
 
+## Powłoka aplikacji
+
+Dotyczy aplikacji toolingowych (`AppLayout`: sidebar, nagłówek, obszar treści). Kolory i wymiary
+menu pochodzą z tokenów motywu antd (`components.Layout`, `components.Menu`, paczka tokenów
+≥ 0.3.0) — układ i to, czego tokeny antd nie obejmują, wynika z tego wzorca. Zatwierdzone
+2026-10-02 (źródło: Wariant A „Karty na kremie”).
+
+- **Układ wypełnia wysokość okna:** korzeń `Layout` ma `minHeight: 100vh`, sidebar sięga do
+  dołu okna także przy krótkiej treści.
+- **Sidebar:** 216 px, tło `bg.tint`, **bez kreski** od strony treści (granicę robi różnica
+  tła `bg.tint` / `bg.base`). Na górze nazwa produktu fontem marki (logo nie istnieje), niżej menu.
+- **Menu — trzy stany:** zwykła `text.body`; hover tło `bg.tintStrong`; aktywna tło `bg.base`,
+  `text.strong`, **ramka 1 px i waga 600**. Wysokość pozycji 34 px, promień `radius.md`, odstęp
+  między pozycjami 2 px. Ramka, waga i odstęp są poza tokenami antd — idą do klasy powłoki
+  w `global.css` aplikacji, nie do `style={{…}}`.
+- **Obszar treści:** tło `bg.base`, padding **28 px góra/dół, 32 px lewo/prawo** (mobile: 16 px).
+  Poza tokenami antd — to zasada wzorca. Treść nigdy nie przylega do sidebaru.
+- **Nagłówek powłoki ≠ nagłówek strony.** Nagłówek powłoki to cienki pasek: przycisk menu
+  (mobile), przełącznik motywu, użytkownik. **Nie ma w nim tytułu strony ani akcji ekranu** —
+  te zostają w nagłówku strony (patrz Lista, Widok szczegółów).
+- **Mobile (poniżej breakpointu `md`):** sidebar to szuflada otwierana przyciskiem w nagłówku
+  powłoki, zamykana po wybraniu pozycji. **Bez `zeroTrigger` antd** — zasłania pierwszą
+  komórkę tabeli.
+- **Tryb ciemny:** ta sama mapa ról na paletę Espresso. ⚠ Wyprowadzony z tokenów, **nie
+  wybrany w canvasie** (Wariant A nie ma motywu ciemnego) — nie traktuj go jako zatwierdzonego
+  wyglądu; nagłówek i hover też są wyprowadzone.
+
+```tsx
+const { token } = theme.useToken(); // kolory TYLKO z motywu, nigdy literały
+<Layout style={{ minHeight: '100vh' }}>
+  <Layout.Sider width={216} /* tło z tokenów Layout.siderBg */>…<Menu mode="inline" /></Layout.Sider>
+  <Layout><Layout.Header />{/* bez tytułu strony */}<Layout.Content className="app-content" /></Layout>
+</Layout>
+```
+
 ## Stany brzegowe — obowiązkowe na każdym ekranie
 
 Ekran bez tych czterech stanów nie jest skończony, nawet jeśli „szczęśliwa ścieżka” działa.
@@ -81,12 +124,23 @@ Teksty stanów po polsku, w tonie marki (ciepło, konkretnie, bez żargonu techn
 - ❌ Spinner tam, gdzie da się pokazać szkielet (lista, karta, szczegóły, formularz edycji).
 - ❌ Własny komponent tam, gdzie wystarczy wariant istniejącego (prop, `type`, token komponentu).
 - ❌ Filtry w szufladzie bocznej; sortowanie osobną kontrolką; paginacja bez liczby rekordów.
+- ❌ W `AppLayout`: domyślny granat antd (`#001529`), literały kolorów, `style={{ background }}`
+  na `Layout.Header`/`Sider`, `zeroTrigger`, tytuł strony w nagłówku powłoki.
 
 ## Znane odstępstwa w istniejącym kodzie
 
-Stan z 2026-09-26, do poprawy w fazie 3 wdrożenia (pierwsza aplikacja). Nie kopiuj ich jako wzoru:
+Stan z 2026-10-03 (audyt `/design-audit` na `marketing-hub` i `grant-flow`), do poprawy przy
+najbliższym dotknięciu ekranu. Nie kopiuj ich jako wzoru. Powłoka, 404 i ekran błędu startu są
+już w obu aplikacjach z paczki `react-ui` (`AppShell`, `NotFoundPage`, `BootstrapError`).
 
-- `marketing-hub/apps/web/src/app/StartPage.page.tsx` — `<Spin>` przy ładowaniu (ma być szkielet).
-- `marketing-hub/apps/web/src/app/BootstrapError.tsx` — `Result status="error"` bez akcji ponowienia.
-- `StartPage` — fallback `CanAccess` to goły tekst po angielsku (ma być komunikat 403 po polsku).
+- `marketing-hub` `auth-kit/screens/UsersAndRolesScreen.tsx` — naprawione 2026-10-03 (błąd zapisu w
+  modalu, błąd listy z ponowieniem, stan pusty, prawdziwa paginacja, „Pokazano X–Y z N”, komponenty
+  `react-ui`, chipy ról filtrują po stronie serwera przez `role=`). Wyszukiwarki nie ma celowo: API
+  nie ma wyszukiwania po e-mailu (decyzja D11, bez enumeracji osób).
+- `marketing-hub` `auth-kit/screens/MyAccountScreen.tsx` — `Result status="error"` bez ponowienia,
+  `Empty` bez ikony i akcji, widok szczegółów bez nagłówka/pilla/`Tabs`.
+- `marketing-hub` `features/dashboard/dashboard.page.tsx` — `Empty` bez akcji (udokumentowane odstępstwo),
+  zduplikowany ekran 403 względem `auth-kit/components/ForbiddenScreen.tsx`.
+- `grant-flow` `features/home/home.page.tsx` — stan błędu to goły tekst (bez ponowienia), brak stanu
+  pustego i 403.
 - `App.tsx` — `notificationProvider` na `notification` antd; przy formularzach pilnuj mapowania 422 na pola.

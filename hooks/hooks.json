@@ -13,6 +13,16 @@
         "description": "Deny recursive grep/rg/git grep over the repo root (Read(.env) deny rule would stall the flow with a permission prompt). Scoped searches and the Grep tool pass."
       },
       {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$HOME/.claude/hooks/block-subagent-commit.js\""
+          }
+        ],
+        "description": "Deny git commit/push/rebase/tag/merge/stash/reset/restore/checkout from SUBAGENTS while an /orchestrate run is active (fresh .claude/run-state/orchestrating.json). The run ends 'staged, not committed' (ORC-094); the main session is never blocked."
+      },
+      {
         "matcher": "Workflow",
         "hooks": [
           {

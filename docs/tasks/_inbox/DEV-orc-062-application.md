@@ -2,12 +2,12 @@
 id: DEV-orc-062-application
 status: promoted
 resolution: >
-  Drugie wystąpienie (grant-flow TS-UI-004): kontroler i spec poza zawężeniem layers_scope — pokryte ORC-090 (własność po pełnych dirs, ścieżki względne pakietu).
-resolution: >
   Naprawione jako ORC-082 (2026-09-30): sonda typecheck odracza czerwień, której
   wszystkie błędy TS leżą w dirs późniejszych warstw (mechanicznie, w CORE
   szablonu); błędy we własnym zakresie, w wcześniejszych warstwach i bez ścieżki
-  nadal blokują.
+  nadal blokują. Drugie wystąpienie (grant-flow TS-UI-004): kontroler i spec poza
+  zawężeniem layers_scope — pokryte ORC-090 (własność po pełnych dirs, ścieżki
+  względne pakietu).
 trigger: blocked_by_prior
 rule_ref: ORC-062
 first_seen: 2026-09-30

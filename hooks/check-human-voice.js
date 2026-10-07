@@ -81,6 +81,12 @@ function inspect(items, listKey, humanField, problems) {
       problems.push(`${listKey}[${it.id}]: \`${humanField}\` puste`);
       continue;
     }
+    // ORC-095: pytanie dla człowieka ma być 1-2 zdaniami (decyzja tak/nie albo A/B), nie akapitem.
+    // „15 linii komentarza tylko po to, żebym napisał 'ok'" — limit liczony składniowo.
+    const sentences = stripped.split(/(?<=[.!?…])\s+(?=[A-ZĄĆĘŁŃÓŚŹŻ„"])/).filter(Boolean).length;
+    if (sentences > 2 || stripped.length > 320) {
+      problems.push(`${listKey}[${it.id}]: \`${humanField}\` za długie (${sentences} zdań, ${stripped.length} znaków) — limit: 2 zdania, ~300 znaków; reszta do pola technicznego`);
+    }
     const hits = [...new Set(TELLS.filter((t) => t.re.test(stripped)).map((t) => t.what))];
     if (hits.length) {
       problems.push(`${listKey}[${it.id}]: \`${humanField}\` zawiera ${hits.join(', ')} — to należy do pola technicznego`);

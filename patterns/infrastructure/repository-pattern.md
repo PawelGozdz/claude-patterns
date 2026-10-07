@@ -939,6 +939,29 @@ not that nobody looked.
   the class has no update/delete methods (insert-only by design, TM-AUDIT-002), and writes go
   through `TransactionHost.tx` so they still join the caller's `@Transactional` CLS context.
 
+- `BetaSignalReportSnapshotKyselyStore` (RP2, juz-ide `reputation` context,
+  TS-REP-BETA-SIGNAL-REPORT-001) — the `reputation_beta_report_snapshots` table is an append-only
+  read-model store of MASKED aggregates (no subject identifiers), not a domain aggregate: no domain
+  events to dispatch, no `version`/`eventMap`. It is deliberately named `*Store`, not `*Repository`,
+  so the name does not suggest an aggregate repository. Checked before accepting: the class exposes
+  a single insert (`save`) with no update/delete, and the port lives in `domain/repositories/`
+  (`IBetaSignalReportSnapshotStore`) with the `// RP2-EXCEPTION:` annotation above the class.
+
+- `BehaviorSignalSubjectErasureKyselyRepository` (RP2, juz-ide `reputation` context,
+  TS-REP-SUBJECT-ERASURE-001) — bulk GDPR Art.17 unlinking of a deleted account from its
+  `behavior_signals` (one UPDATE + deletes of derived/event-store rows): no aggregate is loaded or
+  saved and no domain event is emitted, so `BaseKyselyRepository` dispatch/locking does not apply.
+  Sibling of `AppealsAnonymizationKyselyRepository`. Checked before accepting: port in
+  `domain/repositories/`, joins the ambient `@Transactional` via `TransactionHost.tx`, throws on
+  failure, no logger, `// RP2-EXCEPTION:` annotation above the class.
+
+- `GeographicAuthContextAPI` (RP12, juz-ide `geographic-auth` context, TS-REP-SUBJECT-ERASURE-001) —
+  the ACL adapter injects `DATABASE_TOKEN` and `getMunicipalityIdsByResidenceIds` runs a readonly
+  query joining `user_residences` to administrative units. Accepted as a cross-aggregate read
+  shaped for an ACL consumer (batch residence -> municipality lookup); the repository port for it
+  is reported as tech debt. Checked before accepting: readonly (no writes), batch (one query per
+  call), `// RP12-EXCEPTION:` annotation above the constructor parameter.
+
 ---
 
 ## 📚 References

@@ -521,7 +521,7 @@ cd ~/projects/claude-patterns
 **What this does**:
 - Creates per-file symlinks in `~/.claude/agents/` for 25 universal agents
 - Creates `~/.claude/commands/` symlink (37 commands)
-- Creates `~/.claude/hooks/` symlink (43 hooks)
+- Creates `~/.claude/hooks/` symlink (44 hooks)
 - Idempotent — safe to run multiple times
 
 ### Step 2: Project Setup (once per project)

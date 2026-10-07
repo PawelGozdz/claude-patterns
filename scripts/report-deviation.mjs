@@ -76,6 +76,18 @@ function slugify(s) {
     .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'unknown';
 }
 
+// Powody, które agenci opisują za każdym razem innymi słowami (PL/EN), a oznaczają tę samą
+// sygnaturę — bez tego każde sformułowanie dawało osobny plik (2026-10-04: trzy pliki NO_GO
+// z `unverified_scope`, „wymuszona/wymuszone/forced"). Dopasowanie po kluczowym terminie, nie po prozie.
+const CANONICAL_REASONS = [
+  { re: /unverified[_ -]?scope/i, slug: 'unverified-scope' },
+];
+
+function canonicalReasonSlug(reason) {
+  const hit = CANONICAL_REASONS.find((c) => c.re.test(String(reason)));
+  return hit ? hit.slug : slugify(String(reason).slice(0, 50));
+}
+
 function todayIso() {
   return new Date().toISOString().slice(0, 10);
 }
@@ -88,7 +100,15 @@ function readInboxEntries() {
     const raw = readFileSync(join(INBOX_DIR, f), 'utf8');
     const m = raw.match(/^---\r?\n([\s\S]*?)\r?\n---/);
     if (!m) continue;
-    const fm = YAML.parse(m[1]) || {};
+    // Jeden uszkodzony frontmatter nie może wywracać całej listy (DEV-orc-062-application:
+    // zduplikowany klucz `resolution` → YAMLParseError na `--list`, 2026-10-04).
+    let fm;
+    try {
+      fm = YAML.parse(m[1]) || {};
+    } catch (e) {
+      process.stderr.write(`UWAGA: ${f}: uszkodzony frontmatter (${String(e.message).split('\n')[0]}) — pominięty na liście\n`);
+      continue;
+    }
     rows.push({ file: f, ...fm });
   }
   return rows;
@@ -120,7 +140,7 @@ function upsert(args) {
   // z domain:rules). `--layer`, gdy podany, wchodzi do sygnatury razem z regułą.
   const signature = args.rule
     ? slugify(args.layer ? `${args.rule}-${args.layer}` : args.rule)
-    : `${args.trigger}-${slugify(args.reason.slice(0, 50))}`;
+    : `${args.trigger}-${canonicalReasonSlug(args.reason)}`;
   const id = `DEV-${signature}`;
   mkdirSync(INBOX_DIR, { recursive: true });
   const target = join(INBOX_DIR, `${id}.md`);

@@ -122,7 +122,10 @@ const CASES = (c) => [
       if (probe.model !== 'haiku' || probe.effort !== 'low') return 'sonda nie jest tania: ' + JSON.stringify(probe);
       if (c.modelFor('implement').model !== 'sonnet') return 'implementer poza sonnetem';
       if (c.modelFor('verify').model !== 'sonnet') return 'verify warstwy poza sonnetem';
-      if (Object.keys(c.modelFor('final')).length !== 0) return 'bramka końcowa ma override zamiast dziedziczyć model sesji';
+      // ORC-097: bramka końcowa dziedziczy model sesji TYLKO dla tasków wrażliwych na bezpieczeństwo
+      // albo po jawnym final_gate.model: inherit; domyślnie Sonnet (szczegóły: eval final-gate-model-*).
+      if (Object.keys(c.modelFor('final', { task: { securitySensitive: true } })).length !== 0) return 'task z threat_model: bramka końcowa ma override zamiast dziedziczyć model sesji';
+      if (c.modelFor('final').model !== 'sonnet') return 'domyślna bramka końcowa powinna iść na sonnecie';
       return null;
     },
   },
@@ -397,6 +400,125 @@ const CASES = (c) => [
       return null;
     },
   },
+  // ── ORC-098b: dirs będące plikami i remisy późniejszych warstw ─────────────────────────
+  {
+    name: 'owner-layer-file-dirs-win-over-directories',
+    run() {
+      const flat = { id: 'flat', dirs: ['src/'] };
+      const unit = { id: 'unit', dirs: ['src/'], scope: { dirs: ['src/wikiIndexer.ts'] } };
+      const owner = c.ownerLayerOf('src/wikiIndexer.ts', [flat, unit]);
+      if (!owner || owner.id !== 'unit') return 'plik w scope.dirs jednostki powinien wygrać z katalogiem src/: ' + JSON.stringify(owner && owner.id);
+      const rel = c.ownerLayerOf('src/wikiIndexer.ts', [flat, { id: 'u', dirs: [], scope: { dirs: ['apps/api/src/wikiIndexer.ts'] } }]);
+      if (!rel || rel.id !== 'u') return 'ścieżka względna pakietu z tsc powinna trafić we wpis-plik z prefiksem monorepo';
+      if (c.ownerLayerOf('src/other.ts', [{ id: 'x', dirs: [], scope: { dirs: ['src/wikiIndexer.ts'] } }])) return 'inny plik nie może dopasować się do wpisu-pliku';
+      return null;
+    },
+  },
+  {
+    name: 'typecheck-red-deferred-when-tie-is-only-later-layers',
+    run() {
+      const cur = { id: 'u4', dirs: ['src/a/'] };
+      const u5a = { id: 'u5a', dirs: ['src/wikiIndexer.ts'] };
+      const u5b = { id: 'u5b', dirs: ['src/wikiIndexer.ts'] };
+      const layers = [cur, u5a, u5b];
+      const red = (p) => ({ typecheck: 'fail', tests: 'pass', lint: 'pass', tsErrors: p + "(3,1): error TS2322: x" });
+      if (!c.typecheckRedIsLaterLayers(red('src/wikiIndexer.ts'), cur, layers)) return 'remis samych późniejszych warstw powinien odraczać czerwień';
+      const withCur = [{ id: 'u4', dirs: ['src/wikiIndexer.ts'] }, u5a, u5b];
+      if (c.typecheckRedIsLaterLayers(red('src/wikiIndexer.ts'), withCur[0], withCur)) return 'remis z udziałem bieżącej warstwy nie może odraczać';
+      return null;
+    },
+  },
+  // ── ORC-101: drobne poprawki z analizy bez właściciela warstwy ──────────────────────────
+  {
+    name: 'orphan-minor-fixes-are-those-outside-every-layer-scope',
+    run() {
+      const layers = [{ id: 'domain', dirs: ['src/domain/'] }, { id: 'infra', dirs: ['src/infrastructure/'] }];
+      const fixes = [
+        'src/domain/order.ts — nit — zmień nazwę',
+        'docs/architecture/architecture.md — opis — dopisz pin',
+        'project-orchestration/KANBAN.md — wpis — dodaj TS-X-1',
+        '`CLAUDE.md` — data — odśwież',
+        'ogólna uwaga bez ścieżki',
+        'plik ze spacją.md w nazwie — x — y',
+      ];
+      const orphans = c.orphanMinorFixes(fixes, layers);
+      const want = ['docs/architecture/architecture.md — opis — dopisz pin', 'project-orchestration/KANBAN.md — wpis — dodaj TS-X-1', '`CLAUDE.md` — data — odśwież'];
+      if (JSON.stringify(orphans) !== JSON.stringify(want)) return 'sieroty: ' + JSON.stringify(orphans);
+      if (c.orphanMinorFixes(fixes, [{ id: 'all', dirs: [] }]).length) return 'bez warstw z dirs nie ma jak wskazać sierot (zachowanie sprzed zmiany)';
+      if (c.orphanMinorFixes(undefined, layers).length) return 'brak minor_fixes = brak sierot';
+      return null;
+    },
+  },
+  // ── ORC-100: te same luki po powtórnej weryfikacji nie palą kolejnych prób ───────────────
+  {
+    name: 'repeated-identical-gaps-settle-as-go-with-gaps-without-more-attempts',
+    run() {
+      const go = { verdict: 'GO', violations: [], unverified_scope: ['a/x.ts', 'a/y.ts'] };
+      const dec = c.decideVerdict(go, 2, 3);
+      if (dec.next !== 'reverify' || !Array.isArray(dec.gaps) || dec.gaps.length !== 2) return 'reverify powinien nieść gaps: ' + JSON.stringify(dec);
+      const green = { typecheck: 'pass', tests: 'pass' };
+      if (!c.repeatedGapsAcceptable(['a/y.ts', 'a/x.ts'], dec, go, green)) return 'ten sam zbiór luk (inna kolejność) + zielona sonda powinien zamknąć warstwę';
+      if (c.repeatedGapsAcceptable(null, dec, go, green)) return 'pierwsza runda (brak poprzednich luk) nie może zamykać';
+      if (c.repeatedGapsAcceptable(['a/x.ts'], dec, go, green)) return 'inny zbiór luk nie może zamykać';
+      if (c.repeatedGapsAcceptable(['a/x.ts', 'a/z.ts'], dec, go, green)) return 'częściowo inny zbiór nie może zamykać';
+      if (c.repeatedGapsAcceptable(['a/x.ts', 'a/y.ts'], dec, go, { typecheck: 'skipped', tests: 'skipped' })) return 'ślepa sonda nie jest dowodem';
+      if (c.repeatedGapsAcceptable(['a/x.ts', 'a/y.ts'], dec, go, { typecheck: 'fail', tests: 'pass' })) return 'czerwona sonda blokuje';
+      if (c.repeatedGapsAcceptable(['a/x.ts', 'a/y.ts'], dec, { verdict: 'GO', violations: ['v'] }, green)) return 'naruszenia blokują';
+      return null;
+    },
+  },
+  // ── ORC-099: odroczenie czerwonych testów do późniejszych warstw ────────────────────────
+  {
+    name: 'tests-red-deferred-only-when-all-failing-files-belong-to-later-layers',
+    run() {
+      const cur = { id: 'config', dirs: ['src/config/'] };
+      const later = { id: 'registry', dirs: ['src/registry/'] };
+      const layers = [cur, later];
+      const mk = (files, n, extra) => Object.assign({
+        typecheck: 'pass', tests: 'fail', lint: 'pass',
+        testFailFiles: files.map((f) => ' FAIL  ' + f + ' > suite > case').join('\n'), testFilesFailed: n,
+      }, extra || {});
+      if (!c.testsRedIsLaterLayers(mk(['src/registry/a.test.ts', 'src/registry/b.test.ts'], 2), cur, layers)) return 'testy padające tylko w późniejszej warstwie powinny być odroczone';
+      if (c.testsRedIsLaterLayers(mk(['src/registry/a.test.ts', 'src/config/c.test.ts'], 2), cur, layers)) return 'padający plik we WŁASNEJ warstwie blokuje odroczenie';
+      if (c.testsRedIsLaterLayers(mk(['src/registry/a.test.ts'], 2), cur, layers)) return 'lista niepełna (1 z 2 plików) nie może odraczać';
+      if (c.testsRedIsLaterLayers(mk(['src/registry/a.test.ts'], undefined), cur, layers)) return 'brak podsumowania runnera nie może odraczać';
+      if (c.testsRedIsLaterLayers(mk(['src/registry/a.test.ts'], 1, { typecheck: 'fail' }), cur, layers)) return 'czerwony typecheck blokuje odroczenie testów';
+      if (c.testsRedIsLaterLayers(mk(['src/registry/a.test.ts'], 1), later, layers)) return 'ostatnia warstwa nie może odraczać';
+      if (c.testsRedIsLaterLayers(mk(['src/elsewhere/x.test.ts'], 1), cur, layers)) return 'plik bez właściciela nie może odraczać';
+      return null;
+    },
+  },
+  // ── ORC-098: bramka końcowa — GO z lukami zamiast NO_GO z samego unverified_scope ──────
+  {
+    name: 'final-gate-gaps-acceptable-needs-green-engine-probe-and-zero-violations',
+    run() {
+      const gate = { verdict: 'GO', violations: [] };
+      const gaps = ['kopie u konsumentów'];
+      const green = { typecheck: 'pass', tests: 'pass', lint: 'pass' };
+      if (!c.finalGapsAcceptable(gate, gaps, green)) return 'zielona sonda + zero naruszeń + luki powinno przejść jako GO z lukami';
+      if (c.finalGapsAcceptable(gate, gaps, null)) return 'brak wyniku sondy nie może obniżać NO_GO';
+      if (c.finalGapsAcceptable(gate, gaps, { typecheck: 'skipped', tests: 'skipped' })) return 'ślepa sonda (wszystko skipped) nie jest dowodem';
+      if (c.finalGapsAcceptable(gate, gaps, { typecheck: 'pass', tests: 'pass', lint: 'fail' })) return 'czerwony lint nie może przejść';
+      if (c.finalGapsAcceptable(gate, gaps, { typecheck: 'pass', tests: 'fail' })) return 'czerwone testy nie mogą przejść';
+      if (c.finalGapsAcceptable({ verdict: 'GO', violations: ['a.ts:1 — reguła — x'] }, gaps, green)) return 'własne naruszenia blokują obniżenie';
+      if (c.finalGapsAcceptable({ verdict: 'NO_GO', violations: [] }, gaps, green)) return 'NO_GO bramki nie jest GO z lukami';
+      if (c.finalGapsAcceptable(gate, [], green)) return 'bez luk nie ma czego obniżać (czyste GO idzie zwykłą ścieżką)';
+      return null;
+    },
+  },
+  {
+    name: 'final-gate-prompt-passes-probe-facts-and-forbids-rerun',
+    run() {
+      const probe = { typecheck: 'pass', tests: 'pass', lint: 'pass' };
+      const withProbe = c.buildFinalGatePrompt(ARGS, ['typecheck', 'test'], ['a.ts'], 'tree', [], probe);
+      if (!/FAKTY Z SONDY/.test(withProbe) || !/checks\.typecheck: pass/.test(withProbe)) return 'prompt bramki nie niesie faktów z sondy';
+      if (!/NIE uruchamiaj ich ponownie/.test(withProbe)) return 'brak zakazu ponownego uruchamiania checks';
+      if (!/unverified_scope/.test(withProbe)) return 'brak wskazówki, że niesprawdzalne rzeczy idą do unverified_scope';
+      const without = c.buildFinalGatePrompt(ARGS, ['typecheck', 'test'], ['a.ts'], 'tree', [], null);
+      if (/FAKTY Z SONDY/.test(without) || !/Deterministyczne bramki do wykonania/.test(without)) return 'bez sondy zostaje stara instrukcja (uruchom sam)';
+      return null;
+    },
+  },
   {
     name: 'final-gate-absorbs-known-layer-gaps',
     run() {
@@ -475,11 +597,11 @@ const CASES = (c) => [
     run() {
       const layer = { id: 'presentation', dirs: ['presentation/'], checks: ['flutter analyze', 'flutter test'] };
       const p = c.buildProbePrompt({ task: { id: 'T' } }, layer);
-      if (!/^flutter analyze > \/tmp\/check-presentation\.log/m.test(p)) return 'komenda dosłowna nie jest uruchamiana bezpośrednio: ' + p.slice(0, 300);
+      if (!/^flutter analyze > \/tmp\/check-presentation-1\.log/m.test(p)) return 'komenda dosłowna nie jest uruchamiana bezpośrednio: ' + p.slice(0, 300);
       if (/npm run flutter/.test(p) || /_chk flutter/.test(p)) return 'komenda dosłowna nie może iść przez npm/_chk';
       if (!/Mapowanie wyników/.test(p)) return 'brak mapowania wyników komend dosłownych na typecheck/tests';
       const npmOnly = c.buildProbePrompt({ task: { id: 'T' } }, { id: 'web', dirs: ['apps/web/'], checks: ['typecheck'] });
-      if (/Mapowanie wyników/.test(npmOnly)) return 'sama nazwa skryptu nie powinna dostać mapowania';
+      if (!/`lint`/.test(npmOnly)) return 'mapowanie wyników (z polem lint) powinno być zawsze, gdy są checks (ORC-094)';
       return null;
     },
   },
@@ -596,6 +718,83 @@ const CASES = (c) => [
     },
   },
 
+  // ── ORC-094: osobne logi per check, pole lint, lint nie jest zielenią ────────────────────
+  {
+    name: 'probe-writes-separate-log-per-check-and-maps-lint-field',
+    run() {
+      const layer = { id: 'domain', dirs: ['apps/api/src/', 'domain/'], checks: ['typecheck:api', 'lint:check:api'] };
+      const p = c.buildProbePrompt({ task: { id: 'T' } }, layer);
+      if (!/> \/tmp\/check-domain-1\.log 2>&1; echo "EXIT:\$\?"/.test(p) || !/> \/tmp\/check-domain-2\.log 2>&1; echo "EXIT:\$\?"/.test(p)) return 'każdy check musi mieć własny plik logu (-1.log, -2.log)';
+      if (/check-domain\.log/.test(p)) return 'wspólny log check-domain.log nadpisywałby wyniki';
+      if (!/check-domain-\*\.log/.test(p)) return 'tsErrors/grep zakresu muszą czytać wszystkie logi (-*.log)';
+      if (!/`lint`/.test(p) || !/nigdy z powodu lintu/.test(p)) return 'brak mapowania lintu na własne pole';
+      return null;
+    },
+  },
+  {
+    name: 'lint-fail-is-red-and-never-green-evidence',
+    run() {
+      if (c.layerGapsAcceptable({ next: 'escalate', gaps: ['a/b.ts'] }, { verdict: 'GO' }, { typecheck: 'pass', tests: 'pass', lint: 'fail' })) return 'lint fail nie może być zielenią dla GO_WITH_GAPS';
+      if (!c.layerGapsAcceptable({ next: 'escalate', gaps: ['a/b.ts'] }, { verdict: 'GO' }, { typecheck: 'pass', tests: 'skipped', lint: 'pass' })) return 'pass + lint pass powinno przejść';
+      if (c.typecheckRedIsLaterLayers({ typecheck: 'fail', tests: 'skipped', lint: 'fail', tsErrors: 'src/x/infrastructure/r.ts(1,1): error TS2322: x' }, { id: 'domain', dirs: ['domain/'] }, [{ id: 'domain', dirs: ['domain/'] }, { id: 'infrastructure', dirs: ['infrastructure/'] }])) return 'czerwony lint obok czerwonego typechecku nie może być odroczony';
+      return null;
+    },
+  },
+
+  // ── ORC-095: linia statusu dla człowieka ─────────────────────────────────────────────────
+  {
+    name: 'status-line-is-short-business-and-has-no-paths',
+    run() {
+      const ok = c.statusLine({ staged: ['a', 'b', 'c'], gaps: [{}], minorFindings: [], warnings: ['x', 'y'] }, 'ok');
+      if (!/^Gotowe do przeglądu: 3 plików w stagingu; niesprawdzone fragmenty: 1; ostrzeżenia w raporcie: 2\.$/.test(ok)) return 'zła linia ok: ' + ok;
+      const review = c.statusLine({ staged: ['a'], stageForReview: ['a'] }, 'ok');
+      if (!/wymaga uważnego przeglądu/.test(review)) return 'brak flagi przeglądu: ' + review;
+      const halt = c.statusLine({}, 'halt', { id: 'domain', cause: 'machine' });
+      if (halt !== 'Zatrzymane na etapie „domain": awaria narzędzi, nie kodu.') return 'zła linia halt machine: ' + halt;
+      const haltCode = c.statusLine({}, 'halt', { cause: 'code' });
+      if (haltCode !== 'Zatrzymane na bramce końcowej: kod nie przechodzi kontroli.') return 'zła linia halt code: ' + haltCode;
+      for (const l of [ok, review, halt, haltCode]) if (/[\\/]\w+\.\w+|ORC-|ADR/.test(l) || l.length > 160) return 'linia statusu ma ścieżkę/numer reguły albo jest za długa: ' + l;
+      return null;
+    },
+  },
+
+  // ── ORC-096: nieśledzone pliki testowe liczone mimo wzorca, który nic nie dopasowuje ─────
+  {
+    name: 'probe-counts-untracked-test-files-even-with-unmatched-pathspec',
+    run() {
+      const layer = { id: 'u14-tooling', dirs: ['.githooks/', 'package.json', 'scripts/'], checks: [], tests: true };
+      const p = c.buildProbePrompt({ task: { id: 'T' } }, layer);
+      if (!/git ls-files -o --exclude-standard -z -- .*\| xargs -0 -r git add -N --/.test(p)) return 'przyrost testów musi dodawać nieśledzone pliki przez ls-files -o | xargs git add -N: ' + p.slice(p.indexOf('git ls-files') > -1 ? p.indexOf('git ls-files') : 0, 400);
+      if (/ git add -N -- ':\(glob\)/.test(p)) return 'bezpośrednie git add -N -- <wzorce> przerywa w całości przy niedopasowanym wzorcu';
+      if (!/git diff HEAD -U0 -- .*\| grep -cE/.test(p)) return 'WL6: git diff HEAD i | grep -cE muszą być w jednej linii';
+      return null;
+    },
+  },
+
+  // ── ORC-097: model i długość wyjścia bramki końcowej ─────────────────────────────────────
+  {
+    name: 'final-gate-model-defaults-to-sonnet-and-inherits-for-security-tasks',
+    run() {
+      const j = (x) => JSON.stringify(x);
+      if (j(c.modelFor('final')) !== j({ model: 'sonnet' })) return 'domyślnie Sonnet, jest: ' + j(c.modelFor('final'));
+      if (j(c.modelFor('final', { task: { securitySensitive: false } })) !== j({ model: 'sonnet' })) return 'task bez threat_model → Sonnet';
+      if (j(c.modelFor('final', { task: { securitySensitive: true } })) !== j({})) return 'task z threat_model → model sesji (puste opcje)';
+      if (j(c.modelFor('final', { finalGateModel: 'inherit' })) !== j({})) return 'inherit → model sesji';
+      if (j(c.modelFor('final', { finalGateModel: 'opus', task: {} })) !== j({ model: 'opus' })) return 'jawne opus → opus';
+      if (j(c.modelFor('final', { finalGateModel: 'auto', task: { securitySensitive: true } })) !== j({})) return 'auto zachowuje się jak domyślne';
+      if (j(c.modelFor('verify')) !== j({ model: 'sonnet' }) || j(c.modelFor('probe')).indexOf('haiku') === -1) return 'pozostałe role bez zmian';
+      return null;
+    },
+  },
+  {
+    name: 'final-gate-prompt-limits-output-length',
+    run() {
+      const f = c.buildFinalGatePrompt(ARGS, [], ['a.ts'], 'tree', []);
+      if (!/WYJŚCIE \(limit długości\)/.test(f) || !/najwyżej 5 zdań/.test(f) || !/JEDNA linia/.test(f)) return 'prompt bramki końcowej bez limitu długości wyjścia';
+      return null;
+    },
+  },
+
   // ── zakres jednostki / warstwy ────────────────────────────────────────────────
   {
     name: 'layer-touches-scopes-diff-to-layer',
@@ -628,7 +827,7 @@ const CASES = (c) => [
     name: 'probe-prompt-redirects-output-and-counts-blocks',
     run() {
       const p = c.buildProbePrompt(ARGS, L.testing);
-      if (!/> \/tmp\/check-testing\.log 2>&1; echo "EXIT:\$\?"/.test(p)) return 'wyjście checks nie jest przekierowane poza kontekst';
+      if (!/> \/tmp\/check-testing-1\.log 2>&1; echo "EXIT:\$\?"/.test(p)) return 'wyjście checks nie jest przekierowane poza kontekst';
       if (!/EXIT:0 NIE otwieraj pliku logu/.test(p)) return 'brak zakazu czytania logu przy zielonym wyniku';
       if (!/grep -cE/.test(p)) return 'warstwa testowa bez pomiaru przyrostu bloków';
       if (!/skipped/.test(p)) return 'brak instrukcji dla brakującego skryptu w package.json';
@@ -667,13 +866,13 @@ const CASES = (c) => [
     name: 'probe-prompt-greps-own-scope-before-tail-fallback',
     run() {
       const p = c.buildProbePrompt(ARGS, L.testing);
-      if (!/NAJPIERW `grep -E '/.test(p)) return 'brak grepa po własnym zakresie przed tail';
-      if (!new RegExp('grep -E \'' + 'src/__tests__/'.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&') + '\'').test(p)) {
+      if (!/NAJPIERW `grep -hE '/.test(p)) return 'brak grepa po własnym zakresie przed tail';
+      if (!new RegExp('grep -hE \'' + 'src/__tests__/'.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&') + '\'').test(p)) {
         return 'wzorzec grepa nie zawiera dirs warstwy testowej';
       }
       if (!/dopiero gdy ten grep nic nie znajdzie/i.test(p)) return 'brak fallbacku do pełnego tail, gdy grep pusty';
       const noDirs = c.buildProbePrompt(ARGS, { id: 'whole', dirs: [], checks: ['typecheck'] });
-      if (/NAJPIERW `grep -E '/.test(noDirs)) return 'warstwa bez dirs nie powinna dostać instrukcji grepa (nie ma czego zawężać)';
+      if (/NAJPIERW `grep -hE '/.test(noDirs)) return 'warstwa bez dirs nie powinna dostać instrukcji grepa (nie ma czego zawężać)';
       if (!/zwróć ostatnie 40 linii w `tail`/.test(noDirs)) return 'warstwa bez dirs powinna zachować prosty fallback do tail';
       return null;
     },
@@ -769,7 +968,7 @@ const CASES = (c) => [
         sh('git init -q && git config user.email t@t && git config user.name t && mkdir -p src/__tests__ && echo x > README && git add README && git commit -qm init');
         fs.writeFileSync(path.join(dir, 'src/__tests__/a.spec.ts'), "describe('a', () => {\n  it('x', () => {})\n  it.each([1])('y', () => {})\n})\n");
         const probe = c.buildProbePrompt(ARGS, L.testing);
-        const countLine = probe.split('\n').find((l) => /^\s*git add -N/.test(l));
+        const countLine = probe.split('\n').find((l) => /^\s*git (add -N|ls-files -o)/.test(l));
         if (!countLine) return 'brak polecenia liczącego przyrost';
         const states = [['untracked', ''], ['A', 'git add -A'], ['AM', "echo \"  it('z', () => {})\" >> src/__tests__/a.spec.ts"]];
         for (const [name, prep] of states) {

@@ -277,7 +277,7 @@ skills:
     jurisdictions_supported: ["PL", "EU general", "US", "UK", "FR (limited)"]
 
 hooks:
-  total: 43  # 40 .js + 3 .sh, płasko w hooks/ (lib/ to kod dzielony, nie osobne hooki); 53→42 po K98/K99 (ADR 0009)
+  total: 44  # 41 .js + 3 .sh, płasko w hooks/ (lib/ to kod dzielony, nie osobne hooki); 53→42 po K98/K99 (ADR 0009)
 
 templates:
   stack_presets: 10

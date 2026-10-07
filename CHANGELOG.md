@@ -58,6 +58,29 @@ and none of it is instruction — it is history.
   blocks on one axis conflict — the materializer never enforced that (ADR 0010).
 
 ### Changed
+- `/orchestrate` ORC-100/ORC-101: warstwa zamykana z tymi samymi lukami po powtórnej weryfikacji kończy jako GO_WITH_GAPS bez pozostałych prób (ORC-100); drobne poprawki z analizy leżące poza zakresem każdej warstwy (dokumentacja, KANBAN, karty) wykonuje jedno przejście ostatniego implementera przed bramką końcową zamiast pytania „ja czy ty?” (`report.docFixes`, ORC-101).
+- `/orchestrate` ORC-099: czerwone testy, których wszystkie padające pliki należą do późniejszych warstw, są odraczane (`tests: deferred`) jak typecheck w ORC-082; sonda zwraca `testFailFiles` i `testFilesFailed`, a niepełna lista nie odracza (ai-gateway AIG-082).
+- `/orchestrate` ORC-098b: wpis `dirs` będący plikiem ma właściciela (dokładne dopasowanie, najwyższa ranga), a remis samych późniejszych warstw odracza czerwony typecheck (ai-os-bot BOT-025, ai-gateway AIG-068). `scripts/report-deviation.mjs --list` pomija uszkodzony frontmatter z ostrzeżeniem zamiast się wywracać.
+- `/orchestrate` ORC-098: bramka końcowa nie kończy się już NO_GO z samego `unverified_scope`. Silnik uruchamia `final_gate.checks` własną sondą i oddaje wynik bramce jako fakty; GO z lukami + zero naruszeń + zielona sonda = przebieg kończy się „staged, not committed” z lukami w raporcie (`report.gaps`, warstwa `final-gate`). Brak, ślepa lub czerwona sonda nadal daje NO_GO. Evale: `final-gate-gaps-acceptable-…`, `final-gate-prompt-passes-probe-facts-…`.
+- `skills/design-system/ui-patterns` — wzorzec „Lista” wskazuje klocki `@juz-ide/react-ui` ≥ 0.6.0
+  (`PageHeader`, `ListFilters`, `ListState`, `StatusPill`, `listPagination`), z regułą „filtry poza `ListState`”
+  i zakazem filtra bez parametru w API przy stronicowaniu po stronie serwera; „Znane odstępstwa”:
+  `UsersAndRolesScreen` (`marketing-hub`) naprawiony 2026-10-03 (chipy ról po stronie serwera; bez
+  wyszukiwarki celowo — D11). Źródło: pierwsze realne listy w `grant-flow` (wdrozenie/POSTEP.md, faza 4).
+- `pattern-auditor` and `token-drift` (block `design-system`) revised after the first `/design-audit` run on live
+  repos (`marketing-hub`, `grant-flow`, `juz-ide-mobile-app`, 2026-10-03), which verified the procedure end to end
+  and exposed gaps in the agent definitions: severity mapping and "do przeglądu" / "udokumentowane" sections in
+  `pattern-auditor`, screen discovery by router routes, components from `@juz-ide/react-ui` judged by contract,
+  infrastructure screens exempt from the 4 edge states, read-only `find`/`grep` fallback without Glob/Grep;
+  `token-drift`: where the deprecation list lives, a definition of "magic spacing", caller-supplied latest version,
+  `react-ui` version check, dark-mode category N/A for web.
+- `ui-patterns` "Znane odstępstwa" rewritten to the 2026-10-03 audit state (shell, 404 and bootstrap error are now
+  in both web apps via `@juz-ide/react-ui`).
+- `ui-patterns` (block `design-system`) gained the pattern "Powłoka aplikacji" (app shell:
+  full-height layout, 216 px sidebar, menu states, content padding 28/32, mobile drawer instead
+  of antd `zeroTrigger`, shell header ≠ page header, ban on literal colors/navy in `AppLayout`),
+  based on tooling Variant A and the tokens 0.3.0 Layout/Menu roles. Dark shell is marked as
+  derived, not chosen in the canvas. Approved by the user 2026-10-02 (wdrozenie/POSTEP.md).
 - `skills/finance/` and `skills/legal/` re-synced from upstream after four
   months. Legal picked up 11 renamed upstream folders (licenses unchanged,
   still Apache-2.0); finance gained 7 skills and reference material for most

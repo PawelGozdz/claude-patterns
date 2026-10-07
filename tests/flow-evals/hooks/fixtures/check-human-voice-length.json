@@ -1,0 +1,38 @@
+[
+  {
+    "name": "human-voice-long-ask-warns",
+    "hook": "check-human-voice.js",
+    "payload": {
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "TS-X-1.analysis.md"
+      }
+    },
+    "setup": {
+      "cwd": true,
+      "files": {
+        "TS-X-1.analysis.md": "---\ntask: TS-X-1\nopen_questions:\n  - id: Q1\n    ask: >\n      Czy klient ma widzieć historię zmian? Pierwsze zdanie dodaje kontekst. Drugie zdanie dodaje jeszcze więcej kontekstu. Trzecie zdanie to już elaborat, którego nikt nie chce czytać.\n    q: pełny kontekst techniczny\ndecisions: []\n---\n# x\n"
+      }
+    },
+    "expect_stderr": "za długie",
+    "expect": "pass"
+  },
+  {
+    "name": "human-voice-short-ask-silent",
+    "hook": "check-human-voice.js",
+    "payload": {
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "TS-X-2.analysis.md"
+      }
+    },
+    "setup": {
+      "cwd": true,
+      "files": {
+        "TS-X-2.analysis.md": "---\ntask: TS-X-2\nopen_questions:\n  - id: Q1\n    ask: >\n      Czy klient ma widzieć historię zmian? Domyślnie: tak.\n    q: pełny kontekst techniczny\ndecisions: []\n---\n# x\n"
+      }
+    },
+    "expect_silent": true,
+    "expect": "pass"
+  }
+]

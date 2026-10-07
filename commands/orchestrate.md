@@ -42,7 +42,7 @@ nie gdy chcesz ją WYKONAĆ.
                            HALT z adnotacją „WYMAGA PRZEGLĄDU"; wypisz `report.gaps` (luki warstw
                            GO_WITH_GAPS, per warstwa) i `finalGate.absorbed_gaps` w treści HALT.
                            GO_WITH_GAPS = warstwa zamknięta (dopisz do `layers_done:`), luki do przeglądu.
-                           `report.warnings` (ślepa sonda, commity implementera) wypisz w treści HALT. `report.askErrors` (powód ciszy agenta) też wypisz. `report.minorFindings` (drobne ustalenia, których nie dało się naprawić) i `report.finalFix` (co naprawiła runda po bramce końcowej) też podaj w raporcie.
+                           `report.docFixes` (drobne poprawki z analizy poza zakresem warstw, ORC-101 — wykonane przed bramką końcową) wymień jednym zdaniem. `report.warnings` (ślepa sonda, commity implementera) wypisz w treści HALT. `report.askErrors` (powód ciszy agenta) też wypisz. `report.minorFindings` (drobne ustalenia, których nie dało się naprawić) i `report.finalFix` (co naprawiła runda po bramce końcowej) też podaj w raporcie.
 5. zgłoszenie odstępstw → best-effort, NIE blokuje HALT z kroku 4 i niczego w nim nie zmienia.
                          Dla KAŻDEGO z: warstwa w `report` ze statusem ESCALATE_AND_HALT/
                          BLOCKED_BY_PRIOR ORAZ `cause === 'machine'`, `report.finalGate.verdict
@@ -87,6 +87,9 @@ użytkownikowi problemu z pytaniem „co robimy"**, tylko załatw to sam, w tej 
 2. Jeśli przyczyna jest mechaniczna i odwracalna (budżet weryfikatora/sondy, nazwy `checks`,
    cache sondy, brak zależności do doinstalowania) — popraw przez `--overrides` i wznów **raz**
    (`resumeFromRunId`). Drugie zatrzymanie z tej samej przyczyny = wtedy dopiero raport do człowieka.
+   Fałszywy alarm deterministycznej bramki (sonda liczy 0, a testy uruchomione ręcznie są zielone) to
+   błąd silnika: zgłoś do `_inbox`, obejdź przez `--overrides` (np. `layers.<id>.tests: false`) i wznów.
+   NIGDY nie dopisuj warstwy do `layers_done` ręcznie i nie pytaj o to człowieka.
 3. Pytaj człowieka tylko, gdy: `cause === 'code'` (kod ma błędy, których 3 próby nie naprawiły),
    naprawa wymaga zmiany kompozycji bloków, artefaktu analizy, decyzji produktowej albo sekretu
    (np. token rejestru pakietów), albo wznowienie już raz zawiodło.
@@ -95,6 +98,31 @@ Raport z zatrzymania: przyczyna w jednym zdaniu, co zrobiłeś, co zostało, **j
 (nie lista wariantów A/B/C do wyboru, gdy jedna jest oczywista). Zasada ogólna: zatrzymanie jest
 dla problemu poważnego (kod nie przechodzi, brak dowodu, że działa, decyzja człowieka) —
 niepełna weryfikacja przy zielonej sondzie to luka w raporcie (`GO_WITH_GAPS`), nie przystanek.
+
+## Komunikacja z człowiekiem (ORC-095)
+
+Człowiek nie ma czytać akapitów ani odpisywać „ok". Twarde zasady, bez wyjątków:
+
+1. **Jedno ciągłe przejście.** Po starcie przebieg (przygotowanie → wszystkie warstwy → bramka
+   końcowa → staging) biegnie bez pytań. NIE pytaj o zgodę na kolejną warstwę, o „kontynuować?",
+   ani o potwierdzenie czegoś, co już zatwierdzono (analiza `approved`). Jeden `Workflow` na cały task,
+   nie warstwa po warstwie. `layers_done` dopisz jednym `Edit` PO zakończeniu Workflow (z `report.layers`,
+   statusy GO i GO_WITH_GAPS), bez komunikatu.
+2. **Wolno się zatrzymać i zapytać tylko:** (a) przy bramce analizy `PAUSE`, raz, przed startem;
+   (b) po zatrzymaniu z sekcji „Po zatrzymaniu" (kod, decyzja produktowa, sekret, zmiana kompozycji).
+   Wszystko inne: zrób rekomendowaną, odwracalną rzecz i zaraportuj ją jedną linią.
+3. **Wiadomość końcowa w czacie: maksymalnie 3 linie.** (1) Co się zmieniło: 1-2 zdania językiem
+   biznesowym (`human_voice`): bez nazw plików, klas, ścieżek, numerów ADR/ORC. (2) Gotowa linia
+   `report.statusLine` — przepisz ją dosłownie. (3) Ewentualnie JEDNO pytanie wg pkt 4. Resztę
+   („Przebieg": sloty, próby, werdykty, lista plików, `runtimeHash`, `warnings`, `gaps`) zapisz do
+   `.claude/run-state/{TASK-ID}.report.md` i w czacie podaj najwyżej jedną linię ze ścieżką, tylko gdy
+   `warnings`/`gaps`/`minorFindings` są niepuste.
+4. **Pytanie do człowieka:** jedno naraz, 1-2 zdania, język biznesowy, forma „tak/nie" albo „A czy B",
+   zawsze z rekomendacją i domyślną odpowiedzią („Domyślnie: tak."). Użyj `AskUserQuestion` z krótkimi
+   opcjami, nie akapitu. Szczegóły techniczne podaj dopiero na prośbę. Człowiek nie ma prosić o
+   „wytłumacz prostym językiem" — pierwsza wersja ma już tak brzmieć.
+5. **Test przed wysłaniem:** czy ta wiadomość istnieje tylko po to, żeby człowiek odpisał „ok"? Jeśli tak,
+   nie wysyłaj jej — wykonaj krok i zaraportuj wynik.
 
 ## Rejestr reguł
 
@@ -126,7 +154,7 @@ poza Twoją uwagą — to jednocześnie lista kandydatów do zautomatyzowania.
 | ORC-021 | warstwa `tests: true` | implementer dostaje minimalny input (ścieżki + ID reguł), nie treść kodu | `orchestrate.template.mjs` | — |
 | ORC-022 | bramka końcowa | `final_gate.checks` z bloku (ZAWSZE) ∪ `checks` warstw, które weszły, raz na całości | `orchestrate-prepare.mjs` (`checks.finalGate`, ostrzeżenie przy pustej liście) | [ORC-022](docs/decisions/orchestrate-rule-history.md#orc-022) |
 | ORC-023 | artefakt ma `layers_done:` | POMIŃ te warstwy, zrób sanity check zamiast pełnego verify | `orchestrate-prepare.mjs` (`layers[].skip`) | — |
-| ORC-024 | GO warstwy | NATYCHMIAST dopisz jej id do `layers_done:` — `Edit`, nigdy `Write` | tylko prompt | [ORC-024](docs/decisions/orchestrate-rule-history.md#orc-024) |
+| ORC-024 | GO / GO_WITH_GAPS warstwy | PO zakończeniu Workflow (nie w trakcie) dopisz ich id do `layers_done:` jednym `Edit`, nigdy `Write`, bez komunikatu (ORC-095) | tylko prompt | [ORC-024](docs/decisions/orchestrate-rule-history.md#orc-024) |
 | ORC-025 | wznowienie | `final_gate` uruchamiaj ZAWSZE, także po wznowieniu | `orchestrate.template.mjs` | — |
 | ORC-026 | pętla warstwy | implement → verify → (violations? fix → verify)\* aż `GO`; wyczerpane próby → `ESCALATE_AND_HALT` | `orchestrate.template.mjs` · `workflow-lint WL5` | — |
 | ORC-027 | kontekst między warstwami | streszczenie decyzji + LISTA ścieżek; nigdy pełny `git diff` | `orchestrate.template.mjs` · `workflow-lint WL6` | — |
@@ -196,6 +224,14 @@ poza Twoją uwagą — to jednocześnie lista kandydatów do zautomatyzowania.
 | ORC-091 | drobne ustalenia (WARN, nity, łatwe NO_GO) — użytkownik musiał ręcznie zlecać ich naprawę przy każdym przebiegu | weryfikatorzy wpisują je do `minor_findings`; warstwa po GO robi jedno przejście naprawcze; bramka końcowa: runda naprawcza + ponowna bramka przy blokujących (≤8); analiza: `minor_fixes` → implementer; wyłączenie `--overrides {"autoFixMinor": false}` | `orchestrate.template.mjs` (`collectMinor`, `groupFindingsByLayer`, pętla warstwy, `repairFinalFindings`) · `orchestrate-prepare.mjs` | [ORC-091](docs/decisions/orchestrate-rule-history.md#orc-091) |
 | ORC-092 | `maxTurns` we frontmatterze agenta (verify/final-gate/implementer) mniejszy niż budżet skryptu — agent kończy bez werdyktu, `--overrides` nie pomaga | `maxTurns: 60` w weryfikatorach i bramkach (centralnych i lokalnych); `orchestrate-prepare` ostrzega przed startem, gdy limit agenta < budżet | `orchestrate-prepare.mjs` (`agentTurnCapWarnings`) · definicje agentów | [ORC-092](docs/decisions/orchestrate-rule-history.md#orc-092) |
 | ORC-093 | ORC-082 w projekcie z katch-all w wcześniejszej warstwie (`domain: apps/api/src/`): każdy plik uznany za jej własny; goły dir pasuje do nazw plików | jeden właściciel pliku wg specyficzności (nazwa katalogu-segmentu > prefiks, dłuższy dir, remis = brak); odroczenie tylko gdy WSZYSTKIE błędy należą do późniejszej, biegnącej warstwy | `orchestrate.template.mjs` (`layerMatchScore`, `ownerLayerOf`, `typecheckRedIsLaterLayers`) | [ORC-093](docs/decisions/orchestrate-rule-history.md#orc-093) |
+| ORC-094 | sonda z kilkoma checks nadpisuje log (tsErrors puste, lint w polu typecheck); subagenci commitują mimo zakazu w prompcie | osobny log per check (`-N.log`), pole `lint` + stałe mapowanie wyników; `hooks/block-subagent-commit.js` (deny git commit/push/… dla subagentów przy świeżym `orchestrating.json`); ostrzeżenie, gdy sonda drzewa nie zwróciła licznika commitów | `orchestrate.template.mjs` (`buildProbePrompt`, `CHECKS_SCHEMA`) · `hooks/block-subagent-commit.js` | [ORC-094](docs/decisions/orchestrate-rule-history.md#orc-094) |
+| ORC-095 | przystanki „ok/kontynuuj" między warstwami; raporty i pytania jako akapity, które trzeba prosić o uproszczenie | zakaz pytań o zgodę w trakcie przebiegu (jedno ciągłe przejście, `layers_done` jednym Edit po Workflow); wiadomość końcowa max 3 linie z gotową `report.statusLine`, reszta do pliku; pytanie: 1 naraz, 1-2 zdania, biznesowo, tak/nie lub A/B z rekomendacją | `orchestrate.template.mjs` (`statusLine`) · sekcja „Komunikacja z człowiekiem" (prompt) · `check-human-voice` (długość `ask`) | [ORC-095](docs/decisions/orchestrate-rule-history.md#orc-095) |
+| ORC-096 | `git add -N` z wzorcem bez trafień przerywa w całości → nowy, nieśledzony plik testu nie jest liczony → halt „zero testów" | `git ls-files -o --exclude-standard -z -- <wzorce> \| xargs -0 -r git add -N --` zamiast bezpośredniego `git add -N`; fałszywy alarm bramki deterministycznej → `--overrides` + wznowienie, nie ręczne `layers_done` i nie pytanie | `orchestrate.template.mjs` (`buildProbePrompt`) | [ORC-096](docs/decisions/orchestrate-rule-history.md#orc-096) |
+| ORC-097 | bramka końcowa na dziedziczonym modelu sesji (Opus) z ~27 tys. tokenów wyjścia na werdykt; koszty modeli bez cennika = $0 | `final_gate.model` (auto = Sonnet, model sesji tylko dla tasków z `threat_model`; inherit/sonnet/opus/haiku wymusza); limit długości wyjścia w prompcie (5 zdań, naruszenia po jednej linii); `estimateCostUsd` z fallbackiem po rodzinie modelu | `orchestrate.template.mjs` (`modelFor`) · `orchestrate-prepare.mjs` · `workflow-metrics-lib.mjs` | [ORC-097](docs/decisions/orchestrate-rule-history.md#orc-097) |
+| ORC-098 | bramka końcowa kończyła NO_GO `machine` z samego `unverified_scope` (7 z 8 raportów 2026-10-03/04, zero własnych naruszeń, checks zielone); agent bramki nie uruchamiał `checks` | sonda silnika (Haiku, raz na rundę) uruchamia `final_gate.checks` i oddaje bramce FAKTY; GO + niepusty `unverified_scope` + zero naruszeń + zielona sonda = GO z lukami (`report.gaps` warstwa `final-gate`, `finalGate.gaps_accepted`, `stageForReview`), nie halt; brak/ślepa/czerwona sonda = NO_GO jak dotąd | `orchestrate.template.mjs` (`finalGapsAcceptable`, `buildFinalGatePrompt`, bramka końcowa) | [ORC-098](docs/decisions/orchestrate-rule-history.md#orc-098) |
+| ORC-099 | czerwone TESTY w plikach późniejszej jednostki (AIG-082: zmiana Config psuje registry, 36 testów w 15 plikach) dawały halt, bo ORC-082 odracza tylko typecheck | sonda zwraca `testFailFiles` + `testFilesFailed`; `tests: deferred`, gdy lista = podsumowanie runnera i każdy plik należy do późniejszych warstw; inaczej halt jak dotąd | `orchestrate.template.mjs` (`testsRedIsLaterLayers`, `buildProbePrompt`) | [ORC-099](docs/decisions/orchestrate-rule-history.md#orc-099) |
+| ORC-100 | warstwa zamykana z GO i tym samym `unverified_scope` kilka razy z rzędu (~25 wystąpień ORC-069): każda próba pali świeży budżet weryfikatora, bez efektu | `reverify` niesie `gaps`; ten sam zbiór luk w kolejnej rundzie + GO bez naruszeń + zielona sonda = GO_WITH_GAPS od razu, bez pozostałych prób | `orchestrate.template.mjs` (`repeatedGapsAcceptable`, pętla warstwy) | [ORC-100](docs/decisions/orchestrate-rule-history.md#orc-100) |
+| ORC-101 | `minor_fixes` z analizy dotyczące dokumentacji/rejestrów (poza `dirs` każdej warstwy) pomijała każda warstwa; bramka zgłaszała je jako niewykonane, a przebieg kończył się pytaniem „ja czy ty?” | `orphanMinorFixes` wskazuje pozycje bez właściciela; jedno przejście ostatniego implementera przed bramką końcową jako jawny wyjątek od zakresu; wynik w `report.docFixes`, porażka → `minorFindings` + ostrzeżenie, bez halt | `orchestrate.template.mjs` (`orphanMinorFixes`, krok 4b) | [ORC-101](docs/decisions/orchestrate-rule-history.md#orc-101) |
 
 ## Co zrobić z regułą „tylko prompt"
 
@@ -208,12 +244,9 @@ prozy do tego pliku. Tak powstał ten rejestr.
 
 ## Raport
 
-Dwie części, w tej kolejności:
-
-1. **Co się zmieniło** — 2-4 zdania rejestrem `human_voice` z runtime.yml (domyślnie: polski,
-   biznesowy, bez nazw klas, ścieżek i numerów ADR). Co teraz działa inaczej, czego użytkownik
-   nie zobaczy, co zostało do decyzji. To czyta człowiek przed commitem i na tej podstawie go
-   robi albo nie.
-2. **Przebieg** — które sloty i którzy agenci działali (z `# source:` bloku), ile prób zjadła
-   każda warstwa, czy budżety zadziałały miękko, werdykty bramek, lista plików, `runtimeHash`
-   z kroku 2 (dowód, na jakiej kompozycji to szło).
+Do czatu: **maksymalnie 3 linie** wg sekcji „Komunikacja z człowiekiem" (co się zmieniło w 1-2 zdaniach
+językiem `human_voice`, gotowa linia `report.statusLine`, ewentualnie jedno pytanie). Część „Przebieg"
+(które sloty i którzy agenci działali z `# source:` bloku, ile prób zjadła każda warstwa, czy budżety
+zadziałały miękko, werdykty bramek, lista plików, `runtimeHash` z kroku 2, `warnings`, `gaps`,
+`minorFindings`, `askErrors`) zapisz do `.claude/run-state/{TASK-ID}.report.md`; w czacie najwyżej
+jedna linia ze ścieżką do tego pliku, tylko gdy coś z tego jest niepuste.

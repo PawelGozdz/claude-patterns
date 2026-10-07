@@ -54,11 +54,18 @@ const DEFAULTS = { implTurns: 40, verifyCalls: 15, probeTurns: 8, diffProbeTurns
 // Routing modeli — JAWNIE, nie dziedziczeniem. `agent()` bez `model:` bierze model głównej
 // pętli, więc na drogiej sesji każda sonda liczy kontekst po najwyższej stawce (a kontekst
 // to ~91% rachunku przebiegu). Jakość chronią weryfikatory, nie drogi implementer.
-function modelFor(role) {
+function modelFor(role, a) {
   if (role === 'probe') return { model: 'haiku', effort: 'low' }
   if (role === 'implement') return { model: 'sonnet' }
   if (role === 'verify') return { model: 'sonnet' }
-  return {} // bramka końcowa — dziedziczy model sesji, zwykle najmocniejszy
+  // ORC-097: bramka końcowa dziedziczyła model sesji, czyli Opusa (39 z 46 bramek od 10-01), a
+  // oddaje średnio 27 tys. tokenów wyjścia na werdykt — najdroższy pojedynczy krok przebiegu.
+  // Domyślnie ('auto'): Sonnet, a model sesji TYLKO dla tasków wrażliwych na bezpieczeństwo
+  // (analiza ma threat_model). `final_gate.model` w runtime.yml wymusza: inherit | sonnet | opus.
+  const m = a && a.finalGateModel
+  if (m === 'inherit') return {}
+  if (m && m !== 'auto') return { model: m }
+  return a && a.task && a.task.securitySensitive ? {} : { model: 'sonnet' }
 }
 
 function budgetFor(a, slot, fallback) {
@@ -345,7 +352,10 @@ function buildProbePrompt(a, layer) {
     })
     .join(' ') || '.'
   const run = cmds.length
-    ? pkgLookup + cmds.map((c) => c + ' > /tmp/check-' + layer.id + '.log 2>&1; echo "EXIT:$?"').join('\n') +
+    // ORC-094: OSOBNY log na każdy check. Wspólny `/tmp/check-<warstwa>.log` drugi check nadpisywał
+    // pierwszy — marketing-hub TS-MH-013: po `lint:check:api` log nie zawierał już błędów `tsc`,
+    // więc `tsErrors` było puste i odroczenie ORC-082 nie miało czego sparsować.
+    ? pkgLookup + cmds.map((c, i) => c + ' > /tmp/check-' + layer.id + '-' + (i + 1) + '.log 2>&1; echo "EXIT:$?"').join('\n') +
       (firstDir
         ? '\nGdy $PKGROOT wyjdzie jako "." (brak package.json na ścieżce do zakresu warstwy) — ' +
           'checks poleciały na PEŁNYM repo; zaznacz to WPROST w swojej odpowiedzi (ORC-016: ' +
@@ -371,7 +381,12 @@ function buildProbePrompt(a, layer) {
       // plik zestage'owany przez agenta (`A`/`AM`) liczył 0 (ai-gateway TS-AIG-015, 3 próby
       // i ESCALATE na gotowych testach). `.each/.only/.skip/.concurrent` przed `(`, bo
       // `describe.each(` to nadal blok wykonywalny.
-      '  git add -N -- ' + globScoped + ' 2>/dev/null; git diff HEAD -U0 -- ' + globScoped + " | grep -cE '^\\+\\s*(it|test|testWidgets|describe|group)(\\.(each|only|skip|concurrent))?\\(' \n" +
+      // ORC-096: `git add -N -- <wzorce>` przerywa w CAŁOŚCI ("fatal: pathspec … did not match any
+      // files"), gdy choć jeden wzorzec nic nie dopasowuje — a dla wpisów-plików (package.json)
+      // generujemy też wzorce `*.spec.*`/`*.test.*`, które zwykle nic nie dopasowują. Nowy plik testu
+      // zostawał nieśledzony i przyrost wychodził 0 (ai-os-bot BOT-024, u14: 19 zielonych testów,
+      // halt „zero testów"). ls-files -o zwraca tylko istniejące nieśledzone pliki, bez błędu.
+      '  git ls-files -o --exclude-standard -z -- ' + globScoped + ' | xargs -0 -r git add -N -- 2>/dev/null; git diff HEAD -U0 -- ' + globScoped + " | grep -cE '^\\+\\s*(it|test|testWidgets|describe|group)(\\.(each|only|skip|concurrent))?\\(' \n" +
       'i zwróć go jako newTestBlocks.'
     : ''
   // „Ostatnie 40 linii" gubi błąd, gdy PO nim w tym samym logu leży dużo ostrzeżeń z
@@ -386,7 +401,7 @@ function buildProbePrompt(a, layer) {
     .map((d) => String(d).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
     .join('|')
   const tailInstruction = scopeGrep
-    ? ' Przy niezerowym: NAJPIERW `grep -E \'' + scopeGrep + '\' /tmp/check-' + layer.id + '.log` — ' +
+    ? ' Przy niezerowym: NAJPIERW `grep -hE \'' + scopeGrep + '\' /tmp/check-' + layer.id + '-*.log` — ' +
       'linie z Twojego WŁASNEGO zakresu, w CAŁOŚCI, niezależnie od tego, ile linii to da. ' +
       'Dopiero gdy ten grep nic nie znajdzie (błąd bez ścieżki pliku, np. konfiguracyjny) — ' +
       'zwróć ostatnie 40 linii CAŁEGO logu w `tail`.'
@@ -396,14 +411,28 @@ function buildProbePrompt(a, layer) {
   // nie zadziałał i warstwa domain stanęła na BLOCKED_BY_PRIOR (juz-ide-api-1, 2026-09-30).
   const tsErrorsInstruction = cmds.length
     ? ' Przy niezerowym typecheck dodatkowo zwróć w `tsErrors` WYNIK DOSŁOWNIE (bez streszczania, ' +
-      'parafrazy i komentarza): `grep -E \'error TS[0-9]+\' /tmp/check-' + layer.id + '.log | head -60`.'
+      'parafrazy i komentarza): `grep -hE \'error TS[0-9]+\' /tmp/check-' + layer.id + '-*.log | head -60`.'
     : ''
-  const literalMapping = hasLiteral
-    ? '\nMapowanie wyników: komenda zawierająca `analyze`, `typecheck`, `tsc` albo `vet` → pole ' +
-      '`typecheck`; komenda zawierająca `test` → pole `tests` (EXIT:0 = pass, niezerowy = fail).'
+  // ORC-099: przy czerwonych testach sonda zwraca nazwy padających plików i ich liczbę z podsumowania
+  // runnera — silnik odracza testy, których WSZYSTKIE padające pliki należą do późniejszych warstw
+  // (ai-gateway AIG-082 config-env: zmiana Config psuje registry.ts, potem ~36 testów w 15 plikach).
+  const testFailInstruction = cmds.length
+    ? ' Przy niezerowych testach dodatkowo zwróć: w `testFailFiles` WYNIK DOSŁOWNIE (bez streszczania): ' +
+      '`grep -hE \'^[[:space:]]*FAIL[[:space:]]\' /tmp/check-' + layer.id + '-*.log | head -80`, a w ' +
+      '`testFilesFailed` LICZBĘ plików z podsumowania runnera (vitest „Test Files  N failed", jest ' +
+      '„Test Suites: N failed"); gdy podsumowania nie ma — pomiń to pole.'
+    : ''
+  // ORC-094: mapowanie wyników na pola ZAWSZE (nie tylko dla komend dosłownych). marketing-hub
+  // TS-MH-013: wynik lintu trafiał do pola `typecheck`, więc warstwa wyglądała na „typecheck
+  // czerwony" i wpadała w ścieżkę odroczenia/halt z błędnym powodem. Lint ma własne pole `lint`.
+  const literalMapping = cmds.length
+    ? '\nMapowanie wyników na pola (każdy check do SWOJEGO pola, nie mieszaj): nazwa/komenda z `lint` → ' +
+      '`lint`; z `typecheck`, `tsc`, `analyze`, `vet` albo `build` → `typecheck`; z `test` → `tests` ' +
+      '(EXIT:0 = pass, niezerowy = fail, brak skryptu = skipped). Pole `typecheck` = fail tylko wtedy, ' +
+      'gdy padł typecheck/analyze/build, nigdy z powodu lintu.'
     : ''
   return 'Uruchom dokładnie to i NIC więcej:\n' + run + literalMapping +
-    '\nPrzy EXIT:0 NIE otwieraj pliku logu wcale.' + tailInstruction + tsErrorsInstruction +
+    '\nPrzy EXIT:0 NIE otwieraj pliku logu wcale.' + tailInstruction + tsErrorsInstruction + testFailInstruction +
     delta +
     '\nNIC nie czytaj, nie analizuj, nie poprawiaj, nie komentuj kodu.' +
     (scoped ? '\nZakres zmiany: ' + scoped : '') +
@@ -445,9 +474,14 @@ function buildVerifierPrompt(a, layer, probe, changedFiles, mode, noopClaim, pri
   const facts = probe
     ? 'FAKTY Z SONDY — obiekt `checks` (już wykonane, traktuj jak dane wejściowe):\n' +
       '  checks.typecheck: ' + probe.typecheck + '\n  checks.tests: ' + probe.tests +
+      (probe.lint != null ? '\n  checks.lint: ' + probe.lint : '') +
       (probe.newTestBlocks != null ? '\n  checks.newTestBlocks: ' + probe.newTestBlocks : '') +
       (probe.typecheck === 'deferred'
         ? '\n  (typecheck: czerwień wyłącznie w plikach PÓŹNIEJSZYCH warstw — odroczona do ich sond, ' +
+          'nie jest naruszeniem tej warstwy; nie zgłaszaj jej)'
+        : '') +
+      (probe.tests === 'deferred'
+        ? '\n  (testy: czerwień wyłącznie w plikach PÓŹNIEJSZYCH warstw — odroczona do ich sond, ' +
           'nie jest naruszeniem tej warstwy; nie zgłaszaj jej)'
         : '') +
       '\nNIE uruchamiaj typechecku ani testów ponownie — zostały już wykonane, a ich powtórzenie ' +
@@ -498,7 +532,7 @@ function buildVerifierPrompt(a, layer, probe, changedFiles, mode, noopClaim, pri
 // raportów warstw: warstwa zakończona no-op oddaje `files: []`, więc bramka nie widziała
 // infrastruktury, migracji ani kontraktów (TS-MH-005 — weryfikator sam zajrzał do HEAD).
 // Karty: wszystkie wzorce przebiegu — bramka oceniała całość zmiany bez reguł.
-function buildFinalGatePrompt(a, checks, changedFiles, treeSource, knownGaps) {
+function buildFinalGatePrompt(a, checks, changedFiles, treeSource, knownGaps, probe) {
   const calls = scaledBudget(a, 'final-gate', (changedFiles || []).length)
   // ORC-084: luki, które warstwy już zapisały jako GO_WITH_GAPS — bramka nie wymusza za nie NO_GO
   // (filterKnownLayerGaps), ale ma je sprawdzić celowanym odczytem, jeśli starczy budżetu.
@@ -533,12 +567,26 @@ function buildFinalGatePrompt(a, checks, changedFiles, treeSource, knownGaps) {
     : ''
   return 'BRAMKA KOŃCOWA dla ' + a.task.id + ' — oceniasz CAŁOŚĆ zmiany, nie ostatnią warstwę. ' +
     'To ostatnie miejsce, w którym wychodzi regresja MIĘDZY warstwami.\n\n' +
-    (checks.length ? 'Deterministyczne bramki do wykonania raz, na całości: ' + checks.join(', ') + '\n' : '') +
+    // ORC-098: sonda silnika już wykonała checks na całości — bramka dostaje FAKTY jak weryfikator
+    // warstwy (ORC-081) i nie powtarza ich. Bez wyniku sondy zostaje stara instrukcja (uruchom sam).
+    (probe
+      ? 'FAKTY Z SONDY — checks wykonane na całości (traktuj jak dane wejściowe): ' + checks.join(', ') +
+        '\n  checks.typecheck: ' + probe.typecheck + '\n  checks.tests: ' + probe.tests +
+        (probe.lint != null ? '\n  checks.lint: ' + probe.lint : '') +
+        '\nNIE uruchamiaj ich ponownie. Rzeczy niesprawdzalne w tym repo (deploy, kopie u konsumentów, ' +
+        'inne repozytoria, przeglądarka, środowisko produkcyjne) wpisz do `unverified_scope`, nie do ' +
+        '`violations` — przy zielonych checks i zerze naruszeń nie powodują NO_GO, trafiają do raportu.\n'
+      : (checks.length ? 'Deterministyczne bramki do wykonania raz, na całości: ' + checks.join(', ') + '\n' : '')) +
     (changedFiles.length ? 'Pliki objęte zmianą (z drzewa, względem bazy przebiegu):\n  ' + changedFiles.join('\n  ') + '\n' : '') +
     source + dirty + decisions + gapsBlock +
     renderCards(a.patterns || [], 'wszystkie wzorce tego przebiegu') +
     '\nZwróć werdykt GO albo NO_GO i listę naruszeń.\n' +
     (a.autoFixMinor !== false ? MINOR_REMINDER : '') +
+    // ORC-097: bramka oddawała średnio 27 tys. tokenów wyjścia na werdykt (najwięcej ze wszystkich
+    // kroków). Pełne rozumowanie zostaje po stronie agenta; w wyjściu tylko to, co czytają inni.
+    'WYJŚCIE (limit długości): `rationale` najwyżej 5 zdań; każde naruszenie i ustalenie to JEDNA ' +
+    'linia `plik:linia — reguła — poprawka`. Nie przepisuj kodu, nie streszczaj diffu, nie powtarzaj ' +
+    'listy plików ani kart reguł, nie opisuj tego, co jest w porządku.\n' +
     'TWARDY LIMIT: ' + calls + ' wywołań narzędzi. Gdy budżet się kończy — wydaj werdykt ' +
     'natychmiast na podstawie zebranych dowodów.' + NO_REVERT
 }
@@ -659,7 +707,7 @@ function decideVerdict(verdict, attempt, maxAttempts, layer, allLayers) {
     // marketing-hub TS-MH-006, `infrastructure:wiring-security-format-fix`) 3 próby paliły
     // implementera na kodzie, który już był poprawny — 3-cia próba w obu przypadkach nie
     // miała żadnej zmiany w diffie, tylko pisemną analizę weryfikatora.
-    return { next: 'reverify', reason: 'weryfikator dał GO, ale nie zdążył sprawdzić (unverified_scope): ' + ownUnverified.join(', ') + ' — kolejna próba dostaje świeży budżet tur wyłącznie na dokończenie weryfikacji, bez powrotu do implementera' }
+    return { next: 'reverify', gaps: ownUnverified, reason: 'weryfikator dał GO, ale nie zdążył sprawdzić (unverified_scope): ' + ownUnverified.join(', ') + ' — kolejna próba dostaje świeży budżet tur wyłącznie na dokończenie weryfikacji, bez powrotu do implementera' }
   }
   if (v === 'GO') return { next: 'go', reason: null }
   if (attempt >= maxAttempts) {
@@ -681,12 +729,27 @@ function layerGapsAcceptable(decision, verdict, probe) {
   return probeHasGreenEvidence(probe)
 }
 
+// ORC-100: `reverify` zwrócił DOKŁADNIE te same luki co poprzednia runda (ten sam zbiór) przy GO bez
+// naruszeń i zielonej sondzie — kolejny świeży budżet weryfikatora niczego nie domknie (~25 wystąpień
+// ORC-069 na warstwach: weryfikator zamyka warstwę z tym samym unverified_scope trzy razy). Warstwa
+// kończy od razu jako GO_WITH_GAPS, bez palenia pozostałych prób.
+function repeatedGapsAcceptable(prevGaps, decision, verdict, probe) {
+  if (!decision || decision.next !== 'reverify' || !Array.isArray(decision.gaps) || !decision.gaps.length) return false
+  if (!Array.isArray(prevGaps) || prevGaps.length !== decision.gaps.length) return false
+  const a = prevGaps.map(String).sort()
+  const b = decision.gaps.map(String).sort()
+  if (a.some((x, i) => x !== b[i])) return false
+  if (!verdict || String(verdict.verdict || '').toUpperCase() !== 'GO') return false
+  if (Array.isArray(verdict.violations) && verdict.violations.length) return false
+  return probeHasGreenEvidence(probe)
+}
+
 // „skipped" to brak dowodu, nie zieleń: ślepa sonda (wszystko skipped, np. złe nazwy
 // skryptów — ORC-085) nie może uzasadniać przejścia dalej. Wymagamy co najmniej jednego
 // faktycznego `pass` (typecheck albo testy) i zera `fail`.
 function probeHasGreenEvidence(probe) {
   if (!probe) return false
-  if (probe.typecheck === 'fail' || probe.tests === 'fail') return false
+  if (probe.typecheck === 'fail' || probe.tests === 'fail' || probe.lint === 'fail') return false
   return probe.typecheck === 'pass' || probe.tests === 'pass'
 }
 
@@ -696,6 +759,20 @@ function probeHasGreenEvidence(probe) {
 // zatrzymywać przebieg. Bez dowodu zielonej sondy albo bez zmian w zakresie — halt jak dotąd.
 function silentVerifierGapsAcceptable(probe, files) {
   return probeHasGreenEvidence(probe) && Array.isArray(files) && files.length > 0
+}
+
+// ORC-098: bramka końcowa z GO i niepustym unverified_scope, ale zero własnych naruszeń i
+// ZIELONĄ sondą checks wykonaną przez silnik (nie przez agenta bramki), nie zatrzymuje przebiegu —
+// kończy jako GO z lukami (staged do przeglądu, luki w raporcie). Dotąd każde takie GO szło w
+// NO_GO `machine` (7 z 8 raportów 2026-10-03/04: ai-gateway AIG-064/067/069, iam SSO-057,
+// marketing-hub MH-012, mobile DS009 x2), bo niesprawdzalne w repo rzeczy (deploy, kopie u
+// konsumentów, przeglądarka) bramka nie ma jak domknąć. Brak wyniku sondy albo ślepa sonda
+// (wszystko skipped) = brak dowodu, więc NO_GO jak dotąd.
+function finalGapsAcceptable(finalGate, unverified, probe) {
+  if (!finalGate || String(finalGate.verdict || '').toUpperCase() !== 'GO') return false
+  if (!Array.isArray(unverified) || !unverified.length) return false
+  if (Array.isArray(finalGate.violations) && finalGate.violations.length) return false
+  return probeHasGreenEvidence(probe)
 }
 
 // ORC-085: domyślne 15 wywołań na weryfikatora/bramkę dla jednostki ~37 plików (grant-flow
@@ -799,9 +876,17 @@ function layerMatchScore(layer, file) {
   let best = null
   for (const d0 of (layer.dirs || []).concat(effectiveDirs(layer))) {
     const d = String(d0).replace(/\/+$/, '')
-    if (!d || /\.[a-z0-9]+$/i.test(d)) continue
+    if (!d) continue
     let score = null
-    if (d.indexOf('/') === -1) {
+    if (/\.[a-z0-9]+$/i.test(d)) {
+      // ORC-098b: wpis `dirs` będący PLIKIEM (zakres jednostki z `layers_scope`, np. `src/wikiIndexer.ts`)
+      // był pomijany, więc plik nie miał właściciela, a odroczenie ORC-082 nie działało (ai-os-bot
+      // BOT-025 u4, ai-gateway AIG-068/082). Dopasowanie DOKŁADNE (także ścieżka względna pakietu z
+      // `tsc`: jeden z dwóch kończy się drugim po `/`) i najwyższa ranga — konkretny plik wygrywa z
+      // każdym katalogiem.
+      const exact = f === d || f.endsWith('/' + d) || (f.indexOf('/') !== -1 && d.endsWith('/' + f))
+      if (exact) score = { seg: 2, len: d.length }
+    } else if (d.indexOf('/') === -1) {
       if (dirSegs.indexOf(d) !== -1) score = { seg: 1, len: d.length }
     } else {
       const segs = d.split('/')
@@ -813,29 +898,76 @@ function layerMatchScore(layer, file) {
   return best
 }
 
-function ownerLayerOf(file, layers) {
+// Wszystkie warstwy remisujące na najwyższym wyniku (jedna = jednoznaczny właściciel).
+function ownerLayersOf(file, layers) {
   let best = null
-  let owner = null
-  let tie = false
+  let owners = []
   for (const l of layers) {
     const s = layerMatchScore(l, file)
     if (!s) continue
-    if (!best || s.seg > best.seg || (s.seg === best.seg && s.len > best.len)) { best = s; owner = l; tie = false }
-    else if (s.seg === best.seg && s.len === best.len) tie = true
+    if (!best || s.seg > best.seg || (s.seg === best.seg && s.len > best.len)) { best = s; owners = [l] }
+    else if (s.seg === best.seg && s.len === best.len) owners.push(l)
   }
-  return tie ? null : owner
+  return owners
+}
+
+function ownerLayerOf(file, layers) {
+  const owners = ownerLayersOf(file, layers)
+  return owners.length === 1 ? owners[0] : null
 }
 
 function typecheckRedIsLaterLayers(probe, layer, allLayers) {
-  if (!probe || probe.typecheck !== 'fail' || probe.tests === 'fail') return false
+  if (!probe || probe.typecheck !== 'fail' || probe.tests === 'fail' || probe.lint === 'fail') return false
   const { total, paths } = typecheckErrorPaths(probe.tsErrors || probe.tail)
   if (!paths.length || paths.length !== total) return false
   const withDirs = (allLayers || []).filter((l) => (l.dirs || []).length || effectiveDirs(l).length)
   const myIdx = withDirs.findIndex((l) => l.id === layer.id)
   if (myIdx < 0 || myIdx === withDirs.length - 1) return false
+  // ORC-098b: remis nie znosi odroczenia, gdy WSZYSTKIE remisujące warstwy są późniejsze od bieżącej
+  // (plik należy do którejś z nich — ai-os-bot BOT-025: u5a/u5b mają ten sam plik w dirs). Gdy
+  // bieżąca warstwa jest wśród remisujących, plik może być jej własny — nie odraczamy.
   return paths.every((p) => {
-    const owner = ownerLayerOf(p, withDirs)
-    return !!owner && withDirs.findIndex((l) => l.id === owner.id) > myIdx
+    const owners = ownerLayersOf(p, withDirs)
+    return owners.length > 0 && owners.every((o) => withDirs.findIndex((l) => l.id === o.id) > myIdx)
+  })
+}
+
+// ORC-099: ścieżki padających plików testowych z linii „FAIL  path > suite > case" (vitest) albo
+// „FAIL path" (jest); unikalne, bez sufiksu po „>".
+function testFailPaths(text) {
+  const out = []
+  const re = /^\s*FAIL\s+(\S+\.[A-Za-z0-9]+)/gm
+  let m
+  while ((m = re.exec(String(text || ''))) !== null) if (out.indexOf(m[1]) === -1) out.push(m[1])
+  return out
+}
+
+// Czerwone TESTY, których wszystkie padające pliki należą do późniejszych warstw (typecheck i lint
+// nie są czerwone) — odroczone do sond tamtych warstw, tak jak typecheck w ORC-082. Zgodność liczby
+// wyłapanych plików z podsumowaniem runnera jest warunkiem: niepełna lista = brak odroczenia.
+function testsRedIsLaterLayers(probe, layer, allLayers) {
+  if (!probe || probe.tests !== 'fail' || probe.typecheck === 'fail' || probe.lint === 'fail') return false
+  const paths = testFailPaths(probe.testFailFiles)
+  if (!paths.length || typeof probe.testFilesFailed !== 'number' || paths.length !== probe.testFilesFailed) return false
+  const withDirs = (allLayers || []).filter((l) => (l.dirs || []).length || effectiveDirs(l).length)
+  const myIdx = withDirs.findIndex((l) => l.id === layer.id)
+  if (myIdx < 0 || myIdx === withDirs.length - 1) return false
+  return paths.every((p) => {
+    const owners = ownerLayersOf(p, withDirs)
+    return owners.length > 0 && owners.every((o) => withDirs.findIndex((l) => l.id === o.id) > myIdx)
+  })
+}
+
+// ORC-101: pozycje `minor_fixes` analizy (`plik — co — poprawka`), których ścieżka nie leży w `dirs`
+// ŻADNEJ warstwy z dirs (dokumentacja, KANBAN, karty) — nikt by ich nie zrobił. Pozycja bez
+// rozpoznawalnej ścieżki zostaje po staremu (nie jest sierotą).
+function orphanMinorFixes(fixes, layers) {
+  const scoped = (layers || []).filter((l) => effectiveDirs(l).length)
+  if (!scoped.length) return []
+  return (fixes || []).map(String).filter((x) => {
+    const p = x.split(/\s+[—–]\s+|\s+-\s+/)[0].trim().replace(/^`|`$/g, '')
+    if (!/[/.]/.test(p) || /\s/.test(p)) return false
+    return !scoped.some((l) => layerTouches(l, p))
   })
 }
 
@@ -870,6 +1002,24 @@ function groupFindingsByLayer(items, layers, fallbackId) {
     ;(groups[id] = groups[id] || []).push(item)
   }
   return groups
+}
+
+// ORC-095 (docs/decisions/orchestrate-rule-history.md#orc-095): JEDNA gotowa linia statusu dla
+// człowieka, składana przez silnik, żeby główny agent nie wymyślał własnego akapitu. Bez ścieżek,
+// nazw klas i numerów reguł — same liczby i rodzaj problemu.
+function statusLine(report, kind, info) {
+  const n = (x) => (Array.isArray(x) ? x.length : 0)
+  if (kind === 'ok') {
+    const bits = []
+    if (n(report.gaps)) bits.push('niesprawdzone fragmenty: ' + n(report.gaps))
+    if (report.stageForReview) bits.push('wymaga uważnego przeglądu')
+    if (n(report.minorFindings)) bits.push('nienaprawione drobiazgi: ' + n(report.minorFindings))
+    if (n(report.warnings)) bits.push('ostrzeżenia w raporcie: ' + n(report.warnings))
+    return 'Gotowe do przeglądu: ' + n(report.staged) + ' plików w stagingu' + (bits.length ? '; ' + bits.join('; ') : '') + '.'
+  }
+  const where = info && info.id ? 'etapie „' + info.id + '"' : 'bramce końcowej'
+  const why = info && info.cause === 'code' ? 'kod nie przechodzi kontroli' : 'awaria narzędzi, nie kodu'
+  return 'Zatrzymane na ' + where + ': ' + why + '.'
 }
 
 // ORC-090: pliki BRUDNE JUŻ PRZED startem przebiegu (a.dirtyAtStart) nie są pracą tego taska —
@@ -929,9 +1079,12 @@ const CHECKS_SCHEMA = {
   properties: {
     typecheck: { type: 'string', enum: ['pass', 'fail', 'skipped'] },
     tests: { type: 'string', enum: ['pass', 'fail', 'skipped'] },
+    lint: { type: 'string', enum: ['pass', 'fail', 'skipped'] },
     newTestBlocks: { type: 'number' },
     tail: { type: 'string' },
     tsErrors: { type: 'string' },
+    testFailFiles: { type: 'string' },
+    testFilesFailed: { type: 'number' },
   },
 }
 
@@ -1030,6 +1183,7 @@ for (const step of plan) {
   let silentDeaths = 0
   // ORC-091: jedno przejście naprawcze drobnych ustaleń weryfikatora na warstwę
   let minorPassDone = false
+  let prevGaps = null
   let cleanupNext = false
   let mode = 'implement'
   let layerFiles = []
@@ -1201,10 +1355,14 @@ for (const step of plan) {
       log(layer.id + ': typecheck czerwony wyłącznie w plikach późniejszych warstw — odroczony (ORC-082)')
       probe = Object.assign({}, probe, { typecheck: 'deferred' })
     }
+    if (testsRedIsLaterLayers(probe, layer, plan.filter((s) => s.run).map((s) => s.layer))) {
+      log(layer.id + ': testy czerwone wyłącznie w plikach późniejszych warstw — odroczone (ORC-099)')
+      probe = Object.assign({}, probe, { tests: 'deferred' })
+    }
 
-    if (probe && (probe.typecheck === 'fail' || probe.tests === 'fail')) {
+    if (probe && (probe.typecheck === 'fail' || probe.tests === 'fail' || probe.lint === 'fail')) {
       violations = 'deterministyczna bramka na czerwono (typecheck: ' + probe.typecheck +
-        ', testy: ' + probe.tests + ')\n' + (probe.tail || '')
+        ', testy: ' + probe.tests + (probe.lint != null ? ', lint: ' + probe.lint : '') + ')\n' + (probe.tail || '')
       log(layer.id + ': sonda NO_GO — bez analizy kodu, prosto do poprawki')
       probeRed = violations
       mode = 'implement'
@@ -1267,6 +1425,13 @@ for (const step of plan) {
       settled = { id: layer.id, status: 'GO', files: layerFiles, attempts: attempt }
       break
     }
+    if (repeatedGapsAcceptable(prevGaps, decision, verdict, probe)) {
+      settled = { id: layer.id, status: 'GO_WITH_GAPS', files: layerFiles, attempts: attempt, gaps: decision.gaps }
+      report.gaps.push({ layer: layer.id, items: decision.gaps })
+      log(layer.id + ': te same luki po powtórnej weryfikacji (ORC-100) — GO z lukami bez kolejnych prób; luki w raporcie: ' + decision.gaps.join(', '))
+      break
+    }
+    prevGaps = decision.next === 'reverify' ? decision.gaps : null
     if (decision.next === 'escalate' && layerGapsAcceptable(decision, verdict, probe)) {
       settled = { id: layer.id, status: 'GO_WITH_GAPS', files: layerFiles, attempts: attempt, gaps: decision.gaps }
       report.gaps.push({ layer: layer.id, items: decision.gaps })
@@ -1313,9 +1478,49 @@ for (const step of plan) {
 
   if (haltsRun(settled.status)) {
     log(settled.status + ' na warstwie ' + layer.id + ' — ' + settled.reason)
+    report.statusLine = statusLine(report, 'halt', { id: layer.id, cause: settled.cause })
     return report
   }
-  log('warstwa ' + layer.id + ' — GO. Dopisz jej id do layers_done w artefakcie analizy (checkpoint wznowienia).')
+  // ORC-095: to NIE jest polecenie dla głównego agenta w trakcie przebiegu. layers_done dopisuje
+  // orchestrator JEDNYM Edit po zakończeniu Workflow (z report.layers), bez pytania i komunikatu.
+  log('warstwa ' + layer.id + ' — GO (kontynuuję; layers_done uzupełni orchestrator po przebiegu).')
+}
+
+// ── 4b. ORC-101: drobne poprawki z analizy, które nie należą do ŻADNEJ warstwy (dokumentacja, rejestry,
+// karty). Każda warstwa dostaje `minor_fixes` z poleceniem „zrób te w swoim zakresie, resztę pomiń", a
+// pliki poza `dirs` wszystkich warstw pomija każda — nikt ich nie robił, bramka końcowa zgłaszała je
+// jako niewykonane, a przebieg kończył się pytaniem „dopisać to mam ja czy ty?" (ai-gateway AIG-069:
+// TM, karta niezmienników, architecture.md, CLAUDE-LOCAL.md, KANBAN). Robi je jednym przejściem
+// ostatni implementer jako JAWNY wyjątek od zakresu; błąd tego kroku nie zatrzymuje przebiegu.
+const ranLayersAll = plan.filter((s) => s.run).map((s) => s.layer)
+const orphanFixes = a.autoFixMinor !== false ? orphanMinorFixes(a.task.minorFixes, ranLayersAll) : []
+if (orphanFixes.length) {
+  const implOnly = ranLayersAll.filter((l) => l.agent && !l.tests)
+  const docOwner = implOnly[implOnly.length - 1] || ranLayersAll.filter((l) => l.agent).slice(-1)[0]
+  if (docOwner) {
+    log('drobne poprawki z analizy bez właściciela warstwy: ' + orphanFixes.length + ' — jedno przejście przez ' + docOwner.id + ' (ORC-101)')
+    const docText = 'WYJĄTEK OD ZAKRESU WARSTWY — DROBNE POPRAWKI Z ANALIZY, które nie należą do żadnej warstwy ' +
+      '(dokumentacja, rejestry, karty). Zakres tej warstwy NIE ogranicza poniższych pozycji: edytuj wskazane ' +
+      'pliki mechanicznie, bez zmiany zachowania kodu i bez dotykania czegokolwiek poza listą:\n' +
+      orphanFixes.map((x, i) => (i + 1) + '. ' + x).join('\n')
+    const docOpts = Object.assign(
+      { label: docOwner.id + '-doc-fixes', agentType: docOwner.agent, maxTurns: budgetFor(a, 'implement', DEFAULTS.implTurns), schema: IMPL_SCHEMA },
+      modelFor('implement'),
+    )
+    let docFixed = null
+    try {
+      docFixed = await ask(buildImplPrompt(a, docOwner, 2, docText, 0, null), docOpts)
+    } catch (e) {
+      docFixed = null
+    }
+    if (docFixed) {
+      for (const f of docFixed.changed_files || []) if (allChangedFiles.indexOf(f) === -1) allChangedFiles.push(f)
+      report.docFixes = { layer: docOwner.id, items: orphanFixes, files: docFixed.changed_files || [] }
+    } else {
+      report.minorFindings.push({ layer: 'analysis-minor-fixes', items: orphanFixes })
+      report.warnings = (report.warnings || []).concat(docOwner.id + ': drobne poprawki z analizy bez właściciela — implementer bez wyniku, pozycje w minorFindings (ORC-101)')
+    }
+  }
 }
 
 // ── 5. bramka końcowa: checks z final_gate ∪ checks warstw, które weszły — raz, na całości.
@@ -1335,6 +1540,11 @@ try {
 const treeSource = tree && tree.files ? 'tree' : 'layers'
 // ORC-087: implementer zacommitował mimo STAGE_NOT_COMMIT — nie zatrzymuje przebiegu (diff względem
 // bazy nadal działa), ale trafia do raportu, żeby człowiek nie zdziwił się historią.
+if (a.baseSha && tree && typeof tree.commits !== 'number') {
+  // ORC-094: ai-os-bot BOT-024 — 40 commitów, a raport nie miał ostrzeżenia: sonda nie zwróciła
+  // licznika. Brak odpowiedzi to też informacja, nie milczenie.
+  report.warnings = (report.warnings || []).concat('sonda drzewa nie zwróciła licznika commitów od bazy — nie wiadomo, czy agenci commitowali; sprawdź `git log ' + a.baseSha + '..HEAD`')
+}
 if (tree && typeof tree.commits === 'number' && tree.commits > 0) {
   log('UWAGA: ' + tree.commits + ' commit(ów) od bazy przebiegu mimo STAGE_NOT_COMMIT (ORC-087)')
   report.warnings = (report.warnings || []).concat(
@@ -1350,7 +1560,7 @@ if (!finalAgent) {
 } else {
   const finalOpts = Object.assign(
     { label: 'final-gate', agentType: finalAgent, maxTurns: scaledBudget(a, 'final-gate', finalFiles.length), schema: VERDICT_SCHEMA },
-    modelFor('final'),
+    modelFor('final', a),
   )
   // ORC-091: runda naprawcza po bramce końcowej. Ustalenia [BLOKUJĄCE] (violations z cause=code) i
   // [DROBNE] (minor_findings) idą do implementera warstwy, która jest ich właścicielem (po
@@ -1397,9 +1607,25 @@ if (!finalAgent) {
   let roundExtra = ''
   for (let round = 1; round <= 2; round++) {
   const gateOpts = round === 1 ? finalOpts : Object.assign({}, finalOpts, { label: 'final-gate-r2' })
+  // ORC-098: checks bramki końcowej uruchamia SONDA silnika (Haiku, raz na rundę), nie agent bramki —
+  // ten ich nie uruchamiał (AIG-064/069: „bramka nie dostała wyników checks") i każdy przebieg kończył
+  // się NO_GO z unverified_scope. Wynik jedzie do bramki jako fakt i do decyzji o lukach niżej.
+  const finalChecks = (a.checks && a.checks.finalGate) || []
+  let finalProbe = null
+  if (finalChecks.length) {
+    try {
+      finalProbe = await ask(
+        buildProbePrompt(a, { id: 'final', checks: finalChecks, dirs: [], tests: false }),
+        Object.assign({ label: 'final-checks' + (round === 1 ? '' : '-r2'), maxTurns: DEFAULTS.probeTurns, schema: CHECKS_SCHEMA }, modelFor('probe')),
+      )
+    } catch (e) {
+      finalProbe = null
+    }
+    if (!finalProbe) report.warnings = (report.warnings || []).concat('sonda checks bramki końcowej bez wyniku — bramka uruchamia je sama, luki nie będą obniżane do GO (ORC-098)')
+  }
   let final = null
   try {
-    final = await ask(buildFinalGatePrompt(a, (a.checks && a.checks.finalGate) || [], finalFiles, treeSource, report.gaps) + roundExtra, gateOpts)
+    final = await ask(buildFinalGatePrompt(a, finalChecks, finalFiles, treeSource, report.gaps, finalProbe) + roundExtra, gateOpts)
   } catch (e) {
     final = null
   }
@@ -1413,7 +1639,7 @@ if (!finalAgent) {
     log('bramka końcowa bez wyniku — ponawiam raz z werdyktem po ~70% budżetu (ORC-087)')
     try {
       final = await ask(
-        buildFinalGatePrompt(a, (a.checks && a.checks.finalGate) || [], finalFiles, treeSource, report.gaps) + roundExtra +
+        buildFinalGatePrompt(a, finalChecks, finalFiles, treeSource, report.gaps, finalProbe) + roundExtra +
           '\n\nPOPRZEDNIE WYWOŁANIE NIE ZWRÓCIŁO WYNIKU (budżet wyczerpany bez werdyktu). Wydaj werdykt ' +
           'NAJPÓŹNIEJ po ' + Math.floor(retryCalls * 0.7) + ' wywołaniach: najpierw deterministyczne bramki, ' +
           'potem pliki najwyższego ryzyka (migracje, auth, kontrakty, publiczne API); resztę wpisz do ' +
@@ -1450,7 +1676,14 @@ if (!finalAgent) {
   const knownSplit = filterKnownLayerGaps(finalUnverifiedAll, report.gaps)
   const finalUnverified = knownSplit.kept
   if (knownSplit.absorbed.length) report.finalGate.absorbed_gaps = knownSplit.absorbed
-  if (String(report.finalGate.verdict).toUpperCase() === 'GO' && finalUnverified.length) {
+  if (finalGapsAcceptable(report.finalGate, finalUnverified, finalProbe)) {
+    // ORC-098: zero naruszeń + zielona sonda silnika → GO z lukami, nie halt. Pliki idą do stagingu
+    // z flagą przeglądu, luki do raportu (statusLine: „niesprawdzone fragmenty", „wymaga uważnego przeglądu").
+    report.gaps.push({ layer: 'final-gate', items: finalUnverified })
+    report.finalGate.gaps_accepted = finalUnverified
+    report.stageForReview = stageableFiles(finalFiles, a.dirtyAtStart, allChangedFiles)
+    log('bramka końcowa: GO z lukami (ORC-098) — checks zielone, zero naruszeń; luki w raporcie: ' + finalUnverified.join(', '))
+  } else if (String(report.finalGate.verdict).toUpperCase() === 'GO' && finalUnverified.length) {
     // ORC-084: NO_GO wymuszone WYŁĄCZNIE przez unverified_scope (zero własnych naruszeń) —
     // pliki idą do stagingu z flagą „wymaga przeglądu"; człowiek i tak robi review przed commitem.
     if (!(report.finalGate.violations || []).length) report.stageForReview = stageableFiles(finalFiles, a.dirtyAtStart, allChangedFiles)
@@ -1487,6 +1720,7 @@ if (!finalAgent) {
   }
   if (String(report.finalGate.verdict).toUpperCase() !== 'GO') {
     log('ESCALATE_AND_HALT — bramka końcowa: ' + formatViolations(report.finalGate.violations))
+    report.statusLine = statusLine(report, 'halt', { cause: report.finalGate.cause })
     return report
   }
   break
@@ -1495,5 +1729,6 @@ if (!finalAgent) {
 
 // ── 6. wyjście: staged, NIE zacommitowane. Commit robi człowiek.
 report.staged = stageableFiles(finalFiles, a.dirtyAtStart, allChangedFiles)
+report.statusLine = statusLine(report, 'ok')
 log('Gotowe. Stan: staged, not committed — ' + finalFiles.length + ' plików. Commit robi człowiek.')
 return report

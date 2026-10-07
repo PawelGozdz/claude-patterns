@@ -48,12 +48,18 @@ przy zapisie; ty łapiesz to, co przeszło mimo hooka albo istniało przed nim.
 
 ### 2. Magiczne odstępy
 
+Liczą się wartości `padding`/`margin`/`gap`/`spacing`, `size={[…]}` antd i (Dart) `EdgeInsets`/
+`SizedBox`/`spacing`, spoza skali tokenów (4·8·10·12·14·16·20·24). Nie liczą się `0`, `1`
+(kreski), rozmiary czcionek, `border`, `radius` ani wysokości — te zgłaszaj osobno jako uwagę.
+
 Liczby spoza skali `4, 8, 10, 12, 14, 16, 20, 24` w miejscach spacing/padding/margin/gap.
 
 ### 3. Zdeprecjonowane tokeny
 
 Grep po nazwach oznaczonych `@deprecated` (typy TS) albo `@Deprecated` (Dart) w pakiecie
-tokenów i sprawdź, czy repo audytowane nadal ich używa mimo wskazanej ścieżki migracji
+tokenów (web: `node_modules/@juz-ide/tokens/dist/*.ts`, tylko odczyt; Flutter: kod pakietu
+z `pubspec.lock`/cache pub albo `design-system/packages/tokens_dart/lib` — wywołujący może podać
+ścieżkę repo `design-system`) i sprawdź, czy repo audytowane nadal ich używa mimo wskazanej ścieżki migracji
 (patrz skill `token-change`, sekcja "Deprecacja" — nie musisz go wczytywać, mechanizm
 `@deprecated` → ścieżka migracji jest tym, co tu sprawdzasz bezpośrednio w kodzie).
 
@@ -61,12 +67,15 @@ tokenów i sprawdź, czy repo audytowane nadal ich używa mimo wskazanej ścież
 
 Porównaj wersję `@juz-ide/tokens` (`package.json`) / `juz_ide_tokens`
 (`pubspec.yaml`/`pubspec.lock`) w audytowanym repo z najnowszą opublikowaną (`npm view
-@juz-ide/tokens dist-tags` — jedyne użycie Bash tutaj, zapytanie tylko do odczytu). Repo
+@juz-ide/tokens dist-tags` — jedyne użycie Bash tutaj, zapytanie tylko do odczytu; Dart:
+`git ls-remote --tags` repo `design-system`). Wersję „latest” podaną przez wywołującego użyj
+wprost i oznacz w raporcie „tag niepotwierdzony”. Sprawdź też `@juz-ide/react-ui`, jeśli
+repo go używa (wydawany razem z tokenami). Repo
 pinujące wersję sprzed ostatniego major, gdy istnieje nowszy `latest` → finding.
 
 ### 5. Motyw ciemny „ROBOCZE”
 
-Grep po `// JuzIdeTheme.dark — ROBOCZE` w wygenerowanym `theme.dart` (repo Flutter) —
+Repo web: **nie dotyczy** (wpisz „N/D”). Grep po `// JuzIdeTheme.dark — ROBOCZE` w wygenerowanym `theme.dart` (repo Flutter) —
 sygnał, że `tokens/brand.json` ma niekompletny `color.dark` (patrz skill `flutter-theme`).
 
 ## Procedura
@@ -114,4 +123,6 @@ Plików audytowanych: <N> | znalezisk: <N> (❌ <N> / ⚠️ <N>)
 
 ## Changelog
 
+- 2026-10-07 — zmiany z 2026-10-03 (po pierwszym audycie na żywych repo) przejrzane i zatwierdzone przed commitem; bez zmian treści.
+- 2026-10-03 — po pierwszym audycie na żywych repo: źródło listy deprecacji, definicja „magicznych odstępów”, wersja podana przez wywołującego, `react-ui`, motyw ciemny N/D dla web.
 - 2026-10-01 — agent dodany (blok design-system, /design-audit, /token-bump): wykrywanie rozjazdu tokenów względem źródła.

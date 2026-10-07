@@ -1757,3 +1757,198 @@ tylko, gdy KAŻDA ścieżka ma właściciela o indeksie większym niż bieżąca
 biegną w przebiegu (`plan` z `run`) — odroczenie do pominiętej warstwy ukryłoby błąd do bramki
 końcowej. Wbudowany katch-all w bloku grant-flow zostaje: jest tam zamierzony, silnik ma go
 rozumieć. Eval: `typecheck-deferral-owner-by-specificity-with-catch-all-domain-dirs` (układ grant-flow).
+
+<a id="orc-094"></a>
+
+### ORC-094 — sonda: osobne logi i pole lint; zakaz commitów subagentów jako hook (2026-10-03)
+
+Pięć zgłoszeń z jednego dnia, z czego trzy z realnymi lukami:
+
+1. **Dwa checks, jeden log** (marketing-hub TS-MH-013, `DEV-orc-084-domain`). Warstwa `domain` ma
+   `checks: ["typecheck:api", "lint:check:api"]`, a oba pisały do `/tmp/check-domain.log` — drugi
+   nadpisywał pierwszy. `tsErrors` (grep po logu) czytało wynik lintu, nie `tsc`, więc ORC-082/093
+   nie miało czego sparsować i warstwa stawała na halt `machine`; do tego wynik lintu trafiał do pola
+   `typecheck`. Poprawka: osobny plik na check (`/tmp/check-<warstwa>-<n>.log`), grepy czytają
+   `-*.log`; schemat sondy dostaje pole `lint`, mapowanie wyników jest ZAWSZE w prompcie (lint →
+   `lint`, typecheck/tsc/analyze/vet/build → `typecheck`, test → `tests`); `lint: fail` liczy się jako
+   czerwień sondy, nie jest dowodem zieleni (`probeHasGreenEvidence`) i blokuje odroczenie typechecku.
+2. **40 commitów mimo „ZAKAZ COMMITOWANIA"** (ai-os-bot BOT-024, `DEV-orc-087`; w tym haiku-sondy).
+   Prompt nie jest wiążący dla LLM. Nowy hook `hooks/block-subagent-commit.js` (PreToolUse/Bash,
+   zarejestrowany w `hooks.json` i `settings.json` przez `sync-global-hooks --apply`) blokuje
+   `git commit/push/rebase/tag/merge/cherry-pick/am/stash/reset/restore/checkout` WYŁĄCZNIE dla
+   subagentów (`agent_id`) i tylko gdy w cwd (lub 3 katalogi wyżej) leży świeży (≤12 h) znacznik
+   `.claude/run-state/orchestrating.json`. Sesja główna (człowiek, orchestrator) nie jest blokowana,
+   więc zapomniany znacznik nikomu nie zatrzyma pracy. Dodatkowo, gdy sonda drzewa nie zwróci
+   licznika commitów, raport dostaje ostrzeżenie (wcześniej cisza: `report.warnings` był pusty mimo 40
+   commitów). Znacznik nadpisany w trakcie przebiegu (inny `session_id`) to osobny temat sesji, nie silnika.
+3. **Brak ostrzeżenia w raporcie** — domknięte w pkt 2.
+
+Bez zmian silnika: `DEV-orc-062-implementation-core` (ai-gateway TS-AIG-066: analiza pominęła
+drugiego konsumenta `GatewayErrorKind`; implementer słusznie zgłosił poza zakresem, naprawione przez
+`--overrides` + wznowienie — proces zadziałał, luka w analizie), `DEV-orc-062-testing-u11-...` (ai-os-bot
+BOT-024: test bezpieczeństwa czytający `main.ts` czerwony po przeniesieniu filtra do dispatchera;
+naprawa wymaga zmiany `*.security.test.ts` — decyzja człowieka, BLOCKED_BY_PRIOR słuszny; weryfikator
+warstwy u4 dał GO mimo czerwonego testu — do obserwacji), `DEV-orc-069` (ai-gateway TS-AIG-066 —
+`stageForReview` puste mimo NO_GO wymuszonego unverified_scope: w tym przebiegu dirty-at-start
+filtrował wszystko; staging z drzewa zadziałał). Eval: `probe-writes-separate-log-per-check-and-maps-lint-field`,
+`lint-fail-is-red-and-never-green-evidence`, 5 przypadków w `tests/flow-evals/hooks/fixtures/block-subagent-commit.json`.
+
+<a id="orc-095"></a>
+
+### ORC-095 — mniej przystanków, krótkie wiadomości (2026-10-03)
+
+Użytkownik: orchestracja jest przerywana tylko po to, żeby napisał „ok"/„kontynuuj" (np. po warstwie
+domain prośba o zgodę na kolejną), a podsumowania i pytania to „elaboraty" — ~15 linii, trudne do
+czytania; przy KAŻDYM przebiegu musiał dopisywać „wytłumacz prostym językiem biznesowym w 1-2
+zdaniach".
+
+Przyczyny (wszystkie w instrukcjach/komunikacji, nie w pętli warstw — silnik jedzie warstwy bez
+pytań): (1) brak wiążącej zasady „nie pytaj o zgodę między warstwami"; log po każdej warstwie
+brzmiał jak polecenie („Dopisz jej id do layers_done…") i prowokował główny agent do przerywania
+pracy; (2) sekcja „Raport" kazała dwie części, z czego „Przebieg" (sloty, próby, werdykty, lista
+plików) szła do czatu; (3) `human_voice` obejmował tylko pole `ask`/`means` w artefakcie analizy i
+tylko pod kątem żargonu, bez limitu długości; wiadomości orchestratora do człowieka nie miały
+żadnego formatu.
+
+Zmiana: sekcja „Komunikacja z człowiekiem" w `commands/orchestrate.md` (jedno ciągłe przejście;
+wolno pytać tylko przy `PAUSE` analizy i po zatrzymaniu z ORC-086; wiadomość końcowa max 3 linie;
+pytanie 1-2 zdania, tak/nie lub A/B z rekomendacją i domyślną odpowiedzią; „Przebieg" do pliku
+`{TASK-ID}.report.md`). Silnik składa gotową linię `report.statusLine` (bez ścieżek, klas i numerów
+reguł), a log po warstwie nie brzmi już jak polecenie. ANL-040 + hook `check-human-voice` ostrzega,
+gdy `ask` ma > 2 zdania albo > 320 znaków. Nadal „tylko prompt" jest zachowanie czatu głównego
+agenta (egzekwuje je tylko uwaga), ale oparte na mechanicznych polach `statusLine`/`cause`. Eval:
+`status-line-is-short-business-and-has-no-paths`, fixture `check-human-voice` (za długie `ask`).
+
+<a id="orc-096"></a>
+
+### ORC-096 — przyrost testów: niedopasowany wzorzec nie może zerować liczenia (2026-10-03)
+
+ai-os-bot BOT-024, jednostka `testing:u14-tooling` (`DEV-orc-035-testing-u14-tooling`): halt „zero
+testów" mimo nowego, nieśledzonego `scripts/tooling.test.ts` (19 zielonych testów, `scripts/**` w
+zakresie jednostki). Orchestrator zaproponował ręczne dopisanie jednostki do `layers_done` i zapytał
+człowieka o zgodę — zamiast tego było to do naprawienia w silniku.
+
+Przyczyna (odtworzona w tymczasowym repozytorium): sonda liczyła przyrost przez
+`git add -N -- <wszystkie wzorce>; git diff HEAD -U0 -- … | grep -c …`. Dla wpisów-plików w `dirs`
+(`package.json`, `vitest.config.ts`) generujemy też wzorce towarzyszące `*.spec.*`/`*.test.*`, które
+zwykle nic nie dopasowują, a `git add` przerywa w CAŁOŚCI (`fatal: pathspec … did not match any
+files`) już przy jednym takim wzorcu — nowy plik testu zostawał nieśledzony i przyrost wychodził 0.
+Stary sposób: 0, nowy: 2 (test na dwóch jednorazowych repozytoriach).
+
+Poprawka: `git ls-files -o --exclude-standard -z -- <wzorce> | xargs -0 -r git add -N --` — ls-files
+zwraca tylko istniejące nieśledzone pliki, bez błędu na wzorcu bez trafień; `git diff HEAD … | grep -cE`
+zostaje w jednej linii (WL6). Eval: `probe-counts-untracked-test-files-even-with-unmatched-pathspec`.
+Wpisane też do sekcji „Po zatrzymaniu": fałszywy alarm deterministycznej bramki z dowodem (zielone
+testy uruchomione ręcznie) to `--overrides` + wznowienie, nigdy ręczne `layers_done` i nigdy pytanie
+o zgodę.
+
+<a id="orc-097"></a>
+
+### ORC-097 — bramka końcowa: model Sonnet i krótkie wyjście; koszty modeli bez cennika (2026-10-03)
+
+Pomiar `workflow-steps.jsonl` (od 2026-10-01): bramka końcowa to najdroższy pojedynczy krok przebiegu —
+39 z 46 bramek szło na `claude-opus-5-5` (dziedziczony model sesji), mediana 22 wywołań narzędzi, 137 tys.
+tokenów zapisu do cache, 1,7 mln odczytu i **27 tys. tokenów wyjścia** na jeden werdykt (implementer: 3,9
+tys.). Jednocześnie jej koszt w metrykach wychodził $0, bo cennik nie miał wpisów dla
+`claude-sonnet-5-5`, `claude-opus-5-5` i sufiksu `[1m]` (734 z 3 576 kroków, czyli 20%, w tym wszystkie
+najdroższe) — suma $906 była zaniżona, a stawki `claude-sonnet-5` nadal „intro" ($2/$10) mimo notatki
+o zmianie od 2026-09-01.
+
+Zmiana: (1) model bramki: domyślnie `auto` = Sonnet, model sesji TYLKO gdy analiza ma `threat_model`
+(`task.securitySensitive` z `orchestrate-prepare`); `runtime.yml → final_gate.model: auto|inherit|sonnet|
+opus|haiku` wymusza wybór (schemat bloku dopuszcza pole); (2) prompt bramki: `rationale` najwyżej 5
+zdań, naruszenia po jednej linii `plik:linia — reguła — poprawka`, bez przepisywania kodu i streszczania
+diffu; (3) `estimateCostUsd` szuka ceny: model → bez daty → bez `[1m]` → bez podwersji (`-5-5` → `-5`),
+ostatnie to SZACUNEK po rodzinie; (4) stawki Sonneta 5 po okresie intro (3/15/3,75/0,3) w pliku
+domyślnym i lokalnym `~/.claude/metrics/prices.json`. Stare rekordy nie są przeliczane (collector
+idempotentny po runId+agentId); nowe będą miały koszt. Ryzyko: Sonnet na bramce końcowej może wychwycić
+mniej niż Opus w subtelnych problemach bezpieczeństwa — dlatego taski z threat_model zostają na modelu
+sesji; do obserwacji liczba `NO_GO` po fakcie ręcznej weryfikacji. Eval:
+`final-gate-model-defaults-to-sonnet-and-inherits-for-security-tasks`, `final-gate-prompt-limits-output-length`,
+`estimateCostUsd falls back to the model family`.
+
+<a id="orc-098"></a>
+
+### ORC-098 — bramka końcowa: GO z lukami zamiast NO_GO z samego unverified_scope (2026-10-04)
+
+Przegląd `run-state` we wszystkich projektach: 8 pełnych raportów przebiegów, 7 z nich skończyło się
+NO_GO bramki końcowej wymuszonym wyłącznie przez `unverified_scope` (ai-gateway AIG-064/067/069, iam
+SSO-057, marketing-hub MH-012, mobile DS009 i DS009-2), przy zerze własnych naruszeń i zielonych checks.
+Zgłoszenia w `_inbox` (ORC-069 — 21 wystąpień) mówią to samo. Dwie przyczyny: (1) bramka dostawała
+tylko nazwy checks i miała je uruchomić sama — nie uruchamiała (AIG-064/069); (2) reszta luk to rzeczy
+niesprawdzalne w repo (kopie u konsumentów, ścieżka produkcyjna, przeglądarka), których bramka z
+natury nie domknie. ORC-069 słusznie nie pozwala traktować takiego GO jak czystego, ale NO_GO i halt to
+za mocna reakcja: człowiek i tak dostaje staged pliki, a każdy przebieg kończył się pytaniem „zaakceptować?".
+
+Zmiana: (1) przed bramką silnik odpala sondę checks (`buildProbePrompt` z pseudo-warstwą `final`), wynik
+jedzie do bramki jako fakty z zakazem powtarzania (jak ORC-081 dla weryfikatora warstwy); (2) prompt mówi,
+że niesprawdzalne w repo rzeczy idą do `unverified_scope`, nie do `violations`; (3) `finalGapsAcceptable`:
+GO + niepusty `unverified_scope` po filtrach + zero naruszeń + zielona sonda (co najmniej jeden `pass`,
+zero `fail`) → przebieg idzie dalej, luki do `report.gaps` (warstwa `final-gate`), `stageForReview`,
+`statusLine` „niesprawdzone fragmenty / wymaga uważnego przeglądu". Brak wyniku sondy, ślepa sonda
+(wszystko `skipped`) albo czerwona = NO_GO jak dotąd, plus ostrzeżenie w `report.warnings`. Czyste GO
+(pusty `unverified_scope`) bez zmian. Nie zmienia ORC-069 na warstwach (GO_WITH_GAPS wg ORC-084).
+Ryzyko: projekt bez `final_gate.checks` dalej dostaje NO_GO z samych luk (brak dowodu zieleni) — do
+obserwacji; nie sprawdzone na żywym przebiegu, tylko eval. Eval:
+`final-gate-gaps-acceptable-needs-green-engine-probe-and-zero-violations`,
+`final-gate-prompt-passes-probe-facts-and-forbids-rerun`.
+
+#### ORC-098b — dirs będące plikami w `layerMatchScore` (2026-10-04)
+
+ORC-093 wprost pomijał wpisy `dirs` z rozszerzeniem (`/\.[a-z0-9]+$/`), więc zakres jednostki zawężony do
+pliku (`layers_scope`: `src/wikiIndexer.ts`) nie miał właściciela, a odroczenie ORC-082 nie działało:
+ai-os-bot BOT-025 (`u4-guarded-embeddings`) i ai-gateway AIG-068 (`usage-priced`), w płaskim serwisie
+(`dirs: src/`) remis trzech warstw. Zmiana: (1) wpis-plik dopasowuje się dokładnie (także ścieżka
+względna pakietu z `tsc`, gdy jeden z dwóch kończy się drugim po `/`) i ma najwyższą rangę — konkretny
+plik wygrywa z każdym katalogiem; (2) `ownerLayersOf` zwraca wszystkie remisujące warstwy, a
+`typecheckRedIsLaterLayers` odracza czerwień, gdy WSZYSTKIE są późniejsze od bieżącej (BOT-025: u5a i
+u5b mają ten sam plik); remis z udziałem bieżącej warstwy nadal nie odracza. Nie obejmuje: czerwieni
+między jednostkami TEJ SAMEJ warstwy (AIG-082 `config-env` ↔ `registry/testing`) — osobne zgłoszenie.
+Eval: `owner-layer-file-dirs-win-over-directories`, `typecheck-red-deferred-when-tie-is-only-later-layers`.
+
+<a id="orc-099"></a>
+
+### ORC-099 — odroczenie czerwonych testów do późniejszych warstw (2026-10-04)
+
+ai-gateway TS-AIG-082 (`implementation:config-env`): zmiana `Config` psuje `registry.ts`, a potem ~36 testów w
+15 plikach należących do kolejnej jednostki; dwa halty z rzędu (typecheck, potem testy). ORC-082 odracza
+tylko czerwony typecheck, testów nie. Zmiana: sonda zwraca `testFailFiles` (dosłowny wynik `grep FAIL`) i
+`testFilesFailed` (liczba plików z podsumowania runnera); `testsRedIsLaterLayers` ustawia `tests: 'deferred'`,
+gdy typecheck i lint nie są czerwone, lista ma dokładnie tyle plików, ile podaje podsumowanie, a KAŻDY
+padający plik należy wyłącznie do warstw późniejszych od bieżącej (`ownerLayersOf`, ORC-098b). Brak
+podsumowania, niepełna lista, plik własny albo bez właściciela = brak odroczenia (halt jak dotąd).
+Weryfikator dostaje adnotację „testy odroczone". Ryzyko: poprawność zależy od tego, że agent-sonda
+(Haiku) odda `grep FAIL` dosłownie; guard liczby plików chroni przed niepełną listą, nie przed
+zmyśloną. Nie sprawdzone na żywym przebiegu. Eval:
+`tests-red-deferred-only-when-all-failing-files-belong-to-later-layers`.
+
+<a id="orc-100"></a>
+
+### ORC-100 — te same luki po powtórnej weryfikacji zamykają warstwę (2026-10-04)
+
+`decideVerdict` oddaje GO z niepustym `unverified_scope` jako `reverify` (ORC-074): kolejna próba to świeży
+budżet samego weryfikatora. Zgłoszenia ORC-069 na warstwach (~25 wystąpień: `presentation`, `web-bootstrap`,
+`app-cqrs`) pokazują, że weryfikator zwykle zwraca TE SAME luki w każdej rundzie, więc kolejne rundy tylko
+palą tokeny, aż próby się skończą (ORC-084 domyka wtedy warstwę jako GO_WITH_GAPS, ale dopiero na końcu).
+Zmiana: `reverify` niesie `gaps`; `repeatedGapsAcceptable` — ten sam zbiór luk co w poprzedniej rundzie
+(bez względu na kolejność), werdykt GO bez naruszeń i zielona sonda (`probeHasGreenEvidence`) →
+GO_WITH_GAPS od razu. Inny, mniejszy albo większy zbiór luk = zwykły `reverify`. Nie zmienia ORC-069
+(luki dalej jadą do raportu i bramki końcowej). Nie sprawdzone na żywym przebiegu. Eval:
+`repeated-identical-gaps-settle-as-go-with-gaps-without-more-attempts`.
+
+<a id="orc-101"></a>
+
+### ORC-101 — drobne poprawki z analizy bez właściciela warstwy (2026-10-04)
+
+ai-gateway TS-AIG-069: wszystkie warstwy GO, a przebieg kończył się pytaniem „dopisać to mam ja czy ty?"
+— lista poprawek z analizy (model zagrożeń, karta niezmienników, `architecture.md`, `CLAUDE-LOCAL.md`,
+KANBAN) nie została wykonana. Przyczyna: `buildImplPrompt` daje `minor_fixes` KAŻDEJ warstwie z poleceniem
+„wykonaj te z zakresu TEJ warstwy, resztę pomiń", a pliki dokumentacji leżą poza `dirs` wszystkich warstw,
+więc każda je pomija. Zmiana: `orphanMinorFixes` wskazuje pozycje (`plik — co — poprawka`), których
+ścieżka nie należy do żadnej warstwy z `dirs`; przed bramką końcową jedno przejście ostatniego
+implementera (nie-testowego) z jawnym wyjątkiem od zakresu, wynik w `report.docFixes`. Porażka kroku
+(implementer bez wyniku) nie zatrzymuje przebiegu: pozycje trafiają do `minorFindings` i `warnings`.
+Pozycja bez rozpoznawalnej ścieżki zostaje po staremu. Ryzyko: implementer od kodu edytuje dokumenty —
+zakres ogranicza lista, ale nie ma twardego strażnika poza promptem; hook `check-subagent-pattern-reads`
+może zażądać wzorca przy plikach objętych wzorcami. Nie sprawdzone na żywym przebiegu. Eval:
+`orphan-minor-fixes-are-those-outside-every-layer-scope`.

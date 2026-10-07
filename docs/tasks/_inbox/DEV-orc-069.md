@@ -74,7 +74,7 @@ trigger: no_go
 rule_ref: ORC-069
 first_seen: 2026-09-27
 last_seen: 2026-10-03
-occurrences: 13
+occurrences: 15
 projects:
   - ai-os-bot
   - grant-flow
@@ -90,6 +90,8 @@ reopened_from_status: dismissed
 
 ## Occurrences
 
+- 2026-10-03 ai-os-bot (BOT-024) run `wf_087ea3d8-8ba` — Bramka końcowa BOT-024: NO_GO wymuszone wyłącznie przez unverified_scope (zero własnych naruszeń; 755 testów zielonych). Runda naprawcza minor_findings (ORC-091) nie uruchomiła się, a niewdrożone zatwierdzone D10/D15 przeszły jako minor/deviation_note. Dodatkowo agenci commitowali mimo zakazu (zgłoszone osobno jako ORC-087).
+- 2026-10-03 ai-gateway (TS-AIG-066) run `wf_b24babc4-282` — Bramka końcowa: zero własnych naruszeń, NO_GO wymuszone wyłącznie przez unverified_scope (Caddy poza repo, IDN/punycode); stageForReview puste mimo tego, więc staging z drzewa.
 - 2026-10-03 ai-gateway (TS-AIG-070) run `wf_865f6bd2-00a` — Bramka końcowa NO_GO (cause=machine) wyłącznie przez unverified_scope: 4 pozycje poza zasięgiem weryfikacji (ręczny test tsx --env-file, kontrola .env serwera, sekret Caddy↔grant-flow, 2 ostrzeżenia lint) — zero własnych naruszeń; wymuszone stageForReview (ORC-084). Pozycje 2-3 to z natury ręczne warunki wdrożenia i nigdy nie będą weryfikowalne przez bramkę.
 - 2026-10-03 ai-os-bot (BOT-007) run `wf_7adb99d3-d9b` — Bramka końcowa: uzasadnienie mówi GO dla 007a (brak naruszeń, 562 testy zielone), ale NO_GO wymuszone wyłącznie przez niepuste unverified_scope: elementy poza repo (ai-gateway/iam), prawdziwy Discord, test:integration poza final_gate.checks i pliki .claude/** brudne przed przebiegiem. Silnik zaliczył .claude/**, KANBAN i BOT-024 (dirtyAtStart) do stageForReview i je zastage'ował; ręcznie zdjęte z indeksu.
 - 2026-10-01 ai-os-bot (BOT-023) run `wf_dd0479bb-47b` — Bramka końcowa NO_GO (cause=machine) wymuszona samym unverified_scope: brak Postgresa dla ragRetriever.integration.test.ts, nieczytane migracja 005/ftsQuery/plStopwords/contextPacker/rag-eval; po stronie człowieka dopiero te testy przeszły (17/18, 1 błąd testu SHOW lc_ctype).

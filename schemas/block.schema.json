@@ -187,6 +187,11 @@
           "properties": {
             "agent": { "type": "string" },
             "on_fail": { "type": "string" },
+            "model": {
+              "type": "string",
+              "enum": ["auto", "inherit", "sonnet", "opus", "haiku"],
+              "description": "Model bramki końcowej (ORC-097). auto = Sonnet, a model sesji dla tasków z threat_model; inherit = zawsze model sesji."
+            },
             "checks": {
               "type": "array",
               "items": { "type": "string" },
