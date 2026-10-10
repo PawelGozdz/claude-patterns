@@ -22,6 +22,18 @@ source: 'ADR 0011 B1 (ograniczenie crona), B4, B5'
 Skrzynka i audyt same pilnują, żeby nie zgniły: zgłoszenie bez ruchu jest widoczne, cron, który
 przestał chodzić, jest wykrywany, a audyt widzi też to, czego nikt nie zadeklarował.
 
+## Kontekst dla świeżej sesji
+
+- Wpis crona dokładnie: `30 7 * * 1-5 cd /opt/projects/claude-patterns &&
+  /home/dev/.nvm/versions/node/v24.14.1/bin/node scripts/audit-projects.mjs --all --report >>
+  /home/dev/.claude/metrics/audit-daily.log 2>&1`.
+- Wzorzec kontroli świeżości: `scripts/telemetry-freshness.mjs` (dziś pilnuje
+  `workflow-steps.jsonl`). Bramki pre-commit: `scripts/pre-commit-guards.mjs` (po wszystkich
+  bramkach drukuje już podsumowanie skrzynki — tam dopisać rekordy bez ruchu).
+- Pola rekordu skrzynki do postarzania: `status`, `last_seen`, `first_seen`, `reopened_at`.
+- Audyt nadmiarów: co wnosi kompozycja — `runtime.yml` (`agents`, `patterns.always/triggers`)
+  i `project.yml` (`exclude_skills`, overlay); kontrole dopisz w `scripts/lib/audit-checks.mjs`.
+
 ## Zakres
 
 1. `pre-commit-guards.mjs`: rekordy `promoted` bez ruchu > 7 dni i `proposed` > 14 dni (ADR 0011 B4).

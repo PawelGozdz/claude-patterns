@@ -31,6 +31,25 @@ nieudanych, ile kosztuje, gdzie się zatrzymuje.
 - Problemy konfiguracji analizy trafiają już do skrzynki (krok 4 `/analyze`, reguły `ANZ-*`) i
   przez `report-deviation` do zdarzeń `deviation` — brakuje mianownika.
 
+## Kontekst dla świeżej sesji
+
+- Gałąź `feature/TASK-OBS-003` (od `develop`, `002d49e`), praca w `/opt/projects/claude-patterns`
+  — bez worktree. Najpierw przeczytaj „Jak zacząć" w [EP-OBSERVABILITY-001](EP-OBSERVABILITY-001.md).
+- `/analyze` = `commands/analyze.md`: krok 0 bramka runtime.yml, krok 1 panel (sloty
+  `analyze.panel` z runtime.yml, agenci narzędziem Agent), krok 2 artefakt
+  `project-orchestration/analysis/{TASK-ID}.analysis.md` (tu zapisać `runId`), krok 3 wyjście
+  (`analyze.exit: PAUSE`), krok 4 zgłoszenia do skrzynki. Telemetria wchodzi jako start przed
+  krokiem 1 i koniec po kroku 3.
+- Hooki: rejestracja w `hooks/hooks.json` (sekcja `PostToolUse`, `matcher` = nazwa narzędzia);
+  `~/.claude/hooks` jest symlinkiem do `claude-patterns/hooks`, więc zarejestrowany hook działa
+  od razu w każdej sesji floty. Wzorzec hooka metryk: `hooks/workflow-metrics-postrun.js`
+  (czyta stdin przez `readStdinJsonWithRaw`, zawsze przepisuje stdin na stdout i exit 0,
+  pomija kontekst subagenta `isSubagent`) — `hooks/lib/utils.js`.
+- Eval hooków: `tests/flow-evals/hooks/run.js` + fixture'y `tests/flow-evals/hooks/fixtures/*.json`.
+- Tokeny z transkryptu agenta: `hooks/lib/transcript-usage.js` (`readTranscriptUsage`), cennik
+  `estimateCostUsd` w `scripts/workflow-metrics-lib.mjs`.
+- Uwaga z danych orchestrate: koszt/wynik agenta liczony z transkryptu, nie z deklaracji agenta.
+
 ## Zakres
 
 1. **Sprawdzić najpierw** (przed projektem hooka): co dostaje hook PostToolUse dla narzędzia

@@ -23,6 +23,19 @@ Odsetek zdrowia floty dzień po dniu: audyt zapisuje wynik KAŻDEJ kontroli w ka
 (także OK), a nie tylko błędy. Setup zapisuje swój przebieg i zgłasza do skrzynki to, co dziś
 tylko wypisuje na ekran.
 
+## Kontekst dla świeżej sesji
+
+- Audyt: `scripts/audit-projects.mjs` (CLI, `--all`, `--report`, `--root` dla testów, pomija
+  katalogi `_*`), kontrole w `scripts/lib/audit-checks.mjs`; sekcja `--report` mapuje błędy na
+  reguły `AUD-*` i woła `report-deviation --once-per-project`. Eval:
+  `tests/flow-evals/audit-projects/run.js` (wszystko w katalogu tymczasowym).
+- Cron (crontab użytkownika `dev`): `30 7 * * 1-5 … audit-projects.mjs --all --report >>
+  ~/.claude/metrics/audit-daily.log` — po wdrożeniu każdy codzienny przebieg da metryki.
+- Setup: `scripts/setup-project.sh <projekt>`; materializacja w kroku 5a
+  (`scripts/materialize-runtime.mjs`), README wzorców `scripts/generate-patterns-readme.mjs`.
+  Po każdej edycji `.sh`: `bash -n`. Eval: `tests/flow-evals/setup-project/run.js`.
+- Projekt testowy: aegis-flow (`/opt/projects/aegis-flow`).
+
 ## Zakres
 
 1. `scripts/audit-projects.mjs`: `run.start`/`run.end` (`process: audit`) + `step.end` per
