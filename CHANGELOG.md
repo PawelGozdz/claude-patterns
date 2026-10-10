@@ -11,6 +11,17 @@ and none of it is instruction — it is history.
 ## [Unreleased]
 
 ### Added
+- Metryki `/analyze` (TASK-OBS-003, ADR 0012 krok 3): przebieg analizy zostawia zdarzenia v1
+  (`run.start` z planem, `step.end` per agent panelu, `run.end`). Dwa nowe hooki —
+  `telemetry-agent-start` (PostToolUse(Agent): agent → slot z markera `[slot:<id>]`) i
+  `telemetry-agent-stop` (SubagentStop: wynik z transkryptu, błąd API → `failed`/`infra`, pusta
+  odpowiedź → `died`/`silent`). Stan w `telemetry/sessions/` (poza gitem, plik na agenta),
+  `telemetry-emit run-start/run-end` otwiera i zamyka przebieg (`skipped` dla pominiętych
+  slotów, osierocone przebiegi zamyka kolejny `run-start`), reguła ANL-041 w `commands/analyze.md`.
+  Test na żywym Claude wykrył, że SubagentStop bywa szybszy niż PostToolUse — obsłużone.
+  Hooki są w `hooks/hooks.json`, do `~/.claude/settings.json` wpina je `sync-global-hooks --apply`.
+  `transcript-usage.js` zwraca teraz też `toolCalls`, `apiError`, `firstTs/lastTs`, a model
+  `<synthetic>` nie jest już liczony jako model kroku.
 - Two global blocks, `refine-spa` (framework axis) and `monorepo-layers` (architecture
   axis, requires `ddd/core`), promoted from a local draft in `marketing-hub`
   (`.claude/blocks/web.yml` + `layers-monorepo.yml`, TS-MH-002, 2026-09-15) — step zero

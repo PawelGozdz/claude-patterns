@@ -19,7 +19,7 @@
 
 ## MUST NOT
 - **N1** — ❌ Add `@Transactional()` to an individual handler method below the base class —
-  causes nested transactions (Anti-Pattern 1).
+  redundant second boundary (Anti-Pattern 1). Exception: a deliberate `@Transactional(Propagation.Nested)` on a private retry-attempt method (SAVEPOINT) — see "Intentional Nested (SAVEPOINT)".
 - **N2** — ❌ Throw exceptions from business logic — return `Result.fail()` instead
   (Anti-Pattern 2); throwing bypasses the Result→rollback contract.
 - **N3** — ❌ Manually begin/commit/rollback a transaction (Anti-Pattern 3) — the decorator

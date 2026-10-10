@@ -22,6 +22,16 @@ source: 'ADR 0012 krok 6; potrzeba użytkownika 2026-10-10: widok „zaplanowane
 Dwa widoki na te same dane: terminal na żywo dla osoby prowadzącej pracę w projekcie i serwer
 z agregatami floty dla zespołu rozwijającego claude-patterns.
 
+## Kontekst dla świeżej sesji
+
+- Źródło „na żywo": `~/.claude/projects/<slug>/<sesja>/workflows/wf_*.json` (`status: running`,
+  `workflowProgress`) i `~/.claude/projects/<slug>/<sesja>/subagents/workflows/<runId>/journal.jsonl`
+  (wpisy `started`/`result` dopisywane w trakcie). Jak je czytać: `scripts/workflow-metrics-collect.mjs`.
+- Szkic widoku uzgodniony z użytkownikiem 2026-10-10: nagłówek (projekt, proces, TS-ID, czas,
+  koszt), pasek planu „15/20 kroków", wiersz per warstwa (✓/▶/·, NO-GO → naprawione/otwarte,
+  bieżący agent z liczbą narzędzi i czasem), stopka z porównaniem do średniej i top przyczyn.
+- Plan potrzebny do paska postępu: TASK-OBS-006; średnie: TASK-OBS-005.
+
 ## Zakres
 
 1. `scripts/flow-top.mjs [projekt]`: bieżący journal przebiegu (`journal.jsonl` zapisuje się na

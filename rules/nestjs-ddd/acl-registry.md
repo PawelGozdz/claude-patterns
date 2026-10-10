@@ -9,6 +9,8 @@
 - Register the adapter in the provider module's `onModuleInit()`: `registerGlobal(key, adapter, description)`.
 - Have adapters implement `IACLAdapter`, live in the provider's `**/infrastructure/acl/`, and return `Result<T, Error>`.
 - Use a lowercase context-name key (`'authorization'`, `'auth'`, `'geographic-auth'`).
+- A WRITING in-process adapter writes through `TransactionHost.tx` (shared handler transaction); its `Result.fail` does not roll back by itself (the handler does); a retry after `VersionError` wraps each attempt in `@Transactional(Propagation.Nested)` (SAVEPOINT; inner `throw` to roll back, `Result.fail` outside; with no active transaction `Nested` opens its own).
+- A monotonic grant (e.g. `PHONE_VERIFIED`) has no revoke/`compensate()` — a handler rollback undoes the write; idempotency lives in the adapter.
 - Fetch the adapter inside the method (not the constructor) — guarantees init order.
 - Use the dot-notation EVENT_NAME enum as the single source of truth for event-based cross-context messaging.
 - Batch a cross-context call that would otherwise repeat per unit of work (per level/tier/item) —

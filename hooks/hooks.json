@@ -56,6 +56,16 @@
         "description": "Workflow metrics: fire-and-forget collector of per-step metrics to ~/.claude/metrics/workflow-steps.jsonl (TASK-OBS-002)"
       },
       {
+        "matcher": "Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$HOME/.claude/hooks/telemetry-agent-start.js\""
+          }
+        ],
+        "description": "Telemetry v1 (ADR 0012, TASK-OBS-003): pins a panel agent ([slot:<id>] in its description) to the open /analyze run. Writes only a per-agent state file in telemetry/sessions/; no-op without an open run."
+      },
+      {
         "matcher": "Bash",
         "hooks": [
           {
@@ -121,6 +131,17 @@
           }
         ],
         "description": "Append per-agent token usage to ~/.claude/logs/agent-usage.jsonl. Disable with AGENT_USAGE_LOG=off."
+      },
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$HOME/.claude/hooks/telemetry-agent-stop.js\"",
+            "async": true
+          }
+        ],
+        "description": "Telemetry v1 (ADR 0012, TASK-OBS-003): closes the step of a panel agent with a step.end event (outcome from transcript + reply). Exits at once for agents without a state file (no transcript read)."
       },
       {
         "matcher": "*",

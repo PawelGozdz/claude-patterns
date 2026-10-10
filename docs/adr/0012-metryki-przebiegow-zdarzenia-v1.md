@@ -1,6 +1,6 @@
 # ADR 0012 — Metryki przebiegów: wspólny format zdarzeń v1
 
-**Status**: accepted (2026-10-10) — krok 1 wdrożony, kroki 2–6 kolejno
+**Status**: accepted (2026-10-10) — kroki 1–3 wdrożone, 4–6 kolejno
 **Rozszerza**: [ADR 0011](0011-raportowanie-dryfu-i-telemetria-floty.md) (punkt B6 — telemetria floty)
 **Context source**: decyzja użytkownika z 2026-10-10: „jak będziemy wstawiać tylko problemy, to nie
 da nam to procentowego rozbicia dobre vs błędy" + docelowo metryki trafiają na serwer zespołu
@@ -85,7 +85,7 @@ aegis-flow). Opis problemu żyje w skrzynce, w gicie — zdarzenie niesie tylko 
 | Proces | Mechanizm |
 |---|---|
 | orchestrate | `orchestrate-prepare` → `run.start` z planem warstw; collector (`workflow-metrics-collect.mjs`) → `step.end`/`run.end` w v1 |
-| analyze | `scripts/telemetry-emit.mjs run-start/run-end` z komendy + ogólny hook PostToolUse na narzędziu Agent, który przypina kroki do otwartego przebiegu sesji (ten sam mechanizm dla każdego przyszłego procesu bez Workflow) |
+| analyze | `scripts/telemetry-emit.mjs run-start/run-end` z komendy + dwa ogólne hooki: PostToolUse(Agent) przypina agenta do slotu otwartego przebiegu, SubagentStop zamyka jego krok (ten sam mechanizm dla każdego przyszłego procesu bez Workflow, krok 3) |
 | audit | przebieg + wynik każdej kontroli w każdym projekcie, także OK |
 | setup | `run.start/run.end` + `deviation` (ADR 0011 B3) |
 | report-deviation | zawsze `deviation` |
@@ -122,7 +122,33 @@ odsetek kontroli audytu na OK dzień po dniu.
    - ręczne skrypty Workflow (`process: workflow`, 447 przebiegów) mają 65,4% werdyktów GO w
      pierwszej próbie wobec 89,3% kanonicznego skryptu.
    Plan w `run.start` czeka na `orchestrate-prepare.mjs` (staged zmiany innej sesji).
-3. Analyze: `run-start/run-end` w `commands/analyze.md` + hook PostToolUse(Agent).
+3. Analyze: `run-start/run-end` w `commands/analyze.md` + hooki PostToolUse(Agent) i SubagentStop.
+   **Wdrożone 2026-10-10** (TASK-OBS-003). Projekt z pierwszej wersji ADR-a („jeden hook
+   PostToolUse(Agent) pisze `step.end`") nie wytrzymał sprawdzenia na żywym payloadzie:
+   - narzędzie Agent zwraca `async_launched` (agentId, model, plik wyjścia) — bez tokenów, czasu i
+     wyniku, bo agent dopiero startuje. Koniec agenta widzi dopiero SubagentStop (`agent_id`,
+     ścieżka transkryptu, ostatnia odpowiedź). Oba hooki dzielą `agentId` i `session_id`;
+   - **SubagentStop potrafi wyprzedzić PostToolUse** tego samego agenta (szybki agent, zmierzone na
+     żywo). Hook stop zostawia wtedy „oczekujące zatrzymanie", a hook startu po rejestracji domyka
+     krok. Każda strona po własnym zapisie zagląda do drugiej, więc żadna kolejność nie gubi zdarzenia.
+
+   Jak to działa teraz:
+   - stan w `telemetry/sessions/` (poza gitem): `runs/<runId>.json` otwiera `run-start`,
+     `agents/<agentId>.json` zapisuje hook startu, `stops/<agentId>.json` czeka na rejestrację.
+     Plik NA AGENTA, nie wspólny plik sesji — panel odpala agentów równolegle;
+   - slot agenta z markera `[slot:<id>]` na początku `description` (wpisuje go komenda,
+     ANL-041). Reszta opisu to tekst z promptu i nie jest zapisywana. Agent bez markera nie jest krokiem panelu;
+   - wynik kroku z transkryptu i odpowiedzi: błąd API na końcu → `failed`/`infra`, pusta odpowiedź →
+     `died`/`silent`, reszta → `ok`. Czas z sygnatur czasowych transkryptu, tokeny i koszt z tej samej
+     funkcji co `subagent-stop-cost-log.js`;
+   - `run-end` dopisuje `skipped` dla slotów z planu bez agenta i `unknown` dla agentów bez końca,
+     potem `run.end`, i kasuje stan. Przebieg starszy niż 6 h (`CLAUDE_TELEMETRY_RUN_TTL_MS`)
+     hooki ignorują, a następny `run-start` zamyka go zdarzeniem `run.end` z `unknown`.
+
+   Czego nie ma: `killed` (agent zatrzymany przez TaskStop) — payload SubagentStop nie niesie takiego
+   znacznika, więc takie kroki wychodzą jako `ok`/`died`. `costUsd` jest `null` dla modeli bez
+   wpisu w `~/.claude/metrics/prices.json`. Hooki są w `hooks/hooks.json`; do `~/.claude/settings.json`
+   trafiają przez `node scripts/sync-global-hooks.mjs --apply`.
 4. Audit i setup.
 5. Rollup dzienny `telemetry-aggregate.mjs` → `telemetry/rollups/`.
 6. Dashboard (terminal na żywo, potem web) i transport na serwer.

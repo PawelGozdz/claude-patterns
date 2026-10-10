@@ -3,6 +3,7 @@
 # Pisany przez /analyze, edytowany przez CZŁOWIEKA, czytany przez /orchestrate.
 # Lokalizacja: project-orchestration/analysis/{TASK-ID}.analysis.md  (NIE tasks/ — tam tylko taski)
 task: TS-XXX-000
+telemetry_run: null             # runId z `telemetry-emit run-start` (ANL-041); null gdy telemetria nie ruszyła
 status: awaiting-human          # draft | awaiting-human | approved  ← BRAMKA MASZYNOWA
 # /orchestrate ODMÓWI startu dopóki status != approved LUB jakiekolwiek answer == null.
 

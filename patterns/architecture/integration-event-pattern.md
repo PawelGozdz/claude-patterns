@@ -67,6 +67,8 @@ An integration event is a deliberately impoverished message: primitive-only payl
 written to the outbox in the producer's transaction and delivered by the poller after commit —
 never dispatched in-process.
 
+**Timing of in-process events**: domain events dispatched in-process (`eventDispatcher`, `@EventHandler`) run BEFORE the command's transaction commits. Anything such a handler does outside the transaction (`queue.add`, cache invalidation, an HTTP call) survives a rollback and leaves a phantom. Every cross-context or audit effect therefore goes through the outbox (`outboxService.saveMessage`), which rolls back with the transaction; an event handler may only do work that is reversible together with the transaction.
+
 ---
 
 > **Removed 2026-09-07**: the long worked example that used to sit here
@@ -206,6 +208,8 @@ export class JobCompletedIntegrationEmitterHandler {
   }
 }
 ```
+
+Note the contrast with the handler above: it works because `saveMessage` joins the active transaction, whereas a `queue.add` in the same place would be dispatched pre-commit and would not roll back.
 
 The CLS transaction propagation that makes this write atomic, the step-by-step migration of an
 existing handler, and the rollback-survival taxonomy live in

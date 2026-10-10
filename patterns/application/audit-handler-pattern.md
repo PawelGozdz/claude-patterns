@@ -244,6 +244,7 @@ export class AuthModule implements OnModuleInit {
 3. **NEVER store raw PII** - use hashed/anonymized data from events
 4. **NEVER throw from handler** - audit failures should never break business flow
 5. **NEVER forget module registration** - handler won't receive events
+6. **NEVER assume an audit entry is atomic with the business write** - an in-process domain event is dispatched BEFORE the command's transaction commits, and `BaseAuditHandler`'s `queue.add` (BullMQ/Redis) is not part of that transaction. If the transaction later rolls back, the Tier 1 entry survives as a **phantom** (an audit record of something that never happened). Until the audit goes through the outbox, state in a comment on the handler that its entry is best-effort and may outlive a rollback. An audit entry that must never be a phantom (critical Tier 1) is written with `outboxService.saveMessage(...)` in the handler's own transaction — see `transactional-outbox-pattern.md`. Known case: `AuthorizationAuditHandler` → `auditQueue.add` (SEC-AUDIT-PHANTOM-001)
 
 ---
 

@@ -1,0 +1,30 @@
+{
+  "session_id": "sess-fixture",
+  "transcript_path": "/fixture/session.jsonl",
+  "cwd": "/fixture/project",
+  "prompt_id": "644aa391-4f15-480a-9721-135e863d2e77",
+  "permission_mode": "bypassPermissions",
+  "effort": {
+    "level": "medium"
+  },
+  "hook_event_name": "PostToolUse",
+  "tool_name": "Agent",
+  "tool_input": {
+    "description": "[slot:probe] test",
+    "prompt": "Odpowiedz jednym słowem: ok",
+    "subagent_type": "Explore"
+  },
+  "tool_response": {
+    "isAsync": true,
+    "status": "async_launched",
+    "agentId": "ab0e67cca3587f5cb",
+    "description": "[slot:probe] test",
+    "resolvedModel": "claude-haiku-5-5",
+    "prompt": "Odpowiedz jednym słowem: ok",
+    "outputFile": "/fixture/tasks/ab0e67cca3587f5cb.output",
+    "canReadOutputFile": true,
+    "canContinueAgent": true
+  },
+  "tool_use_id": "toolu_01EdbTg1LdXe34RUh93fuHkb",
+  "duration_ms": 4
+}

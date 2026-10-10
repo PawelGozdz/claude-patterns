@@ -24,7 +24,7 @@ cronów/schedulerów w tym repo idą przez repozytorium/port/command-bus, żaden
   **Odstępstwo (dopuszczalne w ~5% przypadków)** wymaga: (a) komentarza `// RP2-EXCEPTION: <powód>`
   nad klasą, (b) wpisu w sekcji „Wyjątki" pełnego wzorca (przeanalizowany kod + uzasadnienie).
   Command-repo bez `extends` I bez adnotacji = VETO, nie „pewnie wiedzieli co robią".
-- **RP3** — `save()` / `delete()` zawiera persist + dispatch eventów z agregatu przez `BaseKyselyRepository`.
+- **RP3** — `save()` / `delete()` zawiera persist + dispatch eventów z agregatu przez `BaseKyselyRepository`. Dispatch następuje PRZED commitem transakcji; poza aktywną tx `getDb()` NIE rzuca (`txHost.tx` = zwykły Kysely, autocommit) i `save()` nie jest atomowy — zapis wymagający atomowości woła się w aktywnej transakcji.
 - **RP4** — Mapper domena ↔ persistence (`mapToDomain` / `mapToPersistence`) jako prywatna metoda; żadna logika domenowa w mapperze.
 - **RP5** — Optimistic locking: kolumna `version` czytana i inkrementowana przy `save()`; konflikt → rzucić wyjątek infrastruktury (nie DomainError).
 - **RP6** — `reconstructEventByType()` rejestruje WSZYSTKIE zdarzenia domenowe kontekstu w `eventMap` używając enum (TS-EVENTS-002).

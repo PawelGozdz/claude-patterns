@@ -12,7 +12,7 @@ In CQRS command handlers:
 - Multiple database operations must succeed/fail atomically (ACID)
 - Manual transaction management is error-prone (forget begin/commit/rollback)
 - `Result.fail()` doesn't automatically trigger rollback (no exceptions thrown)
-- Nested transactions cause isolation issues (savepoints, uncommitted data)
+- A redundant `@Transactional()` below the base class adds noise and hides who owns the boundary (default `Propagation.Required` just joins the active transaction)
 - Transaction context must propagate through service calls (CLS required)
 
 **Real Challenge**: Handlers return `Result<T, E>` (functional pattern) but transactions need exceptions for rollback.
@@ -171,19 +171,20 @@ export class LoginUserHandler extends BaseCommandHandler<
 **❌ WRONG**: Duplicate @Transactional on handler
 
 ```typescript
-// ❌ DON'T DO THIS - Creates nested transaction!
+// ❌ DON'T DO THIS - Redundant second transaction boundary
 @Injectable()
 @CommandHandler(LoginUserCommand)
 export class LoginUserHandler extends BaseCommandHandler<...> {
   @Transactional() // ← REMOVED - Causes nested transaction issues
   protected async executeBusinessLogic(command: LoginUserCommand) {
-    // This creates NESTED transaction with BaseCommandHandler.execute()
-    // Causes: isolation issues, savepoint problems, data not visible
+    // Redundant: default Propagation.Required JOINS the transaction opened by
+    // BaseCommandHandler.execute() — no second transaction, no savepoint, just a
+    // misleading second owner of the boundary
   }
 }
 ```
 
-**Why Bad**: Creates nested transaction, inner commits before outer, rollback doesn't work correctly.
+**Why Bad**: Redundant — with the default `Propagation.Required` the inner decorator joins the outer transaction (it does not open a savepoint), so it protects nothing and blurs who owns the boundary. With `RequiresNew` it would be worse: a separate transaction that commits before the outer one and survives its rollback. A deliberate SAVEPOINT is a different thing — see "Intentional Nested (SAVEPOINT)" below.
 
 ### Step 3: Service Orchestration (Optional)
 
@@ -249,6 +250,30 @@ export class UserRegistrationService {
 
 ## ⚠️ Anti-Patterns
 
+## Intentional Nested (SAVEPOINT)
+
+The ban on a duplicate `@Transactional()` (MUST NOT 1, Anti-Pattern 1) does NOT cover a deliberate `@Transactional(Propagation.Nested)` on a **private method** that wraps a retryable attempt inside the handler's transaction. The two differ: a duplicate `Required` joins and adds nothing; `Nested` opens a SAVEPOINT (`@nestjs-cls/transactional-adapter-kysely` implements `wrapWithNestedTransaction`).
+
+**When**: a unit of work inside `executeBusinessLogic()` (typically an in-process ACL write, retried after a `VersionError`) that may fail and be repeated, while a failed attempt must not leave partial rows behind — e.g. `findOrCreate` writes the row BEFORE the grant, so a failed grant would leave the row.
+
+```typescript
+// Retry loop is OUTSIDE; every ATTEMPT is its own savepoint.
+@Transactional(Propagation.Nested)
+private async attempt(userId: string): Promise<void> {
+  const row = await this.repo.findOrCreate(userId);
+  const grant = row.grantPhoneVerified();
+  if (grant.isFailure) throw new AttemptFailed(grant.error); // throw is REQUIRED: only a throw rolls back to the savepoint
+}
+```
+
+**Semantics**:
+- The savepoint undoes ONLY the failed attempt; the handler's outer transaction continues and still decides commit/rollback of everything else.
+- The inner `throw` is needed for the rollback (same Result→exception conversion as the base class); it is caught at the method boundary and surfaced as `Result.fail` — the exception never leaves the adapter.
+- Without an active transaction (cron, reconciler) `Nested` opens its own ordinary transaction — the same code works in both modes.
+- Default `Propagation.Required` and `Nested` are not interchangeable: with `Required` a failed attempt cannot be rolled back separately.
+
+Reference: TS-AUTH-CAPABILITIES-INIT-001 (`ensurePhoneVerifiedCapability`), ADR-0119 §4.
+
 ### Anti-Pattern 1: Nested @Transactional Decorators
 
 ```typescript
@@ -262,9 +287,9 @@ export class LoginUserHandler extends BaseCommandHandler<...> {
 }
 ```
 
-**Why Bad**: Inner transaction commits as savepoint, outer rollback doesn't undo inner commits.
+**Why Bad**: Redundant at best (`Propagation.Required` joins the active transaction, no savepoint is created); a `RequiresNew` variant would commit independently of the outer transaction and survive its rollback.
 
-**Fix**: Remove decorator from handler, inherit from base class.
+**Fix**: Remove decorator from handler, inherit from base class. (Not to be confused with the deliberate `Propagation.Nested` below.)
 
 ### Anti-Pattern 2: Throwing Exceptions Instead of Result.fail()
 

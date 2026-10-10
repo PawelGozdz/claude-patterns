@@ -1,0 +1,18 @@
+{
+  "session_id": "sess-fixture",
+  "transcript_path": "/fixture/session.jsonl",
+  "cwd": "/fixture/project",
+  "prompt_id": "644aa391-4f15-480a-9721-135e863d2e77",
+  "permission_mode": "bypassPermissions",
+  "agent_id": "ab0e67cca3587f5cb",
+  "agent_type": "Explore",
+  "effort": {
+    "level": "medium"
+  },
+  "hook_event_name": "SubagentStop",
+  "stop_hook_active": false,
+  "agent_transcript_path": "/fixture/subagents/agent-ab0e67cca3587f5cb.jsonl",
+  "last_assistant_message": "ok",
+  "background_tasks": [],
+  "session_crons": []
+}

@@ -33,20 +33,42 @@ migracja historii pokazała, że stara telemetria raportowała 420/420 udanych p
 | Codzienny audyt floty (cron 7:30 dni robocze, `--report`) | ✅ | ADR 0011 B1 |
 | Format zdarzeń v1, `report-deviation` → zdarzenie `deviation` | ✅ | ADR 0012 krok 1, `f11191e` |
 | Collector w v1 + migracja historii (12 953 zdarzenia od 2026-07) | ✅ | ADR 0012 krok 2, `0c82a8f` |
-| Pole `category` w skrzynce = `cause` w zdarzeniach | ✅ | ten commit |
-| Opis `deviation_note` w schematach orchestratora | ✅ w drzewie, niezacommitowane | TASK-OBS-006 |
-| Metryki `/analyze` | ⏳ | TASK-OBS-003 |
+| Pole `category` w skrzynce = `cause` w zdarzeniach | ✅ | `0ae7587` |
+| Opis `deviation_note` w schematach orchestratora | ✅ | `002d49e` (ADR 0011 B2) |
+| Metryki `/analyze` (dwa hooki + `run-start/run-end`, test na żywym Claude) | ✅ zmergowane do `develop`, hooki wpięte globalnie | TASK-OBS-003, ADR 0012 krok 3 |
+| Agregaty dzienne + `_inbox/index.json` | ⏳ **następny** — gałąź `feature/TASK-OBS-005` | TASK-OBS-005 |
 | Audyt i setup jako źródła metryk, setup zgłasza do skrzynki | ⏳ | TASK-OBS-004 |
-| Agregaty dzienne + `_inbox/index.json` | ⏳ | TASK-OBS-005 |
-| Plan przebiegu w `run.start` (orchestrate) | ⛔ zablokowane | TASK-OBS-006 |
+| Plan przebiegu w `run.start` (orchestrate) | ⏳ odblokowane 2026-10-10 | TASK-OBS-006 |
 | Higiena raportowania (postarzanie triage, nadmiary, świeżość crona) | ⏳ | TASK-OBS-007 |
 | Dashboard na żywo + transport na serwer | ⏳ później | TASK-OBS-008 |
 
 ## Kolejność
 
-TASK-OBS-003 → TASK-OBS-005 → TASK-OBS-004 → TASK-OBS-007 → TASK-OBS-008. TASK-OBS-006 w
-dowolnym momencie po odblokowaniu. Uzasadnienie: `/analyze` nie ma dziś żadnych danych (ślepa
+TASK-OBS-003 → TASK-OBS-005 → TASK-OBS-006 → TASK-OBS-004 → TASK-OBS-007 → TASK-OBS-008. Uzasadnienie: `/analyze` nie ma dziś żadnych danych (ślepa
 plamka), agregaty dają wartość od razu na 13 tys. istniejących zdarzeń, reszta je uzupełnia.
+
+## Jak zacząć (świeża sesja)
+
+1. Przeczytaj ADR 0012 (format, prywatność, emitery) i ten epik. ADR 0011 = skrzynka i audyt.
+2. Gałąź: `feature/TASK-OBS-NNN` wychodzi z `develop`, praca **w głównym katalogu**
+   `/opt/projects/claude-patterns` (decyzja użytkownika 2026-10-10: bez worktree).
+3. **Ten katalog jest żywy dla całej floty**: `~/.claude/hooks` → `claude-patterns/hooks`,
+   wzorce/agenci/reguły projektów to symlinki tutaj. Checkoutowana gałąź = kod, którego używają
+   wszystkie sesje we wszystkich projektach. Nie zostawiaj w drzewie niedziałającego hooka ani
+   skryptu; nowy hook rejestruj w `hooks/hooks.json` dopiero, gdy jego eval jest zielony.
+4. Gotowe klocki (nie pisz od nowa):
+   - `scripts/lib/telemetry-events.mjs` — `appendEvent`, `appendEventsDedup`, `deterministicId`,
+     `validateEvent`, `normalizeOutcome`, `defaultCategory`, listy z schematu;
+   - `scripts/telemetry-emit.mjs` — CLI `run-start | step | run-end` dla procesów bez Workflow;
+   - `scripts/lib/telemetry-legacy.mjs` — wzorzec mapowania etykiet kroków na rolę/rundę/`fixes`;
+   - `tests/flow-evals/telemetry-events/run.js` — eval; nowe przypadki dopisuj tutaj albo w
+     evalu emitera; `CLAUDE_TELEMETRY_DIR=<tmp>` kieruje zapis poza prawdziwe dane.
+5. Każdy nowy eval rejestruj w `scripts/pre-commit-guards.mjs` (`runCheck('eval: …')`).
+6. Weryfikacja na danych: zdarzenia w `telemetry/events/RRRR-MM.jsonl` (poza gitem) czyta się
+   krótkim skryptem node — bez czytania plików przez model.
+7. Środowisko sesji: aktywny Fact-Forcing Gate (przed pierwszą edycją pliku podaj importerów,
+   API, schemat danych i polecenie użytkownika); żadnego `grep -r`/`rg` na korzeniu repo —
+   tylko na podkatalogach (`scripts/ hooks/ docs/ tests/`); commit tylko na prośbę użytkownika.
 
 ## Zasady wspólne dla tasków epiku
 

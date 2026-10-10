@@ -595,7 +595,7 @@ export class CommentQueryKyselyRepository implements ICommentQueryRepository {
 2. **Query repositories MUST NOT extend BaseKyselyRepository** - Direct Kysely<Database> injection
 3. **MUST implement createQueryWithVersionJoin()** - Optimistic locking pattern
 4. **MUST configure getRepositoryConfig()** - Upsert behavior (conflictColumns, updateColumns, insertOnlyColumns)
-5. **MUST inject TransactionHost** - Command repositories use transactional context
+5. **MUST inject TransactionHost** - Command repositories use transactional context. Be precise about what that guarantees — see "`getDb()` outside a transaction" below
 6. **MUST inject mapper** - Type-safe toDomain() / toPersistence()
 7. **MUST follow 3-layer event protection** - imports, eventMap, verification test (see repository-events-pattern.md)
 8. **MUST return Result<T, Error>** - NO throwing exceptions
@@ -604,6 +604,15 @@ export class CommentQueryKyselyRepository implements ICommentQueryRepository {
 11. **MUST reach aggregate data through a repository port** - cron jobs, schedulers and application
     services inject the interface from `domain/repositories/`, never a raw `Kysely<Database>` /
     `DATABASE_TOKEN` (RP12). A method the port is missing is a signal to add it to the port.
+
+### `getDb()` outside a transaction
+
+`BaseKyselyRepository.getDb()` returns `txHost.tx`. `TransactionHost.tx` returns the active CLS transaction, and **when none is active it returns the adapter's fallback instance, which for the Kysely adapter is the plain `Kysely` database** (`getFallbackInstance: () => kyselyDb`). So:
+
+- Outside a transaction (a call from a cron, a reconciler, a test without `@Transactional`) the repository **works** on the plain connection in autocommit — it does NOT throw. The `if (!tx) throw` guard in `getDb()` is effectively unreachable (it fires only if `txHost` itself is missing).
+- In that mode `save()` is **not atomic**: the aggregate row, the `aggregate_versions` row and the event persistence/dispatch are separate autocommit statements; a failure in the middle leaves partial state. Events are dispatched inside `save()`, before the data write completes.
+- Even inside a transaction, events dispatched from `save()` run BEFORE commit — an event handler's effects outside the transaction (`queue.add`, cache invalidation) survive a rollback. The handler of a domain event must be reversible together with the transaction (see `integration-event-pattern.md`).
+- Therefore: a write that must be atomic with other writes is called inside an active transaction (a handler, or `@Transactional(Propagation.Nested)` / `Required` on a service method). "Command repositories use transactional context" is a convention enforced by callers, not by the repository.
 
 ### MUST NOT
 

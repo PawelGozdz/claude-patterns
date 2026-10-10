@@ -21,7 +21,12 @@
 // (to błąd wołającego, który ma być widoczny w evalach, a nie ginąć po cichu).
 
 import crypto from 'node:crypto';
+import path from 'node:path';
+import { createRequire } from 'node:module';
 import { appendEvent, validateEvent, buildEvent, normalizeOutcome, projectName } from './lib/telemetry-events.mjs';
+import { closeRun, sweepStaleRuns } from './lib/telemetry-runs.mjs';
+
+const sessions = createRequire(import.meta.url)('../hooks/lib/telemetry-sessions.js');
 
 const COMMANDS = { 'run-start': 'run.start', step: 'step.end', 'run-end': 'run.end' };
 const FLAGS = new Set(['process', 'project', 'run-id', 'task', 'plan', 'step-id', 'group', 'role',
@@ -92,14 +97,54 @@ function buildFields(cmd, o) {
   return fields;
 }
 
+const warn = (msg) => process.stderr.write(`⚠ telemetry-emit: ${msg} — praca idzie dalej\n`);
+
+// Stan przebiegu (hooks/lib/telemetry-sessions.js) powstaje tylko, gdy --project jest ŚCIEŻKĄ:
+// hooki dopasowują agentów do przebiegu po `cwd`, a sama nazwa projektu tego nie umożliwia.
+function openRunState(fields, project) {
+  if (!project.includes('/')) return;
+  try {
+    sessions.startRun({
+      runId: fields.runId, process: fields.process, project: fields.project,
+      projectPath: path.resolve(project), taskRef: fields.taskRef, plan: fields.plan,
+    });
+  } catch (e) {
+    warn(`stan przebiegu nie zapisany (${e.message}); kroki agentów nie zostaną przypięte`);
+  }
+}
+
+function sweepOrphans() {
+  try {
+    const closed = sweepStaleRuns();
+    if (closed) process.stderr.write(`telemetry-emit: zamknięto ${closed} osieroconych przebiegów (outcome unknown)\n`);
+  } catch (e) {
+    warn(`sprzątanie osieroconych przebiegów nieudane (${e.message})`);
+  }
+}
+
 function main() {
   const { cmd, opts } = parseArgs(process.argv.slice(2));
   const fields = buildFields(cmd, opts);
   const errors = validateEvent(buildEvent(fields));
   if (errors.length) die(`zdarzenie niezgodne ze schematem v1: ${errors.join('; ')}`);
+
+  // run-end z otwartym stanem: closeRun dopisuje `skipped`/`unknown` dla kroków bez końca i sam
+  // zapisuje run.end. Po udanym zamknięciu stan znika, więc kolejny run-end idzie starym torem
+  // (zwykłe run.end) — wołający nie powinien kończyć tego samego przebiegu dwa razy.
+  const run = cmd === 'run-end' ? sessions.readRun(fields.runId) : null;
+  if (run) {
+    const r = closeRun(run, { outcome: fields.outcome, cause: fields.cause });
+    if (r.error) warn(`zamknięcie przebiegu nieudane (${r.error})`);
+    process.exit(0);
+  }
+
+  if (cmd === 'run-start') sweepOrphans();
   const res = appendEvent(fields);
-  if (!res.ok) process.stderr.write(`⚠ telemetry-emit: zapis nieudany (${res.error}) — praca idzie dalej\n`);
-  if (cmd === 'run-start') process.stdout.write(`${fields.runId}\n`);
+  if (!res.ok) warn(`zapis nieudany (${res.error})`);
+  if (cmd === 'run-start') {
+    if (res.ok) openRunState(fields, opts.project);
+    process.stdout.write(`${fields.runId}\n`);
+  }
   process.exit(0);
 }
 

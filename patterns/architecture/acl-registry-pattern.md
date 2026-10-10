@@ -207,6 +207,17 @@ export class AuthorizationContextAPI implements IACLAdapter<any, any, any> {
 - ❌ **MUST NOT** swallow an ACL error without classifying it as infra failure (5xx) vs. domain
   denial (4xx) before returning it further (ADR-0118 B2)
 
+### Writing adapter (in-process ACL WRITE)
+
+An adapter that WRITES to its context (e.g. `ensurePhoneVerifiedCapability`) and is called from a consumer's command handler behaves differently from a read adapter. Rules (TS-AUTH-CAPABILITIES-INIT-001, ADR-0119 §4):
+
+- **Shared transaction**: the adapter writes through `TransactionHost.tx` (never its own connection), so it joins the handler's CLS transaction. The caller invokes it in `executeBusinessLogic()` (not `prepare()`), and a rollback of the handler also undoes the write.
+- **`Result.fail` does not roll back by itself**: returning `Result.fail(...)` from the adapter only reports the outcome. The rollback happens when the *handler* returns its own `Result.fail` (base class converts it to an exception). A handler that swallows the adapter's failure and returns `Result.ok` commits the half-done write.
+- **Retry after `VersionError`**: wrap EACH attempt in `@Transactional(Propagation.Nested)` on a private method (SAVEPOINT) — `findOrCreate` writes the row before the grant, so a failed attempt would otherwise leave it behind. Inside the private method a `throw` is required to roll back to the savepoint; the adapter catches it at its boundary and returns `Result.fail` (no exception leaves the adapter, ACL7/N4). See `transactional-pattern.md` "Intentional Nested (SAVEPOINT)".
+- **No active transaction** (cron, reconciler): `Propagation.Nested` opens its own transaction, so the same adapter works in both modes.
+- **Monotonic grant, no compensation**: a grant such as `PHONE_VERIFIED` is never revoked — there is no `revoke`/`compensate()`. The write needs none (a rollback of the handler undoes it); a committed grant stays. Idempotency lives in the adapter (repeating the call with the same input is a no-op success), not in the caller.
+- **Out-of-process adapter**: the above does NOT hold for an adapter that leaves the process (HTTP/queue) — its effect survives a rollback; it needs `compensate()` (ADR-0119 §4).
+
 ## ⚠️ Anti-Patterns
 
 ### Anti-Pattern 1: Direct Module Import
