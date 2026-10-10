@@ -35,9 +35,9 @@ migracja historii pokazała, że stara telemetria raportowała 420/420 udanych p
 | Collector w v1 + migracja historii (12 953 zdarzenia od 2026-07) | ✅ | ADR 0012 krok 2, `0c82a8f` |
 | Pole `category` w skrzynce = `cause` w zdarzeniach | ✅ | `0ae7587` |
 | Opis `deviation_note` w schematach orchestratora | ✅ | `002d49e` (ADR 0011 B2) |
-| Metryki `/analyze` (dwa hooki + `run-start/run-end`, test na żywym Claude) | ✅ w review — gałąź `feature/TASK-OBS-003`, niezacommitowane | TASK-OBS-003, ADR 0012 krok 3 |
+| Metryki `/analyze` (dwa hooki + `run-start/run-end`, test na żywym Claude) | ✅ zmergowane do `develop`, hooki wpięte globalnie | TASK-OBS-003, ADR 0012 krok 3 |
+| Agregaty dzienne + `_inbox/index.json` | ⏳ **następny** — gałąź `feature/TASK-OBS-005` | TASK-OBS-005 |
 | Audyt i setup jako źródła metryk, setup zgłasza do skrzynki | ⏳ | TASK-OBS-004 |
-| Agregaty dzienne + `_inbox/index.json` | ⏳ | TASK-OBS-005 |
 | Plan przebiegu w `run.start` (orchestrate) | ⏳ odblokowane 2026-10-10 | TASK-OBS-006 |
 | Higiena raportowania (postarzanie triage, nadmiary, świeżość crona) | ⏳ | TASK-OBS-007 |
 | Dashboard na żywo + transport na serwer | ⏳ później | TASK-OBS-008 |

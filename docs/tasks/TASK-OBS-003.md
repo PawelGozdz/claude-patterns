@@ -2,7 +2,7 @@
 id: TASK-OBS-003
 title: 'Metryki `/analyze`: przebieg i kroki panelu jako zdarzenia v1 (dziś zero danych)'
 type: feature
-status: in-progress
+status: done
 priority: P1
 story_points: 5
 created_date: 2026-10-10
@@ -64,7 +64,7 @@ nieudanych, ile kosztuje, gdzie się zatrzymuje.
 4. Rola kroku z nazwy slotu panelu (architect, analyst, security, …); `outcome` z wyniku agenta
    (zwrócił raport / pusty / błąd), `cause` przy niepowodzeniu.
 
-## Stan (2026-10-10) — zaimplementowane, czeka na review i commit
+## Stan (2026-10-10) — zamknięte, zmergowane do `develop`
 
 Rozpoznanie z pkt 1 zakresu zmieniło projekt. PostToolUse(Agent) odpala się przy STARCIE agenta
 (`async_launched`: agentId, model, plik wyjścia — bez tokenów, czasu i wyniku), więc jeden hook
@@ -84,10 +84,10 @@ Pliki: `hooks/lib/telemetry-sessions.js` (stan), `scripts/lib/telemetry-runs.mjs
 (ANL-041), `templates/task-analysis-template.md` (`telemetry_run`), `hooks/hooks.json`,
 eval `tests/flow-evals/telemetry-sessions/` (15 przypadków, zarejestrowany w `pre-commit-guards`).
 
-**Do zrobienia przez człowieka:** `node scripts/sync-global-hooks.mjs --apply` (wpina oba hooki w
-`~/.claude/settings.json` — dopiero wtedy działają we wszystkich sesjach floty), commit i przebieg
-`/analyze` w aegis-flow na prawdziwym tasku. Nie zrobione: `killed` (TaskStop) — payload SubagentStop
-nie niesie znacznika; `costUsd` jest `null` dla modeli spoza `prices.json`.
+Hooki wpięte globalnie (`sync-global-hooks --apply`, 2026-10-10) — działają w sesjach uruchomionych
+po tej dacie. **Otwarte:** pierwszy prawdziwy przebieg `/analyze` w aegis-flow (kryterium 1 sprawdzone
+tylko headless); `killed` (TaskStop) — payload SubagentStop nie niesie znacznika; `costUsd` jest
+`null` dla modeli spoza `prices.json`.
 
 ## Kryteria akceptacji
 
