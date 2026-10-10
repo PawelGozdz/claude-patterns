@@ -13,6 +13,16 @@
 //   node scripts/report-deviation.mjs --project <nazwa> \
 //        --trigger <halt|blocked_by_prior|no_go|workflow_lint|agent_note> \
 //        --reason "<tekst>" [--rule <ORC-062|WL17>] [--task <TASK-ID>] [--run-id <id>] [--layer <id>]
+//        [--source <orchestrate|analyze|audit|setup>] [--once-per-project]
+//
+// Źródła (2026-10-10): do tej daty skrzynkę karmił WYŁĄCZNIE /orchestrate, więc błędy
+// konfiguracji, które degradują po cichu (pominięty blokujący stage panelu, plik poza
+// gitem, wzorzec w obcym języku), nigdy tu nie trafiały — refaktor claude-patterns
+// z 2026-10-10 znalazł 15 takich problemów, z których skrzynka znała jeden. Teraz piszą
+// też /analyze (analyze_gate, analyze_note) i audyt floty (setup_drift, `--source audit`).
+// `--once-per-project`: dla źródeł cyklicznych (codzienny audyt) — otwarty rekord, który
+// już zna ten projekt, NIE dostaje kolejnego wystąpienia (licznik ma mierzyć zasięg
+// problemu, nie liczbę przebiegów crona). Zamknięty rekord nadal jest reopen'owany.
 //   node scripts/report-deviation.mjs --list
 //
 // Jeden plik na SYGNATURĘ (rule_ref jeśli podany, inaczej slug trigger+reason), nie na
@@ -44,7 +54,9 @@ const YAML = require_(join(REPO_ROOT, 'node_modules', 'yaml'));
 const INBOX_DIR = join(REPO_ROOT, 'docs', 'tasks', '_inbox');
 
 const EXIT = { OK: 0, USAGE: 1, WRITE: 1 };
-const TRIGGERS = ['halt', 'blocked_by_prior', 'no_go', 'workflow_lint', 'agent_note'];
+const TRIGGERS = ['halt', 'blocked_by_prior', 'no_go', 'workflow_lint', 'agent_note',
+  'analyze_gate', 'analyze_note', 'setup_drift'];
+const SOURCES = ['orchestrate', 'analyze', 'audit', 'setup'];
 
 function die(code, msg) {
   process.stderr.write(`✘ report-deviation: ${msg}\n`);
@@ -55,6 +67,7 @@ function parseArgs(argv) {
   const out = {
     project: null, trigger: null, rule: null, reason: null,
     task: null, runId: null, layer: null, list: false,
+    source: 'orchestrate', oncePerProject: false,
   };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
@@ -66,6 +79,8 @@ function parseArgs(argv) {
     else if (a === '--task') out.task = argv[++i] ?? '';
     else if (a === '--run-id') out.runId = argv[++i] ?? '';
     else if (a === '--layer') out.layer = argv[++i] ?? '';
+    else if (a === '--source') out.source = argv[++i] ?? '';
+    else if (a === '--once-per-project') out.oncePerProject = true;
     else die(EXIT.USAGE, `nieznany przełącznik: ${a}`);
   }
   return out;
@@ -161,6 +176,11 @@ function upsert(args) {
     fm = YAML.parse(m[1]) || {};
     body = m[2];
     const wasClosed = fm.status === 'dismissed' || fm.status === 'promoted';
+    if (args.oncePerProject && !wasClosed && (fm.projects || []).includes(args.project)) {
+      console.log(`inbox: ${id} już zna ${args.project} (otwarty) — bez nowego wystąpienia`);
+      return;
+    }
+    fm.sources = Array.from(new Set([...(fm.sources || ['orchestrate']), args.source]));
     fm.occurrences = (fm.occurrences || 0) + 1;
     fm.last_seen = today;
     fm.projects = Array.from(new Set([...(fm.projects || []), args.project]));
@@ -182,6 +202,7 @@ function upsert(args) {
       id,
       status: 'proposed',
       trigger: args.trigger,
+      sources: [args.source],
       rule_ref: args.rule || null,
       first_seen: today,
       last_seen: today,
@@ -207,6 +228,7 @@ function main() {
   if (!args.project) die(EXIT.USAGE, 'brak --project');
   if (!args.trigger) die(EXIT.USAGE, 'brak --trigger');
   if (!TRIGGERS.includes(args.trigger)) die(EXIT.USAGE, `--trigger musi być jednym z: ${TRIGGERS.join(', ')}`);
+  if (!SOURCES.includes(args.source)) die(EXIT.USAGE, `--source musi być jednym z: ${SOURCES.join(', ')}`);
   if (!args.reason) die(EXIT.USAGE, 'brak --reason');
 
   try {

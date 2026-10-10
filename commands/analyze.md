@@ -29,7 +29,33 @@ w `docs/decisions/orchestrate-rule-history.md`, sekcja „reguły ANL".
 1.  panel              → sloty z analyze.panel W KOLEJNOŚCI, agenci jako LIŚCIE
 2.  artefakt           → project-orchestration/analysis/{TASK-ID}.analysis.md (jedyny Write)
 3.  wyjście            → analyze.exit: PAUSE = STOP i czekaj na człowieka
+4.  zgłoszenia         → odstępstwa MASZYNY do skrzynki claude-patterns (best-effort, niżej)
 ```
+
+## Krok 4 — zgłoszenia do skrzynki (best-effort, nie blokuje)
+
+Do 2026-10-10 skrzynkę `claude-patterns/docs/tasks/_inbox/` karmił wyłącznie `/orchestrate`.
+Błędy kompozycji, które w analizie degradują PO CICHU, nigdy tam nie trafiały — m.in. blokujący
+stage pomijany, bo inny stage zapisał już jego plik `output:` (aegis-flow, wykryte dopiero ręcznie).
+Zgłaszasz tylko to, co jest wadą **maszyny** (bloki, runtime.yml, wzorce, agenci), nie ryzyka
+samego taska — te należą do artefaktu.
+
+| Sytuacja | `--trigger` | `--rule` |
+|---|---|---|
+| stage dopasowany przez `when`, a pominięty (plik `output:` już istniał, zapisany przez inny stage) | `analyze_gate` | `ANZ-STAGE-SKIPPED` |
+| agent ze slotu panelu nie istnieje albo nie zwrócił wyniku | `analyze_gate` | `ANZ-AGENT-MISSING` |
+| stage/bramka wymaga pliku, którego w projekcie nie ma (np. `decisions-index.json`) | `analyze_gate` | `ANZ-GATE-INPUT-MISSING` |
+| wzorzec z `{PATTERNS}` nie istnieje albo jest w innym języku/stosie niż projekt | `analyze_note` | `ANZ-PATTERN-MISMATCH` |
+| kompozycja nie pasuje do taska (brak warstwy na pracę, warstwa obowiązkowa bez pracy) | `analyze_note` | `ANZ-LAYER-MISMATCH` |
+
+```
+node <claude-patterns>/scripts/report-deviation.mjs --project {nazwa} --source analyze \
+  --trigger <analyze_gate|analyze_note> --rule <ANZ-…> --reason "<co, gdzie, jaki plik/stage>" \
+  --task {TASK-ID} [--layer <id warstwy>]
+```
+
+To jedyny zapis poza listą zamkniętą niżej — trafia do claude-patterns, nie do projektu.
+Błąd wywołania = jedno zdanie w artefakcie (`## Uwagi`), analiza idzie dalej.
 
 **Co wolno zapisać — lista zamknięta.** Ograniczeniem jest ta lista, nie brak narzędzia:
 
