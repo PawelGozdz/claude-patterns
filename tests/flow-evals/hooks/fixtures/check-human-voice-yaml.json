@@ -1,0 +1,38 @@
+[
+  {
+    "name": "human-voice-broken-frontmatter-yaml-warns",
+    "hook": "check-human-voice.js",
+    "payload": {
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "TS-X-3.analysis.md"
+      }
+    },
+    "setup": {
+      "cwd": true,
+      "files": {
+        "TS-X-3.analysis.md": "---\ntask: TS-X-3\nunits:\n  - { id: docs, layer: implementation, dirs: [\"a.md\"], reason: \"kod \\`x\\` w cudzysłowie\" }\nopen_questions: []\ndecisions: []\n---\n# x\n"
+      }
+    },
+    "expect_stderr": "nie parsuje się jako YAML",
+    "expect": "pass"
+  },
+  {
+    "name": "human-voice-valid-frontmatter-yaml-silent",
+    "hook": "check-human-voice.js",
+    "payload": {
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "TS-X-4.analysis.md"
+      }
+    },
+    "setup": {
+      "cwd": true,
+      "files": {
+        "TS-X-4.analysis.md": "---\ntask: TS-X-4\nunits:\n  - { id: docs, layer: implementation, dirs: [\"a.md\"], reason: \"opis bez znaków ucieczki\" }\nopen_questions: []\ndecisions: []\n---\n# x\n"
+      }
+    },
+    "expect_silent": true,
+    "expect": "pass"
+  }
+]

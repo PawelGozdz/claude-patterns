@@ -53,17 +53,21 @@ Przyczyny są systemowe, nie punktowe:
    Znane ograniczenie: ścieżka node z nvm (`v24.14.1`) jest zaszyta — po zmianie wersji node
    cron padnie po cichu. Do zrobienia: kontrola świeżości `audit-daily.log` w
    `telemetry-freshness.mjs` (ten sam wzorzec, co dla `workflow-steps.jsonl`).
-2. **Opis `deviation_note` w schematach `orchestrate.template.mjs`** (IMPL_SCHEMA,
-   VERDICT_SCHEMA) z jawnymi przypadkami: warstwa bez pracy, wzorzec w obcym języku/stosie,
-   agent ze slotu nieadekwatny do stosu. Odłożone 2026-10-10 tylko dlatego, że plik miał
-   staged zmiany innej sesji.
+2. ~~**Opis `deviation_note` w schematach `orchestrate.template.mjs`**~~ — **wdrożone
+   2026-10-10**: wspólna stała `DEVIATION_NOTE_DESCRIPTION` jako `description` pola w
+   IMPL_SCHEMA i VERDICT_SCHEMA (agent widzi schemat, nie komentarze) z jawnymi przypadkami:
+   warstwa bez pracy, wzorzec w obcym języku/stosie, agent ze slotu nieadekwatny do stosu,
+   sprzeczna/nierozstrzygająca reguła, pominięta poprawka spoza zakresu. Pilnuje tego eval
+   `orchestrate-script` (`impl-schema-has-no-self-grading-field`).
 3. **Setup zgłasza** (`--source setup`): materializacja z ostrzeżeniem, kategoria z overlay
    bez katalogu, README zachowany jako ręczny.
 4. **Postarzanie triage**: `pre-commit-guards.mjs` pokazuje rekordy `promoted` bez ruchu
    > 7 dni i `proposed` > 14 dni.
 5. **Nadmiary w audycie**: agenci/skille/kategorie wzorców obecne, a niewnoszone przez
    runtime.yml/project.yml.
-6. **Telemetria floty** (osobna implementacja, dashboard na żywo):
+6. **Telemetria floty** — **rozwinięte w [ADR 0012](0012-metryki-przebiegow-zdarzenia-v1.md)**
+   (wspólny format zdarzeń v1 dla wszystkich procesów, także udanych kroków; zapis centralnie
+   w `claude-patterns/telemetry/`). Poniżej pierwotny kierunek:
    - źródło: istniejący `~/.claude/metrics/workflow-steps.jsonl` (wpis `run`: project, runId,
      workflowName, status, costUsd, durationMs, tokeny, agentCount, runtimeYmlHash) — nie
      nowe hooki; trzy uniwersalne hooki .sh (`cost-optimizer`, `state-manager`,

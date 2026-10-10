@@ -449,6 +449,89 @@ const CASES = (c) => [
       return null;
     },
   },
+  // ── ORC-103: odcisk drzewa po rundzie naprawczej, niestabilne testy, właściciel czerwieni ────
+  {
+    name: 'fix-claim-without-tree-change-is-detected-only-when-both-fingerprints-known',
+    run() {
+      const fp = 'a'.repeat(40);
+      if (!c.fixLeftTreeUnchanged(fp, fp)) return 'identyczne odciski = drzewo bez zmian';
+      if (c.fixLeftTreeUnchanged(fp, 'b'.repeat(40))) return 'różne odciski = zmiana';
+      if (c.fixLeftTreeUnchanged(null, fp) || c.fixLeftTreeUnchanged(fp, null) || c.fixLeftTreeUnchanged(null, null)) return 'brak odpowiedzi sondy to „nie wiadomo", nie „bez zmian"';
+      if (!/git diff --name-only -z abc123;.*sha1sum.*git status --porcelain/.test(c.treeFingerprintCmd('abc123'))) return 'komenda odcisku: ' + c.treeFingerprintCmd('abc123');
+      if (!/git diff --name-only -z HEAD;/.test(c.treeFingerprintCmd(undefined))) return 'bez bazy odcisk względem HEAD';
+      return null;
+    },
+  },
+  {
+    name: 'tests-flaky-under-load-needs-isolated-rerun-and-complete-file-list',
+    run() {
+      const base = { typecheck: 'pass', tests: 'fail', lint: 'pass', testFailFiles: ' FAIL  src/shared/a.test.ts > x\n FAIL  src/shared/b.test.ts > y', testFilesFailed: 2, testsRerunPassed: true };
+      if (!c.testsFlakyUnderLoad(base)) return 'komplet plików + zielony ponowny bieg = niestabilne';
+      if (c.testsFlakyUnderLoad(Object.assign({}, base, { testsRerunPassed: false }))) return 'ponowny bieg czerwony = prawdziwa czerwień';
+      if (c.testsFlakyUnderLoad(Object.assign({}, base, { testsRerunPassed: undefined }))) return 'brak ponownego biegu = bez łagodzenia';
+      if (c.testsFlakyUnderLoad(Object.assign({}, base, { testFilesFailed: 3 }))) return 'niepełna lista plików = nie wiadomo, co jeszcze padło';
+      if (c.testsFlakyUnderLoad(Object.assign({}, base, { typecheck: 'fail' }))) return 'czerwony typecheck nie jest „niestabilnym testem"';
+      if (c.testsFlakyUnderLoad(Object.assign({}, base, { tests: 'pass' }))) return 'zielone testy nie wymagają łagodzenia';
+      return null;
+    },
+  },
+  {
+    name: 'blocked-by-prior-names-earlier-owner-layer-and-layers-done-hint',
+    run() {
+      const layers = [{ id: 'implementation', dirs: ['src/'] }, { id: 'testing', dirs: ['src/__tests__/'] }];
+      const probe = { typecheck: 'pass', tests: 'fail', testFailFiles: ' FAIL  src/mcp/guards.test.ts > x', testFilesFailed: 1 };
+      const owners = c.earlierRedOwners(probe, layers[1], layers);
+      if (JSON.stringify(owners) !== JSON.stringify(['implementation'])) return 'właściciel: ' + JSON.stringify(owners);
+      const b = c.blockedByPrior(layers[1], 'czerwono', 'nic do zrobienia', owners);
+      if (!b || b.status !== 'BLOCKED_BY_PRIOR' || !/implementation/.test(b.reason) || !/layers_done/.test(b.reason)) return 'komunikat: ' + (b && b.reason);
+      const plain = c.blockedByPrior(layers[1], 'czerwono', 'nic do zrobienia', []);
+      if (/layers_done/.test(plain.reason)) return 'bez wcześniejszego właściciela nie ma podpowiedzi o layers_done';
+      if (c.blockedByPrior(layers[1], null, 'x', owners) !== null) return 'zielona sonda = brak blokady';
+      return null;
+    },
+  },
+  {
+    name: 'earlier-red-owners-ignores-own-and-later-layers',
+    run() {
+      const layers = [{ id: 'domain', dirs: ['src/domain/'] }, { id: 'infra', dirs: ['src/infra/'] }, { id: 'testing', dirs: ['src/__tests__/'] }];
+      const own = { tests: 'fail', testFailFiles: ' FAIL  src/infra/x.test.ts', testFilesFailed: 1 };
+      if (c.earlierRedOwners(own, layers[1], layers).length) return 'własny plik nie jest cudzym właścicielem';
+      const later = { tests: 'fail', testFailFiles: ' FAIL  src/__tests__/x.test.ts', testFilesFailed: 1 };
+      if (c.earlierRedOwners(later, layers[1], layers).length) return 'późniejsza warstwa nie jest wcześniejszym właścicielem';
+      if (c.earlierRedOwners(null, layers[2], layers).length) return 'brak sondy = brak właściciela';
+      const ts = { typecheck: 'fail', tsErrors: 'src/domain/o.ts(3,1): error TS2322: x' };
+      if (JSON.stringify(c.earlierRedOwners(ts, layers[2], layers)) !== JSON.stringify(['domain'])) return 'błąd TS w domain';
+      return null;
+    },
+  },
+  // ── ORC-104: własność luki po specyficzności, sonda z korzenia repo ──────────────────────
+  {
+    name: 'unverified-test-files-owned-by-more-specific-layer-are-not-own-gap',
+    run() {
+      const obs = { id: 'infrastructure:obs-guardian', dirs: ['src/ctx/infrastructure/queues/', 'src/shared/infrastructure/queues/services/__tests__/'] };
+      const repro = { id: 'testing:repro-test', dirs: ['src/ctx/infrastructure/queues/__tests__/'] };
+      const all = [repro, obs];
+      const cudze = 'src/ctx/infrastructure/queues/__tests__/processor.spec.ts';
+      const wlasne = 'src/shared/infrastructure/queues/services/__tests__/fan-out.spec.ts';
+      const d1 = c.decideVerdict({ verdict: 'GO', unverified_scope: [cudze] }, 1, 3, obs, all);
+      if (d1.next !== 'go') return 'spec z dirs dłuższej jednostki testing to cudza robota: ' + JSON.stringify(d1);
+      const d2 = c.decideVerdict({ verdict: 'GO', unverified_scope: [cudze, wlasne] }, 1, 3, obs, all);
+      if (d2.next !== 'reverify' || d2.gaps.length !== 1 || d2.gaps[0] !== wlasne) return 'własny spec zostaje luką: ' + JSON.stringify(d2);
+      const d3 = c.decideVerdict({ verdict: 'GO', unverified_scope: [cudze] }, 1, 3, repro, all);
+      if (d3.next !== 'reverify') return 'właściciel nadal ma lukę: ' + JSON.stringify(d3);
+      return null;
+    },
+  },
+  {
+    name: 'probe-command-anchors-to-repo-root-before-package-lookup',
+    run() {
+      const p = c.buildProbePrompt(ARGS, { id: 'infrastructure', dirs: ['src/infrastructure/'], checks: ['typecheck'] });
+      const i = p.indexOf('git rev-parse --show-toplevel');
+      if (i === -1) return 'brak kotwicy korzenia repo w poleceniu sondy';
+      if (i > p.indexOf('_pkgdir()')) return 'kotwica musi poprzedzać wyszukiwanie package.json';
+      return null;
+    },
+  },
   // ── ORC-100: te same luki po powtórnej weryfikacji nie palą kolejnych prób ───────────────
   {
     name: 'repeated-identical-gaps-settle-as-go-with-gaps-without-more-attempts',
@@ -943,6 +1026,11 @@ const CASES = (c) => [
       if (!props.includes('changed_files')) return 'schema implementera nie zwraca listy zmienionych plików';
       if (!c.VERDICT_SCHEMA.properties.verdict) return 'schema weryfikatora bez pola verdict';
       if (!c.CHECKS_SCHEMA.properties.newTestBlocks) return 'schema sondy bez pomiaru przyrostu';
+      // Agent widzi tylko schemat — bez `description` nie wie, kiedy zgłaszać odstępstwo (ADR 0011 B2).
+      for (const [name, s] of [['IMPL_SCHEMA', c.IMPL_SCHEMA], ['VERDICT_SCHEMA', c.VERDICT_SCHEMA]]) {
+        const d = s.properties.deviation_note && s.properties.deviation_note.description;
+        if (!d || !/obcego języka/.test(d) || !/nie ma pracy/.test(d)) return name + '.deviation_note bez opisu przypadków zgłoszenia';
+      }
       return null;
     },
   },

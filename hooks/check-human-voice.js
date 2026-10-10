@@ -114,6 +114,18 @@ function main() {
   if (!frontmatter) process.exit(0);
 
   const problems = [];
+  // ORC-102: frontmatter, który nie parsuje się jako YAML, jest po cichu pomijany w całości przez
+  // /orchestrate (units[], decisions[], minor_fixes…). 101 z 926 analiz we flocie (2026-10-08) miało ten
+  // błąd, najczęściej `: ` w niecytowanym tekście albo `\`` w cudzysłowie. Wykrywamy go przy zapisie.
+  try {
+    const YAML = require(path.join(__dirname, '..', 'node_modules', 'yaml'));
+    YAML.parse(frontmatter);
+  } catch (e) {
+    if (e && e.code !== 'MODULE_NOT_FOUND') {
+      problems.push(`frontmatter nie parsuje się jako YAML (${String(e.message).split('\n')[0]}) — /orchestrate zatrzyma start; ` +
+        'cytuj teksty z `: ` apostrofami albo użyj bloku `>`/`|`, w cudzysłowach nie używaj `\\``');
+    }
+  }
   inspect(extractItems(frontmatter, 'open_questions', 'ask'), 'open_questions', 'ask', problems);
   inspect(extractItems(frontmatter, 'decisions', 'means'), 'decisions', 'means', problems);
 

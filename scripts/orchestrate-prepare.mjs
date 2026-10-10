@@ -106,8 +106,12 @@ function splitFrontmatter(text) {
   const m = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/.exec(text);
   if (!m) return { fm: null, fmRaw: '', body: text };
   let fm = null;
-  try { fm = YAML.parse(m[1]); } catch { fm = null; }
-  return { fm, fmRaw: m[1], body: m[2] };
+  let fmError = null;
+  // ORC-102: błąd składni NIE może zamieniać się w ciche `fm = null` — wtedy `units[]`, `decisions[]`,
+  // `layers_scope`, `minor_fixes` i reszta pól znikają z planu, a bramka (status z regexu) przechodzi
+  // (ai-gateway TS-AIG-084: `\`` w ciągu w cudzysłowach, 10 jednostek zgubionych, w tym `docs`).
+  try { fm = YAML.parse(m[1]); } catch (e) { fm = null; fmError = String(e.message ?? e).split('\n')[0]; }
+  return { fm, fmRaw: m[1], fmError, body: m[2] };
 }
 
 // ── wyszukiwanie plików po prefiksie TASK-ID ─────────────────────────────────────
@@ -439,6 +443,11 @@ function main() {
   if (analysisPath) {
     analysisDoc = splitFrontmatter(readFileSync(analysisPath, 'utf8'));
     const fmRaw = analysisDoc.fmRaw;
+    if (analysisDoc.fmError) {
+      gateFailures.push(`frontmatter artefaktu nie parsuje się jako YAML (${analysisDoc.fmError}) — units[], decisions[], ` +
+        'layers_scope, minor_fixes i pozostałe pola zostałyby POMINIĘTE bez ostrzeżenia. Typowo: `\\`` albo inny znak ' +
+        'ucieczki w ciągu w cudzysłowach — użyj apostrofów albo bloku `|`/`>`')
+    }
     const status = analysisDoc.fm?.status
       ? String(analysisDoc.fm.status)
       : (/^status:\s*([A-Za-z-]+)/m.exec(fmRaw)?.[1] ?? 'unknown');

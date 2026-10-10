@@ -1952,3 +1952,54 @@ Pozycja bez rozpoznawalnej ścieżki zostaje po staremu. Ryzyko: implementer od 
 zakres ogranicza lista, ale nie ma twardego strażnika poza promptem; hook `check-subagent-pattern-reads`
 może zażądać wzorca przy plikach objętych wzorcami. Nie sprawdzone na żywym przebiegu. Eval:
 `orphan-minor-fixes-are-those-outside-every-layer-scope`.
+
+<a id="orc-102"></a>
+
+### ORC-102 — błąd składni YAML we frontmatterze analizy nie może być cichy (2026-10-08)
+
+ai-gateway TS-AIG-084 (`DEV-orc-101-final-gate`): jednostka `docs` z `units[]` „nie weszła do żadnej warstwy”,
+a przebieg miał tylko warstwy bazowe. Przyczyna nie leżała w mapowaniu jednostek (ORC-101 dotyczy
+`minor_fixes`), tylko w tym, że frontmatter analizy nie parsował się jako YAML (`\`` w ciągu w cudzysłowach,
+linia 72). `splitFrontmatter` łapał wyjątek i zwracał `fm = null`; bramka czytała `status` i `answer: null`
+regexem, więc przechodziła, a CAŁA reszta (`units`, `decisions`, `layers_scope`, `layers_skip`,
+`minor_fixes`, `patterns_exclude`) znikała bez ostrzeżenia. Skala: 101 z 926 analiz we flocie
+(~45 unikalnych po odjęciu bliźniaczych projektów) ma frontmatter, który się nie parsuje; najczęściej
+`: ` w niecytowanym tekście, zduplikowany klucz albo `\`` w cudzysłowie.
+Zmiana: (1) `splitFrontmatter` zwraca `fmError`, a bramka `prepare` kończy exit 2 z treścią błędu i listą pól,
+które zostałyby pominięte; (2) `check-human-voice.js` (PostToolUse na `*.analysis.md`) ostrzega przy zapisie,
+żeby błąd wyszedł u autora analizy, nie dopiero przy starcie. Skutek uboczny: stare, już zrealizowane
+analizy z błędnym YAML nie wystartują ponownie bez poprawki frontmatteru. Eval:
+`broken-frontmatter-yaml-exit-2`, `human-voice-broken-frontmatter-yaml-warns`,
+`human-voice-valid-frontmatter-yaml-silent`.
+
+### ORC-103 — naprawa bez zmiany w drzewie, niestabilne testy, właściciel czerwieni (2026-10-10)
+
+**Objaw (3 zgłoszenia).**
+1. marketing-hub TS-MH-007: runda naprawcza po NO_GO bramki końcowej (ORC-091) zgłosiła naprawę 13 ustaleń, ale żaden plik nie zmienił mtime. Lista `changed_files` implementera jest jego twierdzeniem, silnik nie porównywał jej z drzewem, więc marnował ponowną bramkę.
+2. grant-flow TS-PROJ-COMPANY-001: 3 niestabilne testy (czas, entropia) czerwone pod obciążeniem, zielone osobno (53/53); obejście ręczne `layers.testing.tests=false`.
+3. ai-gateway TS-AIG-073: warstwa testing stanęła na czerwonym `architecture.test.ts`, którego przyczyna leżała w kodzie warstwy implementation. Komunikat BLOCKED_BY_PRIOR nie nazywał właściciela, a wznowienie pominęło implementation z `layers_done`.
+
+**Co ustaliłem w dzienniku `wf_4facde5d-58b`.** Dostępny jest tylko przebieg końcowy (wznowienie): implementation pominięte z `layers_done`, testing GO po 2 próbach, bramka końcowa GO z lukami. Pierwszych przebiegów w dzienniku nie ma, więc nie odtworzyłem, dlaczego implementation dostało GO: jego `checks` to `typecheck`, `lint` bez `test`, więc czerwony test nie był tej warstwie widoczny. To zgodne z projektem (testy należą do warstwy testing), a nie błąd sondy.
+
+**Zmiana.**
+- `fixLeftTreeUnchanged` + `treeFingerprintCmd`: odcisk (hash treści plików zmienionych względem bazy, nieśledzonych i statusu) przed i po każdej naprawie. Identyczne odciski = ostrzeżenie w `report.warnings`, brak sondy i ponownej bramki; blokujące kończą się haltem z oryginalnymi naruszeniami, drobne trafiają do `minorFindings` (bez fałszywego NO_GO). Brak odpowiedzi sondy to „nie wiadomo", nie „bez zmian".
+- `testsFlakyUnderLoad`: sonda po czerwonych testach uruchamia raz same padające pliki (`testsRerunPassed`). Przy zgodnej liście plików i zielonym ponownym biegu testy liczą się jako zielone, a `report.warnings` wymienia pliki.
+- `earlierRedOwners` + `blockedByPrior`: komunikat nazywa wcześniejszą warstwę-właściciela i mówi, że wznowienie z nią w `layers_done` ją pominie.
+
+**Czego NIE zrobiłem.** Silnik nie otwiera sam wcześniejszej warstwy po BLOCKED_BY_PRIOR. To zmiana kontraktu (ponowna implementacja warstwy, która miała GO) i wymaga decyzji, a nie mam danych pierwszego przebiegu. Zgłoszenie `DEV-orc-062-implementation-origin-guard` zostaje `proposed` z tą adnotacją.
+
+**Ryzyko.** Łagodzenie niestabilnych testów może ukryć błąd zależny od kolejności (test przechodzi osobno, pada w zestawie przez wspólny stan). Dlatego zawsze jest ostrzeżenie z nazwami plików.
+
+### ORC-104 — luka weryfikatora liczona po podciągu ścieżki, sonda bez kotwicy korzenia (2026-10-10)
+
+**Objaw.** juz-ide-api-1 TS-AUTH-CAPABILITIES-INIT-001 (`wf_3a5a4cbb-177`): `infrastructure:obs-guardian` — GO weryfikatora z `unverified_scope` za każdym razem innym (próba 1: `authorization-integration.processor.spec.ts`, `integration-event-fan-out-routing-contract.spec.ts`; próba 3: `authorization-phone-verified-real-queue.integration.spec.ts`, `…processor.spec.ts`), ESCALATE_AND_HALT po 3 próbach. Luki nie były identyczne, więc ORC-100 nie mógł ich zaakceptować.
+
+**Przyczyna.** Jednostka `obs-guardian` ma w `dirs` `…/infrastructure/queues/`, a jednostka `repro-test` (testing) `…/infrastructure/queues/__tests__/`. Filtr ORC-070 w `decideVerdict` uznawał pozycję za własną, jeśli `layerTouches` (podciąg ścieżki) pasował do tej warstwy — a pasował, bo katalog nadrzędny zawiera podkatalog. Specyfikacje należały do jednostki testing (dłuższy, specyficzniejszy dir), więc weryfikator infrastruktury nie miał ich jak „dokończyć" i co próbę pomijał inne.
+
+**Zmiana.**
+- `decideVerdict`: pozycję `unverified_scope` wygrywa w rankingu specyficzności (`ownerLayersOf`, jak ORC-093) inna warstwa, a ta nie remisuje → cudza robota, nie luka. Remis lub brak właściciela zachowuje stare zachowanie.
+- `buildProbePrompt`: polecenie sondy zaczyna się od `cd "$(git rev-parse --show-toplevel)" || exit 1`; `_pkgdir`, `npm run` i `git ls-files` liczą ścieżki od korzenia, nie od cwd agenta (wcześniej grant-flow, teraz juz-ide-api-1: `cd` w podkatalog = npm w złym miejscu).
+- Instrukcja `layers_done` (krok 4): zapis GO także po `ESCALATE_AND_HALT`/`BLOCKED_BY_PRIOR`.
+
+**Niezweryfikowane.** Zarzut agenta, że „każde ponowne wygenerowanie skryptu zrzuca cache warstw", nie jest potwierdzony: w dzienniku jest jeden przebieg tego zadania i `application` (GO po 2 próbach) nie trafiło do `layers_done`. To zgodne z hipotezą, że GO sprzed zatrzymania nie było zapisywane (instrukcja była dwuznaczna), ale nie dowodzi cache'u Workflow. Silnik nie ma dostępu do `fs`, więc zapis `layers_done` zostaje po stronie orkiestratora (prompt).
+

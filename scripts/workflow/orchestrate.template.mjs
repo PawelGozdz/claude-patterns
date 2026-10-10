@@ -287,6 +287,25 @@ function buildTreeProbePrompt(base) {
     (base ? ' Dodatkowo zwróć w `commits` wynik `git rev-list --count ' + base + '..HEAD` (liczba).' : '')
 }
 
+// ORC-103: odcisk drzewa roboczego — hash treści plików zmienionych względem bazy i nieśledzonych oraz statusu.
+// Runda naprawcza po bramce końcowej (ORC-091) raportowała naprawę 13 ustaleń, a żaden plik nie
+// zmienił mtime (marketing-hub TS-MH-007): lista `changed_files` implementera to jego twierdzenie,
+// nie fakt. Odcisk przed i po rundzie to fakt.
+function treeFingerprintCmd(base) {
+  return '( { git diff --name-only -z ' + (base || 'HEAD') + '; git ls-files -o --exclude-standard -z; } | ' +
+    'xargs -0 -r sha1sum 2>/dev/null; git status --porcelain ) | sha1sum'
+}
+
+function buildFingerprintPrompt(base) {
+  return 'W repo uruchom dokładnie: ' + treeFingerprintCmd(base) + '\nNIC więcej. Zwróć w `fingerprint` ' +
+    'pierwsze pole wyniku (40 znaków hex), bez zmian.'
+}
+
+// Prawda tylko gdy OBA odciski są znane i identyczne — brak odpowiedzi sondy to „nie wiadomo", nie „bez zmian".
+function fixLeftTreeUnchanged(before, after) {
+  return !!(before && after && before === after)
+}
+
 // Sonda: deterministyczne bramki uruchomione RAZ, tanio, bez czytania kodu. Verifier
 // dostaje jej wynik jako FAKT i ma zakaz ponawiania — inaczej ten sam typecheck wykonuje
 // się kilkadziesiąt razy, a każde 16-23 KB wyjścia zostaje w kontekście na resztę przebiegu.
@@ -351,11 +370,14 @@ function buildProbePrompt(a, layer) {
       return "':(glob)**/" + d + "' ':(glob)**/" + sp.dir + sp.stem + ".*.spec.*' ':(glob)**/" + sp.dir + sp.stem + ".*.test.*'"
     })
     .join(' ') || '.'
+  // ORC-104: sonda biegnie z korzenia repo bez względu na cwd agenta. `_pkgdir` i `git ls-files` liczą ścieżki
+  // względem cwd — po `cd` w podkatalog (juz-ide-api-1, wcześniej grant-flow) npm odpalał się w złym katalogu.
+  const rootAnchor = 'cd "$(git rev-parse --show-toplevel)" || exit 1\n'
   const run = cmds.length
     // ORC-094: OSOBNY log na każdy check. Wspólny `/tmp/check-<warstwa>.log` drugi check nadpisywał
     // pierwszy — marketing-hub TS-MH-013: po `lint:check:api` log nie zawierał już błędów `tsc`,
     // więc `tsErrors` było puste i odroczenie ORC-082 nie miało czego sparsować.
-    ? pkgLookup + cmds.map((c, i) => c + ' > /tmp/check-' + layer.id + '-' + (i + 1) + '.log 2>&1; echo "EXIT:$?"').join('\n') +
+    ? rootAnchor + pkgLookup + cmds.map((c, i) => c + ' > /tmp/check-' + layer.id + '-' + (i + 1) + '.log 2>&1; echo "EXIT:$?"').join('\n') +
       (firstDir
         ? '\nGdy $PKGROOT wyjdzie jako "." (brak package.json na ścieżce do zakresu warstwy) — ' +
           'checks poleciały na PEŁNYM repo; zaznacz to WPROST w swojej odpowiedzi (ORC-016: ' +
@@ -420,7 +442,12 @@ function buildProbePrompt(a, layer) {
     ? ' Przy niezerowych testach dodatkowo zwróć: w `testFailFiles` WYNIK DOSŁOWNIE (bez streszczania): ' +
       '`grep -hE \'^[[:space:]]*FAIL[[:space:]]\' /tmp/check-' + layer.id + '-*.log | head -80`, a w ' +
       '`testFilesFailed` LICZBĘ plików z podsumowania runnera (vitest „Test Files  N failed", jest ' +
-      '„Test Suites: N failed"); gdy podsumowania nie ma — pomiń to pole.'
+      '„Test Suites: N failed"); gdy podsumowania nie ma — pomiń to pole.' +
+      // ORC-103: niestabilne testy (czas, entropia) czerwone pod obciążeniem całego zestawu, zielone osobno
+      // (grant-flow TS-PROJ-COMPANY-001: 3 pliki, 53/53 w izolacji) — ręczne obejście `tests=false`.
+      ' Następnie JEDEN raz uruchom ponownie TYLKO te padające pliki, osobno (to samo narzędzie, ' +
+      'same ścieżki z `testFailFiles`, bez reszty zestawu); jeśli wszystkie przechodzą, zwróć ' +
+      '`testsRerunPassed: true`, w przeciwnym razie `false`. Nie rób tego przy EXIT:0.'
     : ''
   // ORC-094: mapowanie wyników na pola ZAWSZE (nie tylko dla komend dosłownych). marketing-hub
   // TS-MH-013: wynik lintu trafiał do pola `typecheck`, więc warstwa wyglądała na „typecheck
@@ -689,6 +716,12 @@ function decideVerdict(verdict, attempt, maxAttempts, layer, allLayers) {
     ? unverified.filter((item) => {
       if (SELF_ADMITS_OUT_OF_SCOPE.test(item)) return false
       if (!/[/.]/.test(item)) return true
+      // ORC-104: `layerTouches` to podciąg ścieżki, więc `.../queues/` obejmuje też `.../queues/__tests__/x.spec.ts`
+      // należące do jednostki testing o dłuższym, bardziej specyficznym dirs (juz-ide-api-1 TS-AUTH-CAPABILITIES-INIT-001:
+      // obs-guardian liczył cudze spec-i jako własną lukę, weryfikator co próbę pomijał inne, ESCALATE po 3 próbach).
+      // Właściciela wyznacza specyficzność (jak w ORC-093): gdy inna warstwa wygrywa, a ta nie remisuje — cudza robota.
+      const owners = ownerLayersOf(item, (allLayers || []).filter((l) => effectiveDirs(l).length))
+      if (owners.length && !owners.some((o) => o.id === layer.id)) return false
       if (layerTouches(layer, item)) return true
       const claimedElsewhere = (allLayers || []).some((l) =>
         l.id !== layer.id && effectiveDirs(l).length && layerTouches(l, item))
@@ -958,6 +991,16 @@ function testsRedIsLaterLayers(probe, layer, allLayers) {
   })
 }
 
+// ORC-103: testy czerwone w całym zestawie, ale zielone po osobnym uruchomieniu padających plików
+// (niestabilne pod obciążeniem). Warunki: typecheck i lint nie są czerwone, sonda wyłapała pliki, a ich
+// liczba zgadza się z podsumowaniem runnera (niepełna lista = nie wiemy, co jeszcze padło).
+function testsFlakyUnderLoad(probe) {
+  if (!probe || probe.tests !== 'fail' || probe.typecheck === 'fail' || probe.lint === 'fail') return false
+  if (probe.testsRerunPassed !== true) return false
+  const paths = testFailPaths(probe.testFailFiles)
+  return paths.length > 0 && typeof probe.testFilesFailed === 'number' && paths.length === probe.testFilesFailed
+}
+
 // ORC-101: pozycje `minor_fixes` analizy (`plik — co — poprawka`), których ścieżka nie leży w `dirs`
 // ŻADNEJ warstwy z dirs (dokumentacja, KANBAN, karty) — nikt by ich nie zrobił. Pozycja bez
 // rozpoznawalnej ścieżki zostaje po staremu (nie jest sierotą).
@@ -1036,15 +1079,39 @@ function stageableFiles(finalFiles, dirtyAtStart, layerFiles) {
 // potwierdzenia, tylko blokada. Weryfikator no-op nie widzi sondy i przyjąłby twierdzenie
 // (TS-MH-005: 4/4 warstwy infra dostały GO na odziedziczonej czerwieni). Zwraca `settled`
 // albo null, gdy ścieżka no-op jest dozwolona.
-function blockedByPrior(layer, probeRed, noopClaim) {
+function blockedByPrior(layer, probeRed, noopClaim, earlierOwners) {
   if (!probeRed || !noopClaim) return null
+  // ORC-103: ai-gateway TS-AIG-073 — warstwa testing stanęła na czerwonym `architecture.test.ts`, którego
+  // przyczyną był kod warstwy implementation; wznowienie ją POMINĘŁO (layers_done), więc czerwień wróciła.
+  // Komunikat nazywa właściciela i mówi, co zrobić, zamiast zostawiać zgadywanie.
+  const hint = (earlierOwners || []).length
+    ? '\nWŁAŚCICIEL CZERWIENI: ' + earlierOwners.join(', ') + ' (wcześniejsza warstwa). Wznowienie z tą warstwą w ' +
+      '`layers_done` ją POMINIE — usuń ją z `layers_done` w analizie i uruchom ponownie, albo napraw ręcznie.'
+    : ''
   return {
     id: layer.id,
     status: 'BLOCKED_BY_PRIOR',
     reason: 'sonda na czerwono, a implementer twierdzi, że w zakresie warstwy nie ma nic do ' +
-      'naprawy: ' + noopClaim + '\n' + probeRed,
+      'naprawy: ' + noopClaim + '\n' + probeRed + hint,
     files: [],
   }
+}
+
+// ORC-103: wcześniejsze warstwy, do których należą pliki z czerwonej sondy (testy + błędy TS).
+function earlierRedOwners(probe, layer, allLayers) {
+  if (!probe) return []
+  const withDirs = (allLayers || []).filter((l) => (l.dirs || []).length || effectiveDirs(l).length)
+  const myIdx = withDirs.findIndex((l) => l.id === layer.id)
+  if (myIdx <= 0) return []
+  const paths = testFailPaths(probe.testFailFiles).concat(typecheckErrorPaths(probe.tsErrors || probe.tail).paths)
+  const out = []
+  for (const p of paths) {
+    for (const o of ownerLayersOf(p, withDirs)) {
+      const idx = withDirs.findIndex((l) => l.id === o.id)
+      if (idx >= 0 && idx < myIdx && out.indexOf(o.id) === -1) out.push(o.id)
+    }
+  }
+  return out
 }
 
 // Statusy, po których przebieg staje (kolejne warstwy trafiłyby na to samo).
@@ -1085,7 +1152,14 @@ const CHECKS_SCHEMA = {
     tsErrors: { type: 'string' },
     testFailFiles: { type: 'string' },
     testFilesFailed: { type: 'number' },
+    testsRerunPassed: { type: 'boolean' },
   },
+}
+
+const FINGERPRINT_SCHEMA = {
+  type: 'object',
+  required: ['fingerprint'],
+  properties: { fingerprint: { type: 'string' } },
 }
 
 const DIFF_PROBE_SCHEMA = {
@@ -1097,6 +1171,21 @@ const DIFF_PROBE_SCHEMA = {
     commits: { type: 'number' },
   },
 }
+
+// Komentarze przy polu `deviation_note` czyta tylko człowiek — agent widzi schemat, więc kiedy
+// zgłaszać, musi stać w `description`. Do 2026-10-10 go nie było i agenci zgłaszali głównie
+// HALT-y; błędy kompozycji (warstwa bez pracy, wzorzec TS w projekcie Python, agent ze slotu
+// spoza stosu) degradowały po cichu i nie docierały do skrzynki (ADR 0011, B2).
+const DEVIATION_NOTE_DESCRIPTION =
+  'Opcjonalne, nie blokuje pracy — trafia do skrzynki docs/tasks/_inbox/ w claude-patterns. ' +
+  'Wypełnij, gdy konfiguracja, reguły albo wzorce nie pasują do tego, co faktycznie widzisz: ' +
+  '(1) warstwa nie ma pracy w tym tasku albo jej katalogi nie istnieją w repo; ' +
+  '(2) wzorzec lub reguła z przekazanej listy jest z obcego języka/stosu (np. kod TypeScript w projekcie Python); ' +
+  '(3) rola agenta ze slotu nie pasuje do stosu projektu; ' +
+  '(4) reguła lub wzorzec przeczy innemu albo nie rozstrzyga twojego przypadku; ' +
+  '(5) pominąłeś poprawkę spoza zakresu warstwy. ' +
+  'Format: jedno-dwa zdania faktu + ścieżka pliku albo identyfikator reguły/wzorca. ' +
+  'NIE wpisuj tu streszczenia zmian ani oceny własnej pracy; brak odstępstwa = pomiń pole.'
 
 // Schema implementera zawiera wyłącznie FAKTY („co zmieniłem"), nigdy self-ocenę
 // („czy zrobiłem dobrze") — sukces mierzy bramka git-diff i niezależny weryfikator.
@@ -1114,7 +1203,7 @@ const IMPL_SCHEMA = {
     // Pole FAKTOGRAFICZNE (nie self-ocena, więc nie podlega WL1): „trafiłem na sytuację, którą
     // reguły/wzorce nie opisują" — nie blokuje pracy, tylko zgłasza się do docs/tasks/_inbox/
     // w claude-patterns przez krok 5 /orchestrate (ORC-066), zamiast ginąć w logu przebiegu.
-    deviation_note: { type: 'string' },
+    deviation_note: { type: 'string', description: DEVIATION_NOTE_DESCRIPTION },
   },
 }
 
@@ -1127,7 +1216,7 @@ const VERDICT_SCHEMA = {
     rationale: { type: 'string' },
     // Patrz IMPL_SCHEMA.deviation_note — to samo pole, dostępne też weryfikatorowi/bramce
     // końcowej (jedyny schemat obu, patrz VERDICT_SCHEMA powyżej w komentarzu buildera).
-    deviation_note: { type: 'string' },
+    deviation_note: { type: 'string', description: DEVIATION_NOTE_DESCRIPTION },
     // Ścieżki, których weryfikator NIE zdążył sprawdzić (budżet tur) — patrz sekcja "TURN
     // BUDGET" w promptach weryfikatorów. Pole FAKTOGRAFICZNE (nie self-ocena — WL1 OK).
     // decideVerdict() i jednorazowa bramka końcowa traktują GO z niepustym unverified_scope
@@ -1192,6 +1281,7 @@ for (const step of plan) {
   // Wynik ostatniej CZERWONEJ sondy tej warstwy (null po zielonej). Po czerwieni ścieżka
   // no-op jest zamknięta — patrz blockedByPrior().
   let probeRed = null
+  let probeRedFacts = null
   // ORC-066: ostatnia niepusta adnotacja „to nie jest udokumentowane" od implementera albo
   // weryfikatora tej warstwy — dopisywana do `settled` tuż przed `report.layers.push`, żeby
   // krok 5 /orchestrate mógł ją zgłosić do docs/tasks/_inbox/ w claude-patterns.
@@ -1264,7 +1354,7 @@ for (const step of plan) {
     // (juz-ide-api-2, 2026-09-14). Analiza powinna to przewidzieć w layers_skip (albo zawęzić
     // przez layers_scope, gdy warstwa jest dotknięta częściowo); to jest siatka.
     if (noopClaim && mode === 'implement') {
-      const blocked = blockedByPrior(layer, probeRed, noopClaim)
+      const blocked = blockedByPrior(layer, probeRed, noopClaim, earlierRedOwners(probeRedFacts, layer, plan.filter((s) => s.run).map((s) => s.layer)))
       if (blocked) {
         log(layer.id + ': BLOCKED_BY_PRIOR — czerwień sondy poza zakresem warstwy, decyzja człowieka')
         settled = blocked
@@ -1360,11 +1450,17 @@ for (const step of plan) {
       probe = Object.assign({}, probe, { tests: 'deferred' })
     }
 
+    if (testsFlakyUnderLoad(probe)) {
+      log(layer.id + ': testy czerwone w całym zestawie, zielone osobno (' + probe.testFilesFailed + ' plików) — niestabilne pod obciążeniem (ORC-103)')
+      report.warnings = (report.warnings || []).concat(layer.id + ': ' + probe.testFilesFailed + ' plików testowych padło w pełnym zestawie, ale przeszło po osobnym uruchomieniu (niestabilne) — sprawdź izolację testów (ORC-103): ' + testFailPaths(probe.testFailFiles).join(', '))
+      probe = Object.assign({}, probe, { tests: 'pass' })
+    }
     if (probe && (probe.typecheck === 'fail' || probe.tests === 'fail' || probe.lint === 'fail')) {
       violations = 'deterministyczna bramka na czerwono (typecheck: ' + probe.typecheck +
         ', testy: ' + probe.tests + (probe.lint != null ? ', lint: ' + probe.lint : '') + ')\n' + (probe.tail || '')
       log(layer.id + ': sonda NO_GO — bez analizy kodu, prosto do poprawki')
       probeRed = violations
+      probeRedFacts = probe
       mode = 'implement'
       if (attempt >= maxAttempts) {
         settled = { id: layer.id, status: 'ESCALATE_AND_HALT', reason: violations, cause: 'code' }
@@ -1374,6 +1470,7 @@ for (const step of plan) {
     }
 
     probeRed = null
+    probeRedFacts = null
     const deltaFail = deltaGateFails(layer, probe, layerFiles)
     if (deltaFail) {
       violations = deltaFail
@@ -1573,6 +1670,17 @@ if (!finalAgent) {
     const items = blocking.map((x) => '[BLOKUJĄCE] ' + x).concat(minor.map((x) => '[DROBNE] ' + x))
     const groups = groupFindingsByLayer(items, implLayers, fallback)
     let ok = true
+    const noop = []
+    // ORC-103: odcisk drzewa przed i po każdej naprawie; `ask` zwraca null przy awarii sondy.
+    const fingerprint = async (label) => {
+      try {
+        const r = await ask(buildFingerprintPrompt(a.baseSha), Object.assign({ label, maxTurns: DEFAULTS.diffProbeTurns, schema: FINGERPRINT_SCHEMA }, modelFor('probe')))
+        return r && typeof r.fingerprint === 'string' ? r.fingerprint.trim() : null
+      } catch (e) {
+        return null
+      }
+    }
+    let fpBefore = await fingerprint('final-fix-fp-0')
     for (const id of Object.keys(groups)) {
       const layer = implLayers.find((l) => l.id === id)
       if (!layer) continue
@@ -1589,18 +1697,26 @@ if (!finalAgent) {
         report.warnings = (report.warnings || []).concat(layer.id + ': naprawa po bramce końcowej — implementer bez wyniku')
         continue
       }
+      const fpAfter = await fingerprint('final-fix-fp-' + layer.id)
+      if (fixLeftTreeUnchanged(fpBefore, fpAfter)) {
+        ok = false
+        noop.push(layer.id)
+        report.warnings = (report.warnings || []).concat(layer.id + ': implementer zgłosił naprawę ' + groups[id].length + ' ustaleń bramki końcowej (' + (fixed.changed_files || []).length + ' plików), ale drzewo robocze się nie zmieniło — pomijam sondę i ponowną bramkę (ORC-103)')
+        continue
+      }
+      fpBefore = fpAfter
       for (const f of fixed.changed_files || []) {
         if (allChangedFiles.indexOf(f) === -1) allChangedFiles.push(f)
         if (finalFiles.indexOf(f) === -1) finalFiles.push(f)
       }
-      const prOpts = Object.assign({ label: layer.id + '-final-fix-checks', maxTurns: DEFAULTS.probeTurns, schema: CHECKS_SCHEMA }, modelFor('probe'))
+      const prOpts =Object.assign({ label: layer.id + '-final-fix-checks', maxTurns: DEFAULTS.probeTurns, schema: CHECKS_SCHEMA }, modelFor('probe'))
       const pr = await ask(buildProbePrompt(a, layer), prOpts)
       if (pr && (pr.typecheck === 'fail' || pr.tests === 'fail')) {
         ok = false
         report.warnings = (report.warnings || []).concat(layer.id + ': sonda czerwona po naprawie ustaleń bramki końcowej (typecheck: ' + pr.typecheck + ', testy: ' + pr.tests + ')')
       }
     }
-    report.finalFix = { blocking: blocking.length, minor: minor.length, layers: Object.keys(groups) }
+    report.finalFix = { blocking: blocking.length, minor: minor.length, layers: Object.keys(groups), noop }
     return ok
   }
 
@@ -1709,7 +1825,12 @@ if (!finalAgent) {
         '\nZweryfikuj poprawki i całość. Poprawione pozycje NIE są już naruszeniami; zgłoś tylko to, co nadal zachodzi albo powstało przy poprawce.'
       continue
     }
-    if (!repaired && !blockingFinal.length) {
+    const noopFix = report.finalFix && report.finalFix.noop && report.finalFix.noop.length
+    if (!repaired && !blockingFinal.length && noopFix) {
+      // ORC-103: drobiazgi nie zostały naprawione (implementer nic nie zapisał) — to nie jest naruszenie,
+      // zostają w minorFindings dla człowieka; werdykt bramki bez zmian.
+      report.minorFindings.push({ layer: 'final-gate', items: minorFinal })
+    } else if (!repaired && !blockingFinal.length) {
       // naprawa drobiazgów zepsuła sondę — to nasze naruszenie, nie szum
       report.finalGate.verdict = 'NO_GO'
       report.finalGate.cause = 'code'

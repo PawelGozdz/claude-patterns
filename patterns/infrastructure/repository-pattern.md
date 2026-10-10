@@ -962,6 +962,12 @@ not that nobody looked.
   is reported as tech debt. Checked before accepting: readonly (no writes), batch (one query per
   call), `// RP12-EXCEPTION:` annotation above the constructor parameter.
 
+- `CapabilityScoreAdapter` (RP12, juz-ide `reputation` context, `infrastructure/acl/capability-score.adapter.ts`) —
+  ACL read-adapter of the reputation context reading its OWN `reputation_profiles` row for the capability
+  guard (single-column PK-style lookup, no aggregate load/mapping/events involved); a repository port would
+  add no behaviour here (read-model port without an aggregate). Checked before accepting: readonly (no
+  writes), reads only the context's own table, `// RP12-EXCEPTION:` annotation above the class/constructor.
+
 ---
 
 ## 📚 References

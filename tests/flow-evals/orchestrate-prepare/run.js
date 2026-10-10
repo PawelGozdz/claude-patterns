@@ -206,6 +206,23 @@ CASES.push({
   },
 });
 
+// ORC-102: frontmatter z błędem składni YAML (`\`` w ciągu w cudzysłowach) nie może po cichu gubić
+// units[]/decisions[]/minor_fixes — start ma stanąć z komunikatem, nie z planem bez jednostek.
+CASES.push({
+  name: 'broken-frontmatter-yaml-exit-2',
+  build: () => makeProject({
+    taskId: 'TS-FIX-001',
+    analysis: '---\nstatus: approved\nunits:\n  - { id: docs, layer: domain, dirs: ["a.md"], reason: "kod \\`x\\` w cudzysłowie" }\n---\n\n# Analiza\n',
+    task: taskFile('Cokolwiek.'),
+  }),
+  check(r) {
+    if (r.code !== 2) return `oczekiwano exit 2, było ${r.code}`;
+    if (!/nie parsuje się jako YAML/.test(r.stderr)) return 'stderr nie mówi, że frontmatter nie parsuje się: ' + r.stderr.slice(0, 200);
+    if (!/units\[\]/.test(r.stderr)) return 'stderr nie wymienia pól, które zostałyby pominięte';
+    return null;
+  },
+});
+
 CASES.push({
   name: 'pause-without-analysis-exit-2',
   build: () => makeProject({ taskId: 'TS-FIX-001', analysis: null, task: taskFile('x') }),
