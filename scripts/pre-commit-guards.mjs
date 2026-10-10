@@ -37,9 +37,17 @@ import { fileURLToPath } from 'node:url';
 const REPO = join(dirname(fileURLToPath(import.meta.url)), '..');
 const results = [];
 
+// Kontrole (audyt floty, evale w katalogach tymczasowych) wołają `git` w INNYCH repozytoriach.
+// Git ustawia hookowi GIT_INDEX_FILE (przy `git commit -- <ścieżki>` to indeks tymczasowy
+// o ścieżce bezwzględnej) — odziedziczony przez dziecko sprawiał, że `git` w aegis-flow czytał
+// i odświeżał indeks claude-patterns, wpisując do niego obce ścieżki. Commit padał na
+// „unable to read <sha>" (2026-10-10). Dzieci dostają środowisko bez wiązań z tym commitem.
+const CHILD_ENV = Object.fromEntries(Object.entries(process.env)
+  .filter(([k]) => !['GIT_INDEX_FILE', 'GIT_DIR', 'GIT_WORK_TREE', 'GIT_PREFIX', 'GIT_OBJECT_DIRECTORY'].includes(k)));
+
 function runCheck(label, cmd, args) {
   try {
-    const out = execFileSync(cmd, args, { cwd: REPO, encoding: 'utf8', stdio: 'pipe' });
+    const out = execFileSync(cmd, args, { cwd: REPO, encoding: 'utf8', stdio: 'pipe', env: CHILD_ENV });
     results.push({ label, ok: true, output: out.trim() });
   } catch (e) {
     const output = [e.stdout, e.stderr].filter(Boolean).join('\n').trim();
@@ -61,6 +69,7 @@ runCheck('eval: materialize-runtime', 'node', ['tests/flow-evals/materialize-run
 runCheck('eval: setup-project', 'node', ['tests/flow-evals/setup-project/run.js']);
 runCheck('eval: workflow-metrics', 'node', ['tests/flow-evals/workflow-metrics/run.js']);
 runCheck('eval: project-yml', 'node', ['tests/flow-evals/project-yml/run.js']);
+runCheck('eval: audit-projects', 'node', ['tests/flow-evals/audit-projects/run.js']);
 runCheck('validate-agents', 'node', ['scripts/ci/validate-agents.js']);
 runCheck('validate-business-rules', 'node', ['scripts/ci/validate-business-rules.js']);
 runCheck('validate-commands', 'node', ['scripts/ci/validate-commands.js']);

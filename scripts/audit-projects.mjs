@@ -26,12 +26,13 @@
 //   node scripts/audit-projects.mjs --all          # bez heurystyki „dormant" — wszystkie repo równo
 //   node scripts/audit-projects.mjs --root <dir>   # inny katalog floty
 
-import { readFileSync, existsSync, readdirSync, readlinkSync } from 'node:fs';
+import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { homedir } from 'node:os';
 import { fileURLToPath } from 'node:url';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import YAML from 'yaml';
+import { deadLinkIssues, gitHygieneIssues, envDenyIssues, claudeMdIssues, outsideBlockSystem } from './lib/audit-checks.mjs';
 
 const REPO = join(dirname(fileURLToPath(import.meta.url)), '..');
 const rootArg = process.argv.indexOf('--root');
@@ -71,23 +72,32 @@ try {
   CONTRACT_VERSION = String(YAML.parse(readFileSync(join(REPO, 'METADATA.yml'), 'utf8'))?.version ?? 'unknown');
 } catch { /* jw. */ }
 
+// Katalogi `_*` są ignorowane w całości (decyzja użytkownika, 2026-10-10): to prototypy,
+// spike'i i kopie robocze (`_spike`, `_ecc`, `_test-projekt`), które nie mają być audytowane.
 const projects = readdirSync(ROOT, { withFileTypes: true })
-  .filter((e) => e.isDirectory() && existsSync(join(ROOT, e.name, '.claude/config/project.yml')))
+  .filter((e) => e.isDirectory() && !e.name.startsWith('_')
+    && existsSync(join(ROOT, e.name, '.claude/config/project.yml')))
   .map((e) => e.name)
   .filter((n) => n !== 'claude-patterns')
   .sort();
 
-// Bez podążania za symlinkiem katalogu: projekt bywa podpięty JEDNYM dowiązaniem do
-// całego drzewa wzorców centrali (vytches-ddd) i wtedy skan zszedłby do samej centrali.
-const danglingIn = (dir) => {
-  if (!existsSync(dir)) return [];
-  const out = [];
-  for (const e of readdirSync(dir, { withFileTypes: true })) {
-    const p = join(dir, e.name);
-    if (e.isSymbolicLink()) { if (!existsSync(p)) out.push([p, readlinkSync(p)]); }
-    else if (e.isDirectory()) out.push(...danglingIn(p));
-  }
-  return out;
+// Staleness runtime.yml rozbity na dwie klasy (2026-10-10). `source_hash` obejmuje źródło
+// generatora, więc każda edycja materialize-runtime.mjs dawała 21/21 „nieaktualny" i
+// zagłuszała prawdziwe sygnały. `--check` zwraca tę samą decyzję co dawniej, a dodatkowo
+// drukuje `inputs_hash:` (bez generatora) — porównujemy go z polem w runtime.yml projektu.
+const stalenessIssue = (P) => {
+  const res = spawnSync('node', [join(REPO, 'scripts/materialize-runtime.mjs'), P, '--check'],
+    { encoding: 'utf8' });
+  if (res.status === 0) return null;
+  const fix = `node scripts/materialize-runtime.mjs ${P}`;
+  const current = (res.stdout + res.stderr).match(/^\s*inputs_hash:\s*([a-f0-9]+)/m)?.[1];
+  const stored = readFileSync(join(P, '.claude/config/runtime.yml'), 'utf8')
+    .match(/^inputs_hash:\s*"?([a-f0-9]+)"?/m)?.[1];
+  if (!current || !stored)
+    return [`runtime.yml nieaktualny (${stored ? 'materializacja nie zwróciła inputs_hash' : 'brak inputs_hash — rozróżnienie po następnym setupie'})`, fix];
+  if (current === stored)
+    return ['generator zmieniony — rematerializacja zalecana (bloki, project.yml, aliasy i taksonomia bez zmian)', fix, INFO];
+  return ['runtime.yml nieaktualny: zmieniły się wejścia kompozycji (bloki / project.yml / aliasy / taksonomia)', fix];
 };
 
 const rows = [];
@@ -107,21 +117,16 @@ for (const name of projects) {
     } else {
       blocks = (readFileSync(rt, 'utf8').match(/^stack_blocks:\s*\[(.*)\]/m)?.[1] ?? '')
         .split(',').filter(Boolean).length;
-      try {
-        execFileSync('node', [join(REPO, 'scripts/materialize-runtime.mjs'), P, '--check'],
-          { stdio: 'pipe' });
-      } catch {
-        issues.push(['runtime.yml nieaktualny', `node scripts/materialize-runtime.mjs ${P}`]);
-      }
+      const stale = stalenessIssue(P);
+      if (stale) issues.push(stale);
     }
   }
 
   // 2. Martwe dowiązania — cel zniknął z centrali, nikt tego nie posprzątał.
-  const dangling = ['.claude/knowledge/patterns', '.claude/knowledge/rules',
-    '.claude/knowledge/skills', '.claude/agents'].flatMap((s) => danglingIn(join(P, s)));
-  for (const [p, target] of dangling)
-    issues.push([`martwe dowiązanie: ${p.slice(P.length + 1)} → ${target}`,
-      `./scripts/setup-project.sh ${P}   # sprząta je automatycznie`]);
+  issues.push(...deadLinkIssues(P));
+
+  // 2b. Higiena gita i konfiguracja bezpieczeństwa (2026-10-10) — patrz lib/audit-checks.mjs.
+  issues.push(...gitHygieneIssues(P), ...envDenyIssues(P), ...claudeMdIssues(P));
 
   // 3. Szablony — KOPIE, więc nie propagują się same. Wymagane warunkowo: artefakt
   //    analizy tam, gdzie w ogóle działa /analyze; TM tam, gdzie jest docs/security/.
@@ -156,8 +161,12 @@ for (const name of projects) {
       if (!existsSync(basePath)) continue;
       let baseDoc;
       try { baseDoc = YAML.parse(readFileSync(basePath, 'utf8')); } catch { continue; }
-      const STRUCTURAL = new Set(['name', 'axis', 'requires', 'extends']);
-      const overlap = Object.keys(doc).filter((k) => !STRUCTURAL.has(k) && baseDoc && k in baseDoc);
+      // Tylko sekcje, które applyExtends (materialize-runtime.mjs) NADPISUJE w całości.
+      // `patterns`/`overlay`/`hooks` są sumowane, a `analyze.panel` scalany per stage —
+      // do 2026-10-10 ostrzeżenie obejmowało i je, więc każdy blok lokalny dokładający
+      // jeden trigger albo stage dostawał fałszywe „przyszłe zmiany bazy nie dotrą".
+      const REPLACED = new Set(['orchestrate', 'env', 'budgets', 'params', 'requires_ecc', 'ralphinho']);
+      const overlap = Object.keys(doc).filter((k) => REPLACED.has(k) && baseDoc && k in baseDoc);
       if (overlap.length) {
         issues.push([
           `.claude/blocks/${f} ma extends: ${baseName} i nadpisuje sekcj${overlap.length > 1 ? 'e' : 'ę'} ` +
@@ -273,7 +282,15 @@ try {
     './scripts/reseed-patterns.sh', ERROR];
 }
 
-const globalIssues = [routingIssue, telemetryIssue, ragIssue].filter(Boolean);
+// Katalogi z `.claude/`, ale bez project.yml, nie są audytowane w ogóle — lista, żeby
+// „poza systemem" było widoczne, a nie dedukowane z nieobecności w raporcie.
+const outside = outsideBlockSystem(ROOT, ['claude-patterns']);
+const outsideIssue = outside.length
+  ? [`poza systemem bloków (jest .claude/, brak .claude/config/project.yml): ${outside.join(', ')}`,
+    'node scripts/setup-project.sh <katalog>   # albo świadomie zostaw', INFO]
+  : null;
+
+const globalIssues = [routingIssue, telemetryIssue, ragIssue, outsideIssue].filter(Boolean);
 
 const MARK = { [ERROR]: '✗', [WARN]: '!', [INFO]: 'i' };
 const sevOf = (list, sev) => list.filter(([, , s]) => s === sev);
@@ -324,6 +341,43 @@ if (!errors && !warns) {
 }
 if (dormantCount && !ALL && !errors && !warns)
   console.log(`(uśpionych: ${dormantCount}, ze znaleziskami: ${dormantSilenced} — pełny obraz: --all)`);
+
+// `--report` (2026-10-10): BŁĘDY trafiają do docs/tasks/_inbox/ przez report-deviation.mjs
+// jako `setup_drift` (`--source audit`). Do tej daty skrzynkę karmił tylko /orchestrate, więc
+// dryf konfiguracji floty — który nigdy nie kończy się HALT-em, tylko cichą degradacją — był
+// widoczny wyłącznie temu, kto akurat czytał raport. Sygnatura = TYP kontroli (nie tekst),
+// więc jeden rekord zbiera wszystkie projekty z tym samym problemem; `--once-per-project`
+// sprawia, że codzienny przebieg nie dopisuje wystąpień znanych już projektów.
+if (process.argv.includes('--report')) {
+  const RULES = [
+    [/martwe dowiązanie/, 'AUD-DEAD-LINK'],
+    [/absolutną ścieżką w gicie/, 'AUD-GIT-ABS-SYMLINK'],
+    [/\.bak/, 'AUD-GIT-BAK'],
+    [/w \.gitignore/, 'AUD-GIT-IGNORED-DEP'],
+    [/permissions|\.env/, 'AUD-ENV-DENY'],
+    [/CLAUDE-LOCAL|CLAUDE\.md/, 'AUD-CLAUDE-LOCAL'],
+    [/BRAK runtime\.yml/, 'AUD-RUNTIME-MISSING'],
+    [/runtime\.yml nieaktualny/, 'AUD-RUNTIME-STALE'],
+    [/verify-project-setup/, 'AUD-SETUP-INCOMPLETE'],
+    [/RAG/, 'AUD-RAG-DRIFT'],
+  ];
+  const ruleOf = (what) => RULES.find(([rx]) => rx.test(what))?.[1]
+    ?? `AUD-${String(what).toUpperCase().replace(/[^A-Z0-9]+/g, '-').slice(0, 30)}`;
+  const toReport = [
+    ...rows.flatMap((r) => r.issues.map((i) => [r.name, ...i])),
+    ...globalIssues.map((i) => ['claude-patterns', ...i]),
+  ].filter(([, , , sev]) => (sev ?? ERROR) === ERROR);
+  let failed = 0;
+  for (const [project, what] of toReport) {
+    const res = spawnSync(process.execPath, [join(REPO, 'scripts/report-deviation.mjs'),
+      '--project', project, '--trigger', 'setup_drift', '--rule', ruleOf(what),
+      '--reason', String(what).slice(0, 300), '--source', 'audit', '--once-per-project'],
+      { encoding: 'utf8' });
+    if (res.status !== 0) failed++;
+  }
+  console.log(`\nskrzynka: ${toReport.length} błędów przekazanych do docs/tasks/_inbox/` +
+    (failed ? ` (${failed} nie zapisało się — sprawdź report-deviation.mjs)` : ''));
+}
 
 // `--gate`: wywołanie automatyczne (pre-commit, /loop). Przerywa wyłącznie na BŁĘDZIE,
 // czyli na czymś, co ma wypisaną komendę naprawczą. Bez `--gate` — wywołanie ręczne —
