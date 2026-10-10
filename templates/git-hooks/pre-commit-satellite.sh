@@ -22,6 +22,12 @@ set -uo pipefail
 STAGED=$(git diff --cached --name-only --diff-filter=ACMR)
 echo "$STAGED" | grep -qE '^\.claude/(config/project\.yml|blocks/[^/]+\.yml)$' || exit 0
 
+# Projekt bez `stack_blocks` nie ma kompozycji do zmaterializowania (astro-static, docs-only).
+# Do 2026-10-10 hook i tak wołał materializer, który kończy się błędem „project.yml nie
+# deklaruje project.stack_blocks" — więc KAŻDA zmiana project.yml (np. exclude_skills)
+# blokowała commit w juz-ide-blog, juz-ide-pl i wiki. Ten sam warunek co w setup-project.sh (5a).
+grep -qE '^  stack_blocks:' .claude/config/project.yml 2>/dev/null || exit 0
+
 # ── 2. Gdzie jest claude-patterns ──────────────────────────────────────────
 # Kolejność: jawny env, potem konwencja symlinków z `setup-project.sh`. Projekt linkuje
 # albo cały katalog `.claude/knowledge/patterns` → <claude-patterns>/patterns
