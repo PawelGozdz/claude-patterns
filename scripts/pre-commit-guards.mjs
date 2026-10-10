@@ -70,6 +70,7 @@ runCheck('eval: setup-project', 'node', ['tests/flow-evals/setup-project/run.js'
 runCheck('eval: workflow-metrics', 'node', ['tests/flow-evals/workflow-metrics/run.js']);
 runCheck('eval: project-yml', 'node', ['tests/flow-evals/project-yml/run.js']);
 runCheck('eval: audit-projects', 'node', ['tests/flow-evals/audit-projects/run.js']);
+runCheck('eval: telemetry-events', 'node', ['tests/flow-evals/telemetry-events/run.js']);
 runCheck('validate-agents', 'node', ['scripts/ci/validate-agents.js']);
 runCheck('validate-business-rules', 'node', ['scripts/ci/validate-business-rules.js']);
 runCheck('validate-commands', 'node', ['scripts/ci/validate-commands.js']);

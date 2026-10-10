@@ -66,3 +66,6 @@ tests/flow-evals/library-reference-schema/results.jsonl
 # 2026-09 and was removed; the entry stays so a stray screenshot dropped in during a
 # demo does not end up committed.
 screenshots/
+
+# Surowe zdarzenia telemetrii v1 — per maszyna, poza gitem (ADR 0012). Agregaty: telemetry/rollups/ (w gicie).
+telemetry/events/

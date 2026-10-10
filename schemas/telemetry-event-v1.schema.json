@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "claude-patterns/telemetry-event-v1",
+  "title": "Zdarzenie telemetrii przebiegu v1 (ADR 0012)",
+  "description": "Kontrakt zapisu (scripts/lib/telemetry-events.mjs) i przyszłego transportu na serwer. Zdarzenie NIE zawiera treści promptów, powodów ze skrzynki, ścieżek plików ani konfiguracji projektu.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["v", "id", "ts", "kind", "process", "project", "host", "runId"],
+  "properties": {
+    "v": { "const": 1 },
+    "id": { "type": "string", "pattern": "^[0-9a-f-]{36}$" },
+    "ts": { "type": "string", "format": "date-time" },
+    "kind": { "enum": ["run.start", "step.end", "run.end", "deviation"] },
+    "process": { "enum": ["orchestrate", "analyze", "audit", "setup"] },
+    "project": { "type": "string", "pattern": "^[A-Za-z0-9._-]{1,80}$" },
+    "host": { "type": "string", "pattern": "^[0-9a-f]{12}$" },
+    "runId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]{1,80}$" },
+    "taskRef": { "type": ["string", "null"], "pattern": "^[A-Za-z0-9._-]{1,80}$" },
+    "plan": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id"],
+        "properties": {
+          "id": { "type": "string" },
+          "group": { "type": "string" },
+          "role": { "type": "string" }
+        }
+      }
+    },
+    "step": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id"],
+      "properties": {
+        "id": { "type": "string" },
+        "group": { "type": ["string", "null"] },
+        "role": { "type": ["string", "null"] },
+        "agent": { "type": ["string", "null"] },
+        "model": { "type": ["string", "null"] },
+        "attempt": { "type": ["integer", "null"], "minimum": 1 },
+        "fixes": { "type": ["string", "null"] }
+      }
+    },
+    "outcome": { "enum": ["ok", "go", "no_go", "fixed", "failed", "died", "skipped", "cached", "halted", "killed", "unknown"] },
+    "cause": { "enum": ["typecheck", "test", "lint", "verifier", "scope", "config", "infra", "silent", "budget", "other", null] },
+    "signature": { "type": ["string", "null"], "pattern": "^[A-Za-z0-9._-]{1,120}$" },
+    "trigger": { "type": ["string", "null"] },
+    "m": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "toolCalls": { "type": ["integer", "null"], "minimum": 0 },
+        "durationMs": { "type": ["integer", "null"], "minimum": 0 },
+        "tokensIn": { "type": ["integer", "null"], "minimum": 0 },
+        "tokensOut": { "type": ["integer", "null"], "minimum": 0 },
+        "cacheRead": { "type": ["integer", "null"], "minimum": 0 },
+        "cacheWrite": { "type": ["integer", "null"], "minimum": 0 },
+        "costUsd": { "type": ["number", "null"], "minimum": 0 }
+      }
+    }
+  }
+}

@@ -47,6 +47,7 @@ import { readFileSync, writeFileSync, existsSync, readdirSync, mkdirSync } from 
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
+import { appendEvent, projectName } from './lib/telemetry-events.mjs';
 
 const require_ = createRequire(import.meta.url);
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -178,7 +179,7 @@ function upsert(args) {
     const wasClosed = fm.status === 'dismissed' || fm.status === 'promoted';
     if (args.oncePerProject && !wasClosed && (fm.projects || []).includes(args.project)) {
       console.log(`inbox: ${id} już zna ${args.project} (otwarty) — bez nowego wystąpienia`);
-      return;
+      return id;
     }
     fm.sources = Array.from(new Set([...(fm.sources || ['orchestrate']), args.source]));
     fm.occurrences = (fm.occurrences || 0) + 1;
@@ -216,6 +217,30 @@ function upsert(args) {
   writeFileSync(target, out);
 
   console.log(`inbox: ${id} occurrences=${fm.occurrences}`);
+  return id;
+}
+
+// Zdarzenie `deviation` (ADR 0012) przy KAŻDYM zgłoszeniu — także gdy --once-per-project
+// pominął wpis w skrzynce: skrzynka mierzy zasięg problemu, zdarzenia jego częstość, a
+// dashboard liczy z nich odsetek problemów w całej pracy. Celowo BEZ `reason`: opis żyje
+// w skrzynce (w gicie), zdarzenie niesie tylko sygnaturę — nic z projektu nie trafi na serwer.
+const SAFE_REF = /^[A-Za-z0-9._-]{1,80}$/;
+
+function emitDeviationEvent(args, signature) {
+  const fields = {
+    kind: 'deviation',
+    process: args.source,
+    project: projectName(args.project),
+    runId: args.runId && /^[A-Za-z0-9._:-]{1,80}$/.test(args.runId)
+      ? args.runId
+      : `${args.source}-${todayIso().replace(/-/g, '')}`,
+    signature,
+    trigger: args.trigger,
+  };
+  if (args.task && SAFE_REF.test(args.task)) fields.taskRef = args.task;
+  if (args.layer) fields.step = { id: args.layer, group: args.layer };
+  const res = appendEvent(fields);
+  if (!res.ok) process.stderr.write(`⚠ report-deviation: zdarzenie telemetrii niezapisane (${res.error})\n`);
 }
 
 function main() {
@@ -231,11 +256,13 @@ function main() {
   if (!SOURCES.includes(args.source)) die(EXIT.USAGE, `--source musi być jednym z: ${SOURCES.join(', ')}`);
   if (!args.reason) die(EXIT.USAGE, 'brak --reason');
 
+  let id;
   try {
-    upsert(args);
+    id = upsert(args);
   } catch (e) {
     die(EXIT.WRITE, `nie udało się zapisać: ${e && e.message ? e.message : String(e)}`);
   }
+  emitDeviationEvent(args, id);
   process.exit(EXIT.OK);
 }
 
