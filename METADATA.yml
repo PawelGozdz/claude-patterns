@@ -73,11 +73,11 @@ repository:
 
 patterns:
   core_count: 58
-  stack_specific_count: 49
+  stack_specific_count: 51
   marketing_count: 1
   finance_count: 2
   legal_count: 2
-  total_count: 112
+  total_count: 114
   core_categories:
     domain: 8   # +moderated-edit-buffer-pattern (scope: project-specific, juz-ide-api-1), +named-policy-pattern
     application: 5   # +try-confirm-cancel-pattern

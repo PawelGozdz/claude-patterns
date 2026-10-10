@@ -15,9 +15,12 @@ patterns:
   # naprawdę stack-agnostyczne i ma kartę reguł. `conventions`/`logger`/`domain-errors`
   # z cross-layer celowo POMINIĘTE mimo kart: opisują nazewnictwo DDD, token
   # LOGGER_SERVICE i Result<T> z NestJS — w Pythonie byłyby myleniem, nie regułą.
+  # Do 2026-10-10 stały tu wersje cross-layer/ — „stack-agnostyczne" z intencji, ale z kodem
+  # wyłącznie NestJS/Zod/Kysely (@Auth(), schematy Zod), więc każdy task Pythonowy dostawał
+  # przykłady z innego języka. Te same niezmienniki (SI1–SI5, SEP) w idiomie Pythona:
   always:
-    - cross-layer/security-invariants-pattern.md
-    - cross-layer/safe-error-propagation-pattern.md
+    - python/security-invariants-pattern.md
+    - python/safe-error-propagation-pattern.md
   triggers:
     - keywords: [async, await, asyncio, concurrency, coroutine, gather, semaphore]
       include:
@@ -37,7 +40,7 @@ patterns:
         - testing/testing-pyramid-pattern.md
     - keywords: [auth, authentication, authorization, permission, login, token, secret]
       include:
-        - cross-layer/security-invariants-pattern.md
+        - python/security-invariants-pattern.md
 
 analyze:
   panel:

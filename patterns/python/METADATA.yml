@@ -7,7 +7,7 @@ maturity: production
 last_verified: 2026-08-12
 stack: "Python 3.11+, FastAPI, SQLAlchemy, pytest; pipeline: PostgreSQL + Qdrant + Neo4j"
 source_projects: "my-intelligence, pcu"
-patterns_count: 7
+patterns_count: 9
 description: >-
   Wzorce architektury warstwowej w Pythonie (moduły, typowanie, async,
   FastAPI, testy) plus dwa wzorce pipeline'owe wyprowadzone z jednego repo:

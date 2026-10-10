@@ -6,7 +6,7 @@ This knowledge base contains production-enforced patterns for DDD/CQRS projects.
 
 **Version**: 3.14
 **Last Updated**: 2026-09-27
-**Status**: PRODUCTION (58 core patterns + 49 stack-specific + 1 marketing + 2 finance + 2 legal = 112 total)
+**Status**: PRODUCTION (58 core patterns + 51 stack-specific + 1 marketing + 2 finance + 2 legal = 114 total)
 
 **⚠ project-specific** marker = derived from ONE project's codebase, not yet validated in a second
 one. Marked in the pattern's own `**Scope**:` line (see `CLAUDE.md` → "Adding a New Pattern"). These
@@ -35,7 +35,7 @@ patterns/
 │                       #   design-token, accessibility, localization (+ rule-cards _summary.md)
 ├── nextjs/             # Next.js-specific patterns - 7 patterns (per-project)
 ├── ai-ml/              # GPU inference patterns - 7 patterns (per-project)
-├── python/             # Python-specific patterns - 7 patterns (per-project)
+├── python/             # Python-specific patterns - 9 patterns (per-project)
 ├── sveltekit/          # SvelteKit-specific patterns - 5 patterns (per-project)
 ├── typescript-library/ # TS library-specific patterns - 5 patterns (per-project)
 │                       #   public-api, backward-compat, package-boundary, build-publish,
