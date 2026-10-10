@@ -26,11 +26,53 @@ w `docs/decisions/orchestrate-rule-history.md`, sekcja „reguły ANL".
 0.  bramka runtime.yml → bez pliku i bez schema_version: 1 nie startujesz
 0.a preflight drzewa   → git status/log: czego już nie trzeba robić
 0.b dobór materiału    → wzorce + karty, RAG, karty decyzji, indeks decyzji
+0.c telemetria: start  → telemetry-emit run-start (best-effort, niżej)
 1.  panel              → sloty z analyze.panel W KOLEJNOŚCI, agenci jako LIŚCIE
 2.  artefakt           → project-orchestration/analysis/{TASK-ID}.analysis.md (jedyny Write)
 3.  wyjście            → analyze.exit: PAUSE = STOP i czekaj na człowieka
+3.a telemetria: koniec → telemetry-emit run-end (przed STOP z kroku 3)
 4.  zgłoszenia         → odstępstwa MASZYNY do skrzynki claude-patterns (best-effort, niżej)
 ```
+
+## Telemetria przebiegu (best-effort, nie blokuje)
+
+Panel to agenci narzędzia Agent, których hook metryk Workflow nie widzi — bez tego kroku analiza
+nie zostawia żadnych danych (ADR 0012, krok 3). Dwa wywołania i jeden znacznik:
+
+**Start** (0.c — po bramce i doborze materiału, PRZED pierwszym agentem panelu). Plan = id
+slotów, które panel faktycznie uruchomi (po `when:` i sicie ANL-018), w kolejności:
+
+```
+node <claude-patterns>/scripts/telemetry-emit.mjs run-start --process analyze \
+  --project {ABSOLUTNA ścieżka korzenia projektu} --task {TASK-ID} --plan "<slot>:panel,<slot>:panel,…"
+```
+
+Stdout to `runId` — wpisz go do frontmattera artefaktu jako `telemetry_run: <runId>` i zachowaj
+na krok 3.a. `--project` MUSI być ścieżką (nie samą nazwą): hooki dopasowują agentów do przebiegu
+po katalogu roboczym.
+
+**Znacznik slotu** (ANL-041). Opis (`description`) KAŻDEGO agenta panelu zaczyna się od
+`[slot:<id>]`, gdzie `<id>` to dokładnie ten klucz slotu, który poszedł do `--plan`, np.
+`[slot:security] Ocena ryzyk logowania`. Hook bierze z opisu tylko ten znacznik. Agent bez
+znacznika (np. pomocniczy Explore) nie jest liczony jako krok panelu.
+
+**Koniec** (3.a — po zapisie artefaktu, PRZED STOP z `analyze.exit: PAUSE`):
+
+```
+node <claude-patterns>/scripts/telemetry-emit.mjs run-end --process analyze \
+  --project {ta sama ścieżka} --run-id {runId} --outcome <ok|halted|failed>
+```
+
+| Wynik | `--outcome` |
+|---|---|
+| artefakt gotowy, bez PAUSE (`status: ready`) | `ok` |
+| `analyze.exit: PAUSE` — artefakt czeka na człowieka (`awaiting-human`, pytania otwarte) | `halted` |
+| panel nie dał artefaktu (agent padł, bramka wejścia, błąd narzędzia) | `failed` |
+
+`run-end` sam dopisuje `skipped` dla slotów z planu bez agenta i `unknown` dla agentów, którzy nie
+zdążyli się zakończyć, a potem kasuje stan przebiegu. Przebieg, którego nikt nie zamknął
+(przerwany, sesja padła), zamknie następny `run-start` jako `unknown`. Błąd któregokolwiek
+wywołania = jedno zdanie w `## Uwagi`, analiza idzie dalej.
 
 ## Krok 4 — zgłoszenia do skrzynki (best-effort, nie blokuje)
 
@@ -54,7 +96,7 @@ node <claude-patterns>/scripts/report-deviation.mjs --project {nazwa} --source a
   --task {TASK-ID} [--layer <id warstwy>]
 ```
 
-To jedyny zapis poza listą zamkniętą niżej — trafia do claude-patterns, nie do projektu.
+To (obok telemetrii przebiegu wyżej) jedyny zapis poza listą zamkniętą niżej — trafia do claude-patterns, nie do projektu.
 Błąd wywołania = jedno zdanie w artefakcie (`## Uwagi`), analiza idzie dalej.
 
 **Co wolno zapisać — lista zamknięta.** Ograniczeniem jest ta lista, nie brak narzędzia:
@@ -73,7 +115,7 @@ Nic poza tym — żadnego pliku w `src/`, żadnego taska, żadnego ADR-a.
 | ANL-001 | cały przebieg | zapisy wyłącznie z listy zamkniętej powyżej; zero implementacji | tylko prompt (hook `check-delegation` zna tylko pliki źródłowe) | — |
 | ANL-002 | dopisanie wiersza do rejestru TM | `Edit` dozwolony wyłącznie do rejestrów z listy; `MultiEdit` zabroniony | frontmatter komendy | [ANL-002](docs/decisions/orchestrate-rule-history.md#anl-002) |
 | ANL-003 | szukanie pliku/symbolu | `Grep`/`Glob` do CELOWANEGO szukania; szerokie przeczesywanie deleguj do Explore | tylko prompt | [ANL-003](docs/decisions/orchestrate-rule-history.md#anl-003) |
-| ANL-004 | użycie `Bash` | wyłącznie deterministyczne i tylko-do-odczytu (indeks decyzji, `git log`/`status`); żadnych zapisów, instalacji ani testów | tylko prompt | — |
+| ANL-004 | użycie `Bash` | wyłącznie deterministyczne i tylko-do-odczytu (indeks decyzji, `git log`/`status`); żadnych zapisów, instalacji ani testów. Wyjątek: `telemetry-emit` i `report-deviation` — zapisują do claude-patterns, nie do projektu | tylko prompt | — |
 | ANL-005 | start | brak `.claude/config/runtime.yml` → STOP; `schema_version ≠ 1` → STOP z poleceniem ponownego setupu | tylko prompt | — |
 | ANL-006 | przed rozpisaniem jednostek pracy | `git status --short` + `git log --oneline -15`; potwierdź grepem na KONKRETNYM pliku, że praca nie jest zrobiona; „już zrobione" → `status: already-done` z dowodem, bez jednostki | tylko prompt | [ANL-006](docs/decisions/orchestrate-rule-history.md#anl-006) |
 | ANL-007 | panel ma stage `threat-model` | dopasuj `when:` do taska; trafienie + brak pliku TM → uruchom stage i ZAPISZ TM; TM niepokrywający zakresu → ADDENDUM albo blokujące `open_question` | tylko prompt | — |
@@ -106,6 +148,7 @@ Nic poza tym — żadnego pliku w `src/`, żadnego taska, żadnego ADR-a.
 | ANL-038 | rozpisane jednostki pracy | podział warstwy na obszary → `units: [{ id, layer, dirs, role?, checks?, reason? }]` (prepare robi z nich pod-warstwy); pliki towarzyszące spoza katalogu zmienianego pliku (setup testów, `.env.example`, compose) dopisz do `dirs` jednostki albo `layers_scope` — test obok pliku z tym samym rdzeniem nazwy wchodzi sam; fałszywe trafienia keywordów → `patterns_exclude: [<ścieżka>]`, nie komentarz | skrypt `orchestrate-prepare.mjs` (bramka `units`: nieznana warstwa, brak `dirs`, warstwa w skip/scope, duplikat; ostrzeżenie dla `patterns_exclude`, który nic nie wykluczył) | [ANL-038](docs/decisions/orchestrate-rule-history.md#anl-038) |
 | ANL-039 | analiza znajduje drobne rzeczy (literówka w dokumencie, nit, oczywista niespójność), które nie są problemem ani decyzją | wpisz je do `minor_fixes: ["plik — co — poprawka", …]` w artefakcie; `/orchestrate` przekaże je implementerowi warstwy (ORC-091) do mechanicznej naprawy przy okazji; rzeczy wymagające decyzji NIE idą tutaj, tylko do `open_questions`/`decisions` | tylko prompt (prepare czyta pole) | [ORC-091](docs/decisions/orchestrate-rule-history.md#orc-091) |
 | ANL-040 | przekazanie człowiekowi pytań z `open_questions[]` po analizie | pokaż `ask` DOSŁOWNIE, po jednym pytaniu na linię, każde max 2 zdania, forma „tak/nie" albo „A czy B", z rekomendacją i domyślną odpowiedzią; bez własnego komentarza, bez streszczenia analizy, bez nazw plików/klas/ADR; hook `check-human-voice` ostrzega przy `ask` > 2 zdania | hook `check-human-voice` (długość i żargon) + prompt | [ORC-095](docs/decisions/orchestrate-rule-history.md#orc-095) |
+| ANL-041 | start i koniec panelu | `run-start` przed pierwszym agentem (plan = sloty, które wejdą), `telemetry_run` w frontmatterze, `run-end` po zapisie artefaktu; opis KAŻDEGO agenta panelu zaczyna się od `[slot:<id>]` (id = klucz slotu z `--plan`); w opisie nic poufnego poza znacznikiem nie jest zapisywane | tylko prompt; hooki `telemetry-agent-start`/`-stop` (bez znacznika albo bez otwartego przebiegu nic nie robią) | [ADR 0012](docs/adr/0012-metryki-przebiegow-zdarzenia-v1.md) |
 | ANL-037 | rozpisane jednostki pracy | warstwa dotknięta CZĘŚCIOWO (jeden kontekst z ośmiu, jeden plik enumu) NIE idzie do `layers_skip` — idzie do `layers_scope: [{ id, dirs: [<ścieżki od korzenia repo>], reason }]`: warstwa wchodzi, implementer/weryfikator/sonda widzą tylko `dirs`. Skip jest binarny i gubi tę część pracy bez śladu | skrypt `orchestrate-prepare.mjs` (bramka: powód skipu z „wyjątek"/„częściowo"/„N z M"/„tylko dla"; scope bez `dirs`/`reason`; warstwa w obu listach) | [ANL-037](docs/decisions/orchestrate-rule-history.md#anl-037) |
 | ANL-032 | proza w body artefaktu | `## Synteza` i `## Ryzyka / uwagi` przepuść przez skill `humanizer` przed zapisem | tylko prompt | — |
 | ANL-033 | sekcje artefaktu | sekcja tylko od slotu, który faktycznie wszedł; sloty governance dokładają blok `governance:` do frontmattera | tylko prompt | [ANL-033](docs/decisions/orchestrate-rule-history.md#anl-033) |

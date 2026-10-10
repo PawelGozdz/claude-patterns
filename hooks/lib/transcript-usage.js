@@ -97,11 +97,19 @@ function modelFromTranscript(transcriptPath) {
 }
 
 /**
- * One pass, both answers.
- * @returns {{usage: object|null, model: string|null, truncated: boolean}}
+ * One pass, all answers.
+ *   toolCalls — distinct `tool_use` blocks (streaming repeats a block on several lines).
+ *   apiError  — the `error` code of the LAST assistant line when Claude Code wrote it as an
+ *               API-error message (`isApiErrorMessage`, e.g. 'rate_limit'), else null. Such a
+ *               line carries text ("You've hit your weekly limit"), so "the agent returned
+ *               something" is not proof that it did its work.
+ *   firstTs / lastTs — earliest and latest line `timestamp` (epoch ms) or null: the wall-clock span of
+ *               the agent, independent of when any hook happened to run.
+ * @returns {{usage: object|null, model: string|null, truncated: boolean,
+ *            toolCalls: number, apiError: string|null, firstTs: number|null, lastTs: number|null}}
  */
 function readTranscriptUsage(transcriptPath) {
-  const empty = { usage: null, model: null, truncated: false };
+  const empty = { usage: null, model: null, truncated: false, toolCalls: 0, apiError: null, firstTs: null, lastTs: null };
   if (!transcriptPath) return empty;
   let stat;
   try {
@@ -112,20 +120,35 @@ function readTranscriptUsage(transcriptPath) {
   if (!stat.isFile()) return empty;
 
   const lastById = new Map();
+  const toolUseIds = new Set();
   let model = null;
+  let apiError = null;
+  let firstTs = null;
+  let lastTs = null;
 
   const { truncated, ok } = forEachJsonlLine(transcriptPath, (line) => {
     let o;
     try { o = JSON.parse(line); } catch { return; }
+    const ts = o && o.timestamp ? Date.parse(o.timestamp) : NaN;
+    if (Number.isFinite(ts)) {
+      if (firstTs === null || ts < firstTs) firstTs = ts;
+      if (lastTs === null || ts > lastTs) lastTs = ts;
+    }
     const m = o && o.message;
     if (!m) return;
-    if (typeof m.model === 'string' && m.model) model = m.model;
+    if (o.type === 'assistant') apiError = o.isApiErrorMessage ? String(o.error || 'unknown') : null;
+    // '<synthetic>' marks lines Claude Code wrote itself (API errors), not a model that was billed.
+    if (typeof m.model === 'string' && m.model && m.model !== '<synthetic>') model = m.model;
+    if (Array.isArray(m.content)) {
+      for (const b of m.content) if (b && b.type === 'tool_use' && b.id) toolUseIds.add(b.id);
+    }
     const u = m.usage;
     if (!u || !m.id || typeof u.output_tokens !== 'number') return;
     lastById.set(m.id, u);
   });
   if (!ok) return empty;
-  if (lastById.size === 0) return { usage: null, model, truncated };
+  const toolCalls = toolUseIds.size;
+  if (lastById.size === 0) return { usage: null, model, truncated, toolCalls, apiError, firstTs, lastTs };
 
   const sums = { inputTokens: 0, outputTokens: 0, cacheWriteTokens: 0, cacheReadTokens: 0 };
   for (const u of lastById.values()) {
@@ -134,7 +157,7 @@ function readTranscriptUsage(transcriptPath) {
     sums.cacheWriteTokens += u.cache_creation_input_tokens || 0;
     sums.cacheReadTokens += u.cache_read_input_tokens || 0;
   }
-  return { usage: sums, model, truncated };
+  return { usage: sums, model, truncated, toolCalls, apiError, firstTs, lastTs };
 }
 
 /** Same numbers, snake_case — the shape `estimateCost()` in the cost hook expects. */

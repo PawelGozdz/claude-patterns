@@ -69,3 +69,5 @@ screenshots/
 
 # Surowe zdarzenia telemetrii v1 — per maszyna, poza gitem (ADR 0012). Agregaty: telemetry/rollups/ (w gicie).
 telemetry/events/
+# Stan otwartych przebiegów i agentów dla hooków telemetrii (ADR 0012, krok 3) — per maszyna, tymczasowy.
+telemetry/sessions/

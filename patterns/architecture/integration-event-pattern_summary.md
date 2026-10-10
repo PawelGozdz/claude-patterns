@@ -30,6 +30,7 @@ publikujące do outboxa, `IntegrationEventFanOutService`/routing table, `@Proces
   kod albo cicha utrata eventu (INC 2026-06-04, TS-INTEGRATION-EVENT-WIRING-AUDIT-001).
 - **IE7** — Konsument idempotentny (outbox = at-least-once). `default:` w `switch (eventName)`
   loguje i NIE rzuca.
+- **IE8** — Zdarzenia domenowe in-process lecą PRZED commitem transakcji. Skutek cross-context i audytowy zawsze przez outbox (rollbackuje się z tx); handler zdarzenia robi tylko to, co cofa się razem z transakcją — nigdy `queue.add`/cache invalidation/HTTP.
 
 ## MUST NOT
 

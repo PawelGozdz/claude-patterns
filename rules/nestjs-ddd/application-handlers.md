@@ -15,6 +15,7 @@
   this violation — the line is "does this field decide WHAT comes back," not "does the field exist."
 - Return `Result<DTO, E>` from `executeBusinessLogic()` — orchestration only: load → build VO → call aggregate factory → save → map DTO.
 - Do cross-context calls only via `aclRegistry.getGlobalRequired<ILocalInterface>('context')` with a local interface.
+- Place the ACL call by kind: ACL READ with external I/O or a timeout (and any ACL leaving the process) → `prepare()`; ACL WRITE to an in-process context → `executeBusinessLogic()` (it joins the handler's CLS transaction and is rolled back with it; no `compensate()` needed).
 - Implement `getOperationName()` and `getBoundedContext()` (telemetry); rely on inherited `@Transactional` for commands.
 - Query handlers: inject the read-only `IQueryRepository`, paginate list queries (`{ items, pagination }`), return a DTO.
 
@@ -27,6 +28,7 @@
 - Manage transactions manually (`beginTransaction`/`commit`/`rollback`) — `@Transactional` handles it.
 - Import directly from another bounded context — use the ACL Registry.
 - Manually call `commandBus.register()`/`queryBus.register()` — auto-discovery replaces it.
+- `queue.add` (audit, cache invalidation, any enqueue) in a domain-event handler — in-process events are dispatched BEFORE the command's transaction commits, so the job survives a rollback and leaves a phantom. Use the outbox (`outboxService.saveMessage`).
 - Mutate state, load aggregates, or skip pagination in a query handler (CQRS violation).
 - Omit `@Inject()` on any constructor dependency.
 

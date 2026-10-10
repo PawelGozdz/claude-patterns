@@ -5,7 +5,7 @@
 ## ALWAYS
 - Implement the domain port interface (from `domain/repositories/`) — layer separation.
 - Extend `BaseKyselyRepository` for command (write-side) repos; query repos do NOT extend it.
-- Persist AND dispatch the aggregate's events inside `save()`/`delete()` (via `BaseKyselyRepository`).
+- Persist AND dispatch the aggregate's events inside `save()`/`delete()` (via `BaseKyselyRepository`). Dispatch happens BEFORE the transaction commits: an event handler must be reversible together with the transaction and NEVER does `queue.add` (use the outbox). Outside an active transaction `getDb()` falls back to plain Kysely in autocommit (no throw, `save()` not atomic) — call atomic writes inside a transaction.
 - Map domain ↔ persistence through a dedicated mapper; return domain objects, never raw rows.
 - Read and increment the `version` column on `save()` (optimistic locking).
 - Register EVERY context domain event in `eventMap` using the EVENT_NAME enum (alphabetical imports).

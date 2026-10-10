@@ -19,6 +19,7 @@
 - **ACL8** — moduł konsumenta importuje tylko `ACLModule` (globalny), nie moduł dostawcy.
 - **ACL9** — adapter pobierany wewnątrz metody (nie w konstruktorze) — gwarancja kolejności inicjalizacji.
 - **ACL10** — fail-closed default: `aclRegistry.getGlobalRequired()`, NIGDY `getGlobal()`, gdy operacja jest już wyceniona/obiecana/kosztuje użytkownika (ADR-0118 B1).
+- **ACL11** — adapter zapisujący in-process (np. `ensurePhoneVerifiedCapability`) pisze przez `TransactionHost.tx` (wspólna tx z handlerem), wołany z `executeBusinessLogic()`; `Result.fail` z adaptera nie wycofuje tx — robi to handler; retry po `VersionError` każdą próbą w `Propagation.Nested` (SAVEPOINT; bez tx Nested otwiera własną); grant monotoniczny — brak revoke/`compensate()`, idempotencja w adapterze.
 
 ## MUST NOT
 - **N1** — ❌ `import { XxxModule } from '@contexts/xxx/xxx.module'` w innym kontekście — tworzy circular dep i łamie izolację BC.

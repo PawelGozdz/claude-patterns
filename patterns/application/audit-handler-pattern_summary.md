@@ -47,6 +47,7 @@ wprowadzeniu (np. w `decisions[]` artefaktu `/analyze-ddd` lub w ADR projektu) �
 - **N3** — ❌ `throw` / niezłapany wyjątek — błąd audytu nie może przerywać business flow.
 - **N4** — ❌ logika biznesowa w handlerze (walidacje, decyzje domenowe, zmiany stanu) — handler jest TYLKO obserwatorem.
 - **N5** — ❌ ominięcie rejestracji w `providers` modułu — handler nie otrzyma eventów.
+- **N6** — ❌ założenie, że wpis audytowy jest atomowy z zapisem biznesowym: event domenowy leci PRZED commitem, a `queue.add` przeżywa rollback → fantomowy wpis Tier 1. Do czasu outboxa oznacz w komentarzu handlera, że wpis jest best-effort; audyt krytyczny przez `outboxService.saveMessage` (SEC-AUDIT-PHANTOM-001).
 
 ## Minimal correct skeleton
 ```ts
