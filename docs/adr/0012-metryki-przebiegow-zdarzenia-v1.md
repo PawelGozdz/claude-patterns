@@ -1,6 +1,6 @@
 # ADR 0012 — Metryki przebiegów: wspólny format zdarzeń v1
 
-**Status**: accepted (2026-10-10) — kroki 1–3 wdrożone, 4–6 kolejno
+**Status**: accepted (2026-10-10) — kroki 1–3 i 5 wdrożone, 4 i 6 kolejno
 **Rozszerza**: [ADR 0011](0011-raportowanie-dryfu-i-telemetria-floty.md) (punkt B6 — telemetria floty)
 **Context source**: decyzja użytkownika z 2026-10-10: „jak będziemy wstawiać tylko problemy, to nie
 da nam to procentowego rozbicia dobre vs błędy" + docelowo metryki trafiają na serwer zespołu
@@ -75,8 +75,8 @@ aegis-flow). Opis problemu żyje w skrzynce, w gicie — zdarzenie niesie tylko 
 - Surowe zdarzenia: `claude-patterns/telemetry/events/<RRRR-MM>.jsonl` — centralnie w repo,
   ale **poza gitem** (per maszyna, wysoka zmienność, konflikty przy commitach z wielu maszyn).
   Ścieżkę nadpisuje `CLAUDE_TELEMETRY_DIR` (testy).
-- Agregaty dzienne: `claude-patterns/telemetry/rollups/<projekt>/<dzień>.json` — w gicie
-  (krok 5).
+- Agregaty dzienne: `claude-patterns/telemetry/rollups/<projekt>/<dzień>.<host>.json` — w gicie
+  (krok 5; host w nazwie, bo surowe zdarzenia są per maszyna).
 - Serwer (później): transport czyta te same pliki; `id` zdarzenia zapewnia deduplikację.
   Format v1 jest kontraktem tego transportu — zmiana niekompatybilna = `v: 2`.
 
@@ -151,6 +151,39 @@ odsetek kontroli audytu na OK dzień po dniu.
    trafiają przez `node scripts/sync-global-hooks.mjs --apply`.
 4. Audit i setup.
 5. Rollup dzienny `telemetry-aggregate.mjs` → `telemetry/rollups/`.
+   **Wdrożone 2026-10-10 (TASK-OBS-005)**: `scripts/telemetry-aggregate.mjs` i czysta funkcja
+   `scripts/lib/telemetry-rollup.mjs` (zdarzenia → agregat), jeden plik na projekt × dzień × **host**:
+   `telemetry/rollups/<projekt>/<RRRR-MM-DD>.<host>.json`. Host w nazwie odstępuje od pierwotnego
+   `<dzień>.json`: surowe zdarzenia leżą poza gitem i nie scalają się między maszynami, więc plik
+   z jednej maszyny nadpisałby plik drugiej, a percentyle nie dają się sumować. Plik hosta niesie
+   liczniki (odbiorca je sumuje) i percentyle (lokalne). Zawartość per proces × rola: liczniki
+   `outcome` i `cause`, p50/p90 czasu, koszt i liczba kroków bez kosztu, kroki z `attempt > 1`
+   wraz z kosztem, `verification {units, firstPassGo}`, `repairs {fixSteps, fixed, open}`; osobno
+   `run.end` per wynik i gęstość `deviation` per sygnatura. Bez `taskRef`, `runId`, ścieżek i id
+   kroków (te zdradzają nazwy jednostek z konfiguracji projektu) — pilnuje tego eval.
+   - **first-pass** = odsetek jednostek, których PIERWSZY werdykt weryfikatora to `go`. Jednostka =
+     id kroku bez numeru rundy (`#N`, `.N`, `:N`, `:aN` — w danych jest kilka postaci); werdykt
+     liczy się do dnia, w którym zapadł, więc przebieg przez północ nie dubluje jednostek.
+     Na danych z 2026-10-10: orchestrate 86,6%, workflow 68,0%. Liczb 89,3% / 65,4% z kroku 2
+     nie udało się odtworzyć żadną z prób (jednostki, `attempt ≤ 1`, wszystkie werdykty dają
+     86,6–89,5% i 68,0–69,3%) — krok 2 liczył najpewniej inaczej; obowiązuje definicja z agregatu.
+   - **skuteczność napraw**: krok z `fixes` jest naprawiony, gdy kolejny werdykt tej samej
+     jednostki w przebiegu to `go`, inaczej otwarty. `fixes` ma tylko orchestrate (151 kroków:
+     131 naprawionych, 20 otwartych); ręczne skrypty Workflow nie zapisują go wcale.
+   - **koszt napraw** (kroki `attempt > 1`): orchestrate 22,3% kosztu, workflow 8,1%. Kroki bez
+     `costUsd` (np. model spoza `prices.json`) są liczone osobno (`stepsWithoutCost`), żeby suma
+     kosztu nie udawała kompletu.
+   - **cron**: `45 7 * * 1-5` po audycie floty, `--since` 3 dni wstecz (idempotentny), log
+     `~/.claude/metrics/telemetry-aggregate.log`. Przeliczone pliki zostają w drzewie jako zmiany
+     niezacommitowane — commituje człowiek, tak jak skrzynkę. `--check` wykrywa nieaktualny plik,
+     ale nie jest w pre-commit: zdarzenia są per maszyna, więc bramka padałaby na innej.
+   - **indeks skrzynki** `docs/tasks/_inbox/index.json` (`scripts/generate-inbox-index.mjs`):
+     id, status, trigger, category, sources, occurrences, projects, first_seen, last_seen;
+     rekord bez `category` dostaje `defaultCategory(trigger)`, bez `sources` — `orchestrate`.
+     Czytnik nagłówków jest wspólny z `report-deviation` (`scripts/lib/inbox.mjs`).
+     `--check` w pre-commit odpala się tylko, gdy w commicie są pliki z `_inbox/`: rekordy
+     skrzynki są u zgłaszającego nietrackowane, więc bramka na każdy commit padałaby na maszynie,
+     która ich nie ma.
 6. Dashboard (terminal na żywo, potem web) i transport na serwer.
 
 ## Konsekwencje

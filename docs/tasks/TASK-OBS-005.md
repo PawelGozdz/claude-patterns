@@ -2,7 +2,7 @@
 id: TASK-OBS-005
 title: 'Agregaty dzienne telemetrii (telemetry/rollups/) i generowany _inbox/index.json'
 type: feature
-status: todo
+status: done
 priority: P1
 story_points: 5
 created_date: 2026-10-10
@@ -48,9 +48,32 @@ ani 115 plików markdown. Agregaty są w gicie (scalają się z wielu maszyn), s
    rekordy bez `category` dostają `defaultCategory(trigger)`.
 4. `pre-commit-guards`: `index.json` aktualny względem skrzynki (`--check`).
 
+## Stan (2026-10-10) — zamknięte
+
+Zrobione zgodnie z zakresem, z jednym odstępstwem: **plik agregatu jest per host** —
+`telemetry/rollups/<projekt>/<RRRR-MM-DD>.<host>.json`, nie `<dzień>.json`. Surowe zdarzenia są per
+maszyna i poza gitem, więc plik z jednej maszyny nadpisałby plik drugiej, a percentyle nie dają się
+sumować (plik hosta niesie liczniki do zsumowania i lokalne percentyle). Szczegóły i definicje
+metryk: ADR 0012, krok 5.
+
+Pliki: `scripts/telemetry-aggregate.mjs` + `scripts/lib/telemetry-rollup.mjs` (czysta funkcja),
+`scripts/generate-inbox-index.mjs` + `scripts/lib/inbox.mjs` (czytnik wspólny z `report-deviation`),
+`rollupsDir()` w `scripts/lib/telemetry-events.mjs`, eval `tests/flow-evals/telemetry-rollups/`
+(13 przypadków; mutacje: numer rundy, ostatni zamiast pierwszego werdyktu, `taskRef` w agregacie —
+wszystkie wykryte), wpisy w `pre-commit-guards`, cron `45 7 * * 1-5` po audycie.
+
+Na prawdziwych danach (271 plików, 1,2 MB, 13 142 zdarzenia): sumy `run.end` orchestrate z agregatów
+(ok 246 / no_go 174 / killed 9) równają się surowemu zliczeniu, w najbardziej zajętym dniu
+(2026-10-03) zero różnic w werdyktach weryfikatora. Liczby kontrolne z tasku (239/172/9) są sprzed
+kilku nowych przebiegów, więc kryterium sprawdzone na bieżących danych, nie na zamrożonych.
+
+**Otwarte:** first-pass 89,3% / 65,4% z migracji nie dał się odtworzyć (agregat: 86,6% / 68,0%;
+definicja w ADR 0012); `--check` agregatów nie jest w pre-commit (zdarzenia per maszyna); pliki
+agregatów zmieniane przez cron zostają w drzewie jako niezacommitowane.
+
 ## Kryteria akceptacji
 
-- [ ] Agregat dnia z migrowanych danych zgadza się z ręcznym przeliczeniem (np. 172/420 NO_GO bramki końcowej).
-- [ ] Żaden plik w `telemetry/rollups/` nie zawiera `taskRef`, `runId` ani ścieżek (eval).
-- [ ] `index.json` odtwarzalny; ręczna edycja wykrywana przez `--check`.
-- [ ] Wpis cron i dokumentacja w ADR 0012.
+- [x] Agregat dnia z danych zgadza się z niezależnym przeliczeniem (sumy `run.end`, werdykty z 2026-10-03; eval z ręcznie policzonym zestawem). *Liczby 172/420 z migracji sprawdzone na bieżących danych: 174/429.*
+- [x] Żaden plik w `telemetry/rollups/` nie zawiera `taskRef`, `runId` ani ścieżek (eval + grep po 271 plikach).
+- [x] `index.json` odtwarzalny; ręczna edycja wykrywana przez `--check` (eval, `--check` w pre-commit przy zmianach skrzynki).
+- [x] Wpis cron i dokumentacja w ADR 0012.

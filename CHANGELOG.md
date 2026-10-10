@@ -11,6 +11,14 @@ and none of it is instruction — it is history.
 ## [Unreleased]
 
 ### Added
+- Agregaty dzienne telemetrii i indeks skrzynki (TASK-OBS-005, ADR 0012 krok 5):
+  `scripts/telemetry-aggregate.mjs` zapisuje `telemetry/rollups/<projekt>/<dzień>.<host>.json`
+  (liczniki per proces × rola × wynik × przyczyna, p50/p90 czasu, koszt, first-pass yield, udział
+  i skuteczność napraw, `run.end` per wynik, gęstość odstępstw; bez `taskRef`, `runId`, ścieżek).
+  `scripts/generate-inbox-index.mjs` generuje `docs/tasks/_inbox/index.json` ze znacznikiem
+  GENERATED; `--check` w pre-commit odpala się, gdy commit rusza skrzynkę. Czytnik nagłówków
+  skrzynki wyniesiony do `scripts/lib/inbox.mjs` (wspólny z `report-deviation`). Eval
+  `tests/flow-evals/telemetry-rollups/` (13 przypadków), wpis cron `45 7 * * 1-5` po audycie.
 - Metryki `/analyze` (TASK-OBS-003, ADR 0012 krok 3): przebieg analizy zostawia zdarzenia v1
   (`run.start` z planem, `step.end` per agent panelu, `run.end`). Dwa nowe hooki —
   `telemetry-agent-start` (PostToolUse(Agent): agent → slot z markera `[slot:<id>]`) i

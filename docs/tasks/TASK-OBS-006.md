@@ -30,6 +30,21 @@ source: 'ADR 0012 krok 2 (plan); ADR 0011 B2'
    `DEVIATION_NOTE_DESCRIPTION` jako `description` w IMPL_SCHEMA i VERDICT_SCHEMA
    (`scripts/workflow/orchestrate.template.mjs`) + test w `tests/flow-evals/orchestrate-script/run.js`.
 
+3. **Wersja silnika w `run.start`** (decyzja 2026-10-10, po porównaniu dni 08.10 vs 10.10 z
+   rollupów): zdarzenia nie wiedzą, który stan claude-patterns je wygenerował, a zmiany wchodzą do
+   wszystkich projektów naraz przez symlinki — „przed i po zmianie orchestratora" to dziś tylko data.
+   Nowe pole `engine` w `run.start` (krótki hash commitu claude-patterns, `git rev-parse --short`;
+   bez gita → `null`), zmiana `schemas/telemetry-event-v1.schema.json` + ADR 0012 (pole opcjonalne,
+   więc `v: 1` zostaje), wpis w `telemetry-emit run-start` i w konwerterze collectora. Agregat dzienny
+   (`scripts/lib/telemetry-rollup.mjs`) liczy wtedy liczniki także per `engine`, żeby dało się
+   porównać wersje bez zgadywania po dacie.
+4. **Cena `claude-haiku-5-5` w `~/.claude/metrics/prices.json`**: >50% kroków orchestrate (sondy,
+   część bramek) nie ma `costUsd`, bo modelu nie ma w cenniku (08.10: 198 z 394 kroków, 10.10: 131
+   z 232), więc koszty z rollupów są mocno niedoszacowane. Plik leży poza repo; wartość ceny
+   trzeba potwierdzić u źródła (cennik Anthropic), nie zgadywać. Zdarzenia już zapisane zostają
+   bez kosztu — poprawka działa od następnych przebiegów (opcjonalnie: przeliczenie wsteczne z tokenów
+   w zdarzeniach, które je mają).
+
 ## Kontekst dla świeżej sesji
 
 - Plan istnieje w `runtime.yml` projektu (sekcja `orchestrate.layers` + `inner_loop` +
@@ -44,4 +59,6 @@ source: 'ADR 0012 krok 2 (plan); ADR 0011 B2'
 ## Kryteria akceptacji
 
 - [ ] `run.start` przebiegu orchestrate ma `plan` zgodny z `runtime.yml` z momentu przebiegu.
+- [ ] `run.start` ma `engine` (hash commitu); schemat i ADR 0012 zaktualizowane, rollup rozdziela liczniki per `engine`.
+- [ ] `claude-haiku-5-5` ma cenę w `prices.json`; nowy przebieg orchestrate nie zostawia kroków haiku bez `costUsd`.
 - [ ] Evale `orchestrate-prepare` i `orchestrate-script` zielone.
