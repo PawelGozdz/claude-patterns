@@ -48,16 +48,16 @@
 // w commands/orchestrate.md) traktuje niezerowy exit jako niebłokujący — dopisuje uwagę
 // do treści HALT i jedzie dalej, nie przerywa przebiegu /orchestrate z tego powodu.
 
-import { readFileSync, writeFileSync, existsSync, readdirSync, mkdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 import { appendEvent, projectName, defaultCategory, CAUSES } from './lib/telemetry-events.mjs';
+import { INBOX_DIR, readInboxEntries } from './lib/inbox.mjs';
 
 const require_ = createRequire(import.meta.url);
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const YAML = require_(join(REPO_ROOT, 'node_modules', 'yaml'));
-const INBOX_DIR = join(REPO_ROOT, 'docs', 'tasks', '_inbox');
 
 const EXIT = { OK: 0, USAGE: 1, WRITE: 1 };
 const TRIGGERS = ['halt', 'blocked_by_prior', 'no_go', 'workflow_lint', 'agent_note',
@@ -112,28 +112,6 @@ function canonicalReasonSlug(reason) {
 
 function todayIso() {
   return new Date().toISOString().slice(0, 10);
-}
-
-function readInboxEntries() {
-  if (!existsSync(INBOX_DIR)) return [];
-  const files = readdirSync(INBOX_DIR).filter((f) => f.endsWith('.md') && f !== 'README.md');
-  const rows = [];
-  for (const f of files) {
-    const raw = readFileSync(join(INBOX_DIR, f), 'utf8');
-    const m = raw.match(/^---\r?\n([\s\S]*?)\r?\n---/);
-    if (!m) continue;
-    // Jeden uszkodzony frontmatter nie może wywracać całej listy (DEV-orc-062-application:
-    // zduplikowany klucz `resolution` → YAMLParseError na `--list`, 2026-10-04).
-    let fm;
-    try {
-      fm = YAML.parse(m[1]) || {};
-    } catch (e) {
-      process.stderr.write(`UWAGA: ${f}: uszkodzony frontmatter (${String(e.message).split('\n')[0]}) — pominięty na liście\n`);
-      continue;
-    }
-    rows.push({ file: f, ...fm });
-  }
-  return rows;
 }
 
 function listInbox() {

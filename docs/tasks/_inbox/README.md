@@ -25,6 +25,12 @@ Walidatory tego repo (`validate-tasks.mjs`, `tasks-digest.mjs`, `count-assets.mj
 filtrują wszystko, co nie jest zwykłym `.md` bezpośrednio w `docs/tasks/`. Pliki tutaj nie
 są więc taskami dopóki ktoś ich nie przetriage'uje.
 
+**`index.json`** to widok maszynowy skrzynki (id, status, trigger, category, sources, occurrences,
+projects, first_seen, last_seen), generowany z nagłówków rekordów: `node scripts/generate-inbox-index.mjs`
+(ADR 0012, krok 5). Nie edytuj go ręcznie — `--check` to wykrywa, a pre-commit uruchamia go, gdy
+commit rusza pliki w tym katalogu. Po triage (zmiana `status:`, usunięcie rekordu) odtwórz indeks
+przed commitem.
+
 ## Jak triage'ować
 
 1. `node scripts/report-deviation.mjs --list` — przegląd, posortowany wg `occurrences`.

@@ -24,6 +24,12 @@ export function eventsDir() {
   return process.env.CLAUDE_TELEMETRY_DIR || path.join(REPO_ROOT, 'telemetry', 'events');
 }
 
+// Agregaty dzienne (telemetry-aggregate.mjs) — w gicie, scalają się z wielu maszyn. Ścieżkę
+// nadpisuje CLAUDE_TELEMETRY_ROLLUPS_DIR (testy), tak jak CLAUDE_TELEMETRY_DIR dla zdarzeń.
+export function rollupsDir() {
+  return process.env.CLAUDE_TELEMETRY_ROLLUPS_DIR || path.join(REPO_ROOT, 'telemetry', 'rollups');
+}
+
 export function eventsFileFor(ts) {
   return path.join(eventsDir(), `${String(ts).slice(0, 7)}.jsonl`);
 }

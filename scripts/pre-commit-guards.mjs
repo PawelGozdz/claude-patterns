@@ -72,6 +72,7 @@ runCheck('eval: project-yml', 'node', ['tests/flow-evals/project-yml/run.js']);
 runCheck('eval: audit-projects', 'node', ['tests/flow-evals/audit-projects/run.js']);
 runCheck('eval: telemetry-events', 'node', ['tests/flow-evals/telemetry-events/run.js']);
 runCheck('eval: telemetry-sessions', 'node', ['tests/flow-evals/telemetry-sessions/run.js']);
+runCheck('eval: telemetry-rollups', 'node', ['tests/flow-evals/telemetry-rollups/run.js']);
 runCheck('validate-agents', 'node', ['scripts/ci/validate-agents.js']);
 runCheck('validate-business-rules', 'node', ['scripts/ci/validate-business-rules.js']);
 runCheck('validate-commands', 'node', ['scripts/ci/validate-commands.js']);
@@ -116,6 +117,20 @@ const stagedForAudit = execFileSync(
 if (stagedForAudit.length) {
   runCheck(`audit-projects --gate (zmienione: ${stagedForAudit.join(', ')})`,
     'node', ['scripts/audit-projects.mjs', '--gate']);
+}
+
+// TASK-OBS-005 (ADR 0012): `_inbox/index.json` ma być odtwarzalny ze skrzynki, a ręczna edycja
+// wykrywana. Warunkowo, bo rekordy `DEV-*.md` są u autora zgłoszenia nietrackowane (report-deviation
+// ich nie staguje) — sprawdzanie przy każdym commicie wywalałoby się na maszynie, która tych
+// rekordów nie ma. Ktokolwiek rusza skrzynkę (triage, index.json), odtwarza indeks przed commitem.
+const stagedInbox = execFileSync(
+  'git', ['diff', '--cached', '--name-only', '--diff-filter=ACMRD'],
+  { cwd: REPO, encoding: 'utf8' },
+).split('\n').filter((f) => /^docs\/tasks\/_inbox\/[^/]+$/.test(f));
+
+if (stagedInbox.length) {
+  runCheck(`generate-inbox-index --check (zmienione: ${stagedInbox.length} plików skrzynki)`,
+    'node', ['scripts/generate-inbox-index.mjs', '--check']);
 }
 
 // Sekcja 3: dyscyplina zmian promptów agentów. Dla każdego stage'owanego `agents/**.md`
