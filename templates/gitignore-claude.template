@@ -1,61 +1,39 @@
 # Claude Code — symlinki z claude-patterns (domyślnie: standard/setup-driven projekt = ignoruj;
 # projekty z modelem git-propagacji jak juz-ide-api-* świadomie je trackują, force-add nadpisuje ten ignore)
-.claude/knowledge/patterns/
-.claude/knowledge/patterns-local/
+# BEZ końcowego „/": wzorzec z ukośnikiem pasuje tylko do katalogu, a symlink jest dla gita
+# plikiem — `decisions/` nie ignorował dowiązania .claude/knowledge/decisions i trafiało ono do
+# commitów jako symlink z absolutną ścieżką (juz-ide-api-*, ai-gateway, iam; 2026-10-10).
+.claude/knowledge/patterns
+# patterns-local/ to TREŚĆ PROJEKTU (bloki odwołują się do niej pełną ścieżką; materializer
+# traktuje brak pliku jako wiszącą ścieżkę = błąd). Do 2026-10-10 szablon ją ignorował, więc
+# lokalna wiedza nie trafiała do gita i nie przetrwała innej maszyny. Negacja (nie samo
+# usunięcie linii), bo szablon jest tylko DOPISYWANY — w starych .gitignore linia ignorująca
+# zostaje, a późniejsza negacja ją unieważnia.
+!.claude/knowledge/patterns-local/
 .claude/knowledge/rules/
-.claude/knowledge/decisions/
-.claude/rules/
-.claude/skills/
+.claude/knowledge/decisions
+# skills/ i rules/ NIE są ignorowane w całości (od 2026-10-10): obok symlinków do centrali
+# żyją tam lokalne skille i reguły projektu (ai-os-bot: discord-handlers, pcu: rules/python),
+# które przez wpis `.claude/skills/` po cichu wypadały z gita. Symlinki do centrali dopisuje
+# pojedynczo setup-project.sh (krok 5c), jak agentów. Negacja unieważnia stare wpisy.
+!.claude/rules/
+!.claude/skills/
 
 # Claude Code — symlinked SH hooks (from claude-patterns/hooks/)
 .claude/hooks/cost-optimizer.sh
 .claude/hooks/session-monitor.sh
 .claude/hooks/state-manager.sh
 
-# Claude Code — symlinked stack agents (from claude-patterns/agents/stacks/)
-# Dodaj per-projekt tylko agentów swojego stacku; project-local agents zostają tracked.
-# nestjs-ddd
-.claude/agents/code-quality-verifier.md
-.claude/agents/ddd-application-expert.md
-.claude/agents/security-e2e-verifier.md
-.claude/agents/sql-postgres-optimizer.md
-.claude/agents/domain-application-implementer.md
-.claude/agents/infrastructure-implementer.md
-.claude/agents/test-implementer.md
-.claude/agents/implementers/
-# node-ts-claude-api
-.claude/agents/ts-implementer.md
-.claude/agents/safety-reviewer.md
-.claude/agents/architecture-verifier.md
-# astro-static
-.claude/agents/content-reviewer.md
-.claude/agents/astro-implementer.md
-# flutter
-.claude/agents/flutter-architecture-expert.md
-.claude/agents/flutter-quality-verifier.md
-.claude/agents/flutter-ui-verifier.md
-# python
-.claude/agents/python-architecture-expert.md
-.claude/agents/python-quality-verifier.md
-# nextjs
-.claude/agents/nextjs-architecture-expert.md
-.claude/agents/nextjs-quality-verifier.md
-# sveltekit
-.claude/agents/sveltekit-architecture-expert.md
-.claude/agents/sveltekit-quality-verifier.md
-# typescript-library
-.claude/agents/library-api-guardian.md
-.claude/agents/library-quality-verifier.md
-# refine-spa
-.claude/agents/refine-implementer.md
-.claude/agents/refine-quality-verifier.md
-# design-system (blok, ADR 0010)
-.claude/agents/ui-reviewer.md
-# universal (linked by setup-global.sh — not per-project)
-.claude/agents/tech-lead.md
+# Claude Code — symlinki agentów z claude-patterns/agents/: lista NIE jest tu zaszyta.
+# setup-project.sh (krok 5c) dopisuje każdy symlink z .claude/agents/ wskazujący do centrali,
+# bo zaszyta lista się rozjeżdżała (python-ml: gpu-resource-verifier/ml-inference-architect
+# trafiły do commitów jako symlinki z absolutną ścieżką). Agenci lokalni zostają tracked.
 
 # Claude Code — generated/ephemeral (not committed)
 .claude/settings.local.json
+# kopie robione przez sync-runtime-hooks.mjs / setup-project.sh (settings.json.bak, *.bak.<data>)
+.claude/settings.json.bak
+.claude/**/*.bak.*
 .claude/analytics/
 .claude/audit.log
 .claude/memory/

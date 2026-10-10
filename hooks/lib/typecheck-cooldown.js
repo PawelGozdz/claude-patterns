@@ -7,7 +7,7 @@
  * the failure mode this whole eval exists to catch.
  *
  * State goes to `<tsconfig dir>/.claude/run-state/`, which the gitignore template
- * already excludes (`templates/gitignore-claude.template:59`).
+ * already excludes (`templates/gitignore-claude.template`, wpis `.claude/analytics/`).
  */
 
 const crypto = require('crypto');

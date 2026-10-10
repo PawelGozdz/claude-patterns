@@ -8,7 +8,9 @@
     ],
     "deny": [
       "Read(.env)",
-      "Read(.env.*.local)",
+      "Read(.env.*)",
+      "Read(**/.env)",
+      "Read(**/.env.*)",
       "Read(**/secrets/**)",
       "Read(**/*.key)",
       "Read(**/*.pem)",
@@ -20,7 +22,9 @@
     ]
   },
   "worktree": {
-    "symlinkDirectories": ["node_modules"]
+    "symlinkDirectories": [
+      "node_modules"
+    ]
   },
   "autoMode": {
     "environment": [],
