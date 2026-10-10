@@ -38,6 +38,12 @@ pomija wpis w skrzynce) dopisuje zdarzenie `deviation` z `signature` = id rekord
 i `runId`. Skrzynka mierzy zasięg problemu, zdarzenia jego częstość; dashboard liczy
 procenty ze zdarzeń, a szczegóły pokazuje z rekordu skrzynki o tej sygnaturze.
 
+Skrzynka zostaje markdownem (edytują ją ludzie w triage; nagłówek YAML jest już maszynowy).
+Podział na rodzaje błędów daje pole `category` rekordu = `cause` zdarzenia `deviation` — jedna
+lista dla obu strumieni (`defaultCategory(trigger)` w `telemetry-events.mjs`, nadpisywalne
+`--category`). Widok maszynowy skrzynki dla dashboardu: generowany `_inbox/index.json`
+(TASK-OBS-005). Postęp prac: [EP-OBSERVABILITY-001](../tasks/EP-OBSERVABILITY-001.md).
+
 ### 2. Format zdarzenia v1 — niezależny od procesu
 
 Kontrakt: [`schemas/telemetry-event-v1.schema.json`](../../schemas/telemetry-event-v1.schema.json);

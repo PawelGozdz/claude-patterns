@@ -200,8 +200,25 @@ const tests = [
       const fn = src.match(/function emitDeviationEvent[\s\S]*?\n}\n/);
       if (!fn) return 'brak emitDeviationEvent';
       if (/reason/.test(fn[0].replace(/\/\/.*$/gm, ''))) return 'zdarzenie deviation niesie treść powodu';
-      if (!/emitDeviationEvent\(args, id\)/.test(src)) return 'main nie emituje zdarzenia';
-      if (!/return id;\n\s*}\n/.test(src)) return 'gałąź --once-per-project nie zwraca id (zdarzenie by przepadło)';
+      if (!/emitDeviationEvent\(args, record\)/.test(src)) return 'main nie emituje zdarzenia';
+      if (!/bez nowego wystąpienia`\);\n\s*return \{ id, category/.test(src)) return 'gałąź --once-per-project nie zwraca rekordu (zdarzenie by przepadło)';
+      if (!/cause: CAUSES\.includes\(category\)/.test(fn[0])) return 'zdarzenie deviation bez kategorii (cause)';
+      return null;
+    },
+  },
+  {
+    name: 'inbox-category-shares-cause-vocabulary',
+    run(t) {
+      // Podział „jakie błędy" ma być jeden dla skrzynki i metryk — kategoria ze skrzynki
+      // musi być wartością `cause` ze schematu.
+      for (const trig of ['halt', 'blocked_by_prior', 'no_go', 'workflow_lint', 'agent_note', 'analyze_gate', 'analyze_note', 'setup_drift', 'nowy_trigger']) {
+        const c = t.defaultCategory(trig);
+        if (!t.CAUSES.includes(c)) return `${trig} → ${c} spoza listy cause`;
+      }
+      if (t.defaultCategory('setup_drift') !== 'config' || t.defaultCategory('no_go') !== 'verifier') return 'mapowanie triggerów zmienione';
+      const src = fs.readFileSync(REPORT, 'utf8');
+      if (!/category: args\.category \|\| defaultCategory\(args\.trigger\)/.test(src)) return 'nowy rekord skrzynki bez pola category';
+      if (!/fm\.category = fm\.category \|\|/.test(src)) return 'istniejąca kategoria (np. z triage) bywa nadpisywana';
       return null;
     },
   },

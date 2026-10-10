@@ -14,6 +14,11 @@
 //        --trigger <halt|blocked_by_prior|no_go|workflow_lint|agent_note> \
 //        --reason "<tekst>" [--rule <ORC-062|WL17>] [--task <TASK-ID>] [--run-id <id>] [--layer <id>]
 //        [--source <orchestrate|analyze|audit|setup>] [--once-per-project]
+//        [--category <typecheck|test|lint|verifier|scope|config|infra|silent|budget|other>]
+//
+// `category` (2026-10-10, ADR 0012): ta sama lista co `cause` w zdarzeniach telemetrii, więc
+// podział na rodzaje błędów jest identyczny w skrzynce i na dashboardzie. Domyślna z triggera
+// (defaultCategory); raz ustawiona w rekordzie (także ręcznie w triage) nie jest nadpisywana.
 //
 // Źródła (2026-10-10): do tej daty skrzynkę karmił WYŁĄCZNIE /orchestrate, więc błędy
 // konfiguracji, które degradują po cichu (pominięty blokujący stage panelu, plik poza
@@ -47,7 +52,7 @@ import { readFileSync, writeFileSync, existsSync, readdirSync, mkdirSync } from 
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
-import { appendEvent, projectName } from './lib/telemetry-events.mjs';
+import { appendEvent, projectName, defaultCategory, CAUSES } from './lib/telemetry-events.mjs';
 
 const require_ = createRequire(import.meta.url);
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -68,7 +73,7 @@ function parseArgs(argv) {
   const out = {
     project: null, trigger: null, rule: null, reason: null,
     task: null, runId: null, layer: null, list: false,
-    source: 'orchestrate', oncePerProject: false,
+    source: 'orchestrate', oncePerProject: false, category: null,
   };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
@@ -82,6 +87,7 @@ function parseArgs(argv) {
     else if (a === '--layer') out.layer = argv[++i] ?? '';
     else if (a === '--source') out.source = argv[++i] ?? '';
     else if (a === '--once-per-project') out.oncePerProject = true;
+    else if (a === '--category') out.category = argv[++i] ?? '';
     else die(EXIT.USAGE, `nieznany przełącznik: ${a}`);
   }
   return out;
@@ -142,7 +148,7 @@ function listInbox() {
   for (const r of rows) {
     const projects = Array.isArray(r.projects) ? r.projects.join(',') : '';
     console.log(`  ${String(r.occurrences ?? '?').padStart(3)}x  ${r.id || r.file}  `
-      + `[${r.trigger || '?'}]  last_seen=${r.last_seen || '?'}  status=${r.status || '?'}  `
+      + `[${r.trigger || '?'}/${r.category || defaultCategory(r.trigger)}]  last_seen=${r.last_seen || '?'}  status=${r.status || '?'}  `
       + `projects=${projects}`);
   }
 }
@@ -179,9 +185,10 @@ function upsert(args) {
     const wasClosed = fm.status === 'dismissed' || fm.status === 'promoted';
     if (args.oncePerProject && !wasClosed && (fm.projects || []).includes(args.project)) {
       console.log(`inbox: ${id} już zna ${args.project} (otwarty) — bez nowego wystąpienia`);
-      return id;
+      return { id, category: fm.category || args.category || defaultCategory(fm.trigger || args.trigger) };
     }
     fm.sources = Array.from(new Set([...(fm.sources || ['orchestrate']), args.source]));
+    fm.category = fm.category || args.category || defaultCategory(fm.trigger || args.trigger);
     fm.occurrences = (fm.occurrences || 0) + 1;
     fm.last_seen = today;
     fm.projects = Array.from(new Set([...(fm.projects || []), args.project]));
@@ -203,6 +210,7 @@ function upsert(args) {
       id,
       status: 'proposed',
       trigger: args.trigger,
+      category: args.category || defaultCategory(args.trigger),
       sources: [args.source],
       rule_ref: args.rule || null,
       first_seen: today,
@@ -217,7 +225,7 @@ function upsert(args) {
   writeFileSync(target, out);
 
   console.log(`inbox: ${id} occurrences=${fm.occurrences}`);
-  return id;
+  return { id, category: fm.category };
 }
 
 // Zdarzenie `deviation` (ADR 0012) przy KAŻDYM zgłoszeniu — także gdy --once-per-project
@@ -226,7 +234,7 @@ function upsert(args) {
 // w skrzynce (w gicie), zdarzenie niesie tylko sygnaturę — nic z projektu nie trafi na serwer.
 const SAFE_REF = /^[A-Za-z0-9._-]{1,80}$/;
 
-function emitDeviationEvent(args, signature) {
+function emitDeviationEvent(args, { id, category }) {
   const fields = {
     kind: 'deviation',
     process: args.source,
@@ -234,8 +242,9 @@ function emitDeviationEvent(args, signature) {
     runId: args.runId && /^[A-Za-z0-9._:-]{1,80}$/.test(args.runId)
       ? args.runId
       : `${args.source}-${todayIso().replace(/-/g, '')}`,
-    signature,
+    signature: id,
     trigger: args.trigger,
+    cause: CAUSES.includes(category) ? category : 'other',
   };
   if (args.task && SAFE_REF.test(args.task)) fields.taskRef = args.task;
   if (args.layer) fields.step = { id: args.layer, group: args.layer };
@@ -256,13 +265,15 @@ function main() {
   if (!SOURCES.includes(args.source)) die(EXIT.USAGE, `--source musi być jednym z: ${SOURCES.join(', ')}`);
   if (!args.reason) die(EXIT.USAGE, 'brak --reason');
 
-  let id;
+  if (args.category && !CAUSES.includes(args.category)) die(EXIT.USAGE, `--category musi być jednym z: ${CAUSES.join(', ')}`);
+
+  let record;
   try {
-    id = upsert(args);
+    record = upsert(args);
   } catch (e) {
     die(EXIT.WRITE, `nie udało się zapisać: ${e && e.message ? e.message : String(e)}`);
   }
-  emitDeviationEvent(args, id);
+  emitDeviationEvent(args, record);
   process.exit(EXIT.OK);
 }
 

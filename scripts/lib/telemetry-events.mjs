@@ -47,6 +47,19 @@ const OUTCOME_ALIASES = {
   killed: 'killed', unknown: 'unknown',
 };
 
+// Kategoria problemu ze skrzynki `_inbox` = ta sama lista co `cause` zdarzeń, żeby podział
+// „jakie błędy" był identyczny w skrzynce i w metrykach (ADR 0012). Domyślna z triggera,
+// wołający może podać dokładniejszą (`report-deviation --category`).
+const TRIGGER_CATEGORY = {
+  setup_drift: 'config', analyze_gate: 'config', workflow_lint: 'config',
+  no_go: 'verifier',
+  halt: 'other', blocked_by_prior: 'other', agent_note: 'other', analyze_note: 'other',
+};
+
+export function defaultCategory(trigger) {
+  return TRIGGER_CATEGORY[trigger] || 'other';
+}
+
 export function normalizeOutcome(raw) {
   if (raw === null || raw === undefined || raw === '') return 'unknown';
   return OUTCOME_ALIASES[String(raw).trim().toLowerCase()] || 'unknown';
