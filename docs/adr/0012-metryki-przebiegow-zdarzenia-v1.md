@@ -45,7 +45,8 @@ implementacja zapisu: `scripts/lib/telemetry-events.mjs` (eval pilnuje zgodnośc
 schematem).
 
 - `kind`: `run.start` (z `plan` — listą zaplanowanych kroków), `step.end`, `run.end`, `deviation`.
-- `process`: `orchestrate | analyze | audit | setup` — lista zamknięta; nowy proces = świadoma
+- `process`: `orchestrate | workflow | analyze | audit | setup` — lista zamknięta (`workflow` =
+  ręcznie pisany skrypt Workflow, `orchestrate` = tylko skrypt kanoniczny); nowy proces = świadoma
   zmiana schematu, jak w taksonomii tagów.
 - `outcome` (zamknięty): `ok go no_go fixed failed died skipped cached halted killed unknown`.
   Stare wartości są normalizowane (`NO-GO`/`NO_GO` → `no_go`, `silent-death` → `died`,
@@ -100,6 +101,21 @@ odsetek kontroli audytu na OK dzień po dniu.
    `report-deviation` → `deviation`, eval `telemetry-events`.
 2. Orchestrate: plan w `run.start`, collector w v1, normalizacja wyników, `fixes`, koszt kroku,
    prawdziwy TS-ID; migracja 11 tys. historycznych kroków (trend od pierwszego dnia).
+   **Wdrożone 2026-10-10 (bez planu w `run.start`)**: `scripts/lib/telemetry-legacy.mjs`
+   (jeden konwerter dla collectora i migracji), collector zapisuje v1 równolegle ze starym
+   formatem, `scripts/telemetry-migrate-legacy.mjs` przeniósł 12 953 zdarzenia (867 przebiegów,
+   od 2026-07), 0 odrzuconych, powtórka idempotentna. Ustalenia z danych:
+   - `attempt` w starym rekordzie = 1 w 99% kroków; runda siedzi w etykiecie
+     (`<warstwa>:<jednostka>-<rola>[-<runda>]`) — z niej rola, próba i `fixes` (146 napraw);
+   - ~~`taskId`~~ to losowy identyfikator narzędzia; prawdziwy TS-ID jest w `result.taskId`
+     (collector zapisuje go teraz jako `taskRef`; pokrycie kanonicznych przebiegów 0 → 393/420);
+   - kanoniczny skrypt zawsze kończy się `completed`/`STAGE_NOT_COMMIT`, a `result.escalatedAt`
+     nie istnieje — stara telemetria pokazywała 420/420 udanych. Po uwzględnieniu werdyktu
+     bramki końcowej (`result.finalGate.verdict` → `finalVerdict`): **172/420 (41%) przebiegów
+     kończy się NO_GO bramki końcowej**;
+   - ręczne skrypty Workflow (`process: workflow`, 447 przebiegów) mają 65,4% werdyktów GO w
+     pierwszej próbie wobec 89,3% kanonicznego skryptu.
+   Plan w `run.start` czeka na `orchestrate-prepare.mjs` (staged zmiany innej sesji).
 3. Analyze: `run-start/run-end` w `commands/analyze.md` + hook PostToolUse(Agent).
 4. Audit i setup.
 5. Rollup dzienny `telemetry-aggregate.mjs` → `telemetry/rollups/`.

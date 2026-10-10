@@ -33,6 +33,8 @@ import {
   readJsonl, recordKey, resolveProjectSlug, sha256short,
   sumTranscriptUsage, estimateCostUsd, loadPrices,
 } from './workflow-metrics-lib.mjs';
+import { appendEventsDedup } from './lib/telemetry-events.mjs';
+import { legacyRunToEvents, projectFromSlug } from './lib/telemetry-legacy.mjs';
 
 const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
 export const DEFAULT_PRICES_PATH = path.join(__dirname, 'workflow-metrics-prices.default.json');
@@ -148,9 +150,22 @@ export function collectRun({ wfPath, wf: wfParsed, runDir, fallbackAgentsDir, pr
     costUsd: costKnown.length ? +costKnown.reduce((s, x) => s + x.costUsd, 0).toFixed(6) : null,
     costCoverage: agents.length ? +(costKnown.length / agents.length).toFixed(2) : null,
     runtimeYmlHash: runtimeYmlHash ?? null,
+    ...runResultFields(wf),
   };
 
   return { steps, run };
+}
+
+// Pola z `result` kanonicznego skryptu (2026-10-10). `wf.taskId` to losowy identyfikator
+// narzędzia Workflow, nie TS-ID — prawdziwy task siedzi w `result.taskId` (350/417 przebiegów).
+// Kanoniczny skrypt nie kończy się HALT-em na poziomie przebiegu (409/417 to `STAGE_NOT_COMMIT`),
+// a `result.escalatedAt` nie istnieje — o tym, czy praca przeszła, mówi werdykt bramki końcowej.
+export function runResultFields(wf) {
+  const r = wf && typeof wf.result === 'object' && wf.result ? wf.result : {};
+  return {
+    taskRef: typeof r.taskId === 'string' ? r.taskId : null,
+    finalVerdict: r.finalGate && typeof r.finalGate.verdict === 'string' ? r.finalGate.verdict : null,
+  };
 }
 
 // Snapshot runtime.yml projektu: zapis kopii pod hashem, zwrot hasha (D5).
@@ -168,7 +183,7 @@ export function snapshotRuntimeYml(projectDir, { dryRun = false } = {}) {
   return hash;
 }
 
-function findRunCandidates() {
+export function findRunCandidates() {
   const out = [];
   if (!fs.existsSync(PROJECTS_DIR)) return out;
   for (const slug of fs.readdirSync(PROJECTS_DIR)) {
@@ -212,7 +227,12 @@ export function main(argv = process.argv.slice(2)) {
 
   const existingKeys = new Set(readJsonl(STEPS_FILE).map(recordKey));
   const projectDirCache = new Map();
+  const projectNameCache = new Map();
   const lines = [];
+  // Zdarzenia v1 (ADR 0012) z tych samych rekordów — równolegle do workflow-steps.jsonl, dopóki
+  // raporty (workflow-metrics-report, telemetry-freshness) czytają stary format. Historię sprzed
+  // wdrożenia przenosi `telemetry-migrate-legacy.mjs`; deterministyczne id chronią przed duplikatami.
+  const v1Events = [];
   let skippedRunning = 0; let skippedExisting = 0;
 
   for (const c of byRunId.values()) {
@@ -235,6 +255,7 @@ export function main(argv = process.argv.slice(2)) {
       const { steps, run } = collected;
       for (const s of steps) if (!existingKeys.has(recordKey(s))) lines.push(s);
       lines.push(run);
+      v1Events.push(...legacyRunToEvents({ steps, run, project: projectFromSlug(c.slug, projectNameCache) }));
       log(`  + ${run.runId} (${run.workflowName ?? '?'}) — ${steps.length} kroków, status ${run.status}, koszt ~$${run.costUsd ?? '?'}`);
     } catch (e) {
       console.error(`[workflow-metrics] pomijam przebieg ${c.runId} (${c.wfPath}): ${e.message}`);
@@ -246,6 +267,13 @@ export function main(argv = process.argv.slice(2)) {
     fs.appendFileSync(STEPS_FILE, lines.map((l) => JSON.stringify(l)).join('\n') + '\n');
   }
   log(`[workflow-metrics] dopisano ${lines.length} rekordów (pominięto: ${skippedExisting} już zebranych, ${skippedRunning} w toku) → ${STEPS_FILE}`);
+  if (v1Events.length) {
+    // Best-effort jak cały collector: błąd zapisu v1 nie może zablokować zapisu starego formatu.
+    const v1 = appendEventsDedup(v1Events, { dryRun });
+    if (v1.error) console.error(`[workflow-metrics] zdarzenia v1 niezapisane: ${v1.error}`);
+    for (const r of v1.rejected) console.error(`[workflow-metrics] zdarzenie v1 odrzucone ${r.id}: ${r.errors.join('; ')}`);
+    log(`[workflow-metrics] zdarzenia v1: ${v1.written} zapisanych, ${v1.skipped} już było, ${v1.rejected.length} odrzuconych`);
+  }
   return lines.length;
 }
 

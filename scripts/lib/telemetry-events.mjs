@@ -113,6 +113,54 @@ export function validateEvent(ev) {
   return errors;
 }
 
+// UUID wyprowadzony z klucza — dla zdarzeń odtwarzanych z istniejących danych (collector,
+// migracja): ten sam krok zawsze dostaje to samo id, więc powtórny przebieg niczego nie dubluje.
+export function deterministicId(key) {
+  const h = crypto.createHash('sha256').update(String(key)).digest('hex');
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20, 32)}`;
+}
+
+export function existingEventIds() {
+  const ids = new Set();
+  const dir = eventsDir();
+  if (!fs.existsSync(dir)) return ids;
+  for (const f of fs.readdirSync(dir)) {
+    if (!f.endsWith('.jsonl')) continue;
+    for (const ev of readEvents(path.join(dir, f))) if (ev && ev.id) ids.add(ev.id);
+  }
+  return ids;
+}
+
+// Zapis wsadowy z deduplikacją po `id`. Zwraca { written, skipped, rejected[], error? }.
+// Nigdy nie rzuca — tak jak appendEvent.
+export function appendEventsDedup(list, { dryRun = false } = {}) {
+  const result = { written: 0, skipped: 0, rejected: [] };
+  try {
+    const seen = existingEventIds();
+    const byFile = new Map();
+    for (const fields of list) {
+      const ev = buildEvent(fields);
+      if (seen.has(ev.id)) { result.skipped++; continue; }
+      const errors = validateEvent(ev);
+      if (errors.length) { result.rejected.push({ id: ev.id, errors }); continue; }
+      seen.add(ev.id);
+      const file = eventsFileFor(ev.ts);
+      if (!byFile.has(file)) byFile.set(file, []);
+      byFile.get(file).push(JSON.stringify(ev));
+      result.written++;
+    }
+    if (!dryRun) {
+      for (const [file, lines] of byFile) {
+        fs.mkdirSync(path.dirname(file), { recursive: true });
+        fs.appendFileSync(file, lines.join('\n') + '\n');
+      }
+    }
+  } catch (e) {
+    result.error = e && e.message ? e.message : String(e);
+  }
+  return result;
+}
+
 // Zwraca { ok: true, event } albo { ok: false, error }. Nigdy nie rzuca.
 export function appendEvent(fields) {
   try {

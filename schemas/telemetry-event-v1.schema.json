@@ -11,7 +11,7 @@
     "id": { "type": "string", "pattern": "^[0-9a-f-]{36}$" },
     "ts": { "type": "string", "format": "date-time" },
     "kind": { "enum": ["run.start", "step.end", "run.end", "deviation"] },
-    "process": { "enum": ["orchestrate", "analyze", "audit", "setup"] },
+    "process": { "enum": ["orchestrate", "workflow", "analyze", "audit", "setup"] },
     "project": { "type": "string", "pattern": "^[A-Za-z0-9._-]{1,80}$" },
     "host": { "type": "string", "pattern": "^[0-9a-f]{12}$" },
     "runId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]{1,80}$" },
