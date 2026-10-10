@@ -174,6 +174,7 @@ Reguły scalania (baza ← lokalny):
 | Sekcja | Zachowanie |
 |---|---|
 | `patterns.*`, `overlay.*`, `hooks` | suma, bez duplikatów |
+| `patterns.remove` | lista ścieżek usuwanych z CAŁEJ kompozycji (z `always`, `triggers[].include` i `layer_contributions[].patterns`), także tych wniesionych przez blok bazowy — tak wycina się odziedziczone wzorce, których projekt nie chce (np. GPU z `ml-pipeline`). Pusty po usunięciu trigger zostaje, ale nic nie dokłada. Działa w `extends` od 2026-10-10; wcześniej `remove` bloku dziedziczącego był po cichu gubiony |
 | `analyze.panel` | pozycja o tym samym `stage` zastępuje bazową; nowe dochodzą na koniec; `drop: true` usuwa |
 | `analyze.exit` | lokalny wygrywa, gdy podany |
 | `orchestrate`, `env`, `budgets`, `params`, `requires_ecc`, `ralphinho` | lokalna sekcja wygrywa w całości |

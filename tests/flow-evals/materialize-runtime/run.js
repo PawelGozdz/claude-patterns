@@ -14,6 +14,7 @@
  *
  * POLA NIESTABILNE, pomijane w porównaniu:
  *   - materialized_at  — znacznik czasu, inny w każdym przebiegu
+ *   - inputs_hash      — jak source_hash, bez źródła generatora (rozróżnienie w audycie)
  *   - source_hash      — hash treści bloków; zmienia się przy KAŻDEJ edycji dowolnego
  *                        bloku, więc porównywanie go zamieniłoby ten eval w przypominajkę
  *                        o odświeżeniu goldenów, a nie w test zachowania
@@ -34,7 +35,7 @@ const FIXTURES = path.join(__dirname, 'fixtures');
 const MATERIALIZE = path.join(REPO, 'scripts', 'materialize-runtime.mjs');
 const UPDATE = process.argv.includes('--update');
 
-const UNSTABLE_KEYS = ['materialized_at', 'source_hash'];
+const UNSTABLE_KEYS = ['materialized_at', 'source_hash', 'inputs_hash'];
 
 function stripUnstable(obj) {
   const out = { ...obj };

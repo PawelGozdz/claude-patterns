@@ -279,7 +279,10 @@ function applyExtends(block, depth = 0) {
   const localPatterns = local.get('patterns', true);
   if (localPatterns) {
     const basePatterns = merged.get('patterns', true) ?? merged.createNode({});
-    for (const sub of ['always', 'triggers']) {
+    // `remove` też — do 2026-10-10 lista miała tylko always/triggers, więc `patterns.remove`
+    // bloku lokalnego z `extends:` znikał przy scalaniu bez śladu (aegis-flow: pozbycie się
+    // wzorców GPU z ml-pipeline wymagało przepisania całego bloku zamiast dziedziczenia).
+    for (const sub of ['always', 'triggers', 'remove']) {
       const add = localPatterns.get(sub, true);
       if (!add) continue;
       const cur = basePatterns.get(sub, true);
@@ -587,6 +590,31 @@ if (dangling.length)
     dangling.map(([p, src]) => `    ${p}  ← blok "${src}"`).join('\n') +
     '\n  Popraw ścieżkę w bloku albo dodaj brakujący wzorzec.');
 
+// Wspólny plik wyniku dwóch stage'ów panelu z RÓŻNYCH bloków to twardy błąd, gdy choć
+// jeden z nich jest blokujący. Powód z praktyki (aegis-flow, 2026-10-10, potwierdzone
+// trzy razy niezależnie): `threat-model` z python.yml (skip_if_exists) i lokalny,
+// blokujący przegląd zakresu pisały do tego samego TM-{TASK_ID}.md — gdy threat-model
+// szedł pierwszy, plik już istniał i blokująca kontrola była po cichu pomijana. To, czy
+// bramka się odpali, zależało od kolejności bloków, a z zewnątrz wyglądało na sprawdzone.
+// Stage'e nieblokujące z tą samą ścieżką (np. threat-model z python.yml i sveltekit.yml)
+// przechodzą: skip_if_exists robi z nich jeden przebieg, nic się nie gubi.
+const outputs = new Map();   // ścieżka → [{stage, source, blocking}]
+for (const p of panel) {
+  const s = p.node.toJSON?.() ?? {};
+  if (!s.output) continue;
+  const key = String(s.output).trim().replace(/^\.\//, '');
+  if (!outputs.has(key)) outputs.set(key, []);
+  outputs.get(key).push({ stage: s.stage, source: p.source, blocking: s.blocking === true });
+}
+const collisions = [...outputs].filter(([, list]) =>
+  new Set(list.map((e) => e.source)).size > 1 && list.some((e) => e.blocking));
+if (collisions.length)
+  fail('stage\'e panelu z różnych bloków piszą do tego samego pliku, a co najmniej jeden jest blokujący —\n' +
+    '  kolejność wykonania zdecydowałaby po cichu, czy blokująca kontrola się odpali:\n' +
+    collisions.map(([path, list]) => `    ${path}\n` +
+      list.map((e) => `      ← stage "${e.stage}" (blok "${e.source}")${e.blocking ? ' [blocking]' : ''}`).join('\n')).join('\n') +
+    '\n  Daj stage\'owi blokującemu osobną ścieżkę output: (wzór: ./aegis-security → docs/security/scope-reviews/SR-{TASK_ID}.md).');
+
 // ── emisja runtime.yml ─────────────────────────────────────────────────────
 // Budowana przez Document API, nie sklejaniem stringów: komentarz `# source:` przy
 // każdej pozycji jest jedynym śladem, z którego bloku coś przyszło, a węzły panelu
@@ -603,10 +631,17 @@ if (dangling.length)
 // (`//` żyje w stringach i regexach), a fałszywy alarm kosztuje jedno uruchomienie
 // skryptu — fałszywy spokój kosztował trzy repozytoria bez sekcji.
 const generatorSrc = readFileSync(fileURLToPath(import.meta.url), 'utf8');
-const hash = createHash('sha256')
-  .update(blocks.map((b) => b.src).join('\n') + aliasSrc + JSON.stringify([...paramsOut]) + JSON.stringify(taxonomy))
-  .update(generatorSrc)
-  .digest('hex').slice(0, 12);
+const inputsDigest = () => createHash('sha256')
+  .update(blocks.map((b) => b.src).join('\n') + aliasSrc + JSON.stringify([...paramsOut]) + JSON.stringify(taxonomy));
+const hash = inputsDigest().update(generatorSrc).digest('hex').slice(0, 12);
+
+// `inputs_hash` = ten sam hash BEZ źródła generatora (2026-10-10). Incydent: każda edycja
+// tego pliku przestawiała `source_hash` we wszystkich projektach naraz, więc audyt
+// flotowy pokazał 21/21 „runtime.yml nieaktualny" i prawdziwe sygnały (zmieniony blok,
+// project.yml) utonęły w fałszywych alarmach. `source_hash` zostaje bez zmian (pilnuje
+// też generatora — patrz wyżej); `inputs_hash` pozwala audytowi odróżnić „zmieniły się
+// wejścia kompozycji" (BŁĄD) od „zmienił się tylko generator" (INFO).
+const inputsHash = inputsDigest().digest('hex').slice(0, 12);
 
 const doc = new YAML.Document({});
 doc.commentBefore =
@@ -631,6 +666,7 @@ const tagSection = (key, comment) => {
 doc.set('schema_version', 1);
 doc.set('materialized_at', quoted(new Date().toISOString()));
 doc.set('source_hash', quoted(hash));
+doc.set('inputs_hash', quoted(inputsHash));
 doc.set('stack_blocks', flowSeq(expanded));
 
 const patternsMap = doc.createNode({});
@@ -694,6 +730,33 @@ for (const c of contributions)
 for (const layerNode of (orch?.node.get('layers', true)?.items ?? []))
   for (const t of (layerNode.get('tags')?.toJSON?.() ?? []))
     checkTagLike(t, `blok "${orch.source}": warstwa "${layerNode.get('id')}" tags`, false);
+
+// Warstwa obowiązkowa, której żaden `dirs:` nie istnieje w repo, zmusza implementera do
+// wymyślenia sobie pracy, żeby coś oddać (aegis-flow na ml-pipeline: warstwa `processing`
+// z intelligence/ i processing/, których projekt nie miał). Wykrywamy to przy materializacji,
+// a nie w trakcie /orchestrate. Ostrzeżenie, nie błąd: task bywa właśnie tym, który katalog
+// zakłada. `dirs` to wskazówki zakresu, nie ścieżki od roota (grant-flow: `domain/` żyje pod
+// apps/api/src/contexts/*), więc dopasowujemy segment ścieżki w dowolnym miejscu.
+const repoFiles = (() => {
+  try {
+    return execFileSync('git', ['ls-files', '--cached', '--others', '--exclude-standard'],
+      { cwd: projectDir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 64 * 1024 * 1024 })
+      .split('\n').filter(Boolean).map((f) => `/${f}`);
+  } catch { return null; }   // nie repo gita — brak podstaw do oceny, pomijamy
+})();
+if (repoFiles) {
+  const dirPresent = (d) => {
+    const seg = `/${String(d).replace(/^\.\//, '').replace(/\/$/, '')}`;
+    return repoFiles.some((f) => f.includes(`${seg}/`) || f.endsWith(seg));
+  };
+  for (const layerNode of (orch?.node.get('layers', true)?.items ?? [])) {
+    const l = layerNode.toJSON?.() ?? {};
+    const dirs = (Array.isArray(l.dirs) ? l.dirs : [l.dirs]).filter(Boolean);
+    if (l.optional === true || !dirs.length || dirs.some(dirPresent)) continue;
+    warn(`warstwa "${l.id}" (blok "${orch.source}") jest obowiązkowa, a żaden z jej dirs nie istnieje w repo: ` +
+      `${dirs.join(', ')} — dodaj "optional: true" albo nadpisz dirs blokiem lokalnym`);
+  }
+}
 
 if (orch && contributions.length) {
   const layersNode = orch.node.get('layers', true);
@@ -843,10 +906,13 @@ if (CHECK) {
   const cur = existsSync(dst)
     ? readFileSync(dst, 'utf8').match(/^source_hash:\s*"?([a-f0-9]+)"?/m)?.[1]
     : null;
+  // Linia `inputs_hash: …` jest maszynowo czytana przez audit-projects.mjs; exit code
+  // i reszta komunikatów bez zmian.
   if (cur === hash) {
-    console.log(`  runtime.yml aktualny (hash ${hash}, ${expanded.length} bloków)`);
+    console.log(`  runtime.yml aktualny (hash ${hash}, ${expanded.length} bloków)\n  inputs_hash: ${inputsHash}`);
     process.exit(0);
   }
+  console.error(`  inputs_hash: ${inputsHash}`);
   console.error(cur
     ? `  ROZJAZD: runtime.yml ma hash ${cur}, bloki dają ${hash}\n` +
       `  → node scripts/materialize-runtime.mjs ${projectDir}`

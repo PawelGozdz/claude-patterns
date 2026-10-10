@@ -47,7 +47,9 @@ orchestrate:
     - { id: collection, dirs: [collectors/, collector_manager/], agent: "general-purpose", optional: true,
         tags: ["data:app:ingestion"],
         role: "Pobieranie ze źródeł zewnętrznych: bezpieczniki, checkpointy, limity zapytań." }
-    - { id: processing, dirs: [intelligence/, processing/], agent: "general-purpose",
+    # processing też optional (2026-10-10): domyślne intelligence/ i processing/ nie muszą
+    # istnieć (aegis-flow), a materializer ostrzega teraz o obowiązkowej warstwie bez katalogów.
+    - { id: processing, dirs: [intelligence/, processing/], agent: "general-purpose", optional: true,
         tags: ["data:app"],
         role: "Przetwarzanie pobranego materiału: wzbogacanie, embeddingi, wnioskowanie." }
     - { id: storage, dirs: [infrastructure/, data/], agent: "general-purpose", optional: true,
