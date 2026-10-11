@@ -234,6 +234,24 @@ const tests = [
     },
   },
   {
+    // Przebiegi z `engine` w run.start liczone osobno per wersja; bez `engine` — bez bloku (stare agregaty nie drgną).
+    name: 'counters-split-per-engine',
+    run(T) {
+      const mk = (runId, engine, ts, outcome, cost) => [
+        ev({ runId, kind: 'run.start', process: 'orchestrate', ts: `${ts}T10:00:00.000Z`, ...(engine ? { engine } : {}) }),
+        ev({ runId, kind: 'step.end', process: 'orchestrate', ts: `${ts}T10:01:00.000Z`, outcome: 'ok', step: { id: 'a:implementer#1', role: 'implementer' }, ...(cost === null ? {} : { m: { costUsd: cost } }) }),
+        ev({ runId, kind: 'run.end', process: 'orchestrate', ts: `${ts}T10:02:00.000Z`, outcome }),
+      ];
+      const d = '2026-02-01';
+      const r = T.buildRollups([...mk('r1', 'abc1234', d, 'go', 1), ...mk('r2', 'abc1234', d, 'no_go', null), ...mk('r3', 'def5678', d, 'go', 2), ...mk('r4', null, d, 'go', 5)]);
+      const got = r.get(`demo|${d}|${HOST_A}`).engines;
+      return eq(got.abc1234.orchestrate, { started: 2, ended: { go: 1, no_go: 1 }, steps: 2, died: 0, costUsd: 1, stepsWithoutCost: 1 }, 'engine abc1234')
+        || eq(got.def5678.orchestrate.started, 1, 'engine def5678')
+        || eq(Object.keys(got).sort(), ['abc1234', 'def5678'], 'przebieg bez engine nie tworzy bloku')
+        || eq(Object.keys(T.buildRollups(mk('r5', null, d, 'go', 1)).get(`demo|${d}|${HOST_A}`)).includes('engines'), false, 'brak engines bez engine');
+    },
+  },
+  {
     name: 'pre-commit-guards-registered',
     run() {
       const src = fs.readFileSync(GUARDS, 'utf8');

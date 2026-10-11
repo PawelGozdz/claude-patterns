@@ -145,6 +145,21 @@ const tests = [
     },
   },
   {
+    name: 'legacy-run-start-carries-plan-and-engine',
+    run(t, L) {
+      const step = { type: 'step', runId: 'wf_plan-1', agentId: 'p1', label: 'domain:x-impl', outcome: 'ok', ts: '2026-10-10T10:00:01.000Z', workflowName: 'orchestrate' };
+      const plan = [{ id: 'domain:implementer', group: 'domain', role: 'implementer' }, { id: 'final:gate', group: 'final', role: 'gate' }];
+      const run = { type: 'run', runId: 'wf_plan-1', workflowName: 'orchestrate', ts: '2026-10-10T10:05:00.000Z', status: 'completed', plan, engine: '1a99827' };
+      const start = L.legacyRunToEvents({ steps: [step], run, project: 'demo' })[0];
+      const bad = t.validateEvent(t.buildEvent(start));
+      if (bad.length) return 'run.start niezgodny ze schematem: ' + bad.join('; ');
+      if (start.engine !== '1a99827' || JSON.stringify(start.plan) !== JSON.stringify(plan)) return 'run.start bez planu/engine: ' + JSON.stringify(start);
+      const old = L.legacyRunToEvents({ steps: [step], run: { ...run, plan: null, engine: null }, project: 'demo' })[0];
+      if ('plan' in old || 'engine' in old) return 'stary rekord bez planu dostał puste pola: ' + JSON.stringify(old);
+      return null;
+    },
+  },
+  {
     name: 'legacy-adhoc-workflow-process-taskref-and-zero-round',
     run(t, L) {
       const steps = [{ type: 'step', runId: 'wf_adhoc-1', agentId: 'b1', label: 'fix-typecheck-0', outcome: 'ok',

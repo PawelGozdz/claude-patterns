@@ -434,6 +434,25 @@ CASES.push({
   },
 });
 
+CASES.push({
+  name: 'telemetry-plan-and-engine-in-output',
+  build: () => makeProject({ taskId: 'TS-FIX-001', analysis: analysisFm({}), task: taskFile('Dodaj aggregate.') }),
+  check(r) {
+    if (r.code !== 0) return `oczekiwano exit 0, było ${r.code}`;
+    const plan = r.json.telemetryPlan;
+    if (!Array.isArray(plan) || !plan.length) return 'brak telemetryPlan: ' + JSON.stringify(plan);
+    const running = r.json.layers.filter((l) => !l.skip && !(l.optional && !r.json.createWhenHits[l.id]));
+    for (const l of running) {
+      if (!plan.some((p) => p.id === `${l.id}:implementer` && p.group === l.id && p.role === 'implementer')) return `plan bez implementera warstwy ${l.id}`;
+    }
+    if (plan.some((p) => r.json.layers.some((l) => l.skip && p.group === l.id))) return 'plan zawiera warstwę pominiętą (skip)';
+    const gate = plan.filter((p) => p.role === 'gate');
+    if (Boolean(r.json.verifiers.finalGate) !== (gate.length === 1)) return 'bramka końcowa w planie niezgodna z verifiers.finalGate';
+    if (r.json.engine !== null && !/^[0-9a-f]{7,40}$/.test(r.json.engine)) return 'engine nie jest hashem: ' + r.json.engine;
+    return null;
+  },
+});
+
 // process.exit() zaraz po stdout.write ucinał JSON w potoku na 64 KB (TS-MH-005: ~190 KB args).
 CASES.push({
   name: 'large-json-output-not-truncated-in-pipe',

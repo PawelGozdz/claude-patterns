@@ -2,7 +2,7 @@
 id: TASK-OBS-006
 title: 'Plan przebiegu w run.start (orchestrate-prepare) + commit opisu deviation_note'
 type: feature
-status: todo
+status: review
 priority: P2
 story_points: 2
 created_date: 2026-10-10
@@ -58,7 +58,7 @@ source: 'ADR 0012 krok 2 (plan); ADR 0011 B2'
 
 ## Kryteria akceptacji
 
-- [ ] `run.start` przebiegu orchestrate ma `plan` zgodny z `runtime.yml` z momentu przebiegu.
-- [ ] `run.start` ma `engine` (hash commitu); schemat i ADR 0012 zaktualizowane, rollup rozdziela liczniki per `engine`.
-- [ ] `claude-haiku-5-5` ma cenę w `prices.json`; nowy przebieg orchestrate nie zostawia kroków haiku bez `costUsd`.
-- [ ] Evale `orchestrate-prepare` i `orchestrate-script` zielone.
+- [x] `run.start` przebiegu orchestrate ma `plan` zgodny z `runtime.yml` z momentu przebiegu.
+- [x] `run.start` ma `engine` (hash commitu); schemat i ADR 0012 zaktualizowane, rollup rozdziela liczniki per `engine`.
+- [x] `claude-haiku-5-5` ma cenę w `prices.json`; nowy przebieg orchestrate nie zostawia kroków haiku bez `costUsd`.
+- [x] Evale `orchestrate-prepare` i `orchestrate-script` zielone.
