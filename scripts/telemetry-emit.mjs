@@ -25,6 +25,7 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import { appendEvent, validateEvent, buildEvent, normalizeOutcome, projectName } from './lib/telemetry-events.mjs';
 import { closeRun, sweepStaleRuns } from './lib/telemetry-runs.mjs';
+import { engineVersion } from './lib/engine-version.mjs';
 
 const sessions = createRequire(import.meta.url)('../hooks/lib/telemetry-sessions.js');
 
@@ -79,7 +80,7 @@ function buildFields(cmd, o) {
   const base = { kind: COMMANDS[cmd], process: o.process, project: projectName(o.project), runId };
   if (o.task) base.taskRef = o.task;
 
-  if (cmd === 'run-start') return compact({ ...base, plan: o.plan ? parsePlan(o.plan) : undefined });
+  if (cmd === 'run-start') return compact({ ...base, engine: engineVersion(), plan: o.plan ? parsePlan(o.plan) : undefined });
 
   if (!o.outcome) die('brak --outcome');
   const outcome = normalizeOutcome(o.outcome);

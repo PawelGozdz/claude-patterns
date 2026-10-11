@@ -58,6 +58,7 @@ import { join, dirname, basename, resolve, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 import { createHash } from 'node:crypto';
+import { engineVersion } from './lib/engine-version.mjs';
 
 const require_ = createRequire(import.meta.url);
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -375,6 +376,21 @@ function gitState(projectDir, warnings) {
 // zastępczym: `$'`, `$&` i `$1` w treści kart (a karty mają przykłady z shellem i regexami)
 // są w replace wzorcami — marketing-hub zgubił na tym fragment args w ręcznej kopii.
 const ARGS_LINE = 'const a = args || {}';
+// Plan przebiegu do `run.start` (ADR 0012): warstwy, które SKRYPT faktycznie uruchomi (ta sama
+// reguła co w szablonie: bez skip i bez warstwy opcjonalnej, której create_when nie trafił)
+// × role pętli wewnętrznej + bramka końcowa. Liczone po overrides, więc zgodne z tym, co pójdzie do skryptu.
+function buildTelemetryPlan(out) {
+  const plan = [];
+  for (const l of out.layers) {
+    if (l.skip) continue;
+    if (l.optional && !out.createWhenHits[l.id]) continue;
+    plan.push({ id: `${l.id}:implementer`, group: String(l.id), role: 'implementer' });
+    if (out.verifiers.layer) plan.push({ id: `${l.id}:verifier`, group: String(l.id), role: 'verifier' });
+  }
+  if (out.verifiers.finalGate) plan.push({ id: 'final:gate', group: 'final', role: 'gate' });
+  return plan;
+}
+
 function emitScript(out, target) {
   const src = readFileSync(WORKFLOW_SCRIPT, 'utf8');
   const hits = src.split(ARGS_LINE).length - 1;
@@ -727,6 +743,8 @@ function main() {
     out = applyOverrides(out, ov);
     out.overridesFile = args.overrides;
   }
+  out.telemetryPlan = buildTelemetryPlan(out);
+  out.engine = engineVersion();
   if (args.emitScript) {
     out.scriptPath = args.emitScript;
     out.argsEmbedded = true;

@@ -51,6 +51,16 @@ implementacja zapisu: `scripts/lib/telemetry-events.mjs` (eval pilnuje zgodnośc
 schematem).
 
 - `kind`: `run.start` (z `plan` — listą zaplanowanych kroków), `step.end`, `run.end`, `deviation`.
+- `engine` (opcjonalne, w `run.start`): krótki hash commitu claude-patterns (`git rev-parse --short HEAD`),
+  `null` bez gita. Zmiany silnika wchodzą do wszystkich projektów naraz przez symlinki, więc samo
+  zdarzenie musi nieść wersję, która je wygenerowała; pole opcjonalne, więc `v: 1` zostaje. Agregat
+  dzienny liczy wtedy `engines.<hash>.<proces>` (przebiegi, wyniki, kroki, zgony, koszt); przebiegi bez
+  `engine` nie tworzą bloku, więc agregaty historii się nie zmieniają.
+- **Plan orchestrate a runId (TASK-OBS-006)**: `runId` Workflow (`wf_…`) powstaje dopiero przy wywołaniu
+  narzędzia, więc prepare go nie zna. Rozstrzygnięcie: plan i `engine` jadą w argumentach skryptu
+  (`telemetryPlan`, `engine` z `orchestrate-prepare`), skrypt zwraca je w `result`, a collector
+  (`runResultFields`) dopina je do `run.start` po `wf.runId`. Zero przekazywania id między krokami;
+  plan = warstwy faktycznie uruchamiane × (implementer, verifier) + `final:gate`, liczony po overrides.
 - `process`: `orchestrate | workflow | analyze | audit | setup` — lista zamknięta (`workflow` =
   ręcznie pisany skrypt Workflow, `orchestrate` = tylko skrypt kanoniczny); nowy proces = świadoma
   zmiana schematu, jak w taksonomii tagów.

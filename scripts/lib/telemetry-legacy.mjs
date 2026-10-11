@@ -169,7 +169,13 @@ export function legacyRunToEvents({ steps = [], run = null, project }) {
   const runTs = run ? iso(run.ts) : null;
   const stepTs = ordered.map((x) => x.ts);
   const startTs = [runTs, stepTs[0]].filter(Boolean).sort()[0];
-  if (startTs) events.unshift({ id: deterministicId(`${runId}::start`), ts: startTs, kind: 'run.start', ...base });
+  if (startTs) {
+    events.unshift({
+      id: deterministicId(`${runId}::start`), ts: startTs, kind: 'run.start', ...base,
+      ...(run && run.engine ? { engine: run.engine } : {}),
+      ...(run && Array.isArray(run.plan) && run.plan.length ? { plan: run.plan } : {}),
+    });
+  }
 
   if (run) {
     const endTs = [runTs, stepTs[stepTs.length - 1]].filter(Boolean).sort().pop();

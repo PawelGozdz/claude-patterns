@@ -1255,7 +1255,7 @@ async function ask(prompt, opts) {
 const a = args || {}
 const maxAttempts = (a.verifiers && a.verifiers.maxAttempts) || DEFAULTS.maxAttempts
 const plan = layerPlan(a, (a.createWhenHits) || {})
-const report = { taskId: a.task && a.task.id, layers: [], gaps: [], minorFindings: [], askErrors, finalGate: null, exit: a.exit || 'STAGE_NOT_COMMIT' }
+const report = { taskId: a.task && a.task.id, telemetryPlan: a.telemetryPlan || null, engine: a.engine || null, layers: [], gaps: [], minorFindings: [], askErrors, finalGate: null, exit: a.exit || 'STAGE_NOT_COMMIT' }
 const allChangedFiles = []
 
 phase('Warstwy')

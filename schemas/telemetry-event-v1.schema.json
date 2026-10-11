@@ -16,6 +16,7 @@
     "host": { "type": "string", "pattern": "^[0-9a-f]{12}$" },
     "runId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]{1,80}$" },
     "taskRef": { "type": ["string", "null"], "pattern": "^[A-Za-z0-9._-]{1,80}$" },
+    "engine": { "type": ["string", "null"], "pattern": "^[0-9a-f]{7,40}$" },
     "plan": {
       "type": "array",
       "items": {

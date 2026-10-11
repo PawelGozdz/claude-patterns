@@ -156,6 +156,19 @@ export function collectRun({ wfPath, wf: wfParsed, runDir, fallbackAgentsDir, pr
   return { steps, run };
 }
 
+// Plan z wyniku skryptu → lista {id, group?, role?}; śmieci odrzucone, żeby `run.start` przeszedł schemat.
+export function sanitizePlan(raw) {
+  if (!Array.isArray(raw)) return null;
+  const items = raw
+    .filter((x) => x && typeof x.id === 'string' && x.id)
+    .map((x) => ({
+      id: x.id,
+      ...(typeof x.group === 'string' && x.group ? { group: x.group } : {}),
+      ...(typeof x.role === 'string' && x.role ? { role: x.role } : {}),
+    }));
+  return items.length ? items : null;
+}
+
 // Pola z `result` kanonicznego skryptu (2026-10-10). `wf.taskId` to losowy identyfikator
 // narzędzia Workflow, nie TS-ID — prawdziwy task siedzi w `result.taskId` (350/417 przebiegów).
 // Kanoniczny skrypt nie kończy się HALT-em na poziomie przebiegu (409/417 to `STAGE_NOT_COMMIT`),
@@ -165,6 +178,10 @@ export function runResultFields(wf) {
   return {
     taskRef: typeof r.taskId === 'string' ? r.taskId : null,
     finalVerdict: r.finalGate && typeof r.finalGate.verdict === 'string' ? r.finalGate.verdict : null,
+    // Plan i wersja silnika niesie wynik skryptu (z argumentów `orchestrate-prepare`), więc para
+    // runId↔plan powstaje bez przekazywania id z prepare: collector zna `wf.runId` z narzędzia Workflow.
+    plan: sanitizePlan(r.telemetryPlan),
+    engine: typeof r.engine === 'string' && /^[0-9a-f]{7,40}$/.test(r.engine) ? r.engine : null,
   };
 }
 

@@ -51,6 +51,16 @@ function processBlock(r, process) {
 const roleBlock = (p, role) => (p.roles[role] ||= { n: 0, outcomes: {}, causes: {}, toolCalls: 0, costUsd: 0, _dur: [] });
 const runBlock = (r, process) => (r.runs[process] ||= { started: 0, ended: {}, costUsd: 0, _dur: [] });
 
+// Liczniki per wersja silnika (`engine` z run.start) — porównanie „przed/po zmianie orchestratora"
+// bez zgadywania po dacie. Blok powstaje leniwie i tylko dla przebiegów, które znają `engine`
+// (stare dane i `null` go nie tworzą), więc agregaty historii zostają bajt w bajt takie same.
+const engineBlock = (r, engine, process) => {
+  r.engines ||= {};
+  const e = (r.engines[engine] ||= {});
+  return (e[process] ||= { started: 0, ended: {}, steps: 0, died: 0, costUsd: 0, stepsWithoutCost: 0 });
+};
+const runKey = (ev) => `${ev.host}|${ev.project}|${ev.runId}`;
+
 const isVerdict = (e) => e.kind === 'step.end' && e.step && e.step.role === 'verifier' && VERDICTS.has(e.outcome);
 
 // Pierwszy werdykt jednostki w przebiegu liczy się do dnia, w którym zapadł — nie dnia końca
@@ -82,17 +92,23 @@ export function buildRollups(events) {
     if (!rollups.has(k)) rollups.set(k, emptyRollup(ev.project, day, ev.host));
     return rollups.get(k);
   };
+  const engineOf = new Map();
+  for (const ev of events) if (ev.kind === 'run.start' && ev.engine) engineOf.set(runKey(ev), ev.engine);
   const verdicts = events.filter(isVerdict).sort((a, b) => a.ts.localeCompare(b.ts));
 
   for (const ev of events) {
     const r = get(ev);
     r.events++;
+    const engine = engineOf.get(runKey(ev));
+    const eb = engine && ev.kind !== 'deviation' ? engineBlock(r, engine, ev.process) : null;
 
     if (ev.kind === 'run.start') {
       runBlock(r, ev.process).started++;
+      if (eb) eb.started++;
     } else if (ev.kind === 'run.end') {
       const b = runBlock(r, ev.process);
       bump(b.ended, ev.outcome || 'unknown');
+      if (eb) bump(eb.ended, ev.outcome || 'unknown');
       if (ev.m && Number.isFinite(ev.m.costUsd)) b.costUsd += ev.m.costUsd;
       if (ev.m && Number.isFinite(ev.m.durationMs)) b._dur.push(ev.m.durationMs);
     } else if (ev.kind === 'deviation') {
@@ -112,6 +128,12 @@ export function buildRollups(events) {
       if (ev.outcome === 'died') p.died++;
       if (cost === null) p.stepsWithoutCost++;
       else { p.costUsd += cost; rb.costUsd += cost; }
+      if (eb) {
+        eb.steps++;
+        if (ev.outcome === 'died') eb.died++;
+        if (cost === null) eb.stepsWithoutCost++;
+        else eb.costUsd += cost;
+      }
       if (ev.step.attempt > 1) { p.retried++; if (cost !== null) p.costUsdRetried += cost; }
       if (ev.step.fixes) {
         p.repairs.fixSteps++;
@@ -140,6 +162,7 @@ function finalize(r) {
       delete rb._dur;
     }
   }
+  for (const e of Object.values(r.engines || {})) for (const b of Object.values(e)) b.costUsd = round(b.costUsd);
   for (const b of Object.values(r.runs)) {
     b.costUsd = round(b.costUsd);
     b.durationMs = stats(b._dur);

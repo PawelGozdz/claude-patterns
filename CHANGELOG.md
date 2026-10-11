@@ -11,6 +11,12 @@ and none of it is instruction — it is history.
 ## [Unreleased]
 
 ### Added
+- Plan przebiegu i wersja silnika w `run.start` (TASK-OBS-006, ADR 0012): `orchestrate-prepare`
+  emituje `telemetryPlan` (warstwy × implementer/verifier + bramka) i `engine` (hash commitu
+  claude-patterns), skrypt zwraca je w wyniku, collector dopina do `run.start`; `telemetry-emit
+  run-start` też dopisuje `engine`. Schemat: opcjonalne pole `engine`. Agregat dzienny:
+  `engines.<hash>.<proces>` tylko dla przebiegów z `engine`. Cena `claude-haiku-5-5` w
+  `~/.claude/metrics/prices.json` (poza repo, stawki do 100k tokenów promptu).
 - Agregaty dzienne telemetrii i indeks skrzynki (TASK-OBS-005, ADR 0012 krok 5):
   `scripts/telemetry-aggregate.mjs` zapisuje `telemetry/rollups/<projekt>/<dzień>.<host>.json`
   (liczniki per proces × rola × wynik × przyczyna, p50/p90 czasu, koszt, first-pass yield, udział
@@ -160,6 +166,17 @@ and none of it is instruction — it is history.
   the DDD `code-quality-verifier` has nothing to say about a React provider.
 
 ### Fixed
+- `templates/stacks/python{,-modular,-pipeline,-ml}.md`: the "Agent Ecosystem" table named
+  agents that exist nowhere (`python-implementer`, `api-designer`, `security-verifier`,
+  `code-quality-verifier`, `codebase-explorer`, `endpoint-scaffolder`, `test-generator`,
+  `pipeline-designer`), so every generated Python `CLAUDE.md` advertised a fleet it didn't have.
+  Now lists what `agents/stacks/python/` ships plus the `ecc:*` agents `runtime.yml` actually
+  uses. Found via aegis-flow; already-generated project `CLAUDE.md` files keep the old table
+  until regenerated with `scripts/generate-claude-md.sh`.
+- `templates/stacks/flutter.md` (and its symlink `flutter-clean-arch.md`): same defect —
+  `state-manager`, `code-quality-verifier`, `ui-verifier`, `widget-scaffolder` etc. don't exist.
+  Table now lists the seven `agents/stacks/flutter-clean-arch/` agents with their real roles
+  (two VETO verifiers, performance advisory, security final gate).
 - `lint:check` temporarily removed from `checks` in `ddd/layers`, `flat-service` and
   grant-flow's local block: the checks added a day earlier ran lint on `domain`/`application`
   for the first time, surfacing real pre-existing debt (277-2463 errors, up to ~5 minutes per
