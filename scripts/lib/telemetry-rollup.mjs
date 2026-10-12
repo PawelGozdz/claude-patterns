@@ -100,7 +100,7 @@ export function buildRollups(events) {
     const r = get(ev);
     r.events++;
     const engine = engineOf.get(runKey(ev));
-    const eb = engine && ev.kind !== 'deviation' ? engineBlock(r, engine, ev.process) : null;
+    const eb = engine && ev.kind !== 'deviation' && ev.kind !== 'seed' ? engineBlock(r, engine, ev.process) : null;
 
     if (ev.kind === 'run.start') {
       runBlock(r, ev.process).started++;
@@ -111,6 +111,13 @@ export function buildRollups(events) {
       if (eb) bump(eb.ended, ev.outcome || 'unknown');
       if (ev.m && Number.isFinite(ev.m.costUsd)) b.costUsd += ev.m.costUsd;
       if (ev.m && Number.isFinite(ev.m.durationMs)) b._dur.push(ev.m.durationMs);
+    } else if (ev.kind === 'seed' && ev.seed) {
+      // Lejek zalążków wpisów (ADR 0013): `<zdarzenie>` albo `suppressed:<powód>`, per blog.
+      // Blok leniwy — dni bez zalążków zostają bajt w bajt takie same jak przed zmianą.
+      r.seeds ||= {};
+      const key = ev.seed.event === 'suppressed' ? `suppressed:${ev.seed.reason || 'unknown'}` : ev.seed.event;
+      const blog = (r.seeds[ev.seed.blog || 'unknown'] ||= {});
+      bump(blog, key);
     } else if (ev.kind === 'deviation') {
       const d = (r.deviations[ev.signature || 'unknown'] ||= { n: 0, trigger: ev.trigger || null, cause: ev.cause || null });
       d.n++;

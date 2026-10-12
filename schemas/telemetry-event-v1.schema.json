@@ -10,8 +10,8 @@
     "v": { "const": 1 },
     "id": { "type": "string", "pattern": "^[0-9a-f-]{36}$" },
     "ts": { "type": "string", "format": "date-time" },
-    "kind": { "enum": ["run.start", "step.end", "run.end", "deviation"] },
-    "process": { "enum": ["orchestrate", "workflow", "analyze", "audit", "setup"] },
+    "kind": { "enum": ["run.start", "step.end", "run.end", "deviation", "seed"] },
+    "process": { "enum": ["orchestrate", "workflow", "analyze", "audit", "setup", "blog-seed"] },
     "project": { "type": "string", "pattern": "^[A-Za-z0-9._-]{1,80}$" },
     "host": { "type": "string", "pattern": "^[0-9a-f]{12}$" },
     "runId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]{1,80}$" },
@@ -48,6 +48,22 @@
     "cause": { "enum": ["typecheck", "test", "lint", "verifier", "scope", "config", "infra", "silent", "budget", "other", null] },
     "signature": { "type": ["string", "null"], "pattern": "^[A-Za-z0-9._-]{1,120}$" },
     "trigger": { "type": ["string", "null"] },
+    "seed": {
+      "description": "Zalążek wpisu (ADR 0013). WYŁĄCZNIE kody — bez tematu, sluga i uzasadnienia.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event"],
+      "properties": {
+        "event": { "enum": ["emitted", "updated", "suppressed", "status-changed"] },
+        "seedId": { "type": ["string", "null"], "pattern": "^[0-9a-f-]{36}$" },
+        "dedup": { "type": ["string", "null"], "pattern": "^[0-9a-f]{12}$" },
+        "blog": { "enum": ["personal", "product", null] },
+        "reason": { "enum": ["security", "evidence", "consent", "duplicate", "routing", "rate", "score", "config", "disabled", "embargo", "invalid", "error", null] },
+        "confidence": { "enum": ["high", "medium", "low", null] },
+        "mode": { "enum": ["dry-run", "live", null] },
+        "status": { "enum": ["new", "candidate", "picked", "drafted", "published", "discarded", "merged", null] }
+      }
+    },
     "m": {
       "type": "object",
       "additionalProperties": false,
