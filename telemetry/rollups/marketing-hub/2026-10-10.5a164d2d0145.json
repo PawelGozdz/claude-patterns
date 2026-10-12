@@ -8,11 +8,115 @@
       "trigger": "no_go"
     }
   },
-  "events": 1,
+  "events": 41,
   "host": "5a164d2d0145",
-  "processes": {},
+  "processes": {
+    "orchestrate": {
+      "costUsd": 13.148894,
+      "costUsdRetried": 2.50839,
+      "died": 0,
+      "repairs": {
+        "fixSteps": 1,
+        "fixed": 1,
+        "open": 0
+      },
+      "retried": 16,
+      "roles": {
+        "fixer": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 1,
+            "p50": 4874,
+            "p90": 4874
+          },
+          "n": 1,
+          "outcomes": {
+            "ok": 1
+          },
+          "toolCalls": 2
+        },
+        "gate": {
+          "causes": {},
+          "costUsd": 6.884642,
+          "durationMs": {
+            "n": 6,
+            "p50": 8582,
+            "p90": 933803
+          },
+          "n": 6,
+          "outcomes": {
+            "go": 1,
+            "ok": 5
+          },
+          "toolCalls": 75
+        },
+        "implementer": {
+          "causes": {},
+          "costUsd": 3.250936,
+          "durationMs": {
+            "n": 5,
+            "p50": 40486,
+            "p90": 90790
+          },
+          "n": 5,
+          "outcomes": {
+            "ok": 5
+          },
+          "toolCalls": 58
+        },
+        "probe": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 19,
+            "p50": 9369,
+            "p90": 56681
+          },
+          "n": 19,
+          "outcomes": {
+            "ok": 19
+          },
+          "toolCalls": 51
+        },
+        "verifier": {
+          "causes": {},
+          "costUsd": 3.013316,
+          "durationMs": {
+            "n": 7,
+            "p50": 22947,
+            "p90": 27145
+          },
+          "n": 7,
+          "outcomes": {
+            "go": 7
+          },
+          "toolCalls": 55
+        }
+      },
+      "steps": 38,
+      "stepsWithoutCost": 22,
+      "verification": {
+        "firstPassGo": 6,
+        "units": 6
+      }
+    }
+  },
   "project": "marketing-hub",
-  "runs": {},
-  "stepsTotal": 0,
+  "runs": {
+    "orchestrate": {
+      "costUsd": 13.148894,
+      "durationMs": {
+        "n": 1,
+        "p50": 1751567,
+        "p90": 1751567
+      },
+      "ended": {
+        "no_go": 1
+      },
+      "started": 1
+    }
+  },
+  "stepsTotal": 38,
   "v": 1
 }

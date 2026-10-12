@@ -6,119 +6,143 @@
       "cause": "other",
       "n": 1,
       "trigger": "halt"
+    },
+    "DEV-orc-062-testing": {
+      "cause": "other",
+      "n": 1,
+      "trigger": "halt"
+    },
+    "DEV-orc-092-final-gate": {
+      "cause": "other",
+      "n": 1,
+      "trigger": "agent_note"
     }
   },
-  "events": 137,
+  "engines": {
+    "1a99827": {
+      "orchestrate": {
+        "costUsd": 3.76154,
+        "died": 0,
+        "ended": {
+          "ok": 1
+        },
+        "started": 1,
+        "steps": 14,
+        "stepsWithoutCost": 0
+      }
+    }
+  },
+  "events": 180,
   "host": "5a164d2d0145",
   "processes": {
     "orchestrate": {
-      "costUsd": 33.352298,
-      "costUsdRetried": 6.122391,
+      "costUsd": 43.510934,
+      "costUsdRetried": 8.233207,
       "died": 0,
       "repairs": {
         "fixSteps": 3,
         "fixed": 3,
         "open": 0
       },
-      "retried": 49,
+      "retried": 58,
       "roles": {
         "fixer": {
           "causes": {},
-          "costUsd": 1.498132,
-          "durationMs": {
-            "n": 8,
-            "p50": 4713,
-            "p90": 46425
-          },
-          "n": 8,
-          "outcomes": {
-            "ok": 8
-          },
-          "toolCalls": 23
-        },
-        "gate": {
-          "causes": {},
-          "costUsd": 8.866428,
+          "costUsd": 2.590839,
           "durationMs": {
             "n": 15,
-            "p50": 4689,
-            "p90": 623608
+            "p50": 10710,
+            "p90": 45722
           },
           "n": 15,
           "outcomes": {
-            "go": 2,
-            "ok": 13
+            "ok": 15
           },
-          "toolCalls": 88
+          "toolCalls": 46
+        },
+        "gate": {
+          "causes": {},
+          "costUsd": 10.708286,
+          "durationMs": {
+            "n": 20,
+            "p50": 4793,
+            "p90": 405744
+          },
+          "n": 20,
+          "outcomes": {
+            "go": 3,
+            "ok": 17
+          },
+          "toolCalls": 114
         },
         "implementer": {
           "causes": {},
-          "costUsd": 13.544939,
+          "costUsd": 17.542849,
           "durationMs": {
-            "n": 24,
-            "p50": 19628,
-            "p90": 59616
+            "n": 33,
+            "p50": 18826,
+            "p90": 51483
           },
-          "n": 26,
+          "n": 35,
           "outcomes": {
-            "ok": 24,
+            "ok": 33,
             "skipped": 2
           },
-          "toolCalls": 187
+          "toolCalls": 224
         },
         "probe": {
           "causes": {},
-          "costUsd": 0,
+          "costUsd": 0.031034,
           "durationMs": {
-            "n": 51,
-            "p50": 16558,
+            "n": 57,
+            "p50": 16401,
             "p90": 162015
           },
-          "n": 51,
+          "n": 57,
           "outcomes": {
-            "ok": 51
+            "ok": 57
           },
-          "toolCalls": 212
+          "toolCalls": 224
         },
         "verifier": {
           "causes": {},
-          "costUsd": 9.442799,
+          "costUsd": 12.637926,
           "durationMs": {
-            "n": 22,
-            "p50": 18888,
-            "p90": 31561
+            "n": 32,
+            "p50": 17273,
+            "p90": 30531
           },
-          "n": 22,
+          "n": 32,
           "outcomes": {
-            "go": 22
+            "go": 32
           },
-          "toolCalls": 133
+          "toolCalls": 182
         }
       },
-      "steps": 122,
+      "steps": 159,
       "stepsWithoutCost": 71,
       "verification": {
-        "firstPassGo": 16,
-        "units": 16
+        "firstPassGo": 20,
+        "units": 20
       }
     }
   },
   "project": "juz-ide-api-1",
   "runs": {
     "orchestrate": {
-      "costUsd": 33.352298,
+      "costUsd": 43.510934,
       "durationMs": {
-        "n": 7,
-        "p50": 818061,
+        "n": 9,
+        "p50": 692575,
         "p90": 1985078
       },
       "ended": {
         "no_go": 1,
-        "ok": 6
+        "ok": 8
       },
-      "started": 7
+      "started": 9
     }
   },
-  "stepsTotal": 122,
+  "stepsTotal": 159,
   "v": 1
 }

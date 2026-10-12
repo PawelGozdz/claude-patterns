@@ -18,11 +18,25 @@
       "trigger": "analyze_note"
     }
   },
-  "events": 35,
+  "engines": {
+    "1a99827": {
+      "analyze": {
+        "costUsd": 3.446572,
+        "died": 0,
+        "ended": {
+          "halted": 1
+        },
+        "started": 1,
+        "steps": 4,
+        "stepsWithoutCost": 1
+      }
+    }
+  },
+  "events": 80,
   "host": "5a164d2d0145",
   "processes": {
     "analyze": {
-      "costUsd": 3.966512,
+      "costUsd": 7.413084,
       "costUsdRetried": 0,
       "died": 0,
       "repairs": {
@@ -34,45 +48,59 @@
       "roles": {
         "ai-specialist": {
           "causes": {},
-          "costUsd": 0.675593,
+          "costUsd": 1.248749,
           "durationMs": {
-            "n": 1,
+            "n": 2,
             "p50": 84741,
-            "p90": 84741
+            "p90": 106174
+          },
+          "n": 2,
+          "outcomes": {
+            "ok": 2
+          },
+          "toolCalls": 26
+        },
+        "none": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 0,
+            "p50": null,
+            "p90": null
           },
           "n": 1,
           "outcomes": {
-            "ok": 1
+            "skipped": 1
           },
-          "toolCalls": 14
+          "toolCalls": 0
         },
         "tech-analysis": {
           "causes": {},
-          "costUsd": 0.585939,
+          "costUsd": 1.041813,
           "durationMs": {
-            "n": 1,
+            "n": 2,
             "p50": 75320,
-            "p90": 75320
+            "p90": 83930
           },
-          "n": 1,
+          "n": 2,
           "outcomes": {
-            "ok": 1
+            "ok": 2
           },
-          "toolCalls": 18
+          "toolCalls": 33
         },
         "tech-analysis-specialist": {
           "causes": {},
-          "costUsd": 1.375151,
+          "costUsd": 3.792693,
           "durationMs": {
-            "n": 1,
+            "n": 2,
             "p50": 537795,
-            "p90": 537795
+            "p90": 719782
           },
-          "n": 1,
+          "n": 2,
           "outcomes": {
-            "ok": 1
+            "ok": 2
           },
-          "toolCalls": 14
+          "toolCalls": 26
         },
         "threat-model": {
           "causes": {},
@@ -89,100 +117,103 @@
           "toolCalls": 7
         }
       },
-      "steps": 4,
-      "stepsWithoutCost": 0,
+      "steps": 8,
+      "stepsWithoutCost": 1,
       "verification": {
         "firstPassGo": 0,
         "units": 0
       }
     },
     "orchestrate": {
-      "costUsd": 4.212648,
-      "costUsdRetried": 1.497243,
+      "costUsd": 13.22975,
+      "costUsdRetried": 3.60071,
       "died": 0,
       "repairs": {
-        "fixSteps": 2,
-        "fixed": 2,
+        "fixSteps": 5,
+        "fixed": 5,
         "open": 0
       },
-      "retried": 8,
+      "retried": 23,
       "roles": {
         "fixer": {
           "causes": {},
-          "costUsd": 0.350242,
+          "costUsd": 1.478289,
+          "durationMs": {
+            "n": 6,
+            "p50": 4934,
+            "p90": 67920
+          },
+          "n": 6,
+          "outcomes": {
+            "ok": 6
+          },
+          "toolCalls": 29
+        },
+        "gate": {
+          "causes": {
+            "verifier": 1
+          },
+          "costUsd": 3.30786,
           "durationMs": {
             "n": 3,
-            "p50": 4344,
-            "p90": 10241
+            "p50": 108501,
+            "p90": 139778
           },
           "n": 3,
           "outcomes": {
-            "ok": 3
+            "go": 2,
+            "no_go": 1
           },
-          "toolCalls": 9
-        },
-        "gate": {
-          "causes": {},
-          "costUsd": 0.568705,
-          "durationMs": {
-            "n": 1,
-            "p50": 29506,
-            "p90": 29506
-          },
-          "n": 1,
-          "outcomes": {
-            "go": 1
-          },
-          "toolCalls": 3
+          "toolCalls": 28
         },
         "implementer": {
           "causes": {},
-          "costUsd": 2.026425,
+          "costUsd": 5.287311,
           "durationMs": {
-            "n": 4,
+            "n": 10,
             "p50": 19178,
             "p90": 50180
           },
-          "n": 4,
+          "n": 10,
           "outcomes": {
-            "ok": 4
+            "ok": 10
           },
-          "toolCalls": 26
+          "toolCalls": 70
         },
         "probe": {
           "causes": {},
           "costUsd": 0,
           "durationMs": {
-            "n": 11,
-            "p50": 10364,
-            "p90": 12525
+            "n": 30,
+            "p50": 8155,
+            "p90": 11832
           },
-          "n": 11,
+          "n": 30,
           "outcomes": {
-            "ok": 11
+            "ok": 30
           },
-          "toolCalls": 25
+          "toolCalls": 67
         },
         "verifier": {
           "causes": {},
-          "costUsd": 1.267276,
+          "costUsd": 3.15629,
           "durationMs": {
-            "n": 4,
-            "p50": 19212,
-            "p90": 27066
+            "n": 11,
+            "p50": 22361,
+            "p90": 29582
           },
-          "n": 4,
+          "n": 11,
           "outcomes": {
-            "go": 4
+            "go": 11
           },
-          "toolCalls": 26
+          "toolCalls": 59
         }
       },
-      "steps": 23,
-      "stepsWithoutCost": 13,
+      "steps": 60,
+      "stepsWithoutCost": 33,
       "verification": {
-        "firstPassGo": 2,
-        "units": 2
+        "firstPassGo": 6,
+        "units": 6
       }
     }
   },
@@ -191,28 +222,28 @@
     "analyze": {
       "costUsd": 0,
       "durationMs": {
-        "n": 1,
+        "n": 2,
         "p50": 700317,
-        "p90": 700317
+        "p90": 927893
       },
       "ended": {
-        "halted": 1
+        "halted": 2
       },
-      "started": 1
+      "started": 2
     },
     "orchestrate": {
-      "costUsd": 4.212648,
+      "costUsd": 13.22975,
       "durationMs": {
-        "n": 1,
+        "n": 2,
         "p50": 334019,
-        "p90": 334019
+        "p90": 889930
       },
       "ended": {
-        "ok": 1
+        "ok": 2
       },
-      "started": 1
+      "started": 2
     }
   },
-  "stepsTotal": 27,
+  "stepsTotal": 68,
   "v": 1
 }
