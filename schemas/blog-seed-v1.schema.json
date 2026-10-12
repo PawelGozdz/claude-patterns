@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "claude-patterns/blog-seed-v1",
+  "title": "Frontmatter pliku zalążka wpisu *.seed.md (ADR 0013)",
+  "description": "Kontrakt pliku w <repo-bloga>/stage/{inbox,dry-run}/RRRR-MM-DD/. Pisze go scripts/blog-seed-emit.mjs, sprawdza scripts/blog-seed-validate.mjs (także w repo blogów). Status zmienia człowiek lub /seeds; drafted ustawia etap pisania.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "seed_id", "created", "updated", "mode", "status", "source", "target", "suggested", "security", "dedup_key", "links", "author_input"],
+  "properties": {
+    "schema": { "const": "blog-seed-v1" },
+    "seed_id": { "type": "string", "pattern": "^[0-9a-f-]{36}$" },
+    "created": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+    "updated": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+    "mode": { "enum": ["dry-run", "live"] },
+    "status": { "enum": ["new", "candidate", "picked", "drafted", "published", "discarded", "merged"] },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "trigger", "ref_private", "area"],
+      "properties": {
+        "kind": { "enum": ["analyze", "orchestrate", "telemetry"] },
+        "trigger": { "enum": ["adr", "decision", "halt", "go_with_gaps", "no_go", "discussion", "monthly"] },
+        "ref_private": { "type": "string", "pattern": "^bsr_[0-9a-f]{16}$" },
+        "area": { "type": "string", "minLength": 1 }
+      }
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["blog", "confidence", "test_answer", "reason", "sibling_seed"],
+      "properties": {
+        "blog": { "enum": ["personal", "product"] },
+        "confidence": { "enum": ["high", "medium", "low"] },
+        "test_answer": { "type": "string" },
+        "reason": { "type": "string" },
+        "angle": { "type": ["string", "null"] },
+        "sibling_seed": { "type": ["string", "null"], "pattern": "^[0-9a-f-]{36}$" }
+      }
+    },
+    "suggested": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["format", "pillar", "length"],
+      "properties": {
+        "format": { "enum": ["decision", "post-mortem", "conversation", "interactive", "note", "numbers"] },
+        "pillar": { "enum": ["decisions", "mistakes", "people", "numbers", "journey"] },
+        "length": { "type": "string" }
+      }
+    },
+    "score": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "total": { "type": ["integer", "null"] },
+        "breakdown": { "type": "object" }
+      }
+    },
+    "gates": { "type": "object" },
+    "security": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tier", "deny_list_version", "redactions"],
+      "properties": {
+        "tier": { "const": "green" },
+        "deny_list_version": { "type": "string" },
+        "redactions": { "type": "array" }
+      }
+    },
+    "suppressed": { "type": ["object", "null"] },
+    "dedup_key": { "type": "string", "pattern": "^[0-9a-f]{32}$" },
+    "links": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "related_seeds": { "type": "array" },
+        "related_posts": { "type": "array" }
+      }
+    },
+    "author_input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status"],
+      "properties": {
+        "status": { "enum": ["none", "inferred", "asked", "provided"] },
+        "inferred": { "type": "array" }
+      }
+    },
+    "draft_path": { "type": ["string", "null"] }
+  }
+}
