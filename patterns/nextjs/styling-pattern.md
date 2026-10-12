@@ -1,16 +1,23 @@
 # Styling Pattern
 
 **Tags**: "web:ui", "web:platform:nextjs"
+**Layer**: Presentation
+**Level**: core
+**Status**: production
 
 ## When to Use
 
-- Every Next.js 16 application that needs consistent, performant styling
-- When using Tailwind CSS 4 (default in `create-next-app` as of Next.js 16)
-- When components need scoped styles via CSS Modules
-- When page transitions should be animated using React 19.2 View Transitions
-- When building a design system with tokens and reusable utility classes
+**Use this pattern for:**
+- ✅ Every Next.js 16 application that needs consistent, performant styling
+- ✅ Tailwind CSS 4 (default in `create-next-app` as of Next.js 16)
+- ✅ Components that need scoped styles via CSS Modules
+- ✅ Page transitions animated with React 19.2 View Transitions
+- ✅ A design system with tokens and reusable utility classes
 
-**Do NOT** use CSS-in-JS libraries that require runtime JavaScript in Server Components (styled-components, Emotion) — they add client-side JS overhead and do not work in Server Components without extra configuration.
+**Do NOT use for:**
+- ❌ CSS-in-JS libraries that need runtime JavaScript in Server Components (styled-components, Emotion) — they add client-side JS overhead and do not work in Server Components without extra configuration; use Tailwind CSS or CSS Modules as shown below
+- ❌ Form state, validation and submission UI logic — see `forms-actions-pattern.md`
+- ❌ Nonce-based CSP for inline styles and scripts — see `security-headers-csp-pattern.md`
 
 ---
 

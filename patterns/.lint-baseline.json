@@ -65,41 +65,6 @@
     "marketing/product-marketing-context-pattern.md": [
       "bullety ✅/❌"
     ],
-    "nextjs/auth-pattern.md": [
-      "**Layer**",
-      "**Status**",
-      "bullety ✅/❌"
-    ],
-    "nextjs/data-fetching-pattern.md": [
-      "**Layer**",
-      "**Status**",
-      "bullety ✅/❌"
-    ],
-    "nextjs/forms-actions-pattern.md": [
-      "**Layer**",
-      "**Status**",
-      "bullety ✅/❌"
-    ],
-    "nextjs/routing-proxy-pattern.md": [
-      "**Layer**",
-      "**Status**",
-      "bullety ✅/❌"
-    ],
-    "nextjs/server-client-components-pattern.md": [
-      "**Layer**",
-      "**Status**",
-      "bullety ✅/❌"
-    ],
-    "nextjs/styling-pattern.md": [
-      "**Layer**",
-      "**Status**",
-      "bullety ✅/❌"
-    ],
-    "nextjs/testing-pattern.md": [
-      "**Layer**",
-      "**Status**",
-      "bullety ✅/❌"
-    ],
     "orchestration/project-management-system.md": [
       "## When to Use"
     ],

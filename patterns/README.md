@@ -6,7 +6,7 @@ This knowledge base contains production-enforced patterns for DDD/CQRS projects.
 
 **Version**: 3.14
 **Last Updated**: 2026-09-27
-**Status**: PRODUCTION (58 core patterns + 51 stack-specific + 1 marketing + 2 finance + 2 legal = 114 total)
+**Status**: PRODUCTION (58 core patterns + 56 stack-specific + 1 marketing + 2 finance + 2 legal = 119 total)
 
 **⚠ project-specific** marker = derived from ONE project's codebase, not yet validated in a second
 one. Marked in the pattern's own `**Scope**:` line (see `CLAUDE.md` → "Adding a New Pattern"). These
@@ -33,7 +33,7 @@ patterns/
 ├── flutter/            # Flutter-specific patterns - 14 patterns (per-project)
 │                       #   incl. mobile-security, platform-channel, offline-first,
 │                       #   design-token, accessibility, localization (+ rule-cards _summary.md)
-├── nextjs/             # Next.js-specific patterns - 7 patterns (per-project)
+├── nextjs/             # Next.js-specific patterns - 12 patterns (per-project)
 ├── ai-ml/              # GPU inference patterns - 7 patterns (per-project)
 ├── python/             # Python-specific patterns - 9 patterns (per-project)
 ├── sveltekit/          # SvelteKit-specific patterns - 5 patterns (per-project)
@@ -331,14 +331,20 @@ Stack-specific patterns for `stack_profile: flutter-clean-arch` projects.
 
 ---
 
-### Next.js (7 patterns)
+### Next.js (12 patterns)
 
-Stack-specific patterns for `stack_profile: nextjs-app` projects (App Router, RSC).
+Stack-specific patterns for `stack_profile: nextjs-app` projects (App Router, RSC). Every
+pattern has a `_summary.md` rule card. The five newest were verified against nextjs.org/docs 16.4.
 
-- [auth-pattern.md](nextjs/auth-pattern.md)
+- [auth-boundaries-pattern.md](nextjs/auth-boundaries-pattern.md) — where identity and permissions are checked (DAL, proxy as pre-filter, actions, handlers); library-agnostic
+- [auth-pattern.md](nextjs/auth-pattern.md) — variant: hand-rolled session (`jose` + password hashing), only when no auth library fits
 - [data-fetching-pattern.md](nextjs/data-fetching-pattern.md)
+- [env-secrets-pattern.md](nextjs/env-secrets-pattern.md) — `NEXT_PUBLIC_` vs server-only, validated config, runtime vs build-time values
 - [forms-actions-pattern.md](nextjs/forms-actions-pattern.md)
+- [observability-pattern.md](nextjs/observability-pattern.md) — `instrumentation.ts`, `onRequestError`, OpenTelemetry, redaction
+- [route-handlers-pattern.md](nextjs/route-handlers-pattern.md) — Route Handlers vs Server Actions, webhooks, CORS, caching
 - [routing-proxy-pattern.md](nextjs/routing-proxy-pattern.md)
+- [security-headers-csp-pattern.md](nextjs/security-headers-csp-pattern.md) — static CSP vs per-request nonce, baseline headers
 - [server-client-components-pattern.md](nextjs/server-client-components-pattern.md)
 - [styling-pattern.md](nextjs/styling-pattern.md)
 - [testing-pattern.md](nextjs/testing-pattern.md)

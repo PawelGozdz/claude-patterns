@@ -1,15 +1,24 @@
 # Forms & Server Actions Pattern
 
 **Tags**: "web:ui:forms", "web:platform:nextjs"
+**Layer**: Cross-Layer
+**Level**: core
+**Status**: production
 
 ## When to Use
 
-- Any form submission, data mutation, or user input that writes to a database or external service
-- When you need progressive enhancement (form works without JavaScript)
-- When form state (errors, success messages) must be managed across server roundtrips
-- When optimistic UI updates improve perceived performance
+**Use this pattern for:**
+- ✅ Any form submission, data mutation, or user input from YOUR OWN UI that writes to a database or external service
+- ✅ Progressive enhancement (form works without JavaScript)
+- ✅ Form state (errors, success messages) managed across server roundtrips
+- ✅ Optimistic UI updates that improve perceived performance
 
-**Do NOT** create API routes (`route.ts`) just to handle form submissions — Server Actions replace that pattern. Do NOT use `"use server"` at the component level (it is for action files/functions only).
+**Do NOT use for:**
+- ❌ Webhooks, external or mobile clients, auth-library endpoints, feeds, or any stable public HTTP contract — use a Route Handler (`route.ts`), see `route-handlers-pattern.md`
+- ❌ Marking a component with `"use server"` — it belongs in action files or inline async functions only
+- ❌ Authenticating or authorizing the caller — a Server Action does not do it for you; see `auth-boundaries-pattern.md`
+
+Server Actions are the right tool for forms and mutations from your own UI; do not add a `route.ts` just to receive them. Route Handlers remain right for everything that is not your React tree.
 
 ---
 
@@ -22,7 +31,7 @@
 'use server';
 
 import { z } from 'zod';
-import { db } from '@/lib/db';
+import { createContactMessage } from '@/data/contact'; // server-only DAL function
 import { revalidateTag } from 'next/cache';
 
 const ContactSchema = z.object({
@@ -59,8 +68,10 @@ export async function submitContact(
   }
 
   try {
-    await db.contactMessage.create({ data: parsed.data });
-    revalidateTag('contact-messages', 'max');
+    // The DAL decides what to persist; the actor (if any) comes from the session inside the DAL,
+    // never from FormData. Returns only what the UI needs, not the DB row.
+    await createContactMessage(parsed.data);
+    revalidateTag('contact-messages', 'max'); // stale-while-revalidate: does NOT re-render this response
     return { success: true };
   } catch {
     return { errors: { _form: ['Failed to submit. Please try again.'] } };
@@ -269,30 +280,25 @@ export function TodoList({ todos }: { todos: Todo[] }) {
 'use server';
 
 import { updateTag } from 'next/cache';
-import { db } from '@/lib/db';
-import { getUser } from '@/lib/auth';
+import { createTodo, toggleTodo as toggleTodoDal, deleteTodo as deleteTodoDal } from '@/data/todos';
 
+// Each DAL function is server-only: it reads the session itself, rejects unauthenticated
+// callers, and checks ownership of the row (auth-boundaries-pattern.md). The user id is
+// never accepted from the client. The action only orchestrates and invalidates the cache.
+// The DAL returns the owner tag to invalidate, not a DB row.
 export async function addTodo(text: string) {
-  const user = await getUser();
-  if (!user) throw new Error('Unauthorized');
-  await db.todo.create({ data: { text, userId: user.id, completed: false } });
-  updateTag(`todos-${user.id}`); // Instant cache invalidation
+  const { cacheTag } = await createTodo({ text });
+  updateTag(cacheTag); // read-your-own-writes: the next render shows fresh data
 }
 
 export async function toggleTodo(id: string) {
-  const user = await getUser();
-  if (!user) throw new Error('Unauthorized');
-  const todo = await db.todo.findUnique({ where: { id } });
-  if (!todo || todo.userId !== user.id) throw new Error('Not found');
-  await db.todo.update({ where: { id }, data: { completed: !todo.completed } });
-  updateTag(`todos-${user.id}`);
+  const { cacheTag } = await toggleTodoDal({ id }); // throws/returns not-found for a wrong owner
+  updateTag(cacheTag);
 }
 
 export async function deleteTodo(id: string) {
-  const user = await getUser();
-  if (!user) throw new Error('Unauthorized');
-  await db.todo.delete({ where: { id, userId: user.id } });
-  updateTag(`todos-${user.id}`);
+  const { cacheTag } = await deleteTodoDal({ id });
+  updateTag(cacheTag);
 }
 ```
 
@@ -300,15 +306,12 @@ export async function deleteTodo(id: string) {
 
 ```tsx
 // app/todos/page.tsx
-import { getUser } from '@/lib/auth';
-import { getTodos } from '@/lib/data/todos';
+import { getTodos } from '@/data/todos';
 import { TodoList } from './todo-list';
-import { redirect } from 'next/navigation';
 
 export default async function TodosPage() {
-  const user = await getUser();
-  if (!user) redirect('/login');
-  const todos = await getTodos(user.id);
+  // The DAL reads the session itself and redirects/rejects when unauthenticated
+  const todos = await getTodos();
   // Server fetches data, Client Component handles interactivity
   return <TodoList todos={todos} />;
 }
@@ -325,6 +328,14 @@ export default async function TodosPage() {
 5. **`updateTag()` after mutations** — instantly invalidates cached data so the next render shows fresh results
 6. **`useOptimistic` for perceived speed** — update UI before the server responds; the real state reconciles after the action completes
 7. **Return state, do not throw** — Server Actions should return `{ errors }` or `{ success }`, not throw exceptions (throws become unhandled error boundaries)
+8. **A Server Action is a public POST endpoint — authenticate AND authorize inside it** (`auth-boundaries-pattern.md`). Take identity from the session inside the DAL, never from `FormData` or arguments; hiding the form in the UI protects nothing
+9. **Call named server-only DAL functions** (`createContactMessage` from `@/data/contact`), not the database client directly in the action
+10. **Return only what the UI needs** — `{ success }`, field errors, or a small DTO; never DB rows
+11. **Dispatched one at a time per client** — do not `Promise.all` Server Actions from the client; do the parallel work inside one action
+12. **Body size limit defaults to 1MB** (`serverActions.bodySizeLimit`); raise it deliberately for uploads
+13. **CSRF protection compares `Origin` with `Host` / `X-Forwarded-Host`** — behind a proxy with a different host, list the origins in `serverActions.allowedOrigins`
+14. **`redirect()` throws, so code after it does not run** — call `updateTag` / `revalidatePath` BEFORE `redirect()`
+15. **Pick the invalidation by intent** — `updateTag` is for Server Actions (read-your-own-writes); `revalidateTag(tag, profile)` with a stale-while-revalidate profile does not re-render the response; `revalidatePath` / `refresh` do
 
 ---
 
@@ -332,7 +343,9 @@ export default async function TodosPage() {
 
 | Anti-Pattern | Why It Fails | Correct Approach |
 |---|---|---|
-| API route for form handling | Unnecessary indirection; Server Actions are simpler and type-safe | Use Server Actions with `<form action={...}>` |
+| API route for form handling from your own UI | Unnecessary indirection; Server Actions are simpler and type-safe (webhooks and external clients are the exception — `route-handlers-pattern.md`) | Use Server Actions with `<form action={...}>` |
+| Trusting a user id from `FormData` or arguments | The action is a public endpoint; any client can send any id | Read the session inside the DAL and check ownership there |
+| Returning DB rows from an action | Leaks columns the UI never needed | Return `{ success }`, errors or a DTO |
 | `"use server"` on a component | Marks all exports as Server Actions, not the component as server-side | `"use server"` goes in action files or inline functions only |
 | Skipping server-side validation | Client validation is bypassable; opens injection/corruption risks | Always validate with Zod (or similar) in the Server Action |
 | Throwing errors from Server Actions | Triggers error boundary, loses form state | Return `{ errors }` object and render inline |

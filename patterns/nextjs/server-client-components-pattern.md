@@ -1,15 +1,27 @@
 # Server & Client Components Pattern
 
 **Tags**: "web:ui", "web:platform:nextjs"
+**Layer**: Cross-Layer
+**Level**: core
+**Status**: production
+
+> ORM-neutral: data comes from named functions of a server-only Data Access Layer (`@/data/…`)
+> that return plain DTOs. What is inside them (Kysely, Drizzle, SQL client… — any data layer) is
+> your choice. For per-user data, the session check lives inside the DAL function — see
+> `auth-boundaries-pattern.md`.
 
 ## When to Use
 
-- Every Next.js 16 page and feature — Server Components are the **default**
-- Use "use client" **only** when the component needs: `useState`, `useEffect`, event handlers (`onClick`, `onChange`), browser APIs (`window`, `localStorage`), or third-party client libraries
-- Use "use cache" when a Server Component's output should be cached across requests
-- When composing interactive islands inside server-rendered pages
+**Use this pattern for:**
+- ✅ Every Next.js 16 page and feature — Server Components are the **default**
+- ✅ Adding "use client" **only** where a component needs: `useState`, `useEffect`, event handlers (`onClick`, `onChange`), browser APIs (`window`, `localStorage`), or third-party client libraries
+- ✅ Adding "use cache" when a Server Component's output should be cached across requests
+- ✅ Composing interactive islands inside server-rendered pages
 
-**Do NOT** add "use client" to components that only render data. Do NOT add "use server" to Server Components — they already run on the server.
+**Do NOT use for:**
+- ❌ Components that only render data — no "use client"; keep them Server Components
+- ❌ "use server" on Server Components — it marks Server Actions only; components already run on the server
+- ❌ Deciding what a Client Component may receive about a user — pass DTOs, see `auth-boundaries-pattern.md`
 
 ---
 
@@ -21,9 +33,17 @@
 // app/products/[id]/page.tsx
 // Server Component — runs ONLY on the server, zero JS sent to browser
 import { notFound } from 'next/navigation';
-import { db } from '@/lib/db';
+import { getProductWithReviews } from '@/data/products';
 import { AddToCartButton } from './add-to-cart-button';
 import { ProductGallery } from './product-gallery';
+
+// data/products.ts (server-only DAL; body is any data layer — Kysely, Drizzle, SQL client…)
+//   export type ProductPageDto = {
+//     id: string; name: string; description: string; price: number;
+//     imageUrls: string[];
+//     reviews: { author: string; body: string; rating: number }[];
+//   };
+//   export async function getProductWithReviews(id: string): Promise<ProductPageDto | null>
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -33,10 +53,7 @@ export default async function ProductPage({ params }: PageProps) {
   // Next.js 16: params is async
   const { id } = await params;
 
-  const product = await db.product.findUnique({
-    where: { id },
-    include: { images: true, reviews: true },
-  });
+  const product = await getProductWithReviews(id);
 
   if (!product) notFound();
 
@@ -47,7 +64,7 @@ export default async function ProductPage({ params }: PageProps) {
       <span className="text-2xl font-semibold">${product.price}</span>
 
       {/* Client Component — receives serializable props from server */}
-      <ProductGallery images={product.images.map((i) => i.url)} />
+      <ProductGallery images={product.imageUrls} />
 
       {/* Client Component — needs onClick handler */}
       <AddToCartButton productId={product.id} />
@@ -173,19 +190,15 @@ export function ProductGallery({ images }: ProductGalleryProps) {
 // app/components/featured-products.tsx
 'use cache';
 
-import { db } from '@/lib/db';
 import { cacheLife } from 'next/cache';
+import { getFeaturedProducts } from '@/data/products'; // (limit: number) => Promise<ProductCardDto[]>
 
 // Cached Server Component — output is cached and reused across requests
 export async function FeaturedProducts() {
   // Cache this component's output for 1 hour
   cacheLife('hours');
 
-  const products = await db.product.findMany({
-    where: { featured: true },
-    take: 8,
-    orderBy: { createdAt: 'desc' },
-  });
+  const products = await getFeaturedProducts({ limit: 8 });
 
   return (
     <section className="grid grid-cols-4 gap-6">
@@ -211,18 +224,17 @@ export async function FeaturedProducts() {
 
 ```tsx
 // app/dashboard/page.tsx
-import { getUser } from '@/lib/auth';
-import { db } from '@/lib/db';
+import { getDashboardStats, getRecentActivity } from '@/data/dashboard';
+// Both DAL functions call verifySession() themselves and return DTOs for the current user
+// (auth-boundaries-pattern.md); the page never passes a client-supplied user id.
 import { DashboardCharts } from './dashboard-charts'; // Client Component
 import { ActivityFeed } from './activity-feed';         // Server Component
 
 export default async function DashboardPage() {
-  const user = await getUser();
-
   // Fetch data on the server — no waterfalls, no loading spinners
   const [stats, recentActivity] = await Promise.all([
-    db.stats.getForUser(user.id),
-    db.activity.findMany({ where: { userId: user.id }, take: 20 }),
+    getDashboardStats(),
+    getRecentActivity({ limit: 20 }),
   ]);
 
   return (
@@ -251,10 +263,11 @@ export default async function DashboardPage() {
 1. **Server Components are the default** — never add "use server" to a page or component
 2. **"use client" is a boundary** — every module imported by a Client Component becomes client code; keep the boundary as low as possible in the tree
 3. **Props across the boundary must be serializable** — no functions, Dates, Maps, or class instances; convert to plain objects/strings before passing
-4. **"use cache" replaces old implicit caching** — opt in explicitly; use `cacheLife()` to control TTL
-5. **async/await is valid in Server Components** — use it directly; no `useEffect` + `useState` fetch pattern
-6. **Params and searchParams are async in Next.js 16** — always `await params`, never destructure synchronously
-7. **React Compiler handles memoization** — do not manually wrap with `useMemo`/`useCallback` unless profiling proves it necessary
+4. **Pass DTOs, not whole rows** — whatever crosses into a Client Component ships to the browser; for per-user data see `auth-boundaries-pattern.md`
+5. **"use cache" replaces old implicit caching** — opt in explicitly; use `cacheLife()` to control TTL
+6. **async/await is valid in Server Components** — use it directly; no `useEffect` + `useState` fetch pattern
+7. **Params and searchParams are async in Next.js 16** — always `await params`, never destructure synchronously
+8. **React Compiler handles memoization** — do not manually wrap with `useMemo`/`useCallback` unless profiling proves it necessary
 
 ---
 

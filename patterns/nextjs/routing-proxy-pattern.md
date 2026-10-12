@@ -1,15 +1,23 @@
 # Routing & Proxy Pattern
 
 **Tags**: "web:ui:navigation", "web:platform:nextjs"
+**Layer**: Cross-Layer
+**Level**: core
+**Status**: production
 
 ## When to Use
 
-- Every Next.js 16 application with multiple pages, authentication, or internationalization
-- When you need shared layouts, loading states, error boundaries, or not-found pages
-- When requests must be intercepted for auth checks, redirects, geolocation, or header injection
-- When implementing parallel routes (e.g., modals) or intercepting routes
+**Use this pattern for:**
+- ✅ Every Next.js 16 application with multiple pages, authentication, or internationalization
+- ✅ Shared layouts, loading states, error boundaries, or not-found pages
+- ✅ Intercepting requests for optimistic auth checks, redirects, geolocation, or header injection
+- ✅ Parallel routes (e.g., modals) or intercepting routes
 
-**Do NOT** use `middleware.ts` — it has been replaced by `proxy.ts` in Next.js 16. Do NOT use Pages Router `_app.tsx` or `_document.tsx`.
+**Do NOT use for:**
+- ❌ `middleware.ts` — replaced by `proxy.ts` in Next.js 16; use `proxy.ts` as shown below
+- ❌ Pages Router `_app.tsx` or `_document.tsx` — use `app/layout.tsx`
+- ❌ The authoritative authentication/authorization check — it belongs in the DAL, see `auth-boundaries-pattern.md`
+- ❌ Writing HTTP endpoints (webhooks, external clients) — see `route-handlers-pattern.md`; nonce-based CSP in `proxy.ts` — see `security-headers-csp-pattern.md`
 
 ---
 
@@ -46,6 +54,11 @@ proxy.ts                  # Request interception (replaces middleware.ts)
 ```
 
 ### proxy.ts — Auth Guard + Redirects (Replaces middleware.ts)
+
+> Auth in `proxy.ts` is **optimistic**: it only reads a cookie (no database call) and runs on the
+> Node.js runtime. It improves UX by redirecting early; it is not a security boundary. The real
+> check lives in the DAL (`auth-boundaries-pattern.md`). For nonce-based CSP set from `proxy.ts`,
+> see `security-headers-csp-pattern.md`.
 
 ```ts
 // proxy.ts (root of the project, next to next.config.ts)
@@ -279,6 +292,7 @@ export default function NotFound() {
 5. **`error.tsx` must be a Client Component** — error boundaries require `"use client"` for the `reset()` callback
 6. **Layouts do not re-render on navigation** — they persist; do not put per-page data in layouts
 7. **`generateStaticParams` replaces `getStaticPaths`** — returns an array of param objects for static generation
+8. **Auth in `proxy.ts` is optimistic only** — cookie read, no database; the authoritative check lives in the DAL (`auth-boundaries-pattern.md`)
 
 ---
 

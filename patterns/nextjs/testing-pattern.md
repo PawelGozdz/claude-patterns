@@ -1,44 +1,47 @@
 # Testing Pattern
 
 **Tags**: "web:tests", "web:platform:nextjs"
+**Layer**: Testing
+**Level**: core
+**Status**: production
 
 ## When to Use
 
-- Every Next.js 16 application that needs unit, integration, or end-to-end tests
-- When testing Server Components (async), Client Components, Server Actions, and API routes
-- When building a CI pipeline that validates correctness before deployment
-- When TDD or test-first development is the team practice
+**Use this pattern for:**
+- ✅ Every Next.js 16 application that needs unit, integration, or end-to-end tests
+- ✅ Unit-testing synchronous Server and Client Components, Server Actions, Route Handlers and DAL functions; E2E for async Server Components
+- ✅ A CI pipeline that validates correctness before deployment
+- ✅ TDD or test-first development as the team practice
 
-**Do NOT** use Jest — Turbopack (Next.js 16's default bundler) has native Vitest integration via `next/vitest`. Jest requires additional configuration and does not support the same module transforms out of the box.
+**Do NOT use for:**
+- ❌ A different runner without a reason — Jest is also supported by Next.js; this pattern standardizes on Vitest as a team preference (config below follows the official Next.js Vitest guide)
+- ❌ Designing the Server Action or Route Handler itself — see `forms-actions-pattern.md` and `route-handlers-pattern.md`
+- ❌ Deciding what to authorize — rules live in `auth-boundaries-pattern.md`; this pattern only shows how to test them
 
 ---
 
 ## Implementation
 
-### Vitest Configuration with next/vitest
+### Vitest Configuration
+
+Install: `npm i -D vitest @vitejs/plugin-react jsdom @testing-library/react @testing-library/dom vite-tsconfig-paths`
+and add `"test": "vitest"` to `package.json` scripts.
 
 ```ts
-// vitest.config.ts
+// vitest.config.mts
 import { defineConfig } from 'vitest/config';
-import { nextVitest } from 'next/vitest';
+import react from '@vitejs/plugin-react';
+import tsconfigPaths from 'vite-tsconfig-paths';
 
 export default defineConfig({
-  plugins: [nextVitest()],
+  plugins: [tsconfigPaths(), react()],
   test: {
     environment: 'jsdom',
-    globals: true,
+    // Team additions on top of the official setup:
     setupFiles: ['./vitest.setup.ts'],
-    include: ['**/*.test.{ts,tsx}'],
     coverage: {
       provider: 'v8',
-      include: ['app/**', 'lib/**', 'components/**'],
-      exclude: ['**/*.test.*', '**/*.d.ts', '**/types/**'],
-      thresholds: {
-        statements: 80,
-        branches: 75,
-        functions: 80,
-        lines: 80,
-      },
+      thresholds: { statements: 80, branches: 75, functions: 80, lines: 80 },
     },
   },
 });
@@ -72,61 +75,33 @@ vi.mock('next/navigation', () => ({
 }));
 ```
 
-### Testing a Server Component (Async)
+### Testing a Server Component
+
+Vitest does not support **async** Server Components. Unit-test only synchronous Server and
+Client Components; for an async page (`await params`, data fetching) move the logic into a DAL
+function or helper and unit-test that, and cover the rendered page with E2E (Playwright, below).
 
 ```tsx
-// app/blog/[slug]/page.test.tsx
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+// components/post-article.test.tsx — synchronous Server Component, data passed as props
+import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import BlogPostPage from './page';
+import { PostArticle } from './post-article';
 
-// Mock the data layer
-vi.mock('@/lib/data/posts', () => ({
-  getPostBySlug: vi.fn(),
-  getAllPostSlugs: vi.fn(),
-}));
-
-vi.mock('next/navigation', async (importOriginal) => {
-  const mod = await importOriginal<typeof import('next/navigation')>();
-  return { ...mod, notFound: vi.fn() };
-});
-
-import { getPostBySlug } from '@/lib/data/posts';
-import { notFound } from 'next/navigation';
-
-const mockPost = {
-  title: 'Test Post',
-  slug: 'test-post',
-  excerpt: 'A test post excerpt',
-  htmlContent: '<p>Hello world</p>',
-  publishedAt: '2026-03-15T00:00:00Z',
-};
-
-describe('BlogPostPage', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it('renders post content when found', async () => {
-    vi.mocked(getPostBySlug).mockResolvedValue(mockPost);
-
-    // Server Components are async — await the JSX
-    const jsx = await BlogPostPage({ params: Promise.resolve({ slug: 'test-post' }) });
-    render(jsx);
+describe('PostArticle', () => {
+  it('renders title and content', () => {
+    render(<PostArticle title="Test Post" htmlContent="<p>Hello world</p>" />);
 
     expect(screen.getByText('Test Post')).toBeInTheDocument();
     expect(screen.getByText('Hello world')).toBeInTheDocument();
-    expect(getPostBySlug).toHaveBeenCalledWith('test-post');
-  });
-
-  it('calls notFound when post does not exist', async () => {
-    vi.mocked(getPostBySlug).mockResolvedValue(null);
-
-    await BlogPostPage({ params: Promise.resolve({ slug: 'missing' }) });
-
-    expect(notFound).toHaveBeenCalled();
   });
 });
+```
+
+```ts
+// data/posts.test.ts — the logic behind the async page, tested as a plain function
+import { describe, it, expect, vi } from 'vitest';
+import { getPostOrNull } from './posts';
+// ...mock the persistence boundary, assert the mapping / not-found behaviour
 ```
 
 ### Testing a Client Component
@@ -167,19 +142,17 @@ describe('Counter', () => {
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { submitContact } from './contact';
 
-vi.mock('@/lib/db', () => ({
-  db: {
-    contactMessage: {
-      create: vi.fn(),
-    },
-  },
+// Mock the DAL module, not the database client: the action's contract is "call the DAL
+// with validated data", and the DAL has its own tests.
+vi.mock('@/data/contact', () => ({
+  createContactMessage: vi.fn(),
 }));
 
 vi.mock('next/cache', () => ({
   revalidateTag: vi.fn(),
 }));
 
-import { db } from '@/lib/db';
+import { createContactMessage } from '@/data/contact';
 
 function createFormData(data: Record<string, string>): FormData {
   const fd = new FormData();
@@ -205,7 +178,7 @@ describe('submitContact', () => {
   });
 
   it('creates record and returns success for valid input', async () => {
-    vi.mocked(db.contactMessage.create).mockResolvedValue({} as never);
+    vi.mocked(createContactMessage).mockResolvedValue(undefined);
 
     const result = await submitContact(
       {},
@@ -218,17 +191,17 @@ describe('submitContact', () => {
     );
 
     expect(result.success).toBe(true);
-    expect(db.contactMessage.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({
+    expect(createContactMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
         name: 'Jane Doe',
         email: 'jane@example.com',
         category: 'support',
       }),
-    });
+    );
   });
 
-  it('returns form error on database failure', async () => {
-    vi.mocked(db.contactMessage.create).mockRejectedValue(new Error('DB error'));
+  it('returns form error when the DAL fails', async () => {
+    vi.mocked(createContactMessage).mockRejectedValue(new Error('DB error'));
 
     const result = await submitContact(
       {},
@@ -244,6 +217,11 @@ describe('submitContact', () => {
   });
 });
 ```
+
+Authorization lives in the DAL (`auth-boundaries-pattern.md`), so give it its own tests: the
+unauthenticated case and the wrong-owner case each need a test, at the DAL level (real
+authorization logic, test database or fake) and at the action level (the action surfaces the
+rejection without leaking a row).
 
 ### API Route Testing
 
@@ -308,12 +286,13 @@ test.describe('Authentication flow', () => {
 
 ## Key Rules
 
-1. **Use Vitest with `next/vitest` plugin** — Turbopack-native; handles path aliases, JSX, and Server Component transforms
-2. **Server Components are async** — `await` the component function, then pass the result to `render()`
+1. **Use Vitest with `@vitejs/plugin-react` and `vite-tsconfig-paths`** — the setup from the official Next.js Vitest guide; path aliases and JSX work without extra transforms
+2. **Vitest does not support async Server Components** — unit-test synchronous Server and Client Components only; move logic of async components into DAL functions/helpers tested as plain functions, and cover async rendering with E2E
 3. **Mock `next/navigation`, `next/cache`, and data modules** — Server Components import framework modules that do not exist in the test environment
-4. **Test Server Actions as plain async functions** — pass `FormData` and assert the return value; no HTTP layer involved
-5. **Use Playwright for E2E** — test the full flow including proxy.ts redirects, streaming, and progressive enhancement
-6. **Separate test types in CI** — run Vitest (fast) on every push; run Playwright (slow) on PR merge or nightly
+4. **Test Server Actions as plain async functions** — pass `FormData`, mock the DAL module (`vi.mock('@/data/contact')`), and assert the return value; no HTTP layer involved
+5. **Test authorization paths separately** — unauthenticated and wrong-owner cases deserve their own tests; a happy-path test proves nothing about who may call
+6. **Use Playwright for E2E** — test the full flow including proxy.ts redirects, streaming, and progressive enhancement
+7. **Separate test types in CI** — run Vitest (fast) on every push; run Playwright (slow) on PR merge or nightly
 
 ---
 
@@ -321,10 +300,10 @@ test.describe('Authentication flow', () => {
 
 | Anti-Pattern | Why It Fails | Correct Approach |
 |---|---|---|
-| Using Jest with Next.js 16 | Missing Turbopack transforms; requires custom config for `"use client"`, `"use server"`, `"use cache"` | Use Vitest + `next/vitest` |
-| Rendering Server Components synchronously | Server Components are `async` functions; `render()` receives a Promise, not JSX | `const jsx = await Page({ params }); render(jsx);` |
+| Mixing Jest and Vitest in one repo | Two runners, two configs, duplicated setup | Pick one per repo; this pattern standardizes on Vitest (team preference) |
+| Unit-testing an async Server Component with Vitest | Vitest does not support async Server Components; `await Page(...)` hacks are unsupported | Extract logic to DAL/helpers (unit tests); render the async page in Playwright E2E |
 | Testing implementation details | Brittle tests that break on refactors | Test behavior: what the user sees and interactions |
 | Skipping Server Action tests | Actions contain business logic, validation, and auth checks | Test actions as async functions with FormData |
-| Mocking `fetch` globally | Pollutes test isolation; does not catch real integration issues | Mock at the data layer (`db`, `api client`), or use MSW for HTTP-level mocking |
+| Mocking `fetch` globally | Pollutes test isolation; does not catch real integration issues | Mock at the DAL module (`@/data/*`) or API client, or use MSW for HTTP-level mocking |
 | E2E tests for every edge case | Slow, flaky, expensive | E2E for critical paths; Vitest for edge cases |
 | No coverage thresholds | Coverage silently degrades over time | Set thresholds in vitest.config.ts; enforce in CI |
