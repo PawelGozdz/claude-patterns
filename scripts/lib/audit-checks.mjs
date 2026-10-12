@@ -183,3 +183,62 @@ export const outsideBlockSystem = (root, skip = []) => readdirSync(root, { withF
   .filter((e) => e.isDirectory() && !e.name.startsWith('_') && !skip.includes(e.name))
   .filter((e) => existsSync(join(root, e.name, '.claude')) && !existsSync(join(root, e.name, '.claude/config/project.yml')))
   .map((e) => e.name).sort();
+
+// ── (4) nadmiary: obecne w projekcie, a niewnoszone przez kompozycję (ADR 0011 B5) ──────────────
+// Audyt widzi też to, czego nikt nie zadeklarował: agent, skill albo kategoria wzorców, które leżą
+// w `.claude/`, ale `runtime.yml` / `project.yml` ich nie wnoszą. Zawsze INFO — czasem to świadome.
+// Kompozycję czytamy jako TEKST runtime.yml (agent po nazwie, kategoria po `<kat>/`): panel, warstwy,
+// inner_loop, final_gate i ewentualne `agents:` wyglądają różnie, a każda forma niesie tę samą nazwę.
+const names = (dir, filter = () => true) => {
+  try { return readdirSync(dir, { withFileTypes: true }).filter(filter).map((e) => e.name); } catch { return []; }
+};
+const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const frontmatterSkills = (agentsDir) => {
+  const out = new Set();
+  for (const f of names(agentsDir, (e) => e.name.endsWith('.md'))) {
+    let raw = '';
+    try { raw = readFileSync(join(agentsDir, f), 'utf8'); } catch { continue; }       // martwy symlink: osobny check
+    const fm = raw.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+    if (!fm) continue;
+    for (const m of fm[1].matchAll(/^\s*-\s*([\w./-]+)\s*$/gm)) out.add(m[1].split('/').pop());
+  }
+  return out;
+};
+
+export const surplusIssues = (P) => {
+  let runtime = '';
+  try { runtime = readFileSync(join(P, '.claude/config/runtime.yml'), 'utf8'); } catch { return []; }
+  const issues = [];
+  const claude = join(P, '.claude');
+
+  const agents = names(join(claude, 'agents'), (e) => e.name.endsWith('.md')).map((n) => n.replace(/\.md$/, ''))
+    .filter((a) => !new RegExp(`(^|[^\\w-])${escapeRe(a)}([^\\w-]|$)`).test(runtime));
+  if (agents.length)
+    issues.push([`agenci w .claude/agents, których kompozycja nie wnosi (${agents.length}): ${sample(agents)}`,
+      'świadomie? zostaw. Nie? usuń dowiązanie albo dopisz agenta do bloku/runtime.yml', INFO]);
+
+  const categories = names(join(claude, 'knowledge/patterns'), (e) => (e.isDirectory() || e.isSymbolicLink()) && !e.name.endsWith('-local'))
+    .filter((c) => !runtime.includes(`${c}/`));
+  if (categories.length)
+    issues.push([`kategorie wzorców w .claude/knowledge/patterns, których runtime.yml nie wskazuje (${categories.length}): ${sample(categories)}`,
+      'wzorce leżą w projekcie, ale żaden always/trigger/warstwa ich nie wybiera', INFO]);
+
+  // Skill wnoszą: kategorie z project.yml `skills:` (+ `integrations` poza exclude_skills) oraz `skills:` we frontmatterze agentów.
+  let proj = {};
+  try { proj = YAML.parse(readFileSync(join(claude, 'config/project.yml'), 'utf8')) ?? {}; } catch { /* brak = bez skilli */ }
+  const list = (v) => (Array.isArray(v) ? v.map(String) : []);
+  const cats = new Set([...list(proj.skills), ...list(proj.project?.skills), 'integrations']);
+  for (const x of [...list(proj.exclude_skills), ...list(proj.project?.exclude_skills)]) cats.delete(x);
+  const fromAgents = frontmatterSkills(join(claude, 'agents'));
+  const skills = names(join(claude, 'skills'), (e) => e.isSymbolicLink()).filter((n) => {
+    let target = '';
+    try { target = readlinkSync(join(claude, 'skills', n)); } catch { return false; }
+    const cat = target.match(/\/skills\/([^/]+)\//)?.[1];
+    return !(cat && cats.has(cat)) && !fromAgents.has(n);
+  });
+  if (skills.length)
+    issues.push([`skille w .claude/skills spoza kategorii z project.yml i spoza skills: agentów (${skills.length}): ${sample(skills)}`,
+      'świadomie? zostaw. Nie? exclude_skills / usuń dowiązanie', INFO]);
+  return issues;
+};

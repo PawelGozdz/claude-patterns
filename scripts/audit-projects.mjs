@@ -32,7 +32,7 @@ import { homedir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { execFileSync, spawnSync } from 'node:child_process';
 import YAML from 'yaml';
-import { deadLinkIssues, gitHygieneIssues, envDenyIssues, claudeMdIssues, outsideBlockSystem } from './lib/audit-checks.mjs';
+import { deadLinkIssues, gitHygieneIssues, envDenyIssues, claudeMdIssues, surplusIssues, outsideBlockSystem } from './lib/audit-checks.mjs';
 
 const REPO = join(dirname(fileURLToPath(import.meta.url)), '..');
 const rootArg = process.argv.indexOf('--root');
@@ -127,6 +127,9 @@ for (const name of projects) {
 
   // 2b. Higiena gita i konfiguracja bezpieczeństwa (2026-10-10) — patrz lib/audit-checks.mjs.
   issues.push(...gitHygieneIssues(P), ...envDenyIssues(P), ...claudeMdIssues(P));
+
+  // 2c. Nadmiary (TASK-OBS-007, ADR 0011 B5): obecne w .claude/, a niewnoszone przez kompozycję — INFO.
+  issues.push(...surplusIssues(P));
 
   // 3. Szablony — KOPIE, więc nie propagują się same. Wymagane warunkowo: artefakt
   //    analizy tam, gdzie w ogóle działa /analyze; TM tam, gdzie jest docs/security/.

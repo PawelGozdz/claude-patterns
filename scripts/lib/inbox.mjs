@@ -63,3 +63,29 @@ export function buildIndex(rows) {
 }
 
 export const serializeIndex = (index) => `${JSON.stringify(index, null, 2)}\n`;
+
+// ── postarzanie (TASK-OBS-007, ADR 0011 B4) ─────────────────────────────────────
+// Zgłoszenie bez ruchu jest widoczne w wyjściu pre-commit (nigdy nie blokuje commita):
+// `promoted` czeka na realizację, `proposed` na triage — i jedno, i drugie gnije po cichu.
+export const STALE_AFTER_DAYS = { promoted: 7, proposed: 14 };
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+const asMs = (v) => {
+  if (v === undefined || v === null) return null;
+  const t = v instanceof Date ? v.getTime() : Date.parse(String(v));
+  return Number.isFinite(t) ? t : null;
+};
+
+/** Rekordy `promoted`/`proposed` bez ruchu dłużej niż próg; ruch = najnowsze z last_seen, reopened_at, first_seen. */
+export function staleInboxEntries(rows, now = new Date(), limits = STALE_AFTER_DAYS) {
+  const out = [];
+  for (const r of rows) {
+    const limit = limits[r.status];
+    if (!limit) continue;
+    const moves = [r.last_seen, r.reopened_at, r.first_seen].map(asMs).filter((t) => t !== null);
+    if (!moves.length) continue;
+    const days = Math.floor((now.getTime() - Math.max(...moves)) / DAY_MS);
+    if (days > limit) out.push({ id: r.id || String(r.file || '').replace(/\.md$/, ''), status: r.status, days, limit });
+  }
+  return out.sort((a, b) => b.days - a.days || a.id.localeCompare(b.id));
+}

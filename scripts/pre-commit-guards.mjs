@@ -33,6 +33,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { readInboxEntries, staleInboxEntries, STALE_AFTER_DAYS } from './lib/inbox.mjs';
 
 const REPO = join(dirname(fileURLToPath(import.meta.url)), '..');
 const results = [];
@@ -73,6 +74,7 @@ runCheck('eval: audit-projects', 'node', ['tests/flow-evals/audit-projects/run.j
 runCheck('eval: telemetry-events', 'node', ['tests/flow-evals/telemetry-events/run.js']);
 runCheck('eval: telemetry-sessions', 'node', ['tests/flow-evals/telemetry-sessions/run.js']);
 runCheck('eval: telemetry-rollups', 'node', ['tests/flow-evals/telemetry-rollups/run.js']);
+runCheck('eval: reporting-hygiene', 'node', ['tests/flow-evals/reporting-hygiene/run.js']);
 runCheck('validate-agents', 'node', ['scripts/ci/validate-agents.js']);
 runCheck('validate-business-rules', 'node', ['scripts/ci/validate-business-rules.js']);
 runCheck('validate-commands', 'node', ['scripts/ci/validate-commands.js']);
@@ -216,7 +218,20 @@ function printInboxSummary() {
   for (const r of rows.slice(0, 3)) {
     console.log(`  ${r.occurrences || '?'}x  ${r.id || '?'}  [${r.trigger || '?'}]  status=${r.status || '?'}`);
   }
-  console.log('  → node scripts/report-deviation.mjs --list  (pełny przegląd / triage)\n');
+  console.log('  → node scripts/report-deviation.mjs --list  (pełny przegląd / triage)');
+
+  // TASK-OBS-007 (ADR 0011 B4): zgłoszenia bez ruchu — promoted > 7 dni, proposed > 14 dni.
+  try {
+    const stale = staleInboxEntries(readInboxEntries(dir));
+    if (stale.length) {
+      console.log(`⚠ inbox: ${stale.length} zgłoszeń bez ruchu (promoted > ${STALE_AFTER_DAYS.promoted} dni, proposed > ${STALE_AFTER_DAYS.proposed} dni):`);
+      for (const r of stale.slice(0, 5)) console.log(`  ${r.days}d  ${r.id}  status=${r.status}`);
+      if (stale.length > 5) console.log(`  … i ${stale.length - 5} więcej`);
+    }
+  } catch (e) {
+    console.log(`  (postarzanie skrzynki pominięte: ${e.message})`);
+  }
+  console.log('');
 }
 
 const failed = results.filter((r) => !r.ok);
