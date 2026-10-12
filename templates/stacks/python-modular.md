@@ -4,9 +4,9 @@
 
 | Tier | Agents | Model |
 |------|--------|-------|
-| Implementation | python-implementer, api-designer | Sonnet |
-| Verification | code-quality-verifier (Sonnet), security-verifier (Opus) | Mixed |
-| Utility | codebase-explorer, test-generator | Haiku |
+| Advisory | python-architecture-expert | Sonnet |
+| Verification | python-quality-verifier (VETO), ecc:security-reviewer (final gate) | Sonnet / Opus |
+| Implementation & review | general-purpose (layers), ecc:tdd-guide, ecc:python-reviewer | Sonnet |
 
 **Cost targets**:
 

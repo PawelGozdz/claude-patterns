@@ -6,7 +6,7 @@
 |------|--------|-------|
 | Advisory | ml-inference-architect, python-architecture-expert | Sonnet |
 | Verification | gpu-resource-verifier (VETO), python-quality-verifier (VETO) | Sonnet |
-| Utility | codebase-explorer, test-generator | Haiku |
+| Implementation & review | general-purpose (layers), ecc:tdd-guide, ecc:python-reviewer | Sonnet |
 
 **Cost targets**:
 

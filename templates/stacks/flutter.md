@@ -4,9 +4,9 @@
 
 | Tier | Agents | Model |
 |------|--------|-------|
-| Implementation | flutter-implementer, state-manager | Sonnet |
-| Verification | code-quality-verifier (Sonnet), ui-verifier (Haiku) | Mixed |
-| Utility | codebase-explorer, widget-scaffolder, test-generator | Haiku |
+| Advisory | flutter-architecture-expert, flutter-ux-designer | Sonnet |
+| Implementation | flutter-implementer (per layer) | Sonnet |
+| Verification | flutter-quality-verifier (VETO), flutter-ui-verifier (VETO), flutter-performance-verifier (advisory), flutter-security-verifier (final gate) | Sonnet / Haiku |
 
 **Cost targets**:
 
