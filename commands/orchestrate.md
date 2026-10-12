@@ -61,6 +61,13 @@ nie gdy chcesz ją WYKONAĆ.
                          zgłoszenia (ORC-068), bez tego różne przyczyny tej samej ogólnej reguły
                          (np. ORC-062 na dwóch różnych warstwach) zlewają się w jeden rekord.
                          Błąd tego wywołania → jedna uwaga w treści HALT, nic więcej.
+6. zalążek wpisu      → best-effort, w tle, PO kroku 5; niczego w HALT nie zmienia (ADR 0013).
+                         Procedura jak w `commands/analyze.md` → „Krok 5 — zalążek wpisu":
+                         `blog-seed-emit.mjs --check`, ocena tematu przez CIEBIE (masz kontekst),
+                         payload wg `schemas/blog-seed-payload-v1.schema.json`, wywołanie z
+                         `--run-id`. Okazje w implementacji: ESCALATE_AND_HALT / NO_GO bramki
+                         końcowej (`trigger: halt|no_go`, format `post-mortem`), GO_WITH_GAPS
+                         (`go_with_gaps`), nowy ADR w zakresie (`adr`). Kod ≠ 0 → jedna uwaga.
 ```
 
 Krok 2 kończy się kodem wyjścia: `0` = jedź dalej, `2` = bramka analizy nie przeszła

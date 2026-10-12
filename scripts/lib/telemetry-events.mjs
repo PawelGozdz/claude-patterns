@@ -95,8 +95,9 @@ export function buildEvent(fields) {
   };
 }
 
-// Minimalny walidator JSON Schema — tylko konstrukcje użyte w schemacie v1 (type, const,
-// enum, pattern, minimum, required, properties, additionalProperties:false, items).
+// Minimalny walidator JSON Schema — tylko konstrukcje użyte w schematach repo (type, const,
+// enum, pattern, minimum/maximum, min/maxLength, min/maxItems, anyOf, required, properties,
+// additionalProperties:false, items).
 // Bez zależności (ajv nie ma w repo), a pełny walidator to przesada dla jednego schematu.
 function typeOk(value, type) {
   const types = Array.isArray(type) ? type : [type];
@@ -116,6 +117,15 @@ function check(value, schema, at, errors) {
   if (schema.type && !typeOk(value, schema.type)) { errors.push(`${at}: zły typ (${typeof value})`); return; }
   if (typeof value === 'string' && schema.pattern && !new RegExp(schema.pattern).test(value)) errors.push(`${at}: "${value}" nie pasuje do ${schema.pattern}`);
   if (typeof value === 'number' && schema.minimum !== undefined && value < schema.minimum) errors.push(`${at}: < ${schema.minimum}`);
+  if (typeof value === 'number' && schema.maximum !== undefined && value > schema.maximum) errors.push(`${at}: > ${schema.maximum}`);
+  if (typeof value === 'string' && schema.minLength !== undefined && value.length < schema.minLength) errors.push(`${at}: krótsze niż ${schema.minLength}`);
+  if (typeof value === 'string' && schema.maxLength !== undefined && value.length > schema.maxLength) errors.push(`${at}: dłuższe niż ${schema.maxLength}`);
+  if (Array.isArray(value) && schema.minItems !== undefined && value.length < schema.minItems) errors.push(`${at}: mniej niż ${schema.minItems} pozycji`);
+  if (Array.isArray(value) && schema.maxItems !== undefined && value.length > schema.maxItems) errors.push(`${at}: więcej niż ${schema.maxItems} pozycji`);
+  if (schema.anyOf && !schema.anyOf.some((alt) => { const e = []; check(value, alt, at, e); return e.length === 0; })) {
+    errors.push(`${at}: nie pasuje do żadnego z wariantów`);
+    return;
+  }
   if (Array.isArray(value) && schema.items) value.forEach((v, i) => check(v, schema.items, `${at}[${i}]`, errors));
   if (value && typeof value === 'object' && !Array.isArray(value) && schema.properties) {
     for (const req of schema.required || []) if (!(req in value)) errors.push(`${at}.${req}: brak`);
@@ -127,8 +137,13 @@ function check(value, schema, at, errors) {
 }
 
 export function validateEvent(ev) {
+  return validateWith(SCHEMA, ev, 'event');
+}
+
+// Ten sam minimalny walidator dla innych schematów repo (np. zalążki wpisów, ADR 0013).
+export function validateWith(schema, value, at = 'value') {
   const errors = [];
-  check(ev, SCHEMA, 'event', errors);
+  check(value, schema, at, errors);
   return errors;
 }
 

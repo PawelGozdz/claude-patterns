@@ -1,6 +1,7 @@
 # ADR 0012 — Metryki przebiegów: wspólny format zdarzeń v1
 
 **Status**: accepted (2026-10-10) — kroki 1–3 i 5 wdrożone, 4 i 6 kolejno
+**Rozszerzony przez**: [ADR 0013](0013-zalazki-wpisow-blogowych.md) — `kind: seed`, `process: blog-seed` (zalążki wpisów, tylko kody).
 **Rozszerza**: [ADR 0011](0011-raportowanie-dryfu-i-telemetria-floty.md) (punkt B6 — telemetria floty)
 **Context source**: decyzja użytkownika z 2026-10-10: „jak będziemy wstawiać tylko problemy, to nie
 da nam to procentowego rozbicia dobre vs błędy" + docelowo metryki trafiają na serwer zespołu

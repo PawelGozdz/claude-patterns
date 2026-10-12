@@ -32,6 +32,7 @@ w `docs/decisions/orchestrate-rule-history.md`, sekcja „reguły ANL".
 3.  wyjście            → analyze.exit: PAUSE = STOP i czekaj na człowieka
 3.a telemetria: koniec → telemetry-emit run-end (przed STOP z kroku 3)
 4.  zgłoszenia         → odstępstwa MASZYNY do skrzynki claude-patterns (best-effort, niżej)
+5.  zalążek wpisu      → temat wart wpisu → blog-seed-emit (best-effort, w tle, niżej)
 ```
 
 ## Telemetria przebiegu (best-effort, nie blokuje)
@@ -108,6 +109,36 @@ Błąd wywołania = jedno zdanie w artefakcie (`## Uwagi`), analiza idzie dalej.
 
 Nic poza tym — żadnego pliku w `src/`, żadnego taska, żadnego ADR-a.
 
+## Krok 5 — zalążek wpisu blogowego (best-effort, nie blokuje, ADR 0013)
+
+Po zapisie artefaktu (i po kroku 3.a) oceniasz, czy z tej analizy wynika temat na wpis.
+Oceniasz TY — masz już pełny kontekst; nie uruchamiaj do tego osobnego agenta.
+
+1. `node <claude-patterns>/scripts/blog-seed-emit.mjs --project {ABSOLUTNA ścieżka} --check` —
+   `"enabled": false` → koniec kroku, bez słowa w artefakcie. Z odpowiedzi weź `exclude_topics`
+   (tych tematów nie dotykasz) i `artifact_globs` (tych plików nie czytasz na potrzeby zalążka).
+2. Podpowiedź, nie reguła: było napięcie (odrzucona alternatywa, zmiana zdania, zaskoczenie)?
+   jest dowód (ADR, decyzja, metryka)? ktoś spoza projektu czegoś się z tego nauczy? to nie rutyna
+   (mechaniczny refaktor, podbicie zależności)? Brak tematu to normalny wynik — cisza jest OK.
+   Okazje w analizie: zatwierdzone `decisions[]` (`trigger: decision`), nowy ADR/BDR (`adr`),
+   istotna dyskusja w panelu (`discussion`). Jeden zalążek na temat, nie na przebieg.
+3. Payload wg `<claude-patterns>/schemas/blog-seed-payload-v1.schema.json` zapisz do pliku
+   tymczasowego (np. `$TMPDIR`, poza projektem) i wywołaj W TLE:
+
+```
+node <claude-patterns>/scripts/blog-seed-emit.mjs --project {ścieżka} --payload <plik.json> --run-id {runId}
+```
+
+Treść ma być BOGATA i bezpieczna: co rozważano, odrzucone opcje i dlaczego, niewiadoma w chwili
+decyzji, przebieg (czas przeszły), liczby z pochodzeniem, sekcja `unknowns` zawsze niepusta.
+Etykiety pozycji: `fact` / `hypothesis` (Twoja) / `inference` (z odpowiedzi autora). Bez prozy,
+scen, emocji i cytatów. `source.ref` to PRYWATNY wskaźnik (np. `{TASK-ID}#decyzja-2`) — skrypt go
+haszuje i nigdy nie zapisuje. Identyfikatory (ścieżki, hashe, ID, nazwy repo) skrypt i tak wytnie,
+ale nie wpisuj ich celowo. Routing: test „czy wpis ma sens dla kogoś, kto nigdy nie użyje
+produktu?" (tak → `personal`, nie → `product`) + `confidence` (`medium` → podaj `alt_angle` dla
+drugiego bloga). Wynik/błąd skryptu nie zmienia artefaktu ani `--outcome`; kod ≠ 0 = jedno zdanie
+w `## Uwagi`. Wejściem są tylko artefakty przebiegu — nie transkrypt rozmowy.
+
 ## Rejestr reguł
 
 | ID | trigger | wymagana akcja | mechanizm | ref |
@@ -115,7 +146,7 @@ Nic poza tym — żadnego pliku w `src/`, żadnego taska, żadnego ADR-a.
 | ANL-001 | cały przebieg | zapisy wyłącznie z listy zamkniętej powyżej; zero implementacji | tylko prompt (hook `check-delegation` zna tylko pliki źródłowe) | — |
 | ANL-002 | dopisanie wiersza do rejestru TM | `Edit` dozwolony wyłącznie do rejestrów z listy; `MultiEdit` zabroniony | frontmatter komendy | [ANL-002](docs/decisions/orchestrate-rule-history.md#anl-002) |
 | ANL-003 | szukanie pliku/symbolu | `Grep`/`Glob` do CELOWANEGO szukania; szerokie przeczesywanie deleguj do Explore | tylko prompt | [ANL-003](docs/decisions/orchestrate-rule-history.md#anl-003) |
-| ANL-004 | użycie `Bash` | wyłącznie deterministyczne i tylko-do-odczytu (indeks decyzji, `git log`/`status`); żadnych zapisów, instalacji ani testów. Wyjątek: `telemetry-emit` i `report-deviation` — zapisują do claude-patterns, nie do projektu | tylko prompt | — |
+| ANL-004 | użycie `Bash` | wyłącznie deterministyczne i tylko-do-odczytu (indeks decyzji, `git log`/`status`); żadnych zapisów, instalacji ani testów. Wyjątek: `telemetry-emit` i `report-deviation` — zapisują do claude-patterns, nie do projektu; `blog-seed-emit` — zapisuje wyłącznie do `stage/` repo blogów (ADR 0013) | tylko prompt | — |
 | ANL-005 | start | brak `.claude/config/runtime.yml` → STOP; `schema_version ≠ 1` → STOP z poleceniem ponownego setupu | tylko prompt | — |
 | ANL-006 | przed rozpisaniem jednostek pracy | `git status --short` + `git log --oneline -15`; potwierdź grepem na KONKRETNYM pliku, że praca nie jest zrobiona; „już zrobione" → `status: already-done` z dowodem, bez jednostki | tylko prompt | [ANL-006](docs/decisions/orchestrate-rule-history.md#anl-006) |
 | ANL-007 | panel ma stage `threat-model` | dopasuj `when:` do taska; trafienie + brak pliku TM → uruchom stage i ZAPISZ TM; TM niepokrywający zakresu → ADDENDUM albo blokujące `open_question` | tylko prompt | — |

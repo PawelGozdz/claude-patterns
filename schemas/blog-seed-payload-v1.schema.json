@@ -1,0 +1,187 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "claude-patterns/blog-seed-payload-v1",
+  "title": "Payload zalążka wpisu od agenta /analyze lub /orchestrate (ADR 0013)",
+  "description": "Wejście scripts/blog-seed-emit.mjs. Agent pisze bogaty kontekst; skrypt usuwa identyfikatory, stosuje deny-listę bloga i bramki, dopiero potem zapisuje plik. Pozycja listy to tekst albo {text, label}; label: fact | hypothesis | inference (z odpowiedzi autora). Odwołania {\"$ref\": \"#item\"} rozwija scripts/lib/blog-seed/payload.mjs (walidator repo nie zna $ref).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "source", "topic", "routing", "suggested", "content"],
+  "properties": {
+    "schema": { "const": "blog-seed-payload-v1" },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "trigger", "ref"],
+      "properties": {
+        "kind": { "enum": ["analyze", "orchestrate", "telemetry"] },
+        "trigger": { "enum": ["adr", "decision", "halt", "go_with_gaps", "no_go", "discussion", "monthly"] },
+        "ref": { "type": "string", "minLength": 1, "maxLength": 200, "description": "PRYWATNY wskaźnik źródła (np. TASK-ID#decyzja-2). Nigdy nie trafia do pliku — tylko do HMAC i lokalnego indeksu." },
+        "area": { "type": "string", "maxLength": 200, "description": "Opis funkcjonalny obszaru, bez nazw kodowych." }
+      }
+    },
+    "topic": { "type": "string", "minLength": 3, "maxLength": 160 },
+    "slug": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$", "maxLength": 70 },
+    "routing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["blog", "confidence", "test_answer", "reason"],
+      "properties": {
+        "blog": { "enum": ["personal", "product"] },
+        "confidence": { "enum": ["high", "medium", "low"] },
+        "test_answer": { "type": "string", "minLength": 2, "maxLength": 300 },
+        "reason": { "type": "string", "minLength": 2, "maxLength": 300 },
+        "alt_angle": { "type": "string", "maxLength": 400, "description": "Przy confidence: medium — kąt dla DRUGIEGO bloga (nie kopia). Brak = tylko jeden zalążek." }
+      }
+    },
+    "suggested": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["format", "pillar"],
+      "properties": {
+        "format": { "enum": ["decision", "post-mortem", "conversation", "interactive", "note", "numbers"] },
+        "pillar": { "enum": ["decisions", "mistakes", "people", "numbers", "journey"] },
+        "length": { "type": "string", "pattern": "^[0-9]{2,4}-[0-9]{2,4}$" }
+      }
+    },
+    "content": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["facts", "evidence", "unknowns"],
+      "properties": {
+        "context": { "type": "array", "maxItems": 12, "items": { "$ref": "#item" } },
+        "facts": { "type": "array", "minItems": 1, "maxItems": 15, "items": { "$ref": "#item" } },
+        "decision": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "choice": { "type": "string", "maxLength": 600 },
+            "alternatives": {
+              "type": "array",
+              "maxItems": 8,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["option", "why_rejected"],
+                "properties": {
+                  "option": { "type": "string", "minLength": 1, "maxLength": 300 },
+                  "why_rejected": { "type": "string", "minLength": 1, "maxLength": 600 }
+                }
+              }
+            },
+            "unknowns_then": { "type": "array", "maxItems": 8, "items": { "$ref": "#item" } }
+          }
+        },
+        "went_wrong": { "type": "array", "maxItems": 10, "items": { "$ref": "#item" } },
+        "evidence": {
+          "type": "array",
+          "maxItems": 12,
+          "description": "Pusta lista jest poprawna składniowo, ale nie przechodzi bramki dowodu (w dry-run zalążek zapisany z suppressed: evidence).",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["claim", "type", "origin"],
+            "properties": {
+              "claim": { "type": "string", "minLength": 1, "maxLength": 400 },
+              "type": { "enum": ["adr", "decision", "metric", "log", "diff", "quote"] },
+              "origin": { "enum": ["measured", "estimated", "external"] },
+              "public_form": { "type": "string", "maxLength": 400 }
+            }
+          }
+        },
+        "numbers": {
+          "type": "array",
+          "maxItems": 12,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["value", "what", "origin"],
+            "properties": {
+              "value": { "type": "string", "minLength": 1, "maxLength": 60 },
+              "what": { "type": "string", "minLength": 1, "maxLength": 300 },
+              "origin": { "enum": ["measured", "estimated", "external"] }
+            }
+          }
+        },
+        "hypothesis": { "type": "array", "maxItems": 2, "items": { "type": "string", "minLength": 1, "maxLength": 500 } },
+        "unknowns": { "type": "array", "minItems": 1, "maxItems": 12, "items": { "type": "string", "minLength": 1, "maxLength": 400 } },
+        "questions": { "type": "array", "maxItems": 3, "items": { "type": "string", "minLength": 1, "maxLength": 400 } },
+        "shape": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "openings": { "type": "array", "maxItems": 3, "items": { "type": "string", "minLength": 1, "maxLength": 300 } },
+            "do_not_use": { "type": "array", "maxItems": 12, "items": { "type": "string", "minLength": 1, "maxLength": 300 } }
+          }
+        }
+      }
+    },
+    "score": {
+      "type": "object",
+      "description": "OPCJONALNA podpowiedź do kalibracji (0-3 na kryterium + zdanie). Nie jest warunkiem zapisu, chyba że blog lub projekt włączy enforce_thresholds.",
+      "additionalProperties": false,
+      "properties": {
+        "tension": { "$ref": "#score" },
+        "uniqueness": { "$ref": "#score" },
+        "evidence_quality": { "$ref": "#score" },
+        "reader_value": { "$ref": "#score" },
+        "novelty": { "$ref": "#score" },
+        "numbers": { "$ref": "#score" },
+        "pillar_gap": { "$ref": "#score" },
+        "freshness": { "$ref": "#score" }
+      }
+    },
+    "consent": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "third_parties": { "type": "boolean", "description": "Temat opisuje osoby trzecie." },
+        "obtained": { "type": "boolean", "description": "Zgoda tych osób jest udokumentowana." }
+      }
+    },
+    "author_input": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "inferred": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["claim", "from", "confidence"],
+            "properties": {
+              "claim": { "type": "string", "minLength": 1, "maxLength": 400 },
+              "from": { "type": "string", "minLength": 1, "maxLength": 120 },
+              "confidence": { "enum": ["high", "medium", "low"] }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "item": {
+      "anyOf": [
+        { "type": "string", "minLength": 1, "maxLength": 600 },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["text", "label"],
+          "properties": {
+            "text": { "type": "string", "minLength": 1, "maxLength": 600 },
+            "label": { "enum": ["fact", "hypothesis", "inference"] }
+          }
+        }
+      ]
+    },
+    "score": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "why"],
+      "properties": {
+        "value": { "type": "integer", "minimum": 0, "maximum": 3 },
+        "why": { "type": "string", "minLength": 1, "maxLength": 300 }
+      }
+    }
+  }
+}

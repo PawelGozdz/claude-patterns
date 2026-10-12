@@ -151,3 +151,23 @@ entry_points:
 #   instance: juz-ide-api-3      # tożsamość TEJ kopii; puste = basename katalogu
 #   emits: [geo, pricing, actor] # topiki domenowe; strukturalne dochodzą automatycznie
 #   subscribes: [juz-ide-api/*, juz-ide-mobile-app/contracts, claude-patterns/hooks]
+
+# --- Zalążki wpisów blogowych (opcjonalnie, ADR 0013) ---
+# Opt-in: brak sekcji = projekt nie zasila żadnego bloga. Agent /analyze i /orchestrate sam ocenia,
+# czy temat jest wart wpisu; scripts/blog-seed-emit.mjs czyści identyfikatory i stosuje deny-listę
+# bloga. Sekcja NIE trafia do CLAUDE.md (generator jej nie czyta) — mimo to zakazane tematy pisz
+# jako ogólne KATEGORIE ("mechanizmy autoryzacji"), nigdy jako konkretne nazwy planów czy sekretów.
+#
+# blog_seeds:
+#   enabled: true
+#   public_alias: "narzędzie do X"      # jedyna nazwa projektu, jaka trafi do zalążka
+#   targets: [{id: product, path: ../juz-ide-blog}, {id: personal, path: ../personal-blog}]
+#   routing_hint: auto                  # auto | personal | product | both
+#   mode: dry-run                       # dry-run | live — live dopiero po kalibracji (blog może wymusić dry-run)
+#   exclude:
+#     project: false                    # true = ten projekt nigdy nie daje zalążków
+#     topics: ["mechanizmy autoryzacji", "schematy danych"]
+#     artifact_globs: ["docs/security/**"]   # tych plików agent nie czyta na potrzeby zalążka
+#   triggers: [adr, decision, halt, go_with_gaps, no_go, discussion]
+#   embargo_until: null                 # "RRRR-MM-DD" — do tej daty żadnych zalążków
+#   third_parties: false                # true = każdy zalążek wymaga udokumentowanej zgody osób trzecich
