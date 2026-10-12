@@ -25,6 +25,7 @@ import { readFileSync, existsSync, statSync, readdirSync, openSync, readSync, cl
 import { join } from 'node:path';
 import { homedir } from 'node:os';
 import { execFileSync } from 'node:child_process';
+import { auditLogStale } from './lib/cron-freshness.mjs';
 
 const HOME = homedir();
 const PROJECTS = join(HOME, '.claude/projects');
@@ -160,6 +161,26 @@ if (!existsSync(AGENT_LOG)) {
     ]);
   } else {
     notes.push(`agent-usage.jsonl aktualny (ostatni wpis ${new Date(last).toISOString().slice(0, 10)})`);
+  }
+}
+
+// ── 3. Codzienny audyt floty (cron, dni robocze 07:30) ───────────────────────
+// TASK-OBS-007 (ADR 0011 B1): wpis crona ma zaszytą ścieżkę node z nvm, więc po zmianie wersji
+// padnie po cichu. Dowód życia = mtime logu (`>>` dopisuje przy każdym uruchomieniu).
+const AUDIT_LOG = join(HOME, '.claude/metrics/audit-daily.log');
+if (!existsSync(AUDIT_LOG)) {
+  notes.push('brak ~/.claude/metrics/audit-daily.log — cron audytu jeszcze nie ruszył (pierwszy dzień roboczy 07:30)');
+} else {
+  const stale = auditLogStale(statSync(AUDIT_LOG).mtimeMs);
+  const fmt = (d) => new Date(d).toISOString().slice(0, 16);
+  if (stale) {
+    findings.push([
+      `codzienny audyt nie zapisał logu: ostatni zapis ${stale.last === null ? '—' : fmt(stale.last)}, ` +
+      `a ostatni dzień roboczy 07:30 był ${fmt(stale.expected)} — cron nie chodzi (zła ścieżka node po zmianie nvm?)`,
+      'crontab -l | grep audit; wpis przez scripts/cron/audit-daily.sh (sam szuka node)',
+    ]);
+  } else {
+    notes.push('audit-daily.log aktualny względem ostatniego dnia roboczego');
   }
 }
 

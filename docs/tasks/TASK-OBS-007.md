@@ -2,7 +2,7 @@
 id: TASK-OBS-007
 title: 'Higiena raportowania: postarzanie triage, nadmiary w audycie, świeżość codziennego audytu'
 type: feature
-status: todo
+status: review
 priority: P2
 story_points: 3
 created_date: 2026-10-10
@@ -45,6 +45,6 @@ przestał chodzić, jest wykrywany, a audyt widzi też to, czego nikt nie zadekl
 
 ## Kryteria akceptacji
 
-- [ ] Stare rekordy skrzynki widoczne w wyjściu pre-commit (bez blokowania commita).
-- [ ] Brak wpisu w `audit-daily.log` z ostatniego dnia roboczego = ostrzeżenie.
-- [ ] Nadmiary raportowane w audycie jako INFO, z evalem.
+- [x] Stare rekordy skrzynki widoczne w wyjściu pre-commit (bez blokowania commita).
+- [x] Brak wpisu w `audit-daily.log` z ostatniego dnia roboczego = ostrzeżenie.
+- [x] Nadmiary raportowane w audycie jako INFO, z evalem.

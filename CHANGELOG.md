@@ -11,6 +11,13 @@ and none of it is instruction — it is history.
 ## [Unreleased]
 
 ### Added
+- Higiena raportowania (TASK-OBS-007, ADR 0011 B1/B4/B5): pre-commit wypisuje zgłoszenia skrzynki
+  bez ruchu (`promoted` > 7 dni, `proposed` > 14 dni; ruch = najnowsze z `last_seen`/`reopened_at`/
+  `first_seen`; nigdy nie blokuje); `audit-projects` raportuje jako INFO agentów, kategorie wzorców
+  i skille obecne w `.claude/`, a niewnoszone przez kompozycję (`surplusIssues`);
+  `telemetry-freshness` pilnuje `~/.claude/metrics/audit-daily.log` (ostatni dzień roboczy 07:30 + 2 h
+  zapasu); `scripts/cron/audit-daily.sh` sam szuka node (PATH, potem najnowszy z nvm) zamiast zaszytej
+  `v24.14.1`. Eval `reporting-hygiene`. Wpis crona do podmiany ręcznie — patrz nagłówek skryptu.
 - Plan przebiegu i wersja silnika w `run.start` (TASK-OBS-006, ADR 0012): `orchestrate-prepare`
   emituje `telemetryPlan` (warstwy × implementer/verifier + bramka) i `engine` (hash commitu
   claude-patterns), skrypt zwraca je w wyniku, collector dopina do `run.start`; `telemetry-emit
