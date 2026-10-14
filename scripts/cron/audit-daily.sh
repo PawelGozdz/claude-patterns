@@ -17,4 +17,6 @@ find_node() {
 }
 
 NODE="$(find_node)" || { echo "audit-daily: nie znaleziono node (PATH ani ~/.nvm/versions/node)" >&2; exit 1; }
+# skrypty audytu wołają potomne `node` po nazwie — pod cronem musi być w PATH
+export PATH="$(dirname "$NODE"):$PATH"
 cd "$REPO" && exec "$NODE" scripts/audit-projects.mjs --all --report

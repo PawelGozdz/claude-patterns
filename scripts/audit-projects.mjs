@@ -86,7 +86,7 @@ const projects = readdirSync(ROOT, { withFileTypes: true })
 // zagłuszała prawdziwe sygnały. `--check` zwraca tę samą decyzję co dawniej, a dodatkowo
 // drukuje `inputs_hash:` (bez generatora) — porównujemy go z polem w runtime.yml projektu.
 const stalenessIssue = (P) => {
-  const res = spawnSync('node', [join(REPO, 'scripts/materialize-runtime.mjs'), P, '--check'],
+  const res = spawnSync(process.execPath, [join(REPO, 'scripts/materialize-runtime.mjs'), P, '--check'],
     { encoding: 'utf8' });
   if (res.status === 0) return null;
   const fix = `node scripts/materialize-runtime.mjs ${P}`;
@@ -196,7 +196,7 @@ for (const name of projects) {
   //    nieosiągalny wzorzec albo brakujący agent.
   if (composed) {
     try {
-      execFileSync('node', [join(REPO, 'scripts/verify-project-setup.mjs'), P], { stdio: 'pipe' });
+      execFileSync(process.execPath, [join(REPO, 'scripts/verify-project-setup.mjs'), P], { stdio: 'pipe' });
     } catch (e) {
       const detail = String(e.stdout ?? '').split('\n').filter((l) => l.trim().startsWith('✗') || l.includes('BRAKI')).join('; ').trim();
       issues.push([`verify-project-setup: setup niekompletny${detail ? ` (${detail})` : ''}`,
@@ -252,7 +252,7 @@ for (const name of projects) {
 // obok audytu projektów — rozjazd tutaj dotyczy każdego repo naraz.
 let routingIssue = null;
 try {
-  execFileSync('node', [join(REPO, 'scripts/generate-pattern-routing.mjs'), '--check'], { stdio: 'pipe' });
+  execFileSync(process.execPath, [join(REPO, 'scripts/generate-pattern-routing.mjs'), '--check'], { stdio: 'pipe' });
 } catch {
   routingIssue = ['hooks/lib/pattern-routing.generated.js nie odpowiada blokom',
     'node scripts/generate-pattern-routing.mjs', ERROR];
@@ -264,7 +264,7 @@ try {
 // musi to gdzieś widać. Szczegóły i uzasadnienie metody: scripts/telemetry-freshness.mjs.
 let telemetryIssue = null;
 try {
-  execFileSync('node', [join(REPO, 'scripts/telemetry-freshness.mjs')], { stdio: 'pipe' });
+  execFileSync(process.execPath, [join(REPO, 'scripts/telemetry-freshness.mjs')], { stdio: 'pipe' });
 } catch (e) {
   const lines = String(e.stdout ?? '').split('\n').concat(String(e.stderr ?? '').split('\n'))
     .map((l) => l.trim()).filter((l) => l.startsWith('✗'));
@@ -278,7 +278,7 @@ try {
 // sprzed dwóch reguł, a audyt meldował „wszystko aktualne".
 let ragIssue = null;
 try {
-  execFileSync('node', [join(REPO, 'scripts/rag-freshness.mjs')], { stdio: 'pipe' });
+  execFileSync(process.execPath, [join(REPO, 'scripts/rag-freshness.mjs')], { stdio: 'pipe' });
 } catch (e) {
   const detail = String(e.stderr ?? '').trim().split('\n')[0].trim();
   ragIssue = [detail || 'kolekcje RAG nie odpowiadają drzewu patterns/**+rules/**',
