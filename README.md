@@ -521,7 +521,7 @@ cd ~/projects/claude-patterns
 **What this does**:
 - Creates per-file symlinks in `~/.claude/agents/` for 25 universal agents
 - Creates `~/.claude/commands/` symlink (37 commands)
-- Creates `~/.claude/hooks/` symlink (46 hooks)
+- Creates `~/.claude/hooks/` symlink (47 hooks)
 - Idempotent — safe to run multiple times
 
 ### Step 2: Project Setup (once per project)
@@ -1023,6 +1023,8 @@ file's own header — if one looks wrong, the header is wrong.
 | `pre-commit-guards.mjs` | The local pre-commit gate (dev machine, not a CI server) |
 
 ### Telemetry and audit
+
+How to run and verify all of this: [`docs/TELEMETRY-HOWTO.md`](docs/TELEMETRY-HOWTO.md).
 
 | Script | Purpose |
 |--------|---------|

@@ -2,11 +2,11 @@
 id: TASK-OBS-006
 title: 'Plan przebiegu w run.start (orchestrate-prepare) + commit opisu deviation_note'
 type: feature
-status: review
+status: done
 priority: P2
 story_points: 2
 created_date: 2026-10-10
-updated_date: 2026-10-10
+updated_date: 2026-10-15
 assignee: '@unassigned'
 labels: [observability, telemetry, orchestration]
 epic: EP-OBSERVABILITY-001

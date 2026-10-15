@@ -2,11 +2,11 @@
 id: TASK-OBS-007
 title: 'Higiena raportowania: postarzanie triage, nadmiary w audycie, świeżość codziennego audytu'
 type: feature
-status: review
+status: done
 priority: P2
 story_points: 3
 created_date: 2026-10-10
-updated_date: 2026-10-10
+updated_date: 2026-10-15
 assignee: '@unassigned'
 labels: [observability, reporting, audit]
 epic: EP-OBSERVABILITY-001

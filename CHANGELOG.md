@@ -11,6 +11,18 @@ and none of it is instruction — it is history.
 ## [Unreleased]
 
 ### Added
+- Hook `workflow-metrics-stop` (zdarzenie Stop): domyka zbiór metryk Workflow po zakończeniu przebiegu w tle. `postrun` odpalał się przy starcie i pomijał przebiegi w toku (ai-gateway 2026-10-15: 45 kroków, ok. $11 poza metrykami). Instrukcja: `docs/TELEMETRY-HOWTO.md`.
+- Next.js: 5 nowych wzorców z kartami reguł, zweryfikowane z nextjs.org/docs 16.4 (2026-10-12):
+  `auth-boundaries` (DAL jako granica, `proxy.ts` tylko filtr wstępny, autoryzacja w akcji i
+  handlerze, DTO), `route-handlers` (Route Handler vs Server Action, webhooki z HMAC,
+  `revalidateTag(tag, profile)`), `env-secrets` (`NEXT_PUBLIC_` zamrożone w buildzie, jeden
+  zwalidowany moduł `server-only`), `security-headers-csp` (CSP statyczny vs nonce w `proxy.ts`,
+  koszt: wszystkie strony dynamiczne, brak PPR), `observability` (`instrumentation.ts`,
+  `onRequestError` z redakcją cookie/authorization/query). Karty `_summary.md` dla wszystkich
+  12 wzorców `nextjs/` (wcześniej żaden nie miał karty, więc nie wchodził do iniekcji w zwartej formie).
+- `blocks/nextjs.yml`: wyzwalacze dla nowych wzorców. Dopasowanie słów to podciąg
+  (`orchestrate-prepare.mjs`), więc użyto fraz wielowyrazowych (`environment variable`,
+  `security header`) zamiast gołych `env`/`header`.
 - Higiena raportowania (TASK-OBS-007, ADR 0011 B1/B4/B5): pre-commit wypisuje zgłoszenia skrzynki
   bez ruchu (`promoted` > 7 dni, `proposed` > 14 dni; ruch = najnowsze z `last_seen`/`reopened_at`/
   `first_seen`; nigdy nie blokuje); `audit-projects` raportuje jako INFO agentów, kategorie wzorców
@@ -90,6 +102,15 @@ and none of it is instruction — it is history.
   blocks on one axis conflict — the materializer never enforced that (ADR 0010).
 
 ### Changed
+- Next.js, wzorce istniejące (sprawdzone z nextjs.org/docs 16.4): `auth-pattern` to teraz WARIANT
+  z ręczną sesją i wchodzi tylko na `jwt/jose/bcrypt/…`, nie na każde `auth/login` (dokumentacja
+  zaleca bibliotekę, a wzorzec uczył projekty na Better Auth własnego JWT); domyślnie wchodzi
+  `auth-boundaries`. Przykłady bez Prismy (`db.x.findMany` → funkcje DAL `server-only`).
+  `forms-actions`: `route.ts` nadal właściwy dla webhooków i klientów zewnętrznych, nie tylko
+  „Server Actions zamiast API". `testing`: usunięto nieistniejące `next/vitest`/`nextVitest()`;
+  Vitest nie obsługuje async Server Components (E2E). `data-fetching`: `force-cache` to jawny
+  opt-in cache'ujący także żądania z `cookie`/`authorization`, a nie „no-op". Uzupełniono
+  `Layer`/`Status`/✅❌ w 7 plikach (baseline lintu 37 → 30).
 - `/orchestrate` ORC-104: luka `unverified_scope` należąca do bardziej specyficznej jednostki (np. specyfikacje w `queues/__tests__/` przy jednostce z `queues/`) nie jest już liczona jako luka warstwy nadrzędnej; polecenie sondy startuje z korzenia repo niezależnie od cwd agenta; `layers_done` zapisujemy także po zatrzymaniu przebiegu. Z juz-ide-api-1 TS-AUTH-CAPABILITIES-INIT-001.
 - `/orchestrate` ORC-103: runda naprawcza po bramce końcowej porównuje odcisk drzewa przed i po (naprawa bez zmiany plików = ostrzeżenie, bez ponownej bramki); sonda uruchamia padające pliki testowe raz osobno i łagodzi niestabilne testy z ostrzeżeniem; BLOCKED_BY_PRIOR nazywa wcześniejszą warstwę-właściciela i podpowiada `layers_done`. Z zgłoszeń marketing-hub TS-MH-007, grant-flow TS-PROJ-COMPANY-001, ai-gateway TS-AIG-073.
 - `/orchestrate` ORC-102: frontmatter analizy, który nie parsuje się jako YAML, zatrzymuje `prepare` (exit 2) zamiast po cichu gubić `units[]`, `decisions[]`, `layers_scope` i `minor_fixes`; hook `check-human-voice` ostrzega o tym przy zapisie analizy. Wykryte: 101 z 926 analiz we flocie miało taki frontmatter (ai-gateway TS-AIG-084).

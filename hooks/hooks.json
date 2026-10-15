@@ -166,6 +166,18 @@
         ],
         "description": "Copy .env files to worktree on creation"
       }
+    ],
+    "Stop": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$HOME/.claude/hooks/workflow-metrics-stop.js\""
+          }
+        ],
+        "description": "Workflow metrics: re-run collector at end of turn — background Workflow runs finish after PostToolUse (TASK-OBS-007)"
+      }
     ]
   }
 }
