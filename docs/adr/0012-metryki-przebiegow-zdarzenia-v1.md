@@ -112,6 +112,21 @@ na 100 kroków per sygnatura), cichy zgon / eskalacje / zabite przebiegi, koszt 
 i rolę, dla analizy: pytania otwarte, pominięte stage panelu, odsetek zatwierdzeń; dla floty:
 odsetek kontroli audytu na OK dzień po dniu.
 
+### Transport agregatów na serwer zespołu (kontrakt, TASK-OBS-008)
+
+Na serwer jadą agregaty dzienne, nie surowe zdarzenia. `scripts/telemetry-export.mjs` składa paczkę
+`{ v: 1, kind: 'rollup-batch', hosts, rollups[] }` z `telemetry/rollups/`.
+
+- **Biała lista zamiast czyszczenia.** Paczka powstaje od zera z pól, które znamy (liczniki, percentyle,
+  `project`/`day`/`host`). Nowe pole w rollupie samo nie wyjedzie. Drugą linią obrony jest `findLeaks`:
+  skan kluczy i napisów pod kątem ścieżek, białych znaków i id zadań (eksport kończy się exit 1).
+- **Odstępstwa bez sygnatur.** Klucz odstępstwa (`DEV-…`) powstaje z treści zgłoszenia, więc mógłby nieść
+  nazwy z projektu. Wychodzą liczniki per (przyczyna, wyzwalacz).
+- **Idempotencja.** `rollups[].id` = stabilna funkcja `projekt|dzień|host`; odbiorca robi upsert po `id`
+  (zastępuje). Przeliczenie dnia zmienia `contentHash`, ale nie `id`, więc ponowna wysyłka niczego nie dubluje.
+- **Nie ma jeszcze wysyłki.** Skrypt tylko buduje paczkę. Adres serwera, uwierzytelnienie i harmonogram
+  to osobna decyzja; nazwa projektu (`project`) jedzie jawnie — anonimizacja to decyzja po stronie zespołu.
+
 ## Kolejność wdrożenia
 
 1. **(2026-10-10)** Schemat v1, `scripts/lib/telemetry-events.mjs`, `scripts/telemetry-emit.mjs`,

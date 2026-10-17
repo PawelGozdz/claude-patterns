@@ -20,6 +20,7 @@ node scripts/flow-top.mjs grant-flow           # przebieg Workflow na żywo: pos
 node scripts/workflow-metrics-report.mjs         # przegląd kosztów per krok; --by task|model|day|project, --top 10, --regression
 node scripts/telemetry-aggregate.mjs --since 2026-10-01   # agregaty dzienne do telemetry/rollups/ (--check nic nie zapisuje)
 node scripts/telemetry-freshness.mjs --verbose   # czy pomiar nie stanął
+node scripts/telemetry-export.mjs --check      # paczka agregatów dla serwera zespołu: walidacja (bez --check: JSON na stdout, --out plik); niczego nie wysyła
 node scripts/audit-projects.mjs --all --report   # audyt floty; --report przekazuje błędy do docs/tasks/_inbox/
 node scripts/report-deviation.mjs --list         # skrzynka odstępstw, triage
 ```
