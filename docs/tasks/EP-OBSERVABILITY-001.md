@@ -8,7 +8,7 @@ created_date: 2026-10-10
 updated_date: 2026-10-10
 labels: [observability, telemetry, reporting]
 external_ref: 'docs/adr/0011-raportowanie-dryfu-i-telemetria-floty.md, docs/adr/0012-metryki-przebiegow-zdarzenia-v1.md'
-member_tasks: [TASK-OBS-003, TASK-OBS-004, TASK-OBS-005, TASK-OBS-006, TASK-OBS-007, TASK-OBS-008]
+member_tasks: [TASK-OBS-003, TASK-OBS-004, TASK-OBS-005, TASK-OBS-006, TASK-OBS-007, TASK-OBS-008, TASK-OBS-009]
 ---
 
 # EP-OBSERVABILITY-001 — Raportowanie i telemetria floty
@@ -40,7 +40,8 @@ migracja historii pokazała, że stara telemetria raportowała 420/420 udanych p
 | Audyt i setup jako źródła metryk, setup zgłasza do skrzynki | ⏳ | TASK-OBS-004 |
 | Plan przebiegu w `run.start` (orchestrate) | ⏳ **następny** — odblokowane 2026-10-10 | TASK-OBS-006 |
 | Higiena raportowania (postarzanie triage, nadmiary, świeżość crona) | ⏳ | TASK-OBS-007 |
-| Dashboard na żywo + transport na serwer | ⏳ później | TASK-OBS-008 |
+| Dashboard na żywo + kontrakt transportu | ✅ | TASK-OBS-008 |
+| Wysyłka na serwer + widok web | ⏳ później | TASK-OBS-009 |
 
 ## Kolejność
 
