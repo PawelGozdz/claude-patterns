@@ -11,6 +11,7 @@ and none of it is instruction — it is history.
 ## [Unreleased]
 
 ### Added
+- `scripts/flow-top.mjs` (TASK-OBS-008): przebieg Workflow na żywo w terminalu: pasek planu N/M (plan z `telemetryPlan` w skrypcie, więc działa też bez wyniku końcowego), wiersz per jednostka z NO-GO naprawione/otwarte, bieżący agent, koszt i porównanie udziału napraw ze średnią z rollupów. Logika w `scripts/lib/flow-live.mjs` (te same konwertery co agregaty), eval `flow-top`.
 - Hook `workflow-metrics-stop` (zdarzenie Stop): domyka zbiór metryk Workflow po zakończeniu przebiegu w tle. `postrun` odpalał się przy starcie i pomijał przebiegi w toku (ai-gateway 2026-10-15: 45 kroków, ok. $11 poza metrykami). Instrukcja: `docs/TELEMETRY-HOWTO.md`.
 - Next.js: 5 nowych wzorców z kartami reguł, zweryfikowane z nextjs.org/docs 16.4 (2026-10-12):
   `auth-boundaries` (DAL jako granica, `proxy.ts` tylko filtr wstępny, autoryzacja w akcji i

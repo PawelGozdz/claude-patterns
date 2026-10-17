@@ -1029,6 +1029,7 @@ How to run and verify all of this: [`docs/TELEMETRY-HOWTO.md`](docs/TELEMETRY-HO
 | Script | Purpose |
 |--------|---------|
 | `workflow-metrics-collect.mjs` | Per-step Workflow metrics into `~/.claude/metrics/workflow-steps.jsonl` (hook-driven) |
+| `flow-top.mjs` | Live view of a running Workflow: plan progress, NO-GO fixed/open per unit, cost, comparison with the 30-day average |
 | `workflow-metrics-report.mjs` | Cost and usage reports: `--by`, `--top`, `--regression`, `--sessions`, `--calibrate`, `--json` |
 | `workflow-metrics-lib.mjs` | Shared metrics helpers. No LLM, no dependencies beyond node builtins |
 | `workflow-conformance.mjs` | Did a run follow the plan in `runtime.yml` — `OK` or `DEVIATIONS(n)` |

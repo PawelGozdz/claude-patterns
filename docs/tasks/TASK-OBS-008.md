@@ -2,11 +2,11 @@
 id: TASK-OBS-008
 title: 'Dashboard telemetrii (terminal na żywo, potem web) i transport na serwer zespołu'
 type: feature
-status: todo
+status: in-progress
 priority: P3
 story_points: 8
 created_date: 2026-10-10
-updated_date: 2026-10-10
+updated_date: 2026-10-15
 assignee: '@unassigned'
 labels: [observability, telemetry, dashboard]
 epic: EP-OBSERVABILITY-001
@@ -43,5 +43,5 @@ z agregatami floty dla zespołu rozwijającego claude-patterns.
 
 ## Kryteria akceptacji
 
-- [ ] `flow-top` pokazuje postęp planu, błędy per krok z podziałem naprawione/otwarte, koszt.
+- [x] `flow-top` pokazuje postęp planu, błędy per krok z podziałem naprawione/otwarte, koszt.
 - [ ] Transport idempotentny, zero danych merytorycznych projektów na serwerze.

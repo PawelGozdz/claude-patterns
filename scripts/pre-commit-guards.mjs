@@ -75,6 +75,7 @@ runCheck('eval: telemetry-events', 'node', ['tests/flow-evals/telemetry-events/r
 runCheck('eval: telemetry-sessions', 'node', ['tests/flow-evals/telemetry-sessions/run.js']);
 runCheck('eval: telemetry-rollups', 'node', ['tests/flow-evals/telemetry-rollups/run.js']);
 runCheck('eval: reporting-hygiene', 'node', ['tests/flow-evals/reporting-hygiene/run.js']);
+runCheck('eval: flow-top', 'node', ['tests/flow-evals/flow-top/run.js']);
 runCheck('validate-agents', 'node', ['scripts/ci/validate-agents.js']);
 runCheck('validate-business-rules', 'node', ['scripts/ci/validate-business-rules.js']);
 runCheck('validate-commands', 'node', ['scripts/ci/validate-commands.js']);

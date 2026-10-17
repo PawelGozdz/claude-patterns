@@ -16,6 +16,7 @@ higiena raportowania: [ADR 0011](adr/0011-raportowanie-dryfu-i-telemetria-floty.
 
 ```bash
 node scripts/workflow-metrics-collect.mjs        # ręczny zbiór (idempotentny) — gdy podejrzewasz, że hook coś pominął
+node scripts/flow-top.mjs grant-flow           # przebieg Workflow na żywo: postęp planu, NO-GO naprawione/otwarte, koszt, średnia 30 dni (--once, --json, --run wf_…)
 node scripts/workflow-metrics-report.mjs         # przegląd kosztów per krok; --by task|model|day|project, --top 10, --regression
 node scripts/telemetry-aggregate.mjs --since 2026-10-01   # agregaty dzienne do telemetry/rollups/ (--check nic nie zapisuje)
 node scripts/telemetry-freshness.mjs --verbose   # czy pomiar nie stanął
