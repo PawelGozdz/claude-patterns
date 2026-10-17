@@ -51,6 +51,16 @@ GLOBAL_PATTERNS="$PATTERNS_REPO/patterns"
 # Resolve absolute path
 PROJECT_DIR=$(cd "$PROJECT_DIR" && pwd)
 
+# Dryf, który setup dotąd tylko wypisywał na ekran, trafia też do skrzynki claude-patterns
+# (ADR 0011 B3, TASK-OBS-004). Best-effort: błąd zgłoszenia nigdy nie przerywa setupu.
+# --once-per-project: kolejny setup tego samego projektu nie dopisuje wystąpienia.
+report_drift() {
+  local rule="$1" reason="$2"
+  node "$PATTERNS_REPO/scripts/report-deviation.mjs" --project "$(basename "$PROJECT_DIR")" \
+    --source setup --trigger setup_drift --rule "$rule" --reason "$reason" --once-per-project \
+    >/dev/null 2>&1 || true
+}
+
 echo -e "${BLUE}Project:${NC} $PROJECT_DIR"
 echo -e "${BLUE}Patterns repo:${NC} $PATTERNS_REPO"
 echo ""
@@ -298,6 +308,7 @@ else
         ensure_symlink "$KNOWLEDGE_DIR/patterns/$subdir" "$GLOBAL_PATTERNS/$subdir" "patterns/$subdir (z overlay)"
       else
         echo -e "  ${YELLOW}Warning:${NC} overlay declares patterns/$subdir — brak takiego katalogu w claude-patterns"
+        report_drift SETUP-OVERLAY-DIR-MISSING "overlay deklaruje patterns/$subdir, a w claude-patterns nie ma takiego katalogu"
       fi
     done
   fi
@@ -338,6 +349,7 @@ refresh_patterns_readme() {
       || echo -e "  ${YELLOW}Warning:${NC} generate-patterns-readme.mjs zwrócił błąd — README bez zmian"
   else
     echo -e "  ${YELLOW}Preserved:${NC} patterns/README.md edytowany ręcznie — porównaj z wynikiem scripts/generate-patterns-readme.mjs"
+    report_drift SETUP-README-MANUAL "patterns/README.md edytowany ręcznie, setup go nie nadpisał"
   fi
   echo ""
 }
@@ -411,6 +423,7 @@ link_overlay_agents() {
     local src="$PATTERNS_REPO/agents/$d"
     if [[ ! -d "$src" ]]; then
       echo -e "  ${YELLOW}Warning:${NC} overlay declares agents/$d — brak takiego katalogu"
+      report_drift SETUP-OVERLAY-DIR-MISSING "overlay deklaruje agents/$d, a w claude-patterns nie ma takiego katalogu"
       continue
     fi
     mkdir -p "$PROJECT_AGENTS_DIR"
@@ -445,6 +458,7 @@ link_overlay_rules() {
     name=$(basename "$d")
     if [[ ! -d "$src" ]]; then
       echo -e "  ${YELLOW}Warning:${NC} overlay declares rules/$d — brak takiego katalogu"
+      report_drift SETUP-OVERLAY-DIR-MISSING "overlay deklaruje rules/$d, a w claude-patterns nie ma takiego katalogu"
       continue
     fi
     mkdir -p "$NATIVE_RULES_DIR"
@@ -870,6 +884,7 @@ if grep -qE '^  stack_blocks:' "$PROJECT_YML" 2>/dev/null; then
     echo -e "  ${GREEN}Materialized:${NC} .claude/config/runtime.yml"
   else
     echo -e "  ${YELLOW}FAILED:${NC} materializacja runtime.yml — popraw project.yml/bloki i uruchom ponownie"
+    report_drift SETUP-MATERIALIZE-FAILED "materializacja runtime.yml zakończyła się błędem podczas setupu"
   fi
 
   # BUSINESS_RULES.yaml — CLAUDE.md wymaga trzymania go w zgodzie z kodem domeny,

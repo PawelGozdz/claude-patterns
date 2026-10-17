@@ -8,7 +8,7 @@ created_date: 2026-10-10
 updated_date: 2026-10-10
 labels: [observability, telemetry, reporting]
 external_ref: 'docs/adr/0011-raportowanie-dryfu-i-telemetria-floty.md, docs/adr/0012-metryki-przebiegow-zdarzenia-v1.md'
-member_tasks: [TASK-OBS-003, TASK-OBS-004, TASK-OBS-005, TASK-OBS-006, TASK-OBS-007, TASK-OBS-008, TASK-OBS-009]
+member_tasks: [TASK-OBS-003, TASK-OBS-004, TASK-OBS-005, TASK-OBS-006, TASK-OBS-007, TASK-OBS-008, TASK-OBS-009, TASK-OBS-010, TASK-OBS-011]
 ---
 
 # EP-OBSERVABILITY-001 — Raportowanie i telemetria floty
@@ -37,11 +37,13 @@ migracja historii pokazała, że stara telemetria raportowała 420/420 udanych p
 | Opis `deviation_note` w schematach orchestratora | ✅ | `002d49e` (ADR 0011 B2) |
 | Metryki `/analyze` (dwa hooki + `run-start/run-end`, test na żywym Claude) | ✅ zmergowane do `develop`, hooki wpięte globalnie | TASK-OBS-003, ADR 0012 krok 3 |
 | Agregaty dzienne (per host) + `_inbox/index.json`, cron po audycie | ✅ zmergowane do `develop`, cron wpięty | TASK-OBS-005, ADR 0012 krok 5 |
-| Audyt i setup jako źródła metryk, setup zgłasza do skrzynki | ⏳ | TASK-OBS-004 |
+| Audyt jako źródło metryk (krok per projekt × kontrola), setup zgłasza do skrzynki | ✅ | TASK-OBS-004 |
 | Plan przebiegu w `run.start` (orchestrate) | ⏳ **następny** — odblokowane 2026-10-10 | TASK-OBS-006 |
 | Higiena raportowania (postarzanie triage, nadmiary, świeżość crona) | ⏳ | TASK-OBS-007 |
 | Dashboard na żywo + kontrakt transportu | ✅ | TASK-OBS-008 |
 | Wysyłka na serwer + widok web | ⏳ później | TASK-OBS-009 |
+| Bramki pre-commit w metrykach (która bramka coś łapie) | ⏳ | TASK-OBS-010 |
+| Blokady z hooków w metrykach (dzienne liczniki per reguła) | ⏳ | TASK-OBS-011 |
 
 ## Kolejność
 
