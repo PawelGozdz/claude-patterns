@@ -1,6 +1,12 @@
 ---
 id: DEV-orc-103-testing
-status: proposed
+status: promoted
+resolution: >
+  Naprawione jako ORC-106 (2026-10-17): testFailPaths rozpoznaje prefiks projektu vitest
+  workspace (|projekt|), a sonda zaczyna od rm -f /tmp/check-<warstwa>-*.log, więc stare logi z
+  poprzednich przebiegów nie zawyżają listy padających plików. Eval:
+  test-fail-paths-handles-vitest-workspace-prefix,
+  probe-clears-stale-check-logs-before-running-checks.
 trigger: blocked_by_prior
 category: other
 sources:

@@ -84,8 +84,6 @@ TESTING=$(yml_get "project.testing")
 
 CMD_ANALYZE=$(yml_get "entry_points.analyze")
 CMD_ORCH=$(yml_get "entry_points.orchestrate")
-CMD_SCAFF=$(yml_get "entry_points.scaffold")
-CMD_PROG=$(yml_get "entry_points.progress")
 
 COST_OPUS=$(yml_get "cost.opus")
 COST_SONNET=$(yml_get "cost.sonnet")
@@ -349,9 +347,7 @@ fi
 CONTENT="${CONTENT//%%DDD_RULES%%/$DDD_RULES_SECTION}"
 CONTENT="${CONTENT//%%TAXONOMY%%/$TAXONOMY_SECTION}"
 CONTENT="${CONTENT//%%CMD_ANALYZE%%/${CMD_ANALYZE:-/analyze}}"
-CONTENT="${CONTENT//%%CMD_ORCHESTRATE%%/$CMD_ORCH}"
-CONTENT="${CONTENT//%%CMD_SCAFFOLD%%/$CMD_SCAFF}"
-CONTENT="${CONTENT//%%CMD_PROGRESS%%/$CMD_PROG}"
+CONTENT="${CONTENT//%%CMD_ORCHESTRATE%%/${CMD_ORCH:-/orchestrate}}"
 CONTENT="${CONTENT//%%COST_OPUS%%/$COST_OPUS}"
 CONTENT="${CONTENT//%%COST_SONNET%%/$COST_SONNET}"
 CONTENT="${CONTENT//%%COST_HAIKU%%/$COST_HAIKU}"

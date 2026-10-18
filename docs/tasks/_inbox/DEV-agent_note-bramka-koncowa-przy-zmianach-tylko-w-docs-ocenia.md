@@ -1,6 +1,10 @@
 ---
 id: DEV-agent_note-bramka-koncowa-przy-zmianach-tylko-w-docs-ocenia
-status: proposed
+status: dismissed
+dismissed_reason: >
+  Informacyjna: bramka końcowa dla zmian tylko w docs/ oceniała spójność ADR, co dla takiego
+  diffu jest właściwe. Brudne pliki TM i analizy przed startem obsługuje ORC-090. Bez defektu
+  silnika.
 trigger: agent_note
 rule_ref: null
 first_seen: 2026-10-07

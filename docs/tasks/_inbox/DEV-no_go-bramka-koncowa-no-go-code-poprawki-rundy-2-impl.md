@@ -1,6 +1,10 @@
 ---
 id: DEV-no_go-bramka-koncowa-no-go-code-poprawki-rundy-2-impl
-status: proposed
+status: promoted
+resolution: >
+  Naprawione jako ORC-103 (2026-10-10): odcisk drzewa przed i po rundzie naprawczej
+  (fixLeftTreeUnchanged) wykrywa naprawę zgłoszoną bez zmiany w drzewie. To dokładnie ten objaw
+  (poprawki rundy 2 nie trafiły do repo).
 trigger: no_go
 rule_ref: null
 first_seen: 2026-10-05

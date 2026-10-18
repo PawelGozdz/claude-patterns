@@ -1,6 +1,11 @@
 ---
 id: DEV-orc-064-application-session-only-paths
-status: proposed
+status: dismissed
+dismissed_reason: >
+  Zgodnie z projektem: kolejność warstw i jednostek wynika z runtime.yml, a analiza przypisuje
+  jednostce warstwę (units[].layer). Handler zależny od symboli shared/auth powinien mieć layer:
+  infrastructure albo trafić do wcześniejszej jednostki; to przypisanie w analizie marketing-hub
+  TS-MH-019, nie błąd silnika. --overrides celowo nie zmienia kolejności warstw.
 trigger: blocked_by_prior
 category: other
 sources:

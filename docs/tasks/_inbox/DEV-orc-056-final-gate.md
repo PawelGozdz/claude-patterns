@@ -1,6 +1,11 @@
 ---
 id: DEV-orc-056-final-gate
-status: proposed
+status: dismissed
+dismissed_reason: >
+  Bramka zadziałała poprawnie: NO_GO cause=code za realne ustalenie (hopToken w logowalnych
+  obiektach, TM-082-02). Czerwony typecheck w gateway.deadline.test.ts po rundzie naprawczej był
+  jednorazową regresją poza zakresem warstw; poprawki bez właściciela warstwy obsługuje ORC-101,
+  a rundę naprawczą bez efektu w drzewie ORC-103. Ostatnie wystąpienie 2026-10-04.
 trigger: no_go
 rule_ref: ORC-056
 first_seen: 2026-10-04

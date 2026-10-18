@@ -6,7 +6,7 @@ description: |
   bounded I/O, no judgment calls, no synthesis beyond extraction.
 
   Use when:
-  - /pm-status, /pulse, /progress need to read dashboards
+  - /pm-status, /pulse need to read dashboards
   - Any agent needs a structured snapshot of project state
   - Reading task files (project-orchestration/tasks/*.md) and counting/grouping
 

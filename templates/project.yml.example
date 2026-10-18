@@ -129,8 +129,6 @@ docs:
 entry_points:
   analyze: "/analyze"
   orchestrate: "/orchestrate"
-  scaffold: "/scaffold"
-  progress: "/progress"
 
 # Cross-instance broadcast (ADR 0006) — OPT-IN, domyślnie nieobecny.
 #

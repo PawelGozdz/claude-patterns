@@ -1,6 +1,9 @@
 ---
 id: DEV-agent_note-tm-082-20-w-aneksie-draft-dread-do-zatwierdzenia
-status: proposed
+status: dismissed
+dismissed_reason: >
+  Stan dokumentu w ai-gateway (TM-082-20 jako DRAFT z DREAD do zatwierdzenia). Do zatwierdzenia
+  przez człowieka w tamtym repo.
 trigger: agent_note
 rule_ref: null
 first_seen: 2026-10-05

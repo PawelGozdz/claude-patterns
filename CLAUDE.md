@@ -31,7 +31,7 @@ agents/         25 universal + 35 stack-specific agents
 skills/         203 skills across 24 categories (42 marketing + 91 finance + 12 legal + others)
 hooks/          47 hooks (44 js + 3 sh, incl. pm-task-check.js — PM, per-project)
 templates/      CLAUDE.md composition + project-orchestration/ + per-stack settings and hook configs
-commands/       37 global commands (PM, orchestration, quality, marketing, finance, legal)
+commands/       35 global commands (PM, orchestration, quality, marketing, finance, legal)
 tools/          External tool reference (vendored): marketing/ (CLIs + integrations)
 tests/          Eval frameworks (vendored): finance-evals/ (grade_responses.py + iterations)
 rules/          Language-specific coding rules

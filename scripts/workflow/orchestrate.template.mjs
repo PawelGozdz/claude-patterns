@@ -201,7 +201,7 @@ function scopeBlock(layer, a) {
   return 'ZAKRES WARSTWY\n  id: ' + layer.id + '\n  katalogi: ' + dirs +
     (layer.role ? '\n  rola: ' + layer.role : '') + narrowed +
     '\nPlik spoza tych katalogów jest POZA ZAKRESEM, nie brakujący.' +
-    '\nWYJĄTEK — pliki towarzyszące: test (*.spec.*, *.test.*) w tym samym katalogu i z tym samym ' +
+    '\nWYJĄTEK — pliki towarzyszące: test (*.spec.*, *.test.*, test_*.py, *_test.py) w tym samym katalogu i z tym samym ' +
     'rdzeniem nazwy co plik z zakresu (x.map.ts → x.adapter.spec.ts) należy do zakresu. Gdy ' +
     'zmieniasz kontrakt pliku, zaktualizuj jego test obok.' +
     // ORC-087: ai-gateway TS-AIG-013 — zatwierdzona zależność (prom-client) nie mogła zostać
@@ -367,17 +367,20 @@ function buildProbePrompt(a, layer) {
     .map((d) => {
       if (!/\.[a-z0-9]+$/i.test(d)) return "':(glob)**/" + d.replace(/\/$/, '') + "/**'"
       const sp = splitPath(d)
-      return "':(glob)**/" + d + "' ':(glob)**/" + sp.dir + sp.stem + ".*.spec.*' ':(glob)**/" + sp.dir + sp.stem + ".*.test.*'"
+      return "':(glob)**/" + d + "'" + companionGlobs(sp.dir, sp.stem).map((g) => " ':(glob)**/" + g + "'").join('')
     })
     .join(' ') || '.'
   // ORC-104: sonda biegnie z korzenia repo bez względu na cwd agenta. `_pkgdir` i `git ls-files` liczą ścieżki
   // względem cwd — po `cd` w podkatalog (juz-ide-api-1, wcześniej grant-flow) npm odpalał się w złym katalogu.
-  const rootAnchor = 'cd "$(git rev-parse --show-toplevel)" || exit 1\n'
+  // ORC-105: przypisanie z `|| exit 1`, dopiero potem cd — poza repo git `cd "$(…)"` robiło `cd ""` (sukces).
+  const rootAnchor = '_root=$(git rev-parse --show-toplevel) || exit 1\ncd "$_root" || exit 1\n'
   const run = cmds.length
     // ORC-094: OSOBNY log na każdy check. Wspólny `/tmp/check-<warstwa>.log` drugi check nadpisywał
     // pierwszy — marketing-hub TS-MH-013: po `lint:check:api` log nie zawierał już błędów `tsc`,
     // więc `tsErrors` było puste i odroczenie ORC-082 nie miało czego sparsować.
-    ? rootAnchor + pkgLookup + cmds.map((c, i) => c + ' > /tmp/check-' + layer.id + '-' + (i + 1) + '.log 2>&1; echo "EXIT:$?"').join('\n') +
+    // ORC-106: logi /tmp/check-<warstwa>-N.log z poprzednich przebiegów zostawały w /tmp, a grepy po
+    // `-*.log` (tsErrors, testFailFiles) zbierały je razem z bieżącymi (18 ścieżek vs 1 plik w podsumowaniu).
+    ? rootAnchor + 'rm -f /tmp/check-' + layer.id + '-*.log\n' + pkgLookup + cmds.map((c, i) => c + ' > /tmp/check-' + layer.id + '-' + (i + 1) + '.log 2>&1; echo "EXIT:$?"').join('\n') +
       (firstDir
         ? '\nGdy $PKGROOT wyjdzie jako "." (brak package.json na ścieżce do zakresu warstwy) — ' +
           'checks poleciały na PEŁNYM repo; zaznacz to WPROST w swojej odpowiedzi (ORC-016: ' +
@@ -408,7 +411,7 @@ function buildProbePrompt(a, layer) {
       // generujemy też wzorce `*.spec.*`/`*.test.*`, które zwykle nic nie dopasowują. Nowy plik testu
       // zostawał nieśledzony i przyrost wychodził 0 (ai-os-bot BOT-024, u14: 19 zielonych testów,
       // halt „zero testów"). ls-files -o zwraca tylko istniejące nieśledzone pliki, bez błędu.
-      '  git ls-files -o --exclude-standard -z -- ' + globScoped + ' | xargs -0 -r git add -N -- 2>/dev/null; git diff HEAD -U0 -- ' + globScoped + " | grep -cE '^\\+\\s*(it|test|testWidgets|describe|group)(\\.(each|only|skip|concurrent))?\\(' \n" +
+      '  git ls-files -o --exclude-standard -z -- ' + globScoped + ' | xargs -0 -r git add -N -- 2>/dev/null; git diff HEAD -U0 -- ' + globScoped + " | grep -cE '" + testBlockRegex() + "' \n" +
       'i zwróć go jako newTestBlocks.'
     : ''
   // „Ostatnie 40 linii" gubi błąd, gdy PO nim w tym samym logu leży dużo ostrzeżeń z
@@ -838,6 +841,46 @@ function formatViolations(violations) {
   return violations.map((x, i) => (i + 1) + '. ' + (typeof x === 'string' ? x : JSON.stringify(x))).join('\n')
 }
 
+// ORC-105: tabela języków testowych. Sonda przyrostu testów (`newTestBlocks`) i plik towarzyszący
+// brały wzorce zaszyte pod JS/Dart, więc `def test_x` w Pythonie dawało 0 bloków i fałszywy
+// ESCALATE_AND_HALT (aegis-flow TS-005 `testing:red-tests`, DEV-orc-035-testing-red-tests).
+// Skrypt Workflow nie ma `import`, więc tabela leży tu, w CORE (testowana przez wycięcie).
+// Nowy język = jeden wpis; sonda liczy SUMĘ wzorców (wzorzec jednego języka nie trafia w drugi):
+//   block  — fragment ERE po `^\+\s*`: BLOK WYKONYWALNY w dodanej linii (kontenerów typu
+//            `class TestX` nie liczymy; metody w klasie łapie wcięcie `\s*`),
+//   stem   — nazwa pliku testu → rdzeń testowanego pliku albo null (plik towarzyszący),
+//   globs  — nazwy plików towarzyszących dla rdzenia `{stem}` (pathspec sondy dla zakresu-pliku).
+const TEST_LANGS = {
+  js: {
+    block: '(it|test|describe)(\\.(each|only|skip|concurrent|fixme|todo))?\\(',
+    stem: (name) => (/\.(spec|test)\.[a-z0-9]+$/i.test(name) ? name.split('.')[0] : null),
+    globs: ['{stem}.*.spec.*', '{stem}.*.test.*'],
+  },
+  dart: {
+    block: '(testWidgets|group)\\(',
+    stem: () => null,
+    globs: [],
+  },
+  python: {
+    block: '(async\\s+)?def\\s+test\\w*\\(',
+    stem: (name) => {
+      const m = /^test_(.+)\.py$/.exec(name) || /^(.+)_test\.py$/.exec(name)
+      return m ? m[1] : null
+    },
+    globs: ['test_{stem}.*', '{stem}_test.*'],
+  },
+}
+
+// Wzorzec (ERE, jedna linia, bez apostrofów — trafia do `grep -cE '…'`) na dodaną linię z blokiem testu.
+function testBlockRegex() {
+  return '^\\+\\s*(' + Object.values(TEST_LANGS).map((l) => l.block).join('|') + ')'
+}
+
+// Pathspecy plików towarzyszących dla pliku `dir` + `stem` (dir z końcowym '/', albo '').
+function companionGlobs(dir, stem) {
+  return Object.values(TEST_LANGS).flatMap((l) => l.globs.map((g) => dir + g.replace('{stem}', stem)))
+}
+
 // Czy plik należy do zakresu tej warstwy. Bez tego zawężenia każdy cudzy zapis w drzewie
 // wyglądałby jak praca wykonana przez martwego implementera.
 // Rozbicie ścieżki na katalog (z końcowym '/', albo '') i rdzeń nazwy — część przed pierwszą
@@ -853,11 +896,13 @@ function splitPath(p) {
 // nazwy co plik z zakresu: `role-permissions.map.ts` → `role-permissions.adapter.spec.ts`,
 // `env.schema.ts` → `env.schema.spec.ts`. Zakres podany katalogiem obejmuje je i tak.
 function isCompanion(scopeFile, file) {
-  if (!/\.[a-z0-9]+$/i.test(scopeFile) || !/\.(spec|test)\.[a-z0-9]+$/i.test(file)) return false
+  if (!/\.[a-z0-9]+$/i.test(scopeFile)) return false
   const s = splitPath(scopeFile)
   const f = splitPath(file)
-  if (!s.stem || s.stem !== f.stem) return false
-  return s.dir === '' ? true : f.dir.slice(-s.dir.length) === s.dir
+  if (!s.stem) return false
+  if (s.dir !== '' && f.dir.slice(-s.dir.length) !== s.dir) return false
+  const name = String(file).slice(f.dir.length)
+  return Object.values(TEST_LANGS).some((l) => l.stem(name) === s.stem)
 }
 
 function layerTouches(layer, file) {
@@ -969,7 +1014,8 @@ function typecheckRedIsLaterLayers(probe, layer, allLayers) {
 // „FAIL path" (jest); unikalne, bez sufiksu po „>".
 function testFailPaths(text) {
   const out = []
-  const re = /^\s*FAIL\s+(\S+\.[A-Za-z0-9]+)/gm
+  // ORC-106: opcjonalny prefiks projektu vitest workspace (`FAIL  |api| src/a.spec.ts`).
+  const re = /^\s*FAIL\s+(?:\|[^|\n]+\|\s+)?(\S+\.[A-Za-z0-9]+)/gm
   let m
   while ((m = re.exec(String(text || ''))) !== null) if (out.indexOf(m[1]) === -1) out.push(m[1])
   return out

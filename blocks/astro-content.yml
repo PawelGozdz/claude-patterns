@@ -1,0 +1,42 @@
+# Blok: astro-content — strona lub blog na Astro 5 (SSG, Content Collections, TypeScript strict).
+#
+# Powód powstania (2026-10-12): oba blogi (produktowy i osobisty) nie miały runtime.yml, bo
+# żaden blok nie opisywał Astro — juz-ide-pl jedzie wciąż na starym `stack_profile:
+# astro-static`. Agenci `stacks/astro-static/` (astro-implementer, content-reviewer) byli
+# osiągalni tylko przez @mention.
+#
+# Dwie warstwy, OBIE warunkowe: typowy task bloga zmienia albo treść, albo kod strony, rzadko
+# oba naraz. Warstwa obowiązkowa bez pracy dawałaby ANZ-LAYER-MISMATCH przy każdym wpisie.
+#
+# Treść ma własnego weryfikatora (content-reviewer: frontmatter wg schematu bloga, draft: true,
+# deny-lista), kod strony — recenzenta TypeScript. Bramka końcowa uruchamia `build`
+# (astro check + build): brak skryptu (np. blog bez szkieletu) = pominięty i zaraportowany.
+#
+# Wzorców Astro jeszcze nie ma (`patterns/` nie ma katalogu astro) — półki puste celowo,
+# zamiast wciągać wzorce innego frameworka.
+name: astro-content
+axis: architecture
+requires: []
+
+requires_ecc:
+  profile: developer
+  modules: [lang:typescript, capability:orchestration]
+
+overlay:
+  agents: [stacks/astro-static/]
+  rules: [typescript/]
+
+orchestrate:
+  layers:
+    - { id: site, agent: "astro-implementer", optional: true,
+        create_when: "task zmienia kod strony: komponenty, layouty, routing, schemat kolekcji, konfigurację Astro",
+        dirs: [src/components/, src/layouts/, src/pages/, src/lib/, src/utils/, src/styles/, src/content.config.ts, astro.config.ts],
+        tags: ["web:ui"], checks: ["lint"], verify: "ecc:typescript-reviewer",
+        role: "Kod strony Astro. Schemat Content Collections jest kontraktem treści — jego zmiana wymaga przejrzenia istniejących wpisów." }
+    - { id: content, agent: "general-purpose", optional: true,
+        create_when: "task dodaje lub zmienia wpisy albo strony treści",
+        dirs: [src/content/], verify: "content-reviewer",
+        role: "Wpisy: ZAWSZE draft: true (false ustawia człowiek). Przed pisaniem docs/POST-GUIDE.md; zakazy: stage/deny-list.yml. AI nie pisze wspomnień, cytatów, emocji ani liczb bez źródła." }
+  inner_loop: { verify: "ecc:typescript-reviewer", max_attempts: 3, on_max: ESCALATE_AND_HALT }
+  final_gate: { agent: "ecc:code-reviewer", on_fail: ESCALATE_AND_HALT, checks: ["build"] }
+  exit: STAGE_NOT_COMMIT

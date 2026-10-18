@@ -1,6 +1,10 @@
 ---
 id: DEV-agent_note-final-gate-przekroczy-nominalny-budzet-15-wywo-an
-status: proposed
+status: dismissed
+dismissed_reason: >
+  Nieaktualne po ORC-092 (limit tur z definicji agenta wygrywa z budżetem skryptu) i ORC-085
+  (budżet weryfikatora skalowany z liczbą plików). Weryfikacja dosłownych stringów odmowy to
+  zmiana asercji bezpieczeństwa, więc przekroczenie nominału było uzasadnione.
 trigger: agent_note
 rule_ref: null
 first_seen: 2026-09-26

@@ -1,6 +1,9 @@
 ---
 id: DEV-agent_note-karta-inv-d7-nie-rozstrzyga-czy-testy-moga-uzywac
-status: proposed
+status: dismissed
+dismissed_reason: >
+  Dotyczy karty aig-invariants.md w ai-gateway (INV-D7: czy testy mogą używać as unknown as).
+  Rozstrzygnięcie w karcie projektu.
 trigger: agent_note
 rule_ref: null
 first_seen: 2026-10-03

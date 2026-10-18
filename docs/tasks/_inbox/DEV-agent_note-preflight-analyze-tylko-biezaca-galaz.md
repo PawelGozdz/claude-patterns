@@ -1,6 +1,11 @@
 ---
 id: DEV-agent_note-preflight-analyze-tylko-biezaca-galaz
-status: proposed
+status: promoted
+resolution: >
+  Naprawione w części jako uzupełnienie ANL-006 (2026-10-17, tylko prompt): preflight /analyze
+  sprawdza też git branch -a --no-merged develop, git log --all --grep=<TASK-ID> i
+  .claude/run-state/<TASK-ID>.*; trafienie = STOP z pytaniem, czy kontynuować istniejącą gałąź.
+  Otwarte: mechaniczny wariant w orchestrate-prepare.mjs (exit 2) i wersja dla /analyze.
 trigger: agent_note
 rule_ref: ANL-006
 first_seen: 2026-10-10

@@ -41,10 +41,20 @@
         "started": 2,
         "steps": 5,
         "stepsWithoutCost": 0
+      },
+      "orchestrate": {
+        "costUsd": 2.72942,
+        "died": 0,
+        "ended": {
+          "ok": 1
+        },
+        "started": 1,
+        "steps": 18,
+        "stepsWithoutCost": 0
       }
     }
   },
-  "events": 94,
+  "events": 114,
   "host": "5a164d2d0145",
   "processes": {
     "analyze": {
@@ -109,92 +119,93 @@
       }
     },
     "orchestrate": {
-      "costUsd": 14.89819,
-      "costUsdRetried": 3.700492,
+      "costUsd": 17.62761,
+      "costUsdRetried": 3.703707,
       "died": 0,
       "repairs": {
         "fixSteps": 6,
         "fixed": 6,
         "open": 0
       },
-      "retried": 26,
+      "retried": 28,
       "roles": {
         "fixer": {
           "causes": {},
-          "costUsd": 1.248038,
+          "costUsd": 1.580366,
           "durationMs": {
-            "n": 8,
-            "p50": 4149,
-            "p90": 17026
+            "n": 12,
+            "p50": 4654,
+            "p90": 14745
           },
-          "n": 8,
+          "n": 12,
           "outcomes": {
-            "ok": 8
+            "ok": 12
           },
-          "toolCalls": 26
+          "toolCalls": 35
         },
         "gate": {
           "causes": {},
-          "costUsd": 2.127339,
+          "costUsd": 2.456483,
           "durationMs": {
-            "n": 2,
-            "p50": 48183,
+            "n": 5,
+            "p50": 15138,
             "p90": 78344
           },
-          "n": 2,
+          "n": 5,
           "outcomes": {
-            "go": 2
+            "go": 3,
+            "ok": 2
           },
-          "toolCalls": 21
+          "toolCalls": 30
         },
         "implementer": {
           "causes": {},
-          "costUsd": 7.382965,
+          "costUsd": 8.539428,
           "durationMs": {
-            "n": 14,
+            "n": 16,
             "p50": 23045,
-            "p90": 47979
+            "p90": 79255
           },
-          "n": 14,
+          "n": 16,
           "outcomes": {
-            "ok": 14
+            "ok": 16
           },
-          "toolCalls": 133
+          "toolCalls": 151
         },
         "probe": {
           "causes": {},
-          "costUsd": 0.167515,
+          "costUsd": 0.1993,
           "durationMs": {
-            "n": 37,
-            "p50": 9719,
-            "p90": 11939
+            "n": 43,
+            "p50": 9769,
+            "p90": 11415
           },
-          "n": 37,
+          "n": 43,
           "outcomes": {
-            "ok": 37
+            "ok": 43
           },
-          "toolCalls": 80
+          "toolCalls": 94
         },
         "verifier": {
           "causes": {},
-          "costUsd": 3.972333,
+          "costUsd": 4.852033,
           "durationMs": {
-            "n": 15,
+            "n": 18,
             "p50": 16838,
             "p90": 19211
           },
-          "n": 15,
+          "n": 18,
           "outcomes": {
-            "go": 15
+            "go": 18
           },
-          "toolCalls": 50
+          "toolCalls": 62
         }
       },
-      "steps": 76,
+      "steps": 94,
       "stepsWithoutCost": 0,
       "verification": {
-        "firstPassGo": 9,
-        "units": 9
+        "firstPassGo": 11,
+        "units": 11
       }
     }
   },
@@ -213,18 +224,18 @@
       "started": 3
     },
     "orchestrate": {
-      "costUsd": 14.89819,
+      "costUsd": 17.62761,
       "durationMs": {
-        "n": 2,
+        "n": 3,
         "p50": 437052,
         "p90": 718545
       },
       "ended": {
-        "ok": 2
+        "ok": 3
       },
-      "started": 2
+      "started": 3
     }
   },
-  "stepsTotal": 83,
+  "stepsTotal": 101,
   "v": 1
 }

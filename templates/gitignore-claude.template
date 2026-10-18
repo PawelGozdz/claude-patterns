@@ -52,4 +52,8 @@ project-orchestration/.workflow/
 # this MUST stay untracked even there. Committing it would propagate instance-1's collection name to
 # instances 2/3/4 on the next pull. Each instance regenerates its own via setup-project.sh.
 .claude/config/knowledge.json
+# installed.yml: manifest instalacji (SHA centrali, kontrakt) — stan lokalny, odtwarzany przez
+# materialize-runtime.mjs; materialize dopisuje go też do .git/info/exclude, ale wpis tutaj
+# działa dla każdego klona repo.
+.claude/config/installed.yml
 .worktreeinclude

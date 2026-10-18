@@ -1,6 +1,9 @@
 ---
 id: DEV-agent_note-agent-bramki-koncowej-security-e2e-verifier-wyma
-status: proposed
+status: dismissed
+dismissed_reason: >
+  To samo co DEV-orc-092-final-gate, wątek 1: fallback na grep w Bash działa, definicja agenta
+  ma tryb pracy bez delegowania (iam TS-SSO-060).
 trigger: agent_note
 category: other
 sources:

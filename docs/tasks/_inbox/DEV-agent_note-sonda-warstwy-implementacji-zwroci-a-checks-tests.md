@@ -1,6 +1,11 @@
 ---
 id: DEV-agent_note-sonda-warstwy-implementacji-zwroci-a-checks-tests
-status: proposed
+status: dismissed
+dismissed_reason: >
+  Zgodne z projektem: checks.tests=skipped, bo warstwa implementation w ai-gateway nie ma
+  tests:true (testy należą do warstwy testing); weryfikator ocenił testy statycznie, czego ta
+  konfiguracja oczekuje. Chcąc uruchamiać testy w tej warstwie ai-gateway zmienia swój blok
+  (tests/checks).
 trigger: agent_note
 category: other
 sources:
