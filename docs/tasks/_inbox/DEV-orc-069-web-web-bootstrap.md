@@ -1,6 +1,10 @@
 ---
 id: DEV-orc-069-web-web-bootstrap
-status: proposed
+status: dismissed
+dismissed_reason: >
+  Nieaktualne po ORC-085 (budżet weryfikatora skalowany z liczbą plików; tu 37 plików w jednej
+  warstwie), ORC-084 i ORC-100 (powtarzające się luki zamykają warstwę jako GO_WITH_GAPS).
+  Ostatnie wystąpienie 2026-10-01.
 trigger: halt
 rule_ref: ORC-069
 first_seen: 2026-10-01

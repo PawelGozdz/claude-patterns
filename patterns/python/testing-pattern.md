@@ -9,6 +9,11 @@
 - When testing async code with FastAPI's dependency injection
 - When building a test suite that runs in CI under 60 seconds
 
+**Applicability**: the examples below assume a DDD layout (`domain.entities`, repositories) and an
+SQLAlchemy database. In a project without them (for example an `engine/` + Redis service, as in
+aegis-flow) keep the ideas — isolation per test, fakes over mocks, factories, dependency
+override — and drop the SQLAlchemy and `domain.*` parts; do not invent a database to fit the card.
+
 **Do NOT use** heavyweight integration tests for pure domain logic. Unit test entities and services directly; save TestClient for API-layer tests only.
 
 ---
@@ -28,8 +33,7 @@ Layer-specific fixtures live in their own conftest files:
 """
 from __future__ import annotations
 
-import asyncio
-from collections.abc import AsyncIterator, Iterator
+from collections.abc import AsyncIterator
 from typing import Any
 from uuid import uuid4
 
@@ -46,14 +50,15 @@ from domain.entities.user import User, UserRole
 from domain.value_objects.email import Email
 
 
-# -- Event loop fixture (required for pytest-asyncio) --
-
-@pytest.fixture(scope="session")
-def event_loop() -> Iterator[asyncio.AbstractEventLoop]:
-    """Session-scoped event loop — shared across all async tests."""
-    loop = asyncio.new_event_loop()
-    yield loop
-    loop.close()
+# -- Event loop (pytest-asyncio >= 1.0) --
+# Do NOT define an `event_loop` fixture: it was removed in pytest-asyncio 1.0 and overriding
+# it no longer does anything. A loop shared by session-scoped async fixtures is configured,
+# not coded (pyproject.toml):
+#
+#   [tool.pytest.ini_options]
+#   asyncio_mode = "auto"
+#   asyncio_default_fixture_loop_scope = "session"
+#   asyncio_default_test_loop_scope = "session"
 
 
 # -- Database fixtures --

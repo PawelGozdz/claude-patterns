@@ -532,6 +532,49 @@ const CASES = (c) => [
       return null;
     },
   },
+  // ── ORC-106: padające pliki testów z prefiksem projektu vitest workspace (`FAIL  |api| x.spec.ts`)
+  // nie były rozpoznawane (paths=0, więc ani odroczenie, ani rerun ORC-103), a stare logi
+  // /tmp/check-<warstwa>-*.log z poprzednich przebiegów zawyżały listę (grant-flow TS-UI-006,
+  // DEV-orc-103-testing: 18 ścieżek vs testFilesFailed=1) ──────────────────────────────────
+  {
+    name: 'test-fail-paths-handles-vitest-workspace-prefix',
+    run() {
+      const text = [
+        ' FAIL  |api| src/a.spec.ts > suite > case',
+        ' FAIL  src/b.spec.ts',
+        '   FAIL |web| apps/web/c.test.tsx > x',
+        ' FAIL  |api| src/a.spec.ts > suite > inny case',
+      ].join('\n');
+      const got = JSON.stringify(c.testFailPaths(text));
+      const want = JSON.stringify(['src/a.spec.ts', 'src/b.spec.ts', 'apps/web/c.test.tsx']);
+      if (got !== want) return 'oczekiwano ' + want + ', jest ' + got;
+      return null;
+    },
+  },
+  {
+    name: 'probe-clears-stale-check-logs-before-running-checks',
+    run() {
+      const p = c.buildProbePrompt(ARGS, { id: 'infrastructure', dirs: ['src/infrastructure/'], checks: ['typecheck', 'lint'] });
+      const rm = p.indexOf('rm -f /tmp/check-infrastructure-*.log');
+      if (rm === -1) return 'brak czyszczenia starych logów /tmp/check-<warstwa>-*.log przed sprawdzeniami';
+      const first = p.indexOf('> /tmp/check-infrastructure-1.log');
+      if (first === -1 || rm > first) return 'czyszczenie logów musi poprzedzać pierwsze sprawdzenie';
+      const none = c.buildProbePrompt(ARGS, { id: 'bare', dirs: ['src/x/'], checks: [] });
+      if (none.includes('rm -f /tmp/check-bare-')) return 'warstwa bez checks nie powinna czyścić logów';
+      return null;
+    },
+  },
+  // ── ORC-105: poza repo git `cd "$(git rev-parse …)"` robi `cd ""`, które kończy się sukcesem,
+  // więc `|| exit 1` nie zadziałało i sonda biegła w cwd (ai-os-bot BOT-030, DEV-orc-104) ─────
+  {
+    name: 'probe-root-anchor-fails-outside-git-repo',
+    run() {
+      const p = c.buildProbePrompt(ARGS, { id: 'infrastructure', dirs: ['src/infrastructure/'], checks: ['typecheck'] });
+      if (/cd "\$\(git rev-parse --show-toplevel\)"/.test(p)) return 'cd "$(…)" połyka błąd rev-parse (cd "" = sukces)';
+      if (!/_root=\$\(git rev-parse --show-toplevel\) \|\| exit 1\ncd "\$_root" \|\| exit 1/.test(p)) return 'kotwica musi przypisać korzeń z || exit 1, dopiero potem cd';
+      return null;
+    },
+  },
   // ── ORC-100: te same luki po powtórnej weryfikacji nie palą kolejnych prób ───────────────
   {
     name: 'repeated-identical-gaps-settle-as-go-with-gaps-without-more-attempts',
@@ -940,6 +983,69 @@ const CASES = (c) => [
       if (countOf(plain, ":(glob)**/core/design/**'") !== 2) return 'warstwa bez lib/ powinna mieć dokładnie 2 wystąpienia swojego pathspecu (add -N + diff)';
       if (countOf(p, ":(glob)**/lib/core/design/**'") !== 2) return 'wariant z lib/ powinien wystąpić 2 razy (add -N + diff)';
       if (countOf(p, ":(glob)**/core/design/**'") !== 2) return 'wariant bez lib/ powinien wystąpić 2 razy (add -N + diff)';
+      return null;
+    },
+  },
+  // ── ORC-105: sonda przyrostu testów jest wielojęzyczna (tabela TEST_LANGS: js/ts, dart,
+  // python). aegis-flow TS-005 `testing:red-tests`: `def test_x` nie było liczone, więc
+  // newTestBlocks=0 mimo realnych testów RED i fałszywy ESCALATE_AND_HALT ────────────────
+  {
+    name: 'test-block-regex-counts-python-js-and-dart-blocks',
+    run() {
+      const re = new RegExp(c.testBlockRegex());
+      const yes = [
+        '+def test_a():', '+    async def test_b(self):', '+def test_():', '+    def testCamel(self):',
+        "+it('a', () => {", "+  test.skip('b', () => {", '+describe.each(', '+  it.only(',
+        '+testWidgets(', '+  group(',
+      ];
+      const no = [
+        '+class TestX:', '+# def test_z():', '+def helper():', '+def testing_helper_not_a_test:',
+        '+// it(', '+italic(', '+ \tassert it(1)', '-def test_removed():', ' def test_context():',
+      ];
+      for (const l of yes) if (!re.test(l)) return 'powinno być policzone, a nie jest: ' + l;
+      for (const l of no) if (re.test(l)) return 'nie powinno być liczone, a jest: ' + l;
+      return null;
+    },
+  },
+  {
+    name: 'probe-prompt-counts-python-test-defs-in-one-line',
+    run() {
+      const p = c.buildProbePrompt(ARGS, { id: 'testing', dirs: ['tests/'], checks: [], tests: true });
+      const diffLine = p.split('\n').find((l) => l.includes('git diff HEAD -U0'));
+      if (!diffLine) return 'brak linii z git diff HEAD -U0';
+      if (!/\| grep -cE/.test(diffLine)) return 'WL6: git diff HEAD i | grep -cE muszą być w jednej linii';
+      if (!diffLine.includes('def\\s+test')) return 'liczenie bloków nie zna Pythona (def test_…): ' + diffLine.slice(0, 200);
+      if (!diffLine.includes('testWidgets')) return 'regresja: wzorzec Dart zniknął';
+      return null;
+    },
+  },
+  {
+    name: 'companion-recognises-python-test-files',
+    run() {
+      const yes = [
+        ['engine/scope_match.py', 'engine/test_scope_match.py'],
+        ['engine/scope_match.py', 'engine/scope_match_test.py'],
+        ['src/a/role.map.ts', 'src/a/role.adapter.spec.ts'],
+        ['src/a/role.map.ts', 'src/a/role.test.ts'],
+      ];
+      const no = [
+        ['engine/scope_match.py', 'engine/test_other.py'],
+        ['engine/scope_match.py', 'engine/scope_match.py'],
+        ['engine/scope_match.py', 'other/test_scope_match.py'],
+        ['engine/scope_match', 'engine/test_scope_match.py'],
+      ];
+      for (const [s, f] of yes) if (!c.isCompanion(s, f)) return 'powinien być plikiem towarzyszącym: ' + f + ' dla ' + s;
+      for (const [s, f] of no) if (c.isCompanion(s, f)) return 'nie powinien być plikiem towarzyszącym: ' + f + ' dla ' + s;
+      return null;
+    },
+  },
+  {
+    name: 'probe-pathspec-for-file-scope-includes-python-companions',
+    run() {
+      const p = c.buildProbePrompt(ARGS, { id: 'engine-match', dirs: ['engine/scope_match.py'], checks: [], tests: true });
+      for (const g of ["scope_match.*.spec.*", "scope_match.*.test.*", "test_scope_match.*", "scope_match_test.*"]) {
+        if (!p.includes(":(glob)**/engine/" + g + "'")) return 'brak pathspecu towarzyszącego: ' + g;
+      }
       return null;
     },
   },

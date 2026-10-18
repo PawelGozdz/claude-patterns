@@ -1,6 +1,10 @@
 ---
 id: DEV-orc-099-testing-tests-clone
-status: proposed
+status: dismissed
+dismissed_reason: >
+  Nieodtwarzalne 2026-10-17: instrukcja rerunu ORC-103 w sondzie nie zależy od PKGROOT, a brak
+  logu przebiegu nie pozwala wykazać, że agent sondy ją pominął. Powiązana przyczyna (lista
+  padających plików) naprawiona w ORC-106. Wróci jako nowe wystąpienie, jeśli to prawda.
 trigger: agent_note
 category: other
 sources:

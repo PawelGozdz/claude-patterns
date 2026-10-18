@@ -1,6 +1,9 @@
 ---
 id: DEV-agent_note-ts-sim-002b-jednostka-app-clone-ma-dirs-tylko-sim
-status: proposed
+status: dismissed
+dismissed_reason: >
+  Mechanizm zadziałał: bramka końcowa wyłapała brak okablowania simulation.module.ts (CH10).
+  Przypisanie plików do jednostek to jakość analizy grant-flow TS-SIM-002B, nie silnik.
 trigger: agent_note
 category: other
 sources:

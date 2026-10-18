@@ -74,6 +74,13 @@ const STATUS_SYNONYMS = new Map(Object.entries({
   'podjęta': 'accepted', podjeta: 'accepted', 'przyjęta': 'accepted', przyjeta: 'accepted',
   'wdrażana': 'active', wdrazana: 'active', 'wdrożona': 'accepted', wdrozona: 'accepted',
   uchylona: 'superseded', odrzucona: 'rejected', wycofana: 'deprecated',
+  // formy rodzaju nijakiego / męskiego (ADR bez słowa „decyzja" w statusie)
+  zaakceptowana: 'accepted', zaakceptowane: 'accepted', zaakceptowany: 'accepted',
+  proponowane: 'proposed', proponowany: 'proposed', zaproponowane: 'proposed',
+  'przyjęte': 'accepted', przyjete: 'accepted', 'przyjęty': 'accepted', przyjety: 'accepted',
+  'podjęte': 'accepted', podjete: 'accepted',
+  odrzucone: 'rejected', odrzucony: 'rejected',
+  uchylone: 'superseded', uchylony: 'superseded', wycofane: 'deprecated', wycofany: 'deprecated',
 }));
 const KNOWN_STATUSES = new Set([...STATUS_WORDS, ...STATUS_SYNONYMS.values()]);
 const normalizeStatus = (raw) => {
@@ -93,8 +100,13 @@ function frontmatter(src) {
 }
 
 function statusLine(src) {
-  const inline = src.match(/^\s*\*\*Status\*\*\s*:\s*(.+)$/mi);
+  // Akceptuje `**Status**: x`, `**Status:** x`, a także pole w środku linii
+  // (`- **Status:** x`, `> **Data:** … · **Status:** x`).
+  const inline = src.match(/\*\*Status(?:\*\*\s*:|\s*:\s*\*\*)\s*([^\n·|]+)/i);
   if (inline) return inline[1].trim();
+  // `- Status: **Accepted**` / `Status: Accepted` — pogrubiona bywa sama wartość.
+  const plain = src.match(/^[ \t]*(?:[-*>][ \t]*)?Status[ \t]*:[ \t]*\**[ \t]*([^\n*]+)/mi);
+  if (plain) return plain[1].trim();
   const section = src.match(/^##+\s*Status\s*$([\s\S]{0,600}?)(?=^##|$(?![\s\S]))/mi);
   if (section) {
     const first = section[1].split('\n').map((l) => l.trim()).find((l) => l && !l.startsWith('>'));
@@ -142,7 +154,9 @@ function parseDoc(file, src, kind) {
   // Fallback dla plików bez frontmattera (BDR, starsze ADR): odczyt z prozy.
   const line = statusLine(src);
   const status = line
-    ? (STATUS_WORDS.find((w) => new RegExp(`\\b${w}`, 'i').test(line)) ?? 'unknown')
+    ? (STATUS_WORDS.find((w) => new RegExp(`\\b${w}`, 'i').test(line))
+      ?? [...STATUS_SYNONYMS].find(([k]) => line.toLowerCase().includes(k))?.[1]
+      ?? 'unknown')
     : 'unknown';
   const refs = [...src.slice(0, 1500).matchAll(/\b(?:ADR|BDR)[- ](\d{3,4})/gi)].map((m) => m[1]).filter((n) => n !== id);
   const supersededMentioned = line ? SUPERSEDE_MARKERS.test(line) : false;

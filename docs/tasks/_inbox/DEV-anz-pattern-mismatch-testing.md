@@ -1,6 +1,9 @@
 ---
 id: DEV-anz-pattern-mismatch-testing
-status: proposed
+status: promoted
+resolution: >
+  Przeniesione do TASK-ORCH-CARDS-STACK-MISMATCH-001 (testing-pyramid-pattern zakłada
+  NestJS/DDD, ai-gateway to płaski serwis Node).
 trigger: analyze_note
 category: other
 sources:

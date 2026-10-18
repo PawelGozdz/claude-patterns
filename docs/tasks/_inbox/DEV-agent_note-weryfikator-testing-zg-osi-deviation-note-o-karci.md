@@ -1,6 +1,10 @@
 ---
 id: DEV-agent_note-weryfikator-testing-zg-osi-deviation-note-o-karci
-status: proposed
+status: dismissed
+dismissed_reason: >
+  Kolejność jednostek w jednym przebiegu: weryfikator warstwy testing zgłosił kartę
+  aig-invariants.md, którą aktualizowała jednostka U1 (ai-gateway TS-AIG-075). Cudze zakresy
+  odfiltrowują ORC-070 i ORC-093.
 trigger: agent_note
 category: other
 sources:

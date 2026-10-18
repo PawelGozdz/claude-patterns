@@ -1,6 +1,11 @@
 ---
 id: DEV-orc-062-testing-l1-l2
-status: proposed
+status: dismissed
+dismissed_reason: >
+  Mechanizm zadziałał (bezpieczny halt zamiast dotykania asercji poza layers_scope). Otwarta
+  jest decyzja zespołu marketing-hub: czy nowa kolumna user_directory.email ma wejść do
+  globalnego guardu PII (audience VETO3). Do rozstrzygnięcia w tamtym repo, nie w
+  claude-patterns.
 trigger: blocked_by_prior
 rule_ref: ORC-062
 first_seen: 2026-09-26

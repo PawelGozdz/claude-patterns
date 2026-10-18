@@ -1,6 +1,10 @@
 ---
 id: DEV-agent_note-final-gate-go-with-2-commit-conditions-already-ap
-status: proposed
+status: dismissed
+dismissed_reason: >
+  Informacyjna notatka z bramki końcowej marketing-hub (TS-MH-010): warunki commita zastosowane,
+  luki SI3/SI2/DI4 dotyczą kart projektu (guardy globalne zamiast @Auth() per metoda). Bez
+  defektu silnika.
 trigger: agent_note
 rule_ref: null
 first_seen: 2026-09-26

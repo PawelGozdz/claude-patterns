@@ -1,6 +1,9 @@
 ---
 id: DEV-agent_note-duplikacja-sta-ych-z-src-authz-messages-ts-w-scrip
-status: proposed
+status: dismissed
+dismissed_reason: >
+  Dotyczy kodu ai-gateway (scripts/e2e-chain.ts duplikuje stałe z src/authz/messages.ts bez
+  strażnika rozjazdu): backlog projektu, nie centrali.
 trigger: agent_note
 rule_ref: null
 first_seen: 2026-10-01

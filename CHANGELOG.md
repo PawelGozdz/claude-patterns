@@ -109,6 +109,19 @@ and none of it is instruction — it is history.
   blocks on one axis conflict — the materializer never enforced that (ADR 0010).
 
 ### Changed
+- Agent `backend-technology-expert` (TASK-PANEL-NODE-ADVISOR-001): nie niesie już stacku jednego
+  projektu (NestJS, BullMQ, Redis, PostGIS, `@vytches/ddd`, „rynek polski", stałe wagi kryteriów).
+  Krok 0 ustala kontekst z `runtime.yml`, `CLAUDE.md` i ADR-ów; raport zaczyna się sekcją
+  `## Założenia`; wybór technologii zaczyna się od tego, co stack już uruchamia; wagi pochodzą
+  z projektu albo ranking jest jakościowy; walidacja biznesowa tylko przy istniejącym kontekście
+  biznesowym. Frontmatter poza `description` i format raportu bez zmian; diff `runtime.yml`
+  w 21 projektach pusty. Sekcja Memory discipline wyjęta z szablonu ADR, w którym tkwiła przez pomyłkę.
+- `scripts/index-decisions.mjs`: parser statusu ADR czyta `**Status:** x`, `- **Status:** x`,
+  `> … · **Status:** x` i `- Status: **Accepted**` oraz polskie formy rodzaju nijakiego i męskiego
+  (`zaakceptowane`, `proponowane`, `przyjęte`…). Wcześniej 8 projektów miało nieczytelne statusy, a w
+  framework-polityczny i grant-flow, które mają `decision-gate`, ADR-y traktowano jako aktywne bez sprawdzenia.
+- `scripts/generate-claude-md.sh`: domyślne `/orchestrate`, `/scaffold`, `/progress` w tabeli
+  Entry Points, gdy `project.yml` nie ustawia `entry_points.*` (13 projektów miało puste komórki).
 - Next.js, wzorce istniejące (sprawdzone z nextjs.org/docs 16.4): `auth-pattern` to teraz WARIANT
   z ręczną sesją i wchodzi tylko na `jwt/jose/bcrypt/…`, nie na każde `auth/login` (dokumentacja
   zaleca bibliotekę, a wzorzec uczył projekty na Better Auth własnego JWT); domyślnie wchodzi
@@ -200,7 +213,21 @@ and none of it is instruction — it is history.
   stays the default. Needed the moment one repo holds an API and a web panel:
   the DDD `code-quality-verifier` has nothing to say about a React provider.
 
+### Removed
+- `commands/scaffold.md` and `commands/progress.md` (unused). Also removed: their rows in
+  `commands/README.md` and `templates/core.md`, the `entry_points.scaffold` / `entry_points.progress`
+  keys in `templates/project.yml.example` and `templates/examples/*-project.yml`, and the
+  `CMD_SCAFF` / `CMD_PROG` placeholders in `scripts/generate-claude-md.sh`. Counters: 37 → 35
+  commands. Projects with a generated `CLAUDE.md` keep the two stale rows until regenerated;
+  `project.yml` entries for these keys are now ignored. `pcu` keeps its own project-local
+  `progress.md` (not affected).
+
 ### Fixed
+- `templates/gitignore-claude.template`: added `.claude/config/installed.yml` (installation
+  manifest, local state). `setup-project.sh` step 5c appends it to the project `.gitignore`;
+  previously the file showed up as untracked after setup (`_inbox` record closed).
+- `blocks/nextjs.yml`: comment recording that two `tech-analysis` stages under `[nextjs, node]`
+  are intentional (framework vs backend perspective); no behaviour change (TASK-PANEL-NODE-ADVISOR-001).
 - `templates/stacks/python{,-modular,-pipeline,-ml}.md`: the "Agent Ecosystem" table named
   agents that exist nowhere (`python-implementer`, `api-designer`, `security-verifier`,
   `code-quality-verifier`, `codebase-explorer`, `endpoint-scaffolder`, `test-generator`,

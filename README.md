@@ -143,7 +143,7 @@ $CLAUDE_PATTERNS/
 ├── hooks/                       # PostToolUse/Stop hooks
 │   ├── pm-task-check.js         # [NEW] PM briefing when task files change
 │   └── ...                      # (other hooks)
-├── commands/                    # Global commands (37 — symlinked to ~/.claude/commands/)
+├── commands/                    # Global commands (35 — symlinked to ~/.claude/commands/)
 │   ├── README.md                # Command catalog & usage guide
 │   ├── pulse.md                 # PM: full team sync
 │   ├── pm-status.md             # PM: quick state read (~$0)
@@ -520,7 +520,7 @@ cd ~/projects/claude-patterns
 
 **What this does**:
 - Creates per-file symlinks in `~/.claude/agents/` for 25 universal agents
-- Creates `~/.claude/commands/` symlink (37 commands)
+- Creates `~/.claude/commands/` symlink (35 commands)
 - Creates `~/.claude/hooks/` symlink (47 hooks)
 - Idempotent — safe to run multiple times
 
@@ -1161,7 +1161,7 @@ cat .claude/settings.json  # Ensure patterns path is correct
 **Key Documentation**:
 - `patterns/README.md` — Full pattern index (119 patterns)
 - `agents/README.md` — Agent catalog (60 agents)
-- `commands/README.md` — Command catalog (37 commands)
+- `commands/README.md` — Command catalog (35 commands)
 - `patterns/orchestration/project-management-system.md` — PM system docs
 
 ---

@@ -3,7 +3,7 @@
 #
 # Creates symlinks in ~/.claude/ pointing to claude-patterns repo:
 #   agents/  → universal specialists + verifiers (with permissionMode, memory, isolation)
-#   commands/ → global slash commands (/analyze, /orchestrate, /scaffold, etc.)
+#   commands/ → global slash commands (/analyze, /orchestrate, etc.)
 #   hooks/   → the hook FILES (universal ones; stack-specific hooks are per-project)
 #
 # Symlinking hooks/ only makes the files reachable — it does NOT register a single
@@ -100,7 +100,7 @@ if [[ -d "$REPO_DIR/agents/integrations" ]]; then
 fi
 echo ""
 
-echo -e "${BLUE}[2/5] Commands${NC} (slash commands: /plan, /tdd, /scaffold, etc.)"
+echo -e "${BLUE}[2/5] Commands${NC} (slash commands: /analyze, /orchestrate, etc.)"
 setup_symlink "commands" "$REPO_DIR/commands"
 echo ""
 

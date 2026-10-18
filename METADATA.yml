@@ -153,7 +153,7 @@ agents:
       - typescript-library (2)
 
 commands:
-  total: 37
+  total: 35
   categories:  # NIE zweryfikowane przez count-assets.mjs (K13) — przypisanie komendy do
                # kategorii wymaga czytania treści, nie prostego liczenia; suma poniżej (26)
                # nie sumuje się do total: 45, bo lista nie nadążyła za nowymi komendami
@@ -163,9 +163,9 @@ commands:
                # w commands/README.md, patrz K42).
     orchestration: 5  # pulse, pm-status, sprint, task-health, tech-debt
     quality: 1        # build-fix  (verify/code-review/test-coverage → ECC, ADR 0009)
-    workflow: 3       # analyze, orchestrate, scaffold  (plan/tdd → ECC)
+    workflow: 2       # analyze, orchestrate  (plan/tdd → ECC; scaffold/progress usunięte)
     learning: 0       # instinct-*/evolve → ECC (ADR 0009)
-    session: 2        # checkpoint (handoff-only wrapper), progress  (sessions → ECC)
+    session: 1        # checkpoint (handoff-only wrapper)  (sessions → ECC)
     infrastructure: 2 # pm2, schedule (if exists)
     marketing: 1      # /marketing  (v3.3)
     finance: 1        # /finance    (v3.4)

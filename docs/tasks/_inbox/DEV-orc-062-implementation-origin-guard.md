@@ -1,6 +1,12 @@
 ---
 id: DEV-orc-062-implementation-origin-guard
-status: proposed
+status: dismissed
+dismissed_reason: >
+  Złagodzone przez ORC-103 (BLOCKED_BY_PRIOR nazywa wcześniejszą warstwę-właściciela i
+  podpowiada layers_done). Warstwa implementation miała checks bez test, więc czerwony
+  architecture.test.ts był dla niej niewidoczny z założenia (testy należą do testing). Otwarta
+  jest tylko decyzja, czy silnik ma sam otwierać wcześniejszą warstwę po BLOCKED_BY_PRIOR:
+  zmiana kontraktu opisana w ORC-103, do osobnego taska, jeśli wróci.
 trigger: blocked_by_prior
 rule_ref: ORC-062
 first_seen: 2026-10-09

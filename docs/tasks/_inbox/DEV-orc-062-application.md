@@ -1,6 +1,10 @@
 ---
 id: DEV-orc-062-application
-status: proposed
+status: dismissed
+dismissed_reason: >
+  Nieaktualne po ORC-082 (czerwony typecheck tylko w późniejszych warstwach jest odroczony),
+  ORC-090 (odroczenie typechecku w monorepo) i ORC-104 (sonda z kotwicą korzenia repo;
+  wystąpienie z 2026-10-08 miało błędny cwd sondy, co sam rekord odnotowuje).
 resolution: >
   Naprawione jako ORC-082 (2026-09-30): sonda typecheck odracza czerwień, której
   wszystkie błędy TS leżą w dirs późniejszych warstw (mechanicznie, w CORE

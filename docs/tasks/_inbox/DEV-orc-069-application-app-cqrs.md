@@ -1,6 +1,9 @@
 ---
 id: DEV-orc-069-application-app-cqrs
-status: proposed
+status: dismissed
+dismissed_reason: >
+  Nieaktualne po ORC-081 (prompt weryfikatora nazywa wynik sondy obiektem checks; zgłoszony brak
+  obiektu checks w prompcie), ORC-084 i ORC-100. Ostatnie wystąpienie 2026-09-29.
 trigger: halt
 rule_ref: ORC-069
 first_seen: 2026-09-29

@@ -1,6 +1,10 @@
 ---
 id: DEV-agent_note-implementation-docs-pomine-a-pozycje-2-numer-sekc
-status: proposed
+status: dismissed
+dismissed_reason: >
+  Dotyczy iam (TS-SSO-060): numeracja sekcji aneksu w architektura.md i odwołanie w
+  iam-invariants.md wymagają decyzji projektu, poza zakresem warstwy docs. Do rozstrzygnięcia w
+  iam.
 trigger: agent_note
 category: other
 sources:

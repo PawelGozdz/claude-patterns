@@ -1,6 +1,9 @@
 ---
 id: DEV-agent_note-znany-dryf-inv-f6-memoryusageledger-nie-ponawia-f
-status: proposed
+status: dismissed
+dismissed_reason: >
+  Znany dryf w kodzie ai-gateway (MemoryUsageLedger nie ponawia flushu, ADR-0009 §6 obiecuje
+  at-least-once), udokumentowany w TS-AIG-093. Backlog projektu.
 trigger: agent_note
 category: other
 sources:

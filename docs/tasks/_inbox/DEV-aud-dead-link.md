@@ -1,6 +1,9 @@
 ---
 id: DEV-aud-dead-link
-status: proposed
+status: dismissed
+dismissed_reason: >
+  Nieodtwarzalne 2026-10-17: audit-projects.mjs --all nie zgłasza martwych dowiązań w
+  juz-ide-api-4.
 trigger: setup_drift
 sources:
   - audit

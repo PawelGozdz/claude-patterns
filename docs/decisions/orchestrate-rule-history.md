@@ -982,6 +982,19 @@ drogiego agenta, że zmiany są już w drzewie („Both migrations were found al
 as uncommitted", „the OQ6 premise is stale"). Każde takie odkrycie kosztuje pełny kontekst
 implementera — kilka dolarów za powtórzenie `git status`, którego nikt nie zrobił.
 
+**Uzupełnienie (2026-10-17, DEV-agent_note-preflight-analyze-tylko-biezaca-galaz).** ai-gateway
+TS-AIG-072: preflight przeszedł na `develop` i `/analyze` napisał analizę od zera, choć praca była
+już scommitowana na niezmergowanej gałęzi `feature/TS-AIG-072-lint-z-typami` (przebieg z 9.10,
+raport w gitignorowanym `.claude/run-state/`). Dublowanie wyszło dopiero na starcie
+`/orchestrate`: pełna analiza z czterema agentami i zatwierdzeniem (~14 USD) plus ręczne konflikty
+merge. Przyczyna: reguła sprawdzała tylko bieżącą gałąź, a `/orchestrate` kończy się na
+`STAGE_NOT_COMMIT`, więc merge do `develop` to osobny krok, którego nic nie wymusza.
+Zmiana (tylko prompt): do preflightu dochodzą `git branch -a --no-merged develop`,
+`git log --all --oneline --grep=<TASK-ID>` i `ls .claude/run-state/<TASK-ID>.*`; trafienie = STOP
+z pytaniem, czy kontynuować istniejącą gałąź. Niezrobione: mechaniczny wariant w
+`orchestrate-prepare.mjs` (exit 2) i wersja dla `/analyze` (nie ma skryptu) — to osobna zmiana,
+dopóki nie wróci przy regule „tylko prompt".
+
 <a id="anl-009"></a>
 
 ### ANL-009 — nazwa kolekcji RAG NIGDY nie jest konstruowana z nazwy katalogu
@@ -2002,4 +2015,42 @@ analizy z błędnym YAML nie wystartują ponownie bez poprawki frontmatteru. Eva
 - Instrukcja `layers_done` (krok 4): zapis GO także po `ESCALATE_AND_HALT`/`BLOCKED_BY_PRIOR`.
 
 **Niezweryfikowane.** Zarzut agenta, że „każde ponowne wygenerowanie skryptu zrzuca cache warstw", nie jest potwierdzony: w dzienniku jest jeden przebieg tego zadania i `application` (GO po 2 próbach) nie trafiło do `layers_done`. To zgodne z hipotezą, że GO sprzed zatrzymania nie było zapisywane (instrukcja była dwuznaczna), ale nie dowodzi cache'u Workflow. Silnik nie ma dostępu do `fs`, więc zapis `layers_done` zostaje po stronie orkiestratora (prompt).
+
+### ORC-105 — sonda przyrostu testów wielojęzyczna, kotwica korzenia poza repo git (2026-10-17)
+
+**Objaw (2 zgłoszenia).**
+1. aegis-flow TS-005 (`wf_9cea179a-1e5`, `testing:red-tests`, DEV-orc-035-testing-red-tests): sonda przyrostu testów nie liczyła `def test_x` w Pythonie, więc `newTestBlocks=0` mimo realnych testów RED i fałszywy `ESCALATE_AND_HALT`.
+2. ai-os-bot BOT-030 (`implementation:u1-hop`, DEV-orc-104-implementation-u1-hop): gdy cwd sesji nie jest repo git, `cd "$(git rev-parse --show-toplevel)" || exit 1` robiło `cd ""`, które kończy się sukcesem. Sonda biegła w cwd, typecheck i lint padały na braku `package.json`, a halt dostawał `cause=code` zamiast `machine`.
+
+**Przyczyna.** Wzorzec bloku testu był jednym regexem zaszytym w `buildProbePrompt` (`it|test|testWidgets|describe|group`), a plik towarzyszący (`isCompanion` i pathspec dla zakresu-pliku) znał tylko `*.spec.*` i `*.test.*`. Ten sam rodzaj zaszycia co ORC-078 (Dart), ale poprawiany osobno dla każdego stacku.
+
+**Zmiana.**
+- Tabela `TEST_LANGS` w bloku CORE szablonu (skrypt Workflow nie ma `import`, więc osobny moduł odpada): wpisy `js` (it/test/describe z `.each/.only/.skip/.concurrent/.fixme/.todo`, pokrywa też Jest/Vitest/Playwright, backend i frontend), `dart` (`testWidgets`, `group`), `python` (`(async )def test…(`). Pola: `block` (ERE), `stem` (nazwa pliku testu → rdzeń testowanego pliku), `globs` (nazwy plików towarzyszących).
+- `testBlockRegex()` składa sumę wzorców do jednego `grep -cE` (WL6: `git diff HEAD` i `| grep -cE` w jednej linii). `companionGlobs()` i `isCompanion` czytają tę samą tabelę, więc Python dostaje `test_<stem>.*` i `<stem>_test.*`. Nowy język = jeden wpis i przypadek w teście.
+- Kotwica korzenia: `_root=$(git rev-parse --show-toplevel) || exit 1`, dopiero potem `cd "$_root" || exit 1`.
+
+**Czego NIE zrobiłem.**
+- Nie liczę `class Test*` (kontener, nie blok wykonywalny; metody łapie wcięcie).
+- Nie dodałem wykrywania języka w locie ani nadpisania w `runtime.yml` (`test_block_patterns`): suma wzorców jest bezpieczna, a konfiguracja bez realnego zgłoszenia to spekulacja.
+- Zarzut z DEV-orc-104-implementation-u1-hop, że `resumeFromRunId` po naprawie cwd zwraca wynik z cache (prompt sondy bez zmian, 6 ms) i niczego nie weryfikuje, jest NIEZWERYFIKOWANY. Wymaga osobnego odtworzenia na działającym przebiegu.
+
+**Ryzyko.** Wzorzec Pythona `def\s+test\w*\(` liczy także pomocnicze funkcje o nazwie zaczynającej się od `test` (np. `def testing_helper(`), zgodnie z domyślnym `python_functions = test` w pytest, więc nadmiar jest możliwy, ale niegroźny: bramka sprawdza tylko, czy przyrost jest większy od zera.
+
+### ORC-106 — padające pliki testów: prefiks projektu vitest i stare logi sondy (2026-10-17)
+
+**Objaw (DEV-orc-103-testing, DEV-orc-098-final-gate).** grant-flow TS-UI-006 (`wf_f4a4221d-7a0`): `testsFlakyUnderLoad` nie zadziałał mimo `testsRerunPassed=true`, bo `testFailPaths()` zebrało 18 ścieżek przy `testFilesFailed=1` i nie rozpoznało prefiksu projektu vitest workspace (`|projekt|`); flaky test poza zakresem dał `BLOCKED_BY_PRIOR`. marketing-hub TS-MH-007: czerwona sonda, ręczne powtórki zielone.
+
+**Przyczyna.**
+1. Regex `FAIL\s+(\S+\.ext)` wymagał ścieżki zaraz po `FAIL`; w vitest workspace linia ma postać `FAIL  |api| src/a.spec.ts > …`, więc pliki nie były łapane (paths=0, brak odroczenia ORC-099 i rerunu ORC-103).
+2. Logi `/tmp/check-<warstwa>-N.log` z poprzednich przebiegów zostawały w `/tmp`, a grepy sondy po `-*.log` zbierały je razem z bieżącymi, więc liczba ścieżek nie zgadzała się z podsumowaniem runnera i warunek zgodności zawsze odrzucał odroczenie.
+
+**Zmiana.**
+- `testFailPaths`: opcjonalny prefiks `|projekt|` przed ścieżką.
+- Polecenie sondy zaczyna się od `rm -f /tmp/check-<warstwa>-*.log` (po kotwicy korzenia, przed pierwszym sprawdzeniem); warstwa bez `checks` nic nie czyści.
+
+**Niezweryfikowane / niezrobione.**
+- DEV-orc-099-testing-tests-clone: zarzut, że `PKGROOT='.'` wyłączył rerun ORC-103. Instrukcja rerunu nie zależy od `PKGROOT`, więc to raczej interpretacja agenta sondy; brak logu przebiegu, nie odtworzone.
+- Protokół „padające pliki" zna tylko format `FAIL path` (vitest/jest). pytest pisze `FAILED path::test` i nie ma podsumowania „Test Files N failed", więc dla Pythona odroczenie i rerun nie zadziałają. Dopiero gdy pojawi się wielowarstwowy projekt Pythona z tym objawem.
+
+**Ryzyko.** `rm -f` na wspólnym `/tmp` usuwa też logi współbieżnego przebiegu o tym samym `layer.id` w innym projekcie; ten wyścig istniał już wcześniej (oba przebiegi nadpisywały te same pliki), teraz tylko jest jawny.
 

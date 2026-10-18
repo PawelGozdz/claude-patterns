@@ -1,6 +1,9 @@
 ---
 id: DEV-agent_note-verified-only-the-4-explicitly-scoped-fix-points-p
-status: proposed
+status: dismissed
+dismissed_reason: >
+  Informacyjna: weryfikator punktowej naprawy (4 punkty) jawnie zgłosił zakres, w którym
+  pracował (marketing-hub TS-MH-010). To ujawnienie ograniczenia, nie defekt.
 trigger: agent_note
 rule_ref: null
 first_seen: 2026-09-26

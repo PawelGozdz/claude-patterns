@@ -24,7 +24,6 @@
 |---------|---------|-------|
 | `/analyze` | Research/analiza sterowana blokami z runtime.yml (ADR 0008) | Sonnet |
 | `/orchestrate` | Implementacja sterowana blokami z runtime.yml (ADR 0008) | Sonnet |
-| `/scaffold` | Haiku template generator — fast boilerplate (60x cheaper) | Haiku |
 
 Planowanie i TDD idą do ECC: `/ecc:plan`, skill `ecc:tdd-workflow` (plus `ecc:<lang>-test`
 dla konkretnego języka) — patrz [ADR 0009](../docs/adr/0009-wynik-spike-fazy-0-i-lista-retire.md).
@@ -79,7 +78,6 @@ Bramki jakości, przegląd jednoprzebiegowy i pokrycie testami idą do ECC:
 
 | Command | Purpose | Model |
 |---------|---------|-------|
-| `/progress` | Visual progress tracking — task status, completions, next actions | Haiku |
 | `/checkpoint` | Handoff only: write `.claude/work/SESSION_STATE.md` for the next session | — |
 
 Historia sesji i checkpointy gitowe idą do ECC: `/ecc:sessions` (`/ecc:save-session`,
@@ -119,7 +117,6 @@ Historia sesji i checkpointy gitowe idą do ECC: `/ecc:sessions` (`/ecc:save-ses
 # Orchestration
 /analyze TASK-123                     # analiza sterowana blokami
 /orchestrate TASK-123                 # implementacja sterowana blokami
-/scaffold dto CreateUser auth         # generate boilerplate
 ```
 
 ## Adding Commands

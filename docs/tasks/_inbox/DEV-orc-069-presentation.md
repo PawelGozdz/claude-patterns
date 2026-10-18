@@ -1,7 +1,12 @@
 ---
 id: DEV-orc-069-presentation
-status: proposed
+status: dismissed
 dismissed_reason: >
+  Nieaktualne po ORC-088 (checks jako komendy dosłowne, Flutter dostaje analyze/test; brak
+  checks w runtime.yml był przyczyną ślepej sondy) oraz ORC-084/ORC-098 (GO z lukami zamiast
+  NO_GO). Ostatnie wystąpienie 2026-10-04. Wątek zapisu implementera w głównym checkoucie
+  zamiast worktree to zachowanie agenta, nie reguła silnika.
+previous_dismissed_reason: >
   Wzorzec do obserwacji, nie jeszcze gotowy do promocji: oba wystąpienia
   (2026-09-28, 2026-09-29) to nie brak budżetu/kompetencji weryfikatora na
   SPRAWDZENIE, tylko weryfikator NIE URUCHOMIŁ kodu w ogóle (nie skompilowane

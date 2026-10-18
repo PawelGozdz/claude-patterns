@@ -1,6 +1,11 @@
 ---
 id: DEV-orc-098-final-gate
-status: proposed
+status: promoted
+resolution: >
+  Naprawione w części jako ORC-106 (2026-10-17): ta sama przyczyna co DEV-orc-103-testing (lista
+  padających plików niezgodna z podsumowaniem runnera blokowała finalGapsAcceptable).
+  NIEZWERYFIKOWANE: wątek marketing-hub (sonda ślepa na --prefix apps/api/tools, pretest
+  przebudowuje contracts równolegle) nie został odtworzony; wróci jako nowe wystąpienie.
 trigger: no_go
 category: verifier
 sources:

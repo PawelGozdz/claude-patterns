@@ -1,7 +1,13 @@
 ---
 id: DEV-orc-062-infrastructure
-status: proposed
+status: dismissed
 dismissed_reason: >
+  Wątek 1 (agent infrastructure-implementer / test-implementer nie znaleziony w juz-ide-api-1)
+  to config projektu (3.1): dowiązania agentów w .claude/agents projektu, nie silnik. Wątek 2
+  (marketing-hub, typecheck:fail bez pliku:linii przy równoległej jednostce): silnik poprawnie
+  odmówił automatycznego GO (ORC-062) i przeszedł w BLOCKED_BY_PRIOR, niezależna weryfikacja
+  potwierdziła zielony stan.
+previous_dismissed_reason: >
   Working as intended — ORC-062 zadziałał zgodnie z projektem: sonda checks
   zwróciła niejednoznaczny sygnał (typecheck:fail bez pliku:linii, prawdopodobny
   stan wyścigu z równoległą jednostką kończącą

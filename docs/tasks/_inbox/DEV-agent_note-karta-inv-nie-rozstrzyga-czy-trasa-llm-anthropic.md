@@ -1,6 +1,9 @@
 ---
 id: DEV-agent_note-karta-inv-nie-rozstrzyga-czy-trasa-llm-anthropic
-status: proposed
+status: dismissed
+dismissed_reason: >
+  Dotyczy karty aig-invariants.md w ai-gateway (INV-F13 a INV-C5/INV-D8). Rozstrzygnięcie w
+  karcie projektu.
 trigger: agent_note
 rule_ref: null
 first_seen: 2026-10-07

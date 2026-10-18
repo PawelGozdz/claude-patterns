@@ -1,6 +1,12 @@
 ---
 id: DEV-orc-092-final-gate
-status: proposed
+status: dismissed
+dismissed_reason: >
+  Wątek 1 (security-e2e-verifier bez Glob/Grep/Task w workflow): definicja agenta ma tryb pracy
+  bez delegowania (Read/Glob/Grep/Bash bezpośrednio), a fallback na grep w Bash działa. Wątek 2
+  (karta error-handler-chain opisuje fallback 400, a rules/error-mapper.md i kod 422): reguła
+  projektu juz-ide-api-1 jest nadrzędna wobec generycznej karty, to świadome odstępstwo
+  projektu.
 trigger: agent_note
 category: other
 sources:

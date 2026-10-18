@@ -1,7 +1,12 @@
 ---
 id: DEV-orc-069
-status: proposed
+status: dismissed
 dismissed_reason: >
+  Nieaktualne po ORC-084 (warstwa z lukami kończy jako GO_WITH_GAPS), ORC-098 (bramka końcowa:
+  GO z lukami zamiast NO_GO z samego unverified_scope, 2026-10-04) i ORC-100 (te same luki po
+  powtórnej weryfikacji zamykają warstwę). Ostatnie wystąpienie 2026-10-03, przed ORC-098; od
+  tego czasu brak nawrotu. Jeśli wróci, rekord otworzy się sam (ORC-068).
+previous_dismissed_reason: >
   Zbadane 2026-09-27, ponownie po reopen (occurrences: 2) — oba wystąpienia
   (grant-flow TS-RATE-003, ai-os-bot BOT-004) to ten sam wzorzec: bramka końcowa
   poprawnie wymusza NO_GO, bo weryfikacja faktycznie NIE OBJĘŁA pełnego

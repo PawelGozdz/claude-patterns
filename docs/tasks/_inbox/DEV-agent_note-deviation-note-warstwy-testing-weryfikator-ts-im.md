@@ -1,6 +1,9 @@
 ---
 id: DEV-agent_note-deviation-note-warstwy-testing-weryfikator-ts-im
-status: proposed
+status: promoted
+resolution: >
+  Przeniesione do TASK-ORCH-CARDS-STACK-MISMATCH-001 (weryfikator z listą stałą nie ocenia
+  wstrzykniętych kart niedopasowanych do stosu).
 trigger: agent_note
 rule_ref: null
 first_seen: 2026-10-01

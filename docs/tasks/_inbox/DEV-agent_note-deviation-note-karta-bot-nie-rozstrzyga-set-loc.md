@@ -1,6 +1,10 @@
 ---
 id: DEV-agent_note-deviation-note-karta-bot-nie-rozstrzyga-set-loc
-status: proposed
+status: dismissed
+dismissed_reason: >
+  Dotyczy karty BOT-* w repo ai-os-bot (SET LOCAL statement_timeout D10, B10 dla embeddingu):
+  decyzja o karcie leży w ai-os-bot. Niestosowalność kart DDD/Fastify do tego stosu zbiera
+  TASK-ORCH-CARDS-STACK-MISMATCH-001.
 trigger: agent_note
 rule_ref: null
 first_seen: 2026-10-07

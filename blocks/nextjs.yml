@@ -18,13 +18,17 @@ requires_ecc:
   modules: [lang:typescript, capability:orchestration]
 
 patterns:
-  # Półka `always` CELOWO PUSTA (nie ma jej w ogóle). Wchodzi do KAŻDEGO taska, więc
-  # ma sens tylko dla wzorca z kartą reguł — a żaden wzorzec z `patterns/nextjs/` karty
-  # nie ma, natomiast karty z `cross-layer/` są nestjsowe co do treści:
-  # `security-invariants` mówi o dekoratorze `@Auth()` metody kontrolera (SI2/N2),
-  # `conventions`/`logger` o nazewnictwie DDD i tokenie LOGGER_SERVICE. Wstawienie ich
-  # tutaj byłoby myleniem implementera, nie regułą (ta sama decyzja i to samo
-  # uzasadnienie co w `blocks/python.yml`).
+  # Półka `always` CELOWO PUSTA (nie ma jej w ogóle). Wchodzi do KAŻDEGO taska, a karty
+  # z `cross-layer/` są nestjsowe co do treści: `security-invariants` mówi o dekoratorze
+  # `@Auth()` metody kontrolera (SI2/N2), `conventions`/`logger` o nazewnictwie DDD i
+  # tokenie LOGGER_SERVICE. Wstawienie ich tutaj byłoby myleniem implementera, nie
+  # regułą (ta sama decyzja i to samo uzasadnienie co w `blocks/python.yml`). Karty
+  # `patterns/nextjs/*_summary.md` są już stackowe, ale dotyczą tematów (auth, env, CSP),
+  # nie każdego taska — dlatego wchodzą wyzwalaczami, nie półką.
+  #
+  # Dopasowanie słów kluczowych to `haystack.includes(słowo)` (podciąg, bez wielkości
+  # liter — orchestrate-prepare.mjs). Gołe `env` czy `header` złapałyby „environment" i
+  # komponent Header, więc w wyzwalaczach niżej stoją frazy wielowyrazowe.
   triggers:
     - keywords: [server component, client component, "use client", "use cache", rsc, hydrat]
       include:
@@ -38,9 +42,29 @@ patterns:
     - keywords: [routing, route, proxy, middleware, redirect, layout, nawigacj]
       include:
         - nextjs/routing-proxy-pattern.md
-    - keywords: [auth, logowanie, login, sesj, session, token, uprawnien, permission]
+    # Granice kontroli (DAL, proxy jako filtr wstępny, autoryzacja w akcji) wchodzą na KAŻDE
+    # zadanie o tożsamości/uprawnieniach i na Server Actions — niezależnie od biblioteki auth.
+    - keywords: [auth, logowanie, login, sesj, session, token, uprawnien, permission, authoriz, idor, ownership, "server action", "use server"]
+      include:
+        - nextjs/auth-boundaries-pattern.md
+    # Wariant z RĘCZNĄ sesją (jose + hasła) — tylko gdy zadanie mówi o tym wprost. Wcześniej
+    # wchodził na każde „auth/login" i uczył własnego JWT także projekty na bibliotece
+    # (np. Better Auth), co kłóci się z zaleceniem dokumentacji Next.js (biblioteka > ręczny kod).
+    - keywords: [jwt, jose, bcrypt, argon2, "password hash", "hash hasła", "własna sesja", "custom session", "hand-rolled"]
       include:
         - nextjs/auth-pattern.md
+    - keywords: ["route handler", "route.ts", webhook, cors, "api route", "public api", "publiczne api"]
+      include:
+        - nextjs/route-handlers-pattern.md
+    - keywords: ["environment variable", "zmienne środowiskow", "process.env", next_public, dotenv, ".env", secret, sekret]
+      include:
+        - nextjs/env-secrets-pattern.md
+    - keywords: [csp, nonce, "content-security-policy", "security header", "nagłówki bezpieczeństwa", hsts]
+      include:
+        - nextjs/security-headers-csp-pattern.md
+    - keywords: [instrumentation, observability, opentelemetry, telemetry, tracing, onrequesterror, sentry, "error report", monitoring]
+      include:
+        - nextjs/observability-pattern.md
     - keywords: [styl, style, tailwind, css, theme, motyw]
       include:
         - nextjs/styling-pattern.md
@@ -54,6 +78,8 @@ analyze:
     - { stage: threat-model, agent: "/threat-model",
         when: "\\b(auth|authn|authz|authentication|authorization|login|sesj|session|token)\\b|\\bpii\\b|public[-_ ]api|\"use server\"|server[-_ ]action",
         output: "docs/security/threat-models/TM-{TASK_ID}.md", skip_if_exists: true }
+    # Przy [nextjs, node] powstają dwa etapy tech-analysis (ten i generyczny ecc:architect z node) —
+    # celowo: różne agenty, różne perspektywy (framework vs backend). Nie scalać ani nie dropować.
     - { stage: tech-analysis, agent: "nextjs-architecture-expert" }
     - { stage: impl-analysis, agent: "nextjs-quality-verifier", advisory: true }
 

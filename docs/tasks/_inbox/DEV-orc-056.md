@@ -1,14 +1,20 @@
 ---
 id: DEV-orc-056
-status: proposed
+status: dismissed
 dismissed_reason: >
+  Nieaktualne w części silnikowej: bramka końcowa bez werdyktu (agent empty result) obsłużona w
+  ORC-087, brak checks dla Fluttera/lint w ORC-088. Pozostałe wystąpienia to realne ustalenia
+  bramki (format:check, test:visual, VETO-1 JIT z guarda): mechanizm zadziałał, a brak karty na
+  efekty uboczne komend z guarda jest w TASK-ORCH-PATTERN-GAPS-001 pkt 1. Ostatnie wystąpienie
+  2026-10-03.
+previous_dismissed_reason: >
   Reopen (TS-MH-009, 2026-09-28) to zupełnie inny, realny zestaw braków
   implementacji (format:check rc=1 na 3 plikach, test:visual 4/8 bez
   aktualizacji baseline, D4 staleTime, D8 test:e2e:web, D10 karty, WARN useCan)
   — nie powtórka starego VETO-1/2/3 (to zostało już rozwiązane/przeniesione,
   patrz resolution poniżej). Final gate zadziałał poprawnie; to backlog
   marketing-hub (TS-MH-009), nie zmiana silnika/reguł claude-patterns.
-resolution: >
+previous_resolution: >
   VETO-2/3 naprawione 2026-09-26: format:check/validate:br:api/build dodane do
   final_gate.checks w marketing-hub/.claude/blocks/layers-monorepo.yml (root
   package.json dostał alias validate:br:api). VETO-1 (brak karty na efekty

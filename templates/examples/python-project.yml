@@ -51,5 +51,3 @@ docs:
 
 entry_points:
   orchestrate: "/o"
-  scaffold: "/scaffold"
-  progress: "/progress"
