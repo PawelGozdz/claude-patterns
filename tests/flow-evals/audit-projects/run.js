@@ -33,7 +33,9 @@ const mkProject = (name) => {
   write(path.join(P, '.claude/config/project.yml'), 'name: x\n');
   return P;
 };
-const run = (cmd, args, cwd) => spawnSync(cmd, args, { cwd, encoding: 'utf8' });
+// Zdarzenia audytu (TASK-OBS-004) idą do katalogu tymczasowego — eval nie dotyka prawdziwych danych.
+const telDir = fs.mkdtempSync(path.join(os.tmpdir(), 'eval-audit-tel-'));
+const run = (cmd, args, cwd) => spawnSync(cmd, args, { cwd, encoding: 'utf8', env: { ...process.env, CLAUDE_TELEMETRY_DIR: telDir } });
 
 // 1) martwe dowiązania
 const dead = mkProject('deadproj');
@@ -112,11 +114,38 @@ expect('zależność kompozycji w .gitignore', /✗ plik, od którego zależy ko
 expect('settings: deny bez Read(.env)', /✗ permissions\.deny nie obejmuje odczytu \.env/.test(gp), gp);
 expect('ręczny CLAUDE.md bez CLAUDE-LOCAL', /✗ ręcznie pisany CLAUDE\.md bez CLAUDE-LOCAL\.md/.test(gp), gp);
 
+// 6) telemetria przebiegu: run.start/run.end + step.end per projekt × kontrola, także OK
+const readEvents = () => {
+  return fs.readdirSync(telDir).filter((f) => f.endsWith('.jsonl'))
+    .flatMap((f) => fs.readFileSync(path.join(telDir, f), 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l)));
+};
+const ev = readEvents().filter((e) => e.process === 'audit');
+const lastRun = ev.filter((e) => e.kind === 'run.start').map((e) => e.runId).pop();
+const mine = ev.filter((e) => e.runId === lastRun);
+const steps = mine.filter((e) => e.kind === 'step.end');
+const stepOf = (project, check) => steps.find((e) => e.project === project && e.step.role === check);
+expect('audyt zostawia dokładnie jedno run.start i run.end tego przebiegu',
+  mine.filter((e) => e.kind === 'run.start').length === 1 && mine.filter((e) => e.kind === 'run.end').length === 1);
+expect('katalog _* nie dostaje kroków', !steps.some((e) => e.project === '_hidden'));
+expect('kontrola ze znaleziskiem = failed + cause config',
+  stepOf('deadproj', 'dead-links')?.outcome === 'failed' && stepOf('deadproj', 'dead-links')?.cause === 'config', JSON.stringify(stepOf('deadproj', 'dead-links')));
+expect('kontrola bez znalezisk = ok (też OK trafia do danych)', stepOf('deadproj', 'git-hygiene')?.outcome === 'ok', JSON.stringify(stepOf('deadproj', 'git-hygiene')));
+expect('krok niesie projekt jako group i kontrolę jako role',
+  stepOf('gitproj', 'env-deny')?.step.group === 'gitproj' && stepOf('gitproj', 'env-deny')?.outcome === 'failed');
+expect('kontrole globalne idą pod projekt centrali', steps.some((e) => e.project === 'claude-patterns' && e.step.role === 'routing'));
+expect('kontrola niezastosowalna (runtime bez kompozycji) nie powstaje', !stepOf('deadproj', 'runtime'));
+const before = readEvents().length;
+run('node', [AUDIT, '--root', root, '--gate']);
+expect('--gate nie zapisuje zdarzeń', readEvents().length === before);
+run('node', [AUDIT, '--root', root, '--all', '--no-telemetry']);
+expect('--no-telemetry nie zapisuje zdarzeń', readEvents().length === before);
+
 let failed = 0;
 for (const c of checks) {
   if (!c.ok) failed++;
   process.stdout.write(`  ${c.ok ? '✅' : '❌'} ${c.label}${c.ok || !c.detail ? '' : `\n      ${String(c.detail).replace(/\n/g, '\n      ')}`}\n`);
 }
 fs.rmSync(root, { recursive: true, force: true });
+fs.rmSync(telDir, { recursive: true, force: true });
 process.stdout.write(`\n${checks.length - failed}/${checks.length} passed\n`);
 process.exit(failed ? 1 : 0);

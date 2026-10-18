@@ -32,6 +32,7 @@ import { homedir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { execFileSync, spawnSync } from 'node:child_process';
 import YAML from 'yaml';
+import { emitAuditRun } from './lib/audit-telemetry.mjs';
 import { deadLinkIssues, gitHygieneIssues, envDenyIssues, claudeMdIssues, surplusIssues, outsideBlockSystem } from './lib/audit-checks.mjs';
 
 const REPO = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -39,6 +40,10 @@ const rootArg = process.argv.indexOf('--root');
 const ROOT = rootArg > -1 ? process.argv[rootArg + 1] : '/opt/projects';
 const GATE = process.argv.includes('--gate');
 const ALL = process.argv.includes('--all');
+// Metryki przebiegu (TASK-OBS-004): nie przy --gate (pre-commit odpala audyt przy każdym commicie
+// i zalałby dane), chyba że ktoś wymusi; --no-telemetry wyłącza ręcznie. Zapis nie zależy od --report.
+const TELEMETRY = !GATE && !process.argv.includes('--no-telemetry');
+const STARTED_AT = Date.now();
 
 const ERROR = 'error', WARN = 'warn', INFO = 'info';
 
@@ -106,6 +111,14 @@ for (const name of projects) {
   const pyml = readFileSync(join(P, '.claude/config/project.yml'), 'utf8');
   const composed = /^\s*stack_blocks:/m.test(pyml);
   const issues = [];
+  // Granice kontroli w `issues` (TASK-OBS-004): `cut` zamyka kontrolę, a znaleziska dodane od poprzedniego
+  // cięcia należą do niej. Kontrola niezastosowalna do projektu (`applicable=false`) nie powstaje.
+  const cuts = [];
+  let mark = 0;
+  const cut = (check, applicable = true) => {
+    if (applicable) cuts.push({ check, from: mark, to: issues.length });
+    mark = issues.length;
+  };
 
   // 1. runtime.yml — istnienie i świeżość względem bloków (source_hash, nie mtime:
   //    mtime dowolnego bloku fałszywie oznaczyłby wszystkie projekty jako nieaktualne).
@@ -121,15 +134,20 @@ for (const name of projects) {
       if (stale) issues.push(stale);
     }
   }
+  cut('runtime', composed);
 
   // 2. Martwe dowiązania — cel zniknął z centrali, nikt tego nie posprzątał.
   issues.push(...deadLinkIssues(P));
+  cut('dead-links');
 
   // 2b. Higiena gita i konfiguracja bezpieczeństwa (2026-10-10) — patrz lib/audit-checks.mjs.
-  issues.push(...gitHygieneIssues(P), ...envDenyIssues(P), ...claudeMdIssues(P));
+  issues.push(...gitHygieneIssues(P)); cut('git-hygiene');
+  issues.push(...envDenyIssues(P)); cut('env-deny');
+  issues.push(...claudeMdIssues(P)); cut('claude-md');
 
   // 2c. Nadmiary (TASK-OBS-007, ADR 0011 B5): obecne w .claude/, a niewnoszone przez kompozycję — INFO.
   issues.push(...surplusIssues(P));
+  cut('surplus');
 
   // 3. Szablony — KOPIE, więc nie propagują się same. Wymagane warunkowo: artefakt
   //    analizy tam, gdzie w ogóle działa /analyze; TM tam, gdzie jest docs/security/.
@@ -144,6 +162,7 @@ for (const name of projects) {
   tpl('project-orchestration/analysis/TEMPLATE.md', 'templates/task-analysis-template.md', composed);
   tpl('docs/security/THREAT_MODEL_TEMPLATE.md', 'templates/THREAT_MODEL_TEMPLATE.md',
     existsSync(join(P, 'docs/security')));
+  cut('templates', composed || existsSync(join(P, 'docs/security')));
 
   // 4. Blok lokalny z `extends:` NADPISUJE sekcje w całości (nie merguje) — jeśli
   //    nadpisuje sekcję, którą blok bazowy TEŻ ma (np. `orchestrate`), przyszłe zmiany
@@ -190,6 +209,8 @@ for (const name of projects) {
     }
   }
 
+  cut('local-blocks', existsSync(localBlocksDir));
+
   // 5. verify-project-setup.mjs cyklicznie, nie tylko ręcznie po fakcie (K47,
   //    TASK-KAIZEN-001) — łapie dokładnie klasę błędów z K02/K03/K06/K46: świeży setup,
   //    który wygląda kompletnie, dopóki ktoś nie odpali /analyze i nie trafi na
@@ -203,6 +224,7 @@ for (const name of projects) {
         `node scripts/verify-project-setup.mjs ${P} --verbose`]);
     }
   }
+  cut('verify-setup', composed);
 
   // 6. Manifest instalacji (ADR 0007 D1/D2, K66). `source_hash` w runtime.yml pilnuje treści
   //    bloków, ale nie odpowiada na „z jakiego stanu centrali to wyszło": zmiana skryptów,
@@ -238,6 +260,8 @@ for (const name of projects) {
     }
   }
 
+  cut('manifest', composed);
+
   const sessions = sessionCount(P);
   const dormant = !ALL && sessions <= DORMANT_MAX_SESSIONS;
   // Domyślna waga to BŁĄD — checki sprzed K63 zgłaszają rzeczy naprawialne komendą.
@@ -245,7 +269,11 @@ for (const name of projects) {
   // BŁĄD zajmowałby miejsce w raporcie, który ma być czytany.
   const normalized = issues.map(([what, fix, sev = ERROR]) => [what, fix, dormant ? INFO : sev]);
 
-  rows.push({ name, composed, blocks, issues: normalized, sessions, dormant });
+  // Waga SUROWA (przed degradacją uśpionych): o `failed` decyduje, czy kontrola coś znalazła, a nie czy ktoś to czyta.
+  const checks = cuts.map(({ check, from, to }) => ({
+    check, failed: issues.slice(from, to).some(([, , sev = ERROR]) => sev !== INFO),
+  }));
+  rows.push({ name, composed, blocks, issues: normalized, sessions, dormant, checks });
 }
 
 // Routing hooków jest GLOBALNY (jeden plik dla całej floty), więc sprawdzamy go raz,
@@ -294,6 +322,9 @@ const outsideIssue = outside.length
   : null;
 
 const globalIssues = [routingIssue, telemetryIssue, ragIssue, outsideIssue].filter(Boolean);
+const globalChecks = [['routing', routingIssue], ['telemetry-freshness', telemetryIssue],
+  ['rag-freshness', ragIssue], ['outside-blocks', outsideIssue]]
+  .map(([check, issue]) => ({ check, failed: Boolean(issue) && (issue[2] ?? ERROR) !== INFO }));
 
 const MARK = { [ERROR]: '✗', [WARN]: '!', [INFO]: 'i' };
 const sevOf = (list, sev) => list.filter(([, , s]) => s === sev);
@@ -380,6 +411,12 @@ if (process.argv.includes('--report')) {
   }
   console.log(`\nskrzynka: ${toReport.length} błędów przekazanych do docs/tasks/_inbox/` +
     (failed ? ` (${failed} nie zapisało się — sprawdź report-deviation.mjs)` : ''));
+}
+
+if (TELEMETRY) {
+  const t = emitAuditRun({ rows, globals: globalChecks, startedAt: STARTED_AT, errors });
+  if (t.error || t.rejected)
+    console.error(`⚠ telemetria audytu: zapisano ${t.written}, odrzucono ${t.rejected}${t.error ? `, błąd: ${t.error}` : ''}`);
 }
 
 // `--gate`: wywołanie automatyczne (pre-commit, /loop). Przerywa wyłącznie na BŁĘDZIE,
