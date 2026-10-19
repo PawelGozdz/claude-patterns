@@ -18,6 +18,7 @@
 
 import { readFileSync, writeFileSync, existsSync, readdirSync } from 'node:fs';
 import { join, basename } from 'node:path';
+import { execFileSync } from 'node:child_process';
 
 let YAML;
 try { YAML = (await import('yaml')).default; }
@@ -295,3 +296,23 @@ if (problems.scope_pending_registration.length)
 if (problems.missing_status.length)
   console.error(`  UWAGA: ${problems.missing_status.length} plików bez czytelnego statusu — traktowane jako aktywne: ` +
     problems.missing_status.slice(0, 5).map((f) => basename(f)).join(', ') + (problems.missing_status.length > 5 ? ', …' : ''));
+
+// Indeks powstaje z drzewa roboczego, więc decyzje, które są tylko na bazie, a których gałąź
+// jeszcze nie ma, nie wejdą do bramki (DEV-anz-gate-input-missing: BDR-081..084 na origin/develop,
+// gałąź 5 commitów z tyłu). Sprawdzamy lokalne refy, bez fetch — brak refa lub repo = brak ostrzeżenia.
+function decisionsBehindBase() {
+  const dirs = [cfg.adr_dir, cfg.bdr_dir].filter(Boolean);
+  const behind = [];
+  for (const ref of ['origin/develop', 'origin/main']) {
+    try {
+      const files = execFileSync('git', ['-C', projectDir, 'diff', '--name-only', '--diff-filter=AM', `HEAD...${ref}`, '--', ...dirs],
+        { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).split('\n').filter(Boolean);
+      if (files.length) behind.push({ ref, files });
+    } catch { /* brak refa albo katalog bez gita */ }
+  }
+  return behind;
+}
+for (const { ref, files } of decisionsBehindBase())
+  console.error(`  UWAGA: ${files.length} wpisów rejestru jest na ${ref}, a nie ma ich na tej gałęzi (nie weszły do indeksu): ` +
+    files.slice(0, 5).map((f) => basename(f)).join(', ') + (files.length > 5 ? ', …' : '') +
+    ' — zrób merge/rebase i odpal skrypt ponownie.');

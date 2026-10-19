@@ -15,7 +15,7 @@
 - **ACL4** — adapter rejestrowany w `onModuleInit()` kontekstu dostawcy: `this.aclRegistry.registerGlobal(key, adapter, description)`.
 - **ACL5** — adapter implementuje `IACLAdapter` i pochodzi z `**/infrastructure/acl/` kontekstu dostawcy.
 - **ACL6** — klucz rejestru to lowercase nazwa kontekstu (`'authorization'`, `'auth'`, `'geographic-auth'`).
-- **ACL7** — metody adaptera zwracają `Result<T, Error>` — hybrid error handling, nigdy wyjątek.
+- **ACL7** — metody adaptera zwracają `Result<T, XxxError>` — typowany błąd (`extends BaseError`, `code` z prefiksem `D_`), zarejestrowany w `IDomainErrorMapper` kontekstu dostawcy w TYM SAMYM diffie (`rules/nestjs-ddd/error-mapper.md`); nigdy wyjątek. Inline interfejs konsumenta może zostać przy `Error` (ACL3 — brak importu z dostawcy).
 - **ACL8** — moduł konsumenta importuje tylko `ACLModule` (globalny), nie moduł dostawcy.
 - **ACL9** — adapter pobierany wewnątrz metody (nie w konstruktorze) — gwarancja kolejności inicjalizacji.
 - **ACL10** — fail-closed default: `aclRegistry.getGlobalRequired()`, NIGDY `getGlobal()`, gdy operacja jest już wyceniona/obiecana/kosztuje użytkownika (ADR-0118 B1).
@@ -25,7 +25,8 @@
 - **N1** — ❌ `import { XxxModule } from '@contexts/xxx/xxx.module'` w innym kontekście — tworzy circular dep i łamie izolację BC.
 - **N2** — ❌ `import { XxxContextAPI } from '@contexts/xxx/infrastructure/acl/...'` — import klasy adaptera między kontekstami niszczy sens wzorca.
 - **N3** — ❌ `this.adapter = this.aclRegistry.getGlobalRequired(...)` w konstruktorze — adapter może nie być jeszcze zarejestrowany.
-- **N4** — ❌ `throw` z metody adaptera — zawsze `Result.fail(new Error(...))`.
+- **N4** — ❌ `throw` z metody adaptera — zawsze `Result.fail(new XxxError())` (typowany błąd z kodem `D_`).
+- **N7** — ❌ `Result.fail(new Error(...))` w adapterze — zwykły `Error` nie ma `code`, `DomainErrorHandler.canHandle()` go odrzuca i globalny mapper zwraca 500; w komunikacie nie dawaj `e.message` (CWE-209).
 - **N5** — ❌ `implements OnModuleInit` pominięte w module dostawcy — adapter nigdy nie trafi do rejestru.
 - **N6** — ❌ połykanie błędu ACL bez klasyfikacji infra (5xx) vs. odmowa domenowa (4xx) przed zwróceniem go dalej (ADR-0118 B2).
 
@@ -40,12 +41,13 @@ import { IACLAdapter } from '@shared/infrastructure/acl';
 export class AuthorizationContextAPI implements IACLAdapter<any, any, any> { // ACL5
   async getUserCapabilities(
     userId: string
-  ): Promise<Result<{ userId: string; capabilities: string[] }, Error>> {     // ACL7
+  ): Promise<Result<{ userId: string; capabilities: string[] }, UserCapabilitiesQueryFailedError>> { // ACL7
     try {
       // ... query repo ...
       return Result.ok({ userId, capabilities: [] });
     } catch (e) {
-      return Result.fail(new Error(`Failed: ${e.message}`));                  // N4
+      // log cause server-side; static typed error, registered in the context's error mapper
+      return Result.fail(new UserCapabilitiesQueryFailedError());             // N4, N7
     }
   }
 }
@@ -79,7 +81,9 @@ export class UserCapabilitiesCalculatorService {
     private readonly aclRegistry: ACLRegistryService,
   ) {}
 
-  async calculateAllCapabilities(userId: string): Promise<Result<string[], Error>> {
+  async calculateAllCapabilities(
+    userId: string
+  ): Promise<Result<string[], CapabilitiesCalculationFailedError>> {
     try {
       const adapter = this.aclRegistry.getGlobalRequired<{                   // ACL1, ACL3, ACL9
         getUserCapabilities: (uid: string) => Promise<Result<{ userId: string; capabilities: string[] }, Error>>;
@@ -89,7 +93,7 @@ export class UserCapabilitiesCalculatorService {
       if (result.isFailure) return Result.ok([]);                            // ACL7
       return Result.ok(result.value.capabilities);
     } catch (e) {
-      return Result.fail(new Error(`Failed to calculate capabilities: ${e.message}`));
+      return Result.fail(new CapabilitiesCalculationFailedError());          // typed, not `new Error` (N7)
     }
   }
 }
@@ -102,9 +106,10 @@ export class UserCapabilitiesCalculatorService {
 | `import { XxxContextAPI } from '@contexts/xxx/infrastructure/...'` | N2 |
 | `this.adapter = this.aclRegistry.getGlobalRequired(...)` w `constructor` | N3 |
 | `throw new Error(...)` w metodzie adaptera | N4 |
+| `Result.fail(new Error(...))` w adapterze (zwykły `Error` bez `code` → 500) | N7 |
 | moduł dostawcy bez `implements OnModuleInit` / bez `onModuleInit()` | N5 |
 | klucz rejestru niezgodny z lowercase nazwą kontekstu | ACL6 |
-| metoda adaptera zwraca `T` zamiast `Result<T, Error>` | ACL7 |
+| metoda adaptera zwraca `T` zamiast `Result<T, XxxError>` / typowany błąd bez wpisu w mapperze kontekstu | ACL7 |
 | konsument importuje moduł dostawcy zamiast tylko `ACLModule` | ACL8 |
 | brak `@Inject(ACL_REGISTRY_SERVICE)` (użyty class injection) | ACL2 |
 

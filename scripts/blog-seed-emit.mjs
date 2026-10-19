@@ -8,9 +8,15 @@
 // przepuści identyfikatorów ani zakazanych tematów do repo bloga.
 //
 // Użycie:
-//   node scripts/blog-seed-emit.mjs --project <ścieżka> --check
+//   node scripts/blog-seed-emit.mjs --project <ścieżka> --check [--run-id <id>]
 //        → JSON {enabled, mode, …}: czy projekt w ogóle zasila blogi (agent pomija ocenę, gdy nie)
+//   node scripts/blog-seed-emit.mjs --project <ścieżka> --no-topic --run-id <id>
+//        → agent ocenił przebieg i nie znalazł tematu; tylko zdarzenie, bez pliku
 //   node scripts/blog-seed-emit.mjs --project <ścieżka> --payload <plik.json|-> [--run-id <id>]
+//
+// Zdarzenia `checked` / `skipped` zapisujemy TYLKO z --run-id: bez nich „cisza" w lejku jest
+// nieodróżnialna od pominięcia kroku przez agenta, a ręczne --check (audyt, debug) bez --run-id
+// nie zaśmieca telemetrii.
 //
 // Kody wyjścia: 0 = przetworzone (także gdy zalążek odrzucony — powód w stdout i telemetrii),
 // 1 = błąd użycia lub niepoprawny payload, 2 = błąd wewnętrzny. Wołający traktuje każde ≠ 0
@@ -62,11 +68,15 @@ function parseArgs(argv) {
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--check') args.check = true;
+    else if (a === '--no-topic') args.no_topic = true;
     else if (['--project', '--payload', '--run-id', '--today'].includes(a)) args[a.slice(2).replace('-', '_')] = argv[++i];
     else throw new Error(`nieznany argument: ${a}`);
   }
   if (!args.project) throw new Error('brak --project <ścieżka>');
-  if (!args.check && !args.payload) throw new Error('brak --payload <plik.json|-> (albo --check)');
+  if ([args.check, args.no_topic, args.payload].filter(Boolean).length !== 1) {
+    throw new Error('brak --payload <plik.json|-> (albo --check / --no-topic) — dokładnie jedno z nich');
+  }
+  if (args.no_topic && !args.run_id) throw new Error('brak --run-id przy --no-topic');
   if (args.today && !/^\d{4}-\d{2}-\d{2}$/.test(args.today)) throw new Error('--today musi być RRRR-MM-DD');
   return args;
 }
@@ -264,7 +274,20 @@ export function run(argv) {
   const emit = makeEmitter(ctx);
   const loaded = loadProjectSettings(projectRoot, today);
 
-  if (args.check) return { code: 0, out: checkOutput(loaded) };
+  if (args.check) {
+    if (args.run_id) {
+      emit(loaded.enabled
+        ? { ...NO_SEED, event: 'checked', mode: loaded.settings.mode }
+        : { ...NO_SEED, event: 'skipped', reason: loaded.reason });
+    }
+    return { code: 0, out: checkOutput(loaded) };
+  }
+  if (args.no_topic) {
+    emit(loaded.enabled
+      ? { ...NO_SEED, event: 'skipped', reason: 'no_topic', mode: loaded.settings.mode }
+      : { ...NO_SEED, event: 'skipped', reason: loaded.reason });
+    return { code: 0, out: { results: [], skipped: loaded.enabled ? 'no_topic' : loaded.reason } };
+  }
   if (!loaded.enabled) {
     emit({ ...NO_SEED, event: 'suppressed', reason: loaded.reason });
     return { code: 0, out: { results: [], skipped: loaded.reason } };
@@ -315,7 +338,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   try {
     res = run(process.argv.slice(2));
   } catch (e) {
-    const usage = /^(nieznany argument|brak --|--today)/.test(e.message);
+    const usage = /^(nieznany argument|brak --|--today)/.test(e.message) || e.message.includes('dokładnie jedno');
     res = { code: usage ? 1 : 2, err: e.message };
   }
   if (res.out) process.stdout.write(JSON.stringify(res.out) + '\n');

@@ -11,6 +11,10 @@ and none of it is instruction — it is history.
 ## [Unreleased]
 
 ### Added
+- Bramki pre-commit w telemetrii (TASK-OBS-010, ADR 0012 aneks): nowy `process: pre-commit`; `pre-commit-guards.mjs`
+  zapisuje `run.start` + `step.end` per bramka + `run.end` (`step.role` = stała nazwa bramki, `outcome` ok/failed,
+  `m.durationMs`), bez nazw plików z etykiet dynamicznych. Zapis best-effort po zebraniu wyników, ok. 2 ms.
+  `appendEventsDedup` ma opcję `dedup: false` (bez skanu historii). Logika w `lib/precommit-telemetry.mjs`, eval `pre-commit-telemetry`.
 - Audyt floty i setup w telemetrii (TASK-OBS-004, ADR 0012 krok 4): `audit-projects` zapisuje `run.start`/`run.end`
   oraz `step.end` per projekt × kontrola, także OK (`step.role` = nazwa kontroli, `failed` + `cause: config` przy
   BŁĘDZIE lub OSTRZEŻENIU); nie przy `--gate`, wyłączane `--no-telemetry`. `setup-project.sh` zgłasza do skrzynki

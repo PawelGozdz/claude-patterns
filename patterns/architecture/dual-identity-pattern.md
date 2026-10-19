@@ -197,11 +197,13 @@ export class CreateActionHandler extends BaseCommandHandler<CreateActionCommand,
    * SECURITY: command.userId comes from JWT via controller
    * NO need to validate - already authenticated by @Auth() guard
    */
-  async execute(command: CreateActionCommand): Promise<Result<string, Error>> {
+  async execute(command: CreateActionCommand): Promise<Result<string, UserNotFoundError>> {
     // Verify user exists in local projection
     const userExists = await this.userRepo.exists(command.userId);
     if (!userExists) {
-      return Result.fail(new Error('User not found'));
+      // Typed error with a `D_` code (registered in the context error mapper) — NOT `new Error(...)`:
+      // a plain Error has no code and reaches the client as 500 (rules/nestjs-ddd/error-mapper.md)
+      return Result.fail(new UserNotFoundError());
     }
 
     // Create action with TRUSTED userId
@@ -237,12 +239,13 @@ export class SomeHandler extends BaseCommandHandler<SomeCommand, string> {
     super();
   }
 
-  async execute(command: SomeCommand): Promise<Result<string, Error>> {
+  async execute(command: SomeCommand): Promise<Result<string, UserNotAuthenticatedError>> {
     // Extract userId from request context (set by auth middleware)
     const userId = this.requestContext.getUserId();
 
     if (!userId) {
-      return Result.fail(new Error('User not authenticated'));
+      // Typed error (`D_` code, mapped to 401/403 in the context mapper), not `new Error(...)`
+      return Result.fail(new UserNotAuthenticatedError());
     }
 
     // Use trusted userId for business logic

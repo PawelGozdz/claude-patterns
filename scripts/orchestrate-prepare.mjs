@@ -310,6 +310,9 @@ function applyOverrides(out, overrides, path = '') {
       result.layers = out.layers.map((l) => (v[l.id] ? applyOverrides(l, v[l.id], `layers.${l.id}`) : l));
       continue;
     }
+    // ORC-109: `checks.byLayer` to widok pomocniczy wyjścia — skrypt i sonda czytają `layers[].checks`,
+    // więc to nadpisanie byłoby ciche i nieskuteczne (aegis-flow TS-019: wznowienie z cache).
+    if (here === 'checks.byLayer') die(EXIT.USAGE, '--overrides checks.byLayer: widok pomocniczy, sonda go nie czyta — użyj `layers: { "<id warstwy>": { "checks": [...] } }`');
     const open = OPEN_OVERRIDE_KEYS.has(path.split('.')[0] || k);
     if (!(k in out) && !open) die(EXIT.USAGE, `--overrides: nieznany klucz \`${here}\` — wyjście prepare go nie ma (literówka?)`);
     result[k] = isObj(v) && isObj(out[k]) ? applyOverrides(out[k], v, here) : v;

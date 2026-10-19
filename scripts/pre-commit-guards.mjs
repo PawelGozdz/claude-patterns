@@ -34,8 +34,10 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readInboxEntries, staleInboxEntries, STALE_AFTER_DAYS } from './lib/inbox.mjs';
+import { emitPrecommitRun, gateId } from './lib/precommit-telemetry.mjs';
 
 const REPO = join(dirname(fileURLToPath(import.meta.url)), '..');
+const RUN_STARTED = Date.now();
 const results = [];
 
 // Kontrole (audyt floty, evale w katalogach tymczasowych) wołają `git` w INNYCH repozytoriach.
@@ -46,13 +48,17 @@ const results = [];
 const CHILD_ENV = Object.fromEntries(Object.entries(process.env)
   .filter(([k]) => !['GIT_INDEX_FILE', 'GIT_DIR', 'GIT_WORK_TREE', 'GIT_PREFIX', 'GIT_OBJECT_DIRECTORY'].includes(k)));
 
-function runCheck(label, cmd, args) {
+// TASK-OBS-010 (ADR 0012 aneks): każda bramka zostawia krok `step.end` w telemetrii. `id` to stała
+// nazwa bramki (idzie do zdarzenia); `label` jest dla człowieka i bywa dynamiczny („zmienione: a.js")
+// — dla takich bramek wołający MUSI podać `id`, inaczej nazwy plików wyjechałyby ze slugiem etykiety.
+function runCheck(label, cmd, args, id = gateId(label)) {
+  const startedAt = Date.now();
   try {
     const out = execFileSync(cmd, args, { cwd: REPO, encoding: 'utf8', stdio: 'pipe', env: CHILD_ENV });
-    results.push({ label, ok: true, output: out.trim() });
+    results.push({ label, id, ok: true, output: out.trim(), startedAt, endedAt: Date.now() });
   } catch (e) {
     const output = [e.stdout, e.stderr].filter(Boolean).join('\n').trim();
-    results.push({ label, ok: false, output: output || e.message });
+    results.push({ label, id, ok: false, output: output || e.message, startedAt, endedAt: Date.now() });
   }
 }
 
@@ -77,6 +83,7 @@ runCheck('eval: telemetry-rollups', 'node', ['tests/flow-evals/telemetry-rollups
 runCheck('eval: reporting-hygiene', 'node', ['tests/flow-evals/reporting-hygiene/run.js']);
 runCheck('eval: flow-top', 'node', ['tests/flow-evals/flow-top/run.js']);
 runCheck('eval: telemetry-export', 'node', ['tests/flow-evals/telemetry-export/run.js']);
+runCheck('eval: pre-commit-telemetry', 'node', ['tests/flow-evals/pre-commit-telemetry/run.js']);
 runCheck('validate-agents', 'node', ['scripts/ci/validate-agents.js']);
 runCheck('validate-business-rules', 'node', ['scripts/ci/validate-business-rules.js']);
 runCheck('validate-commands', 'node', ['scripts/ci/validate-commands.js']);
@@ -120,7 +127,7 @@ const stagedForAudit = execFileSync(
 
 if (stagedForAudit.length) {
   runCheck(`audit-projects --gate (zmienione: ${stagedForAudit.join(', ')})`,
-    'node', ['scripts/audit-projects.mjs', '--gate']);
+    'node', ['scripts/audit-projects.mjs', '--gate'], 'audit-projects-gate');
 }
 
 // TASK-OBS-005 (ADR 0012): `_inbox/index.json` ma być odtwarzalny ze skrzynki, a ręczna edycja
@@ -134,7 +141,7 @@ const stagedInbox = execFileSync(
 
 if (stagedInbox.length) {
   runCheck(`generate-inbox-index --check (zmienione: ${stagedInbox.length} plików skrzynki)`,
-    'node', ['scripts/generate-inbox-index.mjs', '--check']);
+    'node', ['scripts/generate-inbox-index.mjs', '--check'], 'generate-inbox-index-check');
 }
 
 // Sekcja 3: dyscyplina zmian promptów agentów. Dla każdego stage'owanego `agents/**.md`
@@ -182,11 +189,15 @@ function checkAgentChangelogs() {
   return errors;
 }
 
+const changelogStartedAt = Date.now();
 const changelogErrors = checkAgentChangelogs();
 results.push({
   label: 'agent changelog discipline',
+  id: 'agent-changelog-discipline',
   ok: changelogErrors.length === 0,
   output: changelogErrors.join('\n'),
+  startedAt: changelogStartedAt,
+  endedAt: Date.now(),
 });
 
 // ORC-066: podsumowanie docs/tasks/_inbox/ (zgłoszenia odstępstw z /orchestrate w satelitach,
@@ -234,6 +245,13 @@ function printInboxSummary() {
     console.log(`  (postarzanie skrzynki pominięte: ${e.message})`);
   }
   console.log('');
+}
+
+// TASK-OBS-010: zapis telemetrii PO zebraniu wszystkich wyników — bramki nie mierzą samego zapisu,
+// a jego błąd (emitPrecommitRun nie rzuca) jest jedną linią na stderr i nigdy nie zmienia kodu wyjścia.
+const telemetry = emitPrecommitRun({ results, startedAt: RUN_STARTED });
+if (telemetry.error || telemetry.rejected) {
+  console.error(`ℹ telemetria pre-commit nie zapisana w całości (${telemetry.error || `odrzucone: ${telemetry.rejected}`})`);
 }
 
 const failed = results.filter((r) => !r.ok);

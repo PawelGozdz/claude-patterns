@@ -324,6 +324,35 @@ const tests = [
       return p.emitted === 1 && p['suppressed:security'] === 1 ? null : `lejek: ${JSON.stringify(r.seeds)}`;
     },
   },
+  {
+    name: 'check-and-no-topic-leave-trace-only-with-run-id',
+    async run() {
+      // „Cisza" w lejku musi dać się odróżnić od pominięcia kroku: --check i --no-topic z --run-id
+      // zostawiają zdarzenie, ręczne --check bez --run-id — nie.
+      const call = (e, extra) => spawnSync(process.execPath, [EMIT, '--project', e.proj, '--today', TODAY, ...extra], { encoding: 'utf8', env: e.env });
+      const e = makeEnv();
+      call(e, ['--check']);
+      if (e.events().length) return '--check bez --run-id zapisał zdarzenie';
+      call(e, ['--check', '--run-id', 'eval:2']);
+      const nt = call(e, ['--no-topic', '--run-id', 'eval:2']);
+      if (nt.status !== 0 || JSON.parse(nt.stdout).skipped !== 'no_topic') return `--no-topic: ${nt.status} ${nt.stdout}${nt.stderr}`;
+      if (e.seeds('product').length) return '--no-topic utworzył plik';
+      const got = e.events().map((x) => `${x.seed.event}:${x.seed.reason ?? null}`).join(',');
+      if (got !== 'checked:null,skipped:no_topic') return `zdarzenia: ${got}`;
+      if (call(e, ['--no-topic']).status !== 1) return '--no-topic bez --run-id nie dał kodu 1';
+
+      const off = makeEnv({ section: '' });
+      call(off, ['--check', '--run-id', 'eval:3']);
+      const ev = off.events()[0];
+      if (!ev || ev.seed.event !== 'skipped' || ev.seed.reason !== 'disabled') return `wyłączony projekt: ${JSON.stringify(ev)}`;
+
+      const { buildRollups } = await import(path.join(REPO, 'scripts', 'lib', 'telemetry-rollup.mjs'));
+      const rolls = buildRollups(e.events());
+      const list = Array.isArray(rolls) ? rolls : rolls instanceof Map ? [...rolls.values()] : Object.values(rolls);
+      const u = (list.find((x) => x.seeds) || {}).seeds?.unknown || {};
+      return u.checked === 1 && u['skipped:no_topic'] === 1 ? null : `lejek: ${JSON.stringify(u)}`;
+    },
+  },
 ];
 
 (async () => {

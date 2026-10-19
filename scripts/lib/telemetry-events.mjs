@@ -167,10 +167,12 @@ export function existingEventIds() {
 
 // Zapis wsadowy z deduplikacją po `id`. Zwraca { written, skipped, rejected[], error? }.
 // Nigdy nie rzuca — tak jak appendEvent.
-export function appendEventsDedup(list, { dryRun = false } = {}) {
+// `dedup: false` pomija skan istniejących zdarzeń (czyta cały katalog): dla wołających, którzy
+// zawsze tworzą świeże id (pre-commit, TASK-OBS-010), a płacą za każdą milisekundę.
+export function appendEventsDedup(list, { dryRun = false, dedup = true } = {}) {
   const result = { written: 0, skipped: 0, rejected: [] };
   try {
-    const seen = existingEventIds();
+    const seen = dedup ? existingEventIds() : new Set();
     const byFile = new Map();
     for (const fields of list) {
       const ev = buildEvent(fields);

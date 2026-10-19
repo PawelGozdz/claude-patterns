@@ -34,8 +34,22 @@ source: >
   weryfikator z listą stałą nie mógł sprawdzić wstrzykniętych kart (TP2/N3, CV5).
   (8) DEV-agent_note-security-e2e-verifier-lokalna-definicja-wymaga-t (część o kartach): iam
   TS-SSO-061, karty cross-layer CV/ZOD/TP z DDD/NestJS nie dotyczą płaskiego Fastify.
+  Dopisane 2026-10-18 (3 kolejne rekordy, ten sam objaw): (9) DEV-agent_note-karty-regu-z-patterns-always-conventions-pattern:
+  ai-os-bot BOT-036, karty conventions/security-invariants/safe-error-propagation/testing-pyramid/
+  zod-schema z patterns.always (kontekst NestJS-DDD/HTTP) niestosowalne w node-ts-claude-api;
+  weryfikatory testing i bramka końcowa zgłosiły deviation_note. (10) DEV-agent_note-deviation-note-warstwy-karty-regu-conventions:
+  iam TS-SSO-062, zadania na Caddyfile/bash/python/CI nie mają zastosowania dla kart conventions i
+  repository-pattern; implementer testing:e2e użył tylko testing-pyramid. Druga część rekordu (sonda
+  warstwy `caddy` ślepa: checks skipped, platform/ bez package.json) to konfiguracja iam: warstwa bez
+  package.json potrzebuje checks jako komend dosłownych (np. `caddy validate`), nie nazw skryptów.
   Naprawione osobno w tej sesji: python/testing-pattern.md (fixture event_loop usunięty w
   pytest-asyncio 1.0, przykłady SQLAlchemy/domain.* oznaczone jako zależne od stosu).
+  Dopisane 2026-10-18 (11): DEV-orc-044-implementation: ai-os-bot BOT-037 (czysty helper czasowy),
+  karty always z runtime.yml (conventions, security-invariants, safe-error-propagation,
+  logger-pattern-plain, zod-schema-validation) to szablony DDD/NestJS/Fastify; weryfikatory obu
+  warstw nie miały czego sprawdzać. Prepare ostrzega też o braku bot-invariants_summary.md (do promptu
+  idzie pełny plik 17 KB) — karta zawiera wiążące wyjątki (B3 hop, B8, B10), więc streszczenie ma
+  sens dopiero razem z decyzją, które karty zostają w always.
 ---
 
 # TASK-ORCH-CARDS-STACK-MISMATCH-001: karty reguł a stos projektu

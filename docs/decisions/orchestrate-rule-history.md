@@ -1016,6 +1016,13 @@ setupami, więc cache byłby kłamstwem). Skrypt filtruje po statusie i `adr_exc
 z `params."decision-registry"`, więc do panelu wchodzi kilka wpisów, a nie cały katalog
 (juz-ide: 123 pliki → ~120 aktywnych → kilka trafnych).
 
+**Uzupełnienie 2026-10-18 (DEV-anz-gate-input-missing).** Indeks powstaje z drzewa roboczego,
+więc gałąź za bazą nie zobaczy decyzji, które są tylko na `origin/develop` (juz-ide-api-2,
+TS-SEC-MAP-GROUP-PIN-001: BDR-081..084 na bazie, gałąź 5 commitów z tyłu; bramka zadziałała
+na nieaktualnym indeksie, bez żadnego sygnału). Skrypt ostrzega teraz na stderr, gdy
+`origin/develop` lub `origin/main` ma w `adr_dir`/`bdr_dir` dodane albo zmienione pliki,
+których `HEAD` nie ma. Ostrzeżenie nie blokuje; sprawdza lokalne refy, bez `fetch`.
+
 <a id="anl-013"></a>
 
 ### ANL-013 — `needs_scope_check: true` znaczy „częściowo", nie „nieaktualne"
@@ -2054,3 +2061,40 @@ analizy z błędnym YAML nie wystartują ponownie bez poprawki frontmatteru. Eva
 
 **Ryzyko.** `rm -f` na wspólnym `/tmp` usuwa też logi współbieżnego przebiegu o tym samym `layer.id` w innym projekcie; ten wyścig istniał już wcześniej (oba przebiegi nadpisywały te same pliki), teraz tylko jest jawny.
 
+
+<a id="orc-107"></a>
+
+### ORC-107 — odroczenie ORC-082/099 dla Pythona: mypy, pyright, pytest (2026-10-18)
+
+**Objaw (DEV-orc-082-engine-audit-decision).** aegis-flow TS-019 (`wf_5c1bef35-220`), warstwa `engine:audit-decision`: czerwony `mypy`, błąd w `engine/dag_runner.py`, który należy do późniejszej warstwy `runner-store`; ORC-082 nie odroczył, przebieg stanął na `BLOCKED_BY_PRIOR`.
+
+**Przyczyna.** `typecheckErrorPaths` rozpoznawał tylko `error TS\d+`, więc dla mypy zwracał 0 ścieżek i 0 błędów (warunek `paths.length && paths.length === total` zawsze fałszywy). Polecenie `grep` sondy też szukało tylko `error TS`. `testFailPaths` znał `FAIL path` (vitest/jest), a pytest pisze `FAILED path::test` i nie podaje liczby plików, tylko „N failed" (testów).
+
+**Zmiana.**
+- `typecheckErrorPaths`: dodatkowo `path.py:LINE[:COL]: error:` (mypy) i `path.py:L:C - error:` (pyright). Do `total` wchodzi KAŻDA linia z `error:`, także bez ścieżki (`error: Cannot find implementation or library stub`), więc taki błąd nadal blokuje odroczenie. Linie `note:` i „Found N errors" się nie liczą.
+- `testFailPaths` czyta też `FAILED path.py::test`; `testFailExpectedCount` porównuje listę z podsumowaniem: vitest/jest = unikalne pliki, pytest = liczba linii FAILED (instrukcja sondy mówi, że dla pytesta `testFilesFailed` to liczba testów z „N failed"). Używa tego `testsRedIsLaterLayers` i `testsFlakyUnderLoad` (ORC-103).
+- Sonda: `grep -hE 'error TS[0-9]+|(^|[[:space:]])error:'` dla `tsErrors`, `(FAIL|FAILED)` dla `testFailFiles`; mapowanie wyników zna `mypy` i `pyright`.
+
+**Niezrobione.** Linie `ERROR path` pytesta (błędy kolekcji) nie są liczone: dają rozjazd z „N failed, M errors" i brak odroczenia, czyli zachowanie bezpieczne. Format `ruff`/`flake8` to lint, nie typecheck.
+
+**Ryzyko.** Narzędzie typecheck wypisujące `error:` w komunikatach o innym znaczeniu zwiększy `total` i zablokuje odroczenie; błąd w stronę ostrożności.
+
+<a id="orc-108"></a>
+
+### ORC-108 — remis segmentu: warstwa testowa wygrywa w `infrastructure/**/__tests__/` (2026-10-18)
+
+**Objaw (DEV-orc-082-infrastructure-discovery-infra).** juz-ide-api-2 TS-SEC-MAP-GROUP-PIN-001 (`wf_db145b3f-cb3`): stare specyfikacje w `infrastructure/**/__tests__/` wg ORC-093 należały do infrastructure (nazwa dłuższa niż `__tests__`), a rola tej warstwy zabrania ruszać testy; czerwony typecheck nie był odraczany do `testing`, przebieg stanął na `BLOCKED_BY_PRIOR`.
+
+**Zmiana.** `cmpScore`: przy remisie rangi segmentu (obie warstwy dopasowane nazwą katalogu) wygrywa warstwa z `tests: true`; dopiero potem długość. Plik w katalogu przeznaczonym na testy jest testem niezależnie od drzewa, w którym leży. Warstwy bez `tests: true` zachowują regułę ORC-093.
+
+**Ryzyko.** Warstwa testowa z `dirs: [test/]` i `tests: true` przejmie też pliki `src/**/test/` należące wg układu projektu do kodu; w praktyce katalog o tej nazwie to testy.
+
+<a id="orc-109"></a>
+
+### ORC-109 — `--overrides checks.byLayer` odrzucane zamiast cicho ignorowane (2026-10-18)
+
+**Objaw (DEV-orc-082-engine-audit-decision, druga część).** aegis-flow TS-019: nadpisanie `checks.byLayer["engine:audit-decision"]` nic nie zmieniło w sondzie, więc `resumeFromRunId` odtworzył z cache starą czerwoną sondę (0 agentów, 9 ms). Zadziałało dopiero `layers.<id>.checks`.
+
+**Przyczyna.** `checks.byLayer` w wyjściu `orchestrate-prepare` to widok pomocniczy; szablon czyta `layers[].checks`. Klucz istniał, więc walidacja `--overrides` go przyjmowała. Cache Workflow działał poprawnie: prompt sondy się nie zmienił.
+
+**Zmiana.** `applyOverrides` odrzuca `checks.byLayer` z exit 1 i komunikatem wskazującym `layers: { "<id>": { "checks": [...] } }`. `checks.finalGate` zostaje (bramka końcowa czyta je z wyjścia).

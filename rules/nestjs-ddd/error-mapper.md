@@ -13,6 +13,14 @@
 > across all 11 bounded contexts found **72 unregistered classes in 8 of 11
 ** contexts — this is not a hypothetical.
 
+> **Scope of step (1)** — the `D_` gate and `DomainErrorHandler` are LocalHero's
+> chain (`shared/response/handlers`). A project on this stack without that
+> handler (e.g. marketing-hub, TS-MH-025: error codes like `VALIDATION_FAILED`,
+> routing purely through `IDomainErrorMapper`) has no `D_` requirement: skip
+> every `D_` / `canHandle()` clause below, check how the project's own mapper
+> chain selects a class (read the mapper and the global filter), and keep
+> step (2) — registration in the context mapper + the guardian test — as is.
+
 ## ALWAYS
 - When creating a new `D_`-prefixed domain error class, register it in the SAME PR/diff in every context mapper that could plausibly receive it — a new error class and its mapper entry are ONE change, not two (this restates `domain-errors-pattern.md` DE3, now with a mechanical backstop — see below).
 - Add the registration as a `[ErrorClass, error => new SomeResponseError(...)]` tuple in the mapper's `errorMappings` Map — grep an existing entry in the same file for the exact style (some contexts use `new BusinessLogicError(...)`, `new ConflictError(...)`, etc. from `@shared/response/errors/base-response-error`).

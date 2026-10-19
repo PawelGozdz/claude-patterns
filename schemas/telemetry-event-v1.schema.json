@@ -11,7 +11,7 @@
     "id": { "type": "string", "pattern": "^[0-9a-f-]{36}$" },
     "ts": { "type": "string", "format": "date-time" },
     "kind": { "enum": ["run.start", "step.end", "run.end", "deviation", "seed"] },
-    "process": { "enum": ["orchestrate", "workflow", "analyze", "audit", "setup", "blog-seed"] },
+    "process": { "enum": ["orchestrate", "workflow", "analyze", "audit", "setup", "blog-seed", "pre-commit"] },
     "project": { "type": "string", "pattern": "^[A-Za-z0-9._-]{1,80}$" },
     "host": { "type": "string", "pattern": "^[0-9a-f]{12}$" },
     "runId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]{1,80}$" },
@@ -54,11 +54,11 @@
       "additionalProperties": false,
       "required": ["event"],
       "properties": {
-        "event": { "enum": ["emitted", "updated", "suppressed", "status-changed"] },
+        "event": { "enum": ["emitted", "updated", "suppressed", "status-changed", "checked", "skipped"] },
         "seedId": { "type": ["string", "null"], "pattern": "^[0-9a-f-]{36}$" },
         "dedup": { "type": ["string", "null"], "pattern": "^[0-9a-f]{12}$" },
         "blog": { "enum": ["personal", "product", null] },
-        "reason": { "enum": ["security", "evidence", "consent", "duplicate", "routing", "rate", "score", "config", "disabled", "embargo", "invalid", "error", null] },
+        "reason": { "enum": ["security", "evidence", "consent", "duplicate", "routing", "rate", "score", "config", "disabled", "embargo", "invalid", "error", "no_topic", null] },
         "confidence": { "enum": ["high", "medium", "low", null] },
         "mode": { "enum": ["dry-run", "live", null] },
         "status": { "enum": ["new", "candidate", "picked", "drafted", "published", "discarded", "merged", null] }

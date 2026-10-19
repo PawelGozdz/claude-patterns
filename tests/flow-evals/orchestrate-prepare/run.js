@@ -395,6 +395,25 @@ CASES.push({
   },
 });
 
+// ORC-109: `checks.byLayer` to widok pomocniczy wyjścia prepare — sonda go nie czyta, więc nadpisanie
+// było ciche i nieskuteczne (aegis-flow TS-019: wznowienie odtworzyło starą czerwoną sondę z cache).
+CASES.push({
+  name: 'overrides-reject-derived-checks-by-layer',
+  build: () => {
+    const root = makeProject({ taskId: 'TS-FIX-001', analysis: analysisFm({}), task: taskFile('Dodaj aggregate.') });
+    write(root, 'bylayer.json', JSON.stringify({ checks: { byLayer: { testing: ['test:l1'] } } }));
+    write(root, 'gate.json', JSON.stringify({ checks: { finalGate: ['test:l1'] } }));
+    return root;
+  },
+  check(r, root) {
+    const bad = run(root, 'TS-FIX-001', ['--overrides', path.join(root, 'bylayer.json')]);
+    if (bad.code !== 1 || !/layers\.<id>\.checks|layers: \{/.test(bad.stderr)) return 'checks.byLayer przeszło bez ostrzeżenia: ' + bad.code + ' ' + bad.stderr.trim();
+    const gate = run(root, 'TS-FIX-001', ['--overrides', path.join(root, 'gate.json')]);
+    if (gate.code !== 0) return 'checks.finalGate przestało być przyjmowane: ' + gate.stderr.trim();
+    return null;
+  },
+});
+
 // `$'`, `$&` i `$1` to wzorce zastępcze String.replace — na nich ręczna kopia szablonu gubiła args.
 const DOLLAR_CARD = "- echo $'a b' i $& oraz $1";
 
