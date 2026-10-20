@@ -6,7 +6,9 @@
      Verifier sprawdza KAŻDĄ regułę z ID poniżej i cytuje ją przy naruszeniu. -->
 
 **Layer**: Infrastructure · **Applies to**: pliki definiujące schematy Zod — `*.schemas.ts` w
-`**/validation/schemas/**`, `common.validators.ts`, `*-schemas.ts` w `**/response/openapi/**` ·
+`**/validation/schemas/**`, `common.validators.ts`, `*-schemas.ts` w `**/response/openapi/**` (schematy kontraktu, który posiadamy; schematy odpowiedzi CUDZYCH
+API — adaptery, klienci dostawców — są poza zakresem ZOD1/N3: bez `.strict()`, walidacja tylko pól, na
+których adapter polega) ·
 **ADR**: 0020 (Zod na granicy API), 0021 (walidacja formatu na granicy, reguły biznesowe w domenie)
 
 ## MUST

@@ -50,6 +50,13 @@ source: >
   warstw nie miały czego sprawdzać. Prepare ostrzega też o braku bot-invariants_summary.md (do promptu
   idzie pełny plik 17 KB) — karta zawiera wiążące wyjątki (B3 hop, B8, B10), więc streszczenie ma
   sens dopiero razem z decyzją, które karty zostają w always.
+  Dopisane 2026-10-20 (12): DEV-orc-044-implementation: ai-os-bot BOT-039 (core/safety), weryfikatory
+  implementation i testing dostały conventions/security-invariants/safe-error-propagation/zod/
+  testing-pyramid bez zastosowania; bot-invariants.md nadal bez karty _summary.
+  (13) DEV-agent_note-karty-zod-schema-validation-pattern-strict-i: framework-polityczny FP-005,
+  warstwa core:sources-adapters — logger-pattern-plain (LGP2) nie rozstrzyga loggera wstrzykniętego
+  przez kontekst, conventions-pattern (CV2) zakłada sufiksy DDD dla pakietu plain. Część zod
+  (.strict() vs odpowiedzi cudzych API) naprawiona osobno w zod-schema-validation-pattern.
 ---
 
 # TASK-ORCH-CARDS-STACK-MISMATCH-001: karty reguł a stos projektu

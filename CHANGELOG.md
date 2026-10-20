@@ -12,6 +12,8 @@ and none of it is instruction — it is history.
 
 ### Added
 
+- `zod-schema-validation-pattern` (+ `_summary`): wyjątek od `.strict()` (ZOD1/N3) dla schematów odpowiedzi cudzych API (adaptery, klienci dostawców); ANL-038: plik wspólny kilku jednostek (barrel, rejestr) do `dirs` każdej z nich (framework-polityczny FP-005).
+
 - ORC-117: `GO` z `unverified_scope` i `minor_findings` robi jedno przejście naprawcze implementera przed `reverify` (wcześniej drobne ustalenia przepadały, a ta sama linia wracała jako HIGH i wyczerpywała próby warstwy; aegis-flow TS-017). Nowa funkcja `minorPassBeforeReverify` + test.
 
 - Domyślny adres embeddera (CT 301) w `knowledge-retriever` (`src/embedder.ts`, `docker-compose.yml`): `:8301` → `:8000`. Port 8301 nie nasłuchuje (API ML Inference działa na 8000), więc reseed i `retrieve_patterns` dostawały ECONNREFUSED.

@@ -17,6 +17,7 @@
 - ❌ cross-aggregate or database-dependent checks (uniqueness, existence) — a schema runs before anything is loaded
 - ❌ the controller's own shape, decorators and orchestration — that is `controller-schema-pattern.md`
 - ❌ throttling and abuse limits — `rate-limit-guard-pattern.md`
+- ❌ schemas for responses of THIRD-PARTY APIs (ingestion adapters, provider clients) — `.strict()` is for the contract we own; a provider adds a field and a strict schema fails the whole run. Parse with the default (unknown keys stripped), validate only the fields the adapter relies on, and keep the raw body in the archive if the full payload matters
 
 ---
 
