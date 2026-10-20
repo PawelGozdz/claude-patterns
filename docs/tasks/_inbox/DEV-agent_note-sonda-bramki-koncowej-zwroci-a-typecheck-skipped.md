@@ -1,6 +1,11 @@
 ---
 id: DEV-agent_note-sonda-bramki-koncowej-zwroci-a-typecheck-skipped
-status: proposed
+status: promoted
+resolution: >
+  Częściowo naprawione jako ORC-116: skipped zadeklarowanej kontroli w sondzie bramki końcowej
+  trafia do report.warnings (docs/decisions/orchestrate-rule-history.md#orc-116). Przyczyna
+  samego skipped (typecheck:scripts albo nazwa skryptu w pakiecie) leży w checks.finalGate
+  ai-gateway i wymaga sprawdzenia w tamtym projekcie.
 trigger: agent_note
 category: other
 sources:
