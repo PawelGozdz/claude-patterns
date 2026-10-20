@@ -12,6 +12,8 @@ and none of it is instruction — it is history.
 
 ### Added
 
+- ORC-117: `GO` z `unverified_scope` i `minor_findings` robi jedno przejście naprawcze implementera przed `reverify` (wcześniej drobne ustalenia przepadały, a ta sama linia wracała jako HIGH i wyczerpywała próby warstwy; aegis-flow TS-017). Nowa funkcja `minorPassBeforeReverify` + test.
+
 - Domyślny adres embeddera (CT 301) w `knowledge-retriever` (`src/embedder.ts`, `docker-compose.yml`): `:8301` → `:8000`. Port 8301 nie nasłuchuje (API ML Inference działa na 8000), więc reseed i `retrieve_patterns` dostawały ECONNREFUSED.
 
 - `blocks/nextjs.yml`: sloty `tech-analysis` (nextjs-architecture-expert) i `impl-analysis` (nextjs-quality-verifier) dostały `when:` (słownictwo UI/routingu/Next.js) — bez niego szły przy każdym zadaniu, także backendowym (framework-polityczny FP-005, `DEV-anz-layer-mismatch`).

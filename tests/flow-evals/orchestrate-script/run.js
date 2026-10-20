@@ -1059,6 +1059,20 @@ const CASES = (c) => [
       return null;
     },
   },
+  // ORC-117: drobne ustalenia z rundy GO + unverified_scope nie przepadają przed reverify
+  {
+    name: 'minor-findings-survive-go-with-unverified-scope',
+    run() {
+      const v = { minor_findings: ['src/reader.ts:12 — TypeError dla nie-str event — dodaj guard'], unverified_scope: ['testing-pyramid'] };
+      if (c.minorPassBeforeReverify(v, undefined, false, 2, 3).length !== 1) return 'drobne ustalenia przepadły przed reverify';
+      if (c.minorPassBeforeReverify(v, false, false, 2, 3).length) return 'autoFixMinor=false nie wyłączył przejścia';
+      if (c.minorPassBeforeReverify(v, undefined, true, 2, 3).length) return 'drugie przejście naprawcze w tej samej warstwie';
+      if (c.minorPassBeforeReverify(v, undefined, false, 1, 3).length !== 1) return 'runda 1 z 3: przejście nie ruszyło';
+      if (c.minorPassBeforeReverify(v, undefined, false, 3, 3).length) return 'przejście na ostatniej próbie zjada weryfikację końcową';
+      if (c.minorPassBeforeReverify({ unverified_scope: ['x'] }, undefined, false, 1, 3).length) return 'brak minor_findings → pusta lista';
+      return null;
+    },
+  },
   // ORC-115: reverify (verify-existing) nie mierzy przyrostu od nowa
   {
     name: 'delta-gate-skipped-in-verify-existing-mode',

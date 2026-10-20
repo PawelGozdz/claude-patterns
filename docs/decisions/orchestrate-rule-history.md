@@ -2186,3 +2186,15 @@ analizy z błędnym YAML nie wystartują ponownie bez poprawki frontmatteru. Eva
 **Zmiana.** `finalProbeSkippedFields(finalChecks, probe)` wskazuje pola `typecheck`/`tests`/`lint`, które sonda pominęła mimo zadeklarowanej kontroli o pasującej nazwie; silnik dopisuje ostrzeżenie do `report.warnings`. Werdykt bramki nie zmienia się.
 
 **Poza zakresem.** Przyczyna samego `skipped` (np. `typecheck:scripts` lub niedopasowana nazwa skryptu w pakiecie) leży w `checks` projektu; ostrzeżenie ją tylko ujawnia. Gdyby miało blokować, wymagałoby decyzji, czy `skipped` ma znaczyć NO_GO.
+
+<a id="orc-117"></a>
+
+### ORC-117 — drobne ustalenia z rundy `GO` + `unverified_scope` nie przepadają przed `reverify` (2026-10-20)
+
+**Objaw.** aegis-flow TS-017, warstwa `engine` (run `wf_6cd40ef0-6b9`, zgłoszenie `DEV-orc-074-engine`). W rundzie 2 weryfikator dał `GO` z `unverified_scope` i wpisał bug czytnika (TypeError dla nie-str event) do `minor_findings`. W rundzie 3 ten sam bug wrócił jako HIGH/NO_GO, a warstwa wyczerpała 3 próby na jednej linii poprawki.
+
+**Przyczyna.** ORC-074 kieruje `GO` z `unverified_scope` w `reverify` (implementer pominięty). Przejście naprawcze drobnych ustaleń (ORC-091) żyło wyłącznie w gałęzi `decision.next === 'go'`, więc w gałęzi `reverify` `minor_findings` nikt nie czytał. Kod nie był poprawiany, a weryfikator przy kolejnej weryfikacji słusznie podnosił to samo ustalenie wyżej.
+
+**Zmiana.** `minorPassBeforeReverify(verdict, autoFixMinor, minorPassDone, attempt, maxAttempts)` zwraca drobne ustalenia do naprawy przed `reverify` (pusta lista, gdy `autoFixMinor === false`, przejście już było albo to ostatnia próba; w odróżnieniu od ORC-091 nie trzeba zapasu 2 prób, bo przejście zastępuje próbę `reverify`, a jego weryfikacja domyka też `unverified_scope`). Gałąź `reverify` w pętli warstwy uruchamia wtedy jedno przejście naprawcze (`mode = 'implement'`, `cleanupNext`), a kolejna runda przechodzi zwykłą sondę i weryfikację, która domyka też `unverified_scope`. Limit jednego przejścia na warstwę (`minorPassDone`) zostaje wspólny z ORC-091.
+
+**Poza zakresem.** Druga uwaga ze zgłoszenia, że weryfikator warstwy kodu liczy brak testów jako lukę zakresu (testy należą do jednostki `testing`), jest zamierzona przy podziale na jednostki (`unverified_scope` jest wtedy w raporcie jako luka, nie blokada).

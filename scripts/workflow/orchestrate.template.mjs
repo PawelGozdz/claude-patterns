@@ -1132,6 +1132,17 @@ function collectMinor(verdict) {
   return raw.map((x) => String(x).trim()).filter(Boolean).slice(0, 25)
 }
 
+// ORC-117 (docs/decisions/orchestrate-rule-history.md#orc-117): GO z `unverified_scope` idzie w
+// `reverify` (ORC-074), a przejście naprawcze z ORC-091 działało tylko przy czystym GO — drobne
+// ustalenia z takiej rundy przepadały, po czym ta sama linia wracała jako HIGH/NO_GO. Zwraca listę
+// do naprawy PRZED reverify albo [] (brak ustaleń, wyłączone, przejście już było, ostatnia próba).
+// Przejście zastępuje próbę reverify (jego weryfikacja domyka też unverified_scope), więc w odróżnieniu
+// od ORC-091 wystarczy jedna pozostała próba — warstwa nie była jeszcze GO.
+function minorPassBeforeReverify(verdict, autoFixMinor, minorPassDone, attempt, maxAttempts) {
+  if (autoFixMinor === false || minorPassDone || attempt >= maxAttempts) return []
+  return collectMinor(verdict)
+}
+
 function formatMinorFix(items) {
   return 'DROBNE USTALENIA WERYFIKATORA — nie blokują werdyktu, ale są łatwe: popraw KAŻDE w zakresie ' +
     'tej warstwy, mechanicznie (bez zmiany zachowania, bez refaktoru, bez nowych decyzji). Pozycję, ' +
@@ -1674,6 +1685,16 @@ for (const step of plan) {
       // na część zakresu. 'verify-existing' pomija implementera i idzie prosto do sondy+verify
       // ze świeżym budżetem tur, zamiast palić pełną rundę implement→verify na niezmienionym kodzie.
       log(layer.id + ': ' + decision.reason)
+      // ORC-117: drobne ustalenia z tej samej rundy naprawia implementer przed dokończeniem weryfikacji.
+      const minorsBeforeReverify = minorPassBeforeReverify(verdict, a.autoFixMinor, minorPassDone, attempt, maxAttempts)
+      if (minorsBeforeReverify.length) {
+        minorPassDone = true
+        cleanupNext = true
+        log(layer.id + ': ' + minorsBeforeReverify.length + ' drobnych ustaleń obok unverified_scope — przejście naprawcze przed reverify (ORC-117)')
+        violations = formatMinorFix(minorsBeforeReverify)
+        mode = 'implement'
+        continue
+      }
       violations = null
       mode = 'verify-existing'
       continue
