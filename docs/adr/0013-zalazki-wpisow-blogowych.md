@@ -120,6 +120,13 @@ mode, status}`. Brak tematu, sluga i uzasadnienia, bo zdarzenia i agregaty dzien
 w claude-patterns (repo wspólne). Agregat liczy lejek per blog: `emitted`, `updated`,
 `suppressed:<powód>`. Pełne uzasadnienia są tylko w `stage/dry-run/` repo bloga.
 
+Aneks 2026-10-18: od włączenia zalążków (14–17.10) w ai-gateway, iam, grant-flow i juz-ide-api-1 było
+około 23 przebiegów `/analyze` i `/orchestrate`, a w całej telemetrii tylko 3 zdarzenia `seed`. Nie dało się powiedzieć, czy agenci oceniali i nie znajdowali tematu, czy pomijali krok.
+Dlatego `--check --run-id` zapisuje teraz `checked` albo `skipped:<disabled|embargo|config>`, a brak
+tematu agent zgłasza przez `--no-topic --run-id` (`skipped:no_topic`, bez pliku). Te zdarzenia nie mają
+bloga, więc agregat liczy je pod `unknown`. Bez `--run-id` skrypt nic nie zapisuje, żeby ręczny audyt nie
+mieszał się z przebiegami.
+
 ## Format pliku
 
 `<repo-bloga>/stage/{inbox|dry-run}/RRRR-MM-DD/<slug>.seed.md`. Frontmatter jest zgodny ze schematem

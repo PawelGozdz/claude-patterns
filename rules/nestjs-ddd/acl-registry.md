@@ -7,7 +7,7 @@
 - Inject `ACLRegistryService` with `@Inject(ACL_REGISTRY_SERVICE)` (NestJS token, not class injection).
 - Define the adapter interface inline at the call site (`getGlobalRequired<{ method(...): ... }>(key)`) — no class imports from the provider context.
 - Register the adapter in the provider module's `onModuleInit()`: `registerGlobal(key, adapter, description)`.
-- Have adapters implement `IACLAdapter`, live in the provider's `**/infrastructure/acl/`, and return `Result<T, Error>`.
+- Have adapters implement `IACLAdapter`, live in the provider's `**/infrastructure/acl/`, and return `Result<T, XxxError>` with a TYPED error (`extends BaseError`, `D_` code) registered in the provider context's error mapper in the same change — see [error-mapper.md](./error-mapper.md). The consumer's inline interface may keep `Error` (no class import from the provider).
 - Use a lowercase context-name key (`'authorization'`, `'auth'`, `'geographic-auth'`).
 - A WRITING in-process adapter writes through `TransactionHost.tx` (shared handler transaction); its `Result.fail` does not roll back by itself (the handler does); a retry after `VersionError` wraps each attempt in `@Transactional(Propagation.Nested)` (SAVEPOINT; inner `throw` to roll back, `Result.fail` outside; with no active transaction `Nested` opens its own).
 - A monotonic grant (e.g. `PHONE_VERIFIED`) has no revoke/`compensate()` — a handler rollback undoes the write; idempotency lives in the adapter.
@@ -22,7 +22,8 @@
 - `import { XxxModule } from '@contexts/xxx/...'` in another context — creates circular deps and breaks BC isolation.
 - Import another context's adapter/API class — defeats the whole pattern.
 - Resolve the adapter in the constructor — it may not be registered yet.
-- `throw` from an adapter method — always `Result.fail(new Error(...))`.
+- `throw` from an adapter method — always `Result.fail(new XxxError())` with a typed error.
+- `Result.fail(new Error(...))` in an adapter — a plain `Error` has no `code`, `DomainErrorHandler.canHandle()` rejects it and it reaches the client as a generic 500, never the intended 4xx. Keep the message static (no `error.message`, CWE-209) and log the cause server-side.
 - Omit `implements OnModuleInit` in the provider module — the adapter never reaches the registry.
 - Import the provider module in a consumer — import only the global `ACLModule`.
 - A persistent DB trigger/function in one bounded context's table READING another context's

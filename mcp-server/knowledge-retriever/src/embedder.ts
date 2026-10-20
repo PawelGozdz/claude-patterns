@@ -11,7 +11,7 @@
 // - openai: any OpenAI-compatible /v1/embeddings (vLLM / Ollama-openai / external) if CT 301 is down.
 //           Body {model, input:[...]} → {data:[{embedding}]}. No server prefix → we prepend it to the text.
 const PROVIDER = (process.env.KR_EMBED_PROVIDER ?? "ct301").toLowerCase();
-const URL = process.env.KR_EMBED_URL ?? "http://192.168.0.150:8301/v1/embeddings/generate";
+const URL = process.env.KR_EMBED_URL ?? "http://192.168.0.150:8000/v1/embeddings/generate";
 const MODEL = process.env.KR_EMBED_MODEL ?? "multilingual-e5-large";
 
 // Hard cap on what we SEND to the embedder (the stored payload text stays whole — only the

@@ -1,6 +1,10 @@
 ---
 id: DEV-agent_note-o-nofollow-pominiety-symlink-config-np-configmap
-status: proposed
+status: dismissed
+dismissed_reason: >
+  Uwaga agenta o kodzie loadera aegis-flow (TS-005, engine:loader): zakaz symlinków i
+  walidacja IP to decyzja projektu, nie błąd claude-patterns. Notatka wskazuje sprawę do
+  osobnej decyzji człowieka w tamtym repo.
 trigger: agent_note
 category: other
 sources:

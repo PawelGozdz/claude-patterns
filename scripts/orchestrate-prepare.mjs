@@ -310,6 +310,9 @@ function applyOverrides(out, overrides, path = '') {
       result.layers = out.layers.map((l) => (v[l.id] ? applyOverrides(l, v[l.id], `layers.${l.id}`) : l));
       continue;
     }
+    // ORC-109: `checks.byLayer` to widok pomocniczy wyjścia — skrypt i sonda czytają `layers[].checks`,
+    // więc to nadpisanie byłoby ciche i nieskuteczne (aegis-flow TS-019: wznowienie z cache).
+    if (here === 'checks.byLayer') die(EXIT.USAGE, '--overrides checks.byLayer: widok pomocniczy, sonda go nie czyta — użyj `layers: { "<id warstwy>": { "checks": [...] } }`');
     const open = OPEN_OVERRIDE_KEYS.has(path.split('.')[0] || k);
     if (!(k in out) && !open) die(EXIT.USAGE, `--overrides: nieznany klucz \`${here}\` — wyjście prepare go nie ma (literówka?)`);
     result[k] = isObj(v) && isObj(out[k]) ? applyOverrides(out[k], v, here) : v;
@@ -549,7 +552,7 @@ function main() {
     const units = analysisDoc.fm?.units;
     const scopeIds = new Set((Array.isArray(scopes) ? scopes : []).map((x) => String(x?.id ?? '')));
     if (units !== undefined && units !== null && !Array.isArray(units)) {
-      gateFailures.push('units: musi być listą { id, layer, dirs: [...], role?, checks?, reason? }');
+      gateFailures.push('units: musi być listą { id, layer, dirs: [...], role?, checks?, reason?, repair? }');
     } else if (Array.isArray(units)) {
       const seen = new Set();
       for (const u of units) {
@@ -568,6 +571,7 @@ function main() {
         if (!dirs.length || dirs.some((d) => typeof d !== 'string' || !d.trim()))
           gateFailures.push(`${tag}: brak \`dirs\` — jednostka bez ścieżek to cała warstwa, wtedy nie dziel jej na jednostki`);
         if (u.checks !== undefined && !Array.isArray(u.checks)) gateFailures.push(`${tag}: \`checks\` musi być listą nazw skryptów`);
+        if (u.repair !== undefined && typeof u.repair !== 'boolean') gateFailures.push(`${tag}: \`repair\` musi być true/false`);
       }
     }
     const excl = analysisDoc.fm?.patterns_exclude;
@@ -637,6 +641,11 @@ function main() {
   const createWhenHits = {};
   for (const layer of layers) {
     if (!layer.optional || !layer.createWhen) continue;
+    // ORC-113: `create_when` to REGEX po haystacku (wartości frontmattera + treść taska i analizy), nie opis.
+    // Zdanie po polsku nie trafia nigdy, a warstwa opcjonalna znika bez śladu (juz-ide-blog BLOG-GUIDES-001).
+    if (layer.createWhen.trim().split(/\s+/).length >= 3 && !/[|\\]/.test(layer.createWhen)) {
+      warnings.push(`create_when warstwy ${layer.id}: wygląda na opis prozą, a jest regexem (alternatywy przez "|") — warstwa prawdopodobnie nigdy nie wejdzie; obejście: --overrides createWhenHits`);
+    }
     try { createWhenHits[layer.id] = new RegExp(layer.createWhen, 'i').test(haystack); }
     catch (e) { warnings.push(`create_when warstwy ${layer.id}: niepoprawny regex (${e.message}) — warstwa pominięta`); createWhenHits[layer.id] = false; }
   }

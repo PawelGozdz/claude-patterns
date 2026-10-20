@@ -167,7 +167,7 @@
               "checks": { "type": "array", "items": { "type": "string" } },
               "tests": { "type": "boolean" },
               "optional": { "type": "boolean" },
-              "create_when": { "type": "string" },
+              "create_when": { "type": "string", "description": "Regex (bez rozróżniania wielkości liter) liczony po haystacku taska i analizy; nie opis prozą." },
               "verify": { "type": "string" }
             }
           }

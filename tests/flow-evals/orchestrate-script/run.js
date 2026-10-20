@@ -551,6 +551,106 @@ const CASES = (c) => [
       return null;
     },
   },
+  // ── ORC-107: typecheck i testy Pythona (mypy, pyright, pytest) w odroczeniu ORC-082/099 ──
+  {
+    name: 'typecheck-error-paths-parse-mypy-and-pyright',
+    run() {
+      const mypy = ['engine/dag_runner.py:12: error: Argument 1 has incompatible type  [arg-type]', 'engine/dag_runner.py:12: note: zobacz', 'engine/audit.py:7:3: error: Missing return  [return]', 'Found 2 errors in 2 files (checked 9 source files)'].join('\n');
+      const r = c.typecheckErrorPaths(mypy);
+      if (r.total !== 2 || JSON.stringify(r.paths) !== JSON.stringify(['engine/dag_runner.py', 'engine/audit.py'])) return 'mypy: ' + JSON.stringify(r);
+      const pyright = '  /w/app/main.py:4:9 - error: "x" is not defined (reportUndefinedVariable)';
+      const p = c.typecheckErrorPaths(pyright);
+      if (p.total !== 1 || p.paths[0] !== '/w/app/main.py') return 'pyright: ' + JSON.stringify(p);
+      const ts = c.typecheckErrorPaths('src/a.ts(1,2): error TS2322: x.');
+      if (ts.total !== 1 || ts.paths[0] !== 'src/a.ts') return 'tsc przestał działać: ' + JSON.stringify(ts);
+      return null;
+    },
+  },
+  {
+    name: 'typecheck-red-python-later-layer-is-deferred',
+    run() {
+      const layers = [{ id: 'audit', dirs: ['engine/audit/'] }, { id: 'runner', dirs: ['engine/dag_runner.py'] }, { id: 'testing', dirs: ['tests/'] }];
+      const red = (tsErrors) => ({ typecheck: 'fail', tests: 'skipped', tsErrors });
+      const later = 'engine/dag_runner.py:12: error: Argument 1 has incompatible type  [arg-type]';
+      const own = 'engine/audit/decision.py:3: error: Missing return  [return]';
+      if (!c.typecheckRedIsLaterLayers(red(later), layers[0], layers)) return 'mypy: błąd w pliku późniejszej warstwy nie został odroczony';
+      if (c.typecheckRedIsLaterLayers(red(own + '\n' + later), layers[0], layers)) return 'mypy: błąd we własnym zakresie został odroczony';
+      if (c.typecheckRedIsLaterLayers(red(later + '\nerror: Cannot find implementation or library stub'), layers[0], layers)) return 'mypy: błąd bez ścieżki został odroczony';
+      return null;
+    },
+  },
+  // ── ORC-112: jednostki tej samej warstwy remisują na grubym dirs — wygrywa zawężenie ──────────
+  {
+    name: 'unit-scope-breaks-tie-between-units-sharing-coarse-dirs',
+    run() {
+      const unit = (id, scopeDir) => ({ id: 'application:' + id, base: 'application', dirs: ['application/'], scope: { dirs: [scopeDir], reason: id } });
+      const u1 = unit('pr1-auth-app', 'src/contexts/auth/application/commands/login/');
+      const u2 = unit('pr4-geo-app', 'src/contexts/geo/application/commands/revoke/');
+      const layers = [u1, u2];
+      const red = (p) => ({ typecheck: 'fail', tests: 'skipped', tsErrors: p + '(3,5): error TS2339: x' });
+      if (!c.typecheckRedIsLaterLayers(red('src/contexts/geo/application/commands/revoke/handler.ts'), u1, layers)) return 'błąd w zakresie późniejszej jednostki nie został odroczony';
+      if (c.typecheckRedIsLaterLayers(red('src/contexts/auth/application/commands/login/handler.ts'), u1, layers)) return 'błąd we własnym zakresie został odroczony';
+      if (c.typecheckRedIsLaterLayers(red('src/contexts/other/application/x.ts'), u1, layers)) return 'plik spoza zakresów jednostek został odroczony (remis ma zostać)';
+      return null;
+    },
+  },
+  // ── ORC-110: dart analyze / flutter analyze ───────────────────────────────────────────────────
+  {
+    name: 'typecheck-red-dart-analyzer-is-parsed-and-deferred',
+    run() {
+      const layers = [{ id: 'domain', dirs: ['lib/domain/'] }, { id: 'presentation', dirs: ['lib/presentation/'] }];
+      const red = (tsErrors) => ({ typecheck: 'fail', tests: 'skipped', tsErrors });
+      const later = "  error • The method 'x' isn't defined for the type 'Y' • lib/presentation/map/basemap.dart:42:7 • undefined_method";
+      const own = "  error • Undefined name 'z' • lib/domain/geo.dart:3:5 • undefined_identifier";
+      const warn = "warning • Unused import • lib/domain/old.dart:1:8 • unused_import\n   info • Prefer const • lib/domain/old.dart:9:3 • prefer_const_constructors";
+      const r = c.typecheckErrorPaths(later + '\n' + warn);
+      if (r.total !== 1 || JSON.stringify(r.paths) !== JSON.stringify(['lib/presentation/map/basemap.dart'])) return 'parsowanie: ' + JSON.stringify(r);
+      if (!c.typecheckRedIsLaterLayers(red(later + '\n' + warn), layers[0], layers)) return 'dart: błąd w późniejszej warstwie nie został odroczony';
+      if (c.typecheckRedIsLaterLayers(red(own + '\n' + later), layers[0], layers)) return 'dart: błąd we własnym zakresie został odroczony';
+      return null;
+    },
+  },
+  {
+    name: 'pytest-failed-lines-are-deferred-by-test-count',
+    run() {
+      const text = ['FAILED tests/test_runner.py::test_a - AssertionError', 'FAILED tests/test_runner.py::test_b - KeyError', ' FAIL  src/x.spec.ts'].join('\n');
+      const paths = c.testFailPaths(text);
+      if (JSON.stringify(paths) !== JSON.stringify(['tests/test_runner.py', 'src/x.spec.ts'])) return 'ścieżki: ' + JSON.stringify(paths);
+      const layers = [{ id: 'engine', dirs: ['engine/'] }, { id: 'testing', dirs: ['tests/'] }];
+      const py = 'FAILED tests/test_runner.py::test_a - AssertionError\nFAILED tests/test_runner.py::test_b - KeyError';
+      // pytest nie podaje liczby plików, tylko „N failed" (testów): liczymy linie FAILED
+      if (!c.testsRedIsLaterLayers({ tests: 'fail', typecheck: 'pass', lint: 'pass', testFailFiles: py, testFilesFailed: 2 }, layers[0], layers)) return 'pytest: 2 padłe testy w późniejszej warstwie nie zostały odroczone';
+      if (c.testsRedIsLaterLayers({ tests: 'fail', typecheck: 'pass', lint: 'pass', testFailFiles: py, testFilesFailed: 3 }, layers[0], layers)) return 'pytest: lista niepełna względem podsumowania została odroczona';
+      return null;
+    },
+  },
+  {
+    name: 'probe-prompt-collects-mypy-lines-and-pytest-failed',
+    run() {
+      const p = c.buildProbePrompt(ARGS, { id: 'infrastructure', dirs: ['src/infrastructure/'], checks: ['typecheck', 'test'] });
+      if (p.indexOf('[[:space:]])error:') === -1) return 'tsErrors nie zbiera linii mypy/pyright';
+      if (!/FAIL\|FAILED/.test(p)) return 'testFailFiles nie zbiera linii FAILED pytesta';
+      if (!/mypy/.test(p)) return 'mapowanie wyników nie zna mypy';
+      if (p.indexOf('error[[:space:]]+•') === -1) return 'tsErrors nie zbiera linii dart/flutter analyze';
+      return null;
+    },
+  },
+  // ── ORC-108: zagnieżdżony __tests__ w katalogu warstwy — przy remisie segmentu wygrywa warstwa testowa ───────
+  {
+    name: 'owner-test-layer-wins-segment-tie-for-nested-tests-dir',
+    run() {
+      const layers = [{ id: 'infrastructure', dirs: ['infrastructure/'] }, { id: 'testing', dirs: ['__tests__/'], tests: true }];
+      const o = c.ownerLayerOf('src/contexts/d/infrastructure/repos/__tests__/a.spec.ts', layers);
+      if (!o || o.id !== 'testing') return 'spec w infrastructure/**/__tests__ powinien należeć do testing: ' + JSON.stringify(o && o.id);
+      const i = c.ownerLayerOf('src/contexts/d/infrastructure/repos/a.repo.ts', layers);
+      if (!i || i.id !== 'infrastructure') return 'plik poza __tests__ nadal powinien należeć do infrastructure';
+      const rev = c.ownerLayerOf('src/contexts/d/__tests__/infrastructure/a.spec.ts', layers);
+      if (!rev || rev.id !== 'testing') return 'plik pod __tests__ zawsze należy do warstwy testowej: ' + JSON.stringify(rev && rev.id);
+      const noFlag = c.ownerLayerOf('src/contexts/d/infrastructure/__tests__/a.spec.ts', [layers[0], { id: 'testing', dirs: ['__tests__/'] }]);
+      if (!noFlag || noFlag.id !== 'infrastructure') return 'bez tests:true zostaje dotychczasowa reguła długości: ' + JSON.stringify(noFlag && noFlag.id);
+      return null;
+    },
+  },
   {
     name: 'probe-clears-stale-check-logs-before-running-checks',
     run() {
@@ -944,6 +1044,54 @@ const CASES = (c) => [
       if (notTests) return 'bramka przyrostu odpaliła na warstwie nietestowej (legalny refaktor)';
       const noProbe = c.deltaGateFails(L.testing, null, ['src/__tests__/a.spec.ts']);
       if (noProbe) return 'brak sondy potraktowany jako naruszenie przyrostu';
+      return null;
+    },
+  },
+  // ORC-116: sonda bramki końcowej pomijająca zadeklarowaną kontrolę jest widoczna
+  {
+    name: 'final-probe-skipped-declared-check-is-reported',
+    run() {
+      const checks = ['typecheck', 'typecheck:scripts', 'lint', 'test'];
+      const r = c.finalProbeSkippedFields(checks, { typecheck: 'skipped', tests: 'pass', lint: 'pass' });
+      if (JSON.stringify(r) !== '["typecheck"]') return 'oczekiwano ["typecheck"], jest ' + JSON.stringify(r);
+      if (c.finalProbeSkippedFields(['test'], { typecheck: 'skipped', tests: 'pass' }).length) return 'skipped dla niezadeklarowanej kontroli zgłoszone';
+      if (c.finalProbeSkippedFields(checks, null).length) return 'brak sondy zgłoszony jako skipped';
+      return null;
+    },
+  },
+  // ORC-117: drobne ustalenia z rundy GO + unverified_scope nie przepadają przed reverify
+  {
+    name: 'minor-findings-survive-go-with-unverified-scope',
+    run() {
+      const v = { minor_findings: ['src/reader.ts:12 — TypeError dla nie-str event — dodaj guard'], unverified_scope: ['testing-pyramid'] };
+      if (c.minorPassBeforeReverify(v, undefined, false, 2, 3).length !== 1) return 'drobne ustalenia przepadły przed reverify';
+      if (c.minorPassBeforeReverify(v, false, false, 2, 3).length) return 'autoFixMinor=false nie wyłączył przejścia';
+      if (c.minorPassBeforeReverify(v, undefined, true, 2, 3).length) return 'drugie przejście naprawcze w tej samej warstwie';
+      if (c.minorPassBeforeReverify(v, undefined, false, 1, 3).length !== 1) return 'runda 1 z 3: przejście nie ruszyło';
+      if (c.minorPassBeforeReverify(v, undefined, false, 3, 3).length) return 'przejście na ostatniej próbie zjada weryfikację końcową';
+      if (c.minorPassBeforeReverify({ unverified_scope: ['x'] }, undefined, false, 1, 3).length) return 'brak minor_findings → pusta lista';
+      return null;
+    },
+  },
+  // ORC-115: reverify (verify-existing) nie mierzy przyrostu od nowa
+  {
+    name: 'delta-gate-skipped-in-verify-existing-mode',
+    run() {
+      const probe = { typecheck: 'pass', tests: 'pass', newTestBlocks: 0 };
+      const files = ['src/__tests__/a.spec.ts'];
+      if (c.deltaGateFails(L.testing, probe, files, 'verify-existing')) return 'reverify złapany na zerowym przyroście';
+      if (!c.deltaGateFails(L.testing, probe, files, 'implement')) return 'tryb implement zwolniony z bramki przyrostu';
+      return null;
+    },
+  },
+  // ORC-111: jednostka naprawcza (units[].repair) nie podlega bramce przyrostu
+  {
+    name: 'delta-gate-skips-repair-unit',
+    run() {
+      const probe = { typecheck: 'pass', tests: 'pass', newTestBlocks: 0 };
+      const files = ['src/__tests__/a.spec.ts'];
+      if (c.deltaGateFails({ ...L.testing, repair: true }, probe, files)) return 'jednostka repair:true złapana na zerowym przyroście';
+      if (!c.deltaGateFails({ ...L.testing, repair: false }, probe, files)) return 'repair:false zwolniona z bramki przyrostu';
       return null;
     },
   },

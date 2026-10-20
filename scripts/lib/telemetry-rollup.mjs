@@ -112,10 +112,12 @@ export function buildRollups(events) {
       if (ev.m && Number.isFinite(ev.m.costUsd)) b.costUsd += ev.m.costUsd;
       if (ev.m && Number.isFinite(ev.m.durationMs)) b._dur.push(ev.m.durationMs);
     } else if (ev.kind === 'seed' && ev.seed) {
-      // Lejek zalążków wpisów (ADR 0013): `<zdarzenie>` albo `suppressed:<powód>`, per blog.
+      // Lejek zalążków wpisów (ADR 0013): `<zdarzenie>` albo `suppressed|skipped:<powód>`, per blog.
+      // `checked`/`skipped` nie mają bloga — lądują pod `unknown`, czyli „przebiegi, które oceniły".
       // Blok leniwy — dni bez zalążków zostają bajt w bajt takie same jak przed zmianą.
       r.seeds ||= {};
-      const key = ev.seed.event === 'suppressed' ? `suppressed:${ev.seed.reason || 'unknown'}` : ev.seed.event;
+      const withReason = ev.seed.event === 'suppressed' || ev.seed.event === 'skipped';
+      const key = withReason ? `${ev.seed.event}:${ev.seed.reason || 'unknown'}` : ev.seed.event;
       const blog = (r.seeds[ev.seed.blog || 'unknown'] ||= {});
       bump(blog, key);
     } else if (ev.kind === 'deviation') {

@@ -24,7 +24,16 @@ echo -e "${BLUE}[reseed-patterns] 2/4 build${NC}"
 npm run build >/dev/null
 
 echo -e "${BLUE}[reseed-patterns] 3/4 reseed patterns_global + library_reference_global${NC}"
-npm run seed:global -- --all 2>&1 | grep -E '^\[global-indexer\]|error|Error' || true
+# Indekser potrafi złapać błąd embeddera i wyjść kodem 0 (incydent 2026-10-20: embedder :8301 niedostępny,
+# a stan świeżości i tak został zapisany — audyt przestał zgłaszać rozjazd, kolekcje zostały stare).
+# Dlatego sprawdzamy i kod wyjścia, i treść wyjścia; stan zapisujemy dopiero po udanym seedzie.
+SEED_RC=0
+SEED_OUT="$(npm run seed:global -- --all 2>&1)" || SEED_RC=$?
+echo "$SEED_OUT" | grep -E '^\[global-indexer\]|error|Error' || true
+if [ "$SEED_RC" -ne 0 ] || echo "$SEED_OUT" | grep -qE 'fetch failed|ECONNREFUSED|TypeError'; then
+  echo "[reseed-patterns] seed NIEUDANY (embedder/Qdrant niedostępny?) — stan świeżości NIE zapisany, kolekcje bez zmian" >&2
+  exit 1
+fi
 
 # Zapis stanu drzewa: od tego momentu scripts/rag-freshness.mjs potrafi powiedzieć,
 # czy kolekcje odpowiadają dyskowi. Bez tego kroku rozjazd jest niewykrywalny — a to

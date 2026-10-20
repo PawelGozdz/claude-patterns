@@ -29,12 +29,15 @@ overlay:
 orchestrate:
   layers:
     - { id: site, agent: "astro-implementer", optional: true,
-        create_when: "task zmienia kod strony: komponenty, layouty, routing, schemat kolekcji, konfigurację Astro",
-        dirs: [src/components/, src/layouts/, src/pages/, src/lib/, src/utils/, src/styles/, src/content.config.ts, astro.config.ts],
+        # regex po haystacku taska i analizy (ORC-113), nie opis
+        create_when: "komponent|layout|routing|schemat|astro|kolekcj|collection|\\bstron[aęy]\\b|i18n|taksonomi|content-system|content\\.config|\\bcss\\b|\\bstyl(e|ów)\\b",
+        # i18n/content-system/types/scripts/screens: kod strony poza typowymi katalogami (rejestr, taksonomia,
+        # teksty UI) — bez nich zadanie musiało obchodzić zakres jednostkami z jawnymi dirs (juz-ide-blog BLOG-GUIDES-001).
+        dirs: [src/components/, src/layouts/, src/pages/, src/lib/, src/utils/, src/styles/, src/i18n/, src/content-system/, src/types/, src/scripts/, src/screens/, src/content.config.ts, astro.config.ts],
         tags: ["web:ui"], checks: ["lint"], verify: "ecc:typescript-reviewer",
         role: "Kod strony Astro. Schemat Content Collections jest kontraktem treści — jego zmiana wymaga przejrzenia istniejących wpisów." }
     - { id: content, agent: "general-purpose", optional: true,
-        create_when: "task dodaje lub zmienia wpisy albo strony treści",
+        create_when: "wpis|artyku|treś[ćc]|przewodnik|guide|\\bpost|markdown|\\.mdx?\\b|frontmatter|src/content/",
         dirs: [src/content/], verify: "content-reviewer",
         role: "Wpisy: ZAWSZE draft: true (false ustawia człowiek). Przed pisaniem docs/POST-GUIDE.md; zakazy: stage/deny-list.yml. AI nie pisze wspomnień, cytatów, emocji ani liczb bez źródła." }
   inner_loop: { verify: "ecc:typescript-reviewer", max_attempts: 3, on_max: ESCALATE_AND_HALT }

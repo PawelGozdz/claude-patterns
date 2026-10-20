@@ -78,13 +78,17 @@ export class UserCapabilitiesCalculatorService {
     private readonly aclRegistry: ACLRegistryService
   ) {}
 
-  async calculateAllCapabilities(userId: string): Promise<Result<string[], Error>> {
+  async calculateAllCapabilities(
+    userId: string
+  ): Promise<Result<string[], CapabilitiesCalculationFailedError>> {
     try {
       const capabilities: string[] = [];
 
       // ✅ Step A: Retrieve adapter from registry with inline interface
       // NO imports from Authorization context - type safety via generics
       const authorizationAdapter = this.aclRegistry.getGlobalRequired<{
+        // `Error` is structural on purpose (ACL3): the provider returns its own typed
+        // subclass, but the consumer must not import it from the provider context.
         getUserCapabilities: (
           userId: string
         ) => Promise<Result<{ userId: string; capabilities: string[] }, Error>>;
@@ -101,7 +105,10 @@ export class UserCapabilitiesCalculatorService {
       capabilities.push(...verificationResult.value.capabilities);
       return Result.ok(capabilities);
     } catch (error) {
-      return Result.fail(new Error(`Failed to calculate capabilities: ${error.message}`));
+      // Typed error with a `D_` code (own context), static message — never `error.message`
+      // (CWE-209). A plain `new Error(...)` has no `code`, so the global error mapper cannot
+      // map it and it reaches the client as 500. See rules/nestjs-ddd/error-mapper.md.
+      return Result.fail(new CapabilitiesCalculationFailedError());
     }
   }
 }
@@ -159,7 +166,7 @@ export class AuthorizationContextAPI implements IACLAdapter<any, any, any> {
    */
   async getUserCapabilities(
     userId: string
-  ): Promise<Result<{ userId: string; capabilities: string[] }, Error>> {
+  ): Promise<Result<{ userId: string; capabilities: string[] }, UserCapabilitiesQueryFailedError>> {
     try {
       const capabilities = await this.capabilitiesRepo.getUserCapabilities(userId);
 
@@ -172,7 +179,10 @@ export class AuthorizationContextAPI implements IACLAdapter<any, any, any> {
         capabilities: capabilities.capabilities || [],
       });
     } catch (error) {
-      return Result.fail(new Error(`Failed to get user capabilities: ${error.message}`));
+      // Log the cause server-side; the raw driver error never leaves the adapter.
+      // The error class extends BaseError, carries a `D_` code and is registered in the
+      // provider context's IDomainErrorMapper in the SAME change (error-mapper.md).
+      return Result.fail(new UserCapabilitiesQueryFailedError());
     }
   }
 
@@ -188,7 +198,10 @@ export class AuthorizationContextAPI implements IACLAdapter<any, any, any> {
 - ✅ **MUST** define adapter interface inline with TypeScript generics (no imports)
 - ✅ **MUST** register adapters in `onModuleInit()` of provider context
 - ✅ **MUST** use lowercase context names as registry keys
-- ✅ **MUST** return `Result<T, E>` from adapter methods (hybrid error handling)
+- ✅ **MUST** return `Result<T, E>` from adapter methods (hybrid error handling), where `E` is a
+  typed error extending `BaseError` with a `D_`-prefixed `code` (validation → 4xx, infra failure →
+  5xx), registered in the provider context's `IDomainErrorMapper` in the same change
+  (`rules/nestjs-ddd/error-mapper.md`). The consumer's inline interface may keep `Error` (ACL3)
 - ✅ **MUST** handle adapter retrieval failures gracefully
 - ✅ **MUST** batch a cross-context call that would otherwise repeat per unit of work — one
   adapter method taking a list/array in, one round trip out; see Anti-Pattern 4
@@ -202,6 +215,9 @@ export class AuthorizationContextAPI implements IACLAdapter<any, any, any> {
 - ❌ **MUST NOT** inject adapters directly in constructor
 - ❌ **MUST NOT** store adapter references in class properties (retrieve each time)
 - ❌ **MUST NOT** throw exceptions from adapter methods (use Result pattern)
+- ❌ **MUST NOT** use `Result.fail(new Error(...))` in an adapter — a plain `Error` has no `code`,
+  so `DomainErrorHandler.canHandle()` rejects it and the global mapper degrades it to a generic
+  500. Use a typed error with a `D_` code; no `error.message` in the message (CWE-209)
 - ❌ **MUST NOT** call a per-item ACL method in a loop when the caller already knows the full
   set of items up front (N+1 across a bounded context boundary — see Anti-Pattern 4)
 - ❌ **MUST NOT** swallow an ACL error without classifying it as infra failure (5xx) vs. domain

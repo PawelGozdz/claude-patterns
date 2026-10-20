@@ -1016,6 +1016,13 @@ setupami, więc cache byłby kłamstwem). Skrypt filtruje po statusie i `adr_exc
 z `params."decision-registry"`, więc do panelu wchodzi kilka wpisów, a nie cały katalog
 (juz-ide: 123 pliki → ~120 aktywnych → kilka trafnych).
 
+**Uzupełnienie 2026-10-18 (DEV-anz-gate-input-missing).** Indeks powstaje z drzewa roboczego,
+więc gałąź za bazą nie zobaczy decyzji, które są tylko na `origin/develop` (juz-ide-api-2,
+TS-SEC-MAP-GROUP-PIN-001: BDR-081..084 na bazie, gałąź 5 commitów z tyłu; bramka zadziałała
+na nieaktualnym indeksie, bez żadnego sygnału). Skrypt ostrzega teraz na stderr, gdy
+`origin/develop` lub `origin/main` ma w `adr_dir`/`bdr_dir` dodane albo zmienione pliki,
+których `HEAD` nie ma. Ostrzeżenie nie blokuje; sprawdza lokalne refy, bez `fetch`.
+
 <a id="anl-013"></a>
 
 ### ANL-013 — `needs_scope_check: true` znaczy „częściowo", nie „nieaktualne"
@@ -2054,3 +2061,140 @@ analizy z błędnym YAML nie wystartują ponownie bez poprawki frontmatteru. Eva
 
 **Ryzyko.** `rm -f` na wspólnym `/tmp` usuwa też logi współbieżnego przebiegu o tym samym `layer.id` w innym projekcie; ten wyścig istniał już wcześniej (oba przebiegi nadpisywały te same pliki), teraz tylko jest jawny.
 
+
+<a id="orc-107"></a>
+
+### ORC-107 — odroczenie ORC-082/099 dla Pythona: mypy, pyright, pytest (2026-10-18)
+
+**Objaw (DEV-orc-082-engine-audit-decision).** aegis-flow TS-019 (`wf_5c1bef35-220`), warstwa `engine:audit-decision`: czerwony `mypy`, błąd w `engine/dag_runner.py`, który należy do późniejszej warstwy `runner-store`; ORC-082 nie odroczył, przebieg stanął na `BLOCKED_BY_PRIOR`.
+
+**Przyczyna.** `typecheckErrorPaths` rozpoznawał tylko `error TS\d+`, więc dla mypy zwracał 0 ścieżek i 0 błędów (warunek `paths.length && paths.length === total` zawsze fałszywy). Polecenie `grep` sondy też szukało tylko `error TS`. `testFailPaths` znał `FAIL path` (vitest/jest), a pytest pisze `FAILED path::test` i nie podaje liczby plików, tylko „N failed" (testów).
+
+**Zmiana.**
+- `typecheckErrorPaths`: dodatkowo `path.py:LINE[:COL]: error:` (mypy) i `path.py:L:C - error:` (pyright). Do `total` wchodzi KAŻDA linia z `error:`, także bez ścieżki (`error: Cannot find implementation or library stub`), więc taki błąd nadal blokuje odroczenie. Linie `note:` i „Found N errors" się nie liczą.
+- `testFailPaths` czyta też `FAILED path.py::test`; `testFailExpectedCount` porównuje listę z podsumowaniem: vitest/jest = unikalne pliki, pytest = liczba linii FAILED (instrukcja sondy mówi, że dla pytesta `testFilesFailed` to liczba testów z „N failed"). Używa tego `testsRedIsLaterLayers` i `testsFlakyUnderLoad` (ORC-103).
+- Sonda: `grep -hE 'error TS[0-9]+|(^|[[:space:]])error:'` dla `tsErrors`, `(FAIL|FAILED)` dla `testFailFiles`; mapowanie wyników zna `mypy` i `pyright`.
+
+**Niezrobione.** Linie `ERROR path` pytesta (błędy kolekcji) nie są liczone: dają rozjazd z „N failed, M errors" i brak odroczenia, czyli zachowanie bezpieczne. Format `ruff`/`flake8` to lint, nie typecheck.
+
+**Ryzyko.** Narzędzie typecheck wypisujące `error:` w komunikatach o innym znaczeniu zwiększy `total` i zablokuje odroczenie; błąd w stronę ostrożności.
+
+<a id="orc-108"></a>
+
+### ORC-108 — remis segmentu: warstwa testowa wygrywa w `infrastructure/**/__tests__/` (2026-10-18)
+
+**Objaw (DEV-orc-082-infrastructure-discovery-infra).** juz-ide-api-2 TS-SEC-MAP-GROUP-PIN-001 (`wf_db145b3f-cb3`): stare specyfikacje w `infrastructure/**/__tests__/` wg ORC-093 należały do infrastructure (nazwa dłuższa niż `__tests__`), a rola tej warstwy zabrania ruszać testy; czerwony typecheck nie był odraczany do `testing`, przebieg stanął na `BLOCKED_BY_PRIOR`.
+
+**Zmiana.** `cmpScore`: przy remisie rangi segmentu (obie warstwy dopasowane nazwą katalogu) wygrywa warstwa z `tests: true`; dopiero potem długość. Plik w katalogu przeznaczonym na testy jest testem niezależnie od drzewa, w którym leży. Warstwy bez `tests: true` zachowują regułę ORC-093.
+
+**Ryzyko.** Warstwa testowa z `dirs: [test/]` i `tests: true` przejmie też pliki `src/**/test/` należące wg układu projektu do kodu; w praktyce katalog o tej nazwie to testy.
+
+<a id="orc-109"></a>
+
+### ORC-109 — `--overrides checks.byLayer` odrzucane zamiast cicho ignorowane (2026-10-18)
+
+**Objaw (DEV-orc-082-engine-audit-decision, druga część).** aegis-flow TS-019: nadpisanie `checks.byLayer["engine:audit-decision"]` nic nie zmieniło w sondzie, więc `resumeFromRunId` odtworzył z cache starą czerwoną sondę (0 agentów, 9 ms). Zadziałało dopiero `layers.<id>.checks`.
+
+**Przyczyna.** `checks.byLayer` w wyjściu `orchestrate-prepare` to widok pomocniczy; szablon czyta `layers[].checks`. Klucz istniał, więc walidacja `--overrides` go przyjmowała. Cache Workflow działał poprawnie: prompt sondy się nie zmienił.
+
+**Zmiana.** `applyOverrides` odrzuca `checks.byLayer` z exit 1 i komunikatem wskazującym `layers: { "<id>": { "checks": [...] } }`. `checks.finalGate` zostaje (bramka końcowa czyta je z wyjścia).
+
+<a id="orc-110"></a>
+
+### ORC-110 — sonda typecheck rozpoznaje `dart analyze` / `flutter analyze` (2026-10-19)
+
+**Objaw (DEV-agent_note-deterministyczna-bramka-warstwy-presentation-basem).** juz-ide-mobile-app MAP-BASEMAP-STYLE-001 (`wf_7dc4170a-4e4`): `flutter analyze` na szerokim zakresie zgłaszał czerwień, a sonda szukała tylko `error TS` (i od ORC-107 `error:`), więc nie wskazała przyczyny ani ścieżek i odroczenie do późniejszej warstwy (ORC-082) nie mogło zadziałać.
+
+**Zmiana.** `typecheckErrorPaths` liczy linie `error • komunikat • lib/a.dart:L:C • kod` (ostrzeżenia i `info` pomijane) i zbiera ścieżki `.dart`; instrukcja sondy dokłada je do wyniku `grep` w `tsErrors`. Reszta logiki odroczenia (ORC-082/090/093/108) bez zmian.
+
+**Poza zakresem.** `flutter analyze` kończy się kodem ≠ 0 także przy samych ostrzeżeniach; zakres i flagi (`--no-fatal-warnings`, `--no-fatal-infos`, zawężenie do zmienionych katalogów) to konfiguracja `checks` projektu (obejście przez `--overrides layers.<id>.checks`).
+
+**Ryzyko.** Narzędzie wypisujące na początku linii `error •` w innym znaczeniu zwiększy `total` i zablokuje odroczenie; błąd w stronę ostrożności.
+
+<a id="orc-111"></a>
+
+### ORC-111 — jednostka naprawcza nie podlega bramce przyrostu testów (2026-10-19)
+
+**Objaw (DEV-orc-035-testing-tests-media-service).** juz-ide TS-SEC-D0-BETA-HARDENING-001, `testing:tests-media-service`: jednostka dopasowywała istniejące testy do zmienionego kontraktu, bez nowych bloków `it`/`test`/`describe`. Sonda przyrostu (ORC-035) zwróciła 0 i silnik kończył jednostkę ESCALATE. Obejście: `--overrides` z `tests:false`, które wyłącza też inne zachowania warstwy testowej.
+
+**Przyczyna.** ORC-035 zastrzega, że bramka dotyczy jednostek, których zakresem jest DODANIE kontroli, ale analiza nie miała jak powiedzieć silnikowi, że jednostka jest naprawcza.
+
+**Zmiana.** `units[].repair: true` (bramka `units` w `prepare` sprawdza typ boolean) trafia do pod-warstwy, a `deltaGateFails` zwraca `null` dla `layer.repair === true`. Reszta zachowania warstwy `tests: true` (zakres, plik towarzyszący, ORC-108) zostaje.
+
+**Ryzyko.** Analiza, która oznaczy jako `repair` jednostkę dopisującą testy, wyłączy kontrolę przyrostu. Weryfikator warstwy nadal czyta diff, a bramka końcowa uruchamia pełne `checks`.
+
+<a id="orc-112"></a>
+
+### ORC-112 — zawężenie jednostki rozstrzyga remis własności pliku (2026-10-19)
+
+**Objaw (DEV-orc-082-application-pr1-auth-app).** juz-ide-api-1 TS-SEC-D0-BETA-HARDENING-001, `application:pr1-auth-app`: czerwień typecheck z plików późniejszych jednostek blokowała wcześniejszą (BLOCKED_BY_PRIOR) mimo odroczenia ORC-082. Obejście: `--overrides` z zawężonymi `dirs` per jednostka.
+
+**Przyczyna.** Pod-warstwa z `units[]` dziedziczy gruby `dirs` warstwy bazowej (`application/`, ranga segmentu) obok wąskiego `scope.dirs` (ścieżka, ranga prefiksu). W `cmpScore` segment wygrywa z prefiksem niezależnie od długości, więc plik jednostki B remisował na `application/` ze WSZYSTKIMI jednostkami warstwy, także z bieżącą A. Remis z udziałem bieżącej warstwy nie odracza (ORC-098b).
+
+**Zmiana.** `ownerLayersOf`: przy remisie zostają wyłącznie warstwy, których `scope.dirs` obejmują plik (`layerMatchScore(..., onlyScope)`). Gdy żadna nie obejmuje, zachowanie jak dotąd. Remisy z ORC-108 (`tests: true` w obrębie rangi segmentu) i ORC-098b (dwie jednostki z tym samym plikiem w zakresie) nie zmieniają się: pierwsze rozstrzyga `cmpScore`, drugie dalej remisuje.
+
+**Ryzyko.** Plik objęty zawężeniem jednostki wcześniejszej i jednocześnie leżący w katalogu późniejszej, bez zawężenia, trafia teraz do wcześniejszej. To zgodne z deklaracją analizy.
+
+<a id="orc-113"></a>
+
+### ORC-113 — `create_when` jest regexem, nie opisem (2026-10-20)
+
+**Objaw (DEV-orc-020).** juz-ide-blog BLOG-GUIDES-001 (`wf_2c9d353e-1e6`): wszystkie warstwy `optional` z bloku `astro-content` dostały `createWhenHits=false` i zostały pominięte, a bramka końcowa oceniła puste drzewo (NO_GO). Obejście: `--overrides createWhenHits`.
+
+**Przyczyna.** Od 2026-09-15 `prepare` kompiluje `create_when` jako `new RegExp(…, 'i')` po haystacku (wartości frontmattera + treść taska i analizy). README bloków, schemat i trzy bloki opisywały pole jako zdanie ("task zmienia kod strony: …"), które nie trafia w żaden tekst. Ten sam skutek miał `api-surface` w `library-layers`.
+
+**Zmiana.** `astro-content` (`site`, `content`) i `library-layers` (`api-surface`) przepisane na regex; README bloków i schemat opisują kontrakt; `prepare` ostrzega, gdy `create_when` ma ≥3 słowa i nie ma `|` ani `\`.
+
+**Poza zakresem.** `clean-arch` (`application`) warunkuje warstwę polem strukturalnym (`decisions[].application_layer == true`), którego regex po haystacku nie wyrazi; ostrzeżenie go teraz wskaże, treść warunku wymaga decyzji autora bloku.
+
+**Ryzyko.** Regex jest szeroki z założenia: zadanie wspominające "stronę" uruchomi warstwę `site` bez zmiany kodu strony. Koszt to jeden przebieg implementera, który nie ma czego zmieniać; `layers_skip` w analizie to wyłącza.
+
+<a id="orc-114"></a>
+
+### ORC-114 — skrypt silnika emitowany poza repo (2026-10-20)
+
+**Objaw (DEV-orc-065).** juz-ide-blog BLOG-GUIDES-001 (`wf_29c827ad-247`): `--emit-script .claude/run-state/{TASK-ID}.workflow.mjs` w repo z `eslint .` w korzeniu. Flat config nie ignoruje `.claude/`, więc wyemitowany skrypt (top-level `return`) był linitowany jak kod projektu: „Parsing error: return outside of function", czerwona sonda lint i bramka końcowa. Obejście: emisja do katalogu poza repo.
+
+**Przyczyna.** Krok 2 komendy kazał emitować do `.claude/run-state/`. ESLint (flat config) pomija tylko `.git/` i `node_modules/`; `.gitignore` go nie obchodzi. Dopisanie `ignores` w każdym projekcie nie skaluje się i koliduje z hookiem `config-protection`.
+
+**Zmiana.** Krok 2 wskazuje katalog scratchpad sesji (poza repo). Znacznik `orchestrating.json` i raport zostają w `.claude/run-state/`, bo czytają je hooki. Nic poza komendą nie odwołuje się do ścieżki skryptu.
+
+**Ryzyko.** Katalog scratchpad jest per sesja, więc wznowienie w nowej sesji emituje skrypt od nowa (to samo wywołanie `prepare`).
+
+<a id="orc-115"></a>
+
+### ORC-115 — reverify nie mierzy przyrostu testów od nowa (2026-10-20)
+
+**Objaw (DEV-orc-035-presentation).** juz-ide-mobile-app DS012-BROKEN-LINKS-ENDPOINTS-BUGFIX-001 (`wf_16b276bc-363`), `presentation`: po GO weryfikatora z `unverified_scope` pętla przechodziła w `reverify`, sonda (`presentation-checks-3`) zwracała `newTestBlocks: 0` (poprzednia próba: 9), bramka ORC-035 kończyła warstwę ESCALATE_AND_HALT `cause: code`. Obejście: `--overrides layers.presentation.tests=false`.
+
+**Przyczyna.** `reverify` ustawia tryb `verify-existing`: implementer nie wywołuje się wcale, a kod pochodzi z próby, która tę bramkę już przeszła (do weryfikatora dochodzi się dopiero po niej). Ponowny pomiar na nietkniętym drzewie jest redundantny i mylący.
+
+**Zmiana.** `deltaGateFails(layer, probe, files, mode)` zwraca `null` dla `mode === 'verify-existing'`. Pozostałe tryby bez zmian.
+
+**Ryzyko.** `verify-existing` używane też po zamilknięciu implementera (zmienione pliki są w drzewie, ale nie przeszły bramki przyrostu). Tam przyrost nadal nie jest mierzony; to dotychczasowa luka, weryfikator czyta diff, a bramka końcowa uruchamia pełne `checks`.
+
+
+
+<a id="orc-116"></a>
+
+### ORC-116 — sonda bramki końcowej pomijająca zadeklarowaną kontrolę trafia do raportu (2026-10-20)
+
+**Objaw (DEV-agent_note-sonda-bramki-koncowej-zwroci-a-typecheck-skipped).** ai-gateway TS-AIG-094 (`wf_671169fb-f18`), `final-gate`: sonda zwróciła `typecheck: skipped`, ręczny `pnpm typecheck` był czerwony (TS2578 w `src/usage/budget-guard.test.ts`), a bramka dała GO.
+
+**Przyczyna.** ORC-085 ostrzega o „ślepej sondzie" tylko dla warstw (wszystko `skipped`). Bramka końcowa nie miała odpowiednika: `skipped` jednego pola, gdy `checks.finalGate` deklaruje taką kontrolę, nie zostawiał śladu.
+
+**Zmiana.** `finalProbeSkippedFields(finalChecks, probe)` wskazuje pola `typecheck`/`tests`/`lint`, które sonda pominęła mimo zadeklarowanej kontroli o pasującej nazwie; silnik dopisuje ostrzeżenie do `report.warnings`. Werdykt bramki nie zmienia się.
+
+**Poza zakresem.** Przyczyna samego `skipped` (np. `typecheck:scripts` lub niedopasowana nazwa skryptu w pakiecie) leży w `checks` projektu; ostrzeżenie ją tylko ujawnia. Gdyby miało blokować, wymagałoby decyzji, czy `skipped` ma znaczyć NO_GO.
+
+<a id="orc-117"></a>
+
+### ORC-117 — drobne ustalenia z rundy `GO` + `unverified_scope` nie przepadają przed `reverify` (2026-10-20)
+
+**Objaw.** aegis-flow TS-017, warstwa `engine` (run `wf_6cd40ef0-6b9`, zgłoszenie `DEV-orc-074-engine`). W rundzie 2 weryfikator dał `GO` z `unverified_scope` i wpisał bug czytnika (TypeError dla nie-str event) do `minor_findings`. W rundzie 3 ten sam bug wrócił jako HIGH/NO_GO, a warstwa wyczerpała 3 próby na jednej linii poprawki.
+
+**Przyczyna.** ORC-074 kieruje `GO` z `unverified_scope` w `reverify` (implementer pominięty). Przejście naprawcze drobnych ustaleń (ORC-091) żyło wyłącznie w gałęzi `decision.next === 'go'`, więc w gałęzi `reverify` `minor_findings` nikt nie czytał. Kod nie był poprawiany, a weryfikator przy kolejnej weryfikacji słusznie podnosił to samo ustalenie wyżej.
+
+**Zmiana.** `minorPassBeforeReverify(verdict, autoFixMinor, minorPassDone, attempt, maxAttempts)` zwraca drobne ustalenia do naprawy przed `reverify` (pusta lista, gdy `autoFixMinor === false`, przejście już było albo to ostatnia próba; w odróżnieniu od ORC-091 nie trzeba zapasu 2 prób, bo przejście zastępuje próbę `reverify`, a jego weryfikacja domyka też `unverified_scope`). Gałąź `reverify` w pętli warstwy uruchamia wtedy jedno przejście naprawcze (`mode = 'implement'`, `cleanupNext`), a kolejna runda przechodzi zwykłą sondę i weryfikację, która domyka też `unverified_scope`. Limit jednego przejścia na warstwę (`minorPassDone`) zostaje wspólny z ORC-091.
+
+**Poza zakresem.** Druga uwaga ze zgłoszenia, że weryfikator warstwy kodu liczy brak testów jako lukę zakresu (testy należą do jednostki `testing`), jest zamierzona przy podziale na jednostki (`unverified_scope` jest wtedy w raporcie jako luka, nie blokada).

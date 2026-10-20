@@ -60,9 +60,11 @@ orchestrate:                 # sloty /orchestrate
   layers:
     # checks: skrypty repo odpalane przez verify tej warstwy PRZED czytaniem kodu;
     #         werdykt z kodu wyjścia, brak skryptu = pominięty + zaraportowany.
-    # optional + create_when: warstwa warunkowa (ocena po wyniku poprzednich warstw).
+    # optional + create_when: warstwa warunkowa. create_when to REGEX (bez rozróżniania wielkości liter),
+    # liczony przez orchestrate-prepare po haystacku: wartości frontmattera + treść taska i analizy. Alternatywy
+    # przez "|"; zdanie prozą nie trafia nigdy (prepare ostrzega, ORC-113).
     - { id: <id>, dirs: [<dir>/], agent: "<agent>",
-        checks: ["<npm-script>"], optional: true, create_when: "<opis>" }
+        checks: ["<npm-script>"], optional: true, create_when: "<słowo1|słowo2|\\bfraza\\b>" }
   inner_loop: { verify: "<agent>", max_attempts: N, on_max: ESCALATE_AND_HALT }
   final_gate: { agent: "<agent>", on_fail: ESCALATE_AND_HALT }
   exit: STAGE_NOT_COMMIT

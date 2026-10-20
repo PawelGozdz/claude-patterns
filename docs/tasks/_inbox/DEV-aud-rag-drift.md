@@ -1,6 +1,11 @@
 ---
 id: DEV-aud-rag-drift
-status: proposed
+status: dismissed
+dismissed_reason: >
+  Nieodtwarzalne 2026-10-20: reseed-patterns.sh zakończony sukcesem (kolekcje odtworzone,
+  .rag-seed-state.json zapisany), audit-projects nie zgłasza AUD-RAG-DRIFT. Przyczyna
+  wcześniejszych porażek reseedu: domyślny port embeddera :8301 nie nasłuchiwał, API CT 301
+  działa na :8000 (domyślne wartości poprawione w embedder.ts i docker-compose.yml).
 trigger: setup_drift
 sources:
   - audit

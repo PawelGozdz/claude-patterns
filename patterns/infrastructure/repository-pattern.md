@@ -964,6 +964,18 @@ not that nobody looked.
   `domain/repositories/`, joins the ambient `@Transactional` via `TransactionHost.tx`, throws on
   failure, no logger, `// RP2-EXCEPTION:` annotation above the class.
 
+- `BlockCleanupKyselyRepository` (RP2, juz-ide `community-communication` context,
+  TS-SEC-BLOCK-CACHE-001) — bulk deletion of `user_blocks` rows after account anonymization
+  (GDPR Art.17 / Art.5(1)(e)), in both directions (`blocker_id` or `blocked_id`): no aggregate is
+  loaded or saved and no domain event is emitted, so `BaseKyselyRepository` dispatch/locking does
+  not apply. Checked before accepting: port `IBlockCleanupRepository` in
+  `domain/blocking/repositories/`, no logger, a DB error returns `Result.fail` (the integration
+  handler rethrows it, so BullMQ retries), idempotent, `// RP2-EXCEPTION:` annotation above the
+  class. Unlike the siblings above, it sits in `infrastructure/blocking/` and injects
+  `DATABASE_TOKEN` rather than `TransactionHost`, so it runs in autocommit and does not join an
+  ambient `@Transactional` — acceptable because it is a single idempotent DELETE called after the
+  read-model update, not atomically with it.
+
 - `GeographicAuthContextAPI` (RP12, juz-ide `geographic-auth` context, TS-REP-SUBJECT-ERASURE-001) —
   the ACL adapter injects `DATABASE_TOKEN` and `getMunicipalityIdsByResidenceIds` runs a readonly
   query joining `user_residences` to administrative units. Accepted as a cross-aggregate read

@@ -395,6 +395,25 @@ CASES.push({
   },
 });
 
+// ORC-109: `checks.byLayer` to widok pomocniczy wyjścia prepare — sonda go nie czyta, więc nadpisanie
+// było ciche i nieskuteczne (aegis-flow TS-019: wznowienie odtworzyło starą czerwoną sondę z cache).
+CASES.push({
+  name: 'overrides-reject-derived-checks-by-layer',
+  build: () => {
+    const root = makeProject({ taskId: 'TS-FIX-001', analysis: analysisFm({}), task: taskFile('Dodaj aggregate.') });
+    write(root, 'bylayer.json', JSON.stringify({ checks: { byLayer: { testing: ['test:l1'] } } }));
+    write(root, 'gate.json', JSON.stringify({ checks: { finalGate: ['test:l1'] } }));
+    return root;
+  },
+  check(r, root) {
+    const bad = run(root, 'TS-FIX-001', ['--overrides', path.join(root, 'bylayer.json')]);
+    if (bad.code !== 1 || !/layers\.<id>\.checks|layers: \{/.test(bad.stderr)) return 'checks.byLayer przeszło bez ostrzeżenia: ' + bad.code + ' ' + bad.stderr.trim();
+    const gate = run(root, 'TS-FIX-001', ['--overrides', path.join(root, 'gate.json')]);
+    if (gate.code !== 0) return 'checks.finalGate przestało być przyjmowane: ' + gate.stderr.trim();
+    return null;
+  },
+});
+
 // `$'`, `$&` i `$1` to wzorce zastępcze String.replace — na nich ręczna kopia szablonu gubiła args.
 const DOLLAR_CARD = "- echo $'a b' i $& oraz $1";
 
@@ -430,6 +449,29 @@ CASES.push({
     if (r.code !== 0) return `oczekiwano exit 0, było ${r.code}`;
     if (!/^[0-9a-f]{40}$/.test(r.json.baseSha || '')) return 'brak baseSha: ' + r.json.baseSha;
     if (JSON.stringify(r.json.dirtyAtStart) !== '["notes.md"]') return 'dirtyAtStart: ' + JSON.stringify(r.json.dirtyAtStart);
+    return null;
+  },
+});
+
+// ORC-113: create_when to regex; opis prozą nie trafia i dostaje ostrzeżenie
+CASES.push({
+  name: 'create-when-regex-hits-and-prose-warns',
+  build: () => makeProject({
+    taskId: 'TS-FIX-001',
+    runtime: RUNTIME_DDD.replace('  inner_loop', [
+      '    - {id: site, dirs: [src/pages/], agent: "a", optional: true, create_when: "task zmienia kod strony: komponenty, layouty"}',
+      '    - {id: web, dirs: [apps/web/], agent: "a", optional: true, create_when: "komponent|layout"}',
+      '  inner_loop',
+    ].join('\n')),
+    analysis: analysisFm({}),
+    task: taskFile('Dodaj komponent strony.'),
+  }),
+  check(r) {
+    if (r.code !== 0) return `oczekiwano exit 0, było ${r.code}`;
+    if (r.json.createWhenHits.web !== true) return 'regex komponent|layout nie trafił: ' + JSON.stringify(r.json.createWhenHits);
+    if (r.json.createWhenHits.site !== false) return 'opis prozą trafił';
+    if (!r.json.warnings.some((w) => /create_when warstwy site: wygląda na opis prozą/.test(w))) return 'brak ostrzeżenia o opisie prozą: ' + JSON.stringify(r.json.warnings);
+    if (r.json.warnings.some((w) => /create_when warstwy web/.test(w))) return 'ostrzeżenie dla poprawnego regexu';
     return null;
   },
 });

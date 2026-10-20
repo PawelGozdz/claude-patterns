@@ -44,7 +44,8 @@ orchestrate:
     - { id: api-surface, dirs: [packages/, libs/], agent: "general-purpose", optional: true,
         tags: ["lib:api-surface"],
         role: "Świadoma akceptacja zmiany kontraktu: raport api-extractor + changeset. Nie kodowanie.",
-        create_when: "diff dotyka index.ts / eksportowanych sygnatur / api-report/*.api.md",
+        # regex po haystacku taska i analizy (ORC-113), nie opis
+        create_when: "index\\.ts|api-report|api-extractor|\\.api\\.md|eksport|sygnatur|publiczn\\w* api|public api|changeset",
         checks: ["validate:exports", "validate:api"] }
   inner_loop: { verify: "ecc:typescript-reviewer", max_attempts: 3, on_max: ESCALATE_AND_HALT }
   # Bramka końcowa: library-quality-verifier ma jawne VETO i dostęp do Bash, więc realnie

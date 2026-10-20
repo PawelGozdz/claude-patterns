@@ -436,16 +436,19 @@ function buildProbePrompt(a, layer) {
   // nie zadziałał i warstwa domain stanęła na BLOCKED_BY_PRIOR (juz-ide-api-1, 2026-09-30).
   const tsErrorsInstruction = cmds.length
     ? ' Przy niezerowym typecheck dodatkowo zwróć w `tsErrors` WYNIK DOSŁOWNIE (bez streszczania, ' +
-      'parafrazy i komentarza): `grep -hE \'error TS[0-9]+\' /tmp/check-' + layer.id + '-*.log | head -60`.'
+      // ORC-107: linie błędów tsc ORAZ mypy/pyright (`path.py:12: error: …`, także bez ścieżki);
+      // ORC-110: oraz `dart analyze`/`flutter analyze` (`error • … • lib/a.dart:12:5 • kod`)
+      'parafrazy i komentarza): `grep -hE \'error TS[0-9]+|(^|[[:space:]])error:|^[[:space:]]*error[[:space:]]+•\' /tmp/check-' + layer.id + '-*.log | head -60`.'
     : ''
   // ORC-099: przy czerwonych testach sonda zwraca nazwy padających plików i ich liczbę z podsumowania
   // runnera — silnik odracza testy, których WSZYSTKIE padające pliki należą do późniejszych warstw
   // (ai-gateway AIG-082 config-env: zmiana Config psuje registry.ts, potem ~36 testów w 15 plikach).
   const testFailInstruction = cmds.length
     ? ' Przy niezerowych testach dodatkowo zwróć: w `testFailFiles` WYNIK DOSŁOWNIE (bez streszczania): ' +
-      '`grep -hE \'^[[:space:]]*FAIL[[:space:]]\' /tmp/check-' + layer.id + '-*.log | head -80`, a w ' +
+      '`grep -hE \'^[[:space:]]*(FAIL|FAILED)[[:space:]]\' /tmp/check-' + layer.id + '-*.log | head -80`, a w ' +
       '`testFilesFailed` LICZBĘ plików z podsumowania runnera (vitest „Test Files  N failed", jest ' +
-      '„Test Suites: N failed"); gdy podsumowania nie ma — pomiń to pole.' +
+      '„Test Suites: N failed"; pytest nie podaje plików — wpisz liczbę testów z „N failed"); ' +
+      'gdy podsumowania nie ma — pomiń to pole.' +
       // ORC-103: niestabilne testy (czas, entropia) czerwone pod obciążeniem całego zestawu, zielone osobno
       // (grant-flow TS-PROJ-COMPANY-001: 3 pliki, 53/53 w izolacji) — ręczne obejście `tests=false`.
       ' Następnie JEDEN raz uruchom ponownie TYLKO te padające pliki, osobno (to samo narzędzie, ' +
@@ -457,7 +460,7 @@ function buildProbePrompt(a, layer) {
   // czerwony" i wpadała w ścieżkę odroczenia/halt z błędnym powodem. Lint ma własne pole `lint`.
   const literalMapping = cmds.length
     ? '\nMapowanie wyników na pola (każdy check do SWOJEGO pola, nie mieszaj): nazwa/komenda z `lint` → ' +
-      '`lint`; z `typecheck`, `tsc`, `analyze`, `vet` albo `build` → `typecheck`; z `test` → `tests` ' +
+      '`lint`; z `typecheck`, `tsc`, `mypy`, `pyright`, `analyze`, `vet` albo `build` → `typecheck`; z `test` → `tests` ' +
       '(EXIT:0 = pass, niezerowy = fail, brak skryptu = skipped). Pole `typecheck` = fail tylko wtedy, ' +
       'gdy padł typecheck/analyze/build, nigdy z powodu lintu.'
     : ''
@@ -783,6 +786,16 @@ function repeatedGapsAcceptable(prevGaps, decision, verdict, probe) {
 // „skipped" to brak dowodu, nie zieleń: ślepa sonda (wszystko skipped, np. złe nazwy
 // skryptów — ORC-085) nie może uzasadniać przejścia dalej. Wymagamy co najmniej jednego
 // faktycznego `pass` (typecheck albo testy) i zera `fail`.
+// ORC-116: pola sondy bramki końcowej, które zwróciły `skipped`, choć `checks.finalGate` deklaruje taką kontrolę
+// (nazwa zawiera typecheck/tsc, test albo lint). To brak dowodu, nie zieleń — bramka mogła dać GO przy czerwieni
+// (ai-gateway TS-AIG-094: typecheck skipped, ręczny pnpm typecheck czerwony, GO).
+function finalProbeSkippedFields(finalChecks, probe) {
+  if (!probe) return []
+  const kinds = { typecheck: /typecheck|tsc/i, tests: /test/i, lint: /lint/i }
+  const names = (finalChecks || []).map(String)
+  return Object.keys(kinds).filter((k) => probe[k] === 'skipped' && names.some((n) => kinds[k].test(n)))
+}
+
 function probeHasGreenEvidence(probe) {
   if (!probe) return false
   if (probe.typecheck === 'fail' || probe.tests === 'fail' || probe.lint === 'fail') return false
@@ -922,14 +935,26 @@ function layerTouches(layer, file) {
 // KAŻDY błąd TS ma ścieżkę w dirs późniejszej warstwy i żaden nie leży w dirs tej warstwy ani
 // wcześniejszych. Błąd bez ścieżki (globalny/konfiguracyjny) albo nieparsowalny ogon = brak
 // odroczenia. Odroczoną czerwień domyka sonda następnej warstwy i bramka końcowa (typecheck).
+// ORC-107: oprócz tsc parsujemy mypy (`engine/a.py:12: error: …`) i pyright (`a.py:4:9 - error: …`).
+// Do `total` wchodzi KAŻDA linia z `error:` (także bez ścieżki, np. „error: Cannot find implementation
+// or library stub"), więc błąd bez pliku nadal blokuje odroczenie; linie `note:` i podsumowanie
+// „Found N errors" się nie liczą (aegis-flow TS-019: mypy zwracał 0 ścieżek, odroczenie nie działało).
 function typecheckErrorPaths(tail) {
   const text = String(tail || '')
-  const total = (text.match(/\berror\s+TS\d+/g) || []).length
-  const re = /^\s*(\S+\.(?:tsx?|mts|cts))[(:]\d+[,:]\d+\)?:?\s*(?:-\s*)?error\s+TS\d+/gm
+  const tsTotal = (text.match(/\berror\s+TS\d+/g) || []).length
+  const pyTotal = (text.match(/^.*\berror:/gm) || []).length
+  // ORC-110: `dart analyze` / `flutter analyze` → `  error • komunikat • lib/a.dart:12:5 • kod`
+  // (ostrzeżenia i `info` się nie liczą; tylko `error`).
+  const dartTotal = (text.match(/^\s*error\s+•/gm) || []).length
   const paths = []
+  const tsRe = /^\s*(\S+\.(?:tsx?|mts|cts))[(:]\d+[,:]\d+\)?:?\s*(?:-\s*)?error\s+TS\d+/gm
+  const pyRe = /^\s*(\S+\.pyi?):\d+(?::\d+)?(?::|\s+-)\s*error:/gm
+  const dartRe = /^\s*error\s+•\s.*?•\s+(\S+\.dart):\d+:\d+\s+•/gm
   let m
-  while ((m = re.exec(text)) !== null) paths.push(m[1])
-  return { total, paths }
+  while ((m = tsRe.exec(text)) !== null) paths.push(m[1])
+  while ((m = pyRe.exec(text)) !== null) paths.push(m[1])
+  while ((m = dartRe.exec(text)) !== null) paths.push(m[1])
+  return { total: tsTotal + pyTotal + dartTotal, paths }
 }
 
 // ORC-090 (docs/decisions/orchestrate-rule-history.md#orc-090): `tsc` odpalony w pakiecie podaje
@@ -948,11 +973,27 @@ function typecheckErrorPaths(tail) {
 // `__tests__/`) pasująca do SEGMENTU ścieżki (bez nazwy pliku — `domain-event.ts` nie jest
 // domeną) wygrywa z (2) dopasowaniem prefiksu/wielosegmentowego; w obrębie rangi wygrywa dłuższy
 // dir. Remis = brak właściciela (nie odraczamy).
-function layerMatchScore(layer, file) {
+// ORC-108: przy remisie rangi segmentu (np. `infrastructure/` i `__tests__/` w
+// `infrastructure/repos/__tests__/a.spec.ts`) wygrywa warstwa testowa (`tests: true`): plik w
+// katalogu przeznaczonym na testy jest testem bez względu na to, w czyim drzewie leży. Wcześniej
+// decydowała długość nazwy, więc starsze specy trafiały do infra, której rola zabrania ich ruszać
+// (juz-ide-api-2 TS-SEC-MAP-GROUP-PIN-001: BLOCKED_BY_PRIOR na discovery-infra).
+function cmpScore(a, b) {
+  if (a.seg !== b.seg) return a.seg - b.seg
+  if (a.seg === 1 && a.test !== b.test) return a.test ? 1 : -1
+  return a.len - b.len
+}
+
+// ORC-112: `onlyScope` liczy dopasowanie wyłącznie po zawężeniu (`scope.dirs` jednostki / `layers_scope`),
+// bez grubych `dirs` warstwy bazowej — patrz `ownerLayersOf`.
+function layerMatchScore(layer, file, onlyScope) {
   const f = String(file)
   const dirSegs = f.split('/').slice(0, -1)
   let best = null
-  for (const d0 of (layer.dirs || []).concat(effectiveDirs(layer))) {
+  const candidates = onlyScope
+    ? (layer.scope && Array.isArray(layer.scope.dirs) ? layer.scope.dirs : [])
+    : (layer.dirs || []).concat(effectiveDirs(layer))
+  for (const d0 of candidates) {
     const d = String(d0).replace(/\/+$/, '')
     if (!d) continue
     let score = null
@@ -965,13 +1006,13 @@ function layerMatchScore(layer, file) {
       const exact = f === d || f.endsWith('/' + d) || (f.indexOf('/') !== -1 && d.endsWith('/' + f))
       if (exact) score = { seg: 2, len: d.length }
     } else if (d.indexOf('/') === -1) {
-      if (dirSegs.indexOf(d) !== -1) score = { seg: 1, len: d.length }
+      if (dirSegs.indexOf(d) !== -1) score = { seg: 1, len: d.length, test: !!layer.tests }
     } else {
       const segs = d.split('/')
       const rel = [1, 2].some((k) => segs.length > k + 1 && f.startsWith(segs.slice(k).join('/') + '/'))
       if (f.indexOf(d) !== -1 || rel) score = { seg: 0, len: d.length }
     }
-    if (score && (!best || score.seg > best.seg || (score.seg === best.seg && score.len > best.len))) best = score
+    if (score && (!best || cmpScore(score, best) > 0)) best = score
   }
   return best
 }
@@ -983,8 +1024,18 @@ function ownerLayersOf(file, layers) {
   for (const l of layers) {
     const s = layerMatchScore(l, file)
     if (!s) continue
-    if (!best || s.seg > best.seg || (s.seg === best.seg && s.len > best.len)) { best = s; owners = [l] }
-    else if (s.seg === best.seg && s.len === best.len) owners.push(l)
+    const c = best ? cmpScore(s, best) : 1
+    if (c > 0) { best = s; owners = [l] }
+    else if (c === 0) owners.push(l)
+  }
+  // ORC-112: jednostki (`units[]`) tej samej warstwy dziedziczą jej gruby `dirs` (np. `application/`,
+  // ranga segmentu), który przebija ich wąskie `scope.dirs` (ranga prefiksu) i remisuje WSZYSTKIE
+  // jednostki warstwy — plik późniejszej jednostki nie miał właściciela, więc czerwień typecheck
+  // blokowała wcześniejszą (juz-ide-api-1 TS-SEC-D0-BETA-HARDENING-001, application:pr1-auth-app).
+  // Przy remisie wygrywają warstwy, których zawężenie obejmuje plik; gdy żadna nie obejmuje — jak dawniej.
+  if (owners.length > 1) {
+    const scoped = owners.filter((l) => layerMatchScore(l, file, true))
+    if (scoped.length) return scoped
   }
   return owners
 }
@@ -1012,13 +1063,26 @@ function typecheckRedIsLaterLayers(probe, layer, allLayers) {
 
 // ORC-099: ścieżki padających plików testowych z linii „FAIL  path > suite > case" (vitest) albo
 // „FAIL path" (jest); unikalne, bez sufiksu po „>".
+// ORC-107: pytest (`FAILED tests/test_a.py::test_x - AssertionError`) — plik przed `::`.
 function testFailPaths(text) {
   const out = []
   // ORC-106: opcjonalny prefiks projektu vitest workspace (`FAIL  |api| src/a.spec.ts`).
-  const re = /^\s*FAIL\s+(?:\|[^|\n]+\|\s+)?(\S+\.[A-Za-z0-9]+)/gm
+  const re = /^\s*(?:FAIL\s+(?:\|[^|\n]+\|\s+)?(\S+\.[A-Za-z0-9]+)|FAILED\s+(\S+?\.py)(?:::|\s|$))/gm
   let m
-  while ((m = re.exec(String(text || ''))) !== null) if (out.indexOf(m[1]) === -1) out.push(m[1])
+  while ((m = re.exec(String(text || ''))) !== null) {
+    const p = m[1] || m[2]
+    if (out.indexOf(p) === -1) out.push(p)
+  }
   return out
+}
+
+// ORC-107: ile „jednostek" podsumowania runnera odpowiada liście `testFailFiles`: vitest/jest liczą
+// PLIKI (unikalne ścieżki z FAIL), pytest podaje tylko liczbę testów („N failed") — tam liczymy linie
+// FAILED. Niepełna lista (head, obcięty log) rozjeżdża się z podsumowaniem i nie odracza niczego.
+const PY_FAILED_LINE = /^\s*FAILED\s+\S+?\.py(?:::|\s|$).*$/gm
+function testFailExpectedCount(text) {
+  const t = String(text || '')
+  return (t.match(PY_FAILED_LINE) || []).length + testFailPaths(t.replace(PY_FAILED_LINE, '')).length
 }
 
 // Czerwone TESTY, których wszystkie padające pliki należą do późniejszych warstw (typecheck i lint
@@ -1027,7 +1091,7 @@ function testFailPaths(text) {
 function testsRedIsLaterLayers(probe, layer, allLayers) {
   if (!probe || probe.tests !== 'fail' || probe.typecheck === 'fail' || probe.lint === 'fail') return false
   const paths = testFailPaths(probe.testFailFiles)
-  if (!paths.length || typeof probe.testFilesFailed !== 'number' || paths.length !== probe.testFilesFailed) return false
+  if (!paths.length || typeof probe.testFilesFailed !== 'number' || testFailExpectedCount(probe.testFailFiles) !== probe.testFilesFailed) return false
   const withDirs = (allLayers || []).filter((l) => (l.dirs || []).length || effectiveDirs(l).length)
   const myIdx = withDirs.findIndex((l) => l.id === layer.id)
   if (myIdx < 0 || myIdx === withDirs.length - 1) return false
@@ -1044,7 +1108,7 @@ function testsFlakyUnderLoad(probe) {
   if (!probe || probe.tests !== 'fail' || probe.typecheck === 'fail' || probe.lint === 'fail') return false
   if (probe.testsRerunPassed !== true) return false
   const paths = testFailPaths(probe.testFailFiles)
-  return paths.length > 0 && typeof probe.testFilesFailed === 'number' && paths.length === probe.testFilesFailed
+  return paths.length > 0 && typeof probe.testFilesFailed === 'number' && testFailExpectedCount(probe.testFailFiles) === probe.testFilesFailed
 }
 
 // ORC-101: pozycje `minor_fixes` analizy (`plik — co — poprawka`), których ścieżka nie leży w `dirs`
@@ -1066,6 +1130,17 @@ function orphanMinorFixes(fixes, layers) {
 function collectMinor(verdict) {
   const raw = verdict && Array.isArray(verdict.minor_findings) ? verdict.minor_findings : []
   return raw.map((x) => String(x).trim()).filter(Boolean).slice(0, 25)
+}
+
+// ORC-117 (docs/decisions/orchestrate-rule-history.md#orc-117): GO z `unverified_scope` idzie w
+// `reverify` (ORC-074), a przejście naprawcze z ORC-091 działało tylko przy czystym GO — drobne
+// ustalenia z takiej rundy przepadały, po czym ta sama linia wracała jako HIGH/NO_GO. Zwraca listę
+// do naprawy PRZED reverify albo [] (brak ustaleń, wyłączone, przejście już było, ostatnia próba).
+// Przejście zastępuje próbę reverify (jego weryfikacja domyka też unverified_scope), więc w odróżnieniu
+// od ORC-091 wystarczy jedna pozostała próba — warstwa nie była jeszcze GO.
+function minorPassBeforeReverify(verdict, autoFixMinor, minorPassDone, attempt, maxAttempts) {
+  if (autoFixMinor === false || minorPassDone || attempt >= maxAttempts) return []
+  return collectMinor(verdict)
 }
 
 function formatMinorFix(items) {
@@ -1177,8 +1252,12 @@ function finalFileList(treeFiles, layerFiles) {
 
 // Sonda mierzy PRZYROST, nie tylko zieloność. „typecheck pass + testy pass + niepusty diff"
 // jest spełnialne samym komentarzem — 133 dopisane linie opisujące kontrole, których nie ma.
-function deltaGateFails(layer, probe, changedFiles) {
-  if (!layer.tests || !probe) return null
+// ORC-111: jednostka z `repair: true` (analiza: dopasowanie istniejących testów do zmienionego
+// kontraktu, zero nowych bloków) jest z bramki zwolniona — legalny refaktor testów ma zerowy przyrost.
+// ORC-115: w trybie `verify-existing` (reverify po GO z unverified_scope) implementer nie pracuje, a do
+// weryfikatora dochodzi się tylko po przejściu tej bramki — ponowny pomiar to fałszywy alarm.
+function deltaGateFails(layer, probe, changedFiles, mode) {
+  if (!layer.tests || layer.repair === true || mode === 'verify-existing' || !probe) return null
   if (probe.newTestBlocks == null) return null
   if (probe.newTestBlocks > 0) return null
   if (!changedFiles || changedFiles.length === 0) return null
@@ -1517,7 +1596,7 @@ for (const step of plan) {
 
     probeRed = null
     probeRedFacts = null
-    const deltaFail = deltaGateFails(layer, probe, layerFiles)
+    const deltaFail = deltaGateFails(layer, probe, layerFiles, mode)
     if (deltaFail) {
       violations = deltaFail
       log(layer.id + ': ' + deltaFail)
@@ -1606,6 +1685,16 @@ for (const step of plan) {
       // na część zakresu. 'verify-existing' pomija implementera i idzie prosto do sondy+verify
       // ze świeżym budżetem tur, zamiast palić pełną rundę implement→verify na niezmienionym kodzie.
       log(layer.id + ': ' + decision.reason)
+      // ORC-117: drobne ustalenia z tej samej rundy naprawia implementer przed dokończeniem weryfikacji.
+      const minorsBeforeReverify = minorPassBeforeReverify(verdict, a.autoFixMinor, minorPassDone, attempt, maxAttempts)
+      if (minorsBeforeReverify.length) {
+        minorPassDone = true
+        cleanupNext = true
+        log(layer.id + ': ' + minorsBeforeReverify.length + ' drobnych ustaleń obok unverified_scope — przejście naprawcze przed reverify (ORC-117)')
+        violations = formatMinorFix(minorsBeforeReverify)
+        mode = 'implement'
+        continue
+      }
       violations = null
       mode = 'verify-existing'
       continue
@@ -1783,6 +1872,9 @@ if (!finalAgent) {
     } catch (e) {
       finalProbe = null
     }
+    // ORC-116: sonda odpowiedziała, ale pominęła zadeklarowaną kontrolę — widoczne w raporcie, nie po cichu
+    const skippedFinal = finalProbeSkippedFields(finalChecks, finalProbe)
+    if (skippedFinal.length) report.warnings = (report.warnings || []).concat('sonda bramki końcowej: ' + skippedFinal.join(', ') + ' = skipped mimo zadeklarowanych checks.finalGate (' + finalChecks.join(', ') + ') — brak dowodu, sprawdź ręcznie (ORC-116)')
     if (!finalProbe) report.warnings = (report.warnings || []).concat('sonda checks bramki końcowej bez wyniku — bramka uruchamia je sama, luki nie będą obniżane do GO (ORC-098)')
   }
   let final = null

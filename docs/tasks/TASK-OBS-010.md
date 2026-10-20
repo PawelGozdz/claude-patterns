@@ -2,11 +2,11 @@
 id: TASK-OBS-010
 title: 'Bramki pre-commit w metrykach'
 type: feature
-status: todo
+status: done
 priority: P3
 story_points: 3
 created_date: 2026-10-17
-updated_date: 2026-10-17
+updated_date: 2026-10-18
 assignee: '@unassigned'
 labels: [observability, telemetry]
 epic: EP-OBSERVABILITY-001
@@ -33,6 +33,18 @@ lub zawsze czerwona z cudzej winy. Dziś bramki nie zostawiają żadnego śladu 
 
 ## Kryteria akceptacji
 
-- [ ] Jeden commit = `run.start` + krok per bramka + `run.end`; z agregatu da się policzyć odsetek porażek per bramka.
-- [ ] W zdarzeniach i agregacie nie ma ścieżek ani nazw plików (test).
-- [ ] Narzut na commit < 100 ms.
+- [x] Jeden commit = `run.start` + krok per bramka + `run.end`; z agregatu da się policzyć odsetek porażek per bramka.
+- [x] W zdarzeniach i agregacie nie ma ścieżek ani nazw plików (test).
+- [x] Narzut na commit < 100 ms.
+
+## Wynik (2026-10-18)
+
+- `lib/precommit-telemetry.mjs` buduje i zapisuje przebieg; `pre-commit-guards.mjs` woła go raz, po zebraniu
+  wyników, przed wyliczeniem kodu wyjścia (błąd zapisu = jedna linia na stderr, wynik bramek bez zmian).
+- Nazwa bramki w `step.role` to stały `id` (slug statycznej etykiety). Dwie bramki z etykietą dynamiczną
+  (`audit-projects --gate`, `generate-inbox-index --check`) podają `id` jawnie; eval pilnuje tego statycznie
+  oraz unikalności id (inaczej `count-assets --check` i `--check-docs` wpadłyby do jednego kubełka).
+- Przyczyna porażki z rodziny bramki: `eval-*` → `test`, `lint-*` → `lint`, reszta → `config`.
+- Narzut zapisu: 1,4–3,4 ms na realnej historii (16 tys. linii). Dlatego `appendEventsDedup` dostał opcję
+  `dedup: false` — domyślny skan czyta wszystkie pliki zdarzeń i rósłby z historią.
+- Na prawdziwych bramkach: 33 kroki, 35 zdarzeń, bez nazw plików.

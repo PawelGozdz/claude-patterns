@@ -1,6 +1,9 @@
 ---
 id: DEV-aud-project-orchestration-analysis
-status: proposed
+status: dismissed
+dismissed_reason: >
+  Naprawione 2026-10-20: TEMPLATE.md w personal-blog i juz-ide-blog zsynchronizowany z
+  templates/task-analysis-template.md (brakowało pola telemetry_run); audit-projects czysty.
 trigger: setup_drift
 category: config
 sources:

@@ -44,7 +44,7 @@ patterns:
 
 analyze:
   panel:
-    - { stage: threat-model, agent: "/threat-model", when: "\\b(auth|authn|authz|authentication|authorization|login|token|secret)\\b|\\bpii\\b|cross[-_ ]context|public[-_ ]api",
+    - { stage: threat-model, agent: "/threat-model", when: "\\b(auth|authn|authz|authentication|authorization|login|token|secret|cors|principal)\\b|uwierzytel|autoryzac|tożsam|poświadcz|\\bpii\\b|cross[-_ ]context|public[-_ ]api",
         output: "docs/security/threat-models/TM-{TASK_ID}.md", skip_if_exists: true }
     - { stage: tech-analysis, agent: "ecc:architect" }
     - { stage: python-architecture, agent: "python-architecture-expert" }

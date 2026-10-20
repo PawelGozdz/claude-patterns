@@ -1,6 +1,10 @@
 ---
 id: DEV-aud-env-deny
-status: proposed
+status: dismissed
+dismissed_reason: >
+  Naprawione w projekcie 2026-10-20: framework-polityczny/.claude/settings.json dostał
+  permissions.deny z Read(./.env) i Read(./.env.*); audit-projects nie zgłasza już
+  AUD-ENV-DENY.
 trigger: setup_drift
 category: config
 sources:

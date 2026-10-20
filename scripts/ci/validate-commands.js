@@ -32,6 +32,8 @@ const ECC_ROOT = path.join(os.homedir(), '.claude', 'plugins', 'marketplaces', '
 
 // Skille wbudowane w harness (spoza skills/ tego repo) — `/loop` to nie nasz plik.
 const HARNESS_NATIVE_SKILLS = new Set(['loop']);
+// Katalogi systemowe w backtickach (`/tmp`, ORC-106) to ścieżki, nie komendy — ta sama forma co `/loop`.
+const FS_ROOTS = new Set(['tmp', 'etc', 'usr', 'var', 'opt', 'home', 'dev', 'proc', 'bin']);
 // Wartości `subagent_type` wbudowane w harness.
 const HARNESS_NATIVE_AGENTS = new Set(['general-purpose', 'Explore', 'Plan', 'fork', 'claude', 'statusline-setup']);
 
@@ -159,6 +161,7 @@ function main() {
       for (const m of lines[i].matchAll(/`\/(ecc:)?([a-z][-a-z0-9]*)`/g)) {
         const name = m[2];
         if (m[1]) { checkEcc(file, i + 1, name, 'komenda'); continue; }
+        if (FS_ROOTS.has(name)) continue;
         if (!validCommands.has(name) && !validSkillNames.has(name) && !HARNESS_NATIVE_SKILLS.has(name)) {
           err(file, i + 1, `martwa referencja do komendy/skilla /${name}`);
         }

@@ -1,6 +1,11 @@
 ---
 id: DEV-orc-035-presentation
-status: proposed
+status: promoted
+resolution: >
+  Naprawione od ręki jako ORC-115: deltaGateFails pomija tryb verify-existing (reverify po GO
+  z unverified_scope), więc ponowny pomiar przyrostu na nietkniętym drzewie nie kończy warstwy
+  ESCALATE (docs/decisions/orchestrate-rule-history.md#orc-115). Obejście tests=false nie jest
+  już potrzebne.
 trigger: halt
 rule_ref: ORC-035
 first_seen: 2026-10-05
