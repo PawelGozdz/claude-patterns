@@ -11,6 +11,31 @@ and none of it is instruction — it is history.
 ## [Unreleased]
 
 ### Added
+
+- Domyślny adres embeddera (CT 301) w `knowledge-retriever` (`src/embedder.ts`, `docker-compose.yml`): `:8301` → `:8000`. Port 8301 nie nasłuchuje (API ML Inference działa na 8000), więc reseed i `retrieve_patterns` dostawały ECONNREFUSED.
+
+- `blocks/nextjs.yml`: sloty `tech-analysis` (nextjs-architecture-expert) i `impl-analysis` (nextjs-quality-verifier) dostały `when:` (słownictwo UI/routingu/Next.js) — bez niego szły przy każdym zadaniu, także backendowym (framework-polityczny FP-005, `DEV-anz-layer-mismatch`).
+- `reseed-patterns.sh` kończy się błędem i nie zapisuje stanu świeżości, gdy seed się nie powiódł (embedder niedostępny):
+  wcześniej `rag-freshness --record` maskował rozjazd RAG po nieudanym reseedzie.
+- Ostrzeżenie, gdy sonda bramki końcowej pomija zadeklarowaną kontrolę (ORC-116), np. `typecheck: skipped`.
+- Bramka przyrostu testów (ORC-035) pomija `reverify` (ORC-115): pętla po GO z `unverified_scope` nie kończy już warstwy
+  ESCALATE przez zerowy przyrost na nietkniętym drzewie.
+- Skrypt silnika emitowany do scratchpada sesji, nie do `.claude/run-state/` (ORC-114): `eslint .` w korzeniu projektu nie
+  linituje go już jako kodu projektu.
+- `create_when` warstw opcjonalnych jest regexem (ORC-113): `astro-content` i `library-layers` przepisane (wcześniej zdania, więc
+  warstwy nigdy nie wchodziły), README bloków i schemat opisują kontrakt, `orchestrate-prepare` ostrzega przed opisem prozą.
+- Własność pliku między jednostkami jednej warstwy (ORC-112): przy remisie na grubym `dirs` rozstrzyga `scope.dirs`, więc
+  odroczenie czerwonego typechecku (ORC-082) działa też dla `units[]` bez ręcznych `--overrides`.
+- `units[].repair: true` w analizie (ORC-111): jednostka testowa, która tylko dopasowuje istniejące testy, nie podlega
+  bramce przyrostu bloków (ORC-035). Wcześniej jedynym obejściem było `tests:false` w `--overrides`.
+- Sonda typecheck rozpoznaje `dart analyze`/`flutter analyze` (ORC-110): czerwień Fluttera dostaje ścieżki i da się ją
+  odroczyć do późniejszej warstwy. Blok `astro-content`: warstwa `site` obejmuje `src/i18n/`, `src/content-system/`,
+  `src/types/`, `src/scripts/`, `src/screens/`.
+- Ślad oceny zalążków wpisów (ADR 0013, D8): `blog-seed-emit.mjs --check --run-id` zapisuje `checked` (projekt
+  włączony) albo `skipped:<disabled|embargo|config>`; nowe `--no-topic --run-id` zapisuje `skipped:no_topic` bez
+  pliku. `--check` bez `--run-id` (ręczny audyt) nic nie zapisuje. `/analyze` i `/orchestrate` wołają oba warianty,
+  więc lejek odróżnia „oceniono, brak tematu" od „krok pominięty". Agregat liczy `skipped:<powód>` pod blogiem
+  `unknown`. Eval `blog-seeds` (18 przypadków).
 - Bramki pre-commit w telemetrii (TASK-OBS-010, ADR 0012 aneks): nowy `process: pre-commit`; `pre-commit-guards.mjs`
   zapisuje `run.start` + `step.end` per bramka + `run.end` (`step.role` = stała nazwa bramki, `outcome` ok/failed,
   `m.durationMs`), bez nazw plików z etykiet dynamicznych. Zapis best-effort po zebraniu wyników, ok. 2 ms.
@@ -227,6 +252,7 @@ and none of it is instruction — it is history.
   `progress.md` (not affected).
 
 ### Fixed
+- `validate-commands.js`: katalogi systemowe w backtickach (`/tmp`, `/etc`, …) nie są już brane za martwe referencje do komend (fałszywy alarm na wpisie ORC-106 w `commands/orchestrate.md`).
 - `templates/gitignore-claude.template`: added `.claude/config/installed.yml` (installation
   manifest, local state). `setup-project.sh` step 5c appends it to the project `.gitignore`;
   previously the file showed up as untracked after setup (`_inbox` record closed).

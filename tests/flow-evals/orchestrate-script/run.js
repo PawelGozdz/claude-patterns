@@ -579,6 +579,37 @@ const CASES = (c) => [
       return null;
     },
   },
+  // ── ORC-112: jednostki tej samej warstwy remisują na grubym dirs — wygrywa zawężenie ──────────
+  {
+    name: 'unit-scope-breaks-tie-between-units-sharing-coarse-dirs',
+    run() {
+      const unit = (id, scopeDir) => ({ id: 'application:' + id, base: 'application', dirs: ['application/'], scope: { dirs: [scopeDir], reason: id } });
+      const u1 = unit('pr1-auth-app', 'src/contexts/auth/application/commands/login/');
+      const u2 = unit('pr4-geo-app', 'src/contexts/geo/application/commands/revoke/');
+      const layers = [u1, u2];
+      const red = (p) => ({ typecheck: 'fail', tests: 'skipped', tsErrors: p + '(3,5): error TS2339: x' });
+      if (!c.typecheckRedIsLaterLayers(red('src/contexts/geo/application/commands/revoke/handler.ts'), u1, layers)) return 'błąd w zakresie późniejszej jednostki nie został odroczony';
+      if (c.typecheckRedIsLaterLayers(red('src/contexts/auth/application/commands/login/handler.ts'), u1, layers)) return 'błąd we własnym zakresie został odroczony';
+      if (c.typecheckRedIsLaterLayers(red('src/contexts/other/application/x.ts'), u1, layers)) return 'plik spoza zakresów jednostek został odroczony (remis ma zostać)';
+      return null;
+    },
+  },
+  // ── ORC-110: dart analyze / flutter analyze ───────────────────────────────────────────────────
+  {
+    name: 'typecheck-red-dart-analyzer-is-parsed-and-deferred',
+    run() {
+      const layers = [{ id: 'domain', dirs: ['lib/domain/'] }, { id: 'presentation', dirs: ['lib/presentation/'] }];
+      const red = (tsErrors) => ({ typecheck: 'fail', tests: 'skipped', tsErrors });
+      const later = "  error • The method 'x' isn't defined for the type 'Y' • lib/presentation/map/basemap.dart:42:7 • undefined_method";
+      const own = "  error • Undefined name 'z' • lib/domain/geo.dart:3:5 • undefined_identifier";
+      const warn = "warning • Unused import • lib/domain/old.dart:1:8 • unused_import\n   info • Prefer const • lib/domain/old.dart:9:3 • prefer_const_constructors";
+      const r = c.typecheckErrorPaths(later + '\n' + warn);
+      if (r.total !== 1 || JSON.stringify(r.paths) !== JSON.stringify(['lib/presentation/map/basemap.dart'])) return 'parsowanie: ' + JSON.stringify(r);
+      if (!c.typecheckRedIsLaterLayers(red(later + '\n' + warn), layers[0], layers)) return 'dart: błąd w późniejszej warstwie nie został odroczony';
+      if (c.typecheckRedIsLaterLayers(red(own + '\n' + later), layers[0], layers)) return 'dart: błąd we własnym zakresie został odroczony';
+      return null;
+    },
+  },
   {
     name: 'pytest-failed-lines-are-deferred-by-test-count',
     run() {
@@ -600,6 +631,7 @@ const CASES = (c) => [
       if (p.indexOf('[[:space:]])error:') === -1) return 'tsErrors nie zbiera linii mypy/pyright';
       if (!/FAIL\|FAILED/.test(p)) return 'testFailFiles nie zbiera linii FAILED pytesta';
       if (!/mypy/.test(p)) return 'mapowanie wyników nie zna mypy';
+      if (p.indexOf('error[[:space:]]+•') === -1) return 'tsErrors nie zbiera linii dart/flutter analyze';
       return null;
     },
   },
@@ -1012,6 +1044,40 @@ const CASES = (c) => [
       if (notTests) return 'bramka przyrostu odpaliła na warstwie nietestowej (legalny refaktor)';
       const noProbe = c.deltaGateFails(L.testing, null, ['src/__tests__/a.spec.ts']);
       if (noProbe) return 'brak sondy potraktowany jako naruszenie przyrostu';
+      return null;
+    },
+  },
+  // ORC-116: sonda bramki końcowej pomijająca zadeklarowaną kontrolę jest widoczna
+  {
+    name: 'final-probe-skipped-declared-check-is-reported',
+    run() {
+      const checks = ['typecheck', 'typecheck:scripts', 'lint', 'test'];
+      const r = c.finalProbeSkippedFields(checks, { typecheck: 'skipped', tests: 'pass', lint: 'pass' });
+      if (JSON.stringify(r) !== '["typecheck"]') return 'oczekiwano ["typecheck"], jest ' + JSON.stringify(r);
+      if (c.finalProbeSkippedFields(['test'], { typecheck: 'skipped', tests: 'pass' }).length) return 'skipped dla niezadeklarowanej kontroli zgłoszone';
+      if (c.finalProbeSkippedFields(checks, null).length) return 'brak sondy zgłoszony jako skipped';
+      return null;
+    },
+  },
+  // ORC-115: reverify (verify-existing) nie mierzy przyrostu od nowa
+  {
+    name: 'delta-gate-skipped-in-verify-existing-mode',
+    run() {
+      const probe = { typecheck: 'pass', tests: 'pass', newTestBlocks: 0 };
+      const files = ['src/__tests__/a.spec.ts'];
+      if (c.deltaGateFails(L.testing, probe, files, 'verify-existing')) return 'reverify złapany na zerowym przyroście';
+      if (!c.deltaGateFails(L.testing, probe, files, 'implement')) return 'tryb implement zwolniony z bramki przyrostu';
+      return null;
+    },
+  },
+  // ORC-111: jednostka naprawcza (units[].repair) nie podlega bramce przyrostu
+  {
+    name: 'delta-gate-skips-repair-unit',
+    run() {
+      const probe = { typecheck: 'pass', tests: 'pass', newTestBlocks: 0 };
+      const files = ['src/__tests__/a.spec.ts'];
+      if (c.deltaGateFails({ ...L.testing, repair: true }, probe, files)) return 'jednostka repair:true złapana na zerowym przyroście';
+      if (!c.deltaGateFails({ ...L.testing, repair: false }, probe, files)) return 'repair:false zwolniona z bramki przyrostu';
       return null;
     },
   },

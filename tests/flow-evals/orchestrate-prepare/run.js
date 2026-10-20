@@ -453,6 +453,29 @@ CASES.push({
   },
 });
 
+// ORC-113: create_when to regex; opis prozą nie trafia i dostaje ostrzeżenie
+CASES.push({
+  name: 'create-when-regex-hits-and-prose-warns',
+  build: () => makeProject({
+    taskId: 'TS-FIX-001',
+    runtime: RUNTIME_DDD.replace('  inner_loop', [
+      '    - {id: site, dirs: [src/pages/], agent: "a", optional: true, create_when: "task zmienia kod strony: komponenty, layouty"}',
+      '    - {id: web, dirs: [apps/web/], agent: "a", optional: true, create_when: "komponent|layout"}',
+      '  inner_loop',
+    ].join('\n')),
+    analysis: analysisFm({}),
+    task: taskFile('Dodaj komponent strony.'),
+  }),
+  check(r) {
+    if (r.code !== 0) return `oczekiwano exit 0, było ${r.code}`;
+    if (r.json.createWhenHits.web !== true) return 'regex komponent|layout nie trafił: ' + JSON.stringify(r.json.createWhenHits);
+    if (r.json.createWhenHits.site !== false) return 'opis prozą trafił';
+    if (!r.json.warnings.some((w) => /create_when warstwy site: wygląda na opis prozą/.test(w))) return 'brak ostrzeżenia o opisie prozą: ' + JSON.stringify(r.json.warnings);
+    if (r.json.warnings.some((w) => /create_when warstwy web/.test(w))) return 'ostrzeżenie dla poprawnego regexu';
+    return null;
+  },
+});
+
 CASES.push({
   name: 'telemetry-plan-and-engine-in-output',
   build: () => makeProject({ taskId: 'TS-FIX-001', analysis: analysisFm({}), task: taskFile('Dodaj aggregate.') }),

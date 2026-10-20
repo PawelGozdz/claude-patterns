@@ -80,8 +80,13 @@ analyze:
         output: "docs/security/threat-models/TM-{TASK_ID}.md", skip_if_exists: true }
     # Przy [nextjs, node] powstają dwa etapy tech-analysis (ten i generyczny ecc:architect z node) —
     # celowo: różne agenty, różne perspektywy (framework vs backend). Nie scalać ani nie dropować.
-    - { stage: tech-analysis, agent: "nextjs-architecture-expert" }
-    - { stage: impl-analysis, agent: "nextjs-quality-verifier", advisory: true }
+    # `when:` (framework-polityczny FP-005, 2026-10-20): bez niego oba sloty szły przy każdym zadaniu,
+    # także czysto backendowym (ingestion), a panel pomijano ręcznie. Brak trafienia = slot pomijany;
+    # analiza i tak może go uruchomić wg ANL-020.
+    - { stage: tech-analysis, agent: "nextjs-architecture-expert",
+        when: "apps?/web|\\bnext(js)?\\b|app router|server component|\"use (client|server)\"|server[-_ ]action|komponent|\\bstron[aęy]\\b|\\bpage\\b|layout|routing|\\broute\\b|formularz|\\bui\\b|frontend|\\bcss\\b|tailwind|\\bseo\\b|widok|\\bssr\\b|middleware" }
+    - { stage: impl-analysis, agent: "nextjs-quality-verifier", advisory: true,
+        when: "apps?/web|\\bnext(js)?\\b|app router|server component|\"use (client|server)\"|server[-_ ]action|komponent|\\bstron[aęy]\\b|\\bpage\\b|layout|routing|\\broute\\b|formularz|\\bui\\b|frontend|\\bcss\\b|tailwind|\\bseo\\b|widok|\\bssr\\b|middleware" }
 
 overlay:
   agents: [stacks/nextjs-app/]
