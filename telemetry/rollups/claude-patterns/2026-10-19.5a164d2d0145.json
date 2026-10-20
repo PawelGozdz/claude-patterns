@@ -20,9 +20,21 @@
         "steps": 4,
         "stepsWithoutCost": 4
       }
+    },
+    "3ec5ed0": {
+      "audit": {
+        "costUsd": 0,
+        "died": 0,
+        "ended": {
+          "failed": 10
+        },
+        "started": 10,
+        "steps": 40,
+        "stepsWithoutCost": 40
+      }
     }
   },
-  "events": 7,
+  "events": 67,
   "host": "5a164d2d0145",
   "processes": {
     "audit": {
@@ -44,15 +56,15 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 11,
           "outcomes": {
-            "ok": 1
+            "ok": 11
           },
           "toolCalls": 0
         },
         "rag-freshness": {
           "causes": {
-            "config": 1
+            "config": 11
           },
           "costUsd": 0,
           "durationMs": {
@@ -60,9 +72,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 11,
           "outcomes": {
-            "failed": 1
+            "failed": 11
           },
           "toolCalls": 0
         },
@@ -74,9 +86,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 11,
           "outcomes": {
-            "ok": 1
+            "ok": 11
           },
           "toolCalls": 0
         },
@@ -88,15 +100,15 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 11,
           "outcomes": {
-            "ok": 1
+            "ok": 11
           },
           "toolCalls": 0
         }
       },
-      "steps": 4,
-      "stepsWithoutCost": 4,
+      "steps": 44,
+      "stepsWithoutCost": 44,
       "verification": {
         "firstPassGo": 0,
         "units": 0
@@ -108,16 +120,16 @@
     "audit": {
       "costUsd": 0,
       "durationMs": {
-        "n": 1,
-        "p50": 3418,
-        "p90": 3418
+        "n": 11,
+        "p50": 2587,
+        "p90": 4487
       },
       "ended": {
-        "failed": 1
+        "failed": 11
       },
-      "started": 1
+      "started": 11
     }
   },
-  "stepsTotal": 4,
+  "stepsTotal": 44,
   "v": 1
 }

@@ -8,9 +8,124 @@
       "trigger": "setup_drift"
     }
   },
-  "events": 11,
+  "engines": {
+    "20217bd": {
+      "analyze": {
+        "costUsd": 6.448263,
+        "died": 0,
+        "ended": {},
+        "started": 1,
+        "steps": 6,
+        "stepsWithoutCost": 0
+      }
+    }
+  },
+  "events": 118,
   "host": "5a164d2d0145",
   "processes": {
+    "analyze": {
+      "costUsd": 6.448263,
+      "costUsdRetried": 0,
+      "died": 0,
+      "repairs": {
+        "fixSteps": 0,
+        "fixed": 0,
+        "open": 0
+      },
+      "retried": 0,
+      "roles": {
+        "ddd-modeling": {
+          "causes": {},
+          "costUsd": 0.495907,
+          "durationMs": {
+            "n": 1,
+            "p50": 125128,
+            "p90": 125128
+          },
+          "n": 1,
+          "outcomes": {
+            "ok": 1
+          },
+          "toolCalls": 15
+        },
+        "decision-gate": {
+          "causes": {},
+          "costUsd": 0.016411,
+          "durationMs": {
+            "n": 1,
+            "p50": 52911,
+            "p90": 52911
+          },
+          "n": 1,
+          "outcomes": {
+            "ok": 1
+          },
+          "toolCalls": 17
+        },
+        "geo-analysis": {
+          "causes": {},
+          "costUsd": 0.915156,
+          "durationMs": {
+            "n": 1,
+            "p50": 192326,
+            "p90": 192326
+          },
+          "n": 1,
+          "outcomes": {
+            "ok": 1
+          },
+          "toolCalls": 14
+        },
+        "impl-analysis": {
+          "causes": {},
+          "costUsd": 0.836105,
+          "durationMs": {
+            "n": 1,
+            "p50": 181840,
+            "p90": 181840
+          },
+          "n": 1,
+          "outcomes": {
+            "ok": 1
+          },
+          "toolCalls": 16
+        },
+        "tech-analysis": {
+          "causes": {},
+          "costUsd": 0.702824,
+          "durationMs": {
+            "n": 1,
+            "p50": 113560,
+            "p90": 113560
+          },
+          "n": 1,
+          "outcomes": {
+            "ok": 1
+          },
+          "toolCalls": 15
+        },
+        "tech-analysis-specialist": {
+          "causes": {},
+          "costUsd": 3.48186,
+          "durationMs": {
+            "n": 1,
+            "p50": 1230637,
+            "p90": 1230637
+          },
+          "n": 1,
+          "outcomes": {
+            "ok": 1
+          },
+          "toolCalls": 15
+        }
+      },
+      "steps": 6,
+      "stepsWithoutCost": 0,
+      "verification": {
+        "firstPassGo": 0,
+        "units": 0
+      }
+    },
     "audit": {
       "costUsd": 0,
       "costUsdRetried": 0,
@@ -30,9 +145,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 11,
           "outcomes": {
-            "ok": 1
+            "ok": 11
           },
           "toolCalls": 0
         },
@@ -44,9 +159,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 11,
           "outcomes": {
-            "ok": 1
+            "ok": 11
           },
           "toolCalls": 0
         },
@@ -58,9 +173,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 11,
           "outcomes": {
-            "ok": 1
+            "ok": 11
           },
           "toolCalls": 0
         },
@@ -72,9 +187,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 11,
           "outcomes": {
-            "ok": 1
+            "ok": 11
           },
           "toolCalls": 0
         },
@@ -86,9 +201,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 11,
           "outcomes": {
-            "ok": 1
+            "ok": 11
           },
           "toolCalls": 0
         },
@@ -100,15 +215,15 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 11,
           "outcomes": {
-            "ok": 1
+            "ok": 11
           },
           "toolCalls": 0
         },
         "runtime": {
           "causes": {
-            "config": 1
+            "config": 3
           },
           "costUsd": 0,
           "durationMs": {
@@ -116,9 +231,10 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 11,
           "outcomes": {
-            "failed": 1
+            "failed": 3,
+            "ok": 8
           },
           "toolCalls": 0
         },
@@ -130,9 +246,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 11,
           "outcomes": {
-            "ok": 1
+            "ok": 11
           },
           "toolCalls": 0
         },
@@ -144,9 +260,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 11,
           "outcomes": {
-            "ok": 1
+            "ok": 11
           },
           "toolCalls": 0
         },
@@ -158,15 +274,15 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 11,
           "outcomes": {
-            "ok": 1
+            "ok": 11
           },
           "toolCalls": 0
         }
       },
-      "steps": 10,
-      "stepsWithoutCost": 10,
+      "steps": 110,
+      "stepsWithoutCost": 110,
       "verification": {
         "firstPassGo": 0,
         "units": 0
@@ -174,7 +290,18 @@
     }
   },
   "project": "juz-ide-api-2",
-  "runs": {},
-  "stepsTotal": 10,
+  "runs": {
+    "analyze": {
+      "costUsd": 0,
+      "durationMs": {
+        "n": 0,
+        "p50": null,
+        "p90": null
+      },
+      "ended": {},
+      "started": 1
+    }
+  },
+  "stepsTotal": 116,
   "v": 1
 }

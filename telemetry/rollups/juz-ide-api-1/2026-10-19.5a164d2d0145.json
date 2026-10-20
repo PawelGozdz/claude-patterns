@@ -23,7 +23,7 @@
       }
     }
   },
-  "events": 181,
+  "events": 281,
   "host": "5a164d2d0145",
   "processes": {
     "audit": {
@@ -45,9 +45,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 11,
           "outcomes": {
-            "ok": 1
+            "ok": 11
           },
           "toolCalls": 0
         },
@@ -59,9 +59,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 11,
           "outcomes": {
-            "ok": 1
+            "ok": 11
           },
           "toolCalls": 0
         },
@@ -73,9 +73,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 11,
           "outcomes": {
-            "ok": 1
+            "ok": 11
           },
           "toolCalls": 0
         },
@@ -87,9 +87,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 11,
           "outcomes": {
-            "ok": 1
+            "ok": 11
           },
           "toolCalls": 0
         },
@@ -101,9 +101,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 11,
           "outcomes": {
-            "ok": 1
+            "ok": 11
           },
           "toolCalls": 0
         },
@@ -115,15 +115,15 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 11,
           "outcomes": {
-            "ok": 1
+            "ok": 11
           },
           "toolCalls": 0
         },
         "runtime": {
           "causes": {
-            "config": 1
+            "config": 3
           },
           "costUsd": 0,
           "durationMs": {
@@ -131,9 +131,10 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 11,
           "outcomes": {
-            "failed": 1
+            "failed": 3,
+            "ok": 8
           },
           "toolCalls": 0
         },
@@ -145,9 +146,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 11,
           "outcomes": {
-            "ok": 1
+            "ok": 11
           },
           "toolCalls": 0
         },
@@ -159,9 +160,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 11,
           "outcomes": {
-            "ok": 1
+            "ok": 11
           },
           "toolCalls": 0
         },
@@ -173,15 +174,15 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 11,
           "outcomes": {
-            "ok": 1
+            "ok": 11
           },
           "toolCalls": 0
         }
       },
-      "steps": 10,
-      "stepsWithoutCost": 10,
+      "steps": 110,
+      "stepsWithoutCost": 110,
       "verification": {
         "firstPassGo": 0,
         "units": 0
@@ -302,6 +303,6 @@
       "started": 4
     }
   },
-  "stepsTotal": 171,
+  "stepsTotal": 271,
   "v": 1
 }

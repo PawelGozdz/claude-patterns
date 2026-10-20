@@ -8,7 +8,7 @@
       "trigger": "setup_drift"
     }
   },
-  "events": 11,
+  "events": 111,
   "host": "5a164d2d0145",
   "processes": {
     "audit": {
@@ -30,9 +30,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 11,
           "outcomes": {
-            "ok": 1
+            "ok": 11
           },
           "toolCalls": 0
         },
@@ -44,9 +44,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 11,
           "outcomes": {
-            "ok": 1
+            "ok": 11
           },
           "toolCalls": 0
         },
@@ -58,15 +58,15 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 11,
           "outcomes": {
-            "ok": 1
+            "ok": 11
           },
           "toolCalls": 0
         },
         "git-hygiene": {
           "causes": {
-            "config": 1
+            "config": 11
           },
           "costUsd": 0,
           "durationMs": {
@@ -74,15 +74,15 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 11,
           "outcomes": {
-            "failed": 1
+            "failed": 11
           },
           "toolCalls": 0
         },
         "local-blocks": {
           "causes": {
-            "config": 1
+            "config": 11
           },
           "costUsd": 0,
           "durationMs": {
@@ -90,9 +90,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 11,
           "outcomes": {
-            "failed": 1
+            "failed": 11
           },
           "toolCalls": 0
         },
@@ -104,23 +104,26 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 11,
           "outcomes": {
-            "ok": 1
+            "ok": 11
           },
           "toolCalls": 0
         },
         "runtime": {
-          "causes": {},
+          "causes": {
+            "config": 2
+          },
           "costUsd": 0,
           "durationMs": {
             "n": 0,
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 11,
           "outcomes": {
-            "ok": 1
+            "failed": 2,
+            "ok": 9
           },
           "toolCalls": 0
         },
@@ -132,9 +135,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 11,
           "outcomes": {
-            "ok": 1
+            "ok": 11
           },
           "toolCalls": 0
         },
@@ -146,9 +149,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 11,
           "outcomes": {
-            "ok": 1
+            "ok": 11
           },
           "toolCalls": 0
         },
@@ -160,15 +163,15 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 11,
           "outcomes": {
-            "ok": 1
+            "ok": 11
           },
           "toolCalls": 0
         }
       },
-      "steps": 10,
-      "stepsWithoutCost": 10,
+      "steps": 110,
+      "stepsWithoutCost": 110,
       "verification": {
         "firstPassGo": 0,
         "units": 0
@@ -177,6 +180,6 @@
   },
   "project": "grant-flow",
   "runs": {},
-  "stepsTotal": 10,
+  "stepsTotal": 110,
   "v": 1
 }

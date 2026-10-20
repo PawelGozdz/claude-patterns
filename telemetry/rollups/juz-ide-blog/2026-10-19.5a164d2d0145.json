@@ -8,7 +8,7 @@
       "trigger": "setup_drift"
     }
   },
-  "events": 10,
+  "events": 100,
   "host": "5a164d2d0145",
   "processes": {
     "audit": {
@@ -30,9 +30,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 11,
           "outcomes": {
-            "ok": 1
+            "ok": 11
           },
           "toolCalls": 0
         },
@@ -44,9 +44,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 11,
           "outcomes": {
-            "ok": 1
+            "ok": 11
           },
           "toolCalls": 0
         },
@@ -58,9 +58,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 11,
           "outcomes": {
-            "ok": 1
+            "ok": 11
           },
           "toolCalls": 0
         },
@@ -72,9 +72,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 11,
           "outcomes": {
-            "ok": 1
+            "ok": 11
           },
           "toolCalls": 0
         },
@@ -86,23 +86,26 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 11,
           "outcomes": {
-            "ok": 1
+            "ok": 11
           },
           "toolCalls": 0
         },
         "runtime": {
-          "causes": {},
+          "causes": {
+            "config": 1
+          },
           "costUsd": 0,
           "durationMs": {
             "n": 0,
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 11,
           "outcomes": {
-            "ok": 1
+            "failed": 1,
+            "ok": 10
           },
           "toolCalls": 0
         },
@@ -114,15 +117,15 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 11,
           "outcomes": {
-            "ok": 1
+            "ok": 11
           },
           "toolCalls": 0
         },
         "templates": {
           "causes": {
-            "config": 1
+            "config": 11
           },
           "costUsd": 0,
           "durationMs": {
@@ -130,9 +133,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 11,
           "outcomes": {
-            "failed": 1
+            "failed": 11
           },
           "toolCalls": 0
         },
@@ -144,15 +147,15 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 11,
           "outcomes": {
-            "ok": 1
+            "ok": 11
           },
           "toolCalls": 0
         }
       },
-      "steps": 9,
-      "stepsWithoutCost": 9,
+      "steps": 99,
+      "stepsWithoutCost": 99,
       "verification": {
         "firstPassGo": 0,
         "units": 0
@@ -161,6 +164,6 @@
   },
   "project": "juz-ide-blog",
   "runs": {},
-  "stepsTotal": 9,
+  "stepsTotal": 99,
   "v": 1
 }
