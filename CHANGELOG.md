@@ -12,6 +12,8 @@ and none of it is instruction — it is history.
 
 ### Added
 
+- ANL-008: ostrzeżenie, że podkatalogi `.claude/knowledge/patterns/` bywają symlinkami (`grep -r`/`find` bez `-L` ich nie widzą) — aegis-flow TS-004 uznał istniejący `python/testing-pattern.md` za brakujący.
+
 - `zod-schema-validation-pattern` (+ `_summary`): wyjątek od `.strict()` (ZOD1/N3) dla schematów odpowiedzi cudzych API (adaptery, klienci dostawców); ANL-038: plik wspólny kilku jednostek (barrel, rejestr) do `dirs` każdej z nich (framework-polityczny FP-005).
 
 - ORC-117: `GO` z `unverified_scope` i `minor_findings` robi jedno przejście naprawcze implementera przed `reverify` (wcześniej drobne ustalenia przepadały, a ta sama linia wracała jako HIGH i wyczerpywała próby warstwy; aegis-flow TS-017). Nowa funkcja `minorPassBeforeReverify` + test.

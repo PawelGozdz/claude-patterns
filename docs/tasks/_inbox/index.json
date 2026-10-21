@@ -1305,7 +1305,7 @@
       "sources": [
         "analyze"
       ],
-      "occurrences": 5,
+      "occurrences": 6,
       "projects": [
         "aegis-flow",
         "ai-os-bot",
@@ -1314,7 +1314,7 @@
         "framework-polityczny"
       ],
       "first_seen": "2026-10-10",
-      "last_seen": "2026-10-20"
+      "last_seen": "2026-10-21"
     },
     {
       "id": "DEV-anz-pattern-mismatch-testing",
