@@ -503,6 +503,18 @@ function main() {
     // layers_skip[] — warstwy, których task nie dotyka; każda musi istnieć w runtime.yml i mieć powód.
     const known = new Set((runtime.orchestrate?.layers ?? GENERIC_LAYERS).map((l) => String(l.id)));
     const knownList = [...known].join(', ');
+    // `dirs` to ścieżki od korzenia repo. Sama nazwa pliku bez katalogu, której nie ma w korzeniu,
+    // to pomyłka (ai-gateway TS-AIG-102: `CLAUDE-LOCAL.md` leży w `.claude/config/`), a zakres
+    // z nietrafioną ścieżką nie obejmuje pliku bez żadnego śladu. Nowe pliki w istniejących
+    // katalogach są normalne, więc ostrzegamy tylko w tym jednym, pewnym przypadku.
+    const warnBareMissingDirs = (tag, dirs) => {
+      for (const d of dirs) {
+        if (typeof d !== 'string') continue;
+        const p = d.trim();
+        if (!p || p.includes('/') || existsSync(join(args.project, p))) continue;
+        warnings.push(`${tag}: \`dirs\` zawiera "${p}" — brak takiego pliku w korzeniu repo; podaj ścieżkę od korzenia (np. .claude/config/${p})`);
+      }
+    };
     const skips = analysisDoc.fm?.layers_skip;
     const skipIds = new Set();
     if (skips !== undefined && !Array.isArray(skips)) {
@@ -544,6 +556,7 @@ function main() {
           gateFailures.push(`layers_scope[${id}]: brak \`dirs\` — zawężenie bez ścieżek to pełna warstwa, użyj wtedy zwykłego wpisu w runtime.yml`);
         if (!s || typeof s !== 'object' || typeof s.reason !== 'string' || !s.reason.trim())
           gateFailures.push(`layers_scope[${id}]: brak \`reason\` — zawężenie bez uzasadnienia wygląda jak przeoczony zakres`);
+        warnBareMissingDirs(`layers_scope[${id}]`, dirs);
       }
     }
     // units[] — podział warstwy na jednostki (pod-warstwy). Pole istniało w szablonie analizy,
@@ -570,6 +583,7 @@ function main() {
         const dirs = Array.isArray(u.dirs) ? u.dirs : (u.dirs ? [u.dirs] : []);
         if (!dirs.length || dirs.some((d) => typeof d !== 'string' || !d.trim()))
           gateFailures.push(`${tag}: brak \`dirs\` — jednostka bez ścieżek to cała warstwa, wtedy nie dziel jej na jednostki`);
+        warnBareMissingDirs(tag, dirs);
         if (u.checks !== undefined && !Array.isArray(u.checks)) gateFailures.push(`${tag}: \`checks\` musi być listą nazw skryptów`);
         if (u.repair !== undefined && typeof u.repair !== 'boolean') gateFailures.push(`${tag}: \`repair\` musi być true/false`);
       }

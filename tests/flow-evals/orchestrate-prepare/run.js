@@ -359,6 +359,22 @@ CASES.push({
 });
 
 CASES.push({
+  name: 'units-bare-missing-dir-warns',
+  build: () => makeProject({
+    taskId: 'TS-FIX-001',
+    analysis: withFm('units:\n  - { id: docs, layer: domain, dirs: [CLAUDE-LOCAL.md, contexts/nowy-plik.ts] }'),
+    task: taskFile('Dodaj aggregate.'),
+  }),
+  check(r) {
+    if (r.code !== 0) return `oczekiwano exit 0, było ${r.code} (${r.stderr.trim()})`;
+    const hits = r.json.warnings.filter((w) => /dirs/.test(w) && /brak takiego pliku w korzeniu repo/.test(w));
+    if (hits.length !== 1) return `oczekiwano 1 ostrzeżenia o nazwie bez katalogu, było ${hits.length}`;
+    if (!/units\[docs\].*"CLAUDE-LOCAL\.md".*\.claude\/config\/CLAUDE-LOCAL\.md/.test(hits[0])) return 'ostrzeżenie bez nazwy pliku albo podpowiedzi ścieżki';
+    return null;
+  },
+});
+
+CASES.push({
   name: 'patterns-exclude-drops-false-trigger-hit',
   build: () => makeProject({
     taskId: 'TS-FIX-001',
