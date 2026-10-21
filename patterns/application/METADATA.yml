@@ -7,7 +7,7 @@ maturity: production
 last_verified: 2026-08-31
 stack: "TypeScript, NestJS, @vytches/ddd"
 source_projects: "LocalHero v3 (1355+ testów), juz-ide-api-1"
-patterns_count: 5
+patterns_count: 6
 description: >-
   Wzorce CQRS i orkiestracji aplikacyjnej: handlery komend/zapytań z
   auto-discovery przez dekoratory (v2.0, bez ręcznej rejestracji w providers),
@@ -35,6 +35,13 @@ patterns:
     maturity: production
     last_verified: 2026-02-05
     description: "Handlery audytu z @EventHandler na poziomie metody (v2.0, ADR-0027)"
+  - file: command-handler-queue-port-pattern.md
+    maturity: experimental
+    last_verified: 2026-10-21
+    description: >-
+      Handler komendy/zapytania kolejkuje przez port (Symbol + interfejs w
+      application, adapter BullMQ lub outbox w module/infrastructure), nigdy
+      przez @InjectQueue; enqueue po sprawdzeniu Result z save
   - file: try-confirm-cancel-pattern.md
     maturity: experimental
     last_verified: 2026-08-31
