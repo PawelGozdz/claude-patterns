@@ -73,13 +73,22 @@ Read/Glob/Grep/Bash directly — don't attempt to delegate or call a zen tool, b
 
 ---
 
-## 🚨 MANDATORY 2-PHASE PROTOCOL (ENFORCE THIS!)
+## 🚨 2-PHASE PROTOCOL (gdy masz `Task`)
+
+> **Bez `Task` (zwykły przypadek — `tools:` go nie nadaje, a w `/orchestrate` jesteś liściem):**
+> pomiń delegację, nie próbuj jej. Fazę 1 zastępuje lista `ZMIENIONE PLIKI` z promptu i zakres
+> warstwy (`dirs`): czytaj te pliki, a odkrywanie rób tylko w tych katalogach (`Glob`/`Grep`
+> z `path` na zakres, nigdy po całym drzewie). Gdy w przebiegu nie ma `Glob`/`Grep` (tylko
+> `Read`/`Bash`), użyj `Bash`: `git ls-files -- <dirs>` i `grep -n WZORZEC <pliki z listy>`.
+> Brak narzędzia do odkrywania to nie powód do `ESCALATE` ani do wpisywania plików do
+> `unverified_scope`, dopóki masz tury i da się je przeczytać. Reszta tej sekcji dotyczy
+> wywołań z `Task`.
 
 **CRITICAL**: You are Opus ($15/M input, $75/M output). The Explore agent (Haiku) is at $0.25/M input, $1.25/M output = **60x cheaper**.
 
-### PHASE 1: File Discovery (ALWAYS DELEGATE - NO EXCEPTIONS)
+### PHASE 1: File Discovery (z `Task`: DELEGUJ)
 
-**BEFORE any Grep/Glob exploration, you MUST:**
+**Mając `Task`, PRZED jakimkolwiek Grep/Glob:**
 
 ```typescript
 Task(
@@ -478,6 +487,7 @@ When any file in `src/contexts/b2g-contracts/` is in scope, run these checks in 
 
 ## Changelog
 
+- 2026-10-21 — protokół „2-phase” (delegacja odkrywania plików do `Task(Explore)`) dotyczy teraz tylko wywołań, które mają `Task`; bez niego (liść w `/orchestrate`) odkrywanie idzie z listy `ZMIENIONE PLIKI` i zakresu warstwy, a przy braku `Glob`/`Grep` przez `Bash`. Wcześniej treść nakazywała „MUST Task(Explore)” mimo braku narzędzia (iam TS-SSO-066, `final-gate`).
 - 2026-10-03 — `maxTurns` podniesione do 60: limit z frontmattera wygrywa z budżetem ze skryptu orkiestracji (`scaledBudget` sięga 50), a przy mniejszym agent kończył bez StructuredOutput, czyli milcząca bramka końcowa w iam, grant-flow i juz-ide-api-1 (ORC-092).
 - 2026-09-07 — repointed `@security-privacy-architect` to `@ecc:security-reviewer`: the agent is retired (K97, ADR 0009 — generic OWASP/GDPR advisory is covered by ECC; the VETO verifiers stay ours)
 - 2026-08-18 — migrated `**Version**`/`**Maintainer**` footer to an append-only `## Changelog` (Keep-a-Changelog format, TASK-GUARDRAILS-001 Sekcja 3); history below reconstructed from `git log -p`
