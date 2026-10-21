@@ -832,6 +832,22 @@ const CASES = (c) => [
     },
   },
 
+  // ── ORC-118: komendy dosłowne nie dziedziczą „brak w package.json → skipped" ────────────
+  {
+    name: 'probe-literal-only-checks-do-not-mention-package-json-skip',
+    run() {
+      const py = c.buildProbePrompt({ task: { id: 'T' } }, { id: 'api', dirs: ['app/'], checks: ['make typecheck', 'make lint'] });
+      if (/Skryptu nie ma w package\.json/.test(py)) return 'projekt z samymi komendami dosłownymi dostał regułę o package.json: ' + py.slice(-300);
+      if (!/nigdy "skipped"/.test(py)) return 'brak reguły: istniejąca komenda z niezerowym EXIT to fail, nie skipped';
+      const npm = c.buildProbePrompt({ task: { id: 'T' } }, { id: 'web', dirs: ['apps/web/'], checks: ['typecheck'] });
+      if (!/Skryptu nie ma w package\.json/.test(npm)) return 'checks z nazw skryptów stracił regułę o package.json';
+      if (/Komendy dosłowne/.test(npm)) return 'checks z nazw skryptów nie powinien dostać reguły o komendach dosłownych';
+      const mixed = c.buildProbePrompt({ task: { id: 'T' } }, { id: 'm', dirs: ['x/'], checks: ['lint', 'go vet ./...'] });
+      if (!/Skryptu nie ma w package\.json/.test(mixed) || !/Komendy dosłowne/.test(mixed)) return 'mieszane checks powinny mieć obie reguły';
+      return null;
+    },
+  },
+
   // ── ORC-089: nazwa pliku analizy bez ścieżki też jest artefaktem przebiegu ──────────────
   {
     name: 'own-task-artifacts-filter-matches-bare-file-name',

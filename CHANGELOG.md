@@ -12,6 +12,7 @@ and none of it is instruction — it is history.
 
 ### Added
 
+- ORC-118: sonda warstwy z samymi komendami dosłownymi (`make typecheck`) nie dostaje już linii „skryptu nie ma w package.json → skipped"; `skipped` znaczy tylko brak samej komendy, niezerowy EXIT istniejącej to `fail` (aegis-flow TS-004, ślepa sonda w warstwie `api`).
 - `orchestrate-prepare`: ostrzeżenie, gdy `dirs` jednostki lub `layers_scope` zawiera samą nazwę pliku, której nie ma w korzeniu repo (ai-gateway TS-AIG-102: `CLAUDE-LOCAL.md` leży w `.claude/config/`); ANL-038 przypomina, że `dirs` to ścieżki od korzenia.
 - ANL-008: ostrzeżenie, że podkatalogi `.claude/knowledge/patterns/` bywają symlinkami (`grep -r`/`find` bez `-L` ich nie widzą) — aegis-flow TS-004 uznał istniejący `python/testing-pattern.md` za brakujący.
 

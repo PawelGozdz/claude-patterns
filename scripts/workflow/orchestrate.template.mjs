@@ -343,6 +343,7 @@ function buildProbePrompt(a, layer) {
   // DESIGN-SYSTEM-009, `presentation`, 9 wystąpień). Komendy dosłowne biegną z korzenia repo.
   const isLiteralCheck = (c) => /\s/.test(String(c).trim())
   const hasLiteral = (layer.checks || []).some(isLiteralCheck)
+  const allLiteral = hasLiteral && (layer.checks || []).every(isLiteralCheck)
   const cmds = (layer.checks || []).map((c) => isLiteralCheck(c) ? String(c).trim() : (firstDir ? '_chk ' + c : 'npm run ' + c))
   const scoped = effectiveDirs(layer).join(' ')
   // Pathspecy monorepo: `layer.dirs` to nazwy typu "__tests__/"/"domain/", nigdy katalogi
@@ -469,7 +470,15 @@ function buildProbePrompt(a, layer) {
     delta +
     '\nNIC nie czytaj, nie analizuj, nie poprawiaj, nie komentuj kodu.' +
     (scoped ? '\nZakres zmiany: ' + scoped : '') +
-    '\nSkryptu nie ma w package.json → zwróć "skipped" dla tej pozycji, nie zgaduj zamiennika.'
+    // ORC-118: ta linia stała bezwarunkowo, także gdy WSZYSTKIE checks to komendy dosłowne
+    // (`make typecheck`) w projekcie bez package.json (Python) — sonda czytała ją jako „brak
+    // package.json → skipped" i oddawała wszystko skipped (aegis-flow TS-004, api i engine).
+    (allLiteral ? '' : '\nSkryptu nie ma w package.json → zwróć "skipped" dla tej pozycji, nie zgaduj zamiennika.') +
+    (hasLiteral
+      ? '\nKomendy dosłowne (ze spacją) nie mają nic wspólnego z package.json: "skipped" TYLKO gdy samej komendy nie ma ' +
+        '("No rule to make target", "command not found", EXIT 127); komenda, która istnieje i zwróciła niezerowy EXIT, to ' +
+        '"fail" — nigdy "skipped". Nie zgaduj zamiennika.'
+      : '')
 }
 
 // Sonda stanu drzewa po cichej śmierci implementera. Cicha śmierć zwykle znaczy „praca

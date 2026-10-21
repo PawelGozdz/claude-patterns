@@ -2198,3 +2198,15 @@ analizy z błędnym YAML nie wystartują ponownie bez poprawki frontmatteru. Eva
 **Zmiana.** `minorPassBeforeReverify(verdict, autoFixMinor, minorPassDone, attempt, maxAttempts)` zwraca drobne ustalenia do naprawy przed `reverify` (pusta lista, gdy `autoFixMinor === false`, przejście już było albo to ostatnia próba; w odróżnieniu od ORC-091 nie trzeba zapasu 2 prób, bo przejście zastępuje próbę `reverify`, a jego weryfikacja domyka też `unverified_scope`). Gałąź `reverify` w pętli warstwy uruchamia wtedy jedno przejście naprawcze (`mode = 'implement'`, `cleanupNext`), a kolejna runda przechodzi zwykłą sondę i weryfikację, która domyka też `unverified_scope`. Limit jednego przejścia na warstwę (`minorPassDone`) zostaje wspólny z ORC-091.
 
 **Poza zakresem.** Druga uwaga ze zgłoszenia, że weryfikator warstwy kodu liczy brak testów jako lukę zakresu (testy należą do jednostki `testing`), jest zamierzona przy podziale na jednostki (`unverified_scope` jest wtedy w raporcie jako luka, nie blokada).
+
+<a id="orc-118"></a>
+
+### ORC-118 — sonda z samymi komendami dosłownymi nie dziedziczy reguły o `package.json` (2026-10-21)
+
+**Objaw.** aegis-flow TS-004 (run `wf_b7eccac7-82d`, zgłoszenia `DEV-orc-085-api`, `DEV-orc-085-engine`). Warstwa `api` ma `checks: ["make typecheck", "make lint"]`, a sonda zwróciła oba pola jako `skipped` (ostrzeżenie ORC-085 o ślepej sondzie). `make typecheck` i `make lint` działają lokalnie.
+
+**Przyczyna (prawdopodobna, bez dziennika przebiegu).** Prompt sondy kończył się zawsze linią „Skryptu nie ma w package.json → zwróć skipped". Dla komend dosłownych (ORC-088, wpis ze spacją) ta linia nie ma sensu, a w projekcie Pythona bez `package.json` sonda mogła ją odczytać jako instrukcję pominięcia.
+
+**Zmiana.** W `buildProbePrompt` stała `allLiteral`: gdy wszystkie `checks` warstwy to komendy dosłowne, linia o `package.json` nie jest dodawana. Przy dowolnej komendzie dosłownej prompt dostaje regułę: `skipped` tylko gdy samej komendy nie ma (`No rule to make target`, `command not found`, EXIT 127); istniejąca komenda z niezerowym EXIT to `fail`, nigdy `skipped`. Warstwy z samymi nazwami skryptów npm zostają bez zmian.
+
+**Poza zakresem.** `tests skipped` w warstwie `engine` (druga notatka) jest zamierzone: warstwa nie ma `tests:true`, a testy należą do jednostki `testing`. Jeśli ślepa sonda wróci po tej zmianie, trzeba zajrzeć w dziennik przebiegu (sama linia mogła nie być przyczyną).
