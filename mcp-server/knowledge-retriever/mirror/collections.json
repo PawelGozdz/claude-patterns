@@ -64,5 +64,13 @@
     "ref": "develop",
     "sha": "1f2dce4c9d5483b872b1f371bbc42e922c8ff924",
     "indexedAt": "2026-09-25T21:20:48.187Z"
+  },
+  "code_marketing_hub": {
+    "model": "ct301:multilingual-e5-large",
+    "dim": 1024,
+    "repo": "marketing-hub",
+    "ref": "origin/develop",
+    "sha": "fa79524af1b325eb916019d5658412429b1953ec",
+    "indexedAt": "2026-10-21T17:34:05.393Z"
   }
 }

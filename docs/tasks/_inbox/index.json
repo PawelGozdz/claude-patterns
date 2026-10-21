@@ -1287,13 +1287,14 @@
       "sources": [
         "analyze"
       ],
-      "occurrences": 2,
+      "occurrences": 3,
       "projects": [
         "juz-ide-api-2",
-        "aegis-flow"
+        "aegis-flow",
+        "marketing-hub"
       ],
       "first_seen": "2026-10-17",
-      "last_seen": "2026-10-20"
+      "last_seen": "2026-10-21"
     },
     {
       "id": "DEV-anz-layer-mismatch",
