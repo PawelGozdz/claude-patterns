@@ -2210,3 +2210,15 @@ analizy z błędnym YAML nie wystartują ponownie bez poprawki frontmatteru. Eva
 **Zmiana.** W `buildProbePrompt` stała `allLiteral`: gdy wszystkie `checks` warstwy to komendy dosłowne, linia o `package.json` nie jest dodawana. Przy dowolnej komendzie dosłownej prompt dostaje regułę: `skipped` tylko gdy samej komendy nie ma (`No rule to make target`, `command not found`, EXIT 127); istniejąca komenda z niezerowym EXIT to `fail`, nigdy `skipped`. Warstwy z samymi nazwami skryptów npm zostają bez zmian.
 
 **Poza zakresem.** `tests skipped` w warstwie `engine` (druga notatka) jest zamierzone: warstwa nie ma `tests:true`, a testy należą do jednostki `testing`. Jeśli ślepa sonda wróci po tej zmianie, trzeba zajrzeć w dziennik przebiegu (sama linia mogła nie być przyczyną).
+
+<a id="orc-120"></a>
+
+### ORC-120 — `build` w `checks.finalGate` liczy się jak `typecheck`, a sonda nie oddaje `skipped` za brak czasu (2026-10-22)
+
+**Objaw (DEV-orc-116-final-gate).** juz-ide-blog BLOG-HOWTO-001, `final-gate` (`wf_fa3ceca1-1b7`): `checks.finalGate: ["build"]`, sonda zwróciła `skipped`, bramka dała `NO_GO` `machine` wyłącznie z `unverified_scope` (zero własnych naruszeń), a ręczny `npm run build` kończył się EXIT:0.
+
+**Przyczyna (prawdopodobna, bez dziennika przebiegu).** Skrypt `build` w juz-ide-blog to `check-screens && astro check && astro build && pagefind && cp`, czyli minuty pracy, a domyślny timeout Basha to 2 minuty; ucięte polecenie sonda mogła zgłosić jako `skipped`. Pewna jest luka w ORC-116: `finalProbeSkippedFields` rozpoznawał tylko nazwy z `typecheck|tsc`, `test`, `lint`, a prompt sondy mapuje `build` na pole `typecheck`, więc `skipped` przy samym `build` nie zostawiał żadnego ostrzeżenia w raporcie.
+
+**Zmiana.** (1) `finalProbeSkippedFields`: wzorzec dla `typecheck` obejmuje też `build`. (2) `buildProbePrompt`: polecenie wołać Bash z `timeout: 600000`; przekroczenie czasu albo brak wyniku to `fail` z opisem w `tail`, nie `skipped`. Werdykt bramki bez zmian.
+
+**Poza zakresem.** Wcześniejsza bramka (`wf_cac36de4-1c6`) dała `typecheck: fail` przy `astro check` bez błędów; realna przyczyna to `astro build` (glob `public/*` czytał `public/_headers` jako JS) i leży w projekcie, nie w silniku. Jeśli `skipped` przy `build` wróci mimo timeoutu, trzeba sprawdzić dziennik przebiegu.

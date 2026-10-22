@@ -463,7 +463,11 @@ function buildProbePrompt(a, layer) {
     ? '\nMapowanie wyników na pola (każdy check do SWOJEGO pola, nie mieszaj): nazwa/komenda z `lint` → ' +
       '`lint`; z `typecheck`, `tsc`, `mypy`, `pyright`, `analyze`, `vet` albo `build` → `typecheck`; z `test` → `tests` ' +
       '(EXIT:0 = pass, niezerowy = fail, brak skryptu = skipped). Pole `typecheck` = fail tylko wtedy, ' +
-      'gdy padł typecheck/analyze/build, nigdy z powodu lintu.'
+      'gdy padł typecheck/analyze/build, nigdy z powodu lintu.' +
+      // ORC-120: build (astro build + pagefind, next build) trwa minuty; domyślny timeout Basha (2 min) ucina polecenie,
+      // a sonda oddawała wtedy „skipped" zamiast wyniku. „skipped" znaczy brak komendy, nigdy brak czasu.
+      '\nPolecenia mogą trwać kilka minut: wywołuj Bash z `timeout: 600000`. Przekroczenie czasu albo brak wyniku to ' +
+      'NIE jest "skipped" — wtedy zwróć "fail" i w `tail` napisz, że polecenie nie skończyło się w limicie.'
     : ''
   return 'Uruchom dokładnie to i NIC więcej:\n' + run + literalMapping +
     '\nPrzy EXIT:0 NIE otwieraj pliku logu wcale.' + tailInstruction + tsErrorsInstruction + testFailInstruction +
@@ -800,7 +804,9 @@ function repeatedGapsAcceptable(prevGaps, decision, verdict, probe) {
 // (ai-gateway TS-AIG-094: typecheck skipped, ręczny pnpm typecheck czerwony, GO).
 function finalProbeSkippedFields(finalChecks, probe) {
   if (!probe) return []
-  const kinds = { typecheck: /typecheck|tsc/i, tests: /test/i, lint: /lint/i }
+  // ORC-120: `build` sonda mapuje na pole `typecheck` (buildProbePrompt) — bez tego `checks.finalGate: [build]`
+  // ze `skipped` nie zostawiał śladu (juz-ide-blog BLOG-HOWTO-001, final-gate NO_GO, ręczny build EXIT:0)
+  const kinds = { typecheck: /typecheck|tsc|build/i, tests: /test/i, lint: /lint/i }
   const names = (finalChecks || []).map(String)
   return Object.keys(kinds).filter((k) => probe[k] === 'skipped' && names.some((n) => kinds[k].test(n)))
 }

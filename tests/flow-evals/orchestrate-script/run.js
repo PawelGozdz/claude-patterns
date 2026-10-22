@@ -1075,6 +1075,19 @@ const CASES = (c) => [
       return null;
     },
   },
+  // ORC-120: `build` w checks.finalGate liczy się jak typecheck (sonda mapuje go na to pole); sonda dostaje wskazówkę o timeoucie
+  {
+    name: 'final-probe-build-check-maps-to-typecheck-and-probe-warns-about-timeout',
+    run() {
+      const r = c.finalProbeSkippedFields(['build'], { typecheck: 'skipped', tests: 'skipped' });
+      if (JSON.stringify(r) !== '["typecheck"]') return 'build ze skipped nie zgłoszony: ' + JSON.stringify(r);
+      if (c.finalProbeSkippedFields(['build'], { typecheck: 'pass', tests: 'skipped' }).length) return 'build z typecheck=pass zgłoszony jako pominięty';
+      const p = c.buildProbePrompt({ task: { id: 'T' } }, { id: 'final', checks: ['build'], dirs: [], tests: false });
+      if (!/timeout: 600000/.test(p)) return 'brak wskazówki o timeoucie Basha w prompcie sondy';
+      if (!/NIE jest "skipped"/.test(p)) return 'brak reguły: przekroczenie czasu to nie skipped';
+      return null;
+    },
+  },
   // ORC-117: drobne ustalenia z rundy GO + unverified_scope nie przepadają przed reverify
   {
     name: 'minor-findings-survive-go-with-unverified-scope',
