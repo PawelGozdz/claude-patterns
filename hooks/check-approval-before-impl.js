@@ -25,6 +25,7 @@
 const fs = require('fs');
 const path = require('path');
 const { isSubagent } = require('./lib/utils');
+const { exitAfterBlock } = require('./lib/hook-telemetry');
 
 const MODE = process.env.APPROVAL_GATE_MODE ?? process.env.ORCHESTRATE_DDD_GATE ?? 'warn';
 
@@ -93,6 +94,7 @@ function main() {
     `    Najpierw: odpowiedz na open_questions + ustaw status: approved, potem /orchestrate <TASK>.\n` +
     `    Tryb: ${MODE.toUpperCase()} (APPROVAL_GATE_MODE=warn|block|off, alias deprecated: ORCHESTRATE_DDD_GATE; one-off: touch .analysis-ok-sentinel)\n`;
   process.stderr.write(msg);
-  process.exit(isBlock ? 2 : 0);
+  if (!isBlock) process.exit(0);
+  exitAfterBlock(2, { hook: 'check-approval-before-impl', rule: 'approval-gate', cwd });
 }
 main();

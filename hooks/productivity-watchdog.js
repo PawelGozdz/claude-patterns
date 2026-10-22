@@ -32,6 +32,7 @@
 const fs = require('fs');
 const path = require('path');
 const { isSubagent } = require('./lib/utils');
+const { exitAfterBlock } = require('./lib/hook-telemetry');
 
 const MODE = process.env.WATCHDOG_MODE || 'block';
 const FLAG_TTL_MS = 15 * 60 * 1000;
@@ -46,6 +47,8 @@ function isFresh(entry) {
   return Number.isFinite(age) && age >= 0 && age < FLAG_TTL_MS;
 }
 
+// Blokada kończy proces asynchronicznie (zapis telemetrii), więc wołający MUSI zrobić `return deny(...)` —
+// bez tego main() idzie dalej i kończy się exit 0, czyli blokada przestaje blokować.
 function deny(kind, reason, runStateDir, isBlock) {
   const verb = isBlock ? '🛑 HALTED' : '⚠️  WARN';
   process.stderr.write(
@@ -58,7 +61,8 @@ function deny(kind, reason, runStateDir, isBlock) {
     `    (kill-switch: usuń plik ${path.join(runStateDir, 'KILL')}).\n` +
     `    Mode: ${MODE.toUpperCase()} (WATCHDOG_MODE=warn → tylko ostrzeżenie, =off → wyłącz)\n`
   );
-  process.exit(isBlock ? 2 : 0);
+  if (!isBlock) process.exit(0);
+  exitAfterBlock(2, { hook: 'productivity-watchdog', rule: kind, cwd: path.resolve(runStateDir, '..', '..') });
 }
 
 function main() {
@@ -83,7 +87,7 @@ function main() {
 
   // Kill-switch: człowiek zatrzymuje WSZYSTKICH subagentów jednym touch.
   if (fs.existsSync(path.join(runStateDir, 'KILL'))) {
-    deny('kill-switch', 'Kill-switch aktywny (.claude/run-state/KILL) — wszystkie tool-calle subagentów wstrzymane.', runStateDir, isBlock);
+    return deny('kill-switch', 'Kill-switch aktywny (.claude/run-state/KILL) — wszystkie tool-calle subagentów wstrzymane.', runStateDir, isBlock);
   }
 
   let flags = null;
@@ -91,11 +95,11 @@ function main() {
   if (!flags || typeof flags !== 'object') process.exit(0);
 
   if (isFresh(flags.all)) {
-    deny('halt-all', `Watcher zatrzymał cały przebieg: ${flags.all.reason || 'brak powodu'}`, runStateDir, isBlock);
+    return deny('halt-all', `Watcher zatrzymał cały przebieg: ${flags.all.reason || 'brak powodu'}`, runStateDir, isBlock);
   }
   const entry = flags.agents && flags.agents[agentId];
   if (isFresh(entry)) {
-    deny('spinning', `Agent ${agentId} oflagowany przez watcher: ${entry.reason || 'tokeny bez postępu'}`, runStateDir, isBlock);
+    return deny('spinning', `Agent ${agentId} oflagowany przez watcher: ${entry.reason || 'tokeny bez postępu'}`, runStateDir, isBlock);
   }
 
   process.exit(0);
