@@ -62,6 +62,14 @@
       ],
       "repoName": "ai-gateway"
     },
+    "code_iam": {
+      "repo": "../../../iam",
+      "ref": "origin/develop",
+      "dirs": [
+        "src"
+      ],
+      "repoName": "iam"
+    },
     "code_marketing_hub": {
       "repo": "../../../marketing-hub",
       "ref": "origin/develop",
