@@ -14,6 +14,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { exitAfterBlock } = require('./lib/hook-telemetry');
 
 const MARKER_MAX_AGE_MS = 12 * 3600 * 1000;
 const GIT_FORBIDDEN = /(?:^|[;&|(\s])git\s+(?:(?:-[Cc]\s+\S+|--[\w-]+(?:=\S+)?)\s+)*(commit|push|rebase|tag|merge|cherry-pick|am|stash|reset|restore|checkout)\b/;
@@ -48,5 +49,5 @@ process.stdin.on('end', () => {
     `Zablokowane przez block-subagent-commit: \`git ${m[1]}\` w trakcie przebiegu /orchestrate. ` +
     'Przebieg kończy się „staged, not committed" — commit i cofanie stanu gitem robi człowiek. ' +
     'Zmiany zostają w drzewie roboczym; do zapisu/przywrócenia stanu użyj `cp`, nie gita.\n');
-  return process.exit(2);
+  return exitAfterBlock(2, { hook: 'block-subagent-commit', rule: 'subagent-git', cwd: input.cwd });
 });

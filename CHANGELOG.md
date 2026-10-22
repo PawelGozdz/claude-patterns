@@ -11,6 +11,13 @@ and none of it is instruction — it is history.
 ## [Unreleased]
 
 ### Added
+- Blokady z hooków w telemetrii (TASK-OBS-011, ADR 0012 aneks): nowy `process: hook`; 9 hooków blokujących
+  (`block-root-grep`, `block-subagent-commit`, `pre-workflow-lint`, `check-delegation`, `check-patterns-read`,
+  `check-subagent-pattern-reads`, `check-approval-before-impl`, `check-security-considerations`,
+  `productivity-watchdog`) zapisuje przez `hooks/lib/hook-telemetry.js` jedno `step.end` z `outcome: halted`
+  i `step.role` = `<hook>:<reguła>` WYŁĄCZNIE przy zablokowaniu (bez treści komendy, ścieżek i `session_id`).
+  Zapis best-effort, ok. 5 ms tylko przy blokadzie, `HOOK_TELEMETRY=off` go wyłącza. Eval `hook-telemetry` (14 przypadków).
+  Trzy hooki dostały stałe id reguł: `root-grep`, `subagent-git`, `task-pre-analysis` / `security-suggest` / `security-section-empty`.
 
 - `zod-schema-validation-pattern` (+ `_summary`): wyjątek od `.strict()` (ZOD1/N3) dla schematów odpowiedzi cudzych API (adaptery, klienci dostawców); ANL-038: plik wspólny kilku jednostek (barrel, rejestr) do `dirs` każdej z nich (framework-polityczny FP-005).
 

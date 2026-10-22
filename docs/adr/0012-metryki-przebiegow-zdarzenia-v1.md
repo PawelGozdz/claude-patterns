@@ -5,6 +5,11 @@
 **Aneks (2026-10-18, TASK-OBS-010)**: lista zamknięta `process` dostaje wartość `pre-commit` — bramki
 `scripts/pre-commit-guards.mjs` (jeden commit = jeden przebieg, krok per bramka, `step.role` = stała nazwa
 bramki bez nazw plików). Zapis best-effort, bez skanu dedupu (`dedup: false`), żeby narzut został poniżej 100 ms.
+**Aneks (2026-10-22, TASK-OBS-011)**: lista zamknięta `process` dostaje wartość `hook` — blokady z hooków
+(`hooks/lib/hook-telemetry.js`). Zapis TYLKO przy zablokowaniu: `step.end`, `outcome: halted`,
+`step.role` = `<hook>:<reguła>`, `runId` = `hook-<RRRRMMDD>`; przepuszczenie i tryb ostrzegawczy nie zapisują nic.
+Bez treści komendy, ścieżek i `session_id`; projekt = katalog roboczy hooka. Błąd zapisu nie zmienia decyzji
+hooka, a `HOOK_TELEMETRY=off` wyłącza zapis.
 **Rozszerza**: [ADR 0011](0011-raportowanie-dryfu-i-telemetria-floty.md) (punkt B6 — telemetria floty)
 **Context source**: decyzja użytkownika z 2026-10-10: „jak będziemy wstawiać tylko problemy, to nie
 da nam to procentowego rozbicia dobre vs błędy" + docelowo metryki trafiają na serwer zespołu

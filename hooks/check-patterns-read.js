@@ -29,6 +29,7 @@ const fs = require('fs');
 const path = require('path');
 const { isExempt, findRequiredPattern } = require('./lib/pattern-routing');
 const { isSubagent } = require('./lib/utils');
+const { exitAfterBlock } = require('./lib/hook-telemetry');
 
 const MODE = process.env.CHECK_PATTERNS_MODE || 'block';
 const LOOKBACK = parseInt(process.env.CHECK_PATTERNS_LOOKBACK || '15', 10);
@@ -180,7 +181,8 @@ function main() {
       : ` (soft warning — set CHECK_PATTERNS_MODE=block to enforce)\n`);
 
   process.stderr.write(msg);
-  process.exit(isBlock ? 2 : 0);
+  if (!isBlock) process.exit(0);
+  exitAfterBlock(2, { hook: 'check-patterns-read', rule: 'patterns-read', cwd: payload.cwd });
 }
 
 main();

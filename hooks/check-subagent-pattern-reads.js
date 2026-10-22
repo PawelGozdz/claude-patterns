@@ -30,6 +30,7 @@
 
 const fs = require('fs');
 const { isExempt, findRequiredPattern } = require('./lib/pattern-routing');
+const { exitAfterBlock } = require('./lib/hook-telemetry');
 
 const MODE = process.env.PATTERN_READS_MODE || 'block';
 
@@ -146,7 +147,8 @@ function main() {
       : ` (soft warning — set PATTERN_READS_MODE=block to enforce)\n`);
 
   process.stderr.write(msg);
-  process.exit(isBlock ? 2 : 0);
+  if (!isBlock) process.exit(0);
+  exitAfterBlock(2, { hook: 'check-subagent-pattern-reads', rule: 'pattern-grounding', cwd: payload.cwd });
 }
 
 main();

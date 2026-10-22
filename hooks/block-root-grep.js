@@ -11,6 +11,8 @@
 // Verified 2026-09-03: `--exclude=.env` does NOT avoid the prompt; grepping a
 // subdirectory without `.env` and the Grep tool both do.
 
+const { exitAfterBlock } = require('./lib/hook-telemetry');
+
 let raw = '';
 process.stdin.setEncoding('utf8');
 process.stdin.on('data', (c) => { raw += c; });
@@ -32,7 +34,7 @@ process.stdin.on('end', () => {
         '(e.g. `grep -rn PATTERN src/ docs/ test/`). --exclude=.env does not help.',
     },
   }));
-  process.exit(0);
+  exitAfterBlock(0, { hook: 'block-root-grep', rule: 'root-grep', cwd: input.cwd });
 });
 
 const ROOTISH = new Set(['.', './', '*', './*', '$PWD', '"$PWD"', '${PWD}']);
