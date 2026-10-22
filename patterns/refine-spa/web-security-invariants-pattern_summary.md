@@ -14,8 +14,11 @@ sieciowe, komponenty renderujące treść z API, konfiguracja Vite/CSP
 - **WS1** — Sesja w cookie ustawianym przez `iam`/Caddy. Zero tokenów w `localStorage`,
   `sessionStorage`, `IndexedDB` ani w pamięci aplikacji. ESLint w `apps/web` zakazuje
   `localStorage`/`sessionStorage` (`no-restricted-globals`).
-- **WS2** — `accessControlProvider.can()` służy UX. Każda mutacja ma test L3 dowodzący,
-  że API odrzuca ją bez uprawnienia niezależnie od UI.
+- **WS2** — `accessControlProvider.can()` służy UX. Każda mutacja ma dowód, że API odrzuca
+  ją bez uprawnienia niezależnie od UI: test L3 przeciw realnemu API/bramie albo test guarda
+  po stronie API. L3 na mocku bramki dowodzi tylko, że UI nie omija bramy (WS3) i pokazuje
+  odmowę 401/403 — samo WS2 nie spełnia. Zadanie wyłącznie webowe wskazuje test API
+  (plik/zadanie); brak takiego odesłania to luka `unverified_scope`, nie naruszenie.
 - **WS3** — Jedyny host sieciowy to własny origin, ścieżki `/api/*`. Test L3 nasłuchuje
   żądań i zalicza tylko te do `/api/`.
 - **WS4** — `index.html` serwowane z CSP z nonce (helmet po stronie API/Caddy); brak
@@ -32,14 +35,17 @@ sieciowe, komponenty renderujące treść z API, konfiguracja Vite/CSP
 - **N2** — ❌ Logika biznesowa w komponencie („jeśli budżet > X, pokaż…") — to domena API.
 - **N3** — ❌ `fetch('https://...')` do hosta innego niż własny origin.
 - **N4** — ❌ `dangerouslySetInnerHTML` poza komponentem sanitizera.
-- **N5** — ❌ Sekrety (klucze, adresy wewnętrzne) w `import.meta.env` bundlowanym do przeglądarki.
+- **N5** — ❌ Sekrety (klucze, tokeny, hasła, adresy wewnętrzne) w `import.meta.env`
+  bundlowanym do przeglądarki. Flagi funkcji (`VITE_FEATURE_*`) i publiczne adresy własnego
+  originu to nie sekrety; reguła ESLint pilnująca N5 ma dopuszczać je listą nazw, nie
+  zakazywać każdego `VITE_`.
 
 ## Verifier — najczęstsze naruszenia → VETO
 
 | Symptom | Reguła |
 |---|---|
 | `localStorage`/`sessionStorage` w `apps/web/src` | WS1/N1 |
-| Mutacja bez testu L3 „API odrzuca bez uprawnienia" | WS2 |
+| Mutacja bez dowodu „API odrzuca bez uprawnienia" (L3 na realnym API albo test guarda; sam mock bramki nie wystarcza) | WS2 |
 | Adres absolutny innego hosta w kodzie sieciowym | WS3/N3 |
 | `dangerouslySetInnerHTML` poza `shared/ui/SafeMarkdown` | WS5/N4 |
 | Brak `disableTelemetry: true` | WS6 |

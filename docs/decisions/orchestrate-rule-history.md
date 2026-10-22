@@ -2244,3 +2244,15 @@ analizy z błędnym YAML nie wystartują ponownie bez poprawki frontmatteru. Eva
 **Zmiana.** `orchestrate-prepare` po rozwiązaniu warstw liczy przestrzenie nazw tagów uruchamianych warstw (`api:domain` → `api`, `web:ui` → `web`). Karta pochodząca z `always` lub triggera odpada, gdy jej tagi (linia `**Tags**:`) leżą wyłącznie w przestrzeniach spoza tego zbioru. Zostają: karta bez tagów, z jakimkolwiek `any:*`, wskazana wprost w `patterns[]` analizy oraz każda, gdy żadna uruchamiana warstwa nie ma tagów. Odpadnięcie daje ostrzeżenie `wzorce pominięte: …`. `patterns_exclude` działa jak dotąd, na wpisach ręcznych.
 
 **Poza zakresem.** Wzorce warstwowe (`layer_contributions`) nie są filtrowane: wchodzą przez warstwę, która je wnosi.
+
+<a id="orc-123"></a>
+
+### ORC-123 — NO_GO wymuszone lukami podaje stan sondy, a udana naprawa ocenia luki od nowa (2026-10-22)
+
+**Objaw (DEV-no_go-unverified-scope, otwarty ponownie, 2 nowe wystąpienia).** grant-flow TS-UI-009 (`wf_dbfdcd1a-768`) i marketing-hub TS-MH-026 (`wf_5fc73b06-5a8`): bramka końcowa dała GO, zero naruszeń, a przebieg i tak skończył jako `NO_GO` `cause: machine`, bo jedyne ustalenia to `unverified_scope` (przeglądarka, baseline'y wizualne, iam/Caddy, testy po stronie API, niepodpisany TM). To dokładnie przypadek, który ORC-098 miało obniżać do GO z lukami.
+
+**Przyczyna (częściowo hipoteza).** ORC-098 obniża luki tylko przy zielonym dowodzie sondy silnika (`typecheck` albo `tests` = pass, nic nie fail). Raport nie zawierał wyniku sondy, więc nie da się ustalić, która gałąź zadziałała. W marketing-hub TS-MH-026 znamy przebieg: runda naprawcza poprawiła prettiera w 7 plikach (czyli `format:check`/`lint:check` z `checks.finalGate` były czerwone w chwili sondy), po czym werdykt został na sondzie sprzed naprawy. Dla grant-flow brak dziennika przebiegu, więc przyczyna sondy nie jest potwierdzona.
+
+**Zmiana.** (1) `report.finalProbe` i komunikat naruszenia „GO z niezweryfikowanym zakresem" zawierają stan sondy (`finalProbeSummary`: `typecheck=…, tests=…, lint=… (zielona | brak zielonego dowodu)`), więc następny raport mówi, czemu luki nie zostały obniżone. (2) Gdy bramka dała GO bez naruszeń (`forcedGaps`), runda naprawcza przeszła, a nie było ustaleń blokujących, sonda bramki końcowej biegnie jeszcze raz (`final-checks-after-fix`, `report.finalProbeAfterFix`); przy zielonym dowodzie ta sama ocena co w ORC-098 daje GO z lukami. Czerwona albo ślepa ponowna sonda zostawia halt i ostrzeżenie.
+
+**Poza zakresem.** Jeśli stan sondy w kolejnym raporcie pokaże `zielona`, a halt się powtórzy, przyczyna leży gdzie indziej (filtry `filterKnownLayerGaps`/`filterAdjudicatedByDecision` albo pusty wynik bramki) i rekord trzeba otworzyć z tym dowodem.

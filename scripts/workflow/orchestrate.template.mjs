@@ -817,6 +817,15 @@ function probeHasGreenEvidence(probe) {
   return probe.typecheck === 'pass' || probe.tests === 'pass'
 }
 
+// ORC-123: dlaczego sonda bramki końcowej NIE pozwoliła obniżyć luk do GO z lukami (ORC-098).
+// Raport nie zawierał wyniku sondy, więc NO_GO „wymuszone samym unverified_scope" wyglądało tak samo
+// przy sondzie czerwonej, ślepej (same skipped) i nieobecnej (grant-flow TS-UI-009, marketing-hub TS-MH-026).
+function finalProbeSummary(probe) {
+  if (!probe) return 'sonda bez wyniku'
+  const state = ['typecheck', 'tests', 'lint'].map((k) => k + '=' + (probe[k] == null ? 'brak' : probe[k])).join(', ')
+  return state + (probeHasGreenEvidence(probe) ? ' (zielona)' : ' (brak zielonego dowodu: czerwień albo same skipped)')
+}
+
 // ORC-086: weryfikator dwukrotnie bez wyniku (padł/przekroczył budżet) to awaria maszyny, nie
 // werdykt o kodzie. Przy zielonej sondzie i niepustym zakresie warstwa idzie dalej jako
 // GO_WITH_GAPS z luką „warstwa niezweryfikowana" (domyka bramka końcowa i człowiek), zamiast
@@ -1908,7 +1917,9 @@ if (!finalAgent) {
     const skippedFinal = finalProbeSkippedFields(finalChecks, finalProbe)
     if (skippedFinal.length) report.warnings = (report.warnings || []).concat('sonda bramki końcowej: ' + skippedFinal.join(', ') + ' = skipped mimo zadeklarowanych checks.finalGate (' + finalChecks.join(', ') + ') — brak dowodu, sprawdź ręcznie (ORC-116)')
     if (!finalProbe) report.warnings = (report.warnings || []).concat('sonda checks bramki końcowej bez wyniku — bramka uruchamia je sama, luki nie będą obniżane do GO (ORC-098)')
+    report.finalProbe = finalProbe
   }
+  let forcedGaps = null
   let final = null
   try {
     final = await ask(buildFinalGatePrompt(a, finalChecks, finalFiles, treeSource, report.gaps, finalProbe) + roundExtra, gateOpts)
@@ -1972,11 +1983,15 @@ if (!finalAgent) {
   } else if (String(report.finalGate.verdict).toUpperCase() === 'GO' && finalUnverified.length) {
     // ORC-084: NO_GO wymuszone WYŁĄCZNIE przez unverified_scope (zero własnych naruszeń) —
     // pliki idą do stagingu z flagą „wymaga przeglądu"; człowiek i tak robi review przed commitem.
-    if (!(report.finalGate.violations || []).length) report.stageForReview = stageableFiles(finalFiles, a.dirtyAtStart, allChangedFiles)
+    if (!(report.finalGate.violations || []).length) {
+      report.stageForReview = stageableFiles(finalFiles, a.dirtyAtStart, allChangedFiles)
+      forcedGaps = finalUnverified
+    }
     report.finalGate.verdict = 'NO_GO'
     report.finalGate.cause = 'machine'
     report.finalGate.violations = (report.finalGate.violations || []).concat(
-      'GO z niezweryfikowanym zakresem (unverified_scope), bramka końcowa nie ma retry: ' + finalUnverified.join(', '))
+      'GO z niezweryfikowanym zakresem (unverified_scope), bramka końcowa nie ma retry: ' + finalUnverified.join(', ') +
+      ' [sonda silnika: ' + finalProbeSummary(finalProbe) + '] (ORC-123)')
   }
   const fgNotGo = String(report.finalGate.verdict).toUpperCase() !== 'GO'
   if (fgNotGo && !report.finalGate.cause) report.finalGate.cause = 'code'
@@ -1992,6 +2007,32 @@ if (!finalAgent) {
       report.finalGateRound1 = report.finalGate
       roundExtra = finalRoundExtra(blockingFinal.concat(minorFinal), report.finalFix && report.finalFix.skipped)
       continue
+    }
+    // ORC-123: werdykt „NO_GO wymuszone samymi lukami" zapadł na sondzie SPRZED naprawy. Naprawa, która
+    // wyleczyła czerwień (prettier, lint) i przeszła sondy warstw, nie uzdrawiała werdyktu — halt
+    // zostawał mimo zielonego drzewa (marketing-hub TS-MH-026: prettier na 7 plikach, potem halt).
+    // Ponowna sonda bramki końcowej + ta sama ocena luk co w ORC-098.
+    if (repaired && !blockingFinal.length && forcedGaps && finalChecks.length) {
+      let reprobe = null
+      try {
+        reprobe = await ask(
+          buildProbePrompt(a, { id: 'final', checks: finalChecks, dirs: [], tests: false }),
+          Object.assign({ label: 'final-checks-after-fix', maxTurns: DEFAULTS.probeTurns, schema: CHECKS_SCHEMA }, modelFor('probe')),
+        )
+      } catch (e) {
+        reprobe = null
+      }
+      report.finalProbeAfterFix = reprobe
+      if (finalGapsAcceptable({ verdict: 'GO', violations: [] }, forcedGaps, reprobe)) {
+        report.finalGate.verdict = 'GO'
+        report.finalGate.cause = undefined
+        report.finalGate.violations = []
+        report.finalGate.gaps_accepted = forcedGaps
+        report.gaps.push({ layer: 'final-gate', items: forcedGaps })
+        log('bramka końcowa: GO z lukami po naprawie (ORC-123) — ponowna sonda zielona; luki w raporcie: ' + forcedGaps.join(', '))
+      } else {
+        report.warnings = (report.warnings || []).concat('ponowna sonda bramki końcowej po naprawie: ' + finalProbeSummary(reprobe) + ' — halt zostaje (ORC-123)')
+      }
     }
     const noopFix = report.finalFix && report.finalFix.noop && report.finalFix.noop.length
     if (!repaired && !blockingFinal.length && noopFix) {

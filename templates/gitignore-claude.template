@@ -40,6 +40,10 @@
 .claude/roles/
 # TASK-OBS-001: live observability (workflow-watcher.js) — runtime state, never committed
 .claude/run-state/
+# post-edit-typecheck.js zapisuje marker i .tsbuildinfo w <katalog tsconfig>/.claude/run-state/ —
+# w monorepo to każdy pakiet (grant-flow: packages/contracts, apps/api, apps/web), a wpis z
+# ukośnikiem w środku dotyczy tylko korzenia. `**/` łapie je wszystkie (2026-10-22).
+**/.claude/run-state/
 RUN-STATE.md
 project-orchestration/RUN-STATE.md
 # /orchestrate: wygenerowane skrypty Workflow (lintowane przed startem, efemeryczne)

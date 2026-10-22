@@ -1100,6 +1100,24 @@ const CASES = (c) => [
       return null;
     },
   },
+  // ORC-123: NO_GO wymuszone lukami podaje stan sondy; po udanej naprawie sonda biegnie ponownie i ocenia luki jak ORC-098
+  {
+    name: 'final-gate-forced-no-go-reports-probe-state-and-reprobes-after-fix',
+    run() {
+      if (!/sonda bez wyniku/.test(c.finalProbeSummary(null))) return 'brak wyniku sondy nie nazwany';
+      const red = c.finalProbeSummary({ typecheck: 'pass', tests: 'pass', lint: 'fail' });
+      if (!/lint=fail/.test(red) || !/brak zielonego dowodu/.test(red)) return 'czerwony lint nie widoczny w podsumowaniu: ' + red;
+      if (!/\(zielona\)/.test(c.finalProbeSummary({ typecheck: 'pass', tests: 'skipped', lint: 'pass' }))) return 'zielona sonda nie nazwana';
+      if (/\(zielona\)/.test(c.finalProbeSummary({ typecheck: 'skipped', tests: 'skipped', lint: 'skipped' }))) return 'ślepa sonda uznana za zieloną';
+      // luki akceptowane dopiero na zielonej ponownej sondzie
+      const gate = { verdict: 'GO', violations: [] };
+      if (c.finalGapsAcceptable(gate, ['deploy'], { typecheck: 'pass', tests: 'pass', lint: 'fail' })) return 'czerwona sonda przepuściła luki';
+      if (!c.finalGapsAcceptable(gate, ['deploy'], { typecheck: 'pass', tests: 'pass', lint: 'pass' })) return 'zielona sonda nie przepuściła luk';
+      const src = fs.readFileSync(path.join(__dirname, '../../../scripts/workflow/orchestrate.template.mjs'), 'utf8');
+      if (!/final-checks-after-fix/.test(src) || !/forcedGaps/.test(src)) return 'szablon nie zawiera ponownej sondy po naprawie (ORC-123)';
+      return null;
+    },
+  },
   // ORC-117: drobne ustalenia z rundy GO + unverified_scope nie przepadają przed reverify
   {
     name: 'minor-findings-survive-go-with-unverified-scope',
