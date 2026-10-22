@@ -27,6 +27,7 @@
 const fs = require('fs');
 const path = require('path');
 const { readStdinJson, readFile, log } = require('./lib/utils');
+const { exitAfterBlock } = require('./lib/hook-telemetry');
 
 const MODE = (process.env.CHECK_SECURITY_MODE || 'warn').toLowerCase();
 
@@ -328,7 +329,7 @@ async function main() {
     // Trigger 2: hard conditional block — security-relevant + in-progress + pre-analysis incomplete
     if (taskStatus === 'in-progress' && securityRelevant && preStatus.status !== 'ok') {
       process.stderr.write(blockMessage(filePath, matched, preStatus, level));
-      process.exit(2);
+      return exitAfterBlock(2, { hook: 'check-security-considerations', rule: 'task-pre-analysis', cwd: input.cwd });
     }
 
     // Trigger 1: suggestion when security-relevant (regardless of section state)
@@ -337,7 +338,8 @@ async function main() {
     if (securityRelevant && preStatus.status !== 'ok') {
       process.stderr.write(suggestMessage(filePath, matched, level));
       // Also fall through to a soft warning unless block mode
-      process.exit(MODE === 'block' ? 2 : 0);
+      if (MODE !== 'block') process.exit(0);
+      return exitAfterBlock(2, { hook: 'check-security-considerations', rule: 'security-suggest', cwd: input.cwd });
     }
 
     // Non-security task with incomplete section: existing legacy warn behaviour
@@ -346,7 +348,8 @@ async function main() {
       // (typo fix, docs-only). Only warn if section EXISTS but is empty/placeholder.
       if (preStatus.status === 'missing') process.exit(0);
       process.stderr.write(genericWarn(filePath, preStatus));
-      process.exit(MODE === 'block' ? 2 : 0);
+      if (MODE !== 'block') process.exit(0);
+      return exitAfterBlock(2, { hook: 'check-security-considerations', rule: 'security-section-empty', cwd: input.cwd });
     }
 
     process.exit(0);

@@ -27,8 +27,9 @@
 
 const fs = require('fs');
 const path = require('path');
+const { exitAfterBlock } = require('./lib/hook-telemetry');
 
-const MODE = (process.env.WORKFLOW_LINT || 'block').toLowerCase();
+const MODE =(process.env.WORKFLOW_LINT || 'block').toLowerCase();
 
 function readStdin() {
   try {
@@ -103,7 +104,9 @@ function main() {
       ? `    Świadomie chcesz uruchomić mimo to? WORKFLOW_LINT=warn (ostrzega) albo =off (cisza).\n\n`
       : `    Tryb warn — uruchamiam mimo błędów.\n\n`)
   );
-  process.exit(blocking ? 2 : 0);
+  if (!blocking) process.exit(0);
+  const rules = [...new Set(errors.map((f) => f.id))];
+  exitAfterBlock(2, rules.map((rule) => ({ hook: 'pre-workflow-lint', rule, cwd: payload.cwd })));
 }
 
 main();

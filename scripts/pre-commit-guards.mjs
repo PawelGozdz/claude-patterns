@@ -84,6 +84,7 @@ runCheck('eval: reporting-hygiene', 'node', ['tests/flow-evals/reporting-hygiene
 runCheck('eval: flow-top', 'node', ['tests/flow-evals/flow-top/run.js']);
 runCheck('eval: telemetry-export', 'node', ['tests/flow-evals/telemetry-export/run.js']);
 runCheck('eval: pre-commit-telemetry', 'node', ['tests/flow-evals/pre-commit-telemetry/run.js']);
+runCheck('eval: hook-telemetry', 'node', ['tests/flow-evals/hook-telemetry/run.js']);
 runCheck('validate-agents', 'node', ['scripts/ci/validate-agents.js']);
 runCheck('validate-business-rules', 'node', ['scripts/ci/validate-business-rules.js']);
 runCheck('validate-commands', 'node', ['scripts/ci/validate-commands.js']);

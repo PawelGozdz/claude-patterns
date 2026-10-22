@@ -43,7 +43,7 @@ migracja historii pokazała, że stara telemetria raportowała 420/420 udanych p
 | Dashboard na żywo + kontrakt transportu | ✅ | TASK-OBS-008 |
 | Wysyłka na serwer + widok web | ⏳ później | TASK-OBS-009 |
 | Bramki pre-commit w metrykach (która bramka coś łapie) | ✅ | TASK-OBS-010 |
-| Blokady z hooków w metrykach (dzienne liczniki per reguła) | ⏳ | TASK-OBS-011 |
+| Blokady z hooków w metrykach (dzienne liczniki per reguła) | ✅ | TASK-OBS-011 |
 
 ## Kolejność
 

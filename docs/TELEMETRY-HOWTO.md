@@ -11,6 +11,7 @@ higiena raportowania: [ADR 0011](adr/0011-raportowanie-dryfu-i-telemetria-floty.
 | Collector (ten sam, uruchamiany przez hooki) | zdarzenia v1 | `telemetry/events/*.jsonl` (poza gitem) |
 | `/analyze` | `telemetry-emit.mjs run-start` / `run-end` | to samo |
 | Cron 07:30 pon–pt | `scripts/cron/audit-daily.sh` → audyt floty | `~/.claude/metrics/audit-daily.log` |
+| Hooki blokujące (9: `block-root-grep`, `block-subagent-commit`, `pre-workflow-lint`, `check-delegation`, …) | `process: hook`: jedno zdarzenie przy zablokowaniu, `step.role` = `<hook>:<reguła>` (np. `pre-workflow-lint:WL3`); przepuszczenia i ostrzeżenia nie zapisują nic; wyłączenie `HOOK_TELEMETRY=off` | `telemetry/events/*.jsonl` |
 | `scripts/pre-commit-guards.mjs` | `process: pre-commit`: krok per bramka (`step.role` = stała nazwa, np. `eval-hooks`), odsetek porażek per bramka w agregacie | `telemetry/events/*.jsonl` |
 
 ## Codzienne komendy
