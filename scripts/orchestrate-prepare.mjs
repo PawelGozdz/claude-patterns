@@ -180,6 +180,24 @@ function readPattern(relPath, projectDir, warnings) {
   return { path: relPath, card: false, source: relPath, bytes, content: readFileSync(fullAbs, 'utf8') };
 }
 
+// ANZ-PATTERN-MISMATCH (marketing-hub TS-MH-026): task czysto webowy dostawał 7 kart API z półki `always`
+// i trafień keywordów (schema/endpoint/uprawnien), a analiza odrzucała je ręcznie w patterns_exclude.
+// Przestrzeń nazw tagu to człon przed pierwszym „:" (`api:data-access` → api). Karta, której tagi
+// należą wyłącznie do przestrzeni, jakich nie ma żadna uruchamiana warstwa, nie wchodzi do doboru.
+function tagNamespaces(content) {
+  const m = /^\*\*Tags\*\*:\s*(.+)$/m.exec(String(content));
+  if (!m) return null;
+  const ns = [...m[1].matchAll(/"([^":]+):[^"]*"/g)].map((x) => x[1]);
+  return ns.length ? new Set(ns) : null;
+}
+
+function patternOutsideLayerNamespaces(content, runningNs) {
+  if (!runningNs.size) return false;
+  const ns = tagNamespaces(content);
+  if (!ns || ns.has('any')) return false;
+  return ![...ns].some((n) => runningNs.has(n));
+}
+
 // ── dopasowanie keywordów ────────────────────────────────────────────────────────
 function buildHaystack(taskDoc, analysisDoc) {
   const parts = [];
@@ -590,6 +608,8 @@ function main() {
     }
     const excl = analysisDoc.fm?.patterns_exclude;
     if (excl !== undefined && excl !== null && !Array.isArray(excl)) gateFailures.push('patterns_exclude: musi być listą ścieżek wzorców');
+    const fc = analysisDoc.fm?.final_checks;
+    if (fc !== undefined && fc !== null && (!Array.isArray(fc) || fc.some((c) => typeof c !== 'string' || !c.trim()))) gateFailures.push('final_checks: musi być listą niepustych nazw skryptów albo komend dosłownych');
   } else if (pauseGate) {
     gateFailures.push(
       `brak artefaktu ${relative(args.project, analysisDir)}/${args.taskId}*.analysis.md, ` +
@@ -672,6 +692,19 @@ function main() {
     }
   }
 
+  // Dobór z `always` i triggerów (nie z analizy ani z warstwy) odpada, gdy tagi karty leżą w przestrzeniach
+  // spoza uruchamianych warstw (task czysto web: karty `api:*` z półki nestjs). Karta bez tagów albo z `any:*` zostaje.
+  const runningNs = new Set(layers
+    .filter((l) => !l.skip && (!l.optional || createWhenHits[l.id]))
+    .flatMap((l) => l.tags.map((t) => t.split(':')[0])));
+  const analysisListed = new Set((analysisDoc?.fm?.patterns ?? []).map(String));
+  const outOfNs = patterns.filter((p) => (p.origin === 'always' || p.origin === 'trigger') && !analysisListed.has(p.path) && patternOutsideLayerNamespaces(p.content, runningNs));
+  if (outOfNs.length) {
+    const drop = new Set(outOfNs.map((p) => p.path));
+    for (let i = patterns.length - 1; i >= 0; i--) if (drop.has(patterns[i].path)) patterns.splice(i, 1);
+    warnings.push(`wzorce pominięte: tagi poza przestrzeniami uruchamianych warstw (${[...runningNs].join(', ')}): ${[...drop].join(', ')} — jeśli któryś jest potrzebny, dopisz go do patterns[] analizy`);
+  }
+
   for (const p of exclude) {
     if (!excludedHit.has(p)) warnings.push(`patterns_exclude: "${p}" nie był w doborze — literówka albo wzorzec już nie trafia`);
   }
@@ -682,7 +715,10 @@ function main() {
   // uruchamiała niczego.
   const running = layers.filter((l) => !l.skip);
   const gateOwn = (runtime.orchestrate?.final_gate?.checks ?? []).map(String);
-  const finalChecks = [...new Set([...gateOwn, ...running.flatMap((l) => l.checks)])];
+  // ORC-121: analiza dopisuje do bramki końcowej checks wynikające z uzasadnień decyzji (marketing-hub TS-MH-022:
+  // D3 wymagało test:l3 i skryptów taska po zmianie vitest-e2e.config.ts, a lista z bloków ich nie miała).
+  const analysisFinal = (Array.isArray(analysisDoc?.fm?.final_checks) ? analysisDoc.fm.final_checks : []).map((c) => String(c).trim()).filter(Boolean);
+  const finalChecks = [...new Set([...gateOwn, ...running.flatMap((l) => l.checks), ...analysisFinal])];
   if (!finalChecks.length && runtime.orchestrate?.final_gate?.agent) {
     warnings.push('bramka końcowa bez żadnych checks (ani final_gate.checks, ani checks warstw) — oceni zmianę wyłącznie czytając kod. Dodaj final_gate.checks w bloku.');
   }

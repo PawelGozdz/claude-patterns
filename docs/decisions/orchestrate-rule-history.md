@@ -2222,3 +2222,25 @@ analizy z błędnym YAML nie wystartują ponownie bez poprawki frontmatteru. Eva
 **Zmiana.** (1) `finalProbeSkippedFields`: wzorzec dla `typecheck` obejmuje też `build`. (2) `buildProbePrompt`: polecenie wołać Bash z `timeout: 600000`; przekroczenie czasu albo brak wyniku to `fail` z opisem w `tail`, nie `skipped`. Werdykt bramki bez zmian.
 
 **Poza zakresem.** Wcześniejsza bramka (`wf_cac36de4-1c6`) dała `typecheck: fail` przy `astro check` bez błędów; realna przyczyna to `astro build` (glob `public/*` czytał `public/_headers` jako JS) i leży w projekcie, nie w silniku. Jeśli `skipped` przy `build` wróci mimo timeoutu, trzeba sprawdzić dziennik przebiegu.
+
+<a id="orc-121"></a>
+
+### ORC-121 — bramka końcowa: `final_checks` z analizy, lint w sondzie po naprawie, uczciwy prompt rundy 2 (2026-10-22)
+
+**Objaw (DEV-orc-098, 2 wystąpienia).** marketing-hub TS-MH-022. (1) `wf_a6682904-bd3`: sonda bramki końcowej uruchomiła typecheck, lint, test, format, `validate:br` i build, ale nie `test:l3` ani skryptów taska `test:gateway`/`test:harness`, których wymagała decyzja D3 po zmianie `vitest-e2e.config.ts`; weryfikator odpalał je z własnego budżetu. (2) `wf_a9e9656e-280`: `NO_GO` `machine` bez naruszeń własnych. Runda naprawcza (przeniesienie `authorization-fixtures` do `test/shared`) wniosła 28 błędów `import/order` i 5 plików bez prettiera, a poprawki 5 i 6 (KANBAN, TM §8) leżały poza `dirs` każdej jednostki i nie zostały wykonane, choć prompt rundy 2 podał je jako poprawione.
+
+**Przyczyna.** (1) Lista checks bramki to `final_gate.checks` z bloków plus checks uruchomionych warstw; analiza nie miała jak dopisać obowiązku wynikającego z decyzji. (2a) Sonda po naprawie w `repairFinalFindings` sprawdzała tylko `typecheck` i `tests`, więc czerwony `lint` nie unieważniał naprawy. (2b) Implementer pomija pozycje spoza zakresu swojej warstwy i opisuje je w `deviation_note`, ale `roundExtra` zawsze twierdził „implementer poprawił": ustalenie pominięte po cichu znikało z oczu weryfikatora rundy 2.
+
+**Zmiana.** (1) Frontmatter analizy: `final_checks: [..]`, dołączane (bez duplikatów) do `checks.finalGate`; bramka `prepare` wymaga listy niepustych napisów. (2a) Sonda po naprawie liczy `lint: fail` jak czerwień (`ok = false`, ostrzeżenie z polem lint). (2b) `finalRoundExtra(items, skipped)` składa prompt rundy 2; `deviation_note` implementerów trafiają do `report.finalFix.skipped` i do promptu jako „IMPLEMENTER POMINĄŁ część pozycji … NIE są poprawione".
+
+**Poza zakresem.** Przeniesienie pliku z importerami poza zakresem to błąd zakresu w analizie, nie silnika: ANL-038 mówi teraz, że decyzja przenosząca/usuwająca eksport wymaga w `dirs` jednostki także importerów. Poprawki w KANBAN/TM (dokumenty taska) nie należą do żadnej warstwy kodu i nadal robi je człowiek.
+
+<a id="orc-122"></a>
+
+### ORC-122 — karta z tagami spoza przestrzeni uruchamianych warstw nie wchodzi do doboru (2026-10-22)
+
+**Objaw (DEV-anz-pattern-mismatch-web).** marketing-hub TS-MH-026, task czysto web: dobór dał 7 kart API (repository, controller-schema, zod-schema-validation, named-policy, domain-errors, conventions, logger) z półki `always` i trafień keywordów (schema/endpoint/uprawnien); analiza odrzuciła je wszystkie w `patterns_exclude`. Blok `refine-spa` celowo nie ma własnej półki `always`, więc zadanie web dziedziczy półkę z `nestjs` i `ddd/core`.
+
+**Zmiana.** `orchestrate-prepare` po rozwiązaniu warstw liczy przestrzenie nazw tagów uruchamianych warstw (`api:domain` → `api`, `web:ui` → `web`). Karta pochodząca z `always` lub triggera odpada, gdy jej tagi (linia `**Tags**:`) leżą wyłącznie w przestrzeniach spoza tego zbioru. Zostają: karta bez tagów, z jakimkolwiek `any:*`, wskazana wprost w `patterns[]` analizy oraz każda, gdy żadna uruchamiana warstwa nie ma tagów. Odpadnięcie daje ostrzeżenie `wzorce pominięte: …`. `patterns_exclude` działa jak dotąd, na wpisach ręcznych.
+
+**Poza zakresem.** Wzorce warstwowe (`layer_contributions`) nie są filtrowane: wchodzą przez warstwę, która je wnosi.

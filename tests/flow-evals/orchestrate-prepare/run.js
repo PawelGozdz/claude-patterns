@@ -527,6 +527,92 @@ CASES.push({
   },
 });
 
+// ANZ-PATTERN-MISMATCH: karty z tagami spoza przestrzeni uruchamianych warstw nie wchodzą do doboru z always/triggerów
+const RUNTIME_API_WEB = RUNTIME_DDD
+  .split('    - cross-layer/conventions-pattern.md\n').join('    - cross-layer/conventions-pattern.md\n    - infrastructure/repo-fixture-pattern.md\n    - cross-layer/any-fixture-pattern.md\n')
+  .split('    - {id: domain, dirs: [domain/], agent: "domain-application-implementer", role: "Model domenowy.", checks: ["typecheck"]}\n')
+  .join('    - {id: domain, dirs: [domain/], agent: "domain-application-implementer", tags: ["api:domain"], role: "Model domenowy.", checks: ["typecheck"]}\n' +
+        '    - {id: web, dirs: [apps/web/], agent: "refine-implementer", tags: ["web:ui"], role: "Panel.", checks: ["typecheck"]}\n');
+const buildApiWeb = (analysis) => {
+  const root = makeProject({ taskId: 'TS-FIX-001', runtime: RUNTIME_API_WEB, analysis, task: taskFile('Dodaj ekran panelu.') });
+  const kn = '.claude/knowledge/patterns/';
+  write(root, kn + 'infrastructure/repo-fixture-pattern.md', '# Pattern: Repo\n\n## What\nx\n');
+  write(root, kn + 'infrastructure/repo-fixture-pattern_summary.md', '# Karta: repo\n\n**Tags**: "api:data-access"\n\n## Reguły\n- x\n');
+  write(root, kn + 'cross-layer/any-fixture-pattern.md', '# Pattern: Any\n\n## What\nx\n');
+  write(root, kn + 'cross-layer/any-fixture-pattern_summary.md', '# Karta: any\n\n**Tags**: "api:domain", "any:process"\n\n## Reguły\n- x\n');
+  return root;
+};
+
+CASES.push({
+  name: 'pattern-tag-namespace-outside-running-layers-dropped',
+  build: () => buildApiWeb(withFm('layers_skip:\n  - { id: domain, reason: "task czysto web" }')),
+  check(r) {
+    if (r.code !== 0) return `oczekiwano exit 0, było ${r.code} (${r.stderr.trim()})`;
+    const paths = r.json.patterns.map((p) => p.path);
+    if (paths.includes('infrastructure/repo-fixture-pattern.md')) return 'karta api:* została w doborze task-u czysto web';
+    if (!paths.includes('cross-layer/any-fixture-pattern.md')) return 'karta z any:* wypadła';
+    if (!paths.includes('cross-layer/conventions-pattern.md')) return 'karta bez tagów wypadła';
+    if (!r.json.warnings.some((w) => /wzorce pominięte: tagi poza przestrzeniami/.test(w) && /repo-fixture/.test(w))) return 'brak ostrzeżenia o pominiętych wzorcach';
+    return null;
+  },
+});
+
+CASES.push({
+  name: 'pattern-tag-namespace-kept-when-api-layer-runs',
+  build: () => buildApiWeb(withFm('')),
+  check(r) {
+    if (r.code !== 0) return `oczekiwano exit 0, było ${r.code} (${r.stderr.trim()})`;
+    if (!r.json.patterns.some((p) => p.path === 'infrastructure/repo-fixture-pattern.md')) return 'karta api:* wypadła mimo uruchamianej warstwy api';
+    if (r.json.warnings.some((w) => /wzorce pominięte: tagi poza/.test(w))) return 'ostrzeżenie o pominięciu bez powodu';
+    return null;
+  },
+});
+
+CASES.push({
+  name: 'pattern-tag-namespace-analysis-listed-pattern-survives',
+  build: () => {
+    const a = withFm('layers_skip:\n  - { id: domain, reason: "task czysto web" }')
+      .split('  - domain/fixture-nocard-pattern.md').join('  - domain/fixture-nocard-pattern.md\n  - infrastructure/repo-fixture-pattern.md');
+    return buildApiWeb(a);
+  },
+  check(r) {
+    if (r.code !== 0) return `oczekiwano exit 0, było ${r.code} (${r.stderr.trim()})`;
+    if (!r.json.patterns.some((p) => p.path === 'infrastructure/repo-fixture-pattern.md')) return 'wzorzec wskazany wprost w patterns[] analizy został odrzucony';
+    return null;
+  },
+});
+
+// ORC-121: analiza dopisuje checks do bramki końcowej (final_checks)
+CASES.push({
+  name: 'analysis-final-checks-join-final-gate',
+  build: () => makeProject({
+    taskId: 'TS-FIX-001',
+    analysis: withFm('final_checks: [test:l3, test:gateway, test]'),
+    task: taskFile('Dodaj nowy aggregate.'),
+  }),
+  check(r) {
+    if (r.code !== 0) return `oczekiwano exit 0, było ${r.code} (${r.stderr.trim()})`;
+    const fg = r.json.checks.finalGate;
+    if (!fg.includes('test:l3') || !fg.includes('test:gateway')) return 'final_checks nie trafiły do checks.finalGate: ' + JSON.stringify(fg);
+    if (fg.filter((c) => c === 'test').length !== 1) return 'duplikat checks w bramce końcowej: ' + JSON.stringify(fg);
+    return null;
+  },
+});
+
+CASES.push({
+  name: 'analysis-final-checks-must-be-list-of-strings',
+  build: () => makeProject({
+    taskId: 'TS-FIX-001',
+    analysis: withFm('final_checks: "test:l3"'),
+    task: taskFile('Dodaj nowy aggregate.'),
+  }),
+  check(r) {
+    if (r.code === 0) return 'final_checks jako string przeszło bramkę';
+    if (!/final_checks: musi być listą/.test(r.stderr)) return 'brak komunikatu bramki o final_checks: ' + r.stderr.trim();
+    return null;
+  },
+});
+
 // ── bieg ─────────────────────────────────────────────────────────────────────────
 let failed = 0;
 for (const c of CASES) {

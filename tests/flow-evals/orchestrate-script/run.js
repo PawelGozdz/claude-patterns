@@ -1075,6 +1075,18 @@ const CASES = (c) => [
       return null;
     },
   },
+  // ORC-121: prompt rundy 2 nie twierdzi, że pominięte przez implementera pozycje zostały poprawione
+  {
+    name: 'final-round-2-prompt-reports-items-implementer-skipped',
+    run() {
+      const clean = c.finalRoundExtra(['a.ts: błąd'], []);
+      if (/POMINĄŁ/.test(clean)) return 'ostrzeżenie o pominiętych pozycjach bez deviation_note';
+      const p = c.finalRoundExtra(['a.ts: błąd', 'KANBAN.md: brak wpisu'], ['testing: KANBAN.md leży poza dirs warstwy']);
+      if (!/POMINĄŁ/.test(p) || !/KANBAN\.md leży poza dirs/.test(p)) return 'brak opisu pominiętych pozycji w prompcie rundy 2';
+      if (/które implementer poprawił:/.test(p)) return 'prompt nadal twierdzi, że implementer poprawił wszystko';
+      return null;
+    },
+  },
   // ORC-120: `build` w checks.finalGate liczy się jak typecheck (sonda mapuje go na to pole); sonda dostaje wskazówkę o timeoucie
   {
     name: 'final-probe-build-check-maps-to-typecheck-and-probe-warns-about-timeout',

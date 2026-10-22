@@ -1183,6 +1183,19 @@ function groupFindingsByLayer(items, layers, fallbackId) {
   return groups
 }
 
+// ORC-121: prompt rundy 2 bramki końcowej. Dotąd twierdził, że implementer poprawił WSZYSTKIE ustalenia,
+// choć pozycje spoza zakresu jego warstwy pomijał (marketing-hub TS-MH-022: poprawki w KANBAN i TM §8 leżały
+// poza dirs każdej jednostki, a runda 2 dostała je jako „poprawione"). `skipped` = deviation_note implementerów.
+function finalRoundExtra(items, skipped) {
+  const notes = (skipped || []).filter(Boolean)
+  return '\n\nRUNDA 2 (po naprawie): poprzednia runda zgłosiła ustalenia, które implementer próbował poprawić:\n' +
+    items.map((x, i) => (i + 1) + '. ' + x).join('\n') +
+    (notes.length
+      ? '\nIMPLEMENTER POMINĄŁ część pozycji jako spoza zakresu swojej warstwy (jego opis poniżej) — te pozycje NIE są poprawione, sprawdź je w kodzie i zgłoś, jeśli nadal zachodzą:\n' + notes.map((n) => '- ' + n).join('\n')
+      : '') +
+    '\nZweryfikuj poprawki i całość. Poprawione pozycje NIE są już naruszeniami; zgłoś tylko to, co nadal zachodzi albo powstało przy poprawce.'
+}
+
 // ORC-095 (docs/decisions/orchestrate-rule-history.md#orc-095): JEDNA gotowa linia statusu dla
 // człowieka, składana przez silnik, żeby główny agent nie wymyślał własnego akapitu. Bez ścieżek,
 // nazw klas i numerów reguł — same liczby i rodzaj problemu.
@@ -1821,6 +1834,7 @@ if (!finalAgent) {
     const groups = groupFindingsByLayer(items, implLayers, fallback)
     let ok = true
     const noop = []
+    const skipped = []
     // ORC-103: odcisk drzewa przed i po każdej naprawie; `ask` zwraca null przy awarii sondy.
     const fingerprint = async (label) => {
       try {
@@ -1847,6 +1861,8 @@ if (!finalAgent) {
         report.warnings = (report.warnings || []).concat(layer.id + ': naprawa po bramce końcowej — implementer bez wyniku')
         continue
       }
+      // ORC-121: pozycje spoza zakresu warstwy implementer POMIJA i opisuje w deviation_note — runda 2 ma o tym wiedzieć
+      if (typeof fixed.deviation_note === 'string' && fixed.deviation_note.trim()) skipped.push(layer.id + ': ' + fixed.deviation_note.trim())
       const fpAfter = await fingerprint('final-fix-fp-' + layer.id)
       if (fixLeftTreeUnchanged(fpBefore, fpAfter)) {
         ok = false
@@ -1861,12 +1877,13 @@ if (!finalAgent) {
       }
       const prOpts =Object.assign({ label: layer.id + '-final-fix-checks', maxTurns: DEFAULTS.probeTurns, schema: CHECKS_SCHEMA }, modelFor('probe'))
       const pr = await ask(buildProbePrompt(a, layer), prOpts)
-      if (pr && (pr.typecheck === 'fail' || pr.tests === 'fail')) {
+      // ORC-121: lint też liczy się jako czerwona sonda — naprawa, która wnosi błędy import/order i prettier, nie jest zieloną naprawą
+      if (pr && (pr.typecheck === 'fail' || pr.tests === 'fail' || pr.lint === 'fail')) {
         ok = false
-        report.warnings = (report.warnings || []).concat(layer.id + ': sonda czerwona po naprawie ustaleń bramki końcowej (typecheck: ' + pr.typecheck + ', testy: ' + pr.tests + ')')
+        report.warnings = (report.warnings || []).concat(layer.id + ': sonda czerwona po naprawie ustaleń bramki końcowej (typecheck: ' + pr.typecheck + ', testy: ' + pr.tests + (pr.lint != null ? ', lint: ' + pr.lint : '') + ')')
       }
     }
-    report.finalFix = { blocking: blocking.length, minor: minor.length, layers: Object.keys(groups), noop }
+    report.finalFix = { blocking: blocking.length, minor: minor.length, layers: Object.keys(groups), noop, skipped }
     return ok
   }
 
@@ -1973,9 +1990,7 @@ if (!finalAgent) {
     const repaired = await repairFinalFindings(blockingFinal, minorFinal)
     if (repaired && blockingFinal.length) {
       report.finalGateRound1 = report.finalGate
-      roundExtra = '\n\nRUNDA 2 (po naprawie): poprzednia runda zgłosiła ustalenia, które implementer poprawił:\n' +
-        blockingFinal.concat(minorFinal).map((x, i) => (i + 1) + '. ' + x).join('\n') +
-        '\nZweryfikuj poprawki i całość. Poprawione pozycje NIE są już naruszeniami; zgłoś tylko to, co nadal zachodzi albo powstało przy poprawce.'
+      roundExtra = finalRoundExtra(blockingFinal.concat(minorFinal), report.finalFix && report.finalFix.skipped)
       continue
     }
     const noopFix = report.finalFix && report.finalFix.noop && report.finalFix.noop.length

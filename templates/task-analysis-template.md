@@ -43,6 +43,9 @@ patterns:                       # grounding (z Pattern Discovery) — to samo w 
 patterns_exclude: []            # fałszywe trafienia keywordów (np. wzorzec web na „dashboard")
   # — ścieżki z doboru, których NIE wstrzykiwać. Wpis, który niczego nie wykluczył = ostrzeżenie.
 
+final_checks: []                # skrypty/komendy, które decyzje analizy każą uruchomić w bramce końcowej
+  # (np. [test:l3, test:gateway] po zmianie konfiguracji e2e) — dopisywane do checks z bloków (ORC-121).
+
 units: []                       # podział warstwy na jednostki — każda to osobny przebieg
   # implement→verify (pod-warstwa <layer>:<id>). Pusty = warstwy z runtime.yml bez podziału.
   # Warstwa z jednostkami NIE może być w layers_skip ani layers_scope. W dirs dopisz też
