@@ -2256,3 +2256,59 @@ analizy z błędnym YAML nie wystartują ponownie bez poprawki frontmatteru. Eva
 **Zmiana.** (1) `report.finalProbe` i komunikat naruszenia „GO z niezweryfikowanym zakresem" zawierają stan sondy (`finalProbeSummary`: `typecheck=…, tests=…, lint=… (zielona | brak zielonego dowodu)`), więc następny raport mówi, czemu luki nie zostały obniżone. (2) Gdy bramka dała GO bez naruszeń (`forcedGaps`), runda naprawcza przeszła, a nie było ustaleń blokujących, sonda bramki końcowej biegnie jeszcze raz (`final-checks-after-fix`, `report.finalProbeAfterFix`); przy zielonym dowodzie ta sama ocena co w ORC-098 daje GO z lukami. Czerwona albo ślepa ponowna sonda zostawia halt i ostrzeżenie.
 
 **Poza zakresem.** Jeśli stan sondy w kolejnym raporcie pokaże `zielona`, a halt się powtórzy, przyczyna leży gdzie indziej (filtry `filterKnownLayerGaps`/`filterAdjudicatedByDecision` albo pusty wynik bramki) i rekord trzeba otworzyć z tym dowodem.
+
+<a id="orc-124"></a>
+
+### ORC-124 — pliki brudne przed startem są chronione w promptach (2026-10-23)
+
+**Objaw (DEV-orc-041-implementation-core-gate).** ai-os-bot BOT-041, `wf_88100bcf-827`, warstwa `implementation:core-gate`: `src/core/llm/models.ts` miał niezatwierdzoną zmianę właściciela sprzed przebiegu (`dirtyAtStart`). Sonda diffu i weryfikator uznały go za zmianę implementera, weryfikator dał NO_GO z poleceniem `git checkout`, a implementer cofnął plik do HEAD. Pracę właściciela przywrócono ręcznie z głównej sesji.
+
+**Przyczyna.** `dirtyAtStart` trafiał tylko do bramki końcowej i do stagingu (ORC-090). Prompty weryfikatora i implementera warstwy go nie znały, a sonda po cichej śmierci oraz bramka „kod istnieje" liczyły plik brudny jak pracę warstwy. Zakaz cofania z ORC-041 nie wystarczył: polecenie cofnięcia przyszło w liście naruszeń od weryfikatora.
+
+**Zmiana.** `dirtyBlock(a, role)`: lista (do 40 plików) w prompcie weryfikatora z zakazem oceniania ich i zalecania `git checkout`/`restore`/`reset`, w prompcie implementera z zakazem edycji i cofania oraz z poleceniem pominięcia takiej pozycji w `deviation_note`. Sonda po cichej śmierci i bramka „kod istnieje" pomijają pliki brudne przed startem, chyba że implementer sam je zgłosił w `changed_files`.
+
+**Poza zakresem.** Plik brudny przed startem, który implementer legalnie zmienił, a nie zgłosił, nie zostanie policzony w bramce „kod istnieje". Odcisk treści pliku sprzed startu rozstrzygałby to dokładnie, ale wymaga zapisu stanu przed przebiegiem.
+
+<a id="orc-125"></a>
+
+### ORC-125 — ścieżka względna i bezwzględna to jeden plik (2026-10-23)
+
+**Objaw (DEV-orc-067).** ai-os-bot BOT-041: raport silnika twierdził „63 pliki", a `git diff --cached` po przebiegu pokazywał 0 (nowe pliki tylko jako `git add -N` z sond). Lista zawierała zdublowane ścieżki bezwzględne. Krok 4 (`git add`, potem `git status`, ORC-067) naprawił stan ręcznie, jak zaprojektowano.
+
+**Zmiana.** `finalFileList` usuwa ścieżkę bezwzględną, jeśli jej względny odpowiednik jest na liście. Rozbieżność „raport kontra indeks" zostaje po stronie kroku 4, bo silnik sam niczego nie stage'uje.
+
+<a id="orc-126"></a>
+
+### ORC-126 — odroczona czerwień jest dowodem dla GO_WITH_GAPS (2026-10-23)
+
+**Objaw (DEV-orc-084-domain-u1-domain).** marketing-hub TS-MH-027, `domain:u1-domain`, dwa przebiegi (budżet verify 15 i 40): GO bez naruszeń, ale z `unverified_scope` (2–3 specyfikacje), po trzech próbach halt. Typecheck czerwony wyłącznie przez TS2322 w `application/.../transition-to-scheduled/handler.ts` (późniejsza jednostka).
+
+**Przyczyna (wniosek z kodu, bez dziennika przebiegu).** ORC-082 odracza taką czerwień (`typecheck: 'deferred'`), ale `probeHasGreenEvidence` uznawało za dowód wyłącznie `pass`. Warstwa domenowa z `checks: [typecheck:api, lint:check:api]` ma `tests: skipped`, więc po odroczeniu nie zostawał żaden `pass` i `layerGapsAcceptable` odrzucało GO_WITH_GAPS. Komentarz przy `layerGapsAcceptable` już mówił „pass|skipped|deferred".
+
+**Zmiana.** `deferred` w `typecheck` lub `tests` liczy się jak dowód zielonej sondy (własne pliki warstwy przeszły kontrolę). Czerwone testy i ślepa sonda nadal go nie dają.
+
+<a id="orc-127"></a>
+
+### ORC-127 — plik wspólny jednostek nie jest luką jednostki (2026-10-23)
+
+**Objaw (DEV-halt-unverified-scope, 2. wystąpienie).** juz-ide-api-1 TS-SEC-D0-FOLLOWUPS-001, `infrastructure:retry-const`: weryfikator dał GO z `unverified_scope = auth-error.mapper.ts` (1099 linii, wspólny z wcześniejszymi jednostkami, diff względem HEAD zawiera hunki innych warstw), 3 próby, `ESCALATE_AND_HALT` `machine`. Obejście: `--overrides` zawężające ocenę do hunków jednostki.
+
+**Zmiana.** `scopeBlock` dla jednostek (`id` zawiera `:`) dodaje akapit: plik może zawierać zmiany innych jednostek, oceniaj i zmieniaj wyłącznie fragmenty wynikające z powodu jednostki, nie wpisuj pliku do `unverified_scope` z tego powodu.
+
+<a id="orc-128"></a>
+
+### ORC-128 — decyzje wskazujące pliki bez właściciela (2026-10-23)
+
+**Objaw (agent_note, juz-ide-api-1).** TS-SEC-D0-FOLLOWUPS-001, `application:sessions-svc`: pliki wymagane przez decyzje (D13: `validate-session/handler.ts`, `security.config.ts`; D4: stała Retry-After w guardzie i mapperze) nie miały właściciela w analizie. Wyszło to dopiero z bramki końcowej i weryfikatorów, kosztem 2 dodatkowych przebiegów.
+
+**Zmiana.** `orchestrate-prepare` wyciąga z `choice` i `rationale` decyzji ścieżki plików kodu (`.ts/.tsx/.js/.py/.dart/.sql/…`), które istnieją w repo (pomija `docs/` i `project-orchestration/`), i ostrzega o tych, których nie obejmuje `dirs` ani `layers_scope` żadnej uruchamianej warstwy lub jednostki. Tylko ostrzeżenie: decyzja może celowo wskazywać plik, którego task nie zmienia.
+
+**Poza zakresem.** Ścieżki podane bez prefiksu pakietu (`validate-session/handler.ts`) nie istnieją względem korzenia repo i nie są wykrywane.
+
+<a id="orc-129"></a>
+
+### ORC-129 — task bez uruchamianych warstw (2026-10-23)
+
+**Objaw (DEV-anz-layer-mismatch, 6. wystąpienie).** aegis-flow TS-001 jest zadaniem wyłącznie dokumentacyjnym: wszystkie 6 warstw trafiło do `layers_skip`, a silnik zostałby z samą bramką końcową.
+
+**Zmiana.** `prepare` ostrzega, gdy żadna warstwa nie jest uruchamiana: task bez zmian w kodzie nie ma czego wykonać w `/orchestrate`. Bramka nie odmawia startu, bo analiza może świadomie zostawić samą bramkę końcową.

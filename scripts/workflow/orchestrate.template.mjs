@@ -165,6 +165,25 @@ const NO_REVERT =
   'są zakazane — przebieg kończy się „staged, not committed", commit robi człowiek. Zmiany ' +
   'zostają w drzewie roboczym; `git add` jest zbędny (robi go orchestrator po bramce końcowej).'
 
+// ORC-124: pliki brudne PRZED startem przebiegu to cudza, niezatwierdzona praca (ai-os-bot BOT-041:
+// src/core/llm/models.ts właściciela został uznany za zmianę implementera, weryfikator dał NO_GO z
+// poleceniem `git checkout`, implementer cofnął plik do HEAD i praca właściciela zniknęła). Lista
+// jedzie do weryfikatora i implementera; zakaz cofania z NO_REVERT nie wystarcza, gdy polecenie
+// cofnięcia przychodzi w liście naruszeń od weryfikatora.
+function dirtyBlock(a, role) {
+  const dirty = ((a && a.dirtyAtStart) || []).map(String).filter(Boolean)
+  if (!dirty.length) return ''
+  const shown = dirty.slice(0, 40).join('\n  ') + (dirty.length > 40 ? '\n  … i ' + (dirty.length - 40) + ' więcej' : '')
+  const rule = role === 'verifier'
+    ? 'NIE oceniaj ich i nie zgłaszaj z ich powodu naruszeń; w naruszeniach NIGDY nie zalecaj ' +
+      '`git checkout`/`restore`/`reset` na żadnym pliku — cofnięcie niszczy pracę właściciela. ' +
+      'Plik z tej listy, który zmienił też implementer, opisz jako uwagę dla człowieka, nie jako naruszenie.'
+    : 'NIE edytuj ich i NIE cofaj; jeśli lista naruszeń każe je zmienić albo cofnąć, pomiń tę pozycję i ' +
+      'opisz ją w `deviation_note` (ORC-042). Polecenie cofnięcia z listy naruszeń nie uchyla zakazu COFANIA.'
+  return '\n\nPLIKI BRUDNE JUŻ PRZED STARTEM PRZEBIEGU (cudza, niezatwierdzona praca właściciela, nie ' +
+    'praca tego taska):\n  ' + shown + '\n' + rule + '\n'
+}
+
 // Zakres warstwy, jaki widzi implementer, weryfikator i sonda. Analiza może go ZAWĘZIĆ
 // (`layers_scope` w artefakcie → `layer.scope.dirs`): warstwa wchodzi, ale tylko wskazane
 // ścieżki. To nie to samo co `skip` — tam implementer nie startuje wcale (ANL-037).
@@ -198,7 +217,16 @@ function scopeBlock(layer, a) {
       'jednostki tego przebiegu z `tests: true` (' + testingUnits.map((l) => l.id).join(', ') +
       ') — to JEJ praca, nie luka tej warstwy; nie zgłaszaj tego jako naruszenie tutaj.'
     : ''
-  return 'ZAKRES WARSTWY\n  id: ' + layer.id + '\n  katalogi: ' + dirs +
+  // ORC-127: jednostki tego samego przebiegu dzielą bazę diffu (HEAD), a plik bywa wspólny — w diffie
+  // względem HEAD są też hunki wcześniejszych jednostek. Weryfikator jednostki wpisywał taki plik do
+  // unverified_scope („1099 linii, hunki innych warstw") i 3 próby kończyły halt (juz-ide-api-1
+  // TS-SEC-D0-FOLLOWUPS-001, infrastructure:retry-const).
+  const sharedNote = String(layer.id).indexOf(':') !== -1
+    ? '\n  Jednostka tego przebiegu: plik z zakresu może zawierać też zmiany INNYCH jednostek (diff względem ' +
+      'HEAD jest wspólny). Oceniaj i zmieniaj wyłącznie fragmenty wynikające z powodu tej jednostki; hunki ' +
+      'pozostałych ocenia ich własny weryfikator — nie wpisuj pliku do `unverified_scope` z tego powodu.'
+    : ''
+  return 'ZAKRES WARSTWY\n  id: ' + layer.id + '\n  katalogi: ' + dirs + sharedNote +
     (layer.role ? '\n  rola: ' + layer.role : '') + narrowed +
     '\nPlik spoza tych katalogów jest POZA ZAKRESEM, nie brakujący.' +
     '\nWYJĄTEK — pliki towarzyszące: test (*.spec.*, *.test.*, test_*.py, *_test.py) w tym samym katalogu i z tym samym ' +
@@ -264,7 +292,8 @@ function buildImplPrompt(a, layer, attempt, violations, silentDeaths, probeRed) 
   // Przy poprawce (violations) nie powtarzamy bloku SZUKANIE — implementer ma listę
   // plik/linia/reguła, nie ma czego lokalizować; blok tylko dokładałby kontekstu.
   return spec + decisions + '\n\n' + scopeBlock(layer, a) + '\n' + renderCards(cardsFor(a, baseId(layer))) +
-    (violations ? '' : SEARCH_BUDGET) + soft + silent + (probeRed ? RED_PROBE_RULE : '') + fix + minorFromAnalysis + noop + NO_REVERT
+    (violations ? '' : SEARCH_BUDGET) + soft + silent + (probeRed ? RED_PROBE_RULE : '') + fix + minorFromAnalysis + noop +
+    dirtyBlock(a, 'implementer') + NO_REVERT
 }
 
 // Pliki w drzewie roboczym — JEDNO polecenie dla bramki „kod istnieje", diff-sondy po cichej
@@ -556,7 +585,7 @@ function buildVerifierPrompt(a, layer, probe, changedFiles, mode, noopClaim, pri
     'więcej — bez nawiasów, wyjaśnień, kilku plików w jednym stringu ani gołych nazw plików bez ' +
     'katalogu. Zdanie prozą zamiast ścieżki nie da się mechanicznie rozpoznać jako „poza ' +
     'zakresem" po drugiej stronie.\n'
-  return existing + scopeBlock(layer, a) + '\n\n' + facts + files +
+  return existing + scopeBlock(layer, a) + '\n\n' + facts + files + dirtyBlock(a, 'verifier') +
     renderCards(cardsFor(a, baseId(layer))) +
     '\nOceń zgodność zmiany z regułami powyżej. Zwróć werdykt GO albo NO_GO i listę naruszeń ' +
     '(plik, linia, reguła, co poprawić).\n' + scopeReminder + (a.autoFixMinor !== false ? MINOR_REMINDER : '') +
@@ -814,7 +843,12 @@ function finalProbeSkippedFields(finalChecks, probe) {
 function probeHasGreenEvidence(probe) {
   if (!probe) return false
   if (probe.typecheck === 'fail' || probe.tests === 'fail' || probe.lint === 'fail') return false
-  return probe.typecheck === 'pass' || probe.tests === 'pass'
+  // ORC-126: `deferred` (czerwień wyłącznie w plikach późniejszych warstw, ORC-082/099) znaczy, że
+  // WŁASNE pliki warstwy przeszły kontrolę — to dowód, nie jego brak. Warstwa domenowa z checks
+  // [typecheck, lint] i `tests: skipped` nie miała inaczej żadnego `pass` i GO_WITH_GAPS było
+  // odrzucane (marketing-hub TS-MH-027, domain:u1-domain, dwa przebiegi po 3 próby).
+  const ok = (v) => v === 'pass' || v === 'deferred'
+  return ok(probe.typecheck) || ok(probe.tests)
 }
 
 // ORC-123: dlaczego sonda bramki końcowej NIE pozwoliła obniżyć luk do GO z lukami (ORC-098).
@@ -1284,7 +1318,10 @@ function finalFileList(treeFiles, layerFiles) {
     const s = String(f).trim()
     if (s && out.indexOf(s) === -1) out.push(s)
   }
-  return out
+  // ORC-125: implementer bywa zgłasza ścieżkę bezwzględną (/opt/projects/x/src/a.ts), sonda drzewa względną
+  // (src/a.ts) — ten sam plik szedł do `git add` i do raportu dwa razy (ai-os-bot BOT-041, 63 „plików").
+  const rel = out.filter((s) => s[0] !== '/')
+  return out.filter((s) => s[0] !== '/' || !rel.some((r) => s.endsWith('/' + r)))
 }
 
 // Sonda mierzy PRZYROST, nie tylko zieloność. „typecheck pass + testy pass + niepusty diff"
@@ -1485,7 +1522,9 @@ for (const step of plan) {
         } catch (e) {
           probeDiff = null
         }
-        const touched = probeDiff && probeDiff.files ? probeDiff.files.filter((f) => layerTouches(layer, f)) : []
+        // ORC-124: plik brudny przed startem nie jest pracą implementera, który zamilkł
+        const dirtyBefore = new Set((a.dirtyAtStart || []).map(String))
+        const touched = probeDiff && probeDiff.files ? probeDiff.files.filter((f) => layerTouches(layer, f) && !dirtyBefore.has(f)) : []
         if (touched.length) {
           log(layer.id + ': implementer zamilkł, ale ' + touched.length + ' plików warstwy jest zmienionych — weryfikuję stan, nie powtarzam pracy')
           mode = 'verify-existing'
@@ -1570,7 +1609,10 @@ for (const step of plan) {
     } catch (e) {
       gate = null
     }
-    const changed = gate && gate.files ? gate.files.filter((f) => layerTouches(layer, f)) : []
+    // ORC-124: plik brudny przed startem liczy się jako praca warstwy tylko, gdy implementer sam go zgłosił
+    const dirtyBeforeGate = new Set((a.dirtyAtStart || []).map(String))
+    const claimedFiles = new Set((layerFiles || []).map(String))
+    const changed = gate && gate.files ? gate.files.filter((f) => layerTouches(layer, f) && (!dirtyBeforeGate.has(f) || claimedFiles.has(f))) : []
     if (!changed.length && mode !== 'verify-existing') {
       violations = 'bramka „kod istnieje": żaden plik w zakresie warstwy nie został zmieniony'
       log(layer.id + ': ' + violations)

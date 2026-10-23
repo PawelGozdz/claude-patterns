@@ -613,6 +613,44 @@ CASES.push({
   },
 });
 
+// ORC-129: wszystkie warstwy w layers_skip → ostrzeżenie, że silnik nie ma czego wykonać
+CASES.push({
+  name: 'all-layers-skipped-warns-task-without-code',
+  build: () => makeProject({
+    taskId: 'TS-FIX-001',
+    analysis: withFm('layers_skip:\n  - { id: domain, reason: "task dokumentacyjny" }\n  - { id: testing, reason: "task dokumentacyjny" }'),
+    task: taskFile('Uzupełnij dokumentację.'),
+  }),
+  check(r) {
+    if (r.code !== 0) return `oczekiwano exit 0, było ${r.code} (${r.stderr.trim()})`;
+    if (!(r.json.warnings || []).some((x) => /żadna warstwa nie jest uruchamiana/.test(x))) return 'brak ostrzeżenia o zadaniu bez warstw: ' + JSON.stringify(r.json.warnings);
+    return null;
+  },
+});
+
+// ORC-128: plik kodu wskazany w decyzji, bez właściciela w zakresie warstw → ostrzeżenie; z właścicielem → cisza
+CASES.push({
+  name: 'decision-file-without-layer-owner-warns',
+  build: () => {
+    const root = makeProject({
+      taskId: 'TS-FIX-001',
+      analysis: analysisFm({}).replace('rationale: "uzasadnienie"', 'rationale: "zmiana w src/app/orphan/handler.ts oraz domain/x.ts"'),
+      task: taskFile('Dodaj nowy aggregate.'),
+    });
+    write(root, 'src/app/orphan/handler.ts', 'export {}\n');
+    write(root, 'domain/x.ts', 'export {}\n');
+    return root;
+  },
+  check(r) {
+    if (r.code !== 0) return `oczekiwano exit 0, było ${r.code} (${r.stderr.trim()})`;
+    const w = (r.json.warnings || []).find((x) => /bez właściciela/.test(x));
+    if (!w) return 'brak ostrzeżenia o pliku bez właściciela';
+    if (!/src\/app\/orphan\/handler\.ts/.test(w)) return 'ostrzeżenie nie wskazuje pliku: ' + w;
+    if (/domain\/x\.ts/.test(w)) return 'plik z dirs warstwy zgłoszony jako sierota: ' + w;
+    return null;
+  },
+});
+
 // ── bieg ─────────────────────────────────────────────────────────────────────────
 let failed = 0;
 for (const c of CASES) {

@@ -191,6 +191,25 @@ function tagNamespaces(content) {
   return ns.length ? new Set(ns) : null;
 }
 
+// ORC-128: ścieżki plików KODU (nie dokumentów) wymienione w `choice`/`rationale` decyzji, które istnieją
+// w repo. Pliki .md/.yml/.json i katalogi docs/ oraz project-orchestration/ pomijamy: to artefakty
+// procesu i dokumentacja (obsługuje je `minor_fixes`, ORC-101), nie zakres warstw kodu.
+function decisionCodeFiles(decisions, projectDir) {
+  if (!Array.isArray(decisions)) return [];
+  const re = /(?:^|[\s`'"(\[,])((?:[\w@.-]+\/)+[\w.-]+\.(?:tsx?|mts|cts|jsx?|mjs|cjs|py|dart|sql|go|rs))(?![\w/])/g;
+  const out = new Set();
+  for (const d of decisions) {
+    const text = `${d?.choice ?? ''} ${d?.rationale ?? ''}`;
+    let m;
+    while ((m = re.exec(text)) !== null) {
+      const p = m[1].replace(/^\.\//, '');
+      if (/^(docs|project-orchestration)\//.test(p)) continue;
+      if (existsSync(join(projectDir, p))) out.add(p);
+    }
+  }
+  return [...out];
+}
+
 function patternOutsideLayerNamespaces(content, runningNs) {
   if (!runningNs.size) return false;
   const ns = tagNamespaces(content);
@@ -721,6 +740,23 @@ function main() {
   const finalChecks = [...new Set([...gateOwn, ...running.flatMap((l) => l.checks), ...analysisFinal])];
   if (!finalChecks.length && runtime.orchestrate?.final_gate?.agent) {
     warnings.push('bramka końcowa bez żadnych checks (ani final_gate.checks, ani checks warstw) — oceni zmianę wyłącznie czytając kod. Dodaj final_gate.checks w bloku.');
+  }
+  // ORC-129: żadna warstwa nie jest uruchamiana (wszystkie w layers_skip albo bez trafienia create_when) —
+  // task bez kodu (np. wyłącznie docs/ i project-orchestration/); silnik zostałby z samą bramką końcową
+  // (aegis-flow TS-001: 6 z 6 warstw w layers_skip).
+  if (!running.length) {
+    warnings.push('żadna warstwa nie jest uruchamiana (wszystkie w layers_skip lub poza create_when) — task bez zmian w kodzie; /orchestrate nie ma czego wykonać. Wykonaj zadanie ręcznie (dokumenty) albo zamknij bez silnika; jeśli to pomyłka w layers_skip, popraw analizę (ORC-129)');
+  }
+  // ORC-128: pliki kodu wskazane w decyzjach analizy, które istnieją w repo, a nie leżą w zakresie żadnej
+  // uruchamianej warstwy/jednostki — wychodziły dopiero z bramki końcowej, kosztem 2 przebiegów
+  // (juz-ide-api-1 TS-SEC-D0-FOLLOWUPS-001: validate-session/handler.ts, security.config.ts, stała Retry-After).
+  if (!running.some((l) => !(l.dirs ?? []).length && !(l.scope?.dirs ?? []).length)) {
+    const owned = (p) => running.some((l) => [...(l.dirs ?? []), ...(l.scope?.dirs ?? [])]
+      .some((d) => { const s = String(d).replace(/\/+$/, ''); return s && p.includes(s); }));
+    const orphans = decisionCodeFiles(analysisDoc?.fm?.decisions, args.project).filter((p) => !owned(p));
+    if (orphans.length) {
+      warnings.push(`decyzje wskazują pliki bez właściciela w zakresie uruchamianych warstw/jednostek: ${orphans.join(', ')} — dopisz je do \`dirs\` właściwej jednostki albo świadomie pomiń (inaczej wyjdą dopiero z bramki końcowej, ORC-128)`);
+    }
   }
   const checks = {
     byLayer: Object.fromEntries(layers.map((l) => [l.id, l.checks])),
