@@ -107,8 +107,8 @@ Wtedy implementacja idzie na świeżej gałęzi z `develop`.
   `kill-switch` / `halt-all` / `spinning`.
 - Pułapka złapana przez eval: `exitAfterBlock` jest asynchroniczny, więc `deny()` w `productivity-watchdog` wracał do `main()`,
   który kończył się `exit 0` — kill-switch przestawał blokować. Naprawione `return deny(...)`; reguła opisana w nagłówku helpera.
-- Eval `tests/flow-evals/hook-telemetry/` (14 przypadków, prawdziwe hooki w procesach), wpięty w `pre-commit-guards.mjs`.
-  Nie pokrywa wprost `check-patterns-read` i `check-subagent-pattern-reads` (wymagają transkryptu) — tam zmiana to jedno
-  wyjście na końcu pliku, po którym nic się nie wykonuje.
+- Eval `tests/flow-evals/hook-telemetry/` (16 przypadków, prawdziwe hooki w procesach), wpięty w `pre-commit-guards.mjs`.
+  Obejmuje wszystkie 9 hooków, także `check-patterns-read` i `check-subagent-pattern-reads` na transkrypcie JSONL.
+  Z `HOOK_TELEMETRY=off` blokadowe przypadki padają (9 z 16), więc eval łapie brak zapisu.
 - Rollup bez zmian liczy blokady: dwie blokady `block-root-grep` w katalogu tymczasowym dały w `telemetry-rollup.mjs` `process hook` × rola `block-root-grep:root-grep` z `n=2`, `halted=2`; przepuszczenie nie zostawiło zdarzenia.
 - Wdrożone przez gałąź `feature/TASK-OBS-011-hooks` (usunięta po scaleniu), scalone do `develop` jako `260d2cc` i do `feature/TASK-OBS-011` jako `4802687`. Hooki działają na żywo w projektach.
