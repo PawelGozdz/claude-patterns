@@ -38,6 +38,13 @@ function run(hook, payload, { env = {}, telemetry } = {}) {
 
 const rootGrep = (cwd, command) => ({ tool_name: 'Bash', tool_input: { command }, cwd });
 
+// Transkrypt JSONL w formacie, który czytają hooki wzorców: jedna linia = jedno tool_use.
+function transcript(base, name, toolUses) {
+  const file = path.join(base, `${name}.jsonl`);
+  fs.writeFileSync(file, toolUses.map((t) => JSON.stringify(t)).join('\n') + '\n');
+  return file;
+}
+
 const tests = [
   {
     name: 'block-produces-one-event-with-rule-id',
@@ -166,6 +173,46 @@ const tests = [
       if (ev.length !== 1 || !/^check-delegation:(orchestrating-strict|pattern-file)$/.test(ev[0].step.role)) return `zdarzenia: ${JSON.stringify(ev.map((e) => e.step))}`;
       const sub = run('check-delegation.js', { ...payload, agent_id: 'a1' }, { telemetry: s.telemetry });
       if (sub.status !== 0 || events(s.telemetry).length !== 1) return 'subagent przepuszczony powinien nic nie zapisać';
+      return null;
+    },
+  },
+  {
+    name: 'patterns-read-block-records-rule-and-read-pattern-passes',
+    run() {
+      const s = sandbox('proj-pr');
+      const file = path.join(s.cwd, 'src', 'domain', 'aggregates', 'order.aggregate.ts');
+      const t = transcript(s.base, 'plain', [{ type: 'tool_use', name: 'Bash', input: { command: 'ls' } }]);
+      const blocked = run('check-patterns-read.js', { tool_name: 'Write', tool_input: { file_path: file }, transcript_path: t, cwd: s.cwd }, { telemetry: s.telemetry });
+      const ev = events(s.telemetry);
+      if (blocked.status !== 2) return `bez przeczytanego wzorca status ${blocked.status}, oczekiwano 2`;
+      if (ev.length !== 1 || ev[0].step.role !== 'check-patterns-read:patterns-read') return `zdarzenia po blokadzie: ${JSON.stringify(ev.map((e) => e.step))}`;
+      if (JSON.stringify(ev).includes('order.aggregate')) return 'w zdarzeniu jest ścieżka pliku';
+      const s2 = sandbox('proj-pr2');
+      const t2 = transcript(s2.base, 'read', [{ type: 'tool_use', name: 'Read', input: { file_path: '/p/.claude/knowledge/patterns/domain/aggregate-pattern.md' } }]);
+      const passed = run('check-patterns-read.js', { tool_name: 'Write', tool_input: { file_path: file }, transcript_path: t2, cwd: s2.cwd }, { telemetry: s2.telemetry });
+      if (passed.status !== 0) return `z przeczytanym wzorcem status ${passed.status}, oczekiwano 0`;
+      if (events(s2.telemetry).length !== 0) return 'przepuszczenie zostawiło zdarzenie';
+      return null;
+    },
+  },
+  {
+    name: 'pattern-grounding-block-records-rule-and-read-pattern-passes',
+    run() {
+      const s = sandbox('proj-pg');
+      const file = path.join(s.cwd, 'src', 'domain', 'aggregates', 'order.aggregate.ts');
+      const edit = { type: 'tool_use', name: 'Write', input: { file_path: file } };
+      const t = transcript(s.base, 'edit-only', [edit]);
+      const blocked = run('check-subagent-pattern-reads.js', { agent_transcript_path: t, cwd: s.cwd }, { telemetry: s.telemetry });
+      const ev = events(s.telemetry);
+      if (blocked.status !== 2) return `bez przeczytanego wzorca status ${blocked.status}, oczekiwano 2`;
+      if (ev.length !== 1 || ev[0].step.role !== 'check-subagent-pattern-reads:pattern-grounding') return `zdarzenia po blokadzie: ${JSON.stringify(ev.map((e) => e.step))}`;
+      if (JSON.stringify(ev).includes('order.aggregate')) return 'w zdarzeniu jest ścieżka pliku';
+      const s2 = sandbox('proj-pg2');
+      const read = { type: 'tool_use', name: 'Read', input: { file_path: '/p/.claude/knowledge/patterns/domain/aggregate-pattern_summary.md' } };
+      const t2 = transcript(s2.base, 'edit-and-read', [read, edit]);
+      const passed = run('check-subagent-pattern-reads.js', { agent_transcript_path: t2, cwd: s2.cwd }, { telemetry: s2.telemetry });
+      if (passed.status !== 0) return `z przeczytanym wzorcem status ${passed.status}, oczekiwano 0`;
+      if (events(s2.telemetry).length !== 0) return 'przepuszczenie zostawiło zdarzenie';
       return null;
     },
   },

@@ -16,7 +16,7 @@ and none of it is instruction — it is history.
   `check-subagent-pattern-reads`, `check-approval-before-impl`, `check-security-considerations`,
   `productivity-watchdog`) zapisuje przez `hooks/lib/hook-telemetry.js` jedno `step.end` z `outcome: halted`
   i `step.role` = `<hook>:<reguła>` WYŁĄCZNIE przy zablokowaniu (bez treści komendy, ścieżek i `session_id`).
-  Zapis best-effort, ok. 5 ms tylko przy blokadzie, `HOOK_TELEMETRY=off` go wyłącza. Eval `hook-telemetry` (14 przypadków).
+  Zapis best-effort, ok. 5 ms tylko przy blokadzie, `HOOK_TELEMETRY=off` go wyłącza. Eval `hook-telemetry` (16 przypadków, wszystkie 9 hooków).
   Trzy hooki dostały stałe id reguł: `root-grep`, `subagent-git`, `task-pre-analysis` / `security-suggest` / `security-section-empty`.
 
 - ORC-118: sonda warstwy z samymi komendami dosłownymi (`make typecheck`) nie dostaje już linii „skryptu nie ma w package.json → skipped"; `skipped` znaczy tylko brak samej komendy, niezerowy EXIT istniejącej to `fail` (aegis-flow TS-004, ślepa sonda w warstwie `api`).
