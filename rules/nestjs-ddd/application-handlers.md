@@ -1,5 +1,5 @@
 # Rule: Application Handlers (Command / Query)
-**Governs**: `patterns/application/command-handler-pattern.md`, `query-handler-pattern.md`, `application-service-pattern.md`
+**Governs**: `patterns/application/command-handler-pattern.md`, `query-handler-pattern.md`, `application-service-pattern.md`, `command-handler-queue-port-pattern.md`
 **Applies to**: `*.handler.ts` in `**/application/commands|queries/`, `*.service.ts` in `**/application/services/`
 
 ## ALWAYS
@@ -18,13 +18,15 @@
 - Place the ACL call by kind: ACL READ with external I/O or a timeout (and any ACL leaving the process) → `prepare()`; ACL WRITE to an in-process context → `executeBusinessLogic()` (it joins the handler's CLS transaction and is rolled back with it; no `compensate()` needed).
 - Implement `getOperationName()` and `getBoundedContext()` (telemetry); rely on inherited `@Transactional` for commands.
 - Query handlers: inject the read-only `IQueryRepository`, paginate list queries (`{ items, pagination }`), return a DTO.
+- A comment in the code is not evidence of compliance — the rule card wins. A comment or an analysis sentence that justifies a deviation ("the callback expects exceptions", "the handler does not write to the database") is a claim to verify in the code; if it contradicts the card, report a violation instead of following it.
 
 ## NEVER
 - Put `userId` in a Command class — it comes from the JWT/RequestContext, not the request body (security gap).
 - Put `userId` in a self-scoped Query class's constructor to determine WHOSE data is returned —
   same security gap, one layer later (ARCH-D001).
 - Put domain logic (age checks, business rules) in a handler — it belongs in the aggregate/specification.
-- `throw` in `executeBusinessLogic` — always `Result.fail(error)`.
+- `throw` in `executeBusinessLogic` — always `Result.fail(error)`. The same holds for every private method the handler calls from it: moving the `throw` into a helper does not make it legal.
+- Import `@nestjs/bullmq` / `bullmq` or use `@InjectQueue` in a `*.handler.ts` under `application/commands|queries/` — enqueue through a port (`Symbol` + interface in `application/`, BullMQ adapter in the module/`infrastructure/`), see `patterns/application/command-handler-queue-port-pattern.md`. Direct queues remain legal in event handlers and services (`bullmq-queue-pattern`).
 - Manage transactions manually (`beginTransaction`/`commit`/`rollback`) — `@Transactional` handles it.
 - Import directly from another bounded context — use the ACL Registry.
 - Manually call `commandBus.register()`/`queryBus.register()` — auto-discovery replaces it.

@@ -29,7 +29,7 @@ cronów/schedulerów w tym repo idą przez repozytorium/port/command-bus, żaden
 - **RP5** — Optimistic locking: kolumna `version` czytana i inkrementowana przy `save()`; konflikt → rzucić wyjątek infrastruktury (nie DomainError).
 - **RP6** — `reconstructEventByType()` rejestruje WSZYSTKIE zdarzenia domenowe kontekstu w `eventMap` używając enum (TS-EVENTS-002).
 - **RP7** — Import eventów w `eventMap` — porządek alfabetyczny; wszystkie eventy, nie tylko aktualnie emitowane.
-- **RP8** — Nieznany typ eventu → `console.warn` z nazwą i listą dostępnych kluczy; nigdy cicha `return null`.
+- **RP8** — Nieznany typ eventu → ostrzeżenie z nazwą i listą dostępnych kluczy; nigdy cicha `return null`. Kanał: `this.logger.warn(...)`, gdy repozytorium ma wstrzyknięty `LOGGER_SERVICE` (LOG1/N5 z `logger-pattern` wygrywają z `console.*`); `console.warn` tylko w repozytorium bez loggera (RP2-EXCEPTION „no logger") — nie dodawaj DI tylko dla tego ostrzeżenia.
 - **RP9** — Istnieje weryfikacyjny test L1 skanujący `domain/events/*.event.ts` i porównujący z `eventMap` (CI bloker).
 - **RP10** — Query repository (read-side): eksplicytne kolumny w `SELECT`, mapper `mapToOwnerQueryModel` / `mapToPublicQueryModel`, bez `BaseKyselyRepository`.
 - **RP11** — Niestandardowe typy SQL (enum, cast) przez `sql<Type>`` template literal (Kysely).
@@ -108,7 +108,8 @@ export class XxxCommandKyselyRepository                                     // R
     };
     const EventClass = eventMap[plain.eventName];
     if (!EventClass) {
-      console.warn(`[XxxRepo] Unknown event: ${plain.eventName}. Known: ${Object.keys(eventMap)}`); // RP8
+      // RP8: z loggerem repozytorium — this.logger.warn(msg, { eventName, known }); bez loggera — console.warn
+      this.logger.warn(`[XxxRepo] Unknown event: ${plain.eventName}`, { known: Object.keys(eventMap) });
       return null;
     }
     return ProjectDomainEvent.fromPlainObject(EventClass as any, plain);
@@ -144,7 +145,8 @@ export class XxxQueryKyselyRepository {                                     // R
 | Brak pliku `*.verification.spec.ts` dla command repo | N6 (RP9) |
 | Query repo extends `BaseKyselyRepository` | RP10 |
 | `SELECT *` zamiast explicite kolumn w query repo | RP10 |
-| `console.warn` brakuje przy nieznanym evencie | RP8 |
+| Brak ostrzeżenia przy nieznanym evencie (cicha `return null`) | RP8 |
+| `console.warn` w repozytorium, które ma `LOGGER_SERVICE` | RP8/LOG1 |
 | Brak `version` w persist/select | RP5 |
 | Cron/scheduler/service z `@Inject(DATABASE_TOKEN)` / `Kysely<Database>` zamiast portu repozytorium, BEZ `// RP12-EXCEPTION: <powód>` | **RP12 / N7** |
 

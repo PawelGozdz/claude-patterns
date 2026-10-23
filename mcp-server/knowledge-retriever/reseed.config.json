@@ -61,6 +61,25 @@
         "src"
       ],
       "repoName": "ai-gateway"
+    },
+    "code_iam": {
+      "repo": "../../../iam",
+      "ref": "origin/develop",
+      "dirs": [
+        "src"
+      ],
+      "repoName": "iam"
+    },
+    "code_marketing_hub": {
+      "repo": "../../../marketing-hub",
+      "ref": "origin/develop",
+      "dirs": [
+        "apps/api/src",
+        "apps/web/src",
+        "packages/contracts/src",
+        "libs"
+      ],
+      "repoName": "marketing-hub"
     }
   }
 }

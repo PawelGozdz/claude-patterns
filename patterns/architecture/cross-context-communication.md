@@ -182,16 +182,21 @@ This is identical to the AI Summary flow. Use `AiSummaryGenerationConsumer` as t
 ### Implementation template
 
 ```typescript
-// Producer (study-session context)
+// Producer (study-session context) — a command handler enqueues through a PORT, never via
+// @InjectQueue (command-handler-queue-port-pattern, QP1). The port is bound to the BullMQ queue
+// (or to the outbox) in the module; base-class constructor arguments are elided here.
 @CommandHandler(TriggerFlashcardGenerationCommand)
-export class TriggerFlashcardGenerationHandler {
-  constructor(@InjectQueue(QueueName.FLASHCARD_GENERATION) private queue: Queue<FlashcardGenerationJobData>) {}
+export class TriggerFlashcardGenerationHandler extends BaseCommandHandler<TriggerFlashcardGenerationCommand, Result<void>> {
+  constructor(
+    // ...logger, requestContext, redactionService (CH3)
+    @Inject(FLASHCARD_GENERATION_QUEUE) private readonly queue: IFlashcardGenerationQueue,
+  ) { super(logger, requestContext, redactionService); }
 
-  async execute(command: TriggerFlashcardGenerationCommand): Promise<Result<void>> {
+  public async executeBusinessLogic(command: TriggerFlashcardGenerationCommand): Promise<Result<void>> {
     await this.queue.add('flashcard-generation', {
       jobId: command.jobId,
       deckId: command.deckId,
-      userId: command.userId,
+      userId: this.requestContext.getUserId(), // CH4 — never from the command
       sourceType: command.sourceType,
       sourceId: command.sourceId,
       totalCardsRequested: command.totalCardsRequested,

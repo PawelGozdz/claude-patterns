@@ -39,8 +39,11 @@ spisuje niezmienniki, które egzekwuje bramka VETO warstwy `web`, nie tylko dobr
 - **WS1** — Sesja żyje w cookie ustawianym przez `iam`/Caddy; przeglądarka nigdy nie widzi
   tokenów. Zero `localStorage`/`sessionStorage`/`IndexedDB`.
 - **WS2** — Uprawnienia w UI (`accessControlProvider.can()`) to wyłącznie UX (ukrywanie
-  akcji). Egzekwuje API. Test L3 potwierdza, że ukryta akcja wywołana ręcznie dostaje
-  401/403 z API.
+  akcji). Egzekwuje API. Dowodem jest test L3 przeciw realnemu API/bramie (ukryta akcja
+  wywołana ręcznie dostaje 401/403) albo test guarda po stronie API. L3 na mocku bramki
+  dowodzi tylko, że UI nie omija bramy (WS3) i pokazuje odmowę — samo WS2 nie spełnia.
+  Zadanie wyłącznie webowe wskazuje test API (plik/zadanie); brak odesłania to luka
+  `unverified_scope`, nie naruszenie.
 - **WS3** — Jedyny ruch sieciowy to `/api/*` tego samego originu (Vite proxy w dev, Caddy w
   prod) — zero absolutnych adresów do innych hostów w kodzie sieciowym.
 - **WS4** — CSP z nonce serwowana przez API dla `index.html`; brak inline skryptów w
@@ -59,5 +62,7 @@ spisuje niezmienniki, które egzekwuje bramka VETO warstwy `web`, nie tylko dobr
   prawdy, UI tylko wyświetla decyzję.
 - ❌ `fetch()` do adresu poza własnym originem z kodu klienta — omija bramę `iam` i CSP.
 - ❌ Sekrety albo adresy wewnętrzne w `import.meta.env` bundlowanym do przeglądarki.
+  Flagi funkcji (`VITE_FEATURE_*`) i publiczne adresy własnego originu to nie sekrety;
+  reguła ESLint pilnująca tego ma dopuszczać je listą nazw, nie zakazywać każdego `VITE_`.
 
 Karta reguł: `web-security-invariants-pattern_summary.md`.

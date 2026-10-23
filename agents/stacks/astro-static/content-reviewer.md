@@ -11,7 +11,7 @@ description: |
 tools: Read, Glob, Grep, Bash, StructuredOutput
 model: haiku
 effort: low
-maxTurns: 30
+maxTurns: 60
 ---
 
 # content-reviewer
@@ -110,6 +110,7 @@ awk '/^description:/{print length($0), FILENAME}' src/content/posts/*.mdx | awk 
 
 ## Changelog
 
+- 2026-10-21 — `maxTurns` 30 → 60 (ponad sufit `scaledBudget` = 50), jak w pozostałych weryfikatorach po ORC-092: `/orchestrate` obiecuje weryfikatorowi do 50 wywołań, a agent ginął na 30 i oddawał `unverified_scope` (juz-ide-blog BLOG-HOWTO-001, `content:screens-data` i `content:posts`, 3 próby → ESCALATE_AND_HALT).
 - 2026-10-09 — synced frontmatter checklist with `juz-ide-blog`'s actual schema (`content.config.ts`/`taxonomy.ts`): checks referenced `slug`/`date`/160-char limit that no longer existed after the schema migrated to `id`/`type`/`pillar`/`arc`/`pubDatetime`/`description(200)` — VETO logic was silently no-op against real posts; added content-security grep pass (internal repo codenames, old brand name, absolute hard bans) per EDITORIAL-GUIDE §4a.
 
 ## ⏳ TURN BUDGET — silent-death guard (maxTurns exhaustion)

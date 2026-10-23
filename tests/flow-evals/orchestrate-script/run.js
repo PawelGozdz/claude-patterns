@@ -832,6 +832,22 @@ const CASES = (c) => [
     },
   },
 
+  // ── ORC-118: komendy dosłowne nie dziedziczą „brak w package.json → skipped" ────────────
+  {
+    name: 'probe-literal-only-checks-do-not-mention-package-json-skip',
+    run() {
+      const py = c.buildProbePrompt({ task: { id: 'T' } }, { id: 'api', dirs: ['app/'], checks: ['make typecheck', 'make lint'] });
+      if (/Skryptu nie ma w package\.json/.test(py)) return 'projekt z samymi komendami dosłownymi dostał regułę o package.json: ' + py.slice(-300);
+      if (!/nigdy "skipped"/.test(py)) return 'brak reguły: istniejąca komenda z niezerowym EXIT to fail, nie skipped';
+      const npm = c.buildProbePrompt({ task: { id: 'T' } }, { id: 'web', dirs: ['apps/web/'], checks: ['typecheck'] });
+      if (!/Skryptu nie ma w package\.json/.test(npm)) return 'checks z nazw skryptów stracił regułę o package.json';
+      if (/Komendy dosłowne/.test(npm)) return 'checks z nazw skryptów nie powinien dostać reguły o komendach dosłownych';
+      const mixed = c.buildProbePrompt({ task: { id: 'T' } }, { id: 'm', dirs: ['x/'], checks: ['lint', 'go vet ./...'] });
+      if (!/Skryptu nie ma w package\.json/.test(mixed) || !/Komendy dosłowne/.test(mixed)) return 'mieszane checks powinny mieć obie reguły';
+      return null;
+    },
+  },
+
   // ── ORC-089: nazwa pliku analizy bez ścieżki też jest artefaktem przebiegu ──────────────
   {
     name: 'own-task-artifacts-filter-matches-bare-file-name',
@@ -1056,6 +1072,49 @@ const CASES = (c) => [
       if (JSON.stringify(r) !== '["typecheck"]') return 'oczekiwano ["typecheck"], jest ' + JSON.stringify(r);
       if (c.finalProbeSkippedFields(['test'], { typecheck: 'skipped', tests: 'pass' }).length) return 'skipped dla niezadeklarowanej kontroli zgłoszone';
       if (c.finalProbeSkippedFields(checks, null).length) return 'brak sondy zgłoszony jako skipped';
+      return null;
+    },
+  },
+  // ORC-121: prompt rundy 2 nie twierdzi, że pominięte przez implementera pozycje zostały poprawione
+  {
+    name: 'final-round-2-prompt-reports-items-implementer-skipped',
+    run() {
+      const clean = c.finalRoundExtra(['a.ts: błąd'], []);
+      if (/POMINĄŁ/.test(clean)) return 'ostrzeżenie o pominiętych pozycjach bez deviation_note';
+      const p = c.finalRoundExtra(['a.ts: błąd', 'KANBAN.md: brak wpisu'], ['testing: KANBAN.md leży poza dirs warstwy']);
+      if (!/POMINĄŁ/.test(p) || !/KANBAN\.md leży poza dirs/.test(p)) return 'brak opisu pominiętych pozycji w prompcie rundy 2';
+      if (/które implementer poprawił:/.test(p)) return 'prompt nadal twierdzi, że implementer poprawił wszystko';
+      return null;
+    },
+  },
+  // ORC-120: `build` w checks.finalGate liczy się jak typecheck (sonda mapuje go na to pole); sonda dostaje wskazówkę o timeoucie
+  {
+    name: 'final-probe-build-check-maps-to-typecheck-and-probe-warns-about-timeout',
+    run() {
+      const r = c.finalProbeSkippedFields(['build'], { typecheck: 'skipped', tests: 'skipped' });
+      if (JSON.stringify(r) !== '["typecheck"]') return 'build ze skipped nie zgłoszony: ' + JSON.stringify(r);
+      if (c.finalProbeSkippedFields(['build'], { typecheck: 'pass', tests: 'skipped' }).length) return 'build z typecheck=pass zgłoszony jako pominięty';
+      const p = c.buildProbePrompt({ task: { id: 'T' } }, { id: 'final', checks: ['build'], dirs: [], tests: false });
+      if (!/timeout: 600000/.test(p)) return 'brak wskazówki o timeoucie Basha w prompcie sondy';
+      if (!/NIE jest "skipped"/.test(p)) return 'brak reguły: przekroczenie czasu to nie skipped';
+      return null;
+    },
+  },
+  // ORC-123: NO_GO wymuszone lukami podaje stan sondy; po udanej naprawie sonda biegnie ponownie i ocenia luki jak ORC-098
+  {
+    name: 'final-gate-forced-no-go-reports-probe-state-and-reprobes-after-fix',
+    run() {
+      if (!/sonda bez wyniku/.test(c.finalProbeSummary(null))) return 'brak wyniku sondy nie nazwany';
+      const red = c.finalProbeSummary({ typecheck: 'pass', tests: 'pass', lint: 'fail' });
+      if (!/lint=fail/.test(red) || !/brak zielonego dowodu/.test(red)) return 'czerwony lint nie widoczny w podsumowaniu: ' + red;
+      if (!/\(zielona\)/.test(c.finalProbeSummary({ typecheck: 'pass', tests: 'skipped', lint: 'pass' }))) return 'zielona sonda nie nazwana';
+      if (/\(zielona\)/.test(c.finalProbeSummary({ typecheck: 'skipped', tests: 'skipped', lint: 'skipped' }))) return 'ślepa sonda uznana za zieloną';
+      // luki akceptowane dopiero na zielonej ponownej sondzie
+      const gate = { verdict: 'GO', violations: [] };
+      if (c.finalGapsAcceptable(gate, ['deploy'], { typecheck: 'pass', tests: 'pass', lint: 'fail' })) return 'czerwona sonda przepuściła luki';
+      if (!c.finalGapsAcceptable(gate, ['deploy'], { typecheck: 'pass', tests: 'pass', lint: 'pass' })) return 'zielona sonda nie przepuściła luk';
+      const src = fs.readFileSync(path.join(__dirname, '../../../scripts/workflow/orchestrate.template.mjs'), 'utf8');
+      if (!/final-checks-after-fix/.test(src) || !/forcedGaps/.test(src)) return 'szablon nie zawiera ponownej sondy po naprawie (ORC-123)';
       return null;
     },
   },

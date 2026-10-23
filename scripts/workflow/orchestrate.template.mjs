@@ -343,6 +343,7 @@ function buildProbePrompt(a, layer) {
   // DESIGN-SYSTEM-009, `presentation`, 9 wystąpień). Komendy dosłowne biegną z korzenia repo.
   const isLiteralCheck = (c) => /\s/.test(String(c).trim())
   const hasLiteral = (layer.checks || []).some(isLiteralCheck)
+  const allLiteral = hasLiteral && (layer.checks || []).every(isLiteralCheck)
   const cmds = (layer.checks || []).map((c) => isLiteralCheck(c) ? String(c).trim() : (firstDir ? '_chk ' + c : 'npm run ' + c))
   const scoped = effectiveDirs(layer).join(' ')
   // Pathspecy monorepo: `layer.dirs` to nazwy typu "__tests__/"/"domain/", nigdy katalogi
@@ -462,14 +463,26 @@ function buildProbePrompt(a, layer) {
     ? '\nMapowanie wyników na pola (każdy check do SWOJEGO pola, nie mieszaj): nazwa/komenda z `lint` → ' +
       '`lint`; z `typecheck`, `tsc`, `mypy`, `pyright`, `analyze`, `vet` albo `build` → `typecheck`; z `test` → `tests` ' +
       '(EXIT:0 = pass, niezerowy = fail, brak skryptu = skipped). Pole `typecheck` = fail tylko wtedy, ' +
-      'gdy padł typecheck/analyze/build, nigdy z powodu lintu.'
+      'gdy padł typecheck/analyze/build, nigdy z powodu lintu.' +
+      // ORC-120: build (astro build + pagefind, next build) trwa minuty; domyślny timeout Basha (2 min) ucina polecenie,
+      // a sonda oddawała wtedy „skipped" zamiast wyniku. „skipped" znaczy brak komendy, nigdy brak czasu.
+      '\nPolecenia mogą trwać kilka minut: wywołuj Bash z `timeout: 600000`. Przekroczenie czasu albo brak wyniku to ' +
+      'NIE jest "skipped" — wtedy zwróć "fail" i w `tail` napisz, że polecenie nie skończyło się w limicie.'
     : ''
   return 'Uruchom dokładnie to i NIC więcej:\n' + run + literalMapping +
     '\nPrzy EXIT:0 NIE otwieraj pliku logu wcale.' + tailInstruction + tsErrorsInstruction + testFailInstruction +
     delta +
     '\nNIC nie czytaj, nie analizuj, nie poprawiaj, nie komentuj kodu.' +
     (scoped ? '\nZakres zmiany: ' + scoped : '') +
-    '\nSkryptu nie ma w package.json → zwróć "skipped" dla tej pozycji, nie zgaduj zamiennika.'
+    // ORC-118: ta linia stała bezwarunkowo, także gdy WSZYSTKIE checks to komendy dosłowne
+    // (`make typecheck`) w projekcie bez package.json (Python) — sonda czytała ją jako „brak
+    // package.json → skipped" i oddawała wszystko skipped (aegis-flow TS-004, api i engine).
+    (allLiteral ? '' : '\nSkryptu nie ma w package.json → zwróć "skipped" dla tej pozycji, nie zgaduj zamiennika.') +
+    (hasLiteral
+      ? '\nKomendy dosłowne (ze spacją) nie mają nic wspólnego z package.json: "skipped" TYLKO gdy samej komendy nie ma ' +
+        '("No rule to make target", "command not found", EXIT 127); komenda, która istnieje i zwróciła niezerowy EXIT, to ' +
+        '"fail" — nigdy "skipped". Nie zgaduj zamiennika.'
+      : '')
 }
 
 // Sonda stanu drzewa po cichej śmierci implementera. Cicha śmierć zwykle znaczy „praca
@@ -791,7 +804,9 @@ function repeatedGapsAcceptable(prevGaps, decision, verdict, probe) {
 // (ai-gateway TS-AIG-094: typecheck skipped, ręczny pnpm typecheck czerwony, GO).
 function finalProbeSkippedFields(finalChecks, probe) {
   if (!probe) return []
-  const kinds = { typecheck: /typecheck|tsc/i, tests: /test/i, lint: /lint/i }
+  // ORC-120: `build` sonda mapuje na pole `typecheck` (buildProbePrompt) — bez tego `checks.finalGate: [build]`
+  // ze `skipped` nie zostawiał śladu (juz-ide-blog BLOG-HOWTO-001, final-gate NO_GO, ręczny build EXIT:0)
+  const kinds = { typecheck: /typecheck|tsc|build/i, tests: /test/i, lint: /lint/i }
   const names = (finalChecks || []).map(String)
   return Object.keys(kinds).filter((k) => probe[k] === 'skipped' && names.some((n) => kinds[k].test(n)))
 }
@@ -800,6 +815,15 @@ function probeHasGreenEvidence(probe) {
   if (!probe) return false
   if (probe.typecheck === 'fail' || probe.tests === 'fail' || probe.lint === 'fail') return false
   return probe.typecheck === 'pass' || probe.tests === 'pass'
+}
+
+// ORC-123: dlaczego sonda bramki końcowej NIE pozwoliła obniżyć luk do GO z lukami (ORC-098).
+// Raport nie zawierał wyniku sondy, więc NO_GO „wymuszone samym unverified_scope" wyglądało tak samo
+// przy sondzie czerwonej, ślepej (same skipped) i nieobecnej (grant-flow TS-UI-009, marketing-hub TS-MH-026).
+function finalProbeSummary(probe) {
+  if (!probe) return 'sonda bez wyniku'
+  const state = ['typecheck', 'tests', 'lint'].map((k) => k + '=' + (probe[k] == null ? 'brak' : probe[k])).join(', ')
+  return state + (probeHasGreenEvidence(probe) ? ' (zielona)' : ' (brak zielonego dowodu: czerwień albo same skipped)')
 }
 
 // ORC-086: weryfikator dwukrotnie bez wyniku (padł/przekroczył budżet) to awaria maszyny, nie
@@ -1166,6 +1190,19 @@ function groupFindingsByLayer(items, layers, fallbackId) {
     ;(groups[id] = groups[id] || []).push(item)
   }
   return groups
+}
+
+// ORC-121: prompt rundy 2 bramki końcowej. Dotąd twierdził, że implementer poprawił WSZYSTKIE ustalenia,
+// choć pozycje spoza zakresu jego warstwy pomijał (marketing-hub TS-MH-022: poprawki w KANBAN i TM §8 leżały
+// poza dirs każdej jednostki, a runda 2 dostała je jako „poprawione"). `skipped` = deviation_note implementerów.
+function finalRoundExtra(items, skipped) {
+  const notes = (skipped || []).filter(Boolean)
+  return '\n\nRUNDA 2 (po naprawie): poprzednia runda zgłosiła ustalenia, które implementer próbował poprawić:\n' +
+    items.map((x, i) => (i + 1) + '. ' + x).join('\n') +
+    (notes.length
+      ? '\nIMPLEMENTER POMINĄŁ część pozycji jako spoza zakresu swojej warstwy (jego opis poniżej) — te pozycje NIE są poprawione, sprawdź je w kodzie i zgłoś, jeśli nadal zachodzą:\n' + notes.map((n) => '- ' + n).join('\n')
+      : '') +
+    '\nZweryfikuj poprawki i całość. Poprawione pozycje NIE są już naruszeniami; zgłoś tylko to, co nadal zachodzi albo powstało przy poprawce.'
 }
 
 // ORC-095 (docs/decisions/orchestrate-rule-history.md#orc-095): JEDNA gotowa linia statusu dla
@@ -1806,6 +1843,7 @@ if (!finalAgent) {
     const groups = groupFindingsByLayer(items, implLayers, fallback)
     let ok = true
     const noop = []
+    const skipped = []
     // ORC-103: odcisk drzewa przed i po każdej naprawie; `ask` zwraca null przy awarii sondy.
     const fingerprint = async (label) => {
       try {
@@ -1832,6 +1870,8 @@ if (!finalAgent) {
         report.warnings = (report.warnings || []).concat(layer.id + ': naprawa po bramce końcowej — implementer bez wyniku')
         continue
       }
+      // ORC-121: pozycje spoza zakresu warstwy implementer POMIJA i opisuje w deviation_note — runda 2 ma o tym wiedzieć
+      if (typeof fixed.deviation_note === 'string' && fixed.deviation_note.trim()) skipped.push(layer.id + ': ' + fixed.deviation_note.trim())
       const fpAfter = await fingerprint('final-fix-fp-' + layer.id)
       if (fixLeftTreeUnchanged(fpBefore, fpAfter)) {
         ok = false
@@ -1846,12 +1886,13 @@ if (!finalAgent) {
       }
       const prOpts =Object.assign({ label: layer.id + '-final-fix-checks', maxTurns: DEFAULTS.probeTurns, schema: CHECKS_SCHEMA }, modelFor('probe'))
       const pr = await ask(buildProbePrompt(a, layer), prOpts)
-      if (pr && (pr.typecheck === 'fail' || pr.tests === 'fail')) {
+      // ORC-121: lint też liczy się jako czerwona sonda — naprawa, która wnosi błędy import/order i prettier, nie jest zieloną naprawą
+      if (pr && (pr.typecheck === 'fail' || pr.tests === 'fail' || pr.lint === 'fail')) {
         ok = false
-        report.warnings = (report.warnings || []).concat(layer.id + ': sonda czerwona po naprawie ustaleń bramki końcowej (typecheck: ' + pr.typecheck + ', testy: ' + pr.tests + ')')
+        report.warnings = (report.warnings || []).concat(layer.id + ': sonda czerwona po naprawie ustaleń bramki końcowej (typecheck: ' + pr.typecheck + ', testy: ' + pr.tests + (pr.lint != null ? ', lint: ' + pr.lint : '') + ')')
       }
     }
-    report.finalFix = { blocking: blocking.length, minor: minor.length, layers: Object.keys(groups), noop }
+    report.finalFix = { blocking: blocking.length, minor: minor.length, layers: Object.keys(groups), noop, skipped }
     return ok
   }
 
@@ -1876,7 +1917,9 @@ if (!finalAgent) {
     const skippedFinal = finalProbeSkippedFields(finalChecks, finalProbe)
     if (skippedFinal.length) report.warnings = (report.warnings || []).concat('sonda bramki końcowej: ' + skippedFinal.join(', ') + ' = skipped mimo zadeklarowanych checks.finalGate (' + finalChecks.join(', ') + ') — brak dowodu, sprawdź ręcznie (ORC-116)')
     if (!finalProbe) report.warnings = (report.warnings || []).concat('sonda checks bramki końcowej bez wyniku — bramka uruchamia je sama, luki nie będą obniżane do GO (ORC-098)')
+    report.finalProbe = finalProbe
   }
+  let forcedGaps = null
   let final = null
   try {
     final = await ask(buildFinalGatePrompt(a, finalChecks, finalFiles, treeSource, report.gaps, finalProbe) + roundExtra, gateOpts)
@@ -1940,11 +1983,15 @@ if (!finalAgent) {
   } else if (String(report.finalGate.verdict).toUpperCase() === 'GO' && finalUnverified.length) {
     // ORC-084: NO_GO wymuszone WYŁĄCZNIE przez unverified_scope (zero własnych naruszeń) —
     // pliki idą do stagingu z flagą „wymaga przeglądu"; człowiek i tak robi review przed commitem.
-    if (!(report.finalGate.violations || []).length) report.stageForReview = stageableFiles(finalFiles, a.dirtyAtStart, allChangedFiles)
+    if (!(report.finalGate.violations || []).length) {
+      report.stageForReview = stageableFiles(finalFiles, a.dirtyAtStart, allChangedFiles)
+      forcedGaps = finalUnverified
+    }
     report.finalGate.verdict = 'NO_GO'
     report.finalGate.cause = 'machine'
     report.finalGate.violations = (report.finalGate.violations || []).concat(
-      'GO z niezweryfikowanym zakresem (unverified_scope), bramka końcowa nie ma retry: ' + finalUnverified.join(', '))
+      'GO z niezweryfikowanym zakresem (unverified_scope), bramka końcowa nie ma retry: ' + finalUnverified.join(', ') +
+      ' [sonda silnika: ' + finalProbeSummary(finalProbe) + '] (ORC-123)')
   }
   const fgNotGo = String(report.finalGate.verdict).toUpperCase() !== 'GO'
   if (fgNotGo && !report.finalGate.cause) report.finalGate.cause = 'code'
@@ -1958,10 +2005,34 @@ if (!finalAgent) {
     const repaired = await repairFinalFindings(blockingFinal, minorFinal)
     if (repaired && blockingFinal.length) {
       report.finalGateRound1 = report.finalGate
-      roundExtra = '\n\nRUNDA 2 (po naprawie): poprzednia runda zgłosiła ustalenia, które implementer poprawił:\n' +
-        blockingFinal.concat(minorFinal).map((x, i) => (i + 1) + '. ' + x).join('\n') +
-        '\nZweryfikuj poprawki i całość. Poprawione pozycje NIE są już naruszeniami; zgłoś tylko to, co nadal zachodzi albo powstało przy poprawce.'
+      roundExtra = finalRoundExtra(blockingFinal.concat(minorFinal), report.finalFix && report.finalFix.skipped)
       continue
+    }
+    // ORC-123: werdykt „NO_GO wymuszone samymi lukami" zapadł na sondzie SPRZED naprawy. Naprawa, która
+    // wyleczyła czerwień (prettier, lint) i przeszła sondy warstw, nie uzdrawiała werdyktu — halt
+    // zostawał mimo zielonego drzewa (marketing-hub TS-MH-026: prettier na 7 plikach, potem halt).
+    // Ponowna sonda bramki końcowej + ta sama ocena luk co w ORC-098.
+    if (repaired && !blockingFinal.length && forcedGaps && finalChecks.length) {
+      let reprobe = null
+      try {
+        reprobe = await ask(
+          buildProbePrompt(a, { id: 'final', checks: finalChecks, dirs: [], tests: false }),
+          Object.assign({ label: 'final-checks-after-fix', maxTurns: DEFAULTS.probeTurns, schema: CHECKS_SCHEMA }, modelFor('probe')),
+        )
+      } catch (e) {
+        reprobe = null
+      }
+      report.finalProbeAfterFix = reprobe
+      if (finalGapsAcceptable({ verdict: 'GO', violations: [] }, forcedGaps, reprobe)) {
+        report.finalGate.verdict = 'GO'
+        report.finalGate.cause = undefined
+        report.finalGate.violations = []
+        report.finalGate.gaps_accepted = forcedGaps
+        report.gaps.push({ layer: 'final-gate', items: forcedGaps })
+        log('bramka końcowa: GO z lukami po naprawie (ORC-123) — ponowna sonda zielona; luki w raporcie: ' + forcedGaps.join(', '))
+      } else {
+        report.warnings = (report.warnings || []).concat('ponowna sonda bramki końcowej po naprawie: ' + finalProbeSummary(reprobe) + ' — halt zostaje (ORC-123)')
+      }
     }
     const noopFix = report.finalFix && report.finalFix.noop && report.finalFix.noop.length
     if (!repaired && !blockingFinal.length && noopFix) {

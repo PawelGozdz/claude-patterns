@@ -233,10 +233,10 @@ import { createAddressChangePolicy } from '../policies/residence';
 
 @Injectable()
 export class AddressChangeDomainService {
-  public canChangeAddress(
+  public async canChangeAddress(
     residence: UserResidenceAggregate,
     newCoordinates: { latitude: number; longitude: number }
-  ): Result<void> {
+  ): Promise<Result<void>> {
     // Policy composes multiple specifications
     const policy = createAddressChangePolicy();
 
@@ -245,10 +245,11 @@ export class AddressChangeDomainService {
       newCoordinates,
     };
 
-    const result = policy.check({ entity: context });
+    // IBusinessPolicy.check() always returns a Promise<Result<T, PolicyViolation>>
+    const result = await policy.check({ entity: context });
 
-    if (!result.passed) {
-      return Result.fail(this.mapViolationToError(result.violations[0]));
+    if (result.isFailure) {
+      return Result.fail(this.mapViolationToError(result.error));
     }
 
     return Result.empty();

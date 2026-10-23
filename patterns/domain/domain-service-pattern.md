@@ -58,10 +58,10 @@ export class AddressChangeDomainService {
    * - PolishCoordinatesSpecification (within Poland)
    * - ServiceAreaSpecification (city enabled for service)
    */
-  public canChangeAddress(
+  public async canChangeAddress(
     residence: UserResidenceAggregate,
     newCoordinates: { latitude: number; longitude: number }
-  ): Result<void> {
+  ): Promise<Result<void>> {
     // Create policy (composes multiple specifications)
     const policy = createAddressChangePolicy();
 
@@ -74,11 +74,11 @@ export class AddressChangeDomainService {
       newCoordinates,
     };
 
-    // Execute policy check
-    const result = policy.check({ entity: extendedContext });
+    // Execute policy check — IBusinessPolicy.check() always returns a Promise (the only allowed await here)
+    const result = await policy.check({ entity: extendedContext });
 
-    if (!result.passed) {
-      return Result.fail(this.mapViolationToError(result.violations[0]));
+    if (result.isFailure) {
+      return Result.fail(this.mapViolationToError(result.error));
     }
 
     return Result.empty();
@@ -231,9 +231,9 @@ export class RegisterUserHandler {
 // ✅ Domain Service (pure business logic)
 @Injectable()
 export class AddressChangeDomainService {
-  canChangeAddress(residence: UserResidenceAggregate): Result<void> {
+  async canChangeAddress(residence: UserResidenceAggregate): Promise<Result<void>> {
     const policy = createAddressChangePolicy();
-    return policy.check(residence.getSpecificationContext());
+    return policy.check(residence.getSpecificationContext()); // Promise<Result> — IBusinessPolicy.check is async
   }
 }
 
@@ -277,10 +277,10 @@ export class AddressChangeDomainService {
 // ✅ CORRECT: handler loads data, domain service validates
 @Injectable()
 export class AddressChangeDomainService {
-  canChangeAddress(residence: UserResidenceAggregate): Result<void> {
+  async canChangeAddress(residence: UserResidenceAggregate): Promise<Result<void>> {
     // Pure validation, NO infrastructure
     const policy = createAddressChangePolicy();
-    return policy.check(residence.getSpecificationContext());
+    return policy.check(residence.getSpecificationContext()); // Promise<Result> — IBusinessPolicy.check is async
   }
 }
 ```
@@ -300,7 +300,7 @@ export class AddressChangeDomainService {
 // ✅ CORRECT: stateless, parameters only
 @Injectable()
 export class AddressChangeDomainService {
-  canChangeAddress(residence: UserResidenceAggregate): Result<void> {
+  async canChangeAddress(residence: UserResidenceAggregate): Promise<Result<void>> {
     // Stateless - all data via parameters
   }
 }

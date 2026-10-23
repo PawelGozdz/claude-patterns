@@ -13,14 +13,14 @@
 - **DS2** — BEZSTANOWY: brak zmiennych instancji (pola `private _x`) — wyłącznie parametry metod.
 - **DS3** — każda metoda publiczna zwraca `Result<T, DomainError>` — nigdy nie rzuca.
 - **DS4** — wywoływany przez handler warstwy aplikacji PRZED metodą agregatu (orchestracja w handlerze).
-- **DS5** — logika SYNCHRONICZNA: zero `async`, zero `await` w metodach domenowych.
+- **DS5** — zero I/O i zero `await` na czymkolwiek poza polityką/specyfikacją: logika jest czysta. WYJĄTEK (DS6): `IBusinessPolicy.check()` z `@vytches/ddd-policies` ZAWSZE zwraca `Promise<Result<T, PolicyViolation>>` — metoda, która ją woła, jest `async`, zwraca `Promise<Result<void, XxxDomainError>>` i robi `await policy.check(...)`; handler robi `await` na samym serwisie. Bez polityki (DS6) metody zostają synchroniczne.
 - **DS6** — złożone reguły (3+ specyfikacje) hermetyzuje przez `PolicyBuilder` / `createXxxPolicy()`.
 - **DS7** — dane wejściowe to gotowe obiekty domenowe (agregaty, VOs) — NIE id/stringi wymagające ładowania.
 - **DS8** — plik lokalizowany w `**/domain/services/` obok agregatów i błędów domenowych.
 
 ## MUST NOT
 - **N1** — ❌ `throw` — zawsze `Result.fail(new XxxDomainError(...))`.
-- **N2** — ❌ `async`/`await`/`Promise` — domain service jest synchroniczny.
+- **N2** — ❌ `async`/`await`/`Promise` poza wołaniem `policy.check()` (DS5) — żadnego I/O, repozytoriów, `setTimeout`, ani `await` na czymkolwiek innym.
 - **N3** — ❌ import z `infrastructure/` lub `application/` (repozytoria, HTTP, e-mail, event bus).
 - **N4** — ❌ konstruktor z zależnościami infrastrukturalnymi (`IUserRepository`, `IEmailService` itp.).
 - **N5** — ❌ pola instancji przechowujące stan (`private currentResidence`, `private cache` itp.).
@@ -49,24 +49,24 @@ export class XxxDomainService {
    * Validate cross-aggregate business rule.
    * Called by handler BEFORE aggregate method.             // DS4
    */
-  public canDoXxx(                                          // DS7 — gotowe obiekty, nie id
+  public async canDoXxx(                                    // DS7 — gotowe obiekty, nie id; async tylko przez policy.check (DS5)
     agg1: XxxAggregate,
     agg2: YyyAggregate,
-  ): Result<void, XxxDomainError> {                        // DS3
+  ): Promise<Result<void, XxxDomainError>> {               // DS3
     const policy = createXxxPolicy();                       // DS6
     const context = {
       ...agg1.getSpecificationContext(),
       yyyState: agg2.getSpecificationContext(),
     };
 
-    const check = policy.check({ entity: context });
-    if (!check.passed) {
+    const check = await policy.check({ entity: context });  // DS5 — jedyny dozwolony await
+    if (check.isFailure) {
       return Result.fail(                                   // N1 — nigdy throw
-        XxxDomainError.fromViolation(check.violations[0]),
+        XxxDomainError.fromViolation(check.error),
       );
     }
 
-    return Result.empty();                                  // DS5 — sync
+    return Result.empty();
   }
 
   private mapViolation(code: string): XxxDomainError {

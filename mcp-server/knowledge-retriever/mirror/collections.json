@@ -64,5 +64,21 @@
     "ref": "develop",
     "sha": "1f2dce4c9d5483b872b1f371bbc42e922c8ff924",
     "indexedAt": "2026-09-25T21:20:48.187Z"
+  },
+  "code_marketing_hub": {
+    "model": "ct301:multilingual-e5-large",
+    "dim": 1024,
+    "repo": "marketing-hub",
+    "ref": "origin/develop",
+    "sha": "fa79524af1b325eb916019d5658412429b1953ec",
+    "indexedAt": "2026-10-21T17:34:05.393Z"
+  },
+  "code_iam": {
+    "model": "ct301:multilingual-e5-large",
+    "dim": 1024,
+    "repo": "iam",
+    "ref": "origin/develop",
+    "sha": "1c7a218a796061cdd3a5efc190edad1659e685a6",
+    "indexedAt": "2026-10-22T12:20:55.646Z"
   }
 }

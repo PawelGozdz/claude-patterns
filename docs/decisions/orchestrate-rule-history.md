@@ -2198,3 +2198,61 @@ analizy z błędnym YAML nie wystartują ponownie bez poprawki frontmatteru. Eva
 **Zmiana.** `minorPassBeforeReverify(verdict, autoFixMinor, minorPassDone, attempt, maxAttempts)` zwraca drobne ustalenia do naprawy przed `reverify` (pusta lista, gdy `autoFixMinor === false`, przejście już było albo to ostatnia próba; w odróżnieniu od ORC-091 nie trzeba zapasu 2 prób, bo przejście zastępuje próbę `reverify`, a jego weryfikacja domyka też `unverified_scope`). Gałąź `reverify` w pętli warstwy uruchamia wtedy jedno przejście naprawcze (`mode = 'implement'`, `cleanupNext`), a kolejna runda przechodzi zwykłą sondę i weryfikację, która domyka też `unverified_scope`. Limit jednego przejścia na warstwę (`minorPassDone`) zostaje wspólny z ORC-091.
 
 **Poza zakresem.** Druga uwaga ze zgłoszenia, że weryfikator warstwy kodu liczy brak testów jako lukę zakresu (testy należą do jednostki `testing`), jest zamierzona przy podziale na jednostki (`unverified_scope` jest wtedy w raporcie jako luka, nie blokada).
+
+<a id="orc-118"></a>
+
+### ORC-118 — sonda z samymi komendami dosłownymi nie dziedziczy reguły o `package.json` (2026-10-21)
+
+**Objaw.** aegis-flow TS-004 (run `wf_b7eccac7-82d`, zgłoszenia `DEV-orc-085-api`, `DEV-orc-085-engine`). Warstwa `api` ma `checks: ["make typecheck", "make lint"]`, a sonda zwróciła oba pola jako `skipped` (ostrzeżenie ORC-085 o ślepej sondzie). `make typecheck` i `make lint` działają lokalnie.
+
+**Przyczyna (prawdopodobna, bez dziennika przebiegu).** Prompt sondy kończył się zawsze linią „Skryptu nie ma w package.json → zwróć skipped". Dla komend dosłownych (ORC-088, wpis ze spacją) ta linia nie ma sensu, a w projekcie Pythona bez `package.json` sonda mogła ją odczytać jako instrukcję pominięcia.
+
+**Zmiana.** W `buildProbePrompt` stała `allLiteral`: gdy wszystkie `checks` warstwy to komendy dosłowne, linia o `package.json` nie jest dodawana. Przy dowolnej komendzie dosłownej prompt dostaje regułę: `skipped` tylko gdy samej komendy nie ma (`No rule to make target`, `command not found`, EXIT 127); istniejąca komenda z niezerowym EXIT to `fail`, nigdy `skipped`. Warstwy z samymi nazwami skryptów npm zostają bez zmian.
+
+**Poza zakresem.** `tests skipped` w warstwie `engine` (druga notatka) jest zamierzone: warstwa nie ma `tests:true`, a testy należą do jednostki `testing`. Jeśli ślepa sonda wróci po tej zmianie, trzeba zajrzeć w dziennik przebiegu (sama linia mogła nie być przyczyną).
+
+<a id="orc-120"></a>
+
+### ORC-120 — `build` w `checks.finalGate` liczy się jak `typecheck`, a sonda nie oddaje `skipped` za brak czasu (2026-10-22)
+
+**Objaw (DEV-orc-116-final-gate).** juz-ide-blog BLOG-HOWTO-001, `final-gate` (`wf_fa3ceca1-1b7`): `checks.finalGate: ["build"]`, sonda zwróciła `skipped`, bramka dała `NO_GO` `machine` wyłącznie z `unverified_scope` (zero własnych naruszeń), a ręczny `npm run build` kończył się EXIT:0.
+
+**Przyczyna (prawdopodobna, bez dziennika przebiegu).** Skrypt `build` w juz-ide-blog to `check-screens && astro check && astro build && pagefind && cp`, czyli minuty pracy, a domyślny timeout Basha to 2 minuty; ucięte polecenie sonda mogła zgłosić jako `skipped`. Pewna jest luka w ORC-116: `finalProbeSkippedFields` rozpoznawał tylko nazwy z `typecheck|tsc`, `test`, `lint`, a prompt sondy mapuje `build` na pole `typecheck`, więc `skipped` przy samym `build` nie zostawiał żadnego ostrzeżenia w raporcie.
+
+**Zmiana.** (1) `finalProbeSkippedFields`: wzorzec dla `typecheck` obejmuje też `build`. (2) `buildProbePrompt`: polecenie wołać Bash z `timeout: 600000`; przekroczenie czasu albo brak wyniku to `fail` z opisem w `tail`, nie `skipped`. Werdykt bramki bez zmian.
+
+**Poza zakresem.** Wcześniejsza bramka (`wf_cac36de4-1c6`) dała `typecheck: fail` przy `astro check` bez błędów; realna przyczyna to `astro build` (glob `public/*` czytał `public/_headers` jako JS) i leży w projekcie, nie w silniku. Jeśli `skipped` przy `build` wróci mimo timeoutu, trzeba sprawdzić dziennik przebiegu.
+
+<a id="orc-121"></a>
+
+### ORC-121 — bramka końcowa: `final_checks` z analizy, lint w sondzie po naprawie, uczciwy prompt rundy 2 (2026-10-22)
+
+**Objaw (DEV-orc-098, 2 wystąpienia).** marketing-hub TS-MH-022. (1) `wf_a6682904-bd3`: sonda bramki końcowej uruchomiła typecheck, lint, test, format, `validate:br` i build, ale nie `test:l3` ani skryptów taska `test:gateway`/`test:harness`, których wymagała decyzja D3 po zmianie `vitest-e2e.config.ts`; weryfikator odpalał je z własnego budżetu. (2) `wf_a9e9656e-280`: `NO_GO` `machine` bez naruszeń własnych. Runda naprawcza (przeniesienie `authorization-fixtures` do `test/shared`) wniosła 28 błędów `import/order` i 5 plików bez prettiera, a poprawki 5 i 6 (KANBAN, TM §8) leżały poza `dirs` każdej jednostki i nie zostały wykonane, choć prompt rundy 2 podał je jako poprawione.
+
+**Przyczyna.** (1) Lista checks bramki to `final_gate.checks` z bloków plus checks uruchomionych warstw; analiza nie miała jak dopisać obowiązku wynikającego z decyzji. (2a) Sonda po naprawie w `repairFinalFindings` sprawdzała tylko `typecheck` i `tests`, więc czerwony `lint` nie unieważniał naprawy. (2b) Implementer pomija pozycje spoza zakresu swojej warstwy i opisuje je w `deviation_note`, ale `roundExtra` zawsze twierdził „implementer poprawił": ustalenie pominięte po cichu znikało z oczu weryfikatora rundy 2.
+
+**Zmiana.** (1) Frontmatter analizy: `final_checks: [..]`, dołączane (bez duplikatów) do `checks.finalGate`; bramka `prepare` wymaga listy niepustych napisów. (2a) Sonda po naprawie liczy `lint: fail` jak czerwień (`ok = false`, ostrzeżenie z polem lint). (2b) `finalRoundExtra(items, skipped)` składa prompt rundy 2; `deviation_note` implementerów trafiają do `report.finalFix.skipped` i do promptu jako „IMPLEMENTER POMINĄŁ część pozycji … NIE są poprawione".
+
+**Poza zakresem.** Przeniesienie pliku z importerami poza zakresem to błąd zakresu w analizie, nie silnika: ANL-038 mówi teraz, że decyzja przenosząca/usuwająca eksport wymaga w `dirs` jednostki także importerów. Poprawki w KANBAN/TM (dokumenty taska) nie należą do żadnej warstwy kodu i nadal robi je człowiek.
+
+<a id="orc-122"></a>
+
+### ORC-122 — karta z tagami spoza przestrzeni uruchamianych warstw nie wchodzi do doboru (2026-10-22)
+
+**Objaw (DEV-anz-pattern-mismatch-web).** marketing-hub TS-MH-026, task czysto web: dobór dał 7 kart API (repository, controller-schema, zod-schema-validation, named-policy, domain-errors, conventions, logger) z półki `always` i trafień keywordów (schema/endpoint/uprawnien); analiza odrzuciła je wszystkie w `patterns_exclude`. Blok `refine-spa` celowo nie ma własnej półki `always`, więc zadanie web dziedziczy półkę z `nestjs` i `ddd/core`.
+
+**Zmiana.** `orchestrate-prepare` po rozwiązaniu warstw liczy przestrzenie nazw tagów uruchamianych warstw (`api:domain` → `api`, `web:ui` → `web`). Karta pochodząca z `always` lub triggera odpada, gdy jej tagi (linia `**Tags**:`) leżą wyłącznie w przestrzeniach spoza tego zbioru. Zostają: karta bez tagów, z jakimkolwiek `any:*`, wskazana wprost w `patterns[]` analizy oraz każda, gdy żadna uruchamiana warstwa nie ma tagów. Odpadnięcie daje ostrzeżenie `wzorce pominięte: …`. `patterns_exclude` działa jak dotąd, na wpisach ręcznych.
+
+**Poza zakresem.** Wzorce warstwowe (`layer_contributions`) nie są filtrowane: wchodzą przez warstwę, która je wnosi.
+
+<a id="orc-123"></a>
+
+### ORC-123 — NO_GO wymuszone lukami podaje stan sondy, a udana naprawa ocenia luki od nowa (2026-10-22)
+
+**Objaw (DEV-no_go-unverified-scope, otwarty ponownie, 2 nowe wystąpienia).** grant-flow TS-UI-009 (`wf_dbfdcd1a-768`) i marketing-hub TS-MH-026 (`wf_5fc73b06-5a8`): bramka końcowa dała GO, zero naruszeń, a przebieg i tak skończył jako `NO_GO` `cause: machine`, bo jedyne ustalenia to `unverified_scope` (przeglądarka, baseline'y wizualne, iam/Caddy, testy po stronie API, niepodpisany TM). To dokładnie przypadek, który ORC-098 miało obniżać do GO z lukami.
+
+**Przyczyna (częściowo hipoteza).** ORC-098 obniża luki tylko przy zielonym dowodzie sondy silnika (`typecheck` albo `tests` = pass, nic nie fail). Raport nie zawierał wyniku sondy, więc nie da się ustalić, która gałąź zadziałała. W marketing-hub TS-MH-026 znamy przebieg: runda naprawcza poprawiła prettiera w 7 plikach (czyli `format:check`/`lint:check` z `checks.finalGate` były czerwone w chwili sondy), po czym werdykt został na sondzie sprzed naprawy. Dla grant-flow brak dziennika przebiegu, więc przyczyna sondy nie jest potwierdzona.
+
+**Zmiana.** (1) `report.finalProbe` i komunikat naruszenia „GO z niezweryfikowanym zakresem" zawierają stan sondy (`finalProbeSummary`: `typecheck=…, tests=…, lint=… (zielona | brak zielonego dowodu)`), więc następny raport mówi, czemu luki nie zostały obniżone. (2) Gdy bramka dała GO bez naruszeń (`forcedGaps`), runda naprawcza przeszła, a nie było ustaleń blokujących, sonda bramki końcowej biegnie jeszcze raz (`final-checks-after-fix`, `report.finalProbeAfterFix`); przy zielonym dowodzie ta sama ocena co w ORC-098 daje GO z lukami. Czerwona albo ślepa ponowna sonda zostawia halt i ostrzeżenie.
+
+**Poza zakresem.** Jeśli stan sondy w kolejnym raporcie pokaże `zielona`, a halt się powtórzy, przyczyna leży gdzie indziej (filtry `filterKnownLayerGaps`/`filterAdjudicatedByDecision` albo pusty wynik bramki) i rekord trzeba otworzyć z tym dowodem.

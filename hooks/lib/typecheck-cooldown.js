@@ -6,8 +6,9 @@
  * in `tests/flow-evals/hooks/run.js` would make the test pass while the hook drifts —
  * the failure mode this whole eval exists to catch.
  *
- * State goes to `<tsconfig dir>/.claude/run-state/`, which the gitignore template
- * already excludes (`templates/gitignore-claude.template`, wpis `.claude/analytics/`).
+ * State goes to `<tsconfig dir>/.claude/run-state/`. The gitignore template excludes it
+ * with `**\/.claude/run-state/` (templates/gitignore-claude.template): in a monorepo the
+ * tsconfig dir is a package, and the root-anchored `.claude/run-state/` does not reach it.
  */
 
 const crypto = require('crypto');

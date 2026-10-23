@@ -110,5 +110,5 @@ Wtedy implementacja idzie na świeżej gałęzi z `develop`.
 - Eval `tests/flow-evals/hook-telemetry/` (14 przypadków, prawdziwe hooki w procesach), wpięty w `pre-commit-guards.mjs`.
   Nie pokrywa wprost `check-patterns-read` i `check-subagent-pattern-reads` (wymagają transkryptu) — tam zmiana to jedno
   wyjście na końcu pliku, po którym nic się nie wykonuje.
-- Zmiana żyje w worktree `_claude-patterns-obs011` (gałąź `feature/TASK-OBS-011-hooks`), więc symlinki projektów jej nie widzą,
-  dopóki nie zostanie scalona.
+- Rollup bez zmian liczy blokady: dwie blokady `block-root-grep` w katalogu tymczasowym dały w `telemetry-rollup.mjs` `process hook` × rola `block-root-grep:root-grep` z `n=2`, `halted=2`; przepuszczenie nie zostawiło zdarzenia.
+- Wdrożone przez gałąź `feature/TASK-OBS-011-hooks` (usunięta po scaleniu), scalone do `develop` jako `260d2cc` i do `feature/TASK-OBS-011` jako `4802687`. Hooki działają na żywo w projektach.

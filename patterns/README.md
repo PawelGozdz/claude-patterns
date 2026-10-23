@@ -6,7 +6,7 @@ This knowledge base contains production-enforced patterns for DDD/CQRS projects.
 
 **Version**: 3.14
 **Last Updated**: 2026-09-27
-**Status**: PRODUCTION (58 core patterns + 56 stack-specific + 1 marketing + 2 finance + 2 legal = 119 total)
+**Status**: PRODUCTION (59 core patterns + 56 stack-specific + 1 marketing + 2 finance + 2 legal = 120 total)
 
 **⚠ project-specific** marker = derived from ONE project's codebase, not yet validated in a second
 one. Marked in the pattern's own `**Scope**:` line (see `CLAUDE.md` → "Adding a New Pattern"). These
@@ -20,7 +20,7 @@ to opt in. Promote to plain "Production" once a second project adopts the same s
 ```
 patterns/
 ├── domain/              # Domain Layer (core business logic) - 8 patterns
-├── application/         # Application Layer (CQRS handlers) - 5 patterns
+├── application/         # Application Layer (CQRS handlers) - 6 patterns
 ├── infrastructure/      # Infrastructure Layer (persistence, API) - 10 patterns
 ├── architecture/        # Cross-cutting architecture patterns - 13 patterns
 ├── testing/            # Testing patterns - 10 patterns
@@ -75,7 +75,7 @@ Core business logic patterns following DDD principles.
 
 ---
 
-### Application Layer (5 patterns)
+### Application Layer (6 patterns)
 
 CQRS command and query handlers, application services for complex workflows.
 
@@ -84,6 +84,7 @@ CQRS command and query handlers, application services for complex workflows.
 | **[command-handler-pattern.md](application/command-handler-pattern.md)** | ~500 | Production | Write-side CQRS, Dual Identity, ACL Registry, @Transactional | domain-application-implementer |
 | **[query-handler-pattern.md](application/query-handler-pattern.md)** | ~400 | Production | Read-side CQRS, pagination, user context, read models; self-scoped queries read userId from RequestContextService (ARCH-D001) | domain-application-implementer |
 | **[application-service-pattern.md](application/application-service-pattern.md)** | 375 | Production | Multi-step workflows, saga pattern, integration events, cross-context orchestration | domain-application-implementer |
+| **[command-handler-queue-port-pattern.md](application/command-handler-queue-port-pattern.md)** | ~150 | experimental | Command/query handler enqueues through a port (Symbol + interface in application; BullMQ or outbox adapter in the module); never `@InjectQueue` in the handler | domain-application-implementer |
 | **[audit-handler-pattern.md](application/audit-handler-pattern.md)** | ~450 | Production | GDPR audit logging, tier classification, BaseAuditHandler extension | domain-application-implementer, infrastructure-testing-implementer |
 | **[try-confirm-cancel-pattern.md](application/try-confirm-cancel-pattern.md)** | ~220 | experimental | Per-context application service for a reserve→confirm/release (TCC) protocol once it appears in ≥3 handlers; generic params, one generic error type, per-caller translation | domain-application-implementer |
 

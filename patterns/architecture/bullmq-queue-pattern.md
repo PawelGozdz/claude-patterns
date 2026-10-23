@@ -49,6 +49,9 @@
 
 ### Queue Injection Pattern (Producer, single-purpose dedicated queue)
 
+> Scope: event handlers and services. A **command/query handler** does not inject the queue —
+> it enqueues through a port (`command-handler-queue-port-pattern.md`, QP1).
+
 ```typescript
 import { InjectQueue } from '@nestjs/bullmq';
 import type { Queue } from 'bullmq';

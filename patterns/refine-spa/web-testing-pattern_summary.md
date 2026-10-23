@@ -16,9 +16,13 @@
   wariant „bez uprawnienia" ukrywający akcję.
 - **WT3** — L2 nie dotyka sieci: MSW albo atrapa providera; test, który potrzebuje
   realnego API, jest L3.
-- **WT4** — L3 to jeden smoke Playwright (tożsamość dev → dashboard) i asercja, że
-  wszystkie żądania idą do `/api/*` (WS3). Reguły biznesowe nie są testowane w L3.
-- **WT5** — Specy co-located obok kodu (`*.spec.tsx`), jak w `apps/api`; L3 w `apps/web/e2e/`.
+- **WT4** — L3 to smoke Playwright (tożsamość dev → dashboard) i asercja, że wszystkie
+  żądania idą do `/api/*` (WS3). Kolejne scenariusze L3 (przepływ zapisu przez bramę) są
+  dopuszczone, gdy zatwierdzona analiza zadania je przewiduje (decyzja `D*`); dowodzą
+  przejścia przez bramę, nie reguł biznesowych — te nie są testowane w L3.
+- **WT5** — Specy L1/L2 co-located obok kodu (`*.spec.tsx`), jak w `apps/api`; L3 w katalogu
+  z `playwright.config.ts` projektu (domyślnie `apps/web/e2e/`; projekt z innym układem,
+  np. `apps/web/test/e2e/`, trzyma się własnego — to nie naruszenie).
 - **WT6** — `pnpm --filter <pakiet-web> test` (nazwa pakietu z jego `package.json`) =
   L1+L2, poniżej 60 s; L3 osobnym skryptem.
 
