@@ -2367,3 +2367,14 @@ produktowe oceniamy raz, na całości zmiany, żeby nie płacić za nie w każde
 **Objaw (DEV-anz-layer-mismatch, 6. wystąpienie).** aegis-flow TS-001 jest zadaniem wyłącznie dokumentacyjnym: wszystkie 6 warstw trafiło do `layers_skip`, a silnik zostałby z samą bramką końcową.
 
 **Zmiana.** `prepare` ostrzega, gdy żadna warstwa nie jest uruchamiana: task bez zmian w kodzie nie ma czego wykonać w `/orchestrate`. Bramka nie odmawia startu, bo analiza może świadomie zostawić samą bramkę końcową.
+
+<a id="orc-130"></a>
+
+### ORC-130 — brudne drzewo z pracą samego taska (2026-10-23)
+
+**Objaw (agent_note, juz-ide-api-2).** TS-GEO-HOME-POINT-001, warstwa `testing`: cała niezatwierdzona praca taska (209 plików) trafiła do `dirtyAtStart`, więc po ORC-124 weryfikatorzy dostaliby polecenie „nie oceniaj", a `stageableFiles` pominąłby te pliki. Agent uznał, że `--overrides` nie ma klucza dla `dirtyAtStart`, i wyzerował listę w wyemitowanym skrypcie.
+
+**Przyczyna.** Klucz istnieje (`dirtyAtStart` jest polem wyjścia `prepare`, więc `{"dirtyAtStart": []}` przechodzi), ale nic o tym nie mówiło. ORC-124 zakłada, że brudne pliki są cudze. Silnik nie odróżni tego od pracy taska zrobionej wcześniej w drzewie (wznowienie, ręczne warstwy).
+
+**Zmiana.** `prepare` ostrzega przy ≥ 20 brudnych plikach albo przy brudnym drzewie ze wznowieniem (`layers_done`): mówi, że silnik uzna je za cudzą pracę, i podaje obejście `--overrides {"dirtyAtStart": []}`. Nagłówek skryptu dokumentuje ten klucz. Bez automatu, bo zgadywanie własności wróciłoby do błędu z ORC-090/124.
+

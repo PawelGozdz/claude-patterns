@@ -469,6 +469,30 @@ CASES.push({
   },
 });
 
+// ORC-130: dużo plików brudnych przed startem (praca samego taska) = ostrzeżenie z obejściem;
+// override zeruje listę i ostrzeżenie znika
+CASES.push({
+  name: 'many-dirty-files-warn-with-override-hint',
+  build: () => {
+    const root = makeProject({ taskId: 'TS-FIX-001', analysis: analysisFm({}), task: taskFile('Dodaj aggregate.') });
+    spawnSync('bash', ['-c', 'git init -q && git config user.email t@t && git config user.name t && git add -A && git commit -qm init && for i in $(seq 1 25); do echo x > work-$i.md; done'], { cwd: root });
+    return root;
+  },
+  check(r, root) {
+    if (r.code !== 0) return `oczekiwano exit 0, było ${r.code}`;
+    const w = r.json.warnings.find((x) => /plików brudnych przed startem/.test(x));
+    if (!w) return 'brak ostrzeżenia o brudnych plikach: ' + JSON.stringify(r.json.warnings);
+    if (!/25 plików/.test(w) || !/"dirtyAtStart": \[\]/.test(w)) return 'ostrzeżenie bez liczby lub obejścia: ' + w;
+    const ov = path.join(root, 'ov.json');
+    fs.writeFileSync(ov, JSON.stringify({ dirtyAtStart: [] }));
+    const z = run(root, 'TS-FIX-001', ['--overrides', ov]);
+    if (z.code !== 0) return 'override dirtyAtStart nieprzyjęty: ' + z.stderr.trim();
+    if (z.json.dirtyAtStart.length !== 0) return 'override nie wyzerował listy';
+    if (z.json.warnings.some((x) => /plików brudnych przed startem/.test(x))) return 'ostrzeżenie po wyzerowaniu';
+    return null;
+  },
+});
+
 // ORC-113: create_when to regex; opis prozą nie trafia i dostaje ostrzeżenie
 CASES.push({
   name: 'create-when-regex-hits-and-prose-warns',

@@ -9,7 +9,8 @@
 //   --overrides    nadpisania wyjścia z pliku (zamiast ręcznej edycji kopii szablonu):
 //                  obiekty scalane głęboko, tablice zastępowane; `layers` jako mapa
 //                  { "<id>": { …pola… } }. Nieznany klucz = exit 1 (literówka nie może
-//                  przejść po cichu).
+//                  przejść po cichu). `{"dirtyAtStart": []}` (ORC-130) = drzewo niesie pracę
+//                  tego taska, nie cudzą.
 //   --emit-script  zapisuje gotowy skrypt Workflow z WBUDOWANYMI args (przy ~150 KB args
 //                  ręczne przekazanie odpada), przepuszcza go przez workflow-lint i podaje
 //                  jego ścieżkę w `scriptPath`. Błąd lintu = exit 4, plik nie powstaje.
@@ -841,6 +842,15 @@ function main() {
     try { ov = JSON.parse(readFileSync(args.overrides, 'utf8')); } catch (e) { die(EXIT.USAGE, `--overrides: nie da się wczytać ${args.overrides}: ${e.message}`); }
     out = applyOverrides(out, ov);
     out.overridesFile = args.overrides;
+  }
+  // ORC-130: ORC-124 chroni pliki brudne przed startem jako cudzą pracę. Gdy drzewo niesie pracę
+  // SAMEGO taska (wznowienie po layers_done, warstwy zrobione ręcznie), ta ochrona wyłącza z
+  // oceny i ze stage'u cały task (juz-ide-api-2 TS-GEO-HOME-POINT-001: 209 plików). Prepare nie
+  // zgadnie, czyja to praca — mówi, co się stanie i jak to wyzerować, zanim skrypt wystartuje.
+  const dirtyN = out.dirtyAtStart?.length ?? 0;
+  const resumed = (out.task?.layersDone?.length ?? 0) > 0;
+  if (dirtyN >= 20 || (resumed && dirtyN > 0)) {
+    out.warnings.push(`${dirtyN} plików brudnych przed startem${resumed ? ' przy wznowieniu (layers_done: ' + out.task.layersDone.join(', ') + ')' : ''} — silnik uzna je za CUDZĄ pracę (ORC-090/124): weryfikatorzy ich nie ocenią, stage ich nie obejmie. Jeśli to praca tego taska: --overrides {"dirtyAtStart": []}`);
   }
   out.telemetryPlan = buildTelemetryPlan(out);
   out.engine = engineVersion();
