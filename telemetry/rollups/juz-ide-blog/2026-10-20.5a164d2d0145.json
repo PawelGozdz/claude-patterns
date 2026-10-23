@@ -6,9 +6,39 @@
       "cause": "config",
       "n": 1,
       "trigger": "setup_drift"
+    },
+    "DEV-orc-020": {
+      "cause": "other",
+      "n": 1,
+      "trigger": "agent_note"
+    },
+    "DEV-orc-062-site-model": {
+      "cause": "other",
+      "n": 1,
+      "trigger": "blocked_by_prior"
+    },
+    "DEV-orc-065": {
+      "cause": "other",
+      "n": 1,
+      "trigger": "agent_note"
     }
   },
-  "events": 10,
+  "engines": {
+    "3ec5ed0": {
+      "orchestrate": {
+        "costUsd": 6.597115,
+        "died": 0,
+        "ended": {
+          "no_go": 2,
+          "ok": 1
+        },
+        "started": 3,
+        "steps": 64,
+        "stepsWithoutCost": 0
+      }
+    }
+  },
+  "events": 173,
   "host": "5a164d2d0145",
   "processes": {
     "audit": {
@@ -30,9 +60,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 11,
           "outcomes": {
-            "ok": 1
+            "ok": 11
           },
           "toolCalls": 0
         },
@@ -44,9 +74,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 11,
           "outcomes": {
-            "ok": 1
+            "ok": 11
           },
           "toolCalls": 0
         },
@@ -58,9 +88,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 11,
           "outcomes": {
-            "ok": 1
+            "ok": 11
           },
           "toolCalls": 0
         },
@@ -72,9 +102,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 11,
           "outcomes": {
-            "ok": 1
+            "ok": 11
           },
           "toolCalls": 0
         },
@@ -86,23 +116,26 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 11,
           "outcomes": {
-            "ok": 1
+            "ok": 11
           },
           "toolCalls": 0
         },
         "runtime": {
-          "causes": {},
+          "causes": {
+            "config": 1
+          },
           "costUsd": 0,
           "durationMs": {
             "n": 0,
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 11,
           "outcomes": {
-            "ok": 1
+            "failed": 1,
+            "ok": 10
           },
           "toolCalls": 0
         },
@@ -114,15 +147,15 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 11,
           "outcomes": {
-            "ok": 1
+            "ok": 11
           },
           "toolCalls": 0
         },
         "templates": {
           "causes": {
-            "config": 1
+            "config": 3
           },
           "costUsd": 0,
           "durationMs": {
@@ -130,9 +163,10 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 11,
           "outcomes": {
-            "failed": 1
+            "failed": 3,
+            "ok": 8
           },
           "toolCalls": 0
         },
@@ -144,23 +178,130 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 11,
           "outcomes": {
-            "ok": 1
+            "ok": 11
           },
           "toolCalls": 0
         }
       },
-      "steps": 9,
-      "stepsWithoutCost": 9,
+      "steps": 99,
+      "stepsWithoutCost": 99,
       "verification": {
         "firstPassGo": 0,
         "units": 0
       }
+    },
+    "orchestrate": {
+      "costUsd": 6.597115,
+      "costUsdRetried": 1.51656,
+      "died": 0,
+      "repairs": {
+        "fixSteps": 3,
+        "fixed": 3,
+        "open": 0
+      },
+      "retried": 18,
+      "roles": {
+        "fixer": {
+          "causes": {},
+          "costUsd": 0.917542,
+          "durationMs": {
+            "n": 11,
+            "p50": 6717,
+            "p90": 16783
+          },
+          "n": 11,
+          "outcomes": {
+            "ok": 11
+          },
+          "toolCalls": 36
+        },
+        "gate": {
+          "causes": {
+            "verifier": 3
+          },
+          "costUsd": 0.92803,
+          "durationMs": {
+            "n": 8,
+            "p50": 6942,
+            "p90": 78550
+          },
+          "n": 8,
+          "outcomes": {
+            "go": 1,
+            "no_go": 3,
+            "ok": 4
+          },
+          "toolCalls": 35
+        },
+        "implementer": {
+          "causes": {},
+          "costUsd": 3.049178,
+          "durationMs": {
+            "n": 10,
+            "p50": 30614,
+            "p90": 45807
+          },
+          "n": 10,
+          "outcomes": {
+            "ok": 10
+          },
+          "toolCalls": 92
+        },
+        "probe": {
+          "causes": {},
+          "costUsd": 0.115016,
+          "durationMs": {
+            "n": 25,
+            "p50": 7824,
+            "p90": 13879
+          },
+          "n": 25,
+          "outcomes": {
+            "ok": 25
+          },
+          "toolCalls": 50
+        },
+        "verifier": {
+          "causes": {},
+          "costUsd": 1.587349,
+          "durationMs": {
+            "n": 10,
+            "p50": 26836,
+            "p90": 32922
+          },
+          "n": 10,
+          "outcomes": {
+            "go": 10
+          },
+          "toolCalls": 70
+        }
+      },
+      "steps": 64,
+      "stepsWithoutCost": 0,
+      "verification": {
+        "firstPassGo": 5,
+        "units": 5
+      }
     }
   },
   "project": "juz-ide-blog",
-  "runs": {},
-  "stepsTotal": 9,
+  "runs": {
+    "orchestrate": {
+      "costUsd": 6.597115,
+      "durationMs": {
+        "n": 3,
+        "p50": 399074,
+        "p90": 652015
+      },
+      "ended": {
+        "no_go": 2,
+        "ok": 1
+      },
+      "started": 3
+    }
+  },
+  "stepsTotal": 163,
   "v": 1
 }

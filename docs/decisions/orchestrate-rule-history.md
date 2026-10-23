@@ -1087,6 +1087,38 @@ pisanego z dywizem. Brak trafienia nie jest dowodem, że tematu nie ma — gdy w
 ryzyko, którego żaden `when:` nie złapał, potraktuj to jak trafienie i zgłoś lukę w regexie
 bloku.
 
+<a id="anl-042"></a>
+
+### ANL-042 — kanon rozwijany w chwili analizy, nie setupu (2026-10-21)
+
+**Objaw.** juz-ide-api-2: `block_params.governance.canon` miało `docs/decisions/*`, ale
+`materialize-runtime.mjs` rozwijał glob do listy plików w `runtime.yml`. Każdy nowy BDR wypadał
+z korpusu `strategy-fit` do następnego setupu — BDR-090 (decyzja o prywatności adresu) był poza
+kanonem w analizie, która go dotyczyła. Przy okazji glob łapał pliki niebędące kanonem
+(`README.md`, `template.md`, `pomysly.md`).
+
+**Zmiana.** Surowe wzorce (z `!wykluczeniami`) trafiają do `runtime.yml → params_globs`, obok
+migawki w `params`. `scripts/resolve-params.mjs` rozwija je na żywo (ten sam kod co materializacja:
+`scripts/lib/path-globs.mjs`), a `/analyze` bierze z niego korpus w kroku 0.d. `verify-project-setup`
+ostrzega o rozjeździe wzorzec ↔ lista, a pusty glob to BRAK. Wykluczenia były obsługiwane od
+początku; nowością jest udokumentowany przykład w `blocks/governance.yml`.
+
+<a id="anl-043"></a>
+
+### ANL-043 — `when:` strategy-fit dopasowywany do projektu (2026-10-21)
+
+**Objaw.** Regex `when:` strategy-fit jest sztywny (`feature|cennik|onboarding…`). Zadania o
+prywatności, discovery czy reputacji go nie uruchamiały, choć to one łamią inwarianty. juz-ide
+obeszło to lokalnym blokiem `canon-invariants` z drugim stage'em i własnym `when:` — duplikacja
+całego slotu.
+
+**Zmiana.** Parametry `strategy_fit_when_extra` (regex doklejany jako alternatywa) i
+`strategy_fit_always_for` (`{pole_taska: [wartości]}`, wymusza slot po frontmatterze taska).
+Klejenie robi `materialize-runtime.mjs` (`foldSlotOverrides`), nie YAML bloku: `...|${extra}` przy
+pustym parametrze dałoby regex pasujący do wszystkiego. Niepoprawny regex = błąd materializacji;
+pusty parametr usuwa klucze ze slotu. `always_for` omija też sito ANL-018 — jawna opcja projektu
+(np. P0) ma pierwszeństwo przed oszczędzaniem tokenów opus-a.
+
 <a id="anl-024"></a>
 
 ### ANL-024 — do slotu idzie STRESZCZENIE poprzednich stage'ów, nigdy surowy output
@@ -2210,6 +2242,29 @@ analizy z błędnym YAML nie wystartują ponownie bez poprawki frontmatteru. Eva
 **Zmiana.** W `buildProbePrompt` stała `allLiteral`: gdy wszystkie `checks` warstwy to komendy dosłowne, linia o `package.json` nie jest dodawana. Przy dowolnej komendzie dosłownej prompt dostaje regułę: `skipped` tylko gdy samej komendy nie ma (`No rule to make target`, `command not found`, EXIT 127); istniejąca komenda z niezerowym EXIT to `fail`, nigdy `skipped`. Warstwy z samymi nazwami skryptów npm zostają bez zmian.
 
 **Poza zakresem.** `tests skipped` w warstwie `engine` (druga notatka) jest zamierzone: warstwa nie ma `tests:true`, a testy należą do jednostki `testing`. Jeśli ślepa sonda wróci po tej zmianie, trzeba zajrzeć w dziennik przebiegu (sama linia mogła nie być przyczyną).
+
+### ORC-119 — kanon dociera do bramki końcowej (2026-10-21)
+
+**Objaw.** juz-ide-api-2: blok `governance` podpinał kanon wyłącznie do panelu `/analyze`.
+`code-quality-verifier` i `security-e2e-verifier` (`final_gate`) nie dostawały ani `canon_inject`,
+ani decyzji cytowanych w `strategy_ref` taska, więc implementacja mogła złamać inwariant
+zatwierdzony w analizie i żadna bramka tego nie widziała.
+
+**Zmiana.** `orchestrate-prepare` (`scripts/lib/canon-inject.mjs`) składa `canon`: pliki
+`canon_inject` oraz dokumenty z `strategy_ref`/`canon_ref` (frontmatter taska i artefaktu
+analizy), rozwiązane do ścieżek — id typu `BDR-090` po korpusie rozwijanym na żywo, potem po
+`docs/`; granica id jest twarda (`BDR-09` ≠ `BDR-090`), `ADR-0104` pasuje też do `0104-*.md`. Wartość
+z tekstem wolnym (`'BDR-076, BDR-077 (opis); decyzja …'`) jest tokenizowana: ścieżki `*.md` i
+ścisłe id; id bez pliku to tylko ostrzeżenie (bywa numerem innego zadania). Kotwica `plik.md#2`
+wkleja SEKCJĘ (nagłówek `## 2.` do następnego tej samej rangi), nie cały dokument — `KANON.md#2` to
+2 KB zamiast 39 KB. Treść pod limitem (20 KB na wpis, 60 KB razem); powyżej tylko ścieżka i
+ostrzeżenie. Wykryte przy próbie na danych api-2 (127 zadań z `strategy_ref`), nie na fixturach. `buildFinalGatePrompt`
+dokłada sekcję „ZGODNOŚĆ Z KANONEM”: naruszenie inwariantu to VETO (`NO_GO`) z cytatem
+`plik:linia kodu — punkt kanonu`; nierozwiązane odniesienia są pomijane (prawdziwe `strategy_ref` miesza kanon z odwołaniami do wzorców i reguł). Bez bloku
+`governance` w kompozycji `canon.active` jest `false` i prompt jest bez zmian.
+
+**Poza zakresem.** Weryfikator warstwy (`code-quality-verifier`) kanonu nie dostaje — inwarianty
+produktowe oceniamy raz, na całości zmiany, żeby nie płacić za nie w każdej iteracji pętli.
 
 <a id="orc-120"></a>
 

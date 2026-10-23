@@ -59,6 +59,7 @@ import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 import { createHash } from 'node:crypto';
 import { engineVersion } from './lib/engine-version.mjs';
+import { buildCanon } from './lib/canon-inject.mjs';
 
 const require_ = createRequire(import.meta.url);
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -789,6 +790,9 @@ function main() {
       })(),
       layersDone: layersDone.map(String),
     },
+    // Blok governance: inwarianty (`canon_inject`) + dokumenty z `strategy_ref`/`canon_ref` taska,
+    // rozwiązane do ścieżek i treści. `active: false` bez bloku w kompozycji — bramka nic nie dostaje.
+    canon: buildCanon({ projectDir: args.project, runtime, taskFm: taskDoc?.fm, analysisFm: analysisDoc?.fm, warnings }),
     // ORC-091: false (przez --overrides) wyłącza automatyczne naprawianie drobnych ustaleń.
     autoFixMinor: true,
     // ORC-097: model bramki końcowej — auto (Sonnet; model sesji dla tasków z threat_model) |

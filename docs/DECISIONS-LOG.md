@@ -15,6 +15,21 @@
 
 ---
 
+## 2026-10-22 — Telemetria mierzy samoocenę, nie wartość (ADR 0015)
+
+**Zmiana:** ADR 0015 i epik EP-OBSERVABILITY-002 z sześcioma taskami (TASK-OBS-012…017): wynik ludzki
+po przebiegu jako zdarzenie, narzędzia (Skill/Agent/komendy) w telemetrii, fałszywe GO i blok `tasks`
+w rollupie, raport nad rollupami z deltą per hash silnika, `claim` w regułach i skrzynce.
+**Dlaczego:** przegląd danych z 2026-10-22: 24 tys. zdarzeń, a odpowiedzi tylko na „ile i za ile".
+Bramka końcowa odrzuca 89 z 258 przebiegów października (34%), ale nikt nie liczy, czyje GO było fałszywe;
+46 ze 122 tasków potrzebowało więcej niż jednego przebiegu (rekord 13); 97 ze 106 kategorii w skrzynce
+to `other`; `/analyze` kończy 61 z 62 przebiegów jako `halted`, bo PAUSE i awaria mają ten sam wynik;
+rollupy commitowano pięć razy od lipca, bo poza `flow-top` nic ich nie czyta.
+**Odrzucone:** jeden task (hooki zamrożone, cztery z sześciu części ich nie dotykają); LLM-sędzia
+werdyktów (ADR 0004); OTEL/serwer przed raportem (jeden host, zero czytelników rollupów); zapis każdego
+tool calla (wolumen bez pytania); diff w zdarzeniu (dane projektu).
+**Status:** pending
+
 > **Luka 2026-07-05 → 2026-08-12 dopisana wstecznie 2026-09-07** (TASK-KAIZEN-002 K73) —
 > log stał 64 dni mimo istotnych zmian w tym oknie. Wpisy niżej są skrótowe, zrekonstruowane
 > z commitów i `docs/completed-tasks/`/`project-orchestration/completed-tasks/`, dat nie

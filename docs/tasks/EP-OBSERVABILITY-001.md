@@ -45,6 +45,12 @@ migracja historii pokazała, że stara telemetria raportowała 420/420 udanych p
 | Bramki pre-commit w metrykach (która bramka coś łapie) | ✅ | TASK-OBS-010 |
 | Blokady z hooków w metrykach (dzienne liczniki per reguła) | ✅ | TASK-OBS-011 |
 
+## Kontynuacja
+
+Przegląd telemetrii z 2026-10-22 ([ADR 0015](../adr/0015-pomiar-wartosci-zamiast-samooceny.md)) idzie
+w [EP-OBSERVABILITY-002](EP-OBSERVABILITY-002.md): wynik ludzki po przebiegu, narzędzia w telemetrii,
+raport nad rollupami i domknięta pętla reguła → metryka. TASK-OBS-011 zostaje tutaj.
+
 ## Kolejność
 
 TASK-OBS-003 → TASK-OBS-005 → TASK-OBS-006 → TASK-OBS-004 → TASK-OBS-007 → TASK-OBS-008. Uzasadnienie: `/analyze` nie ma dziś żadnych danych (ślepa

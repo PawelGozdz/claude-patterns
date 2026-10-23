@@ -603,6 +603,34 @@ function buildVerifierPrompt(a, layer, probe, changedFiles, mode, noopClaim, pri
     'poprawnym wynikiem; brak werdyktu wywraca cały przebieg.'
 }
 
+// Kanon z bloku `governance` (a.canon, składa go orchestrate-prepare): inwarianty z `canon_inject`
+// i dokumenty wskazane w `strategy_ref`/`canon_ref` taska. Dotąd kanon trafiał tylko do panelu
+// /analyze — implementacja mogła złamać inwariant zatwierdzony w analizie i żadna bramka tego nie
+// widziała (juz-ide-api-2, 2026-10-21). Bez bloku (`active: false`) zwraca '' i prompt jest
+// bajt w bajt taki jak wcześniej.
+function renderCanon(canon) {
+  if (!canon || !canon.active) return ''
+  const doc = (e) => '--- ' + e.path + (e.ref ? ' (' + e.ref + ')' : '') + ' ---\n' +
+    (e.text != null ? e.text.trim() : '(treść pominięta — przeczytaj plik sam, jednym Readem)')
+  const inject = (canon.inject || []).length
+    ? '\nINWARIANTY KANONU (canon_inject — obowiązują zawsze):\n' + canon.inject.map(doc).join('\n\n') + '\n'
+    : ''
+  const refs = (canon.refs || []).length
+    ? '\nDECYZJE CYTOWANE W TASKU (strategy_ref/canon_ref):\n' + canon.refs.map(doc).join('\n\n') + '\n'
+    : ''
+  const unresolved = (canon.unresolved || []).length
+    ? '\nNIEROZWIĄZANE ODNIESIENIA (nie znaleziono pliku): ' + canon.unresolved.join(', ') +
+      ' — pominięte; nie zgaduj ich treści (to może być odwołanie spoza kanonu, nie luka w weryfikacji).\n'
+    : ''
+  if (!inject && !refs && !unresolved) return ''
+  return '\n\nZGODNOŚĆ Z KANONEM — obowiązkowa sekcja oceny. Porównaj DIFF (pliki z listy wyżej) z ' +
+    'inwariantami i decyzjami poniżej. Naruszenie inwariantu to naruszenie BLOKUJĄCE (VETO → NO_GO) i musi ' +
+    'mieć cytat w formie `plik:linia kodu — punkt kanonu (plik kanonu + zdanie, które złamano) — poprawka`. ' +
+    'Decyzja z taska, której kod przeczy, jest naruszeniem tak samo. Zgodność nie wymaga raportu — ' +
+    'wpisz jedną linię „Zgodność z kanonem: OK (N inwariantów, M decyzji)" w `rationale`.\n' +
+    inject + refs + unresolved
+}
+
 // Lista plików przychodzi z DRZEWA (sonda treeFilesCmd względem bazy przebiegu), nie z sumy
 // raportów warstw: warstwa zakończona no-op oddaje `files: []`, więc bramka nie widziała
 // infrastruktury, migracji ani kontraktów (TS-MH-005 — weryfikator sam zajrzał do HEAD).
@@ -653,7 +681,7 @@ function buildFinalGatePrompt(a, checks, changedFiles, treeSource, knownGaps, pr
         '`violations` — przy zielonych checks i zerze naruszeń nie powodują NO_GO, trafiają do raportu.\n'
       : (checks.length ? 'Deterministyczne bramki do wykonania raz, na całości: ' + checks.join(', ') + '\n' : '')) +
     (changedFiles.length ? 'Pliki objęte zmianą (z drzewa, względem bazy przebiegu):\n  ' + changedFiles.join('\n  ') + '\n' : '') +
-    source + dirty + decisions + gapsBlock +
+    source + dirty + decisions + gapsBlock + renderCanon(a.canon) +
     renderCards(a.patterns || [], 'wszystkie wzorce tego przebiegu') +
     '\nZwróć werdykt GO albo NO_GO i listę naruszeń.\n' +
     (a.autoFixMinor !== false ? MINOR_REMINDER : '') +
