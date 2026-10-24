@@ -4,7 +4,7 @@ status: dismissed
 dismissed_reason: >
   tests skipped w warstwie engine jest zgodne z konfiguracją: warstwa ma checks make typecheck/make lint i nie ma tests:true, a testy należą do jednostki testing. Pokrycie mierzy ta jednostka i bramka końcowa. Część o typecheck/lint skipped obsłużona w ORC-118 (DEV-orc-085-api).
 trigger: agent_note
-category: other
+category: verifier
 sources:
   - orchestrate
 rule_ref: ORC-085

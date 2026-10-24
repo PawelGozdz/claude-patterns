@@ -6,6 +6,7 @@ dismissed_reason: >
   (budżet weryfikatora skalowany z liczbą plików). Weryfikacja dosłownych stringów odmowy to
   zmiana asercji bezpieczeństwa, więc przekroczenie nominału było uzasadnione.
 trigger: agent_note
+category: budget
 rule_ref: null
 first_seen: 2026-09-26
 last_seen: 2026-09-26

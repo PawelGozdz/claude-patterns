@@ -4,7 +4,7 @@ status: dismissed
 dismissed_reason: >
   Przyczyna 3.1 (config projektu), nie silnik: orchestrate-prepare.mjs:640 celowo liczy create_when jako RegExp ('i') na tekście zadania i analizy, a blok aegis-pipeline.yml miał w create_when zdania po polsku. Naprawione 2026-10-17 w aegis-flow: .claude/blocks/aegis-pipeline.yml (regexy dla warstw config, engine, workers, api, daemon) i przegenerowany .claude/config/runtime.yml (staged, bez commita).
 trigger: agent_note
-category: other
+category: config
 sources:
   - orchestrate
 rule_ref: ORC-020

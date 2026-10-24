@@ -4,6 +4,7 @@ status: promoted
 resolution: >
   Przyczyną był niepoprawny YAML we frontmatterze TS-AIG-084 (units[] zgubione po cichu), nie luka w ORC-101. Naprawione jako ORC-102 (2026-10-08).
 trigger: agent_note
+category: pattern_card
 rule_ref: ORC-101
 first_seen: 2026-10-07
 last_seen: 2026-10-07

@@ -9,6 +9,7 @@ dismissed_reason: >
   DEV-agent_note-weryfikator-ecc-flutter-reviewer-warstwa-implemen (wariant PL) — grupowane
   tu jako jeden temat platformowy.
 trigger: agent_note
+category: verifier
 rule_ref: null
 first_seen: 2026-09-26
 last_seen: 2026-09-26

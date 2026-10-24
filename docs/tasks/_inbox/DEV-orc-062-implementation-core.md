@@ -4,6 +4,7 @@ status: dismissed
 dismissed_reason: >
   Proces zadziałał: analiza ai-gateway TS-AIG-066 pominęła drugiego konsumenta GatewayErrorKind, implementer słusznie zgłosił poza zakresem, naprawione przez --overrides (scope.dirs) + wznowienie. Luka jest w analizie, nie w silniku; do obserwacji, jeśli analiza będzie systematycznie pomijać konsumentów unii/enumów.
 trigger: blocked_by_prior
+category: plan
 rule_ref: ORC-062
 first_seen: 2026-10-03
 last_seen: 2026-10-03

@@ -4,7 +4,7 @@ status: dismissed
 dismissed_reason: >
   Zgodne z projektem: warstwa implementation w ai-gateway nie ma tests:true (testy należą do warstwy testing), więc sonda zwraca checks.tests=skipped, a weryfikator ocenia testy statycznie (jak w TS-AIG-075). Czerwony AT:secret poza zakresem warstwy (REVEAL_ALLOWLIST) to skutek zamierzonego zawężenia jednostki.
 trigger: agent_note
-category: other
+category: test
 sources:
   - orchestrate
 rule_ref: null

@@ -7,6 +7,7 @@ dismissed_reason: >
   globalnego guardu PII (audience VETO3). Do rozstrzygnięcia w tamtym repo, nie w
   claude-patterns.
 trigger: blocked_by_prior
+category: plan
 rule_ref: ORC-062
 first_seen: 2026-09-26
 last_seen: 2026-09-26

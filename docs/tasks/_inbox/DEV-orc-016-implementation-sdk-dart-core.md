@@ -13,6 +13,7 @@ dismissed_reason: >
   probe-prompt-scopes-checks-to-package-root-in-monorepo w
   tests/flow-evals/orchestrate-script/run.js.
 trigger: agent_note
+category: plan
 rule_ref: ORC-016
 first_seen: 2026-09-27
 last_seen: 2026-09-27

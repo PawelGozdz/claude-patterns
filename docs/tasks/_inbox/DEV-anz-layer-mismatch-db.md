@@ -2,7 +2,7 @@
 id: DEV-anz-layer-mismatch-db
 status: proposed
 trigger: analyze_note
-category: other
+category: plan
 sources:
   - analyze
 rule_ref: ANZ-LAYER-MISMATCH

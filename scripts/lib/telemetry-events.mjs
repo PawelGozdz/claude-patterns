@@ -62,7 +62,19 @@ const TRIGGER_CATEGORY = {
   halt: 'other', blocked_by_prior: 'other', agent_note: 'other', analyze_note: 'other',
 };
 
-export function defaultCategory(trigger) {
+// Reguły `ANZ-*` /analyze mówią o przyczynie dokładniej niż sam trigger (ADR 0015 D5):
+// niespójność warstw z taskiem to `plan`, wzorzec z obcego stosu to `pattern_card`.
+// Dotyczy tylko triggerów analizy — `--rule` innych procesów (ORC-*, WL*) nic tu nie zmienia.
+const ANALYZE_RULE_CATEGORY = [
+  { re: /^ANZ-LAYER/i, category: 'plan' },
+  { re: /^ANZ-PATTERN/i, category: 'pattern_card' },
+];
+
+export function defaultCategory(trigger, ruleRef = null) {
+  if (trigger === 'analyze_gate' || trigger === 'analyze_note') {
+    const hit = ANALYZE_RULE_CATEGORY.find((r) => r.re.test(String(ruleRef || '')));
+    if (hit) return hit.category;
+  }
   return TRIGGER_CATEGORY[trigger] || 'other';
 }
 

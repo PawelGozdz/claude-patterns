@@ -5,6 +5,7 @@ dismissed_reason: >
   Projektowe — jednostka za duża (4 niepowiązane drzewa katalogów), ten sam wzorzec co wcześniejszy
   domain-ports split. Samo-rozwiązane podziałem na 4 pod-jednostki. Nie błąd silnika.
 trigger: halt
+category: pattern_card
 rule_ref: ORC-036
 first_seen: 2026-09-27
 last_seen: 2026-09-27

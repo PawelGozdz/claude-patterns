@@ -11,7 +11,7 @@ resolution: >
   je jednostka core; to zakres analizy, a nie luka konfiguracji (testing dirs [test/,
   __tests__/] pasuje do ścieżki przez dopasowanie podciągu).
 trigger: analyze_note
-category: other
+category: plan
 sources:
   - analyze
 rule_ref: ANZ-LAYER-MISMATCH

@@ -6,6 +6,7 @@ dismissed_reason: >
   luki SI3/SI2/DI4 dotyczą kart projektu (guardy globalne zamiast @Auth() per metoda). Bez
   defektu silnika.
 trigger: agent_note
+category: infra
 rule_ref: null
 first_seen: 2026-09-26
 last_seen: 2026-09-26

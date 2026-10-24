@@ -4,6 +4,7 @@ status: promoted
 resolution: >
   Naprawione jako ORC-094 (2026-10-03): osobny log per check w sondzie (lint nadpisywał błędy tsc), pole lint i stałe mapowanie wyników.
 trigger: halt
+category: typecheck
 rule_ref: ORC-084
 first_seen: 2026-10-03
 last_seen: 2026-10-03

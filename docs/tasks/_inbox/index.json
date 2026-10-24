@@ -6,7 +6,7 @@
       "id": "DEV-agent_note-agent-bramki-koncowej-security-e2e-verifier-wyma",
       "status": "dismissed",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "infra",
       "sources": [
         "orchestrate"
       ],
@@ -21,7 +21,7 @@
       "id": "DEV-agent_note-analiza-ts-019-niespojna-layers-scope-wymienia-te",
       "status": "dismissed",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "plan",
       "sources": [
         "orchestrate"
       ],
@@ -66,7 +66,7 @@
       "id": "DEV-agent_note-bramka-koncowa-cv2-z-conventions-pattern-kaze-naz",
       "status": "dismissed",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "pattern_card",
       "sources": [
         "orchestrate"
       ],
@@ -81,7 +81,7 @@
       "id": "DEV-agent_note-bramka-koncowa-dosta-a-karty-wzorcow-z-obcego-stos",
       "status": "promoted",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "pattern_card",
       "sources": [
         "orchestrate"
       ],
@@ -96,7 +96,7 @@
       "id": "DEV-agent_note-bramka-koncowa-go-ale-security-e2e-verifier-zg-os",
       "status": "dismissed",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "infra",
       "sources": [
         "orchestrate"
       ],
@@ -126,7 +126,7 @@
       "id": "DEV-agent_note-bramka-koncowa-ts-sso-065-d7-wymaga-osobnego-git",
       "status": "dismissed",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "infra",
       "sources": [
         "orchestrate"
       ],
@@ -141,7 +141,7 @@
       "id": "DEV-agent_note-bramka-koncowa-zadania-tylko-web-layers-skip-doma",
       "status": "promoted",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "pattern_card",
       "sources": [
         "orchestrate"
       ],
@@ -156,7 +156,7 @@
       "id": "DEV-agent_note-claude-local-md-w-claude-config-a-layers-scope-po",
       "status": "promoted",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "pattern_card",
       "sources": [
         "orchestrate"
       ],
@@ -171,7 +171,7 @@
       "id": "DEV-agent_note-d12-nie-zmieniac-statusu-api-kontra-d6-kody-d",
       "status": "dismissed",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "budget",
       "sources": [
         "orchestrate"
       ],
@@ -186,7 +186,7 @@
       "id": "DEV-agent_note-decyzja-d6-b-ts-sso-066-osobny-worktree-sprzecz",
       "status": "promoted",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "infra",
       "sources": [
         "orchestrate"
       ],
@@ -216,7 +216,7 @@
       "id": "DEV-agent_note-deviation-note-implementera-karta-aig-invariants",
       "status": "dismissed",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "pattern_card",
       "sources": [
         "orchestrate"
       ],
@@ -231,7 +231,7 @@
       "id": "DEV-agent_note-deviation-note-karta-bot-nie-rozstrzyga-set-loc",
       "status": "dismissed",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "pattern_card",
       "sources": [
         "orchestrate"
       ],
@@ -246,7 +246,7 @@
       "id": "DEV-agent_note-deviation-note-warstwy-implementation-i-testing-w",
       "status": "dismissed",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "pattern_card",
       "sources": [
         "orchestrate"
       ],
@@ -261,7 +261,7 @@
       "id": "DEV-agent_note-deviation-note-warstwy-karty-regu-conventions",
       "status": "promoted",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "pattern_card",
       "sources": [
         "orchestrate"
       ],
@@ -276,7 +276,7 @@
       "id": "DEV-agent_note-deviation-note-warstwy-testing-weryfikator-ts-im",
       "status": "promoted",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "pattern_card",
       "sources": [
         "orchestrate"
       ],
@@ -291,7 +291,7 @@
       "id": "DEV-agent_note-deviation-note-weryfikatora-warstwy-karta-aig-inv",
       "status": "dismissed",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "pattern_card",
       "sources": [
         "orchestrate"
       ],
@@ -306,7 +306,7 @@
       "id": "DEV-agent_note-docs-card-karta-aig-invariants-nie-mowi-czy-trze",
       "status": "dismissed",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "pattern_card",
       "sources": [
         "orchestrate"
       ],
@@ -366,7 +366,7 @@
       "id": "DEV-agent_note-final-gate-go-with-2-commit-conditions-already-ap",
       "status": "dismissed",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "infra",
       "sources": [
         "orchestrate"
       ],
@@ -381,7 +381,7 @@
       "id": "DEV-agent_note-final-gate-przekroczy-nominalny-budzet-15-wywo-an",
       "status": "dismissed",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "budget",
       "sources": [
         "orchestrate"
       ],
@@ -411,7 +411,7 @@
       "id": "DEV-agent_note-gap-karta-inv-d5-inv-f11-niezsynchronizowana-z-er",
       "status": "dismissed",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "pattern_card",
       "sources": [
         "orchestrate"
       ],
@@ -426,7 +426,7 @@
       "id": "DEV-agent_note-implementation-docs-pomine-a-pozycje-2-numer-sekc",
       "status": "dismissed",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "scope",
       "sources": [
         "orchestrate"
       ],
@@ -441,7 +441,7 @@
       "id": "DEV-agent_note-implementer-jednostki-docs-nie-dostarczy-dopisku",
       "status": "dismissed",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "verifier",
       "sources": [
         "orchestrate"
       ],
@@ -456,7 +456,7 @@
       "id": "DEV-agent_note-implementer-karta-testing-pyramid-pattern-tp1-tp",
       "status": "dismissed",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "pattern_card",
       "sources": [
         "orchestrate"
       ],
@@ -471,7 +471,7 @@
       "id": "DEV-agent_note-implementer-nie-moze-kasowac-plikow-tombstone-exp",
       "status": "dismissed",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "infra",
       "sources": [
         "orchestrate"
       ],
@@ -486,7 +486,7 @@
       "id": "DEV-agent_note-implementer-zglosil-deviation-note-zaden-z-7-dost",
       "status": "dismissed",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "pattern_card",
       "sources": [
         "orchestrate"
       ],
@@ -516,7 +516,7 @@
       "id": "DEV-agent_note-karta-aig-invariants-md-w-prompcie-weryfikatora-op",
       "status": "dismissed",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "pattern_card",
       "sources": [
         "orchestrate"
       ],
@@ -531,7 +531,7 @@
       "id": "DEV-agent_note-karta-aig-invariants-nie-opisuje-redacted-field-pa",
       "status": "dismissed",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "pattern_card",
       "sources": [
         "orchestrate"
       ],
@@ -546,7 +546,7 @@
       "id": "DEV-agent_note-karta-inv-d7-nie-rozstrzyga-czy-testy-moga-uzywac",
       "status": "dismissed",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "pattern_card",
       "sources": [
         "orchestrate"
       ],
@@ -561,7 +561,7 @@
       "id": "DEV-agent_note-karta-inv-nie-rozstrzyga-czy-trasa-llm-anthropic",
       "status": "dismissed",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "pattern_card",
       "sources": [
         "orchestrate"
       ],
@@ -576,7 +576,7 @@
       "id": "DEV-agent_note-karta-inv-r1-nie-rozstrzyga-x-should-retry-na-503",
       "status": "dismissed",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "pattern_card",
       "sources": [
         "orchestrate"
       ],
@@ -591,7 +591,7 @@
       "id": "DEV-agent_note-karta-logger-pattern-log1-log3-logger-service-ilo",
       "status": "promoted",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "pattern_card",
       "sources": [
         "orchestrate"
       ],
@@ -606,7 +606,7 @@
       "id": "DEV-agent_note-karta-logger-pattern-log1-log3-nie-pasuje-do-stack",
       "status": "promoted",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "pattern_card",
       "sources": [
         "orchestrate"
       ],
@@ -621,7 +621,7 @@
       "id": "DEV-agent_note-karta-logger-pattern-log1-log3-zak-ada-token-logge",
       "status": "promoted",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "pattern_card",
       "sources": [
         "orchestrate"
       ],
@@ -636,7 +636,7 @@
       "id": "DEV-agent_note-karta-nie-mowi-czy-pliki-testow-podlegaja-limitowi",
       "status": "dismissed",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "pattern_card",
       "sources": [
         "orchestrate"
       ],
@@ -651,7 +651,7 @@
       "id": "DEV-agent_note-karty-regu-python-nie-maja-powierzchni-w-warstwie",
       "status": "dismissed",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "pattern_card",
       "sources": [
         "orchestrate"
       ],
@@ -666,7 +666,7 @@
       "id": "DEV-agent_note-karty-regu-rp8-console-warn-w-repozytorium-i-lo",
       "status": "promoted",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "pattern_card",
       "sources": [
         "orchestrate"
       ],
@@ -681,7 +681,7 @@
       "id": "DEV-agent_note-karty-regu-z-patterns-always-conventions-pattern",
       "status": "promoted",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "pattern_card",
       "sources": [
         "orchestrate"
       ],
@@ -696,7 +696,7 @@
       "id": "DEV-agent_note-karty-web-testing-pattern-wt4-wt5-jeden-smoke-e2",
       "status": "promoted",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "pattern_card",
       "sources": [
         "orchestrate"
       ],
@@ -711,7 +711,7 @@
       "id": "DEV-agent_note-karty-wzorcow-ddd-scoped-conventions-pattern-cv1",
       "status": "promoted",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "pattern_card",
       "sources": [
         "orchestrate"
       ],
@@ -726,7 +726,7 @@
       "id": "DEV-agent_note-karty-zod-schema-validation-pattern-strict-i",
       "status": "promoted",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "pattern_card",
       "sources": [
         "orchestrate"
       ],
@@ -741,7 +741,7 @@
       "id": "DEV-agent_note-modules-test-cli-i-test-dryfu-d5-5-d5-6-leza-w",
       "status": "dismissed",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "plan",
       "sources": [
         "orchestrate"
       ],
@@ -771,7 +771,7 @@
       "id": "DEV-agent_note-obserwacja-systemowa-z-task-0010-4-eskalacje-orc",
       "status": "promoted",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "pattern_card",
       "sources": [
         "orchestrate"
       ],
@@ -786,7 +786,7 @@
       "id": "DEV-agent_note-odmowa-krok-juz-zakonczony-sukcesem-refuse-com",
       "status": "dismissed",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "scope",
       "sources": [
         "orchestrate"
       ],
@@ -816,7 +816,7 @@
       "id": "DEV-agent_note-out-of-scope-finding-to-report-upstream-apps-web",
       "status": "dismissed",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "scope",
       "sources": [
         "orchestrate"
       ],
@@ -831,7 +831,7 @@
       "id": "DEV-agent_note-pliki-wymagane-przez-decyzje-d13-validate-sessio",
       "status": "promoted",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "verifier",
       "sources": [
         "orchestrate"
       ],
@@ -876,7 +876,7 @@
       "id": "DEV-agent_note-refine-providers-prv2-check-bez-redirectto-na-4",
       "status": "promoted",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "pattern_card",
       "sources": [
         "orchestrate"
       ],
@@ -906,7 +906,7 @@
       "id": "DEV-agent_note-runda-naprawcza-po-bramce-koncowej-zostawi-a-typec",
       "status": "dismissed",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "typecheck",
       "sources": [
         "orchestrate"
       ],
@@ -921,7 +921,7 @@
       "id": "DEV-agent_note-security-e2e-verifier-lokalna-definicja-wymaga-t",
       "status": "promoted",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "pattern_card",
       "sources": [
         "orchestrate"
       ],
@@ -936,7 +936,7 @@
       "id": "DEV-agent_note-setup-project-nie-ignoruje-installed-yml",
       "status": "promoted",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "config",
       "sources": [
         "orchestrate"
       ],
@@ -951,7 +951,7 @@
       "id": "DEV-agent_note-sonda-bramki-koncowej-zwroci-a-typecheck-skipped",
       "status": "promoted",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "typecheck",
       "sources": [
         "orchestrate"
       ],
@@ -966,7 +966,7 @@
       "id": "DEV-agent_note-sonda-checks-tests-skipped-bo-testy-app-auth-nal",
       "status": "dismissed",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "test",
       "sources": [
         "orchestrate"
       ],
@@ -981,7 +981,7 @@
       "id": "DEV-agent_note-sonda-checks-tests-skipped-weryfikator-przewidzia",
       "status": "dismissed",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "test",
       "sources": [
         "orchestrate"
       ],
@@ -996,7 +996,7 @@
       "id": "DEV-agent_note-sonda-warstwy-implementacji-zwroci-a-checks-tests",
       "status": "dismissed",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "test",
       "sources": [
         "orchestrate"
       ],
@@ -1011,7 +1011,7 @@
       "id": "DEV-agent_note-sonda-zwroci-a-typecheck-tests-lint-skipped-mypy",
       "status": "dismissed",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "typecheck",
       "sources": [
         "orchestrate"
       ],
@@ -1041,7 +1041,7 @@
       "id": "DEV-agent_note-testing-archtest-deviation-note-plik-arch-test-ts",
       "status": "dismissed",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "plan",
       "sources": [
         "orchestrate"
       ],
@@ -1086,7 +1086,7 @@
       "id": "DEV-agent_note-threat-model-dubluje-sie-przy-nextjs-z-node",
       "status": "dismissed",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "config",
       "sources": [
         "orchestrate"
       ],
@@ -1116,7 +1116,7 @@
       "id": "DEV-agent_note-ts-sim-002b-jednostka-app-clone-ma-dirs-tylko-sim",
       "status": "dismissed",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "plan",
       "sources": [
         "orchestrate"
       ],
@@ -1131,7 +1131,7 @@
       "id": "DEV-agent_note-verified-only-the-4-explicitly-scoped-fix-points-p",
       "status": "dismissed",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "pattern_card",
       "sources": [
         "orchestrate"
       ],
@@ -1146,7 +1146,7 @@
       "id": "DEV-agent_note-verifier-ecc-flutter-reviewer-warstwa-implementat",
       "status": "dismissed",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "verifier",
       "sources": [
         "orchestrate"
       ],
@@ -1161,7 +1161,7 @@
       "id": "DEV-agent_note-w-trzecim-wznowieniu-tego-przebiegu-4-warstwy-jed",
       "status": "dismissed",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "verifier",
       "sources": [
         "orchestrate"
       ],
@@ -1191,7 +1191,7 @@
       "id": "DEV-agent_note-warstwa-match-widzia-a-duplikat-scopematcherror-w",
       "status": "dismissed",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "scope",
       "sources": [
         "orchestrate"
       ],
@@ -1206,7 +1206,7 @@
       "id": "DEV-agent_note-web-campaigns-write-queryclient-clear-w-wrapped",
       "status": "dismissed",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "scope",
       "sources": [
         "orchestrate"
       ],
@@ -1221,7 +1221,7 @@
       "id": "DEV-agent_note-weryfikator-bramki-uruchomi-kroki-ci-spoza-listy",
       "status": "promoted",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "verifier",
       "sources": [
         "orchestrate"
       ],
@@ -1236,7 +1236,7 @@
       "id": "DEV-agent_note-weryfikator-ecc-flutter-reviewer-warstwa-implemen",
       "status": "dismissed",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "pattern_card",
       "sources": [
         "orchestrate"
       ],
@@ -1251,7 +1251,7 @@
       "id": "DEV-agent_note-weryfikator-go-po-13-15-tur-z-unverified-scope-w",
       "status": "promoted",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "verifier",
       "sources": [
         "orchestrate"
       ],
@@ -1266,7 +1266,7 @@
       "id": "DEV-agent_note-weryfikator-go-z-unverified-scope-app-module-ts-t",
       "status": "promoted",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "verifier",
       "sources": [
         "orchestrate"
       ],
@@ -1281,7 +1281,7 @@
       "id": "DEV-agent_note-weryfikator-testing-pyramid-pattern-md-i-conventi",
       "status": "dismissed",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "verifier",
       "sources": [
         "orchestrate"
       ],
@@ -1296,7 +1296,7 @@
       "id": "DEV-agent_note-weryfikator-testing-zg-osi-deviation-note-o-karci",
       "status": "dismissed",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "pattern_card",
       "sources": [
         "orchestrate"
       ],
@@ -1311,7 +1311,7 @@
       "id": "DEV-agent_note-weryfikator-warstwy-testing-architecture-verifier",
       "status": "dismissed",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "pattern_card",
       "sources": [
         "orchestrate"
       ],
@@ -1326,7 +1326,7 @@
       "id": "DEV-agent_note-weryfikator-zg-osi-ustalenia-w-tests-i-app-poza",
       "status": "dismissed",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "verifier",
       "sources": [
         "orchestrate"
       ],
@@ -1341,7 +1341,7 @@
       "id": "DEV-agent_note-weryfikatorzy-warstw-i-bramka-koncowa-dostaja-kart",
       "status": "promoted",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "pattern_card",
       "sources": [
         "orchestrate"
       ],
@@ -1356,7 +1356,7 @@
       "id": "DEV-agent_note-weryfikatorzy-warstw-implementation-i-testing-zg-a",
       "status": "dismissed",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "pattern_card",
       "sources": [
         "orchestrate"
       ],
@@ -1386,7 +1386,7 @@
       "id": "DEV-agent_note-wzorce-w-przekazanej-liscie-python-async-patterns",
       "status": "dismissed",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "pattern_card",
       "sources": [
         "orchestrate"
       ],
@@ -1401,7 +1401,7 @@
       "id": "DEV-agent_note-zakres-sondy-podaje-checks-tests-skipped-a-w-repo",
       "status": "dismissed",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "test",
       "sources": [
         "orchestrate"
       ],
@@ -1446,7 +1446,7 @@
       "id": "DEV-agent_note-zmiany-auth-module-ts-i-user-registered-handler-sp",
       "status": "dismissed",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "plan",
       "sources": [
         "orchestrate"
       ],
@@ -1461,7 +1461,7 @@
       "id": "DEV-agent_note-zmiany-spoza-zakresu-warstwy-w-drzewie-karta-aig",
       "status": "dismissed",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "pattern_card",
       "sources": [
         "orchestrate"
       ],
@@ -1541,7 +1541,7 @@
       "id": "DEV-anz-layer-mismatch",
       "status": "promoted",
       "trigger": "analyze_note",
-      "category": "other",
+      "category": "plan",
       "sources": [
         "analyze"
       ],
@@ -1558,7 +1558,7 @@
       "id": "DEV-anz-layer-mismatch-db",
       "status": "proposed",
       "trigger": "analyze_note",
-      "category": "other",
+      "category": "plan",
       "sources": [
         "analyze"
       ],
@@ -1573,7 +1573,7 @@
       "id": "DEV-anz-layer-mismatch-engine",
       "status": "dismissed",
       "trigger": "analyze_note",
-      "category": "other",
+      "category": "plan",
       "sources": [
         "analyze"
       ],
@@ -1588,7 +1588,7 @@
       "id": "DEV-anz-layer-mismatch-implementation",
       "status": "dismissed",
       "trigger": "analyze_note",
-      "category": "other",
+      "category": "pattern_card",
       "sources": [
         "analyze"
       ],
@@ -1603,7 +1603,7 @@
       "id": "DEV-anz-layer-mismatch-site",
       "status": "promoted",
       "trigger": "analyze_note",
-      "category": "other",
+      "category": "plan",
       "sources": [
         "analyze"
       ],
@@ -1618,7 +1618,7 @@
       "id": "DEV-anz-layer-mismatch-testing",
       "status": "promoted",
       "trigger": "analyze_note",
-      "category": "other",
+      "category": "plan",
       "sources": [
         "analyze"
       ],
@@ -1634,7 +1634,7 @@
       "id": "DEV-anz-pattern-mismatch",
       "status": "proposed",
       "trigger": "analyze_note",
-      "category": "other",
+      "category": "pattern_card",
       "sources": [
         "analyze"
       ],
@@ -1684,7 +1684,7 @@
       "id": "DEV-anz-when-gap",
       "status": "promoted",
       "trigger": "analyze_note",
-      "category": "other",
+      "category": "config",
       "sources": [
         "analyze"
       ],
@@ -1848,7 +1848,7 @@
       "id": "DEV-blocked_by_prior-plik-wymagany-przez-decyzje-mock-mockuserresidenc",
       "status": "dismissed",
       "trigger": "blocked_by_prior",
-      "category": "other",
+      "category": "typecheck",
       "sources": [
         "orchestrate"
       ],
@@ -1863,7 +1863,7 @@
       "id": "DEV-blocked_by_prior-sonda-typecheck-na-czerwono-implementer-twierdzi",
       "status": "dismissed",
       "trigger": "blocked_by_prior",
-      "category": "other",
+      "category": "typecheck",
       "sources": [
         "orchestrate"
       ],
@@ -1878,7 +1878,7 @@
       "id": "DEV-halt-unverified-scope",
       "status": "promoted",
       "trigger": "halt",
-      "category": "other",
+      "category": "verifier",
       "sources": [
         "orchestrate"
       ],
@@ -1894,7 +1894,7 @@
       "id": "DEV-halt-warstwa-domain-domain-aggregate-wyczerpane-3-prob",
       "status": "dismissed",
       "trigger": "halt",
-      "category": "other",
+      "category": "verifier",
       "sources": [
         "orchestrate"
       ],
@@ -1909,7 +1909,7 @@
       "id": "DEV-halt-warstwa-testing-l1-l2-dla-campaign-knowledge-2-a",
       "status": "dismissed",
       "trigger": "halt",
-      "category": "other",
+      "category": "budget",
       "sources": [
         "orchestrate"
       ],
@@ -2137,7 +2137,7 @@
       "id": "DEV-orc-005",
       "status": "promoted",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "config",
       "sources": [
         "orchestrate"
       ],
@@ -2152,7 +2152,7 @@
       "id": "DEV-orc-012-testing",
       "status": "dismissed",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "pattern_card",
       "sources": [
         "orchestrate"
       ],
@@ -2167,7 +2167,7 @@
       "id": "DEV-orc-016-implementation-sdk-dart-core",
       "status": "dismissed",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "plan",
       "sources": [
         "orchestrate"
       ],
@@ -2182,7 +2182,7 @@
       "id": "DEV-orc-020",
       "status": "promoted",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "config",
       "sources": [
         "orchestrate"
       ],
@@ -2197,7 +2197,7 @@
       "id": "DEV-orc-020-engine",
       "status": "dismissed",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "config",
       "sources": [
         "orchestrate"
       ],
@@ -2212,7 +2212,7 @@
       "id": "DEV-orc-020-engine-loader",
       "status": "dismissed",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "config",
       "sources": [
         "orchestrate"
       ],
@@ -2227,7 +2227,7 @@
       "id": "DEV-orc-021-application-application",
       "status": "dismissed",
       "trigger": "halt",
-      "category": "other",
+      "category": "pattern_card",
       "sources": [
         "orchestrate"
       ],
@@ -2242,7 +2242,7 @@
       "id": "DEV-orc-026",
       "status": "promoted",
       "trigger": "halt",
-      "category": "other",
+      "category": "lint",
       "sources": [
         "orchestrate"
       ],
@@ -2272,7 +2272,7 @@
       "id": "DEV-orc-035-presentation",
       "status": "promoted",
       "trigger": "halt",
-      "category": "other",
+      "category": "test",
       "sources": [
         "orchestrate"
       ],
@@ -2302,7 +2302,7 @@
       "id": "DEV-orc-035-testing-red-tests",
       "status": "promoted",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "test",
       "sources": [
         "orchestrate"
       ],
@@ -2317,7 +2317,7 @@
       "id": "DEV-orc-035-testing-tests-media-service",
       "status": "promoted",
       "trigger": "halt",
-      "category": "other",
+      "category": "test",
       "sources": [
         "orchestrate"
       ],
@@ -2347,7 +2347,7 @@
       "id": "DEV-orc-036-testing-testing",
       "status": "dismissed",
       "trigger": "halt",
-      "category": "other",
+      "category": "pattern_card",
       "sources": [
         "orchestrate"
       ],
@@ -2362,7 +2362,7 @@
       "id": "DEV-orc-041-implementation",
       "status": "dismissed",
       "trigger": "halt",
-      "category": "other",
+      "category": "infra",
       "sources": [
         "orchestrate"
       ],
@@ -2377,7 +2377,7 @@
       "id": "DEV-orc-041-implementation-core-gate",
       "status": "promoted",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "infra",
       "sources": [
         "orchestrate"
       ],
@@ -2392,7 +2392,7 @@
       "id": "DEV-orc-042-application",
       "status": "promoted",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "plan",
       "sources": [
         "orchestrate"
       ],
@@ -2407,7 +2407,7 @@
       "id": "DEV-orc-044",
       "status": "proposed",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "pattern_card",
       "sources": [
         "orchestrate"
       ],
@@ -2422,7 +2422,7 @@
       "id": "DEV-orc-044-implementation",
       "status": "promoted",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "pattern_card",
       "sources": [
         "orchestrate"
       ],
@@ -2437,7 +2437,7 @@
       "id": "DEV-orc-044-testing-harness",
       "status": "promoted",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "pattern_card",
       "sources": [
         "orchestrate"
       ],
@@ -2452,7 +2452,7 @@
       "id": "DEV-orc-044-testing-scenarios",
       "status": "dismissed",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "pattern_card",
       "sources": [
         "orchestrate"
       ],
@@ -2467,7 +2467,7 @@
       "id": "DEV-orc-055",
       "status": "promoted",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "verifier",
       "sources": [
         "orchestrate"
       ],
@@ -2513,7 +2513,7 @@
       "id": "DEV-orc-057",
       "status": "promoted",
       "trigger": "halt",
-      "category": "other",
+      "category": "infra",
       "sources": [
         "orchestrate"
       ],
@@ -2528,7 +2528,7 @@
       "id": "DEV-orc-057-implementation",
       "status": "promoted",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "infra",
       "sources": [
         "orchestrate"
       ],
@@ -2543,7 +2543,7 @@
       "id": "DEV-orc-062-application",
       "status": "promoted",
       "trigger": "blocked_by_prior",
-      "category": "other",
+      "category": "plan",
       "sources": [
         "orchestrate"
       ],
@@ -2560,7 +2560,7 @@
       "id": "DEV-orc-062-application-campaign-application",
       "status": "dismissed",
       "trigger": "blocked_by_prior",
-      "category": "other",
+      "category": "plan",
       "sources": [
         "orchestrate"
       ],
@@ -2575,7 +2575,7 @@
       "id": "DEV-orc-062-application-evaluation-acl-application",
       "status": "dismissed",
       "trigger": "blocked_by_prior",
-      "category": "other",
+      "category": "lint",
       "sources": [
         "orchestrate"
       ],
@@ -2590,7 +2590,7 @@
       "id": "DEV-orc-062-domain",
       "status": "promoted",
       "trigger": "blocked_by_prior",
-      "category": "other",
+      "category": "typecheck",
       "sources": [
         "orchestrate"
       ],
@@ -2605,7 +2605,7 @@
       "id": "DEV-orc-062-domain-rules",
       "status": "dismissed",
       "trigger": "blocked_by_prior",
-      "category": "other",
+      "category": "lint",
       "sources": [
         "orchestrate"
       ],
@@ -2620,7 +2620,7 @@
       "id": "DEV-orc-062-domain-tier-projector",
       "status": "promoted",
       "trigger": "blocked_by_prior",
-      "category": "other",
+      "category": "typecheck",
       "sources": [
         "orchestrate"
       ],
@@ -2635,7 +2635,7 @@
       "id": "DEV-orc-062-implementation-config-env",
       "status": "promoted",
       "trigger": "blocked_by_prior",
-      "category": "other",
+      "category": "plan",
       "sources": [
         "orchestrate"
       ],
@@ -2650,7 +2650,7 @@
       "id": "DEV-orc-062-implementation-core",
       "status": "dismissed",
       "trigger": "blocked_by_prior",
-      "category": "other",
+      "category": "plan",
       "sources": [
         "orchestrate"
       ],
@@ -2665,7 +2665,7 @@
       "id": "DEV-orc-062-implementation-origin-guard",
       "status": "dismissed",
       "trigger": "blocked_by_prior",
-      "category": "other",
+      "category": "typecheck",
       "sources": [
         "orchestrate"
       ],
@@ -2696,7 +2696,7 @@
       "id": "DEV-orc-062-infrastructure-cli-request-id",
       "status": "promoted",
       "trigger": "blocked_by_prior",
-      "category": "other",
+      "category": "verifier",
       "sources": [
         "orchestrate"
       ],
@@ -2711,7 +2711,7 @@
       "id": "DEV-orc-062-infrastructure-shared-infra",
       "status": "dismissed",
       "trigger": "blocked_by_prior",
-      "category": "other",
+      "category": "typecheck",
       "sources": [
         "orchestrate"
       ],
@@ -2726,7 +2726,7 @@
       "id": "DEV-orc-062-site-model",
       "status": "dismissed",
       "trigger": "blocked_by_prior",
-      "category": "other",
+      "category": "lint",
       "sources": [
         "orchestrate"
       ],
@@ -2741,7 +2741,7 @@
       "id": "DEV-orc-062-testing",
       "status": "proposed",
       "trigger": "halt",
-      "category": "other",
+      "category": "verifier",
       "sources": [
         "orchestrate"
       ],
@@ -2757,7 +2757,7 @@
       "id": "DEV-orc-062-testing-campaign",
       "status": "dismissed",
       "trigger": "blocked_by_prior",
-      "category": "other",
+      "category": "lint",
       "sources": [
         "orchestrate"
       ],
@@ -2772,7 +2772,7 @@
       "id": "DEV-orc-062-testing-knowledge",
       "status": "promoted",
       "trigger": "blocked_by_prior",
-      "category": "other",
+      "category": "lint",
       "sources": [
         "orchestrate"
       ],
@@ -2787,7 +2787,7 @@
       "id": "DEV-orc-062-testing-l1-l2",
       "status": "dismissed",
       "trigger": "blocked_by_prior",
-      "category": "other",
+      "category": "plan",
       "sources": [
         "orchestrate"
       ],
@@ -2802,7 +2802,7 @@
       "id": "DEV-orc-062-testing-l3",
       "status": "dismissed",
       "trigger": "blocked_by_prior",
-      "category": "other",
+      "category": "plan",
       "sources": [
         "orchestrate"
       ],
@@ -2817,7 +2817,7 @@
       "id": "DEV-orc-062-testing-sources-tests",
       "status": "dismissed",
       "trigger": "blocked_by_prior",
-      "category": "other",
+      "category": "test",
       "sources": [
         "orchestrate"
       ],
@@ -2832,7 +2832,7 @@
       "id": "DEV-orc-062-testing-testing-infrastructure",
       "status": "dismissed",
       "trigger": "halt",
-      "category": "other",
+      "category": "pattern_card",
       "sources": [
         "orchestrate"
       ],
@@ -2847,7 +2847,7 @@
       "id": "DEV-orc-062-testing-u11-architecture-test",
       "status": "dismissed",
       "trigger": "blocked_by_prior",
-      "category": "other",
+      "category": "test",
       "sources": [
         "orchestrate"
       ],
@@ -2862,7 +2862,7 @@
       "id": "DEV-orc-062-worker",
       "status": "promoted",
       "trigger": "blocked_by_prior",
-      "category": "other",
+      "category": "plan",
       "sources": [
         "orchestrate"
       ],
@@ -2877,7 +2877,7 @@
       "id": "DEV-orc-064-application-application",
       "status": "dismissed",
       "trigger": "halt",
-      "category": "other",
+      "category": "plan",
       "sources": [
         "orchestrate"
       ],
@@ -2907,7 +2907,7 @@
       "id": "DEV-orc-064-testing-testing-infrastructure",
       "status": "dismissed",
       "trigger": "halt",
-      "category": "other",
+      "category": "pattern_card",
       "sources": [
         "orchestrate"
       ],
@@ -2922,7 +2922,7 @@
       "id": "DEV-orc-065",
       "status": "promoted",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "lint",
       "sources": [
         "orchestrate"
       ],
@@ -2952,7 +2952,7 @@
       "id": "DEV-orc-067",
       "status": "promoted",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "infra",
       "sources": [
         "orchestrate"
       ],
@@ -2987,7 +2987,7 @@
       "id": "DEV-orc-069-application-app-cqrs",
       "status": "dismissed",
       "trigger": "halt",
-      "category": "other",
+      "category": "budget",
       "sources": [
         "orchestrate"
       ],
@@ -3002,7 +3002,7 @@
       "id": "DEV-orc-069-content-posts",
       "status": "promoted",
       "trigger": "halt",
-      "category": "other",
+      "category": "verifier",
       "sources": [
         "orchestrate"
       ],
@@ -3017,7 +3017,7 @@
       "id": "DEV-orc-069-domain-domain",
       "status": "promoted",
       "trigger": "halt",
-      "category": "other",
+      "category": "plan",
       "sources": [
         "orchestrate"
       ],
@@ -3066,7 +3066,7 @@
       "id": "DEV-orc-069-implementation",
       "status": "dismissed",
       "trigger": "halt",
-      "category": "other",
+      "category": "pattern_card",
       "sources": [
         "orchestrate"
       ],
@@ -3081,7 +3081,7 @@
       "id": "DEV-orc-069-implementation-sdk-dart-core",
       "status": "dismissed",
       "trigger": "halt",
-      "category": "other",
+      "category": "pattern_card",
       "sources": [
         "orchestrate"
       ],
@@ -3096,7 +3096,7 @@
       "id": "DEV-orc-069-implementation-sdk-node-conformance-adapter",
       "status": "dismissed",
       "trigger": "halt",
-      "category": "other",
+      "category": "verifier",
       "sources": [
         "orchestrate"
       ],
@@ -3111,7 +3111,7 @@
       "id": "DEV-orc-069-infrastructure-guards",
       "status": "promoted",
       "trigger": "halt",
-      "category": "other",
+      "category": "plan",
       "sources": [
         "orchestrate"
       ],
@@ -3126,7 +3126,7 @@
       "id": "DEV-orc-069-infrastructure-infrastructure-persistence",
       "status": "promoted",
       "trigger": "halt",
-      "category": "other",
+      "category": "pattern_card",
       "sources": [
         "orchestrate"
       ],
@@ -3141,7 +3141,7 @@
       "id": "DEV-orc-069-infrastructure-wiring-security-format-fix",
       "status": "dismissed",
       "trigger": "halt",
-      "category": "other",
+      "category": "plan",
       "sources": [
         "orchestrate"
       ],
@@ -3156,7 +3156,7 @@
       "id": "DEV-orc-069-presentation",
       "status": "dismissed",
       "trigger": "halt",
-      "category": "other",
+      "category": "verifier",
       "sources": [
         "orchestrate"
       ],
@@ -3186,7 +3186,7 @@
       "id": "DEV-orc-069-web",
       "status": "dismissed",
       "trigger": "halt",
-      "category": "other",
+      "category": "verifier",
       "sources": [
         "orchestrate"
       ],
@@ -3201,7 +3201,7 @@
       "id": "DEV-orc-069-web-web-bootstrap",
       "status": "dismissed",
       "trigger": "halt",
-      "category": "other",
+      "category": "verifier",
       "sources": [
         "orchestrate"
       ],
@@ -3216,7 +3216,7 @@
       "id": "DEV-orc-069-web-web-shell",
       "status": "dismissed",
       "trigger": "halt",
-      "category": "other",
+      "category": "verifier",
       "sources": [
         "orchestrate"
       ],
@@ -3231,7 +3231,7 @@
       "id": "DEV-orc-070-infrastructure-shared-infra",
       "status": "promoted",
       "trigger": "halt",
-      "category": "other",
+      "category": "plan",
       "sources": [
         "orchestrate"
       ],
@@ -3246,7 +3246,7 @@
       "id": "DEV-orc-074-engine",
       "status": "promoted",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "verifier",
       "sources": [
         "orchestrate"
       ],
@@ -3276,7 +3276,7 @@
       "id": "DEV-orc-082-application",
       "status": "promoted",
       "trigger": "blocked_by_prior",
-      "category": "other",
+      "category": "plan",
       "sources": [
         "orchestrate"
       ],
@@ -3291,7 +3291,7 @@
       "id": "DEV-orc-082-application-pr1-auth-app",
       "status": "promoted",
       "trigger": "blocked_by_prior",
-      "category": "other",
+      "category": "plan",
       "sources": [
         "orchestrate"
       ],
@@ -3306,7 +3306,7 @@
       "id": "DEV-orc-082-core-core-pkg",
       "status": "promoted",
       "trigger": "blocked_by_prior",
-      "category": "other",
+      "category": "lint",
       "sources": [
         "orchestrate"
       ],
@@ -3321,7 +3321,7 @@
       "id": "DEV-orc-082-domain",
       "status": "dismissed",
       "trigger": "blocked_by_prior",
-      "category": "other",
+      "category": "plan",
       "sources": [
         "orchestrate"
       ],
@@ -3336,7 +3336,7 @@
       "id": "DEV-orc-082-engine-audit-decision",
       "status": "promoted",
       "trigger": "blocked_by_prior",
-      "category": "other",
+      "category": "typecheck",
       "sources": [
         "orchestrate"
       ],
@@ -3381,7 +3381,7 @@
       "id": "DEV-orc-084-domain",
       "status": "promoted",
       "trigger": "halt",
-      "category": "other",
+      "category": "typecheck",
       "sources": [
         "orchestrate"
       ],
@@ -3396,7 +3396,7 @@
       "id": "DEV-orc-084-domain-u1-domain",
       "status": "promoted",
       "trigger": "halt",
-      "category": "other",
+      "category": "plan",
       "sources": [
         "orchestrate"
       ],
@@ -3426,7 +3426,7 @@
       "id": "DEV-orc-085-api",
       "status": "promoted",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "typecheck",
       "sources": [
         "orchestrate"
       ],
@@ -3441,7 +3441,7 @@
       "id": "DEV-orc-085-engine",
       "status": "dismissed",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "verifier",
       "sources": [
         "orchestrate"
       ],
@@ -3471,7 +3471,7 @@
       "id": "DEV-orc-087",
       "status": "promoted",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "infra",
       "sources": [
         "orchestrate"
       ],
@@ -3486,7 +3486,7 @@
       "id": "DEV-orc-087-domain",
       "status": "promoted",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "infra",
       "sources": [
         "orchestrate"
       ],
@@ -3501,7 +3501,7 @@
       "id": "DEV-orc-090-api",
       "status": "dismissed",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "plan",
       "sources": [
         "orchestrate"
       ],
@@ -3516,7 +3516,7 @@
       "id": "DEV-orc-091-final-gate",
       "status": "promoted",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "infra",
       "sources": [
         "orchestrate"
       ],
@@ -3531,7 +3531,7 @@
       "id": "DEV-orc-092-content-screens-data",
       "status": "promoted",
       "trigger": "halt",
-      "category": "other",
+      "category": "verifier",
       "sources": [
         "orchestrate"
       ],
@@ -3546,7 +3546,7 @@
       "id": "DEV-orc-092-final-gate",
       "status": "dismissed",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "infra",
       "sources": [
         "orchestrate"
       ],
@@ -3561,7 +3561,7 @@
       "id": "DEV-orc-093-implementation-u4-guarded-embeddings",
       "status": "promoted",
       "trigger": "blocked_by_prior",
-      "category": "other",
+      "category": "plan",
       "sources": [
         "orchestrate"
       ],
@@ -3576,7 +3576,7 @@
       "id": "DEV-orc-093-implementation-usage-priced",
       "status": "promoted",
       "trigger": "blocked_by_prior",
-      "category": "other",
+      "category": "plan",
       "sources": [
         "orchestrate"
       ],
@@ -3622,7 +3622,7 @@
       "id": "DEV-orc-099-testing-tests-clone",
       "status": "dismissed",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "test",
       "sources": [
         "orchestrate"
       ],
@@ -3637,7 +3637,7 @@
       "id": "DEV-orc-101-final-gate",
       "status": "promoted",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "pattern_card",
       "sources": [
         "orchestrate"
       ],
@@ -3652,7 +3652,7 @@
       "id": "DEV-orc-103-testing",
       "status": "promoted",
       "trigger": "blocked_by_prior",
-      "category": "other",
+      "category": "test",
       "sources": [
         "orchestrate"
       ],
@@ -3667,7 +3667,7 @@
       "id": "DEV-orc-103-testing-docs-security",
       "status": "proposed",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "infra",
       "sources": [
         "orchestrate"
       ],
@@ -3682,7 +3682,7 @@
       "id": "DEV-orc-104-implementation-u1-hop",
       "status": "promoted",
       "trigger": "halt",
-      "category": "other",
+      "category": "infra",
       "sources": [
         "orchestrate"
       ],
@@ -3697,7 +3697,7 @@
       "id": "DEV-orc-105-engine",
       "status": "dismissed",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "test",
       "sources": [
         "orchestrate"
       ],
@@ -3727,7 +3727,7 @@
       "id": "DEV-orc-124-testing",
       "status": "promoted",
       "trigger": "agent_note",
-      "category": "other",
+      "category": "infra",
       "sources": [
         "orchestrate"
       ],

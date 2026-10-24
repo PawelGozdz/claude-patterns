@@ -4,7 +4,7 @@ status: dismissed
 dismissed_reason: >
   Ustalenie dotyczy kodu aegis-flow (TS-019): `_refuse_completed` nie zostawia wpisu audytu, bo brak ReasonCode (decyzja: nowy kod step_already_completed). To wynik pracy projektu, nie wada wzorców ani silnika; jest w TS-019.report.md w sekcji „Do decyzji człowieka”.
 trigger: agent_note
-category: other
+category: scope
 sources:
   - orchestrate
 rule_ref: null

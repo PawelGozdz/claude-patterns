@@ -8,6 +8,7 @@ resolution: >
   budżet tur weryfikatora) to osobny, nadal otwarty temat doboru rozmiaru units[] w analizie
   TS-MH-010 — nie naprawiony tutaj, poza zakresem silnika.
 trigger: agent_note
+category: verifier
 rule_ref: null
 first_seen: 2026-09-26
 last_seen: 2026-09-26

@@ -10,6 +10,7 @@ dismissed_reason: >
   jest realny defekt biznesowy w TS-SIM-001, to backlog grant-flow, nie
   claude-patterns.
 trigger: halt
+category: verifier
 rule_ref: null
 first_seen: 2026-09-28
 last_seen: 2026-09-28

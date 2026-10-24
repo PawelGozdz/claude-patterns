@@ -10,6 +10,7 @@ dismissed_reason: >
   osobny problem silnika. Brak zmiany silnika w tym zgłoszeniu; ewentualna decyzja
   (rozdzielić budżety, jak sugeruje spike) zostaje przy TASK-ORCH-VERIFY-BUDGET-001.
 trigger: halt
+category: verifier
 rule_ref: ORC-069
 first_seen: 2026-09-28
 last_seen: 2026-09-28

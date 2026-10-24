@@ -5,6 +5,7 @@ dismissed_reason: >
   Informacyjna: weryfikator punktowej naprawy (4 punkty) jawnie zgłosił zakres, w którym
   pracował (marketing-hub TS-MH-010). To ujawnienie ograniczenia, nie defekt.
 trigger: agent_note
+category: pattern_card
 rule_ref: null
 first_seen: 2026-09-26
 last_seen: 2026-09-26

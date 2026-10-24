@@ -7,6 +7,7 @@ dismissed_reason: >
   wznowieniu. Wszystkie 4 agenty poprawnie zignorowały. Konfiguracja harnessu/MCP, nie kod
   claude-patterns.
 trigger: agent_note
+category: verifier
 rule_ref: null
 first_seen: 2026-09-27
 last_seen: 2026-09-27

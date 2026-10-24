@@ -4,6 +4,7 @@ status: promoted
 resolution: >
   Naprawione jako ORC-098b (dirs-pliki, remis późniejszych warstw) i ORC-099 (odroczenie czerwonych testów do późniejszych warstw), 2026-10-04.
 trigger: blocked_by_prior
+category: plan
 rule_ref: ORC-062
 first_seen: 2026-10-04
 last_seen: 2026-10-04

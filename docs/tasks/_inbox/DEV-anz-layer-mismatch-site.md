@@ -6,7 +6,7 @@ resolution: >
   src/content-system/, src/types/, src/scripts/ i src/screens/. Projekty z blokiem dostają
   zmianę po materialize-runtime (personal-blog zmaterializowany 2026-10-19).
 trigger: analyze_note
-category: other
+category: plan
 sources:
   - analyze
 rule_ref: ANZ-LAYER-MISMATCH

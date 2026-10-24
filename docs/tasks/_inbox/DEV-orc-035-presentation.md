@@ -7,6 +7,7 @@ resolution: >
   ESCALATE (docs/decisions/orchestrate-rule-history.md#orc-115). Obejście tests=false nie jest
   już potrzebne.
 trigger: halt
+category: test
 rule_ref: ORC-035
 first_seen: 2026-10-05
 last_seen: 2026-10-05

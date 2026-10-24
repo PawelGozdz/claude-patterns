@@ -9,7 +9,7 @@ resolution: >
   daty trzeba odciąć od zegara. Do sondy bazowej wrócić, gdy takich haltów będzie więcej.
   Pierwsze wystąpienie (juz-ide-api-1, no-op warstwa testing pomija sondę) pozostaje otwarte.
 trigger: halt
-category: other
+category: verifier
 sources:
   - orchestrate
 rule_ref: ORC-062

@@ -4,6 +4,7 @@ status: promoted
 resolution: >
   Naprawione jako ORC-103 (2026-10-10): odcisk drzewa przed i po rundzie naprawczej; naprawa bez zmiany plików = ostrzeżenie, bez ponownej bramki.
 trigger: agent_note
+category: infra
 rule_ref: ORC-091
 first_seen: 2026-10-09
 last_seen: 2026-10-09

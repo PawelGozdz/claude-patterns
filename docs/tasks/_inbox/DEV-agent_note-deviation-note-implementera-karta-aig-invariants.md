@@ -4,6 +4,7 @@ status: dismissed
 dismissed_reason: >
   Dwie rzeczy po stronie ai-gateway, nie silnika: (1) karta edytowana w trakcie przebiegu — prepare czyta karty raz na starcie, to nieuniknione, nowy przebieg widzi nową wersję; (2) brak aig-invariants_summary.md — prepare już ostrzega, projekt ma napisać kartę streszczenia. Do obserwacji, jeśli powtórzy się rozjazd bez edycji w trakcie przebiegu.
 trigger: agent_note
+category: pattern_card
 rule_ref: null
 first_seen: 2026-10-02
 last_seen: 2026-10-02

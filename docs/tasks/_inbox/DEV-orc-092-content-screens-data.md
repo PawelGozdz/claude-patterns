@@ -4,7 +4,7 @@ status: promoted
 resolution: >
   content-reviewer (agents/stacks/astro-static) miał maxTurns 30 wobec budżetu skryptu do 50; ORC-092 podniósł do 60 12 weryfikatorów, ale tego agenta pominął (nie był na liście). Teraz maxTurns 60, wpis w Changelog agenta. Symlink w juz-ide-blog bierze zmianę od razu.
 trigger: halt
-category: other
+category: verifier
 sources:
   - orchestrate
 rule_ref: ORC-092

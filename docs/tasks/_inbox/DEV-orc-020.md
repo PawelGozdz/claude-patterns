@@ -8,7 +8,7 @@ resolution: >
   (docs/decisions/orchestrate-rule-history.md#orc-113). clean-arch (application) warunkuje
   warstwę polem strukturalnym i wymaga decyzji autora bloku.
 trigger: agent_note
-category: other
+category: config
 sources:
   - orchestrate
 rule_ref: ORC-020

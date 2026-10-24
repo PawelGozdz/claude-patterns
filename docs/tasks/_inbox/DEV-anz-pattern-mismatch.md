@@ -20,7 +20,7 @@ resolution: >
   markera fail-closed i wsadowego ACL zwracającego klasę. Zostaje project-specific do czasu
   drugiego niezależnego adoptera (CLAUDE.md); promocja do wzorca wymaga decyzji właściciela.
 trigger: analyze_note
-category: other
+category: pattern_card
 sources:
   - analyze
 rule_ref: ANZ-PATTERN-MISMATCH

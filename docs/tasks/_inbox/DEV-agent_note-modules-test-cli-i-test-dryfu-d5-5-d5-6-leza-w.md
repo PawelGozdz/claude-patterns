@@ -6,7 +6,7 @@ dismissed_reason: >
   słusznie je pominęła, a pokrywa je warstwa testing, która w tym przebiegu została wykonana.
   Notatka to ostrzeżenie agenta, nie odstępstwo od reguły.
 trigger: agent_note
-category: other
+category: plan
 sources:
   - orchestrate
 rule_ref: null

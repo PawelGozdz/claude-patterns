@@ -56,7 +56,7 @@
       }
     },
     "outcome": { "enum": ["ok", "go", "no_go", "fixed", "failed", "died", "skipped", "cached", "halted", "killed", "unknown"] },
-    "cause": { "enum": ["typecheck", "test", "lint", "verifier", "scope", "config", "infra", "silent", "budget", "other", null] },
+    "cause": { "enum": ["typecheck", "test", "lint", "verifier", "scope", "config", "infra", "silent", "budget", "pattern_card", "plan", "other", null] },
     "signature": { "type": ["string", "null"], "pattern": "^[A-Za-z0-9._-]{1,120}$" },
     "trigger": { "type": ["string", "null"] },
     "seed": {

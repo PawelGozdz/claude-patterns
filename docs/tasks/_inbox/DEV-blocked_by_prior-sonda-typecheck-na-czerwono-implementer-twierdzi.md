@@ -11,6 +11,7 @@ dismissed_reason: >
   test-implementer, nie infrastructure-implementer) i wznowić run. Żadna zmiana w
   claude-patterns nie była potrzebna.
 trigger: blocked_by_prior
+category: typecheck
 rule_ref: null
 first_seen: 2026-09-27
 last_seen: 2026-09-27

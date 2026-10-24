@@ -6,7 +6,7 @@ dismissed_reason: >
   aig-invariants.md, którą aktualizowała jednostka U1 (ai-gateway TS-AIG-075). Cudze zakresy
   odfiltrowują ORC-070 i ORC-093.
 trigger: agent_note
-category: other
+category: pattern_card
 sources:
   - orchestrate
 rule_ref: null

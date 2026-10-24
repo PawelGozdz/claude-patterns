@@ -7,6 +7,7 @@ dismissed_reason: >
   zgodnie z intencją, oznaczył N/A poprawnie. Config projektu (kompozycja kart dla
   feature-flags), nie silnik.
 trigger: agent_note
+category: pattern_card
 rule_ref: null
 first_seen: 2026-09-27
 last_seen: 2026-09-27

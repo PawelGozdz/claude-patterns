@@ -6,7 +6,7 @@ dismissed_reason: >
   poza zakresem, a 578 linii mieści się w limicie 800 z reguł stylu. Wydzielenie FIXTURE
   to ewentualny refaktor osobnego zadania w iam, nie błąd silnika ani konfiguracji.
 trigger: agent_note
-category: other
+category: plan
 sources:
   - orchestrate
 rule_ref: null

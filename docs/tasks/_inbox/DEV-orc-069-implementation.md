@@ -25,6 +25,7 @@ dismissed_reason: >
   bez zmian — decyzja per-projekt (dodać/rozszerzyć weryfikator albo świadomie
   przyjąć ryzyko), nie zmiana silnika.
 trigger: halt
+category: pattern_card
 rule_ref: ORC-069
 first_seen: 2026-09-26
 last_seen: 2026-09-27

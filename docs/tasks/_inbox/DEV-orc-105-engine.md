@@ -7,7 +7,7 @@ dismissed_reason: >
   akceptacji sprawdza jednostka testing i bramka końcowa. Ta sama klasa co notatki aegis-flow TS-003
   zamknięte wcześniej.
 trigger: agent_note
-category: other
+category: test
 sources:
   - orchestrate
 rule_ref: ORC-105

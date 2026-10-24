@@ -12,6 +12,7 @@ resolution: >
   na agencie forka nie zatrzymał już wystrzelonego wywołania Workflow (leciało dalej ~20 minut)
   — to zachowanie samego harnessu, poza zasięgiem tego repo, wymaga osobnego zgłoszenia.
 trigger: agent_note
+category: verifier
 rule_ref: ORC-055
 first_seen: 2026-09-27
 last_seen: 2026-09-27

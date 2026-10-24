@@ -4,7 +4,7 @@ status: dismissed
 dismissed_reason: >
   Limit 200-400 linii pochodzi z CLAUDE.md ai-gateway (linia 104), a nie z karty wzorca; czy dotyczy plików testowych, rozstrzyga projekt. ALLOWED_LABEL_NAMES poza zawężonym zakresem to zamierzone działanie layers_scope/units (ANL-037/038).
 trigger: agent_note
-category: other
+category: pattern_card
 sources:
   - orchestrate
 rule_ref: null

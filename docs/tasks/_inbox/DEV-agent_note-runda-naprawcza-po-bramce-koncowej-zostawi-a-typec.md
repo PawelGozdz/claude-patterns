@@ -9,7 +9,7 @@ dismissed_reason: >
   dla jednostki, która go dotyka. Przy powtórzeniu na ukończonym przebiegu rekord otworzy się
   sam.
 trigger: agent_note
-category: other
+category: typecheck
 sources:
   - orchestrate
 rule_ref: null

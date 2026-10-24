@@ -7,7 +7,7 @@ resolution: >
   bramce. ANL-038 (commands/analyze.md, 2026-10-22): decyzja przenosząca/przemianowująca/usuwająca eksport
   pliku wymaga w dirs jednostki także importerów. Skutek uboczny (czerwony lint po naprawie) — ORC-121.
 trigger: agent_note
-category: other
+category: pattern_card
 sources:
   - orchestrate
 rule_ref: ORC-044

@@ -8,6 +8,7 @@ resolution: >
   #orc-069). Dodatkowo: sonda testing nie sprawdzała lintu (checks: ["test:api"] bez
   lint:check:api) — dodane 2026-09-26 w marketing-hub/.claude/blocks/layers-monorepo.yml.
 trigger: blocked_by_prior
+category: verifier
 rule_ref: ORC-062
 first_seen: 2026-09-26
 last_seen: 2026-09-26

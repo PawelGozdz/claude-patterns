@@ -5,6 +5,7 @@ resolution: >
   Ten sam root cause co DEV-orc-056 — naprawione 2026-09-26: format:check/validate:br:api/
   build dodane do final_gate.checks w marketing-hub/.claude/blocks/layers-monorepo.yml.
 trigger: agent_note
+category: verifier
 rule_ref: null
 first_seen: 2026-09-26
 last_seen: 2026-09-26

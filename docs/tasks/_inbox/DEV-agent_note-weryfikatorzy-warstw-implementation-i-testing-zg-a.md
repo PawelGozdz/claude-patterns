@@ -4,6 +4,7 @@ status: dismissed
 dismissed_reason: >
   Skutek tej samej przyczyny co DEV-orc-101-final-gate (niepoprawny YAML w analizie TS-AIG-084); naprawione jako ORC-102 (2026-10-08).
 trigger: agent_note
+category: pattern_card
 rule_ref: null
 first_seen: 2026-10-07
 last_seen: 2026-10-07

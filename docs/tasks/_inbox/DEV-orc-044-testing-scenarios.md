@@ -7,7 +7,7 @@ dismissed_reason: >
   ocenił te pliki na ogólnej jakości, zgodnie z założeniem. Karta ma sens dopiero przy drugim takim
   zadaniu; wtedy patterns-local/ projektu albo wzorzec testing/ (Scope: project-specific).
 trigger: agent_note
-category: other
+category: pattern_card
 sources:
   - orchestrate
 rule_ref: ORC-044

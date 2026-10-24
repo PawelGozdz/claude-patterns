@@ -6,6 +6,7 @@ resolution: >
   .claude/config/installed.yml w templates/gitignore-claude.template, który setup-project.sh
   (krok 5c) dopisuje do .gitignore projektu.
 trigger: agent_note
+category: config
 rule_ref: null
 first_seen: 2026-10-13
 last_seen: 2026-10-13

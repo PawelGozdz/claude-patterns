@@ -6,7 +6,7 @@ dismissed_reason: >
   healthcheck.compose.test.ts należały do innych jednostek, więc w chwili weryfikacji danej
   warstwy ich nie było. Bramka końcowa dała GO; cudze zakresy obsługują ORC-070 i ORC-093.
 trigger: agent_note
-category: other
+category: pattern_card
 sources:
   - orchestrate
 rule_ref: null

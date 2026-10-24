@@ -22,6 +22,7 @@ dismissed_reason: >
   gdy uzasadnione typem z frameworka" albo dodając kartę granic importu Dart) — nie błąd
   silnika claude-patterns.
 trigger: halt
+category: pattern_card
 rule_ref: ORC-069
 first_seen: 2026-09-26
 last_seen: 2026-09-27

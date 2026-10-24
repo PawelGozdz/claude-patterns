@@ -6,7 +6,7 @@ resolution: >
   warstwy (wspólny gruby dirs) rozstrzyga scope.dirs, więc odroczenie ORC-082 działa bez
   ręcznych --overrides (docs/decisions/orchestrate-rule-history.md#orc-112).
 trigger: blocked_by_prior
-category: other
+category: plan
 sources:
   - orchestrate
 rule_ref: ORC-082

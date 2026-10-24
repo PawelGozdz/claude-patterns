@@ -6,7 +6,7 @@ resolution: >
   przyrostu testów (docs/decisions/orchestrate-rule-history.md#orc-111). Obejście tests:false
   nie jest już potrzebne.
 trigger: halt
-category: other
+category: test
 sources:
   - orchestrate
 rule_ref: ORC-035

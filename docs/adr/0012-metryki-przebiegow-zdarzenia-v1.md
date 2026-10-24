@@ -33,6 +33,23 @@ hooka, a `HOOK_TELEMETRY=off` wyłącza zapis.
   `TS-SIM-002A` i `DS009-…`; numeru bez liter (`0007`) wzorzec nie odróżni od licznika, tego pilnuje biała lista.
 - Task wznowiony po ponad trzech dniach przenosi blok do późniejszego dnia, a cron liczy `--since` 3 dni wstecz,
   więc stary plik zachowa nieaktualny wpis do czasu pełnego przeliczenia (`telemetry-aggregate.mjs` bez `--since`).
+**Aneks (2026-10-24, TASK-OBS-013)**: taksonomia przyczyn i wynik PAUSE (ADR 0015 D5).
+- **Nowe `cause`.** `pattern_card` (karta wzorca z obcego stosu albo nie rozstrzyga przypadku) i `plan` (`layers_scope`/`dirs`
+  niespójne z taskiem). Dotąd obie sprawy kończyły w `other`, więc licznik per przyczyna nic nie mówił. Zmiana jest
+  addytywna (`v: 1` zostaje), stare zdarzenia pozostają poprawne.
+- **`defaultCategory(trigger, ruleRef)`.** Dla `analyze_gate`/`analyze_note` reguła `ANZ-LAYER-*` daje `plan`, a `ANZ-PATTERN-*`
+  `pattern_card`; pozostałe `ANZ-*` i inne triggery zachowują dotychczasową domyślną. Wywołanie z jednym argumentem działa jak dawniej.
+- **`agent_note` wymaga kategorii.** `report-deviation --trigger agent_note` bez `--category` kończy się exit 1 i nic nie zapisuje.
+  `other` zostaje dozwolone jako świadomy wybór. Agent wykonawczy podaje kategorię w prefiksie `[kategoria]` pola `deviation_note`,
+  a agent orkiestrujący przenosi ją do `--category` (opis pola i `commands/orchestrate.md`).
+- **PAUSE to `ok`.** `/analyze` z `analyze.exit: PAUSE` i zapisanym artefaktem zamyka przebieg `--outcome ok`; `halted` zostaje dla
+  przerwań. Przed zmianą 61 z 62 przebiegów analizy kończyło się jako `halted`. `telemetry-emit` bez zmian.
+- **Reklasyfikacja skrzynki.** `scripts/inbox-reclassify-other.mjs` proponuje kategorię po słowach kluczowych z powodu wystąpienia
+  (`karta`/`card` → `pattern_card`, `layers_scope`/`layers_skip`/`dirs` → `plan`; druga fala: objawy `budget`, `typecheck`, `lint`,
+  `test`, `verifier`, `config`, `infra`, `scope`); zapis tylko po jawnym `--apply`, a rekordy z trafieniem w kilku grupach (`?`) przeglądał
+  człowiek. Wynik: `other` 209/244 (85,7%) → 34/244 (13,9%). Słowa kluczowe mylą się na rekordach wielozdaniowych (np. brak narzędzi
+  weryfikatora wpadał do `verifier`, nie `infra`), więc `--apply` przyjmuje `id=kategoria` i `unambiguous`. Skrypt jest jednorazowy;
+  nowe rekordy dostają kategorię od agenta (`agent_note`) albo z reguły.
 **Rozszerza**: [ADR 0011](0011-raportowanie-dryfu-i-telemetria-floty.md) (punkt B6 — telemetria floty)
 **Context source**: decyzja użytkownika z 2026-10-10: „jak będziemy wstawiać tylko problemy, to nie
 da nam to procentowego rozbicia dobre vs błędy" + docelowo metryki trafiają na serwer zespołu
@@ -99,7 +116,7 @@ schematem).
 - `outcome` (zamknięty): `ok go no_go fixed failed died skipped cached halted killed unknown`.
   Stare wartości są normalizowane (`NO-GO`/`NO_GO` → `no_go`, `silent-death` → `died`,
   `GO_WITH_CONDITIONS` → `go`, `not-started` → `skipped`, `completed` → `ok`).
-- `cause` (zamknięty): `typecheck test lint verifier scope config infra silent budget other`.
+- `cause` (zamknięty): `typecheck test lint verifier scope config infra silent budget pattern_card plan other`.
 - `step.fixes`: id kroku, który ten krok naprawia — z tego wynika „NO-GO → naprawione / otwarte".
 - `m`: `toolCalls durationMs tokensIn tokensOut cacheRead cacheWrite costUsd`.
 - Każde zdarzenie ma `id` (UUID — idempotentny upload na serwer) i `host`

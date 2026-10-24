@@ -10,7 +10,7 @@ resolution: >
   przy ponownym uruchomieniu na tym samym HEAD liczy jako cudze tylko pliki sprzed pierwszego
   prepare, więc praca poprzednich prób nie zaburza zakresu.
 trigger: halt
-category: other
+category: plan
 sources:
   - orchestrate
 rule_ref: ORC-084

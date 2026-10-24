@@ -46,7 +46,7 @@ export function toIndexEntry(row) {
     id: row.id || row.file.replace(/\.md$/, ''),
     status: row.status || null,
     trigger: row.trigger || null,
-    category: row.category || defaultCategory(row.trigger),
+    category: row.category || defaultCategory(row.trigger, row.rule_ref),
     // Do 2026-10-10 skrzynkę karmił wyłącznie /orchestrate; report-deviation czyta brak `sources` tak samo.
     sources: asList(row.sources).length ? asList(row.sources) : ['orchestrate'],
     occurrences: Number.isFinite(row.occurrences) ? row.occurrences : null,

@@ -8,7 +8,7 @@ dismissed_reason: >
   kontenerze, naprawa po stronie projektu (sudo chown -R dev:dev node_modules/.vite, kontener
   może założyć katalog jako root od nowa).
 trigger: blocked_by_prior
-category: other
+category: lint
 sources:
   - orchestrate
 rule_ref: ORC-062

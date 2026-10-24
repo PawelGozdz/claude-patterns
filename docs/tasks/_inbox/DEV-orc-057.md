@@ -8,6 +8,7 @@ resolution: >
   zamiast z samej wyliczonej listy. Prompt-only (git add/status dzieją się w agencie
   orkiestrującym poza Workflow()) — kandydat do automatyzacji, gdyby powtórzyło się częściej.
 trigger: halt
+category: infra
 rule_ref: ORC-057
 first_seen: 2026-09-26
 last_seen: 2026-09-26

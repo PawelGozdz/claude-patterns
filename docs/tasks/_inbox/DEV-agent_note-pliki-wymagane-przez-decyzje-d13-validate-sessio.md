@@ -6,7 +6,7 @@ resolution: >
   (choice/rationale), które istnieją w repo, a nie leżą w dirs ani layers_scope żadnej
   uruchamianej warstwy lub jednostki.
 trigger: agent_note
-category: other
+category: verifier
 sources:
   - orchestrate
 rule_ref: null

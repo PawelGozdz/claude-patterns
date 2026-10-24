@@ -12,6 +12,7 @@ dismissed_reason: >
   scope-block-defers-companion-test-to-sibling-testing-unit w
   tests/flow-evals/orchestrate-script/run.js.
 trigger: halt
+category: pattern_card
 rule_ref: ORC-021
 first_seen: 2026-09-27
 last_seen: 2026-09-27

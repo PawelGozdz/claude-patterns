@@ -8,7 +8,7 @@ resolution: >
   test-fail-paths-handles-vitest-workspace-prefix,
   probe-clears-stale-check-logs-before-running-checks.
 trigger: blocked_by_prior
-category: other
+category: test
 sources:
   - orchestrate
 rule_ref: ORC-103

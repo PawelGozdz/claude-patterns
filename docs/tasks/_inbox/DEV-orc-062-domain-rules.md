@@ -15,6 +15,7 @@ dismissed_reason: >
   wszystkich warstwach `layers-monorepo.yml` poza `final_gate` (świadomie
   szeroki, ORC-022), runtime.yml zmaterializowany ponownie.
 trigger: blocked_by_prior
+category: lint
 rule_ref: ORC-062
 first_seen: 2026-09-26
 last_seen: 2026-09-26

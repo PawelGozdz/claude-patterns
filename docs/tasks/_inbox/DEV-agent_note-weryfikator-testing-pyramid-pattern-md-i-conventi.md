@@ -6,6 +6,7 @@ dismissed_reason: >
   ai-os-bot, który nie jest DDD. Do sprawdzenia w kompozycji bloków ai-os-bot, nie silnik
   claude-patterns.
 trigger: agent_note
+category: verifier
 rule_ref: null
 first_seen: 2026-09-27
 last_seen: 2026-09-27

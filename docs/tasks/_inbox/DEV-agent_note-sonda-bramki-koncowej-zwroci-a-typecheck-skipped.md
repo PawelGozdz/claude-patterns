@@ -7,7 +7,7 @@ resolution: >
   samego skipped (typecheck:scripts albo nazwa skryptu w pakiecie) leży w checks.finalGate
   ai-gateway i wymaga sprawdzenia w tamtym projekcie.
 trigger: agent_note
-category: other
+category: typecheck
 sources:
   - orchestrate
 rule_ref: null

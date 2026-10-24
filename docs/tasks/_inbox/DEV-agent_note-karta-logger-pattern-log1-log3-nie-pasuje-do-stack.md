@@ -5,7 +5,7 @@ resolution: >
   Przeniesione do TASK-ORCH-CARDS-STACK-MISMATCH-001 (logger-pattern LOG1-LOG3 a stack
   nestjs-pino; karty refine-spa mimo layers_skip web).
 trigger: agent_note
-category: other
+category: pattern_card
 sources:
   - orchestrate
 rule_ref: null

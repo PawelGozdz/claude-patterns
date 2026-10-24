@@ -7,7 +7,7 @@ resolution: >
   20 brudnych plikach albo brudnym drzewie przy layers_done i podaje obejście --overrides
   {"dirtyAtStart": []}. Automatu nie ma: silnik nie odróżni pracy taska od cudzej.
 trigger: agent_note
-category: other
+category: infra
 sources:
   - orchestrate
 rule_ref: ORC-124

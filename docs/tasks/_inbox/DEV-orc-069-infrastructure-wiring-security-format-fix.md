@@ -9,6 +9,7 @@ dismissed_reason: >
   (tylko weryfikator, świeży budżet tur), nie w pełną rundę implementer→sonda→verify. Żadna
   dalsza zmiana konfiguracji ani silnika nie jest potrzebna dla tego konkretnego wystąpienia.
 trigger: halt
+category: plan
 rule_ref: ORC-069
 first_seen: 2026-09-27
 last_seen: 2026-09-27

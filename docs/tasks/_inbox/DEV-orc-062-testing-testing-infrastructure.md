@@ -10,6 +10,7 @@ dismissed_reason: >
   zatrzymał się NA WYRAŹNĄ PROŚBĘ UŻYTKOWNIKA przed uruchomieniem prawdziwego przebiegu testów
   integracyjnych — to nie awaria, to zamierzona pauza.
 trigger: halt
+category: pattern_card
 rule_ref: ORC-062
 first_seen: 2026-09-27
 last_seen: 2026-09-27

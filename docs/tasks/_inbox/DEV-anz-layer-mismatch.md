@@ -25,7 +25,7 @@ resolution: >
   ORC-129: prepare ostrzega, że żadna warstwa nie jest uruchamiana i /orchestrate nie ma czego
   wykonać. Trafienie create_when na słowa z tekstu taska rozstrzyga layers_skip z powodem.
 trigger: analyze_note
-category: other
+category: plan
 sources:
   - analyze
 rule_ref: ANZ-LAYER-MISMATCH

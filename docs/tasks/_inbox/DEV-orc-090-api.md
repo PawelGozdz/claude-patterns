@@ -7,7 +7,7 @@ dismissed_reason: >
   Przyczyną jest zbyt wąski zakres w analizie TS-017 (ANL-038: pliki towarzyszące do layers_scope),
   nie błąd silnika.
 trigger: agent_note
-category: other
+category: plan
 sources:
   - orchestrate
 rule_ref: ORC-090

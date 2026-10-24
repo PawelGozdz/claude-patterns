@@ -7,7 +7,7 @@ resolution: >
   security-e2e-verifier w iam wymaga Task(Explore), czego nie ma w tools; to config projektu
   (3.1), centralna definicja ma tryb pracy bez delegowania.
 trigger: agent_note
-category: other
+category: pattern_card
 sources:
   - orchestrate
 rule_ref: null

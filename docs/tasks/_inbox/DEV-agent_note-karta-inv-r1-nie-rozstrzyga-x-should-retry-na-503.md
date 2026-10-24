@@ -4,7 +4,7 @@ status: dismissed
 dismissed_reason: >
   Dotyczy karty aig-invariants.md w ai-gateway (INV-R1: x-should-retry na 503 zamykania /llm). Agent sam delegował rozstrzygnięcie do 102-B. Rozstrzygnięcie w karcie projektu.
 trigger: agent_note
-category: other
+category: pattern_card
 sources:
   - orchestrate
 rule_ref: null

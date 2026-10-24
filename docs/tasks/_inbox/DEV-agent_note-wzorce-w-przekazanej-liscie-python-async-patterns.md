@@ -6,7 +6,7 @@ dismissed_reason: >
   się do Settings.audit_log_path (TS-020 done). Brak checklisty dla plików konfiguracyjnych w
   karcie scope-invariants to uwaga do wzorca projektu, nie błąd silnika.
 trigger: agent_note
-category: other
+category: pattern_card
 sources:
   - orchestrate
 rule_ref: null

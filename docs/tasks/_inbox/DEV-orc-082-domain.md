@@ -4,7 +4,7 @@ status: dismissed
 dismissed_reason: >
   ORC-082 zadziałał zgodnie z regułą: błąd TS w neighborhood-group.aggregate.ts leżał w PEŁNYCH dirs warstwy domain (poza zawężonym layers_scope), więc plik jest jej własny i nie podlega odroczeniu. Przyczyną był zbyt wąski layers_scope analizy TS-SEC-MAP-GROUP-PIN-001 (agregat implementujący zmieniany port insertFromGroup nie wszedł do zakresu). Obejście: override zakresu domain, zastosowane w przebiegu.
 trigger: blocked_by_prior
-category: other
+category: plan
 sources:
   - orchestrate
 rule_ref: ORC-082

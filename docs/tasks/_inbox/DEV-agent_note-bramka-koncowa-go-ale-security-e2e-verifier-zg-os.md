@@ -7,6 +7,7 @@ dismissed_reason: >
   tylko do plikow wlasnego taska, zweryfikowane przez git status --short. Dobry przyklad
   dzialania mechanizmu, nie odstepstwo.
 trigger: agent_note
+category: infra
 rule_ref: null
 first_seen: 2026-09-26
 last_seen: 2026-09-26

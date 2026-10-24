@@ -7,7 +7,7 @@ dismissed_reason: >
   rm przez orkiestratora. Mapper błędów poza zakresem warstwy domain to zakres analizy
   (ORC-042: zgłoś, nie ruszaj). Przy powtórzeniu rekord otworzy się sam.
 trigger: agent_note
-category: other
+category: infra
 sources:
   - orchestrate
 rule_ref: null

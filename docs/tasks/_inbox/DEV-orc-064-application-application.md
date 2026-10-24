@@ -9,6 +9,7 @@ dismissed_reason: >
   walidacji ORC-064 (dziś łapie tylko ŹLE sformatowane units[], nie BRAKUJĄCE pokrycie), jeśli
   pojawi się trzeci raz.
 trigger: halt
+category: plan
 rule_ref: ORC-064
 first_seen: 2026-09-26
 last_seen: 2026-09-26
