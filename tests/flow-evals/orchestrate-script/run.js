@@ -1151,6 +1151,28 @@ const CASES = (c) => [
       return null;
     },
   },
+  // ORC-131: zero nowych bloków po wcześniejszym dodatnim pomiarze warstwy to sprzeczność pomiaru, nie brak testów
+  {
+    name: 'delta-gate-ignores-zero-after-earlier-positive-measure',
+    run() {
+      const probe = { typecheck: 'pass', tests: 'pass', newTestBlocks: 0 };
+      const files = ['src/__tests__/a.spec.ts'];
+      if (c.deltaGateFails(L.testing, probe, files, 'implement', 111)) return 'zero po 111 złapane bramką przyrostu';
+      if (!c.deltaGateFails(L.testing, probe, files, 'implement', 0)) return 'zero bez wcześniejszego pomiaru zwolnione z bramki';
+      if (!c.deltaGateFails(L.testing, probe, files, 'implement', undefined)) return 'brak seenBlocks zwolnił bramkę';
+      return null;
+    },
+  },
+  // ORC-131: runda naprawcza po bramce końcowej widzi też warstwy z layers_done (właściciele plików produkcyjnych)
+  {
+    name: 'final-repair-candidates-include-layers-done',
+    run() {
+      const src = fs.readFileSync(path.join(__dirname, '../../../scripts/workflow/orchestrate.template.mjs'), 'utf8');
+      const m = src.match(/const ranLayers = plan\.filter\(\(s\) => ([^)]*\)[^)]*)\)\.map/);
+      if (!m || !/layers_done/.test(m[1]) || !/s\.run/.test(m[1])) return 'ranLayers nie obejmuje warstw z layers_done: ' + (m && m[1]);
+      return null;
+    },
+  },
   // ORC-117: drobne ustalenia z rundy GO + unverified_scope nie przepadają przed reverify
   {
     name: 'minor-findings-survive-go-with-unverified-scope',
