@@ -2,7 +2,7 @@
 id: TASK-OBS-013
 title: 'Taksonomia przyczyn, obowiązkowa kategoria agent_note, PAUSE to nie halt'
 type: feature
-status: in_progress
+status: done
 priority: P1
 story_points: 3
 created_date: 2026-10-22
@@ -43,5 +43,5 @@ promowanych rekordów dotyczyło jednej sprawy (karty wzorców z obcego stosu), 
 - [x] Nowy `agent_note` bez kategorii nie trafia do skrzynki; z kategorią działa jak dotąd (eval `telemetry-events`).
 - [x] Udział `other` w skrzynce po reklasyfikacji poniżej 30% (liczba w CHANGELOG): 209/244 (85,7%) → 34/244 (13,9%),
       175 rekordów w dwóch falach zatwierdzonych przez człowieka.
-- [ ] Nowy przebieg `/analyze` z PAUSE kończy się `run.end` z `outcome: ok` (treść komendy pilnuje `validate-commands`;
-      potwierdzenie na pierwszym prawdziwym przebiegu).
+- [x] Nowy przebieg `/analyze` z PAUSE kończy się `run.end` z `outcome: ok` (treść komendy pilnuje `validate-commands`).
+      Potwierdzone 2026-10-24 15:59: grant-flow TS-UI-010, `analyze.exit: PAUSE`, artefakt `awaiting-human`, `run.end` = `ok`.
