@@ -14,11 +14,15 @@
 //        --trigger <halt|blocked_by_prior|no_go|workflow_lint|agent_note> \
 //        --reason "<tekst>" [--rule <ORC-062|WL17>] [--task <TASK-ID>] [--run-id <id>] [--layer <id>]
 //        [--source <orchestrate|analyze|audit|setup>] [--once-per-project]
-//        [--category <typecheck|test|lint|verifier|scope|config|infra|silent|budget|other>]
+//        [--category <typecheck|test|lint|verifier|scope|config|infra|silent|budget|pattern_card|plan|other>]
 //
 // `category` (2026-10-10, ADR 0012): ta sama lista co `cause` w zdarzeniach telemetrii, więc
 // podział na rodzaje błędów jest identyczny w skrzynce i na dashboardzie. Domyślna z triggera
-// (defaultCategory); raz ustawiona w rekordzie (także ręcznie w triage) nie jest nadpisywana.
+// (defaultCategory, dla ANZ-* także z reguły); raz ustawiona w rekordzie (także ręcznie w triage)
+// nie jest nadpisywana.
+// `--trigger agent_note` WYMAGA `--category` (2026-10-24, ADR 0015 D5): bez niej 97 ze 106 notatek
+// agentów lądowało jako `other`, a liczniki per przyczyna nic nie mówiły. `other` zostaje dozwolone,
+// ale ma być świadomym wyborem agenta, nie domyślną.
 //
 // Źródła (2026-10-10): do tej daty skrzynkę karmił WYŁĄCZNIE /orchestrate, więc błędy
 // konfiguracji, które degradują po cichu (pominięty blokujący stage panelu, plik poza
@@ -126,7 +130,7 @@ function listInbox() {
   for (const r of rows) {
     const projects = Array.isArray(r.projects) ? r.projects.join(',') : '';
     console.log(`  ${String(r.occurrences ?? '?').padStart(3)}x  ${r.id || r.file}  `
-      + `[${r.trigger || '?'}/${r.category || defaultCategory(r.trigger)}]  last_seen=${r.last_seen || '?'}  status=${r.status || '?'}  `
+      + `[${r.trigger || '?'}/${r.category || defaultCategory(r.trigger, r.rule_ref)}]  last_seen=${r.last_seen || '?'}  status=${r.status || '?'}  `
       + `projects=${projects}`);
   }
 }
@@ -163,10 +167,10 @@ function upsert(args) {
     const wasClosed = fm.status === 'dismissed' || fm.status === 'promoted';
     if (args.oncePerProject && !wasClosed && (fm.projects || []).includes(args.project)) {
       console.log(`inbox: ${id} już zna ${args.project} (otwarty) — bez nowego wystąpienia`);
-      return { id, category: fm.category || args.category || defaultCategory(fm.trigger || args.trigger) };
+      return { id, category: fm.category || args.category || defaultCategory(fm.trigger || args.trigger, fm.rule_ref || args.rule) };
     }
     fm.sources = Array.from(new Set([...(fm.sources || ['orchestrate']), args.source]));
-    fm.category = fm.category || args.category || defaultCategory(fm.trigger || args.trigger);
+    fm.category = fm.category || args.category || defaultCategory(fm.trigger || args.trigger, fm.rule_ref || args.rule);
     fm.occurrences = (fm.occurrences || 0) + 1;
     fm.last_seen = today;
     fm.projects = Array.from(new Set([...(fm.projects || []), args.project]));
@@ -188,7 +192,7 @@ function upsert(args) {
       id,
       status: 'proposed',
       trigger: args.trigger,
-      category: args.category || defaultCategory(args.trigger),
+      category: args.category || defaultCategory(args.trigger, args.rule),
       sources: [args.source],
       rule_ref: args.rule || null,
       first_seen: today,
@@ -244,6 +248,7 @@ function main() {
   if (!args.reason) die(EXIT.USAGE, 'brak --reason');
 
   if (args.category && !CAUSES.includes(args.category)) die(EXIT.USAGE, `--category musi być jednym z: ${CAUSES.join(', ')}`);
+  if (args.trigger === 'agent_note' && !args.category) die(EXIT.USAGE, `--trigger agent_note wymaga --category, jednej z: ${CAUSES.join(', ')}`);
 
   let record;
   try {

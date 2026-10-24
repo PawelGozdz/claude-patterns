@@ -58,6 +58,13 @@ nie gdy chcesz ją WYKONAĆ.
                            --trigger <halt|blocked_by_prior|no_go|workflow_lint|agent_note>
                            [--rule <ORC-NNN|WLn>] --reason "<tekst>" [--task {TASK-ID}]
                            [--run-id <id z Workflow>] [--layer <id warstwy>]
+                           [--category <pattern_card|plan|config|scope|budget|infra|other|…>]
+                         `--trigger agent_note` BEZ `--category` kończy się exit 1 i nic nie zapisuje
+                         (ADR 0015 D5). Kategorię bierzesz z prefiksu `[kategoria]` w `deviation_note`
+                         (bez prefiksu w `--reason`); gdy agent go pominął, sklasyfikuj sam: karta
+                         wzorca z obcego stosu / nierozstrzygająca → `pattern_card`, warstwy lub
+                         katalogi niespójne z taskiem → `plan`, rola/ustawienie nie pasuje do stosu →
+                         `config`, poprawka spoza zakresu → `scope`; `other` tylko gdy nic nie pasuje.
                          PODAWAJ --layer zawsze, gdy dotyczy warstwy — wchodzi do sygnatury
                          zgłoszenia (ORC-068), bez tego różne przyczyny tej samej ogólnej reguły
                          (np. ORC-062 na dwóch różnych warstwach) zlewają się w jeden rekord.

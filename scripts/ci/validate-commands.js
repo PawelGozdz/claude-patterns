@@ -15,6 +15,8 @@
  *  6. `ecc:nazwa` — sprawdzane w marketplace ECC (`~/.claude/plugins/marketplaces/ecc/`);
  *     brak marketplace = WARN „ECC nie zainstalowany", nie ERROR (repo musi walidować
  *     się także na maszynie bez ECC)
+ *  7. treść (ADR 0015 D5): komenda wołająca `report-deviation` z `agent_note` musi wspominać
+ *     `--category`; wiersz `analyze.exit: PAUSE` w tabeli `--outcome` `analyze.md` kończy się `ok`
  *
  * Martwa referencja = ERROR (exit 1), komunikat w formacie `plik:linia`.
  */
@@ -205,6 +207,20 @@ function main() {
       if (m[1]) { checkEcc(file, lineOfIndex(scan, m.index), name, 'skill'); continue; }
       if (!validSkillNames.has(name) && !HARNESS_NATIVE_SKILLS.has(name)) {
         err(file, lineOfIndex(scan, m.index), `martwa referencja do skilla \`${name}\``);
+      }
+    }
+
+    // ── treść: kontrakty telemetrii z ADR 0015 D5 ──────────────────────────
+    // Czytamy `content`, nie `scan` — wywołania CLI stoją w blokach kodu.
+    if (/report-deviation\.mjs/.test(content) && /agent_note/.test(content) && !/--category/.test(content)) {
+      err(file, 1, 'wywołuje report-deviation z `agent_note`, ale nie wspomina `--category` (bez niej skrypt kończy się exit 1)');
+    }
+    if (file === 'analyze.md') {
+      const pause = content.split('\n').findIndex((l) => /^\|.*analyze\.exit: PAUSE.*\|\s*`[a-z]+`\s*\|\s*$/.test(l));
+      if (pause === -1) {
+        err(file, 1, 'brak wiersza tabeli `--outcome` dla `analyze.exit: PAUSE` (ADR 0015 D5)');
+      } else if (!/\|\s*`ok`\s*\|\s*$/.test(content.split('\n')[pause])) {
+        err(file, pause + 1, 'PAUSE to zaplanowany koniec analizy: `run-end --outcome` ma być `ok`, `halted` zostaje dla przerwań');
       }
     }
 

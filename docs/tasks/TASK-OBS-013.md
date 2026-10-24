@@ -2,11 +2,11 @@
 id: TASK-OBS-013
 title: 'Taksonomia przyczyn, obowiązkowa kategoria agent_note, PAUSE to nie halt'
 type: feature
-status: todo
+status: in_progress
 priority: P1
 story_points: 3
 created_date: 2026-10-22
-updated_date: 2026-10-22
+updated_date: 2026-10-24
 assignee: '@unassigned'
 labels: [observability, telemetry, reporting]
 epic: EP-OBSERVABILITY-002
@@ -40,6 +40,8 @@ promowanych rekordów dotyczyło jednej sprawy (karty wzorców z obcego stosu), 
 
 ## Kryteria akceptacji
 
-- [ ] Nowy `agent_note` bez kategorii nie trafia do skrzynki; z kategorią działa jak dotąd.
-- [ ] Udział `other` w skrzynce po reklasyfikacji poniżej 30% (liczba w CHANGELOG).
-- [ ] Nowy przebieg `/analyze` z PAUSE kończy się `run.end` z `outcome: ok`.
+- [x] Nowy `agent_note` bez kategorii nie trafia do skrzynki; z kategorią działa jak dotąd (eval `telemetry-events`).
+- [x] Udział `other` w skrzynce po reklasyfikacji poniżej 30% (liczba w CHANGELOG): 209/244 (85,7%) → 34/244 (13,9%),
+      175 rekordów w dwóch falach zatwierdzonych przez człowieka.
+- [ ] Nowy przebieg `/analyze` z PAUSE kończy się `run.end` z `outcome: ok` (treść komendy pilnuje `validate-commands`;
+      potwierdzenie na pierwszym prawdziwym przebiegu).

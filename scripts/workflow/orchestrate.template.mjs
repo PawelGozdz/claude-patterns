@@ -1416,7 +1416,12 @@ const DEVIATION_NOTE_DESCRIPTION =
   '(3) rola agenta ze slotu nie pasuje do stosu projektu; ' +
   '(4) reguła lub wzorzec przeczy innemu albo nie rozstrzyga twojego przypadku; ' +
   '(5) pominąłeś poprawkę spoza zakresu warstwy. ' +
-  'Format: jedno-dwa zdania faktu + ścieżka pliku albo identyfikator reguły/wzorca. ' +
+  'Format: "[kategoria] jedno-dwa zdania faktu + ścieżka pliku albo identyfikator reguły/wzorca". ' +
+  'Kategoria w nawiasach jest OBOWIĄZKOWA (notatka bez niej nie trafi do skrzynki z właściwą przyczyną): ' +
+  'pattern_card (karta wzorca z obcego stosu, nie rozstrzyga albo sobie przeczy — pkt 2 i 4), ' +
+  'plan (warstwy/katalogi niespójne z taskiem — pkt 1), config (rola agenta albo ustawienie nie pasuje do stosu — pkt 3), ' +
+  'scope (poprawka spoza zakresu warstwy — pkt 5), budget (limit kroków/kosztu), infra (narzędzie, środowisko), other ' +
+  '(tylko gdy żadna z powyższych nie pasuje). ' +
   'NIE wpisuj tu streszczenia zmian ani oceny własnej pracy; brak odstępstwa = pomiń pole.'
 
 // Schema implementera zawiera wyłącznie FAKTY („co zmieniłem"), nigdy self-ocenę

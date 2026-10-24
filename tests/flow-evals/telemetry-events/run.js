@@ -232,8 +232,60 @@ const tests = [
       }
       if (t.defaultCategory('setup_drift') !== 'config' || t.defaultCategory('no_go') !== 'verifier') return 'mapowanie triggerów zmienione';
       const src = fs.readFileSync(REPORT, 'utf8');
-      if (!/category: args\.category \|\| defaultCategory\(args\.trigger\)/.test(src)) return 'nowy rekord skrzynki bez pola category';
+      if (!/category: args\.category \|\| defaultCategory\(args\.trigger, args\.rule\)/.test(src)) return 'nowy rekord skrzynki bez pola category';
       if (!/fm\.category = fm\.category \|\|/.test(src)) return 'istniejąca kategoria (np. z triage) bywa nadpisywana';
+      return null;
+    },
+  },
+  {
+    name: 'cause-has-pattern-card-and-plan',
+    run(t) {
+      // ADR 0015 D5: dwie przyczyny, które dotąd lądowały w `other`.
+      for (const c of ['pattern_card', 'plan']) {
+        if (!t.CAUSES.includes(c)) return `cause bez ${c}`;
+        const errs = t.validateEvent(t.buildEvent({
+          kind: 'deviation', process: 'orchestrate', project: 'p', runId: 'r-1', cause: c,
+        }));
+        if (errs.length) return `zdarzenie z cause=${c} odrzucone: ${errs.join('; ')}`;
+      }
+      return null;
+    },
+  },
+  {
+    name: 'analyze-rules-map-to-plan-and-pattern-card',
+    run(t) {
+      const want = [
+        ['analyze_note', 'ANZ-LAYER-MISMATCH', 'plan'],
+        ['analyze_note', 'ANZ-PATTERN-MISMATCH', 'pattern_card'],
+        ['analyze_gate', 'ANZ-LAYER-MISMATCH', 'plan'],
+        ['analyze_gate', 'ANZ-AGENT-MISSING', 'config'], // reguła nie o warstwach — zostaje domyślna triggera
+        ['analyze_note', null, 'other'],
+        ['halt', 'ANZ-LAYER-MISMATCH', 'other'], // ANZ-* liczy się tylko dla triggerów analizy
+        ['agent_note', 'ANZ-PATTERN-MISMATCH', 'other'],
+      ];
+      for (const [trig, rule, exp] of want) {
+        const got = t.defaultCategory(trig, rule);
+        if (got !== exp) return `defaultCategory(${trig}, ${rule}) = ${got}, oczekiwano ${exp}`;
+      }
+      if (t.defaultCategory('analyze_gate') !== 'config') return 'wywołanie z jednym argumentem zmieniło wynik';
+      return null;
+    },
+  },
+  {
+    name: 'agent-note-without-category-is-usage-error',
+    run() {
+      // Odmowa następuje przed zapisem, więc prawdziwa skrzynka nie jest dotykana.
+      const base = ['--project', 'eval-agent-note', '--trigger', 'agent_note', '--reason', 'eval: notatka bez kategorii'];
+      const run = (extra) => spawnSync(process.execPath, [REPORT, ...base, ...extra], {
+        encoding: 'utf8', env: { ...process.env, CLAUDE_TELEMETRY_DIR: dir },
+      });
+      const bare = run([]);
+      if (bare.status !== 1) return `agent_note bez --category: exit ${bare.status}, oczekiwano 1`;
+      if (!/wymaga --category/.test(bare.stderr) || !/pattern_card/.test(bare.stderr)) return `komunikat bez listy kategorii: ${bare.stderr.trim()}`;
+      const bad = run(['--category', 'nie_ma_takiej']);
+      if (bad.status !== 1) return `nieznana kategoria: exit ${bad.status}, oczekiwano 1`;
+      const src = fs.readFileSync(REPORT, 'utf8');
+      if (!/args\.trigger === 'agent_note' && !args\.category/.test(src)) return 'brak sprawdzenia agent_note w main';
       return null;
     },
   },

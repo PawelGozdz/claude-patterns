@@ -11,6 +11,16 @@ and none of it is instruction — it is history.
 ## [Unreleased]
 
 ### Added
+- Taksonomia przyczyn i wynik PAUSE (TASK-OBS-013, ADR 0012 aneks, ADR 0015 D5): `cause` dostaje `pattern_card` i `plan`;
+  `defaultCategory(trigger, ruleRef)` mapuje `ANZ-LAYER-*` → `plan`, `ANZ-PATTERN-*` → `pattern_card`.
+  `report-deviation --trigger agent_note` bez `--category` to błąd użycia (exit 1); opis `deviation_note` w szablonie Workflow
+  i `commands/orchestrate.md` mówią, jak kategorię wybrać. `/analyze` z `analyze.exit: PAUSE` zamyka przebieg `--outcome ok`
+  (było `halted`: 61 z 62 przebiegów). Nowy `scripts/inbox-reclassify-other.mjs` (podgląd; zapis tylko z `--apply`) i dwie
+  reguły treści w `validate-commands.js`; eval `telemetry-events` +3 przypadki (14). **Skrzynka: udział `other` 209/244 (85,7%) →
+  34/244 (13,9%)** po reklasyfikacji 175 rekordów w dwóch falach zatwierdzonych przez człowieka (86: `karta`/`card` → `pattern_card`,
+  `layers_scope`/`dirs` → `plan`; 89: `verifier`, `typecheck`, `test`, `lint`, `infra`, `budget`, `config`, `scope`, w tym 18 z kategorią
+  poprawioną ręcznie wbrew propozycji słów kluczowych). Zmienia się wyłącznie linia `category:` (81 rekordów dostało ją, bo dotąd
+  jechały na domyślnej z triggera).
 - Fałszywe GO i koszt taska w rollupie (TASK-OBS-012, ADR 0012 aneks): pierwszy krok bramki końcowej niesie `step.blamed`
   / `step.unblamed` (warstwy wskazane przez naruszenia; `final-gate-blame.mjs`, kolektor + `telemetry-backfill-gate-blame.mjs`
   uzupełniający 216 przebiegów z `wf_*.json`). Rollup: `verdicts`/`agents` per rola (`goJudged`, `falseGo`, `noGoJudged`,

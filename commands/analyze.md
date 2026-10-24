@@ -68,8 +68,13 @@ node <claude-patterns>/scripts/telemetry-emit.mjs run-end --process analyze \
 | Wynik | `--outcome` |
 |---|---|
 | artefakt gotowy, bez PAUSE (`status: ready`) | `ok` |
-| `analyze.exit: PAUSE` — artefakt czeka na człowieka (`awaiting-human`, pytania otwarte) | `halted` |
+| `analyze.exit: PAUSE` — artefakt zapisany poprawnie i czeka na człowieka (`awaiting-human`, pytania otwarte) | `ok` |
+| przebieg przerwany po drodze (np. użytkownik zatrzymał go przed zapisem artefaktu) | `halted` |
 | panel nie dał artefaktu (agent padł, bramka wejścia, błąd narzędzia) | `failed` |
+
+PAUSE jest zaplanowanym końcem analizy, nie awarią (ADR 0015 D5): do 2026-10-24 61 z 62 przebiegów
+kończyło się jako `halted`, więc zaplanowane zatrzymanie wyglądało jak błąd. `halted` zostaje dla
+przerwań; `--cause` przy `ok` nie podajesz.
 
 `run-end` sam dopisuje `skipped` dla slotów z planu bez agenta i `unknown` dla agentów, którzy nie
 zdążyli się zakończyć, a potem kasuje stan przebiegu. Przebieg, którego nikt nie zamknął
@@ -97,6 +102,10 @@ node <claude-patterns>/scripts/report-deviation.mjs --project {nazwa} --source a
   --trigger <analyze_gate|analyze_note> --rule <ANZ-…> --reason "<co, gdzie, jaki plik/stage>" \
   --task {TASK-ID} [--layer <id warstwy>]
 ```
+
+Kategorię (`cause`) skrypt wyprowadza z reguły: `ANZ-LAYER-*` → `plan`, `ANZ-PATTERN-*` → `pattern_card`,
+pozostałe `ANZ-*` → `config`. Dla innej przyczyny dodaj `--category <wartość z listy cause>`; `agent_note`
+(spoza /analyze) bez `--category` jest błędem użycia.
 
 To (obok telemetrii przebiegu wyżej) jedyny zapis poza listą zamkniętą niżej — trafia do claude-patterns, nie do projektu.
 Błąd wywołania = jedno zdanie w artefakcie (`## Uwagi`), analiza idzie dalej.
