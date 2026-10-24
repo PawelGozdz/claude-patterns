@@ -45,14 +45,14 @@ $CLAUDE_PATTERNS/
 ├── README.md                    # This file
 ├── METADATA.yml                 # Repository metadata
 ├── .gitignore                   # Git exclusions
-├── patterns/                    # Production patterns (59 core + 56 stack-specific + 1 marketing + 2 finance + 2 legal)
+├── patterns/                    # Production patterns (61 core + 56 stack-specific + 1 marketing + 2 finance + 2 legal)
 │   ├── README.md                # Pattern index & usage guide
 │   ├── domain/                  # Domain layer (8 patterns)
 │   ├── application/             # Application layer (6 patterns)
 │   ├── infrastructure/          # Infrastructure layer (10 patterns)
 │   ├── architecture/            # Architecture patterns (13 patterns)
 │   ├── testing/                 # Testing patterns (10 patterns)
-│   ├── cross-layer/             # Cross-layer patterns (11 patterns)
+│   ├── cross-layer/             # Cross-layer patterns (13 patterns)
 │   ├── orchestration/           # Orchestration patterns (1 pattern)
 │   ├── marketing/               # Marketing patterns (1 pattern)
 │   ├── finance/                 # Finance patterns (2 patterns: layered-knowledge, regulatory-disclaimer)
@@ -1159,7 +1159,7 @@ cat .claude/settings.json  # Ensure patterns path is correct
 - Production-tested patterns since 2026-01-06
 
 **Key Documentation**:
-- `patterns/README.md` — Full pattern index (120 patterns)
+- `patterns/README.md` — Full pattern index (122 patterns)
 - `agents/README.md` — Agent catalog (60 agents)
 - `commands/README.md` — Command catalog (35 commands)
 - `patterns/orchestration/project-management-system.md` — PM system docs

@@ -7,9 +7,8 @@ stack_blocks: [node, kysely, zod, flat-service]
 
 patterns:
   always:
-    - cross-layer/conventions-pattern.md # source: node
-    - cross-layer/security-invariants-pattern.md # source: node
-    - cross-layer/safe-error-propagation-pattern.md # source: node
+    - cross-layer/security-invariants-pattern-plain.md # source: node
+    - cross-layer/safe-error-propagation-pattern-plain.md # source: node
     - cross-layer/logger-pattern-plain.md # source: node
     - infrastructure/repository-pattern-plain.md # source: node
     - infrastructure/controller-schema-pattern-plain.md # source: node
@@ -17,7 +16,7 @@ patterns:
     # source: node
     - keywords: [auth, authentication, authorization, permission, login]
       include:
-        - cross-layer/security-invariants-pattern.md
+        - cross-layer/security-invariants-pattern-plain.md
     # source: node
     - keywords: [test, fixture, mock, coverage, e2e]
       include:

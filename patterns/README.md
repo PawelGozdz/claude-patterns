@@ -6,7 +6,7 @@ This knowledge base contains production-enforced patterns for DDD/CQRS projects.
 
 **Version**: 3.14
 **Last Updated**: 2026-09-27
-**Status**: PRODUCTION (59 core patterns + 56 stack-specific + 1 marketing + 2 finance + 2 legal = 120 total)
+**Status**: PRODUCTION (61 core patterns + 56 stack-specific + 1 marketing + 2 finance + 2 legal = 122 total)
 
 **⚠ project-specific** marker = derived from ONE project's codebase, not yet validated in a second
 one. Marked in the pattern's own `**Scope**:` line (see `CLAUDE.md` → "Adding a New Pattern"). These
@@ -24,7 +24,7 @@ patterns/
 ├── infrastructure/      # Infrastructure Layer (persistence, API) - 10 patterns
 ├── architecture/        # Cross-cutting architecture patterns - 13 patterns
 ├── testing/            # Testing patterns - 10 patterns
-├── cross-layer/        # Used everywhere (errors, logging, error handlers, registry guards) - 11 patterns
+├── cross-layer/        # Used everywhere (errors, logging, error handlers, registry guards) - 13 patterns
 ├── orchestration/      # Project management and team coordination - 1 pattern
 ├── marketing/          # Marketing workflow patterns - 1 pattern
 ├── finance/            # Finance workflow patterns - 2 patterns
@@ -186,7 +186,7 @@ Testing strategies and patterns for all levels of the test pyramid.
 
 ---
 
-### Cross-Layer Patterns (11 patterns)
+### Cross-Layer Patterns (13 patterns)
 
 Patterns used across all architectural layers.
 
@@ -200,7 +200,9 @@ Patterns used across all architectural layers.
 | **[registry-drift-guard-pattern.md](cross-layer/registry-drift-guard-pattern.md)** | ~150 | Production | Ręczny rejestr (migracje, event map, routing, lista hooków) rozjeżdża się po cichu z plikami na dysku — generuj go albo pilnuj testem w obie strony | All implementers, verifiers |
 | **[temporary-copy-to-consumer-pattern.md](cross-layer/temporary-copy-to-consumer-pattern.md)** | ~90 | ⚠ project-specific (iam) | Moduł kopiowany (nie importowany) do konsumenta gdy pakietowanie jako zależność jest jeszcze przedwczesne; README właściciela deklaruje kod tymczasowym i nazywa oczekiwanego konsumenta, kopia zapisuje `<repo>@<commit>` + listę lokalnych zmian | All implementers |
 | **[safe-error-propagation-pattern.md](cross-layer/safe-error-propagation-pattern.md)** | ~350 | Production | 3-layer defense against infra error leakage to HTTP (TS-SEC-011) | All implementers |
+| **[safe-error-propagation-pattern-plain.md](cross-layer/safe-error-propagation-pattern-plain.md)** | ~100 | Experimental | Safe error propagation without Result type or mapper classes: generic data-access errors, server-side log first, static 5xx (node/flat-service variant) | node/flat-service implementers |
 | **[security-invariants-pattern.md](cross-layer/security-invariants-pattern.md)** | — | Production | (pre-existing, previously missing from this index) | All implementers |
+| **[security-invariants-pattern-plain.md](cross-layer/security-invariants-pattern-plain.md)** | ~100 | Experimental | Five security invariants without NestJS decorators (Fastify/Express): trusted identity, explicit guards, fail-closed, no internals in 5xx, no PII in logs | node/flat-service implementers |
 | **[snapshot-incremental-review-pattern.md](cross-layer/snapshot-incremental-review-pattern.md)** | ~90 | Production | Hash-per-item snapshot + diff for cheap incremental re-review | review-panel, api-contract-sync skills |
 | **[dto-mapper-pattern.md](cross-layer/dto-mapper-pattern.md)** | ~170 | experimental | One named `toXxxResult()` assembling a command handler's response DTO; consolidates any derived field (e.g. a computed boolean) to a single rule instead of one per return path | domain-application-implementer |
 

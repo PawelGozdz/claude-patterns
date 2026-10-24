@@ -631,6 +631,49 @@ CASES.push({
   },
 });
 
+// TASK-ORCH-CARDS-STACK-MISMATCH-001: karty warstwy pominiętej w analizie nie idą do przebiegu (bramka końcowa
+// dostaje wszystkie wzorce), karty warstwy zamkniętej wcześniej (layers_done) zostają.
+const buildLayerCards = (analysis) => {
+  const runtime = RUNTIME_API_WEB.replace('tags: ["web:ui"],', 'tags: ["web:ui"], patterns: ["web/web-layer-fixture-pattern.md"],');
+  const root = makeProject({ taskId: 'TS-FIX-001', runtime, analysis, task: taskFile('Dodaj ekran panelu.') });
+  const kn = '.claude/knowledge/patterns/';
+  write(root, kn + 'web/web-layer-fixture-pattern.md', '# Pattern: Web\n\n## What\nx\n');
+  write(root, kn + 'web/web-layer-fixture-pattern_summary.md', '# Karta: web\n\n**Tags**: "web:ui"\n\n## Reguły\n- x\n');
+  return root;
+};
+const WEB_CARD = 'web/web-layer-fixture-pattern.md';
+
+CASES.push({
+  name: 'layer-cards-of-layers-skip-layer-not-loaded',
+  build: () => buildLayerCards(withFm('layers_skip:\n  - { id: web, reason: "task bez panelu" }')),
+  check(r) {
+    if (r.code !== 0) return `oczekiwano exit 0, było ${r.code} (${r.stderr.trim()})`;
+    if (r.json.patterns.some((p) => p.path === WEB_CARD)) return 'karta pominiętej warstwy web trafiła do wzorców przebiegu';
+    return null;
+  },
+});
+
+CASES.push({
+  name: 'layer-cards-loaded-when-layer-runs',
+  build: () => buildLayerCards(withFm('')),
+  check(r) {
+    if (r.code !== 0) return `oczekiwano exit 0, było ${r.code} (${r.stderr.trim()})`;
+    const card = r.json.patterns.find((p) => p.path === WEB_CARD);
+    if (!card || card.origin !== 'layer:web') return 'karta uruchamianej warstwy web nie weszła z origin layer:web: ' + JSON.stringify(card && card.origin);
+    return null;
+  },
+});
+
+CASES.push({
+  name: 'layer-cards-kept-for-layers-done-in-previous-run',
+  build: () => buildLayerCards(withFm('layers_done: [web]')),
+  check(r) {
+    if (r.code !== 0) return `oczekiwano exit 0, było ${r.code} (${r.stderr.trim()})`;
+    if (!r.json.patterns.some((p) => p.path === WEB_CARD)) return 'karta warstwy z layers_done wypadła — bramka końcowa ocenia też jej pliki';
+    return null;
+  },
+});
+
 // ORC-121: analiza dopisuje checks do bramki końcowej (final_checks)
 CASES.push({
   name: 'analysis-final-checks-join-final-gate',
