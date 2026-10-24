@@ -400,7 +400,35 @@ function agentTurnCapWarnings(projectDir, out) {
   return found;
 }
 
-function gitState(projectDir, warnings) {
+// ORC-132: pliki brudne przy KOLEJNYM prepare na tym samym HEAD to w większości praca poprzednich prób
+// tego taska (halt → wznowienie), a nie cudza. Pierwszy prepare zapisuje listę w `.claude/run-state/`,
+// kolejne (ten sam baseSha, do 7 dni) liczą jako cudze tylko pliki, które były brudne już wtedy.
+// Zmiana HEAD (commit) albo usunięcie pliku zaczyna liczenie od nowa. Awaria zapisu nie blokuje startu.
+const BASELINE_MAX_AGE_MS = 7 * 24 * 3600 * 1000;
+function dirtyBaseline(projectDir, taskId, baseSha, dirty, warnings) {
+  const rel = join('.claude', 'run-state', `${String(taskId).replace(/[^\w.-]/g, '_')}.dirty-baseline.json`);
+  const file = join(projectDir, rel);
+  let prev = null;
+  try { prev = JSON.parse(readFileSync(file, 'utf8')); } catch { /* brak pliku = pierwszy prepare */ }
+  const age = prev ? Date.now() - Date.parse(prev.at) : Infinity;
+  if (prev && prev.baseSha === baseSha && Array.isArray(prev.dirty) && age >= 0 && age < BASELINE_MAX_AGE_MS) {
+    const was = new Set(prev.dirty.map(String));
+    const foreign = dirty.filter((f) => was.has(f));
+    if (foreign.length < dirty.length) {
+      warnings.push(`wznowienie na tym samym HEAD: ${dirty.length - foreign.length} z ${dirty.length} brudnych plików uznano za pracę poprzednich prób tego taska (baseline z ${prev.at}); do cudzych zostaje ${foreign.length}. Liczenie od nowa: usuń ${rel} (ORC-132)`);
+    }
+    return foreign;
+  }
+  try {
+    mkdirSync(dirname(file), { recursive: true });
+    writeFileSync(file, JSON.stringify({ baseSha, dirty, at: new Date().toISOString() }) + '\n');
+  } catch (e) {
+    warnings.push(`nie zapisano ${rel}: ${e.message} — kolejny prepare policzy brudne pliki od nowa (ORC-132)`);
+  }
+  return dirty;
+}
+
+function gitState(projectDir, warnings, taskId) {
   const git = (...a) => spawnSync('git', ['-C', projectDir, ...a], { encoding: 'utf8' });
   const head = git('rev-parse', 'HEAD');
   if (head.status !== 0) {
@@ -409,9 +437,10 @@ function gitState(projectDir, warnings) {
   }
   const st = git('status', '--porcelain', '-uall');
   const dirty = st.status === 0
-    ? st.stdout.split('\n').filter(Boolean).map((l) => l.slice(3).replace(/^.* -> /, '').replace(/^"|"$/g, ''))
+    ? st.stdout.split('\n').filter(Boolean).map((l) => l.slice(3).replace(/^.* -> /, '').replace(/^"|"$/g, '')).filter((f) => !/(^|\/)\.claude\/run-state\//.test(f))
     : [];
-  return { baseSha: head.stdout.trim(), dirtyAtStart: dirty };
+  const baseSha = head.stdout.trim();
+  return { baseSha, dirtyAtStart: dirtyBaseline(projectDir, taskId, baseSha, dirty, warnings) };
 }
 
 // Skrypt z wbudowanymi args. Podstawienie przez split/join, NIE String.replace ze stringiem
@@ -769,7 +798,7 @@ function main() {
   const innerLoop = orch.inner_loop ?? {};
   const finalGate = orch.final_gate ?? {};
 
-  const git = gitState(args.project, warnings);
+  const git = gitState(args.project, warnings, args.taskId);
 
   let out = {
     task: {

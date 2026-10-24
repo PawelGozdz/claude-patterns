@@ -493,6 +493,31 @@ CASES.push({
   },
 });
 
+// ORC-132: kolejny prepare na tym samym HEAD liczy jako cudze tylko pliki brudne przy PIERWSZYM prepare;
+// praca dodana po nim (wznowienie po halcie) jest pracą taska. Commit (nowy HEAD) zaczyna liczenie od nowa.
+CASES.push({
+  name: 'rerun-prepare-keeps-only-first-run-dirty-files-as-foreign',
+  build: () => {
+    const root = makeProject({ taskId: 'TS-FIX-001', analysis: analysisFm({}), task: taskFile('Dodaj aggregate.') });
+    spawnSync('bash', ['-c', 'git init -q && git config user.email t@t && git config user.name t && git add -A && git commit -qm init && echo x > owner.md'], { cwd: root });
+    return root;
+  },
+  check(r, root) {
+    if (r.code !== 0) return `oczekiwano exit 0, było ${r.code}`;
+    if (JSON.stringify(r.json.dirtyAtStart) !== '["owner.md"]') return 'pierwszy prepare: ' + JSON.stringify(r.json.dirtyAtStart);
+    if (!fs.existsSync(path.join(root, '.claude', 'run-state', 'TS-FIX-001.dirty-baseline.json'))) return 'brak pliku baseline';
+    spawnSync('bash', ['-c', 'echo y > task-work.ts'], { cwd: root });
+    const again = run(root, 'TS-FIX-001', []);
+    if (again.code !== 0) return `drugi prepare: exit ${again.code}`;
+    if (JSON.stringify(again.json.dirtyAtStart) !== '["owner.md"]') return 'praca taska policzona jako cudza: ' + JSON.stringify(again.json.dirtyAtStart);
+    if (!again.json.warnings.some((w) => /1 z 2 brudnych plików uznano za pracę poprzednich prób/.test(w))) return 'brak ostrzeżenia o wznowieniu: ' + JSON.stringify(again.json.warnings);
+    spawnSync('bash', ['-c', 'git add -A && git commit -qm next && echo z > later.md'], { cwd: root });
+    const fresh = run(root, 'TS-FIX-001', []);
+    if (JSON.stringify(fresh.json.dirtyAtStart) !== '["later.md"]') return 'nowy HEAD nie zaczął liczenia od nowa: ' + JSON.stringify(fresh.json.dirtyAtStart);
+    return null;
+  },
+});
+
 // ORC-113: create_when to regex; opis prozą nie trafia i dostaje ostrzeżenie
 CASES.push({
   name: 'create-when-regex-hits-and-prose-warns',
