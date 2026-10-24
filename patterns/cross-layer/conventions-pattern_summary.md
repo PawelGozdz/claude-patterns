@@ -14,7 +14,7 @@
 - **CV2** — Warstwa aplikacji i infrastruktury: `*.service.ts` (serwis aplikacyjny), `*.repository.ts` (interfejs), `*-kysely.repository.ts` (implementacja), `*.dto.ts`, `*.controller.ts`, `*.mapper.ts`.
 - **CV3** — CQRS: gdy plik leży w folderze niosącym nazwę operacji (`commands/register-user/`, `queries/get-user-by-id/`, `event-handlers/job-completed/`), nazwa pliku to `command.ts` / `query.ts` / `handler.ts` / `integration-handler.ts` — **bez prefiksu powtarzającego folder**.
 - **CV4** — Gdy wiele plików tego samego typu dzieli jeden folder (np. `application/event-handlers/` z pięcioma handlerami), rdzeń nazwy zostaje: `user-registered.handler.ts`.
-- **CV5** — Testy handlera leżą w `__tests__/` obok niego: `register-user/__tests__/handler.spec.ts`.
+- **CV5** — Testy handlera leżą w `__tests__/` obok niego: `register-user/__tests__/handler.spec.ts`. Wyjątek: projekt z ustaloną kolokacją (`handler.spec.ts` bezpośrednio obok `handler.ts`, jak marketing-hub) trzyma swoją konwencję — nowy test dopasuj do sąsiednich, istniejących nie przenoś (weryfikator nie liczy tego jako naruszenia CV5).
 
 ## MUST NOT
 

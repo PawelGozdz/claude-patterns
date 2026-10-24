@@ -37,7 +37,6 @@ patterns:
     - keywords: [test, pytest, fixture, mock, coverage, e2e]
       include:
         - python/testing-pattern.md
-        - testing/testing-pyramid-pattern.md
     - keywords: [auth, authentication, authorization, permission, login, token, secret]
       include:
         - python/security-invariants-pattern.md

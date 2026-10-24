@@ -461,6 +461,10 @@ function buildProbePrompt(a, layer) {
       'Dopiero gdy ten grep nic nie znajdzie (błąd bez ścieżki pliku, np. konfiguracyjny) — ' +
       'zwróć ostatnie 40 linii CAŁEGO logu w `tail`.'
     : ' Przy niezerowym — zwróć ostatnie 40 linii w `tail`.'
+  // ORC-134: awaria samej sondy (brak pamięci) nie zostawia żadnego `error TS`, a bez kodu wyjścia w `tail`
+  // silnik nie odróżni jej od czerwieni kodu (juz-ide-api-4 TS-MAP-MARKER-PRIVACY-001: EXIT 134).
+  const crashInstruction = ' Gdy kod wyjścia to 134 albo 137, albo log zawiera „heap out of memory" / „Killed" — ' +
+    'zacznij `tail` od dosłownego `EXIT:<kod>` (to awaria maszyny, nie błąd kodu).'
   // ORC-082 (uzupełnienie): surowe linie błędów TS jako OSOBNE pole. ORC-082 parsował `tail`, a `tail` agent
   // sondy potrafił sparafrazować („Missing method X…") — parser nie widział błędu, wyjątek
   // nie zadziałał i warstwa domain stanęła na BLOCKED_BY_PRIOR (juz-ide-api-1, 2026-09-30).
@@ -499,7 +503,7 @@ function buildProbePrompt(a, layer) {
       'NIE jest "skipped" — wtedy zwróć "fail" i w `tail` napisz, że polecenie nie skończyło się w limicie.'
     : ''
   return 'Uruchom dokładnie to i NIC więcej:\n' + run + literalMapping +
-    '\nPrzy EXIT:0 NIE otwieraj pliku logu wcale.' + tailInstruction + tsErrorsInstruction + testFailInstruction +
+    '\nPrzy EXIT:0 NIE otwieraj pliku logu wcale.' + tailInstruction + crashInstruction + tsErrorsInstruction + testFailInstruction +
     delta +
     '\nNIC nie czytaj, nie analizuj, nie poprawiaj, nie komentuj kodu.' +
     (scoped ? '\nZakres zmiany: ' + scoped : '') +
@@ -1131,6 +1135,20 @@ function ownerLayerOf(file, layers) {
   return owners.length === 1 ? owners[0] : null
 }
 
+// ORC-134: sonda, która sama padła (brak pamięci: EXIT 134/137, „heap out of memory", „Killed"), a w logu
+// nie ma żadnego błędu kodu. To awaria maszyny — retry implementera nie ma czego naprawiać, a „czerwień"
+// zrzucona na niego kończyła się BLOCKED_BY_PRIOR bez przyczyny. Zwraca komunikat albo null.
+const PROBE_CRASH = /EXIT:\s*(?:134|137)\b|heap out of memory|JavaScript heap|\bKilled\b|SIGKILL|SIGABRT/i
+function probeCrashed(probe) {
+  if (!probe || (probe.typecheck !== 'fail' && probe.tests !== 'fail' && probe.lint !== 'fail')) return null
+  const text = String(probe.tail || '')
+  if (!PROBE_CRASH.test(text)) return null
+  // prawdziwy błąd kodu obok awarii: błąd TS w `tsErrors` albo plik testu w `testFailFiles`
+  if (/error TS\d+|error:/.test(String(probe.tsErrors || '')) || String(probe.testFailFiles || '').trim()) return null
+  return 'sonda padła z braku zasobów (' + (text.match(PROBE_CRASH) || [''])[0].trim() + ') — to awaria maszyny, nie błąd kodu. ' +
+    'Zwiększ pamięć w `checks` przez --overrides (np. NODE_OPTIONS=--max-old-space-size=8192 npm run typecheck) albo zawęź typecheck do pakietu warstwy'
+}
+
 function typecheckRedIsLaterLayers(probe, layer, allLayers) {
   if (!probe || probe.typecheck !== 'fail' || probe.tests === 'fail' || probe.lint === 'fail') return false
   const { total, paths } = typecheckErrorPaths(probe.tsErrors || probe.tail)
@@ -1293,6 +1311,16 @@ function stageableFiles(finalFiles, dirtyAtStart, layerFiles) {
   const dirty = (dirtyAtStart || []).map(String)
   const mine = (layerFiles || []).map(String)
   return (finalFiles || []).filter((f) => dirty.indexOf(f) === -1 || mine.indexOf(f) !== -1)
+}
+
+// ORC-133: implementer twierdzi „brak zmian", ale praca warstwy już leży w drzewie (wznowienie po
+// halcie: poprzedni przebieg ją napisał). Takie twierdzenie nie idzie do weryfikatora no-op, który
+// nie ma sondy i nie ma czego potwierdzić — warstwa wchodzi w zwykłe verify-existing z sondą.
+// Pliki brudne przed startem (ORC-124) i pliki zamkniętych w tym przebiegu warstw to nie jej praca.
+function noopExistingWork(layer, treeFiles, dirtyAtStart, earlierFiles) {
+  const dirty = new Set((dirtyAtStart || []).map(String))
+  const earlier = new Set((earlierFiles || []).map(String))
+  return (treeFiles || []).filter((f) => layerTouches(layer, f) && !dirty.has(f) && !earlier.has(f))
 }
 
 // Implementer po CZERWONEJ sondzie twierdzi „nic do zrobienia" → to nie jest no-op do
@@ -1593,6 +1621,26 @@ for (const step of plan) {
     // trzy próby „zero zmian" kończyły się ESCALATE na warstwie, której task w ogóle nie dotyka
     // (juz-ide-api-2, 2026-09-14). Analiza powinna to przewidzieć w layers_skip (albo zawęzić
     // przez layers_scope, gdy warstwa jest dotknięta częściowo); to jest siatka.
+    if (noopClaim && mode === 'implement' && !probeRed) {
+      // ORC-133: „brak zmian" przy pracy warstwy już w drzewie (wznowienie) → verify-existing z sondą
+      const treeOpts = Object.assign(
+        { label: layer.id + '-noop-tree-' + attempt, maxTurns: DEFAULTS.diffProbeTurns, schema: DIFF_PROBE_SCHEMA },
+        modelFor('probe'),
+      )
+      let tree = null
+      try {
+        tree = await ask(buildTreeProbePrompt(a.baseSha), treeOpts)
+      } catch (e) {
+        tree = null
+      }
+      const existing = noopExistingWork(layer, tree && tree.files, a.dirtyAtStart, report.layers.flatMap((l) => l.files || []))
+      if (existing.length) {
+        log(layer.id + ': implementer zgłasza brak zmian, ale ' + existing.length + ' plików warstwy jest już w drzewie — weryfikuję stan z sondą (ORC-133)')
+        mode = 'verify-existing'
+        layerFiles = existing
+        noopClaim = null
+      }
+    }
     if (noopClaim && mode === 'implement') {
       const blocked = blockedByPrior(layer, probeRed, noopClaim, earlierRedOwners(probeRedFacts, layer, plan.filter((s) => s.run).map((s) => s.layer)))
       if (blocked) {
@@ -1697,6 +1745,12 @@ for (const step of plan) {
       log(layer.id + ': testy czerwone w całym zestawie, zielone osobno (' + probe.testFilesFailed + ' plików) — niestabilne pod obciążeniem (ORC-103)')
       report.warnings = (report.warnings || []).concat(layer.id + ': ' + probe.testFilesFailed + ' plików testowych padło w pełnym zestawie, ale przeszło po osobnym uruchomieniu (niestabilne) — sprawdź izolację testów (ORC-103): ' + testFailPaths(probe.testFailFiles).join(', '))
       probe = Object.assign({}, probe, { tests: 'pass' })
+    }
+    const crashed = probeCrashed(probe)
+    if (crashed) {
+      log(layer.id + ': ' + crashed + ' (ORC-134)')
+      settled = { id: layer.id, status: 'ESCALATE_AND_HALT', reason: crashed, cause: 'machine' }
+      break
     }
     if (probe && (probe.typecheck === 'fail' || probe.tests === 'fail' || probe.lint === 'fail')) {
       violations = 'deterministyczna bramka na czerwono (typecheck: ' + probe.typecheck +

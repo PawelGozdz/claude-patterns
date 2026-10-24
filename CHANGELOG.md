@@ -67,7 +67,7 @@ and none of it is instruction — it is history.
   (ORC-127); `prepare` ostrzega o plikach z decyzji bez właściciela (ORC-128), o tasku bez uruchamianych warstw (ORC-129) i o brudnym
   drzewie z pracą taska, z obejściem `--overrides {"dirtyAtStart": []}` (ORC-130); runda naprawcza obejmuje warstwy z `layers_done`,
   a pomiar przyrostu testów 0 po dodatnim nie daje fałszywego haltu (ORC-131); `prepare` zapisuje baseline brudnych plików w
-  `.claude/run-state/` i przy wznowieniu na tym samym HEAD liczy jako cudze tylko pliki sprzed pierwszego uruchomienia (ORC-132).
+  `.claude/run-state/` i przy wznowieniu na tym samym HEAD liczy jako cudze tylko pliki sprzed pierwszego uruchomienia (ORC-132); „brak zmian” przy pracy warstwy już w drzewie idzie do `verify-existing` z sondą (ORC-133); awaria sondy z braku pamięci kończy warstwę jako `machine`, nie jako czerwień kodu (ORC-134). Reguły analizy: katalog nowych testów w `include` runnera (ANL-044) i właściciel pliku rejestrującego nowy element w planie (ANL-045). Karta CV5 dopuszcza kolokację testów obok handlera, blok `python` nie ciągnie karty piramidy testów TypeScript.
 - Karty wzorców: DS5/CH10 (asynchroniczne `policy.check`), WT4/WT5/WS2/N5 (refine-spa), RP8 (nieznany event zgłaszany przez logger
   repozytorium); kolekcje RAG `code_iam` i `code_marketing_hub`; `**/.claude/run-state/` w szablonie `.gitignore`. Agenci:
   `content-reviewer` maxTurns 60, `security-e2e-verifier` bez `Task(Explore)`, `state-reader` maxTurns 14 (limit z frontmattera wygrywał

@@ -504,6 +504,32 @@ const CASES = (c) => [
       return null;
     },
   },
+  {
+    name: 'noop-claim-with-layer-work-already-in-tree-goes-to-verify-existing',
+    run() {
+      const layer = { id: 'application:center-resolution', dirs: ['src/app/center/'] };
+      const tree = ['src/app/center/a.ts', 'src/app/center/b.ts', 'src/app/other/c.ts'];
+      const got = c.noopExistingWork(layer, tree, [], []);
+      if (JSON.stringify(got) !== JSON.stringify(['src/app/center/a.ts', 'src/app/center/b.ts'])) return 'pliki warstwy: ' + JSON.stringify(got);
+      if (c.noopExistingWork(layer, tree, ['src/app/center/a.ts'], []).length !== 1) return 'brudny przed startem nie jest pracą warstwy';
+      if (c.noopExistingWork(layer, tree, [], ['src/app/center/a.ts', 'src/app/center/b.ts']).length) return 'plik zamkniętej warstwy nie jest pracą tej warstwy';
+      if (c.noopExistingWork(layer, null, [], []).length) return 'brak sondy drzewa = prawdziwy no-op';
+      return null;
+    },
+  },
+  {
+    name: 'probe-crash-oom-is-machine-failure-not-code-red',
+    run() {
+      const oom = { typecheck: 'fail', tests: 'skipped', tail: 'EXIT:134\nFATAL ERROR: Reached heap limit Allocation failed - JavaScript heap out of memory' };
+      const msg = c.probeCrashed(oom);
+      if (!msg || !/NODE_OPTIONS/.test(msg)) return 'OOM bez błędów TS ma być awarią maszyny: ' + msg;
+      if (c.probeCrashed(Object.assign({}, oom, { tsErrors: 'src/a.ts(3,1): error TS2322: x' }))) return 'błąd TS obok OOM to nadal czerwień kodu';
+      if (c.probeCrashed({ typecheck: 'fail', tests: 'pass', tail: 'src/a.ts(3,1): error TS2322: x' })) return 'zwykła czerwień kodu nie jest awarią sondy';
+      if (c.probeCrashed({ typecheck: 'pass', tests: 'pass', tail: 'EXIT:137' })) return 'zielona sonda nie jest awarią';
+      if (c.probeCrashed(null)) return 'brak sondy = brak awarii';
+      return null;
+    },
+  },
   // ── ORC-104: własność luki po specyficzności, sonda z korzenia repo ──────────────────────
   {
     name: 'unverified-test-files-owned-by-more-specific-layer-are-not-own-gap',

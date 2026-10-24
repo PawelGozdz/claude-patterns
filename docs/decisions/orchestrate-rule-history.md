@@ -1130,6 +1130,22 @@ pustym parametrze dałoby regex pasujący do wszystkiego. Niepoprawny regex = b�
 pusty parametr usuwa klucze ze slotu. `always_for` omija też sito ANL-018 — jawna opcja projektu
 (np. P0) ma pierwszeństwo przed oszczędzaniem tokenów opus-a.
 
+<a id="anl-044"></a>
+
+### ANL-044 — katalog nowych testów musi być w `include` runnera (2026-10-24)
+
+**Objaw (agent_note, juz-ide-api-2 TS-SEC-EVENT-GEOFILTER-ORACLE-001).** Analiza kazała napisać testy L2 w `test/`, ale `test/integration/` nie jest w `include` żadnego configu vitest. Warstwa `testing:guardians-l1-l3` zatrzymała się na BLOCKED_BY_PRIOR już w pierwszym przebiegu. Wniosek z opisu zgłoszenia, bez dziennika przebiegu.
+
+**Zmiana.** Reguła tylko w prompcie: przed wskazaniem katalogu testów analiza czyta config runnera i sprawdza `include`. Brak pokrycia to decyzja (zmiana configu albo inny katalog), nie niespodzianka w warstwie `testing`. Mechaniczna bramka w `prepare` byłaby zależna od runnera (vitest/jest/workspace), więc na razie jej nie ma.
+
+<a id="anl-045"></a>
+
+### ANL-045 — rejestracja nowego elementu ma właściciela w planie (2026-10-24)
+
+**Objaw (DEV-orc-026-final-gate, juz-ide-api-4 TS-MAP-MARKER-PRIVACY-001).** Plan nie obejmował `discovery.module.ts`, `geographic-auth.module.ts`, mapperów błędów ani schematów create (event, group-event, local-share). Karta CH10 odroczyła rejestrację DI do warstwy z modułem w zakresie, której w planie nie było. Bramka końcowa dała NO_GO: aplikacja nie wstaje.
+
+**Zmiana.** Reguła tylko w prompcie: analiza wpisuje pliki rejestrujące do `dirs` jednostki albo rozpisuje jednostkę wiringu. Karta CH10 zostaje bez zmian: zakaz edycji spoza zakresu (ORC-042) jest słuszny, brakowało właściciela po stronie planu. Mechaniczna bramka w `prepare` (np. nowy `*.handler.ts` bez żadnego `*.module.ts` w jednostkach) jest możliwa, ale wymaga znajomości stosu, więc na razie nie ma.
+
 <a id="anl-024"></a>
 
 ### ANL-024 — do slotu idzie STRESZCZENIE poprzednich stage'ów, nigdy surowy output
@@ -2409,3 +2425,18 @@ produktowe oceniamy raz, na całości zmiany, żeby nie płacić za nie w każde
 
 **Zmiana.** `orchestrate-prepare` zapisuje przy pierwszym uruchomieniu `<projekt>/.claude/run-state/<TASK>.dirty-baseline.json` (`baseSha`, `dirty`, `at`). Kolejny `prepare` na tym samym `baseSha`, nie starszy niż 7 dni, liczy jako cudze (`dirtyAtStart`) tylko pliki brudne już w baseline i ostrzega, ile plików uznał za pracę poprzednich prób. Nowy HEAD (commit) albo usunięcie pliku zaczyna liczenie od nowa, ręczny `--overrides {"dirtyAtStart": [...]}` nadal wygrywa. Ścieżki `.claude/run-state/` nie są liczone jako brudne. Kompromis: edycja właściciela między dwiema próbami tego samego taska na tym samym HEAD zostanie uznana za pracę taska.
 
+<a id="orc-133"></a>
+
+### ORC-133 — „brak zmian” przy pracy warstwy już w drzewie (2026-10-24)
+
+**Objaw (DEV-orc-062-application-center-resolution, juz-ide-api-3 TS-GROUP-REACH-CENTER-001).** Po halcie praca warstwy `application:center-resolution` leżała już w drzewie, więc implementer zgłosił „brak zmian”. Gałąź no-op wywołała weryfikatora bez sondy (`probe=null`), a w 3. próbie skończyła ESCALATE cause=machine. ORC-084, ORC-100 i ORC-126 wymagają sondy, więc nie wykonały się ani razu.
+
+**Zmiana.** Przed weryfikacją no-op silnik mierzy drzewo (`buildTreeProbePrompt`). `noopExistingWork` zostawia pliki w zakresie warstwy, które nie były brudne przed startem (ORC-124) i nie są pracą warstw zamkniętych w tym przebiegu. Gdy coś zostanie, warstwa wchodzi w `verify-existing` (jak po cichej śmierci implementera): bramka, sonda, weryfikator. Czerwona sonda nadal idzie ścieżką BLOCKED_BY_PRIOR. Koszt: jedna tania sonda drzewa na każde twierdzenie „brak zmian”.
+
+<a id="orc-134"></a>
+
+### ORC-134 — awaria sondy (brak pamięci) to nie czerwień kodu (2026-10-24)
+
+**Objaw (DEV-orc-062-domain, 2. wystąpienie, juz-ide-api-4 TS-MAP-MARKER-PRIVACY-001).** `npm run typecheck` (`tsc --noEmit` na całym repo) kończył się EXIT 134 (heap ~4 GB) bez żadnego `error TS`. Silnik traktował to jak czerwoną sondę, implementer słusznie raportował brak zmian, a warstwa `domain` dostała BLOCKED_BY_PRIOR.
+
+**Zmiana.** Prompt sondy każe zacząć `tail` od `EXIT:<kod>` przy kodzie 134/137 albo „heap out of memory”. `probeCrashed` rozpoznaje to po `tail` (i braku `tsErrors`/`testFailFiles`) i kończy warstwę od razu jako ESCALATE_AND_HALT cause=machine, z podpowiedzią o `NODE_OPTIONS=--max-old-space-size=…` w `checks` przez `--overrides`. Retry implementera nie ma czego naprawiać.
