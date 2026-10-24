@@ -1552,6 +1552,64 @@ const CASES = (c) => [
       return null;
     },
   },
+
+  // ── ORC-135: usuwanie plików przez implementera bez Bash ───────────────────────────────
+  {
+    name: 'deletion-plan-accepts-layer-paths-and-rejects-the-rest',
+    run() {
+      const layer = { id: 'domain', dirs: ['src/domain/'] };
+      const plan = c.deletionPlan(layer, [
+        'src/domain/block-cache.port.ts',
+        './src/domain/block-cache.spec.ts',
+        'src/domain/block-cache.port.ts',
+        'src/infrastructure/other.ts',
+        '/etc/passwd',
+        'src/domain/../../secret.ts',
+        'src/domain/a b.ts',
+        'src/domain/x;rm -rf ~.ts',
+        'src/domain/mine.ts',
+        '',
+      ], ['src/domain/mine.ts']);
+      const want = ['src/domain/block-cache.port.ts', 'src/domain/block-cache.spec.ts'];
+      if (JSON.stringify(plan.accepted) !== JSON.stringify(want)) return 'accepted: ' + JSON.stringify(plan.accepted);
+      const why = Object.fromEntries(plan.rejected.map((r) => [r.path, r.reason]));
+      if (!/poza zakresem/.test(why['src/infrastructure/other.ts'] || '')) return 'ścieżka spoza dirs warstwy nie odrzucona: ' + JSON.stringify(why);
+      if (!/bezwzględna/.test(why['/etc/passwd'] || '')) return 'ścieżka bezwzględna nie odrzucona';
+      if (!/\.\./.test(why['src/domain/../../secret.ts'] || '')) return 'ścieżka z .. nie odrzucona';
+      if (!why['src/domain/a b.ts'] || !why['src/domain/x;rm -rf ~.ts']) return 'spacja albo metaznak powłoki nie odrzucone';
+      if (!/brudny/.test(why['src/domain/mine.ts'] || '')) return 'plik brudny przed startem (ORC-124) nie odrzucony';
+      if (c.deletionPlan(layer, undefined, undefined).accepted.length) return 'brak deleted_files powinien dać pusty plan';
+      return null;
+    },
+  },
+  {
+    name: 'delete-step-is-one-quoted-git-rm-and-staging-skips-deleted',
+    run() {
+      const cmd = c.deleteFilesCmd(['src/domain/a.ts', 'src/domain/a.spec.ts']);
+      if (!/^git rm -q -f --ignore-unmatch -- 'src\/domain\/a\.ts' 'src\/domain\/a\.spec\.ts'; rm -f -- /.test(cmd)) return 'polecenie: ' + cmd;
+      if (!/for f in 'src\/domain\/a\.ts' 'src\/domain\/a\.spec\.ts'; do \[ -e "\$f" \] \|\| echo "\$f"; done$/.test(cmd)) return 'brak pętli weryfikującej: ' + cmd;
+      if (!/NIC więcej/.test(c.buildDeletePrompt(['src/domain/a.ts']))) return 'prompt kroku usuwania nie zakazuje dodatkowej pracy';
+      const staged = c.stageableFiles(['src/domain/a.ts', 'src/domain/b.ts'], [], ['src/domain/b.ts'], ['src/domain/a.ts']);
+      if (JSON.stringify(staged) !== JSON.stringify(['src/domain/b.ts'])) return 'usunięty plik trafił do `git add`: ' + JSON.stringify(staged);
+      if (c.stageableFiles(['src/domain/a.ts'], [], [], undefined).length !== 1) return 'bez listy usuniętych staging musi działać jak dotąd';
+      return null;
+    },
+  },
+  {
+    name: 'implementer-and-verifier-prompts-know-about-deleted-files',
+    run() {
+      const layer = ARGS.layers[1];
+      const impl = c.buildImplPrompt(ARGS, layer, 1, null, 0);
+      if (!/deleted_files/.test(impl) || !/export \{\}/.test(impl)) return 'prompt implementera nie opisuje deleted_files i zakazu tombstone';
+      if (!/USUNIĘTE PLIKI/.test(c.buildVerifierPrompt(ARGS, layer, null, [], 'implement', undefined, undefined, ['src/infrastructure/a.ts']))) return 'weryfikator nie dostał listy usuniętych';
+      if (/USUNIĘTE PLIKI/.test(c.buildVerifierPrompt(ARGS, layer, null, ['x'], 'implement'))) return 'pusta lista usuniętych nie może dodawać akapitu';
+      if (!/USUNIĘTE celowo/.test(c.buildFinalGatePrompt(ARGS, [], ['x'], 'tree', [], null, ['src/infrastructure/a.ts']))) return 'bramka końcowa nie dostała listy usuniętych';
+      const src = fs.readFileSync(TEMPLATE, 'utf8');
+      if (!/const IMPL_SCHEMA = \{[\s\S]*?deleted_files: \{ type: 'array'[\s\S]*?\n\}/.test(src)) return 'IMPL_SCHEMA bez pola deleted_files';
+      if (!/await applyDeletions\(layer, impl, String\(attempt\)\)/.test(src)) return 'pętla warstwy nie wywołuje kroku usuwania';
+      return null;
+    },
+  },
 ];
 
 // ── bieg ─────────────────────────────────────────────────────────────────────────

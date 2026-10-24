@@ -2,7 +2,7 @@
 id: DEV-orc-087-domain
 status: promoted
 resolution: >
-  Zebrane w TASK-ORCH-IMPLEMENTER-FILE-DELETE-001 (2026-10-18) razem z DEV-orc-062-application: domain-application-implementer ma disallowedTools: Bash (świadomie), więc nie usuwa plików i zostawia tombstone `export {}`. Zadanie ma trzy hipotezy (wąski Bash dla git rm, pole deleted_files z mechanicznym krokiem, wykrywanie tombstone) i kryteria ukończenia.
+  Zebrane w TASK-ORCH-IMPLEMENTER-FILE-DELETE-001 (2026-10-18) razem z DEV-orc-062-application: domain-application-implementer ma disallowedTools: Bash (świadomie), więc nie usuwa plików i zostawia tombstone `export {}`. Zadanie ma trzy hipotezy (wąski Bash dla git rm, pole deleted_files z mechanicznym krokiem, wykrywanie tombstone) i kryteria ukończenia. Wdrożone 2026-10-24 jako ORC-135 (pole `deleted_files` i krok mechaniczny `git rm`, commit cbe74d7); claim w orchestrate-rule-history.md, status zmieni raport tygodniowy po zaufanym werdykcie.
 trigger: agent_note
 category: infra
 sources:
