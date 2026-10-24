@@ -11,26 +11,29 @@ resolution: >
   DomainErrorHandler (łańcuch LocalHero), a marketing-hub kieruje błędy samym
   IDomainErrorMapper (kody typu VALIDATION_FAILED, bez DomainErrorHandler) —
   dodane zastrzeżenie „Scope of step (1)”: bez handlera pomijać klauzule
-  D_/canHandle, a rejestrację w mapperze i test guardian zostawić.
-  Wystąpienie aegis-flow TS-004 (2026-10-21): fałszywy alarm. python/ w
-  .claude/knowledge/patterns/ to symlink do patterns/python/ (security-invariants, safe-error-propagation i
-  testing-pattern istnieją, a prepare rozwiązuje je po ścieżce względnej, nie po nazwie pliku);
-  cross-layer/ to osobne, TS-owe wersje. Agent najpewniej szukał bez -L. Dopisane ostrzeżenie w
-  ANL-008 (commands/analyze.md). Otwarta zostaje część juz-ide-api-2 (zod, brakujące wzorce).
+  D_/canHandle, a rejestrację w mapperze i test guardian zostawić. Wystąpienie
+  aegis-flow TS-004 (2026-10-21): fałszywy alarm. python/ w
+  .claude/knowledge/patterns/ to symlink do patterns/python/
+  (security-invariants, safe-error-propagation i testing-pattern istnieją, a
+  prepare rozwiązuje je po ścieżce względnej, nie po nazwie pliku); cross-layer/
+  to osobne, TS-owe wersje. Agent najpewniej szukał bez -L. Dopisane ostrzeżenie
+  w ANL-008 (commands/analyze.md). Otwarta zostaje część juz-ide-api-2 (zod,
+  brakujące wzorce).
 trigger: analyze_note
 category: other
 sources:
   - analyze
 rule_ref: ANZ-PATTERN-MISMATCH
 first_seen: 2026-10-10
-last_seen: 2026-10-21
-occurrences: 6
+last_seen: 2026-10-23
+occurrences: 7
 projects:
   - aegis-flow
   - ai-os-bot
   - marketing-hub
   - juz-ide-api-2
   - framework-polityczny
+  - juz-ide-api-4
 reopened_at: 2026-10-20
 reopened_from_status: promoted
 ---
@@ -39,6 +42,7 @@ reopened_from_status: promoted
 
 ## Occurrences
 
+- 2026-10-23 juz-ide-api-4 (TS-MAP-MARKER-PRIVACY-001) — Brak wzorców w claude-patterns: punkt ujawniony i polityka ujawniania z werdyktem ACL; guardian L1 producentów (jako wzorzec; instancje istnieją w kodzie); projekcja markera fail-closed; wsadowy ACL zwracający klasę zamiast liczby. Wymieniła je analiza TS-MAP-MARKER-PRIVACY-001 (pattern-fit).
 - 2026-10-21 aegis-flow (TS-004) — runtime.yml patterns.always wskazuje python/security-invariants-pattern.md i python/safe-error-propagation-pattern.md, a pliki leżą w .claude/knowledge/patterns/cross-layer/ i opisują NestJS/Zod/Kysely (stos TS), nie Python/FastAPI; trigger 'test' wskazuje python/testing-pattern.md, którego nie ma
 - 2026-10-20 framework-polityczny (FP-005) — Brak wzorca TypeScript dla odpornego pobierania z zewnetrznych API (retry/backoff/checkpoint/archiwum surowe); python/resilient-collection-pattern.md jest w Pythonie, infrastructure/external-adapter-pattern.md to atrapa pod NestJS bez I/O
 - 2026-10-20 juz-ide-api-2 (TS-MAP-MARKER-PRIVACY-001) — Brak wzorcow w claude-patterns: (1) punkt ujawniony / zaokraglenie przy zapisie (GEO17 to jedna linijka karty bez przykladu), (2) pisanie guardiana L1 (taint tracking), (3) repozytorium projekcji read-modelu (repository.md zaklada agregat z version i eventMap, a MapMarkersKyselyRepository jest projekcja). Dodatkowo: runtime.yml patterns.triggers nie obejmuje controller-schema, zod-schema-validation i business-rules-yaml dla zadan zmieniajacych odpowiedz API.

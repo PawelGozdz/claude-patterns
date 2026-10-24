@@ -7,8 +7,8 @@ sources:
   - analyze
 rule_ref: ANZ-AGENT-MISSING
 first_seen: 2026-10-14
-last_seen: 2026-10-17
-occurrences: 3
+last_seen: 2026-10-23
+occurrences: 4
 projects:
   - ai-os-bot
   - aegis-flow
@@ -19,6 +19,7 @@ projects:
 
 ## Occurrences
 
+- 2026-10-23 juz-ide-api-2 (TS-SEC-EVENT-GEOFILTER-ORACLE-001) — slot decision-gate (state-reader/haiku) w /analyze TS-SEC-EVENT-GEOFILTER-ORACLE-001 wyczerpal limit 8 tur bez raportu (wynik dopiero po SendMessage); bramka blokujaca nie zwrocila wyniku za pierwszym razem
 - 2026-10-17 juz-ide-api-2 (TS-SEC-MAP-GROUP-PIN-001) — slot decision-gate (agent state-reader) nie ma Bash: nie przeczytal BDR-081..084 z origin/develop (git show), oddal raport czesciowy; prowadzacy uzupelnil recznie
 - 2026-10-15 aegis-flow (TS-005) — sloty red-team-review (red-team-bypass-analyst) i abuse-case-threat-model (abuse-case-threat-modeler), oba model opus: odpowiedź/zapis zatrzymał filtr bezpieczeństwa, brak RT-TS-005.md i TM-TS-005-abuse.md; prompty z wyliczaniem klas obejść/ataków do przeformułowania
 - 2026-10-14 ai-os-bot (BOT-030) — stage threat-model (agent /threat-model): skill zwrócił tylko opis komendy-wrappera, bez treści skills/security/threat-model/SKILL.md ani przebiegu STRIDE; TM-BOT-030 napisał koordynator ręcznie wg TM-BOT-025
