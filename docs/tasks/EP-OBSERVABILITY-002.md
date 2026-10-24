@@ -46,8 +46,8 @@ części nie dotykają `hooks/` i mogą iść od razu.
 | Obszar | Stan | Task |
 |---|---|---|
 | Fałszywe GO/NO_GO i blok `tasks` w rollupie | ✅ 2026-10-23 (październik: 12,6% fałszywych GO, dolna granica) | TASK-OBS-012 |
-| Taksonomia `cause`, obowiązkowa kategoria `agent_note`, PAUSE ≠ halted | ⏳ | TASK-OBS-013 |
-| `telemetry-report.mjs` nad rollupami, delta per silnik | ⏳ po OBS-012 | TASK-OBS-014 |
+| Taksonomia `cause`, obowiązkowa kategoria `agent_note`, PAUSE ≠ halted | ✅ | TASK-OBS-013 |
+| `telemetry-report.mjs` nad rollupami, delta per silnik | ✅ | TASK-OBS-014 |
 | `outcome.human`: hook commit + revert w audycie | ⏳ po odmrożeniu hooków | TASK-OBS-015 |
 | `process: tool`: emiter Skill/Agent + plan w każdej komendzie | ⏳ po odmrożeniu hooków | TASK-OBS-016 |
 | `claim` w regułach i skrzynce, raport tygodniowy, status `resolved` | ⏳ po OBS-014 | TASK-OBS-017 |

@@ -10,11 +10,10 @@
 // Plan: przebieg w toku nie ma jeszcze `result`, ale `wf.script` niesie argumenty skryptu, a w nich
 // `telemetryPlan` (orchestrate-prepare, TASK-OBS-006) — wycinamy go z literału.
 
-import fs from 'node:fs';
-import path from 'node:path';
 import { legacyRunToEvents } from './telemetry-legacy.mjs';
 import { buildRollups } from './telemetry-rollup.mjs';
 import { rollupsDir } from './telemetry-events.mjs';
+import { readRollups } from './telemetry-rollup-reader.mjs';
 
 const PLAN_KEY = '"telemetryPlan":';
 
@@ -169,14 +168,9 @@ export function buildLiveView({ wf, journal = [], project, now, costOf = () => n
 /** Średnie z rollupów projektu z ostatnich `days` dni (wszystkie hosty). Brak historii → steps: 0. */
 export function loadBaseline({ project, processName = 'orchestrate', days = 30, now, dir = rollupsDir() }) {
   const out = { steps: 0, fixSteps: 0, runs: 0, causes: {}, days };
-  const pdir = path.join(dir, project);
-  let files = [];
-  try { files = fs.readdirSync(pdir).filter((f) => f.endsWith('.json')); } catch { return out; }
+  if (!project) return out;
   const since = new Date(now - days * 86400000).toISOString().slice(0, 10);
-  for (const f of files) {
-    if (f.slice(0, 10) < since) continue;
-    let r;
-    try { r = JSON.parse(fs.readFileSync(path.join(pdir, f), 'utf8')); } catch { continue; }
+  for (const r of readRollups({ dir, project, since })) {
     const p = r.processes && r.processes[processName];
     if (!p) continue;
     out.steps += p.steps || 0;
