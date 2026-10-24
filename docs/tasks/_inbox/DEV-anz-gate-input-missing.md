@@ -22,15 +22,17 @@ resolution: >
   needs_scope_check=false. index-decisions.mjs wyprowadza teraz odwrotne powiązanie
   (needs_scope_check, superseded_by_inferred, ⚠uchylany w briefie,
   problems.supersedes_not_reciprocated). Lista BDR w runtime.yml (rozwinięty glob
-  docs/decisions/*) odświeżona materialize-runtime 2026-10-24.
+  docs/decisions/*) odświeżona materialize-runtime 2026-10-24. 2026-10-24 aegis-flow (TS-007):
+  to samo co 2026-10-23 TS-001, brak knowledge.collection w runtime.yml; czeka na decyzję,
+  które katalogi projektu w Pythonie zaindeksować.
 trigger: analyze_gate
 category: config
 sources:
   - analyze
 rule_ref: ANZ-GATE-INPUT-MISSING
 first_seen: 2026-10-17
-last_seen: 2026-10-23
-occurrences: 6
+last_seen: 2026-10-24
+occurrences: 7
 projects:
   - juz-ide-api-2
   - aegis-flow
@@ -44,6 +46,7 @@ reopened_from_status: promoted
 
 ## Occurrences
 
+- 2026-10-24 aegis-flow (TS-007) — runtime.yml bez sekcji knowledge.collection: ANL-009/ANL-010 wymagają kolekcji RAG, więc analiza zapisała rag: skipped; mcp knowledge-retriever dostępny w sesji
 - 2026-10-23 juz-ide-api-2 (TS-SEC-SP-LOCATION-001) — decisions-index.json: needs_scope_check=false i scope=null dla BDR-083/089/090/096 mimo częściowych uchyleń opisanych w nagłówkach BDR; korpus strategy-fit w runtime.yml kończy się na BDR-090 (drift do BDR-099)
 - 2026-10-23 aegis-flow (TS-001) — runtime.yml nie ma bloku knowledge.collection (ANL-009), a .claude/config/knowledge.json ma collection=code_aegis_flow; RAG pominięty w TS-001 (rag: skipped), ta sama luka co w TS-004
 - 2026-10-22 iam (TS-SSO-065-admin-allowlist-sciezek) — knowledge.json wskazuje kolekcję code_iam, której nie ma w indeksie MCP (retrieve_code zwraca błąd); runtime.yml nie ma knowledge.collection — RAG niedostępny dla projektu iam

@@ -19,14 +19,17 @@ resolution: >
   brak wzorców punktu ujawnionego z polityką ujawniania, guardiana L1 producentów, projekcji
   markera fail-closed i wsadowego ACL zwracającego klasę. Zostaje project-specific do czasu
   drugiego niezależnego adoptera (CLAUDE.md); promocja do wzorca wymaga decyzji właściciela.
+  2026-10-24 aegis-flow (TS-007): blok python ciągnął testing/testing-pyramid-pattern.md
+  (wzorzec TypeScript/NestJS) po słowie test. Usunięte z triggera w blocks/python.yml,
+  runtime.yml aegis-flow zmaterializowany.
 trigger: analyze_note
 category: pattern_card
 sources:
   - analyze
 rule_ref: ANZ-PATTERN-MISMATCH
 first_seen: 2026-10-10
-last_seen: 2026-10-23
-occurrences: 7
+last_seen: 2026-10-24
+occurrences: 8
 projects:
   - aegis-flow
   - ai-os-bot
@@ -42,6 +45,7 @@ reopened_from_status: promoted
 
 ## Occurrences
 
+- 2026-10-24 aegis-flow (TS-007) — testing/testing-pyramid-pattern.md (karta _summary) trafiła z triggers bloku python po słowie 'test', ale jest wzorcem TypeScript/NestJS (*.spec.ts, BUSINESS_RULES.md, e2e L3); projekt aegis-flow to Python/pytest
 - 2026-10-23 juz-ide-api-4 (TS-MAP-MARKER-PRIVACY-001) — Brak wzorców w claude-patterns: punkt ujawniony i polityka ujawniania z werdyktem ACL; guardian L1 producentów (jako wzorzec; instancje istnieją w kodzie); projekcja markera fail-closed; wsadowy ACL zwracający klasę zamiast liczby. Wymieniła je analiza TS-MAP-MARKER-PRIVACY-001 (pattern-fit).
 - 2026-10-21 aegis-flow (TS-004) — runtime.yml patterns.always wskazuje python/security-invariants-pattern.md i python/safe-error-propagation-pattern.md, a pliki leżą w .claude/knowledge/patterns/cross-layer/ i opisują NestJS/Zod/Kysely (stos TS), nie Python/FastAPI; trigger 'test' wskazuje python/testing-pattern.md, którego nie ma
 - 2026-10-20 framework-polityczny (FP-005) — Brak wzorca TypeScript dla odpornego pobierania z zewnetrznych API (retry/backoff/checkpoint/archiwum surowe); python/resilient-collection-pattern.md jest w Pythonie, infrastructure/external-adapter-pattern.md to atrapa pod NestJS bez I/O

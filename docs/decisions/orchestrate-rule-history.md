@@ -1134,6 +1134,8 @@ pusty parametr usuwa klucze ze slotu. `always_for` omija też sito ANL-018 — j
 
 ### ANL-044 — katalog nowych testów musi być w `include` runnera (2026-10-24)
 
+**Claim:** metric=DEV-agent_note-analiza-kaza-a-l2-w-test-ale-test-integration-n direction=down threshold=0.5 engine=d29db4b
+
 **Objaw (agent_note, juz-ide-api-2 TS-SEC-EVENT-GEOFILTER-ORACLE-001).** Analiza kazała napisać testy L2 w `test/`, ale `test/integration/` nie jest w `include` żadnego configu vitest. Warstwa `testing:guardians-l1-l3` zatrzymała się na BLOCKED_BY_PRIOR już w pierwszym przebiegu. Wniosek z opisu zgłoszenia, bez dziennika przebiegu.
 
 **Zmiana.** Reguła tylko w prompcie: przed wskazaniem katalogu testów analiza czyta config runnera i sprawdza `include`. Brak pokrycia to decyzja (zmiana configu albo inny katalog), nie niespodzianka w warstwie `testing`. Mechaniczna bramka w `prepare` byłaby zależna od runnera (vitest/jest/workspace), więc na razie jej nie ma.
@@ -1141,6 +1143,8 @@ pusty parametr usuwa klucze ze slotu. `always_for` omija też sito ANL-018 — j
 <a id="anl-045"></a>
 
 ### ANL-045 — rejestracja nowego elementu ma właściciela w planie (2026-10-24)
+
+**Claim:** metric=DEV-orc-026-final-gate direction=down threshold=0.5 engine=d29db4b
 
 **Objaw (DEV-orc-026-final-gate, juz-ide-api-4 TS-MAP-MARKER-PRIVACY-001).** Plan nie obejmował `discovery.module.ts`, `geographic-auth.module.ts`, mapperów błędów ani schematów create (event, group-event, local-share). Karta CH10 odroczyła rejestrację DI do warstwy z modułem w zakresie, której w planie nie było. Bramka końcowa dała NO_GO: aplikacja nie wstaje.
 
@@ -2429,6 +2433,8 @@ produktowe oceniamy raz, na całości zmiany, żeby nie płacić za nie w każde
 
 ### ORC-133 — „brak zmian” przy pracy warstwy już w drzewie (2026-10-24)
 
+**Claim:** metric=DEV-orc-062-application-center-resolution direction=down threshold=0.5 engine=d29db4b process=orchestrate
+
 **Objaw (DEV-orc-062-application-center-resolution, juz-ide-api-3 TS-GROUP-REACH-CENTER-001).** Po halcie praca warstwy `application:center-resolution` leżała już w drzewie, więc implementer zgłosił „brak zmian”. Gałąź no-op wywołała weryfikatora bez sondy (`probe=null`), a w 3. próbie skończyła ESCALATE cause=machine. ORC-084, ORC-100 i ORC-126 wymagają sondy, więc nie wykonały się ani razu.
 
 **Zmiana.** Przed weryfikacją no-op silnik mierzy drzewo (`buildTreeProbePrompt`). `noopExistingWork` zostawia pliki w zakresie warstwy, które nie były brudne przed startem (ORC-124) i nie są pracą warstw zamkniętych w tym przebiegu. Gdy coś zostanie, warstwa wchodzi w `verify-existing` (jak po cichej śmierci implementera): bramka, sonda, weryfikator. Czerwona sonda nadal idzie ścieżką BLOCKED_BY_PRIOR. Koszt: jedna tania sonda drzewa na każde twierdzenie „brak zmian”.
@@ -2436,6 +2442,8 @@ produktowe oceniamy raz, na całości zmiany, żeby nie płacić za nie w każde
 <a id="orc-134"></a>
 
 ### ORC-134 — awaria sondy (brak pamięci) to nie czerwień kodu (2026-10-24)
+
+**Claim:** metric=DEV-orc-062-domain direction=down threshold=0.5 engine=d29db4b process=orchestrate
 
 **Objaw (DEV-orc-062-domain, 2. wystąpienie, juz-ide-api-4 TS-MAP-MARKER-PRIVACY-001).** `npm run typecheck` (`tsc --noEmit` na całym repo) kończył się EXIT 134 (heap ~4 GB) bez żadnego `error TS`. Silnik traktował to jak czerwoną sondę, implementer słusznie raportował brak zmian, a warstwa `domain` dostała BLOCKED_BY_PRIOR.
 
