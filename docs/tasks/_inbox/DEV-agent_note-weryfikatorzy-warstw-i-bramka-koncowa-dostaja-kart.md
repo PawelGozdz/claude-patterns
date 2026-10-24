@@ -2,7 +2,7 @@
 id: DEV-agent_note-weryfikatorzy-warstw-i-bramka-koncowa-dostaja-kart
 status: promoted
 resolution: >
-  Przeniesione do TASK-ORCH-CARDS-STACK-MISMATCH-001 (karty DDD/NestJS dla stosu
+  Przeniesione do TASK-ORCH-CARDS-STACK-MISMATCH-001 (wdrożone 2026-10-24 jako ORC-136, commit 11de3f4) (karty DDD/NestJS dla stosu
   node-ts-claude-api, bot-invariants.md bez _summary).
 trigger: agent_note
 category: pattern_card

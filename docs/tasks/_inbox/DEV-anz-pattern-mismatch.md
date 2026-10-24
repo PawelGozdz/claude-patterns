@@ -5,7 +5,7 @@ resolution: >
   Część aegis-flow naprawiona 2026-10-17: python/testing-pattern.md (fixture event_loop
   usunięty w pytest-asyncio 1.0, przykłady SQLAlchemy/domain.* oznaczone jako zależne od
   stosu). Część ai-os-bot (karty DDD/NestJS w patterns.always bloku node) przeniesiona do
-  TASK-ORCH-CARDS-STACK-MISMATCH-001. Wystąpienie marketing-hub (TS-MH-025, 2026-10-18):
+  TASK-ORCH-CARDS-STACK-MISMATCH-001 (wdrożone 2026-10-24 jako ORC-136, commit 11de3f4). Wystąpienie marketing-hub (TS-MH-025, 2026-10-18):
   rules/nestjs-ddd/error-mapper.md zakładała bramkę `D_` i DomainErrorHandler (łańcuch
   LocalHero), a marketing-hub kieruje błędy samym IDomainErrorMapper (kody typu
   VALIDATION_FAILED, bez DomainErrorHandler) — dodane zastrzeżenie „Scope of step (1)”: bez

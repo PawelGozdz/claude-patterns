@@ -2,7 +2,7 @@
 id: DEV-agent_note-karta-logger-pattern-log1-log3-nie-pasuje-do-stack
 status: promoted
 resolution: >
-  Przeniesione do TASK-ORCH-CARDS-STACK-MISMATCH-001 (logger-pattern LOG1-LOG3 a stack
+  Przeniesione do TASK-ORCH-CARDS-STACK-MISMATCH-001 (wdrożone 2026-10-24 jako ORC-136, commit 11de3f4) (logger-pattern LOG1-LOG3 a stack
   nestjs-pino; karty refine-spa mimo layers_skip web).
 trigger: agent_note
 category: pattern_card

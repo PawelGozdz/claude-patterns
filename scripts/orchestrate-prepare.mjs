@@ -734,6 +734,12 @@ function main() {
     catch (e) { warnings.push(`create_when warstwy ${layer.id}: niepoprawny regex (${e.message}) — warstwa pominięta`); createWhenHits[layer.id] = false; }
   }
   for (const layer of layers) {
+    // Karty warstwy, której przebieg nie uruchomi, nie mają kogo prowadzić, a bramka końcowa dostaje
+    // WSZYSTKIE wzorce przebiegu (grant-flow TS-UI-007, marketing-hub TS-MH-019: karty API/refine-spa
+    // przy zadaniu tylko-web albo bez web). `layers_done` zostaje: bramka końcowa ocenia całość zmiany,
+    // także warstwy domkniętej w poprzednim przebiegu.
+    if (String(layer.skipReason ?? '').startsWith('pominięta w analizie')) continue;
+    if (layer.optional && layer.createWhen && !createWhenHits[layer.id]) continue;
     for (const relPath of layer.layerPatterns) {
       if (patterns.some((p) => p.path === relPath)) continue;
       if (excluded(relPath)) continue;

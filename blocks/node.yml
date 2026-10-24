@@ -23,10 +23,14 @@ requires_ecc:
   modules: [lang:typescript, capability:orchestration]
 
 patterns:
+  # TASK-ORCH-CARDS-STACK-MISMATCH-001 (2026-10-24): conventions-pattern (sufiksy DDD CV1–CV5), security-invariants
+  # (@Auth/@Public) i safe-error-propagation (BaseKyselyRepository, mappery, guardian testy) to karty NestJS/DDD;
+  # weryfikatory ai-os-bot, ai-gateway, iam i framework-polityczny zgłaszały je jako niestosowalne (13 rekordów
+  # w skrzynce). Konwencji nazw nie ma tu odpowiednika: projekt trzyma własne w CLAUDE-LOCAL.md. Pozostałe dwie
+  # mają warianty `-plain`, tak jak logger-pattern-plain.
   always:
-    - cross-layer/conventions-pattern.md
-    - cross-layer/security-invariants-pattern.md
-    - cross-layer/safe-error-propagation-pattern.md
+    - cross-layer/security-invariants-pattern-plain.md
+    - cross-layer/safe-error-propagation-pattern-plain.md
     - cross-layer/logger-pattern-plain.md
     - infrastructure/repository-pattern-plain.md
     - infrastructure/controller-schema-pattern-plain.md
@@ -36,7 +40,7 @@ patterns:
   triggers:
     - keywords: [auth, authentication, authorization, permission, login]
       include:
-        - cross-layer/security-invariants-pattern.md
+        - cross-layer/security-invariants-pattern-plain.md
     - keywords: [test, fixture, mock, coverage, e2e]
       include:
         - testing/testing-pyramid-pattern.md

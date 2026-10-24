@@ -2,7 +2,7 @@
 id: DEV-agent_note-bramka-koncowa-dosta-a-karty-wzorcow-z-obcego-stos
 status: promoted
 resolution: >
-  Przeniesione do TASK-ORCH-CARDS-STACK-MISMATCH-001 (karty cross-layer/conventions-pattern i
+  Przeniesione do TASK-ORCH-CARDS-STACK-MISMATCH-001 (wdrożone 2026-10-24 jako ORC-136, commit 11de3f4) (karty cross-layer/conventions-pattern i
   testing-pyramid z patterns.always/triggers bloku flutter trafiają do zadań Flutter/Dart;
   kolejne wystąpienie, juz-ide-mobile-app MAP-BASEMAP-STYLE-001). Brak karty dla zewnętrznych
   dostawców kafelków to luka wzorca projektu, nie silnika.

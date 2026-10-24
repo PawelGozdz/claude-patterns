@@ -8,6 +8,8 @@
 
 **Layer**: Cross-Layer · **Applies to**: handlery, serwisy, repozytoria, mappery — wszystko, co loguje · **Powiązane ADR**: ADR-0027
 
+**Zakres reguł**: LOG1–LOG3, LOG5–LOG6 i N1–N3 opisują projekt, który ma token `LOGGER_SERVICE` (`@shared/infrastructure/logging`). Projekt bez tego tokenu (np. marketing-hub loguje przez `Logger` z nestjs-pino) stosuje tylko LOG4, N4 i N5; pozostałe pomija bez `deviation_note` — ich brak nie jest naruszeniem.
+
 ## MUST
 
 - **LOG1** — Klasy warstwy aplikacji, domeny i infrastruktury logują przez token `LOGGER_SERVICE`.

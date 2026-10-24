@@ -2460,3 +2460,13 @@ produktowe oceniamy raz, na całości zmiany, żeby nie płacić za nie w każde
 **Zmiana.** Wybrana hipoteza 2 z taska: wynik implementera ma pole `deleted_files`, a usuwa je krok mechaniczny silnika (agent z Bash, jak sonda drzewa): `git rm -q -f --ignore-unmatch` plus `rm -f` dla pliku nieśledzonego. `deletionPlan` przepuszcza wyłącznie ścieżki w zakresie warstwy; odrzuca bezwzględne, z `..`, ze spacją albo metaznakiem powłoki oraz brudne przed startem (ORC-124). Odrzucone i nieusunięte ścieżki trafiają do `report.warnings`. Usunięte pliki weryfikator i bramka końcowa dostają jako osobną listę, a `stageableFiles` pomija je w `git add` (usunięcie jest już w indeksie, a `git add` usuniętej ścieżki przerywa całą listę). Warstwa złożona z samych usunięć przechodzi bramkę „kod istnieje". Prompt implementera zakazuje tombstone.
 
 **Odrzucone.** Hipoteza 1 (wąski `Bash(git rm:*)` w agencie) zależy od tego, czy `tools` wspiera wzorce poleceń, i zmienia agenta współdzielonego między projektami. Hipoteza 3 (wykrywanie tombstone w drzewie) zgaduje intencję.
+
+### ORC-136 — karty reguł zgodne ze stosem projektu (2026-10-24)
+
+**Claim:** metric=DEV-orc-044-implementation direction=down threshold=0.5 engine=11de3f4 process=orchestrate
+
+**Objaw (TASK-ORCH-CARDS-STACK-MISMATCH-001, 13 rekordów, 6 projektów).** Blok `node` wstrzykiwał do każdego projektu Node/TS karty `conventions-pattern` (sufiksy DDD), `security-invariants-pattern` (`@Auth`, `@Public`) i `safe-error-propagation-pattern` (`BaseKyselyRepository`, mappery, guardian testy). Weryfikatory ai-os-bot, ai-gateway, iam i framework-polityczny zgłaszały je jako niestosowalne zamiast oceniać kod, a prompt rósł o karty bez wartości. Osobno: bramka końcowa dostawała karty warstwy z `layers_skip` (grant-flow TS-UI-007, marketing-hub TS-MH-019).
+
+**Zmiana.** (1) `blocks/node.yml`: w `always` są teraz `security-invariants-pattern-plain` i `safe-error-propagation-pattern-plain` (pierwszy to uogólniony Fastify override, który iam napisał sobie sam, bo karty centralnej „nie da się odjąć"), `conventions-pattern` zniknął bez zamiennika. (2) `orchestrate-prepare` pomija `layerPatterns` warstwy z `layers_skip` i opcjonalnej bez trafienia `create_when`; `layers_done` zostaje, bo bramka końcowa ocenia całość zmiany. (3) Karta `logger-pattern_summary` dostała zakres: LOG1–3, LOG5–6, N1–N3 obowiązują przy tokenie `LOGGER_SERVICE`, projekt z nestjs-pino stosuje LOG4, N4, N5.
+
+**Sprawdzone, bez zmiany.** Hipoteza 1: `patterns.remove` bloku lokalnego z `extends` zdejmuje kartę odziedziczoną już od 2026-10-10 (materialize-runtime), więc config projektów nie wymaga poprawki. Hipoteza 4: brak `_summary` karty projektowej ostrzega `orchestrate-prepare` z rozmiarem pełnego pliku.

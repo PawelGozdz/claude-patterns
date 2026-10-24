@@ -2,7 +2,7 @@
 id: DEV-anz-pattern-mismatch-testing
 status: promoted
 resolution: >
-  Przeniesione do TASK-ORCH-CARDS-STACK-MISMATCH-001 (testing-pyramid-pattern zakłada
+  Przeniesione do TASK-ORCH-CARDS-STACK-MISMATCH-001 (wdrożone 2026-10-24 jako ORC-136, commit 11de3f4) (testing-pyramid-pattern zakłada
   NestJS/DDD, ai-gateway to płaski serwis Node).
 trigger: analyze_note
 category: other

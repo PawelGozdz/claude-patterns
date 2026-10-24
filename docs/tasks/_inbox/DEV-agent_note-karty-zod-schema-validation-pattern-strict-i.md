@@ -6,7 +6,7 @@ resolution: >
   _summary.md mają jawny wyjątek — ZOD1/N3 (.strict()) dotyczą kontraktu, który posiadamy, nie
   odpowiedzi cudzych API (adaptery, klienci dostawców). Część o loggerze wstrzykniętym przez kontekst
   (LGP2) i sufiksach DDD pakietu plain (CV2) to ten sam objaw co w
-  TASK-ORCH-CARDS-STACK-MISMATCH-001 (dopisane jako wystąpienie 13).
+  TASK-ORCH-CARDS-STACK-MISMATCH-001 (wdrożone 2026-10-24 jako ORC-136, commit 11de3f4) (dopisane jako wystąpienie 13).
 trigger: agent_note
 category: pattern_card
 sources:

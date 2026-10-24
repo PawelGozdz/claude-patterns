@@ -2,7 +2,7 @@
 id: DEV-agent_note-deviation-note-warstwy-testing-weryfikator-ts-im
 status: promoted
 resolution: >
-  Przeniesione do TASK-ORCH-CARDS-STACK-MISMATCH-001 (weryfikator z listą stałą nie ocenia
+  Przeniesione do TASK-ORCH-CARDS-STACK-MISMATCH-001 (wdrożone 2026-10-24 jako ORC-136, commit 11de3f4) (weryfikator z listą stałą nie ocenia
   wstrzykniętych kart niedopasowanych do stosu).
 trigger: agent_note
 category: pattern_card

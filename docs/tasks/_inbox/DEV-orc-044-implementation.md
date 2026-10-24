@@ -3,7 +3,7 @@ id: DEV-orc-044-implementation
 status: promoted
 resolution: >
   Karty DDD/NestJS w patterns.always dla projektu Node/TS to ten sam objaw, co w
-  TASK-ORCH-CARDS-STACK-MISMATCH-001 (dopisane jako wystąpienie 11, 2026-10-18),
+  TASK-ORCH-CARDS-STACK-MISMATCH-001 (wdrożone 2026-10-24 jako ORC-136, commit 11de3f4) (dopisane jako wystąpienie 11, 2026-10-18),
   wraz z uwagą o braku bot-invariants_summary.md — karta ma wiążące wyjątki (B3,
   B8, B10), więc streszczenie dopiero razem z decyzją, które karty zostają w
   always.
