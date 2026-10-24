@@ -164,7 +164,9 @@ function upsert(args) {
     if (!m) die(EXIT.WRITE, `${target}: uszkodzony frontmatter — popraw ręcznie zanim skrypt dopisze kolejne wystąpienie`);
     fm = YAML.parse(m[1]) || {};
     body = m[2];
-    const wasClosed = fm.status === 'dismissed' || fm.status === 'promoted';
+    // `resolved` (TASK-OBS-017): raport potwierdził claim reguły. Nowe wystąpienie po tym to sygnał, że
+    // problem wrócił, więc reopen działa tak samo jak dla `promoted`.
+    const wasClosed = fm.status === 'dismissed' || fm.status === 'promoted' || fm.status === 'resolved';
     if (args.oncePerProject && !wasClosed && (fm.projects || []).includes(args.project)) {
       console.log(`inbox: ${id} już zna ${args.project} (otwarty) — bez nowego wystąpienia`);
       return { id, category: fm.category || args.category || defaultCategory(fm.trigger || args.trigger, fm.rule_ref || args.rule) };

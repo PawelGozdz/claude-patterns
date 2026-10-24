@@ -5,6 +5,12 @@ resolution: >
   Naprawione 2026-10-20 jako ORC-117 (docs/decisions/orchestrate-rule-history.md#orc-117): GO z unverified_scope idzie w reverify, a drobne ustalenia (minor_findings) przepadały, bo przejście naprawcze ORC-091 działało tylko przy czystym GO. Teraz przed reverify jest jedno przejście naprawcze implementera (minorPassBeforeReverify). Brak testów jako luka zakresu warstwy kodu jest zamierzony przy podziale na jednostki.
 trigger: agent_note
 category: verifier
+claim:
+  metric: retryCost
+  direction: down
+  threshold: 0.2
+  engine: 57f8f64
+  process: orchestrate
 sources:
   - orchestrate
 rule_ref: ORC-074

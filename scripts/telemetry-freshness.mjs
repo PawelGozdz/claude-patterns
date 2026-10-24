@@ -26,6 +26,7 @@ import { join } from 'node:path';
 import { homedir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { auditLogStale } from './lib/cron-freshness.mjs';
+import { expectedWeeklyReport } from './lib/telemetry-claims.mjs';
 
 const HOME = homedir();
 const PROJECTS = join(HOME, '.claude/projects');
@@ -181,6 +182,26 @@ if (!existsSync(AUDIT_LOG)) {
     ]);
   } else {
     notes.push('audit-daily.log aktualny względem ostatniego dnia roboczego');
+  }
+}
+
+// ── 4. Raport tygodniowy (cron, poniedziałek po agregacie) ───────────────────
+// TASK-OBS-017 (ADR 0015 D6): raport `telemetry/reports/<RRRR>-W<ww>.md` ma powstawać co tydzień; sam poniedziałek
+// ma jeszcze dzień luzu (oczekiwany jest wtedy tydzień sprzed poprzedniego). Bez żadnego raportu to jeszcze nie
+// zerwany pomiar, tylko cron, który nie ruszył — tak samo jak przy audycie.
+const REPORTS_DIR = process.env.CLAUDE_TELEMETRY_REPORTS_DIR || join(REPO, 'telemetry/reports');
+const reports = existsSync(REPORTS_DIR) ? readdirSync(REPORTS_DIR).filter((f) => /^\d{4}-W\d{2}\.md$/.test(f)) : [];
+if (!reports.length) {
+  notes.push('brak telemetry/reports/ — raport tygodniowy jeszcze nie powstał (cron: scripts/cron/telemetry-weekly.sh)');
+} else {
+  const expected = expectedWeeklyReport(new Date().toISOString().slice(0, 10));
+  if (reports.includes(`${expected}.md`)) {
+    notes.push(`raport tygodniowy ${expected} jest`);
+  } else {
+    findings.push([
+      `brak raportu tygodniowego ${expected} w telemetry/reports/ (ostatni: ${reports.sort().at(-1).replace('.md', '')}) — cron poniedziałkowy nie chodzi`,
+      `node scripts/telemetry-report.mjs --weekly --week ${expected}; harmonogram: scripts/cron/telemetry-weekly.sh`,
+    ]);
   }
 }
 

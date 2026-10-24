@@ -11,6 +11,18 @@ and none of it is instruction — it is history.
 ## [Unreleased]
 
 ### Added
+- Reguła deklaruje metrykę (TASK-OBS-017, ADR 0015 D6, ADR 0011 aneks): pole `claim` (`metric`, `direction`, `threshold`, `engine`,
+  opcjonalnie `process`) w rekordzie skrzynki `promoted` i linia `**Claim:**` we wpisie rule-history; nowy stan skrzynki `resolved`
+  (zamknięty, `report-deviation` otwiera go ponownie przy nowym wystąpieniu). `telemetry-report.mjs --claims` daje werdykt
+  `confirmed | no_effect | regressed | insufficient_data` (min. 20 przebiegów po obu stronach okna wokół hasha silnika);
+  `--weekly` zapisuje `telemetry/reports/<RRRR>-W<ww>.md` (4 sekcje: delta tydzień do tygodnia z silnikami, claimy, jakość danych,
+  reguły bez claimu) i zmienia status rekordów (`confirmed` → `resolved`, `regressed` → reopen) wyłącznie przy werdykcie
+  zaufanym: w oknie „po" co najmniej połowa przebiegów szła pod hashem claimu (silnik zmienia się niemal z każdym commitem,
+  23 hasze w dwa tygodnie). Zmianę statusu zapisuje raport, commituje człowiek. Pre-commit ostrzega (nie blokuje) o nowej regule
+  ORC/ANL bez claimu; `telemetry-freshness` pilnuje, że raport tygodniowy powstał; wrapper crona `scripts/cron/telemetry-weekly.sh`
+  (wpis w crontabie dodaje człowiek). Pierwszy claim: ORC-117 (`retryCost` ↓ 20%, silnik 57f8f64, proces orchestrate) —
+  **na dziś `no_effect` (21,9% → 23,3%), udział silnika w oknie „po" 4,8%, więc status bez zmian**. Claimów dla ORC-098/100 nie ma:
+  powstały 04.10, a hasze silnika są w rollupach dopiero od 10.10. Eval `telemetry-report` +10 przypadków (20), `reporting-hygiene` +2 (9).
 - Raport nad rollupami (TASK-OBS-014, ADR 0015 D6): `scripts/telemetry-report.mjs` czyta wyłącznie `telemetry/rollups/`
   (liczniki sumowane po hostach). Widoki `--by engine|process|role|project|week`, `--engine <hash>` (okno 7 dni z danymi przed i po
   pierwszym dniu silnika: first-pass, fałszywe GO, NO_GO bramki, udział kosztu powtórek, cichy zgon, gęstość odstępstw per

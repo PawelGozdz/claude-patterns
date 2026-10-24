@@ -22,8 +22,9 @@ problem zwiększa `occurrences` i dopisuje projekt do `projects[]` zamiast tworz
 To licznik częstości/kosztu, nie log.
 
 **Jeśli widzisz `reopened_at`/`reopened_from_status` w frontmatterze** — ten rekord był
-`dismissed` albo `promoted`, a przyszło nowe wystąpienie tej samej sygnatury, więc wrócił do
-`proposed` automatycznie (ORC-068). Przeczytaj WSZYSTKIE wpisy w `## Occurrences`, nie tylko
+`dismissed`, `promoted` albo `resolved`, a przyszło nowe wystąpienie tej samej sygnatury (albo
+raport tygodniowy uznał claim za `regressed`), więc wrócił do `proposed` automatycznie (ORC-068).
+`resolved` to nowy stan zamknięty: poprawka potwierdzona liczbami (patrz „Claim" w kroku 4). Przeczytaj WSZYSTKIE wpisy w `## Occurrences`, nie tylko
 stary `dismissed_reason`/`resolution` — nowe wystąpienie może być zupełnie innym problemem,
 który tylko przypadkiem dzieli sygnaturę ze starym (patrz `docs/decisions/
 orchestrate-rule-history.md#orc-068` dla przykładu).
@@ -101,6 +102,24 @@ przed commitem.
    `## ✅ Kryterium ukończenia` → (po naprawie) `## Wynik`. W rekordzie ustaw
    `status: promoted` i `resolution:` z id taska (albo numerem reguły ORC-NNN, gdy naprawione
    od ręki). **Nie usuwaj pliku** — patrz zasady wyżej.
+
+   **Claim (od 2026-10-24, TASK-OBS-017).** Promując rekord, dopisz `claim:` — którą liczbę
+   poprawka ma zmienić, żeby raport mógł powiedzieć „pomogło":
+   ```yaml
+   claim:
+     metric: retryCost      # firstPass | falseGo | gateNoGo | retryCost | died | DEV-<sygnatura>
+     direction: down        # down | up
+     threshold: 0.2         # względna zmiana w tę stronę (0.2 = 20%)
+     engine: 57f8f64        # PIERWSZY hash silnika w rollupach, który zawiera commit poprawki
+     process: orchestrate   # opcjonalnie: zawęża metrykę do jednego procesu
+   ```
+   Hash znajdziesz przez `node scripts/telemetry-report.mjs --by engine` i sprawdzisz przez
+   `git merge-base --is-ancestor <commit-poprawki> <hash>` (silnik zmienia się niemal z każdym commitem,
+   więc hash „z daty" zwykle nie istnieje w danych). `node scripts/telemetry-report.mjs --claims` pokazuje
+   werdykt; tygodniowy `--weekly` zapisuje zmiany statusu: `confirmed` → `status: resolved`
+   (+ `resolved_at`, `resolved_by`; `resolution` bez zmian), `regressed` → reopen jak niżej. Status zmienia się
+   tylko przy zaufanym werdykcie (w oknie „po" co najmniej połowa przebiegów szła pod tym hashem); zmianę
+   commituje człowiek.
 5. Szum / false positive / już naprawione gdzie indziej / nieaktualne / przyczyna to 3.1 albo
    3.2 (config projektu albo baza wiedzy, nie silnik) → `status: dismissed` + `dismissed_reason:`
    wskazujący konkretną poprawkę i gdzie (repo, commit albo plik) — ślad, że ktoś to widział

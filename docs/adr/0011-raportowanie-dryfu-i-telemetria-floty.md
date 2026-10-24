@@ -1,6 +1,15 @@
 # ADR 0011 — Raportowanie dryfu ze wszystkich procesów i telemetria floty
 
 **Status**: accepted (2026-10-10) — część A wdrożona, część B kierunkowa (implementacja później)
+**Aneks (2026-10-24, TASK-OBS-017)**: skrzynka dostaje nowy stan `resolved` i pole `claim` (ADR 0015 D6). Rekord
+`promoted` może zadeklarować `claim: {metric, direction, threshold, engine[, process]}` — którą liczbę z rollupów
+poprawka ma zmienić. Raport (`telemetry-report.mjs --claims`, tygodniowy `--weekly`) daje werdykt
+`confirmed | no_effect | regressed | insufficient_data` (min. 20 przebiegów po obu stronach okna wokół hasha silnika).
+`confirmed` przenosi rekord w `resolved` (`resolution` bez zmian, dodane `resolved_at`/`resolved_by`), `regressed`
+otwiera go ponownie tym samym mechanizmem co dziś (`proposed` + `reopened_at`). `resolved` jest stanem zamkniętym:
+nowe wystąpienie sygnatury też otwiera rekord. Raport zmienia status tylko przy werdykcie zaufanym — w oknie „po"
+co najmniej połowa przebiegów szła pod hashem claimu — bo silnik zmienia się niemal z każdym commitem (23 hasze
+w dwa tygodnie) i okno miesza kolejne poprawki. Zmianę statusu zapisuje raport, commituje człowiek.
 **Context source**: refaktor fundamentu claude-patterns z 2026-10-10 (sesja w aegis-flow) i decyzja
 użytkownika: „system raportowania to absolutnie najważniejsza funkcjonalność — pozwala na
 poprawę narzędzia każdego dnia”.

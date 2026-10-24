@@ -15,6 +15,17 @@ Podział obowiązków:
 Narracje poniżej przeniesiono 1:1. Nic nie zostało skrócone ani przepisane — zmieniło się
 wyłącznie miejsce, w którym leżą.
 
+**Claim (od 2026-10-24, TASK-OBS-017, ADR 0015 D6).** Nowa reguła mówi, którą liczbę ma poprawić: linia
+`**Claim:** metric=<…> direction=<down|up> threshold=<0..1> engine=<hash>` zaraz pod nagłówkiem wpisu.
+`metric` to `firstPass`, `falseGo`, `gateNoGo`, `retryCost`, `died` albo sygnatura odstępstwa `DEV-…`;
+`threshold` to względna zmiana w deklarowaną stronę (0.2 = 20%); opcjonalne `process=orchestrate` zawęża metrykę
+i liczbę przebiegów do jednego procesu (bez niego liczą się wszystkie, także audyt i hooki); `engine` to PIERWSZY hash widoczny w rollupach
+(`node scripts/telemetry-report.mjs --by engine`), który zawiera commit reguły
+(`git merge-base --is-ancestor <commit-reguły> <hash>`) — silnik zmienia się niemal z każdym commitem, więc
+hash „z daty" zwykle nie istnieje w danych. Raport (`telemetry-report.mjs --claims`, tygodniowy `--weekly`)
+daje werdykt `confirmed | no_effect | regressed | insufficient_data`. Reguł wstecz nie uzupełniamy hurtem;
+pre-commit ostrzega o nowej regule ORC/ANL bez claimu (nie blokuje).
+
 ---
 
 ## `/orchestrate` — reguły ORC
@@ -2222,6 +2233,8 @@ analizy z błędnym YAML nie wystartują ponownie bez poprawki frontmatteru. Eva
 <a id="orc-117"></a>
 
 ### ORC-117 — drobne ustalenia z rundy `GO` + `unverified_scope` nie przepadają przed `reverify` (2026-10-20)
+
+**Claim:** metric=retryCost direction=down threshold=0.2 engine=57f8f64 process=orchestrate
 
 **Objaw.** aegis-flow TS-017, warstwa `engine` (run `wf_6cd40ef0-6b9`, zgłoszenie `DEV-orc-074-engine`). W rundzie 2 weryfikator dał `GO` z `unverified_scope` i wpisał bug czytnika (TypeError dla nie-str event) do `minor_findings`. W rundzie 3 ten sam bug wrócił jako HIGH/NO_GO, a warstwa wyczerpała 3 próby na jednej linii poprawki.
 
