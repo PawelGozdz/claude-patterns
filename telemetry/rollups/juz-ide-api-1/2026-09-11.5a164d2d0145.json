@@ -104,5 +104,16 @@
     }
   },
   "stepsTotal": 22,
+  "tasks": {
+    "TS-SEC-BETA-SEED-ACCOUNTS-001": {
+      "analyzeRuns": 0,
+      "costToGoUsd": null,
+      "costUsd": 9.184487,
+      "reachedGo": false,
+      "runs": 2,
+      "spanMs": 22392961,
+      "stepsWithoutCost": 1
+    }
+  },
   "v": 1
 }

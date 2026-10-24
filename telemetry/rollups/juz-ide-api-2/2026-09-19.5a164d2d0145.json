@@ -102,5 +102,25 @@
     }
   },
   "stepsTotal": 52,
+  "tasks": {
+    "TS-ARCH-PROVIDER-DEDUP-001": {
+      "analyzeRuns": 0,
+      "costToGoUsd": 3.280499,
+      "costUsd": 3.280499,
+      "reachedGo": true,
+      "runs": 1,
+      "spanMs": 2171970,
+      "stepsWithoutCost": 1
+    },
+    "TS-ERROR-MAPPER-001": {
+      "analyzeRuns": 0,
+      "costToGoUsd": 16.495694,
+      "costUsd": 23.281134,
+      "reachedGo": true,
+      "runs": 12,
+      "spanMs": 69671199,
+      "stepsWithoutCost": 10
+    }
+  },
   "v": 1
 }

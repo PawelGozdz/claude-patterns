@@ -9,7 +9,7 @@
 // (zastępuje), więc ponowna wysyłka tego samego dnia — także po przeliczeniu agregatu — niczego nie
 // dubluje. `contentHash` pozwala pominąć rekordy bez zmian.
 //
-// Co NIE wyjeżdża: `taskRef`, `runId`, ścieżki, id kroków, treść odstępstw. Odstępstwa wychodzą jako
+// Co NIE wyjeżdża: `taskRef` (blok `tasks` wychodzi wyłącznie jako rozkłady), `runId`, ścieżki, id kroków, treść odstępstw. Odstępstwa wychodzą jako
 // liczniki per (przyczyna, wyzwalacz) — sygnatura odstępstwa (`DEV-…`) powstaje z treści zgłoszenia
 // i mogłaby nieść nazwy z projektu.
 
@@ -17,6 +17,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { deterministicId, rollupsDir } from './telemetry-events.mjs';
+import { percentile } from './telemetry-stats.mjs';
 
 export const BATCH_VERSION = 1;
 const SAFE_KEY = /^[a-z0-9][a-z0-9_.:-]{0,63}$/;
@@ -55,19 +56,46 @@ function mapOf(src, at, ctx, build) {
   return out;
 }
 
+// Poprawność werdyktów (TASK-OBS-012): same liczniki, per rola i agent. Klucz agenta przechodzi przez
+// SAFE_KEY jak każdy dynamiczny klucz — nazwa spoza listy odpada i trafia do `dropped`.
+const VERDICT_FIELDS = ['goJudged', 'falseGo', 'noGoJudged', 'falseNoGo'];
+const GATE_FIELDS = ['judged', 'noGo', 'noGoAttributed', 'blamedUnits', 'unattributed', 'blamedUnmatched'];
+
 const roleBlock = (src, at, ctx) => ({
   ...counters(src, ['n', 'costUsd', 'toolCalls']),
   durationMs: stats(src.durationMs),
   outcomes: countMap(src.outcomes, `${at}.outcomes`, ctx),
   causes: countMap(src.causes, `${at}.causes`, ctx),
+  ...(src.verdicts ? { verdicts: counters(src.verdicts, VERDICT_FIELDS) } : {}),
+  ...(src.agents ? { agents: mapOf(src.agents, `${at}.agents`, ctx, (a) => counters(a, VERDICT_FIELDS)) } : {}),
 });
 
 const processBlock = (src, at, ctx) => ({
   ...counters(src, ['steps', 'stepsWithoutCost', 'costUsd', 'costUsdRetried', 'died', 'retried']),
   repairs: counters(src.repairs, ['fixSteps', 'fixed', 'open']),
   verification: counters(src.verification, ['units', 'firstPassGo']),
+  ...(src.finalGate ? { finalGate: counters(src.finalGate, GATE_FIELDS) } : {}),
   roles: mapOf(src.roles, `${at}.roles`, ctx, roleBlock),
 });
+
+// Blok `tasks` jest kluczowany `taskRef` i zostaje na maszynie — z niego wychodzą wyłącznie rozkłady
+// (TASK-OBS-012, ADR 0015 D3): koszt do pierwszego GO bramki końcowej i histogram liczby przebiegów.
+function taskDistribution(src) {
+  const tasks = Object.values(src && typeof src === 'object' ? src : {}).filter((t) => t && typeof t === 'object');
+  if (!tasks.length) return null;
+  const costs = tasks.filter((t) => t.reachedGo && num(t.costToGoUsd) !== null).map((t) => t.costToGoUsd).sort((a, b) => a - b);
+  const runs = { 1: 0, 2: 0, 3: 0, '4plus': 0 };
+  for (const t of tasks) {
+    const n = num(t.runs);
+    if (n !== null && n >= 1) runs[n >= 4 ? '4plus' : n]++;
+  }
+  return {
+    n: tasks.length,
+    reachedGo: tasks.filter((t) => t.reachedGo).length,
+    costToGoUsd: { n: costs.length, p50: percentile(costs, 50), p90: percentile(costs, 90) },
+    runs,
+  };
+}
 
 const runBlock = (src, at, ctx) => ({
   ...counters(src, ['started', 'costUsd']),
@@ -107,13 +135,17 @@ export function projectRollup(r, ctx = makeCtx()) {
     runs: mapOf(r.runs, 'runs', ctx, runBlock),
     engines: mapOf(r.engines, 'engines', ctx, (e, at) => mapOf(e, at, ctx, engineBlock)),
     deviations: deviationCounts(r.deviations, ctx),
+    ...(taskDistribution(r.tasks) ? { tasks: taskDistribution(r.tasks) } : {}),
   };
   const contentHash = crypto.createHash('sha256').update(JSON.stringify(body)).digest('hex').slice(0, 16);
   return { id: deterministicId(`rollup:${project}|${day}|${host}`), contentHash, ...body };
 }
 
 const PATHLIKE = /[\\/]|\s/;
-const TASKLIKE = /(^|[^A-Za-z0-9])[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*-\d{2,}\b/;
+// Dwa kształty id zadania: `PREFIKS-…-123` z opcjonalną literą po numerze (`BOT-005a`, `TS-SIM-002A`)
+// oraz prefiks z cyframi w pierwszym członie (`DS009-PUBLIKACJA`). Numer bez liter (`0007`) nie da się
+// odróżnić od licznika — tego pilnuje biała lista (klucze `tasks` nigdy nie trafiają do paczki).
+const TASKLIKE = /(^|[^A-Za-z0-9])(?:[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*-\d{2,}[A-Za-z]?|[A-Z]{1,6}\d{2,}(?:-[A-Z0-9]+)*)\b/;
 
 /** Druga linia obrony: każdy klucz i napis paczki bez ścieżek, białych znaków i id tasków. */
 export function findLeaks(value, at = 'batch', out = []) {

@@ -143,6 +143,13 @@
       "costUsd": 5.290703,
       "costUsdRetried": 1.052483,
       "died": 0,
+      "finalGate": {
+        "blamedUnits": 1,
+        "judged": 2,
+        "noGo": 1,
+        "noGoAttributed": 1,
+        "unattributed": 1
+      },
       "repairs": {
         "fixSteps": 2,
         "fixed": 2,
@@ -210,6 +217,12 @@
           "toolCalls": 36
         },
         "verifier": {
+          "agents": {
+            "ecc:database-reviewer": {
+              "falseGo": 1,
+              "goJudged": 3
+            }
+          },
           "causes": {},
           "costUsd": 0.966909,
           "durationMs": {
@@ -221,7 +234,11 @@
           "outcomes": {
             "go": 5
           },
-          "toolCalls": 72
+          "toolCalls": 72,
+          "verdicts": {
+            "falseGo": 1,
+            "goJudged": 3
+          }
         }
       },
       "steps": 35,
@@ -261,5 +278,16 @@
     }
   },
   "stepsTotal": 42,
+  "tasks": {
+    "FP-004": {
+      "analyzeRuns": 1,
+      "costToGoUsd": 7.494397,
+      "costUsd": 7.500645,
+      "reachedGo": true,
+      "runs": 2,
+      "spanMs": 9495745,
+      "stepsWithoutCost": 0
+    }
+  },
   "v": 1
 }

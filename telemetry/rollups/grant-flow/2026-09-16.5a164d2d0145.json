@@ -68,6 +68,12 @@
           "toolCalls": 69
         },
         "verifier": {
+          "agents": {
+            "code-quality-verifier": {
+              "falseNoGo": 3,
+              "noGoJudged": 6
+            }
+          },
           "causes": {
             "verifier": 8
           },
@@ -82,7 +88,11 @@
             "go": 11,
             "no_go": 8
           },
-          "toolCalls": 198
+          "toolCalls": 198,
+          "verdicts": {
+            "falseNoGo": 3,
+            "noGoJudged": 6
+          }
         }
       },
       "steps": 100,
@@ -176,5 +186,16 @@
     }
   },
   "stepsTotal": 105,
+  "tasks": {
+    "TS-PTREE-002": {
+      "analyzeRuns": 0,
+      "costToGoUsd": null,
+      "costUsd": 13.661598,
+      "reachedGo": false,
+      "runs": 1,
+      "spanMs": 5067748,
+      "stepsWithoutCost": 1
+    }
+  },
   "v": 1
 }

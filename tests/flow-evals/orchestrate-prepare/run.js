@@ -469,6 +469,30 @@ CASES.push({
   },
 });
 
+// ORC-130: dużo plików brudnych przed startem (praca samego taska) = ostrzeżenie z obejściem;
+// override zeruje listę i ostrzeżenie znika
+CASES.push({
+  name: 'many-dirty-files-warn-with-override-hint',
+  build: () => {
+    const root = makeProject({ taskId: 'TS-FIX-001', analysis: analysisFm({}), task: taskFile('Dodaj aggregate.') });
+    spawnSync('bash', ['-c', 'git init -q && git config user.email t@t && git config user.name t && git add -A && git commit -qm init && for i in $(seq 1 25); do echo x > work-$i.md; done'], { cwd: root });
+    return root;
+  },
+  check(r, root) {
+    if (r.code !== 0) return `oczekiwano exit 0, było ${r.code}`;
+    const w = r.json.warnings.find((x) => /plików brudnych przed startem/.test(x));
+    if (!w) return 'brak ostrzeżenia o brudnych plikach: ' + JSON.stringify(r.json.warnings);
+    if (!/25 plików/.test(w) || !/"dirtyAtStart": \[\]/.test(w)) return 'ostrzeżenie bez liczby lub obejścia: ' + w;
+    const ov = path.join(root, 'ov.json');
+    fs.writeFileSync(ov, JSON.stringify({ dirtyAtStart: [] }));
+    const z = run(root, 'TS-FIX-001', ['--overrides', ov]);
+    if (z.code !== 0) return 'override dirtyAtStart nieprzyjęty: ' + z.stderr.trim();
+    if (z.json.dirtyAtStart.length !== 0) return 'override nie wyzerował listy';
+    if (z.json.warnings.some((x) => /plików brudnych przed startem/.test(x))) return 'ostrzeżenie po wyzerowaniu';
+    return null;
+  },
+});
+
 // ORC-113: create_when to regex; opis prozą nie trafia i dostaje ostrzeżenie
 CASES.push({
   name: 'create-when-regex-hits-and-prose-warns',
@@ -609,6 +633,44 @@ CASES.push({
   check(r) {
     if (r.code === 0) return 'final_checks jako string przeszło bramkę';
     if (!/final_checks: musi być listą/.test(r.stderr)) return 'brak komunikatu bramki o final_checks: ' + r.stderr.trim();
+    return null;
+  },
+});
+
+// ORC-129: wszystkie warstwy w layers_skip → ostrzeżenie, że silnik nie ma czego wykonać
+CASES.push({
+  name: 'all-layers-skipped-warns-task-without-code',
+  build: () => makeProject({
+    taskId: 'TS-FIX-001',
+    analysis: withFm('layers_skip:\n  - { id: domain, reason: "task dokumentacyjny" }\n  - { id: testing, reason: "task dokumentacyjny" }'),
+    task: taskFile('Uzupełnij dokumentację.'),
+  }),
+  check(r) {
+    if (r.code !== 0) return `oczekiwano exit 0, było ${r.code} (${r.stderr.trim()})`;
+    if (!(r.json.warnings || []).some((x) => /żadna warstwa nie jest uruchamiana/.test(x))) return 'brak ostrzeżenia o zadaniu bez warstw: ' + JSON.stringify(r.json.warnings);
+    return null;
+  },
+});
+
+// ORC-128: plik kodu wskazany w decyzji, bez właściciela w zakresie warstw → ostrzeżenie; z właścicielem → cisza
+CASES.push({
+  name: 'decision-file-without-layer-owner-warns',
+  build: () => {
+    const root = makeProject({
+      taskId: 'TS-FIX-001',
+      analysis: analysisFm({}).replace('rationale: "uzasadnienie"', 'rationale: "zmiana w src/app/orphan/handler.ts oraz domain/x.ts"'),
+      task: taskFile('Dodaj nowy aggregate.'),
+    });
+    write(root, 'src/app/orphan/handler.ts', 'export {}\n');
+    write(root, 'domain/x.ts', 'export {}\n');
+    return root;
+  },
+  check(r) {
+    if (r.code !== 0) return `oczekiwano exit 0, było ${r.code} (${r.stderr.trim()})`;
+    const w = (r.json.warnings || []).find((x) => /bez właściciela/.test(x));
+    if (!w) return 'brak ostrzeżenia o pliku bez właściciela';
+    if (!/src\/app\/orphan\/handler\.ts/.test(w)) return 'ostrzeżenie nie wskazuje pliku: ' + w;
+    if (/domain\/x\.ts/.test(w)) return 'plik z dirs warstwy zgłoszony jako sierota: ' + w;
     return null;
   },
 });

@@ -11,6 +11,7 @@
 import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { resolveGlobParams } from './lib/param-drift.mjs';
 
 const YAML = (await import('yaml')).default;
 const REPO = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -199,6 +200,23 @@ if (rt.params?.['decision-registry']) {
 }
 if (rt.knowledge?.collection) ok.push(`kolekcja RAG: ${rt.knowledge.collection}`);
 if (rt.taxonomy?.areas?.length) ok.push(`taksonomia: ${rt.taxonomy.areas.length} obszarów`);
+
+// ── globy parametrów: migawka z setupu vs stan drzewa ─────────────────────
+// `params.<blok>.<param>` to lista plików rozwinięta przy materializacji; nowy plik pasujący do
+// wzorca (BDR dodany po setupie) w niej nie ma. /analyze rozwija wzorce sam w chwili startu
+// (ANL-042), więc analiza jest bezpieczna — ale `orchestrate-prepare` i inne czytniki listy
+// widzą migawkę, stąd UWAGA z poleceniem odświeżenia. Pusty glob (wzorzec bez trafień) to BRAK:
+// kanon, który po cichu zmalał do zera, jest gorszy niż brak kanonu.
+for (const row of resolveGlobParams(projectDir, rt)) {
+  const label = `${row.block}.${row.param}`;
+  if (row.error) { bad.push(`param ${label}: wzorce nie rozwijają się — ${row.error}`); continue; }
+  if (!row.drift) { ok.push(`param ${label}: lista zgodna ze wzorcami (${row.live.length})`); continue; }
+  const brief = (arr) => `${arr.slice(0, 3).join(', ')}${arr.length > 3 ? ` … +${arr.length - 3}` : ''}`;
+  warnings.push(
+    `param ${label}: lista w runtime.yml rozjechana ze wzorcami [${row.patterns.join(', ')}] — ` +
+    `nowe: ${row.added.length ? brief(row.added) : '—'}, usunięte z dysku: ${row.removed.length ? brief(row.removed) : '—'}\n` +
+    `      → odśwież: node scripts/materialize-runtime.mjs ${projectDir} (/analyze rozwija wzorce sam, ale lista w runtime.yml jest nieaktualna)`);
+}
 
 // ── bliźniacze instancje: spójność governance.canon ───────────────────────
 // Cztery klony jednego repo (juz-ide-api-1..4) dzielą JEDNĄ kolekcję RAG, ale każdy ma własny

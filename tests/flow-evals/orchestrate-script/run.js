@@ -1118,6 +1118,61 @@ const CASES = (c) => [
       return null;
     },
   },
+  // ORC-124: pliki brudne przed startem to cudza praca — prompty to mówią, nikt nie każe ich cofać
+  {
+    name: 'dirty-at-start-files-are-protected-in-verifier-and-implementer-prompts',
+    run() {
+      const a = Object.assign({}, ARGS, { dirtyAtStart: ['src/core/llm/models.ts'] });
+      const layer = a.layers.find((l) => l.id === 'infrastructure');
+      const v = c.buildVerifierPrompt(a, layer, null, ['src/infrastructure/a.ts'], 'verify');
+      if (!/src\/core\/llm\/models\.ts/.test(v) || !/NIGDY nie zalecaj/.test(v)) return 'weryfikator nie dostał listy brudnych plików z zakazem cofania';
+      const i = c.buildImplPrompt(a, layer, 2, '1. cofnij models.ts: git checkout src/core/llm/models.ts', 0, null);
+      if (!/src\/core\/llm\/models\.ts/.test(i) || !/nie uchyla zakazu COFANIA/.test(i)) return 'implementer nie dostał ochrony brudnych plików';
+      if (/PLIKI BRUDNE/.test(c.buildImplPrompt(ARGS, layer, 1, null, 0, null))) return 'blok brudnych plików bez dirtyAtStart';
+      return null;
+    },
+  },
+  // ORC-125: ta sama ścieżka względna i bezwzględna to jeden plik
+  {
+    name: 'final-file-list-drops-absolute-twin-of-relative-path',
+    run() {
+      const r = c.finalFileList(['src/a.ts'], ['/opt/projects/x/src/a.ts', '/opt/projects/x/src/b.ts']);
+      if (JSON.stringify(r) !== '["src/a.ts","/opt/projects/x/src/b.ts"]') return 'duplikat bezwzględny nie usunięty: ' + JSON.stringify(r);
+      return null;
+    },
+  },
+  // ORC-126: odroczona czerwień (pliki późniejszych warstw) jest dowodem, nie jego brakiem
+  {
+    name: 'deferred-typecheck-counts-as-green-evidence-for-gaps',
+    run() {
+      if (!c.probeHasGreenEvidence({ typecheck: 'deferred', tests: 'skipped', lint: 'pass' })) return 'deferred + skipped odrzucone jako brak dowodu';
+      if (c.probeHasGreenEvidence({ typecheck: 'deferred', tests: 'fail' })) return 'czerwone testy przepuszczone';
+      if (c.probeHasGreenEvidence({ typecheck: 'skipped', tests: 'skipped', lint: 'pass' })) return 'ślepa sonda uznana za dowód';
+      return null;
+    },
+  },
+  // ORC-131: zero nowych bloków po wcześniejszym dodatnim pomiarze warstwy to sprzeczność pomiaru, nie brak testów
+  {
+    name: 'delta-gate-ignores-zero-after-earlier-positive-measure',
+    run() {
+      const probe = { typecheck: 'pass', tests: 'pass', newTestBlocks: 0 };
+      const files = ['src/__tests__/a.spec.ts'];
+      if (c.deltaGateFails(L.testing, probe, files, 'implement', 111)) return 'zero po 111 złapane bramką przyrostu';
+      if (!c.deltaGateFails(L.testing, probe, files, 'implement', 0)) return 'zero bez wcześniejszego pomiaru zwolnione z bramki';
+      if (!c.deltaGateFails(L.testing, probe, files, 'implement', undefined)) return 'brak seenBlocks zwolnił bramkę';
+      return null;
+    },
+  },
+  // ORC-131: runda naprawcza po bramce końcowej widzi też warstwy z layers_done (właściciele plików produkcyjnych)
+  {
+    name: 'final-repair-candidates-include-layers-done',
+    run() {
+      const src = fs.readFileSync(path.join(__dirname, '../../../scripts/workflow/orchestrate.template.mjs'), 'utf8');
+      const m = src.match(/const ranLayers = plan\.filter\(\(s\) => ([^)]*\)[^)]*)\)\.map/);
+      if (!m || !/layers_done/.test(m[1]) || !/s\.run/.test(m[1])) return 'ranLayers nie obejmuje warstw z layers_done: ' + (m && m[1]);
+      return null;
+    },
+  },
   // ORC-117: drobne ustalenia z rundy GO + unverified_scope nie przepadają przed reverify
   {
     name: 'minor-findings-survive-go-with-unverified-scope',

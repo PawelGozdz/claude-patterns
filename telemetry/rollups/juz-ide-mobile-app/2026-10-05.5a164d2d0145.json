@@ -83,5 +83,16 @@
     }
   },
   "stepsTotal": 7,
+  "tasks": {
+    "DS012-BROKEN-LINKS-ENDPOINTS-BUGFIX-001": {
+      "analyzeRuns": 0,
+      "costToGoUsd": null,
+      "costUsd": 3.112603,
+      "reachedGo": false,
+      "runs": 1,
+      "spanMs": 625169,
+      "stepsWithoutCost": 0
+    }
+  },
   "v": 1
 }

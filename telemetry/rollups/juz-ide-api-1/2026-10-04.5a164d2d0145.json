@@ -98,5 +98,25 @@
     }
   },
   "stepsTotal": 31,
+  "tasks": {
+    "TS-REP-EVENT-FEEDBACK-REMOVAL-001": {
+      "analyzeRuns": 0,
+      "costToGoUsd": null,
+      "costUsd": 2.941956,
+      "reachedGo": false,
+      "runs": 1,
+      "spanMs": 399817,
+      "stepsWithoutCost": 0
+    },
+    "TS-REP-LEGACY-SCORE-DECOMM-001": {
+      "analyzeRuns": 0,
+      "costToGoUsd": null,
+      "costUsd": 4.068453,
+      "reachedGo": false,
+      "runs": 1,
+      "spanMs": 455369,
+      "stepsWithoutCost": 0
+    }
+  },
   "v": 1
 }

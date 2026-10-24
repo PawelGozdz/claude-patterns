@@ -21,5 +21,16 @@
     }
   },
   "stepsTotal": 0,
+  "tasks": {
+    "TS-ARCH-BULLMQ-QUEUE-CONSOLIDATION-001": {
+      "analyzeRuns": 0,
+      "costToGoUsd": null,
+      "costUsd": 0,
+      "reachedGo": false,
+      "runs": 1,
+      "spanMs": 0,
+      "stepsWithoutCost": 0
+    }
+  },
   "v": 1
 }

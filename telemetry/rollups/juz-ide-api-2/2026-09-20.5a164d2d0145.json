@@ -65,6 +65,12 @@
           "toolCalls": 20
         },
         "verifier": {
+          "agents": {
+            "code-quality-verifier": {
+              "falseNoGo": 1,
+              "noGoJudged": 1
+            }
+          },
           "causes": {
             "verifier": 1
           },
@@ -79,7 +85,11 @@
             "go": 4,
             "no_go": 1
           },
-          "toolCalls": 53
+          "toolCalls": 53,
+          "verdicts": {
+            "falseNoGo": 1,
+            "noGoJudged": 1
+          }
         }
       },
       "steps": 23,
@@ -107,5 +117,16 @@
     }
   },
   "stepsTotal": 23,
+  "tasks": {
+    "TS-DISCUSSIONS-MODERATION-GATE-CLEANUP-001": {
+      "analyzeRuns": 0,
+      "costToGoUsd": null,
+      "costUsd": 9.581463,
+      "reachedGo": false,
+      "runs": 1,
+      "spanMs": 1944043,
+      "stepsWithoutCost": 1
+    }
+  },
   "v": 1
 }

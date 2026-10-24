@@ -87,5 +87,25 @@
     }
   },
   "stepsTotal": 10,
+  "tasks": {
+    "TS-INFRA-RELEASE-001": {
+      "analyzeRuns": 0,
+      "costToGoUsd": 10.302452,
+      "costUsd": 12.4397,
+      "reachedGo": true,
+      "runs": 5,
+      "spanMs": 419070583,
+      "stepsWithoutCost": 3
+    },
+    "TS-SEC-112": {
+      "analyzeRuns": 0,
+      "costToGoUsd": null,
+      "costUsd": 2.703307,
+      "reachedGo": false,
+      "runs": 1,
+      "spanMs": 1167275,
+      "stepsWithoutCost": 0
+    }
+  },
   "v": 1
 }

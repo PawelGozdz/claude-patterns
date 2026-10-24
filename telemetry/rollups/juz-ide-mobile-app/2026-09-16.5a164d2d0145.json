@@ -80,6 +80,12 @@
           "toolCalls": 16
         },
         "verifier": {
+          "agents": {
+            "flutter-quality-verifier": {
+              "falseNoGo": 2,
+              "noGoJudged": 3
+            }
+          },
           "causes": {
             "verifier": 3
           },
@@ -94,7 +100,11 @@
             "go": 5,
             "no_go": 3
           },
-          "toolCalls": 82
+          "toolCalls": 82,
+          "verdicts": {
+            "falseNoGo": 2,
+            "noGoJudged": 3
+          }
         }
       },
       "steps": 39,
@@ -122,5 +132,25 @@
     }
   },
   "stepsTotal": 39,
+  "tasks": {
+    "MOTION-010-CTA-PRESS-FEEDBACK-SWEEP-001": {
+      "analyzeRuns": 0,
+      "costToGoUsd": 4.643606,
+      "costUsd": 8.215804,
+      "reachedGo": true,
+      "runs": 3,
+      "spanMs": 10897709,
+      "stepsWithoutCost": 0
+    },
+    "MOTION-011-BRUTALIST-BUTTON-CONSOLIDATION": {
+      "analyzeRuns": 0,
+      "costToGoUsd": 6.805318,
+      "costUsd": 6.805318,
+      "reachedGo": true,
+      "runs": 1,
+      "spanMs": 1211874,
+      "stepsWithoutCost": 0
+    }
+  },
   "v": 1
 }

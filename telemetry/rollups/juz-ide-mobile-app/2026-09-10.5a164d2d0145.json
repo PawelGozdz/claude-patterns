@@ -69,5 +69,16 @@
     }
   },
   "stepsTotal": 6,
+  "tasks": {
+    "SP-NAMING-USLUGODAWCA-TO-FIRMA-001": {
+      "analyzeRuns": 0,
+      "costToGoUsd": null,
+      "costUsd": 1.437608,
+      "reachedGo": false,
+      "runs": 1,
+      "spanMs": 314900,
+      "stepsWithoutCost": 0
+    }
+  },
   "v": 1
 }

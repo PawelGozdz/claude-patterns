@@ -15,6 +15,39 @@
 
 ---
 
+## 2026-10-23 — Fałszywe GO liczone z przypisania bramki do warstw, nie z heurystyki (TASK-OBS-012)
+
+**Zmiana:** pierwszy krok bramki końcowej dostaje `step.blamed` / `step.unblamed` (warstwy wskazane przez
+naruszenia), kolektor dopisuje je od teraz, a skrypt `telemetry-backfill-gate-blame.mjs` uzupełnił 216 przebiegów
+z `wf_*.json`. Rollup liczy `verdicts`/`agents`/`finalGate` i lokalny blok `tasks`; eksport wysyła rozkłady.
+**Dlaczego:** heurystyka „NO_GO bramki + jednostka z GO" oznaczałaby fałszywe prawie każde z 293 GO warstw,
+a kroki `*-final-fix` są w tym samym przebiegu tylko w 26 ze 123 NO_GO. Naruszenia siedzą wyłącznie w wyniku
+Workflow. Wynik za październik (dolna granica, bo 124 naruszenia nie mają właściciela w plikach warstw):
+51 fałszywych GO na 406 ocenionych (12,6%), najwięcej `code-quality-verifier` 28/164 (17,1%); 37 z 49 NO_GO
+bramki wskazało co najmniej jedną warstwę. Fałszywych NO_GO 6 na 30 rozstrzygalnych (próba za mała na wnioski).
+Task: 51 ze 131 tasków `/orchestrate` miało więcej niż jeden przebieg, koszt do pierwszego GO bramki p50 10,22 USD,
+p90 36,92 USD (101 tasków z GO, 30 bez).
+**Odrzucone:** sama heurystyka na zdarzeniach (patrz wyżej); zmiana szablonu Workflow, żeby sam raportował
+warstwy (zamrożone do TASK-ENGINE-GUARDRAILS-001, a historii i tak nie uzupełnia); hash zamiast `taskRef` jako
+klucz bloku `tasks` (zgubiłby odpowiedź „który task"; rollupy są w gicie wewnętrznego repo).
+**Status:** done. Do rozstrzygnięcia przez człowieka: jeśli repo ma kiedyś wyjść poza firmę, `taskRef` w
+rollupach trzeba zahaszować (wyjątek od ADR 0012 §3).
+
+## 2026-10-22 — Telemetria mierzy samoocenę, nie wartość (ADR 0015)
+
+**Zmiana:** ADR 0015 i epik EP-OBSERVABILITY-002 z sześcioma taskami (TASK-OBS-012…017): wynik ludzki
+po przebiegu jako zdarzenie, narzędzia (Skill/Agent/komendy) w telemetrii, fałszywe GO i blok `tasks`
+w rollupie, raport nad rollupami z deltą per hash silnika, `claim` w regułach i skrzynce.
+**Dlaczego:** przegląd danych z 2026-10-22: 24 tys. zdarzeń, a odpowiedzi tylko na „ile i za ile".
+Bramka końcowa odrzuca 89 z 258 przebiegów października (34%), ale nikt nie liczy, czyje GO było fałszywe;
+46 ze 122 tasków potrzebowało więcej niż jednego przebiegu (rekord 13); 97 ze 106 kategorii w skrzynce
+to `other`; `/analyze` kończy 61 z 62 przebiegów jako `halted`, bo PAUSE i awaria mają ten sam wynik;
+rollupy commitowano pięć razy od lipca, bo poza `flow-top` nic ich nie czyta.
+**Odrzucone:** jeden task (hooki zamrożone, cztery z sześciu części ich nie dotykają); LLM-sędzia
+werdyktów (ADR 0004); OTEL/serwer przed raportem (jeden host, zero czytelników rollupów); zapis każdego
+tool calla (wolumen bez pytania); diff w zdarzeniu (dane projektu).
+**Status:** pending
+
 > **Luka 2026-07-05 → 2026-08-12 dopisana wstecznie 2026-09-07** (TASK-KAIZEN-002 K73) —
 > log stał 64 dni mimo istotnych zmian w tym oknie. Wpisy niżej są skrótowe, zrekonstruowane
 > z commitów i `docs/completed-tasks/`/`project-orchestration/completed-tasks/`, dat nie

@@ -17,11 +17,12 @@
 // Teraz nieznany klucz najwyższego poziomu daje ostrzeżenie z nazwą bloku,
 // a wejście wolno formatować dowolnie poprawnym YAML-em.
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, statSync, rmSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, rmSync } from 'node:fs';
 import { createHash } from 'node:crypto';
-import { dirname, join, posix } from 'node:path';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
+import { createPathResolver, hasGlob } from './lib/path-globs.mjs';
 
 let YAML;
 try {
@@ -97,78 +98,9 @@ const BLOCK_KEYS_EXTRA = 'extends';
 const LIST_ENV = [/_HOOKS$/, /_LIST$/, /_PATHS$/, /_DISABLED$/, /^ECC_DISABLED_/];
 
 // ── globy dla parametrów ścieżkowych ──────────────────────────────────────
-// Własna implementacja zamiast zależności: `*` (płasko), `**` (rekurencyjnie),
-// wykluczenia `!wzorzec`. Wynik posortowany, żeby runtime.yml był deterministyczny.
-function globToRegExp(pattern) {
-  // Bez markera-znaku w środku (poprzednia wersja używała bajtu, który robił z tego
-  // pliku „binary data" dla grep/diff): segmenty składamy jawnie.
-  const esc = (seg) => seg
-    .replace(/[.+^${}()|[\]\\]/g, '\\$&')
-    .replace(/\*/g, '[^/]*')
-    .replace(/\?/g, '[^/]');
-  const parts = pattern.split('/');
-  let rx = '';
-  parts.forEach((seg, i) => {
-    const last = i === parts.length - 1;
-    if (seg === '**') rx += last ? '.*' : '(?:[^/]+/)*';   // ** na końcu łapie też pliki głębiej
-    else rx += esc(seg) + (last ? '' : '/');
-  });
-  return new RegExp(`^${rx}$`);
-}
-
-function walkFiles(root, dir = '', acc = []) {
-  const abs = join(root, dir);
-  let entries;
-  try { entries = readdirSync(abs); } catch { return acc; }   // brak uprawnień / zniknął katalog
-  for (const entry of entries) {
-    if (entry === 'node_modules' || entry.startsWith('.')) continue;
-    const relPath = dir ? posix.join(dir, entry) : entry;
-    let isDir;
-    try { isDir = statSync(join(root, relPath)).isDirectory(); } catch { continue; }
-    if (isDir) walkFiles(root, relPath, acc);
-    else acc.push(relPath);
-  }
-  return acc;
-}
-
-const scanCache = new Map();
-function filesUnder(prefix) {
-  if (!scanCache.has(prefix)) scanCache.set(prefix, walkFiles(projectDir, prefix).map((f) => f));
-  return scanCache.get(prefix);
-}
-const globBase = (pattern) => {
-  const parts = pattern.split('/');
-  const stop = parts.findIndex((p) => /[*?]/.test(p));
-  return (stop <= 0 ? '' : parts.slice(0, stop).join('/'));
-};
-
-function resolvePathList(patterns, { param, block }) {
-  const includes = [], excludes = [];
-  for (const p of patterns) (String(p).startsWith('!') ? excludes : includes).push(String(p).replace(/^!/, ''));
-  const excludeRx = excludes.map(globToRegExp);
-  const out = [];
-  for (const inc of includes) {
-    if (!/[*?]/.test(inc)) {                       // zwykła ścieżka — musi istnieć
-      // Kotwica sekcji (`plik.md#5`) jest częścią wartości, ale nie istnieje na dysku —
-      // kanon zwykle wskazuje paragraf, nie cały dokument.
-      const [filePart] = inc.split('#');
-      if (!existsSync(join(projectDir, filePart)))
-        fail(`parametr "${param}" bloku "${block}": plik nie istnieje — ${filePart}`);
-      if (!excludeRx.some((rx) => rx.test(filePart))) out.push(inc);
-      continue;
-    }
-    const rx = globToRegExp(inc);
-    const base = globBase(inc);
-    const hits = filesUnder(base)   // walkFiles zwraca ścieżki względem projektu, z prefiksem
-      .filter((f) => rx.test(f) && !excludeRx.some((ex) => ex.test(f)));
-    // Pusty glob to prawie zawsze literówka albo przeniesiony katalog. Cicha pustka
-    // znaczyłaby „kanon jest pusty" — czyli stage bez wsadu i analiza bez kotwicy.
-    if (!hits.length)
-      fail(`parametr "${param}" bloku "${block}": wzorzec "${inc}" nie trafił w żaden plik projektu`);
-    out.push(...hits);
-  }
-  return [...new Set(out)].sort();
-}
+// Implementacja żyje w scripts/lib/path-globs.mjs — to samo rozwinięcie wołają /analyze
+// (resolve-params.mjs) i verify-project-setup, więc nie może mieć drugiej kopii.
+const resolvePathList = createPathResolver(projectDir, fail);
 
 // ── podstawianie ${param} w treści bloku ──────────────────────────────────
 // Działa na węzłach dokumentu (nie na zrzucie do JS), żeby panel i orchestrate
@@ -189,6 +121,53 @@ function substituteParams(doc, values, blockName) {
       });
     },
   });
+}
+
+// ── nadpisania slotów panelu z parametrów (governance, 2026-10-21) ──────────
+// `when:` strategy-fit jest sztywnym regexem w bloku, a projekt ma własne słownictwo
+// (prywatność, discovery, reputacja). Zamiast lokalnego bloku z drugim stage'em
+// (duplikacja całego slotu) blok udostępnia dwa pola, które projekt wypełnia parametrem:
+//   when_extra  — regex DOKLEJANY do `when:` jako alternatywa. Sklejamy tutaj, nie w YAML-u
+//                 bloku przez `...|${extra}`: pusty parametr dałby `...|` czyli regex pasujący
+//                 do wszystkiego, a slot opus-a wchodziłby w każdy task.
+//   always_for  — { pole_frontmatteru_taska: [wartości] }; trafienie wymusza slot bez względu
+//                 na `when:` (np. priority: [P0]). Egzekwuje silnik /analyze (ANL-043).
+// Pusty parametr = klucz znika ze slotu, więc runtime.yml projektów bez nadpisań się nie zmienia.
+function foldSlotOverrides(doc, blockName) {
+  const items = doc.get('analyze', true)?.get('panel', true)?.items ?? [];
+  for (const item of items) {
+    const stage = item.get('stage');
+    if (item.has('when_extra')) {
+      const raw = item.get('when_extra');
+      const extra = typeof raw === 'string' ? raw.trim() : '';
+      if (extra) {
+        const base = item.get('when');
+        if (typeof base !== 'string' || !base)
+          fail(`blok "${blockName}": stage "${stage}" ma when_extra, ale nie ma bazowego when: — nie ma do czego dokleić`);
+        try { new RegExp(extra, 'i'); }
+        catch (e) { fail(`blok "${blockName}": when_extra stage'a "${stage}" nie jest poprawnym regexem — ${e.message}`); }
+        item.set('when', `(?:${base})|(?:${extra})`);
+        item.set('when_extra', extra);
+      } else item.delete('when_extra');
+    }
+    if (item.has('always_for')) {
+      const node = item.get('always_for', true);
+      const raw = node?.toJSON ? node.toJSON() : node;
+      const norm = {};
+      if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+        for (const [field, vals] of Object.entries(raw)) {
+          const list = (Array.isArray(vals) ? vals : [vals]).filter((v) => v !== null && v !== undefined && v !== '').map(String);
+          if (list.length) norm[field] = list;
+        }
+      } else if (raw !== null && raw !== undefined && raw !== '')
+        fail(`blok "${blockName}": always_for stage'a "${stage}" musi być mapą { pole_taska: [wartości] }, jest: ${JSON.stringify(raw)}`);
+      if (Object.keys(norm).length) {
+        const n = doc.createNode(norm);
+        n.flow = true;
+        item.set('always_for', n);
+      } else item.delete('always_for');
+    }
+  }
 }
 
 // ── wejście: project.yml ───────────────────────────────────────────────────
@@ -368,12 +347,22 @@ for (const b of blocks) {
       continue;
     }
     if (type === 'path' || type === 'path[]') {
-      const list = resolvePathList(Array.isArray(value) ? value : [value], { param, block: b.name });
+      const patterns = (Array.isArray(value) ? value : [value]).map(String);
+      // Wzorce (glob / wykluczenie) zapisujemy obok rozwiniętej listy: lista jest migawką z chwili
+      // setupu i starzeje się z każdym nowym plikiem (juz-ide: BDR-090 wypadł z kanonu analizy,
+      // która go dotyczyła). Wzorce pozwalają /analyze rozwinąć korpus w chwili startu, a
+      // verify-project-setup — wykryć rozjazd.
+      if (patterns.some((p) => hasGlob(p) || p.startsWith('!'))) {
+        b.paramPatterns ??= {};
+        b.paramPatterns[param] = patterns;
+      }
+      const list = resolvePathList(patterns, { param, block: b.name });
       value = type === 'path' ? list[0] : list;
     }
     values[param] = value;
   }
   substituteParams(b.doc, values, b.name);
+  foldSlotOverrides(b.doc, b.name);
   b.params = values;
 }
 
@@ -396,9 +385,11 @@ const hooks = [], env = new Map(), envSrc = new Map();
 const overlay = { agents: [], patterns: [], rules: [] };
 const budgets = new Map();   // slot → {fields: Map, source}
 const paramsOut = new Map(); // blok → rozwinięte wartości (do wglądu w runtime.yml)
+const paramPatternsOut = new Map(); // blok → { param: surowe wzorce } (tylko parametry z globem/wykluczeniem)
 
 for (const b of blocks) {
   if (b.params && Object.keys(b.params).length) paramsOut.set(b.name, b.params);
+  if (b.paramPatterns) paramPatternsOut.set(b.name, b.paramPatterns);
 
   const pat = b.data.patterns;
   if (pat) {
@@ -632,7 +623,7 @@ if (collisions.length)
 // skryptu — fałszywy spokój kosztował trzy repozytoria bez sekcji.
 const generatorSrc = readFileSync(fileURLToPath(import.meta.url), 'utf8');
 const inputsDigest = () => createHash('sha256')
-  .update(blocks.map((b) => b.src).join('\n') + aliasSrc + JSON.stringify([...paramsOut]) + JSON.stringify(taxonomy));
+  .update(blocks.map((b) => b.src).join('\n') + aliasSrc + JSON.stringify([...paramsOut]) + JSON.stringify([...paramPatternsOut]) + JSON.stringify(taxonomy));
 const hash = inputsDigest().update(generatorSrc).digest('hex').slice(0, 12);
 
 // `inputs_hash` = ten sam hash BEZ źródła generatora (2026-10-10). Incydent: każda edycja
@@ -870,6 +861,13 @@ if (paramsOut.size) {
   for (const [block, values] of paramsOut) pMap.set(block, doc.createNode(values));
   doc.set('params', pMap);
 }
+if (paramPatternsOut.size) {
+  // Surowe wzorce parametrów ścieżkowych (patrz pętla parametrów). `params` niesie migawkę
+  // rozwiniętą w chwili setupu; to jest źródło prawdy dla rozwinięcia w chwili analizy.
+  const gMap = doc.createNode({});
+  for (const [block, byParam] of paramPatternsOut) gMap.set(block, doc.createNode(byParam));
+  doc.set('params_globs', gMap);
+}
 if (reqEcc) doc.set('requires_ecc', reqEcc.node);
 if (ralph) doc.set('ralphinho', ralph.node);
 if (budgets.size) {
@@ -887,6 +885,7 @@ for (const [key, src] of [
   ['patterns', null], ['analyze', null],
   ['orchestrate', orch ? ` source: ${orch.source}` : null],
   ['hooks', null], ['env', null], ['overlay', null], ['params', null],
+  ['params_globs', ' wzorce parametrów (glob/wykluczenia) — /analyze rozwija je w chwili startu'],
   ['knowledge', ' project.yml → knowledge_collection'],
   ['human_voice', ' język tekstu dla człowieka; nadpisz w project.yml → human_voice'],
   ['taxonomy', ' rdzeń blocks/_taxonomy.yml + .claude/taxonomy.yml projektu'],

@@ -9,6 +9,11 @@
       "costUsd": 29.519399,
       "costUsdRetried": 0,
       "died": 0,
+      "finalGate": {
+        "judged": 3,
+        "noGo": 1,
+        "unattributed": 1
+      },
       "repairs": {
         "fixSteps": 0,
         "fixed": 0,
@@ -73,5 +78,16 @@
     }
   },
   "stepsTotal": 11,
+  "tasks": {
+    "TS-REP-NEIGHBOR-SIGNALS-001": {
+      "analyzeRuns": 0,
+      "costToGoUsd": 131.567836,
+      "costUsd": 139.318323,
+      "reachedGo": true,
+      "runs": 13,
+      "spanMs": 158493175,
+      "stepsWithoutCost": 0
+    }
+  },
   "v": 1
 }

@@ -35,6 +35,7 @@ import {
 } from './workflow-metrics-lib.mjs';
 import { appendEventsDedup } from './lib/telemetry-events.mjs';
 import { legacyRunToEvents, projectFromSlug } from './lib/telemetry-legacy.mjs';
+import { blameFromResult } from './lib/final-gate-blame.mjs';
 
 const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
 export const DEFAULT_PRICES_PATH = path.join(__dirname, 'workflow-metrics-prices.default.json');
@@ -182,6 +183,8 @@ export function runResultFields(wf) {
     // runId↔plan powstaje bez przekazywania id z prepare: collector zna `wf.runId` z narzędzia Workflow.
     plan: sanitizePlan(r.telemetryPlan),
     engine: typeof r.engine === 'string' && /^[0-9a-f]{7,40}$/.test(r.engine) ? r.engine : null,
+    // TASK-OBS-012: które warstwy wskazują naruszenia pierwszej bramki końcowej (null = nie da się ustalić).
+    gateBlame: blameFromResult(r),
   };
 }
 

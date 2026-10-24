@@ -103,5 +103,16 @@
     }
   },
   "stepsTotal": 14,
+  "tasks": {
+    "TS-RATE-002-cost-billing-split-temporal": {
+      "analyzeRuns": 0,
+      "costToGoUsd": null,
+      "costUsd": 29.65443,
+      "reachedGo": false,
+      "runs": 5,
+      "spanMs": 150683124,
+      "stepsWithoutCost": 3
+    }
+  },
   "v": 1
 }

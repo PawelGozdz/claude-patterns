@@ -65,6 +65,12 @@
           "toolCalls": 60
         },
         "verifier": {
+          "agents": {
+            "code-quality-verifier": {
+              "falseNoGo": 2,
+              "noGoJudged": 2
+            }
+          },
           "causes": {
             "verifier": 3
           },
@@ -79,7 +85,11 @@
             "go": 5,
             "no_go": 3
           },
-          "toolCalls": 118
+          "toolCalls": 118,
+          "verdicts": {
+            "falseNoGo": 2,
+            "noGoJudged": 2
+          }
         }
       },
       "steps": 57,
@@ -107,5 +117,16 @@
     }
   },
   "stepsTotal": 57,
+  "tasks": {
+    "TS-MH-003": {
+      "analyzeRuns": 0,
+      "costToGoUsd": null,
+      "costUsd": 24.451761,
+      "reachedGo": false,
+      "runs": 3,
+      "spanMs": 26817138,
+      "stepsWithoutCost": 1
+    }
+  },
   "v": 1
 }

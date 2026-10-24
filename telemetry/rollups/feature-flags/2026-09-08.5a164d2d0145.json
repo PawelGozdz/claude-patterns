@@ -99,5 +99,16 @@
     }
   },
   "stepsTotal": 8,
+  "tasks": {
+    "0007": {
+      "analyzeRuns": 0,
+      "costToGoUsd": null,
+      "costUsd": 2.901533,
+      "reachedGo": false,
+      "runs": 1,
+      "spanMs": 668673,
+      "stepsWithoutCost": 0
+    }
+  },
   "v": 1
 }

@@ -1087,6 +1087,38 @@ pisanego z dywizem. Brak trafienia nie jest dowodem, że tematu nie ma — gdy w
 ryzyko, którego żaden `when:` nie złapał, potraktuj to jak trafienie i zgłoś lukę w regexie
 bloku.
 
+<a id="anl-042"></a>
+
+### ANL-042 — kanon rozwijany w chwili analizy, nie setupu (2026-10-21)
+
+**Objaw.** juz-ide-api-2: `block_params.governance.canon` miało `docs/decisions/*`, ale
+`materialize-runtime.mjs` rozwijał glob do listy plików w `runtime.yml`. Każdy nowy BDR wypadał
+z korpusu `strategy-fit` do następnego setupu — BDR-090 (decyzja o prywatności adresu) był poza
+kanonem w analizie, która go dotyczyła. Przy okazji glob łapał pliki niebędące kanonem
+(`README.md`, `template.md`, `pomysly.md`).
+
+**Zmiana.** Surowe wzorce (z `!wykluczeniami`) trafiają do `runtime.yml → params_globs`, obok
+migawki w `params`. `scripts/resolve-params.mjs` rozwija je na żywo (ten sam kod co materializacja:
+`scripts/lib/path-globs.mjs`), a `/analyze` bierze z niego korpus w kroku 0.d. `verify-project-setup`
+ostrzega o rozjeździe wzorzec ↔ lista, a pusty glob to BRAK. Wykluczenia były obsługiwane od
+początku; nowością jest udokumentowany przykład w `blocks/governance.yml`.
+
+<a id="anl-043"></a>
+
+### ANL-043 — `when:` strategy-fit dopasowywany do projektu (2026-10-21)
+
+**Objaw.** Regex `when:` strategy-fit jest sztywny (`feature|cennik|onboarding…`). Zadania o
+prywatności, discovery czy reputacji go nie uruchamiały, choć to one łamią inwarianty. juz-ide
+obeszło to lokalnym blokiem `canon-invariants` z drugim stage'em i własnym `when:` — duplikacja
+całego slotu.
+
+**Zmiana.** Parametry `strategy_fit_when_extra` (regex doklejany jako alternatywa) i
+`strategy_fit_always_for` (`{pole_taska: [wartości]}`, wymusza slot po frontmatterze taska).
+Klejenie robi `materialize-runtime.mjs` (`foldSlotOverrides`), nie YAML bloku: `...|${extra}` przy
+pustym parametrze dałoby regex pasujący do wszystkiego. Niepoprawny regex = błąd materializacji;
+pusty parametr usuwa klucze ze slotu. `always_for` omija też sito ANL-018 — jawna opcja projektu
+(np. P0) ma pierwszeństwo przed oszczędzaniem tokenów opus-a.
+
 <a id="anl-024"></a>
 
 ### ANL-024 — do slotu idzie STRESZCZENIE poprzednich stage'ów, nigdy surowy output
@@ -2211,6 +2243,29 @@ analizy z błędnym YAML nie wystartują ponownie bez poprawki frontmatteru. Eva
 
 **Poza zakresem.** `tests skipped` w warstwie `engine` (druga notatka) jest zamierzone: warstwa nie ma `tests:true`, a testy należą do jednostki `testing`. Jeśli ślepa sonda wróci po tej zmianie, trzeba zajrzeć w dziennik przebiegu (sama linia mogła nie być przyczyną).
 
+### ORC-119 — kanon dociera do bramki końcowej (2026-10-21)
+
+**Objaw.** juz-ide-api-2: blok `governance` podpinał kanon wyłącznie do panelu `/analyze`.
+`code-quality-verifier` i `security-e2e-verifier` (`final_gate`) nie dostawały ani `canon_inject`,
+ani decyzji cytowanych w `strategy_ref` taska, więc implementacja mogła złamać inwariant
+zatwierdzony w analizie i żadna bramka tego nie widziała.
+
+**Zmiana.** `orchestrate-prepare` (`scripts/lib/canon-inject.mjs`) składa `canon`: pliki
+`canon_inject` oraz dokumenty z `strategy_ref`/`canon_ref` (frontmatter taska i artefaktu
+analizy), rozwiązane do ścieżek — id typu `BDR-090` po korpusie rozwijanym na żywo, potem po
+`docs/`; granica id jest twarda (`BDR-09` ≠ `BDR-090`), `ADR-0104` pasuje też do `0104-*.md`. Wartość
+z tekstem wolnym (`'BDR-076, BDR-077 (opis); decyzja …'`) jest tokenizowana: ścieżki `*.md` i
+ścisłe id; id bez pliku to tylko ostrzeżenie (bywa numerem innego zadania). Kotwica `plik.md#2`
+wkleja SEKCJĘ (nagłówek `## 2.` do następnego tej samej rangi), nie cały dokument — `KANON.md#2` to
+2 KB zamiast 39 KB. Treść pod limitem (20 KB na wpis, 60 KB razem); powyżej tylko ścieżka i
+ostrzeżenie. Wykryte przy próbie na danych api-2 (127 zadań z `strategy_ref`), nie na fixturach. `buildFinalGatePrompt`
+dokłada sekcję „ZGODNOŚĆ Z KANONEM”: naruszenie inwariantu to VETO (`NO_GO`) z cytatem
+`plik:linia kodu — punkt kanonu`; nierozwiązane odniesienia są pomijane (prawdziwe `strategy_ref` miesza kanon z odwołaniami do wzorców i reguł). Bez bloku
+`governance` w kompozycji `canon.active` jest `false` i prompt jest bez zmian.
+
+**Poza zakresem.** Weryfikator warstwy (`code-quality-verifier`) kanonu nie dostaje — inwarianty
+produktowe oceniamy raz, na całości zmiany, żeby nie płacić za nie w każdej iteracji pętli.
+
 <a id="orc-120"></a>
 
 ### ORC-120 — `build` w `checks.finalGate` liczy się jak `typecheck`, a sonda nie oddaje `skipped` za brak czasu (2026-10-22)
@@ -2256,3 +2311,70 @@ analizy z błędnym YAML nie wystartują ponownie bez poprawki frontmatteru. Eva
 **Zmiana.** (1) `report.finalProbe` i komunikat naruszenia „GO z niezweryfikowanym zakresem" zawierają stan sondy (`finalProbeSummary`: `typecheck=…, tests=…, lint=… (zielona | brak zielonego dowodu)`), więc następny raport mówi, czemu luki nie zostały obniżone. (2) Gdy bramka dała GO bez naruszeń (`forcedGaps`), runda naprawcza przeszła, a nie było ustaleń blokujących, sonda bramki końcowej biegnie jeszcze raz (`final-checks-after-fix`, `report.finalProbeAfterFix`); przy zielonym dowodzie ta sama ocena co w ORC-098 daje GO z lukami. Czerwona albo ślepa ponowna sonda zostawia halt i ostrzeżenie.
 
 **Poza zakresem.** Jeśli stan sondy w kolejnym raporcie pokaże `zielona`, a halt się powtórzy, przyczyna leży gdzie indziej (filtry `filterKnownLayerGaps`/`filterAdjudicatedByDecision` albo pusty wynik bramki) i rekord trzeba otworzyć z tym dowodem.
+
+<a id="orc-124"></a>
+
+### ORC-124 — pliki brudne przed startem są chronione w promptach (2026-10-23)
+
+**Objaw (DEV-orc-041-implementation-core-gate).** ai-os-bot BOT-041, `wf_88100bcf-827`, warstwa `implementation:core-gate`: `src/core/llm/models.ts` miał niezatwierdzoną zmianę właściciela sprzed przebiegu (`dirtyAtStart`). Sonda diffu i weryfikator uznały go za zmianę implementera, weryfikator dał NO_GO z poleceniem `git checkout`, a implementer cofnął plik do HEAD. Pracę właściciela przywrócono ręcznie z głównej sesji.
+
+**Przyczyna.** `dirtyAtStart` trafiał tylko do bramki końcowej i do stagingu (ORC-090). Prompty weryfikatora i implementera warstwy go nie znały, a sonda po cichej śmierci oraz bramka „kod istnieje" liczyły plik brudny jak pracę warstwy. Zakaz cofania z ORC-041 nie wystarczył: polecenie cofnięcia przyszło w liście naruszeń od weryfikatora.
+
+**Zmiana.** `dirtyBlock(a, role)`: lista (do 40 plików) w prompcie weryfikatora z zakazem oceniania ich i zalecania `git checkout`/`restore`/`reset`, w prompcie implementera z zakazem edycji i cofania oraz z poleceniem pominięcia takiej pozycji w `deviation_note`. Sonda po cichej śmierci i bramka „kod istnieje" pomijają pliki brudne przed startem, chyba że implementer sam je zgłosił w `changed_files`.
+
+**Poza zakresem.** Plik brudny przed startem, który implementer legalnie zmienił, a nie zgłosił, nie zostanie policzony w bramce „kod istnieje". Odcisk treści pliku sprzed startu rozstrzygałby to dokładnie, ale wymaga zapisu stanu przed przebiegiem.
+
+<a id="orc-125"></a>
+
+### ORC-125 — ścieżka względna i bezwzględna to jeden plik (2026-10-23)
+
+**Objaw (DEV-orc-067).** ai-os-bot BOT-041: raport silnika twierdził „63 pliki", a `git diff --cached` po przebiegu pokazywał 0 (nowe pliki tylko jako `git add -N` z sond). Lista zawierała zdublowane ścieżki bezwzględne. Krok 4 (`git add`, potem `git status`, ORC-067) naprawił stan ręcznie, jak zaprojektowano.
+
+**Zmiana.** `finalFileList` usuwa ścieżkę bezwzględną, jeśli jej względny odpowiednik jest na liście. Rozbieżność „raport kontra indeks" zostaje po stronie kroku 4, bo silnik sam niczego nie stage'uje.
+
+<a id="orc-126"></a>
+
+### ORC-126 — odroczona czerwień jest dowodem dla GO_WITH_GAPS (2026-10-23)
+
+**Objaw (DEV-orc-084-domain-u1-domain).** marketing-hub TS-MH-027, `domain:u1-domain`, dwa przebiegi (budżet verify 15 i 40): GO bez naruszeń, ale z `unverified_scope` (2–3 specyfikacje), po trzech próbach halt. Typecheck czerwony wyłącznie przez TS2322 w `application/.../transition-to-scheduled/handler.ts` (późniejsza jednostka).
+
+**Przyczyna (wniosek z kodu, bez dziennika przebiegu).** ORC-082 odracza taką czerwień (`typecheck: 'deferred'`), ale `probeHasGreenEvidence` uznawało za dowód wyłącznie `pass`. Warstwa domenowa z `checks: [typecheck:api, lint:check:api]` ma `tests: skipped`, więc po odroczeniu nie zostawał żaden `pass` i `layerGapsAcceptable` odrzucało GO_WITH_GAPS. Komentarz przy `layerGapsAcceptable` już mówił „pass|skipped|deferred".
+
+**Zmiana.** `deferred` w `typecheck` lub `tests` liczy się jak dowód zielonej sondy (własne pliki warstwy przeszły kontrolę). Czerwone testy i ślepa sonda nadal go nie dają.
+
+<a id="orc-127"></a>
+
+### ORC-127 — plik wspólny jednostek nie jest luką jednostki (2026-10-23)
+
+**Objaw (DEV-halt-unverified-scope, 2. wystąpienie).** juz-ide-api-1 TS-SEC-D0-FOLLOWUPS-001, `infrastructure:retry-const`: weryfikator dał GO z `unverified_scope = auth-error.mapper.ts` (1099 linii, wspólny z wcześniejszymi jednostkami, diff względem HEAD zawiera hunki innych warstw), 3 próby, `ESCALATE_AND_HALT` `machine`. Obejście: `--overrides` zawężające ocenę do hunków jednostki.
+
+**Zmiana.** `scopeBlock` dla jednostek (`id` zawiera `:`) dodaje akapit: plik może zawierać zmiany innych jednostek, oceniaj i zmieniaj wyłącznie fragmenty wynikające z powodu jednostki, nie wpisuj pliku do `unverified_scope` z tego powodu.
+
+<a id="orc-128"></a>
+
+### ORC-128 — decyzje wskazujące pliki bez właściciela (2026-10-23)
+
+**Objaw (agent_note, juz-ide-api-1).** TS-SEC-D0-FOLLOWUPS-001, `application:sessions-svc`: pliki wymagane przez decyzje (D13: `validate-session/handler.ts`, `security.config.ts`; D4: stała Retry-After w guardzie i mapperze) nie miały właściciela w analizie. Wyszło to dopiero z bramki końcowej i weryfikatorów, kosztem 2 dodatkowych przebiegów.
+
+**Zmiana.** `orchestrate-prepare` wyciąga z `choice` i `rationale` decyzji ścieżki plików kodu (`.ts/.tsx/.js/.py/.dart/.sql/…`), które istnieją w repo (pomija `docs/` i `project-orchestration/`), i ostrzega o tych, których nie obejmuje `dirs` ani `layers_scope` żadnej uruchamianej warstwy lub jednostki. Tylko ostrzeżenie: decyzja może celowo wskazywać plik, którego task nie zmienia.
+
+**Poza zakresem.** Ścieżki podane bez prefiksu pakietu (`validate-session/handler.ts`) nie istnieją względem korzenia repo i nie są wykrywane.
+
+<a id="orc-129"></a>
+
+### ORC-129 — task bez uruchamianych warstw (2026-10-23)
+
+**Objaw (DEV-anz-layer-mismatch, 6. wystąpienie).** aegis-flow TS-001 jest zadaniem wyłącznie dokumentacyjnym: wszystkie 6 warstw trafiło do `layers_skip`, a silnik zostałby z samą bramką końcową.
+
+**Zmiana.** `prepare` ostrzega, gdy żadna warstwa nie jest uruchamiana: task bez zmian w kodzie nie ma czego wykonać w `/orchestrate`. Bramka nie odmawia startu, bo analiza może świadomie zostawić samą bramkę końcową.
+
+<a id="orc-130"></a>
+
+### ORC-130 — brudne drzewo z pracą samego taska (2026-10-23)
+
+**Objaw (agent_note, juz-ide-api-2).** TS-GEO-HOME-POINT-001, warstwa `testing`: cała niezatwierdzona praca taska (209 plików) trafiła do `dirtyAtStart`, więc po ORC-124 weryfikatorzy dostaliby polecenie „nie oceniaj", a `stageableFiles` pominąłby te pliki. Agent uznał, że `--overrides` nie ma klucza dla `dirtyAtStart`, i wyzerował listę w wyemitowanym skrypcie.
+
+**Przyczyna.** Klucz istnieje (`dirtyAtStart` jest polem wyjścia `prepare`, więc `{"dirtyAtStart": []}` przechodzi), ale nic o tym nie mówiło. ORC-124 zakłada, że brudne pliki są cudze. Silnik nie odróżni tego od pracy taska zrobionej wcześniej w drzewie (wznowienie, ręczne warstwy).
+
+**Zmiana.** `prepare` ostrzega przy ≥ 20 brudnych plikach albo przy brudnym drzewie ze wznowieniem (`layers_done`): mówi, że silnik uzna je za cudzą pracę, i podaje obejście `--overrides {"dirtyAtStart": []}`. Nagłówek skryptu dokumentuje ten klucz. Bez automatu, bo zgadywanie własności wróciłoby do błędu z ORC-090/124.
+

@@ -9,6 +9,13 @@
       "costUsd": 78.197525,
       "costUsdRetried": 34.591502,
       "died": 22,
+      "finalGate": {
+        "blamedUnits": 2,
+        "judged": 3,
+        "noGo": 2,
+        "noGoAttributed": 2,
+        "unattributed": 10
+      },
       "repairs": {
         "fixSteps": 8,
         "fixed": 4,
@@ -65,6 +72,13 @@
           "toolCalls": 481
         },
         "verifier": {
+          "agents": {
+            "code-quality-verifier": {
+              "falseGo": 2,
+              "goJudged": 5,
+              "noGoJudged": 7
+            }
+          },
           "causes": {
             "verifier": 11
           },
@@ -79,7 +93,12 @@
             "go": 13,
             "no_go": 11
           },
-          "toolCalls": 411
+          "toolCalls": 411,
+          "verdicts": {
+            "falseGo": 2,
+            "goJudged": 5,
+            "noGoJudged": 7
+          }
         }
       },
       "steps": 183,
@@ -107,5 +126,16 @@
     }
   },
   "stepsTotal": 183,
+  "tasks": {
+    "TS-MH-005": {
+      "analyzeRuns": 0,
+      "costToGoUsd": 113.047361,
+      "costUsd": 113.047361,
+      "reachedGo": true,
+      "runs": 14,
+      "spanMs": 89758720,
+      "stepsWithoutCost": 4
+    }
+  },
   "v": 1
 }

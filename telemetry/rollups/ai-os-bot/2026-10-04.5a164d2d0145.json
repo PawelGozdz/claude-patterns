@@ -83,5 +83,16 @@
     }
   },
   "stepsTotal": 32,
+  "tasks": {
+    "BOT-025": {
+      "analyzeRuns": 0,
+      "costToGoUsd": null,
+      "costUsd": 4.58174,
+      "reachedGo": false,
+      "runs": 1,
+      "spanMs": 610700,
+      "stepsWithoutCost": 0
+    }
+  },
   "v": 1
 }

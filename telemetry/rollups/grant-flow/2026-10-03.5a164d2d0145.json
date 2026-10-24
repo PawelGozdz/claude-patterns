@@ -9,6 +9,10 @@
       "costUsd": 1.602925,
       "costUsdRetried": 0.104384,
       "died": 2,
+      "finalGate": {
+        "judged": 2,
+        "unattributed": 2
+      },
       "repairs": {
         "fixSteps": 1,
         "fixed": 1,
@@ -63,6 +67,15 @@
           "toolCalls": 111
         },
         "verifier": {
+          "agents": {
+            "code-quality-verifier": {
+              "goJudged": 3
+            },
+            "refine-quality-verifier": {
+              "goJudged": 4,
+              "noGoJudged": 1
+            }
+          },
           "causes": {
             "verifier": 1
           },
@@ -77,7 +90,11 @@
             "go": 7,
             "no_go": 1
           },
-          "toolCalls": 63
+          "toolCalls": 63,
+          "verdicts": {
+            "goJudged": 7,
+            "noGoJudged": 1
+          }
         }
       },
       "steps": 49,
@@ -105,5 +122,25 @@
     }
   },
   "stepsTotal": 49,
+  "tasks": {
+    "TS-TIME-READALL-001": {
+      "analyzeRuns": 0,
+      "costToGoUsd": 0.241805,
+      "costUsd": 0.241805,
+      "reachedGo": true,
+      "runs": 2,
+      "spanMs": 10747994,
+      "stepsWithoutCost": 3
+    },
+    "TS-UI-004-refine-data-layer-projects-tasks-hours": {
+      "analyzeRuns": 0,
+      "costToGoUsd": null,
+      "costUsd": 1.36112,
+      "reachedGo": false,
+      "runs": 3,
+      "spanMs": 2473107,
+      "stepsWithoutCost": 22
+    }
+  },
   "v": 1
 }

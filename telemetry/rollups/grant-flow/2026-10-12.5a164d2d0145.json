@@ -289,5 +289,16 @@
     }
   },
   "stepsTotal": 61,
+  "tasks": {
+    "TS-UI-006": {
+      "analyzeRuns": 1,
+      "costToGoUsd": null,
+      "costUsd": 21.667547,
+      "reachedGo": false,
+      "runs": 1,
+      "spanMs": 9145975,
+      "stepsWithoutCost": 0
+    }
+  },
   "v": 1
 }

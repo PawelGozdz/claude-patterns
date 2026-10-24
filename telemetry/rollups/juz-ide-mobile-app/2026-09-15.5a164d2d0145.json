@@ -101,5 +101,16 @@
     }
   },
   "stepsTotal": 13,
+  "tasks": {
+    "VOUCH-REPUTATION-TIER-BADGE-UI-001": {
+      "analyzeRuns": 0,
+      "costToGoUsd": 5.626557,
+      "costUsd": 5.626557,
+      "reachedGo": true,
+      "runs": 1,
+      "spanMs": 976874,
+      "stepsWithoutCost": 0
+    }
+  },
   "v": 1
 }

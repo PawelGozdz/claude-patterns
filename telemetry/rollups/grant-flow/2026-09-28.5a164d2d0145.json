@@ -89,5 +89,16 @@
     }
   },
   "stepsTotal": 31,
+  "tasks": {
+    "TS-SIM-001": {
+      "analyzeRuns": 0,
+      "costToGoUsd": null,
+      "costUsd": 13.348721,
+      "reachedGo": false,
+      "runs": 3,
+      "spanMs": 14489973,
+      "stepsWithoutCost": 0
+    }
+  },
   "v": 1
 }

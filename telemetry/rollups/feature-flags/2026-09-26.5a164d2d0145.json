@@ -45,6 +45,11 @@
           "toolCalls": 27
         },
         "verifier": {
+          "agents": {
+            "ecc:flutter-reviewer": {
+              "noGoJudged": 2
+            }
+          },
           "causes": {
             "verifier": 2
           },
@@ -59,7 +64,10 @@
             "go": 1,
             "no_go": 2
           },
-          "toolCalls": 28
+          "toolCalls": 28,
+          "verdicts": {
+            "noGoJudged": 2
+          }
         }
       },
       "steps": 12,

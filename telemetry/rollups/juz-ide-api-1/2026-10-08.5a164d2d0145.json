@@ -9,6 +9,11 @@
       "costUsd": 34.589277,
       "costUsdRetried": 0,
       "died": 1,
+      "finalGate": {
+        "judged": 3,
+        "noGo": 1,
+        "unattributed": 8
+      },
       "repairs": {
         "fixSteps": 0,
         "fixed": 0,
@@ -75,5 +80,16 @@
     }
   },
   "stepsTotal": 12,
+  "tasks": {
+    "TS-REP-VERIFICATION-LEVEL-SOURCE-001": {
+      "analyzeRuns": 0,
+      "costToGoUsd": 36.918981,
+      "costUsd": 43.970825,
+      "reachedGo": true,
+      "runs": 4,
+      "spanMs": 62371278,
+      "stepsWithoutCost": 17
+    }
+  },
   "v": 1
 }

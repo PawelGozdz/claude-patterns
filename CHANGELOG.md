@@ -11,6 +11,15 @@ and none of it is instruction — it is history.
 ## [Unreleased]
 
 ### Added
+- Fałszywe GO i koszt taska w rollupie (TASK-OBS-012, ADR 0012 aneks): pierwszy krok bramki końcowej niesie `step.blamed`
+  / `step.unblamed` (warstwy wskazane przez naruszenia; `final-gate-blame.mjs`, kolektor + `telemetry-backfill-gate-blame.mjs`
+  uzupełniający 216 przebiegów z `wf_*.json`). Rollup: `verdicts`/`agents` per rola (`goJudged`, `falseGo`, `noGoJudged`,
+  `falseNoGo`), `finalGate` per proces i lokalny blok `tasks` (przebiegi, koszt do pierwszego GO, czas); eksport wysyła
+  z `tasks` tylko rozkłady, `findLeaks` łapie też `BOT-005a`, `TS-SIM-002A`, `DS009-…`. Eval `telemetry-gate-blame`, rozszerzone
+  `telemetry-rollups` i `telemetry-export`. **Październik: 51 fałszywych GO na 406 ocenionych (12,6%, dolna granica)**;
+  per agent (≥ 20 ocenionych): `code-quality-verifier` 17,1% (28/164), `refine-quality-verifier` 13,0% (3/23),
+  `bot-code-verifier` 8,6% (3/35), `aig-code-verifier` 6,6% (7/106), `scope-invariants-verifier` 3,7% (1/27).
+  Dla 124 naruszeń bramki nie da się wskazać warstwy (dokumenty, luki, przyczyna maszynowa), więc to nie jest pełna miara.
 - Blokady z hooków w telemetrii (TASK-OBS-011, ADR 0012 aneks): nowy `process: hook`; 9 hooków blokujących
   (`block-root-grep`, `block-subagent-commit`, `pre-workflow-lint`, `check-delegation`, `check-patterns-read`,
   `check-subagent-pattern-reads`, `check-approval-before-impl`, `check-security-considerations`,
@@ -19,6 +28,9 @@ and none of it is instruction — it is history.
   Zapis best-effort, ok. 5 ms tylko przy blokadzie, `HOOK_TELEMETRY=off` go wyłącza. Eval `hook-telemetry` (16 przypadków, wszystkie 9 hooków).
   Trzy hooki dostały stałe id reguł: `root-grep`, `subagent-git`, `task-pre-analysis` / `security-suggest` / `security-section-empty`.
 
+- ADR 0015 i EP-OBSERVABILITY-002 (2026-10-22): przegląd telemetrii pokazał, że metryki kończą się na werdykcie bramki (samoocena), nie widzą skilli, komend ani agentów poza Workflow, nie sprawdzają, czy reguły ORC coś poprawiły, a 97 ze 106 kategorii w skrzynce to `other`. Kierunek: `kind: outcome.human` (decyzja człowieka po przebiegu, przetrwanie diffu, revert), `process: tool` i plan w każdej komendzie, blok `tasks` i fałszywe GO w rollupie, `telemetry-report.mjs` z deltą per wersja silnika, `claim` w regułach i skrzynce z automatycznym `resolved`. Sześć tasków TASK-OBS-012…017; dwa dotykające `hooks/` czekają na odmrożenie.
+
+- `governance` (juz-ide-api-2, 2026-10-21): (1) globy kanonu zostają globami — `runtime.yml → params_globs`, `scripts/resolve-params.mjs` rozwija je w chwili startu `/analyze` (ANL-042), `verify-project-setup` ostrzega o rozjeździe wzorzec ↔ lista, wspólny kod w `scripts/lib/path-globs.mjs`; (2) kanon dociera do `/orchestrate` — `orchestrate-prepare` składa `canon` (`canon_inject` + `strategy_ref`/`canon_ref` taska), bramka końcowa dostaje sekcję „Zgodność z kanonem” z VETO za naruszenie inwariantu (ORC-119, `security-e2e-verifier`); (3) `strategy_fit_when_extra` i `strategy_fit_always_for` zamiast lokalnego bloku z drugim stage'em (ANL-043). Eval: `tests/flow-evals/governance/run.js`.
 - ORC-118: sonda warstwy z samymi komendami dosłownymi (`make typecheck`) nie dostaje już linii „skryptu nie ma w package.json → skipped"; `skipped` znaczy tylko brak samej komendy, niezerowy EXIT istniejącej to `fail` (aegis-flow TS-004, ślepa sonda w warstwie `api`).
 - `orchestrate-prepare`: ostrzeżenie, gdy `dirs` jednostki lub `layers_scope` zawiera samą nazwę pliku, której nie ma w korzeniu repo (ai-gateway TS-AIG-102: `CLAUDE-LOCAL.md` leży w `.claude/config/`); ANL-038 przypomina, że `dirs` to ścieżki od korzenia.
 - ANL-008: ostrzeżenie, że podkatalogi `.claude/knowledge/patterns/` bywają symlinkami (`grep -r`/`find` bez `-L` ich nie widzą) — aegis-flow TS-004 uznał istniejący `python/testing-pattern.md` za brakujący.

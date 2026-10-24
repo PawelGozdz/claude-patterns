@@ -278,6 +278,21 @@ When **LINDDUN Non-compliance = YES** → **VETO**: DPIA required before merge.
 
 ---
 
+## 📜 Zgodność z kanonem (tylko gdy prompt ma sekcję „ZGODNOŚĆ Z KANONEM”)
+
+Sekcję wstrzykuje orchestrator, gdy w kompozycji jest blok `governance`: inwarianty (`canon_inject`)
+oraz decyzje cytowane w `strategy_ref`/`canon_ref` taska. Bez niej pomijasz ten punkt w całości —
+nie szukaj kanonu sam.
+
+1. Porównaj DIFF (pliki z listy w prompcie) z każdym inwariantem i każdą decyzją z sekcji.
+2. Naruszenie inwariantu = VETO (`NO_GO`). Cytat jest obowiązkowy:
+   `plik:linia kodu — punkt kanonu (plik kanonu + zdanie, które złamano) — poprawka`.
+   Naruszenie bez obu stron cytatu nie wystarcza — nie blokuj „na wyczucie”.
+3. Decyzja z taska, której kod przeczy, to naruszenie tak samo. Decyzja bez pokrycia w diffie
+   (nic jej nie dotyczy) nie jest naruszeniem.
+4. Odniesienia z listy „NIEROZWIĄZANE” pomiń bez zgadywania treści — `strategy_ref` miesza kanon z odwołaniami do wzorców i reguł, więc brak pliku to nie luka weryfikacji.
+5. Zgodność: jedna linia w `rationale` — „Zgodność z kanonem: OK (N inwariantów, M decyzji)”.
+
 ## 🗺️ Threat Model Verification
 
 When the scope includes a **new bounded context** or **new API surface**, verify a threat model exists:
@@ -488,6 +503,7 @@ When any file in `src/contexts/b2g-contracts/` is in scope, run these checks in 
 ## Changelog
 
 - 2026-10-21 — protokół „2-phase” (delegacja odkrywania plików do `Task(Explore)`) dotyczy teraz tylko wywołań, które mają `Task`; bez niego (liść w `/orchestrate`) odkrywanie idzie z listy `ZMIENIONE PLIKI` i zakresu warstwy, a przy braku `Glob`/`Grep` przez `Bash`. Wcześniej treść nakazywała „MUST Task(Explore)” mimo braku narzędzia (iam TS-SSO-066, `final-gate`).
+- 2026-10-21 — dodana sekcja „Zgodność z kanonem” (blok `governance`, ORC-119): diff vs inwarianty i decyzje z prompta bramki, naruszenie inwariantu = VETO z cytatem
 - 2026-10-03 — `maxTurns` podniesione do 60: limit z frontmattera wygrywa z budżetem ze skryptu orkiestracji (`scaledBudget` sięga 50), a przy mniejszym agent kończył bez StructuredOutput, czyli milcząca bramka końcowa w iam, grant-flow i juz-ide-api-1 (ORC-092).
 - 2026-09-07 — repointed `@security-privacy-architect` to `@ecc:security-reviewer`: the agent is retired (K97, ADR 0009 — generic OWASP/GDPR advisory is covered by ECC; the VETO verifiers stay ours)
 - 2026-08-18 — migrated `**Version**`/`**Maintainer**` footer to an append-only `## Changelog` (Keep-a-Changelog format, TASK-GUARDRAILS-001 Sekcja 3); history below reconstructed from `git log -p`

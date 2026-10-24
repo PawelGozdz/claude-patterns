@@ -9,6 +9,9 @@
       "costUsd": 15.000304,
       "costUsdRetried": 3.394865,
       "died": 0,
+      "finalGate": {
+        "judged": 1
+      },
       "repairs": {
         "fixSteps": 4,
         "fixed": 4,
@@ -73,6 +76,11 @@
           "toolCalls": 78
         },
         "verifier": {
+          "agents": {
+            "code-quality-verifier": {
+              "goJudged": 2
+            }
+          },
           "causes": {},
           "costUsd": 3.722664,
           "durationMs": {
@@ -84,7 +92,10 @@
           "outcomes": {
             "go": 10
           },
-          "toolCalls": 31
+          "toolCalls": 31,
+          "verdicts": {
+            "goJudged": 2
+          }
         }
       },
       "steps": 52,
@@ -111,5 +122,16 @@
     }
   },
   "stepsTotal": 52,
+  "tasks": {
+    "TS-INFRA-MIGRATION-ROLLBACK-SAFETY-001": {
+      "analyzeRuns": 0,
+      "costToGoUsd": 13.971708,
+      "costUsd": 15.000304,
+      "reachedGo": true,
+      "runs": 2,
+      "spanMs": 3929579,
+      "stepsWithoutCost": 26
+    }
+  },
   "v": 1
 }

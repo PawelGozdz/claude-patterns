@@ -21,6 +21,26 @@
 # KOSZT: głównym bezpiecznikiem jest NIE regex `when:`, tylko typ taska — sloty
 # poniżej nie wchodzą dla `type: refactor|bugfix|chore` (egzekwuje silnik /analyze).
 # `when:` jest drugim sitem, nie pierwszym.
+#
+# GLOBY W `canon` ZOSTAJĄ GLOBAMI (2026-10-21). Materializacja rozwija je do listy plików w
+# `runtime.yml → params.governance.canon`, ale ta lista jest migawką z chwili setupu: każdy
+# nowy dokument wypadał z korpusu do następnego setupu (juz-ide: BDR-090 poza kanonem w
+# analizie, która go dotyczyła). Dlatego surowe wzorce trafiają też do `params_globs`, a:
+#   • `/analyze` rozwija je w chwili startu (`scripts/resolve-params.mjs`, ANL-042),
+#   • `verify-project-setup` ostrzega o rozjeździe wzorzec ↔ lista.
+# Wykluczenia (`!`) działają tak samo jak w `canon`/`canon_inject`. Przykład:
+#   block_params:
+#     governance:
+#       canon:
+#         - docs/decisions/*              # każdy nowy BDR wchodzi sam
+#         - "!docs/decisions/README.md"   # indeks, nie decyzja
+#         - "!docs/decisions/template.md" # szablon
+#         - "!docs/decisions/pomysly.md"  # pomysły to nie decyzje
+#
+# KANON DOCIERA TEŻ DO /orchestrate. `canon_inject` (inwarianty) oraz dokumenty wskazane w
+# `strategy_ref`/`canon_ref` frontmattera taska trafiają do prompta bramki końcowej
+# (orchestrate-prepare → `canon`), a weryfikator robi diff kodu vs te inwarianty. Bez tego
+# bloku w kompozycji sekcja „Zgodność z kanonem" się nie odpala.
 name: governance
 axis: process
 requires: []
@@ -39,6 +59,16 @@ params:
     type: path
     required: false
     doc: "reguły klasyfikacji informacji — wymagane tylko przez stage data-classification"
+  strategy_fit_when_extra:
+    type: string
+    required: false
+    default: ""
+    doc: "regex doklejany jako alternatywa do `when:` stage'a strategy-fit (słownictwo projektu, np. prywatn|discovery|reputac)"
+  strategy_fit_always_for:
+    type: map
+    required: false
+    default: {}
+    doc: "wymuś strategy-fit po polach frontmattera taska, bez względu na `when:` i typ taska: { priority: [P0] }"
 
 analyze:
   panel:
@@ -49,9 +79,14 @@ analyze:
     #
     # model: opus — to jest ocena, nie zbieranie. Materiał (cytaty z kanonu) zbiera
     # tani model w discovery; tutaj zapada osąd „czy ta funkcja wzmacnia rdzeń".
+    #
+    # `when_extra` / `always_for` wypełnia PROJEKT parametrem (strategy_fit_when_extra,
+    # strategy_fit_always_for) — materializacja skleja je z `when:` (materialize-runtime.mjs,
+    # foldSlotOverrides), a przy pustym parametrze usuwa oba klucze ze slotu.
     - { stage: strategy-fit, agent: "product-owner", model: opus,
         corpus: "${canon}", inject: "${canon_inject}",
         when: "feature|funkcj|nowy|nowa|cennik|opłat|oplat|subskrypcj|monetyz|pricing|komunikat|onboarding|pozycjonowan",
+        when_extra: "${strategy_fit_when_extra}", always_for: "${strategy_fit_always_for}",
         advisory: true }
     # Wąski `when:` celowo: zwykła zmiana wewnętrzna nie produkuje treści wychodzącej
     # na zewnątrz, więc nie ma czego klasyfikować.

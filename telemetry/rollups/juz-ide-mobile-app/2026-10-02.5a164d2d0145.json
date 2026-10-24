@@ -100,5 +100,16 @@
     }
   },
   "stepsTotal": 68,
+  "tasks": {
+    "DESIGN-SYSTEM-009": {
+      "analyzeRuns": 0,
+      "costToGoUsd": 15.817158,
+      "costUsd": 31.31018,
+      "reachedGo": true,
+      "runs": 23,
+      "spanMs": 421867267,
+      "stepsWithoutCost": 71
+    }
+  },
   "v": 1
 }

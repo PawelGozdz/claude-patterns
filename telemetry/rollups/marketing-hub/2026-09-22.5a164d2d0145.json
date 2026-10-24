@@ -66,6 +66,12 @@
           "toolCalls": 75
         },
         "verifier": {
+          "agents": {
+            "code-quality-verifier": {
+              "falseNoGo": 2,
+              "noGoJudged": 2
+            }
+          },
           "causes": {
             "verifier": 2
           },
@@ -80,7 +86,11 @@
             "go": 10,
             "no_go": 2
           },
-          "toolCalls": 90
+          "toolCalls": 90,
+          "verdicts": {
+            "falseNoGo": 2,
+            "noGoJudged": 2
+          }
         }
       },
       "steps": 78,

@@ -9,6 +9,11 @@
       "costUsd": 5.236599,
       "costUsdRetried": 0.804788,
       "died": 2,
+      "finalGate": {
+        "judged": 1,
+        "noGo": 1,
+        "unattributed": 10
+      },
       "repairs": {
         "fixSteps": 0,
         "fixed": 0,

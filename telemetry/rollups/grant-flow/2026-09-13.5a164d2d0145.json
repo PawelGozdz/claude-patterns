@@ -73,5 +73,16 @@
     }
   },
   "stepsTotal": 7,
+  "tasks": {
+    "TS-PROJ-READOWN-001": {
+      "analyzeRuns": 0,
+      "costToGoUsd": null,
+      "costUsd": 1.14946,
+      "reachedGo": false,
+      "runs": 1,
+      "spanMs": 339315,
+      "stepsWithoutCost": 0
+    }
+  },
   "v": 1
 }

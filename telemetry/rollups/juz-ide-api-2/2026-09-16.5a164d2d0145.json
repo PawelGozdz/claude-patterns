@@ -65,6 +65,12 @@
           "toolCalls": 15
         },
         "verifier": {
+          "agents": {
+            "code-quality-verifier": {
+              "falseNoGo": 1,
+              "noGoJudged": 2
+            }
+          },
           "causes": {
             "verifier": 3
           },
@@ -79,7 +85,11 @@
             "go": 2,
             "no_go": 3
           },
-          "toolCalls": 44
+          "toolCalls": 44,
+          "verdicts": {
+            "falseNoGo": 1,
+            "noGoJudged": 2
+          }
         }
       },
       "steps": 29,
@@ -107,5 +117,16 @@
     }
   },
   "stepsTotal": 29,
+  "tasks": {
+    "TS-SO-MOD-REMODERATION-001": {
+      "analyzeRuns": 0,
+      "costToGoUsd": null,
+      "costUsd": 11.82616,
+      "reachedGo": false,
+      "runs": 3,
+      "spanMs": 16622356,
+      "stepsWithoutCost": 1
+    }
+  },
   "v": 1
 }

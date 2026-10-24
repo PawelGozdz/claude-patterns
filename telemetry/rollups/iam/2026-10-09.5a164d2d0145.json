@@ -9,6 +9,11 @@
       "costUsd": 23.290793,
       "costUsdRetried": 0,
       "died": 0,
+      "finalGate": {
+        "judged": 3,
+        "noGo": 2,
+        "unattributed": 3
+      },
       "repairs": {
         "fixSteps": 0,
         "fixed": 0,
@@ -73,5 +78,16 @@
     }
   },
   "stepsTotal": 13,
+  "tasks": {
+    "TS-SSO-039": {
+      "analyzeRuns": 0,
+      "costToGoUsd": 47.371561,
+      "costUsd": 47.371561,
+      "reachedGo": true,
+      "runs": 5,
+      "spanMs": 85782190,
+      "stepsWithoutCost": 50
+    }
+  },
   "v": 1
 }
