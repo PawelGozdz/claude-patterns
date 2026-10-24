@@ -11,6 +11,7 @@ and none of it is instruction — it is history.
 ## [Unreleased]
 
 ### Added
+- Karty reguł zgodne ze stosem (ORC-136, TASK-ORCH-CARDS-STACK-MISMATCH-001): blok `node` niesie `security-invariants-pattern-plain` i `safe-error-propagation-pattern-plain` zamiast kart NestJS/DDD, `conventions-pattern` zdjęty z `always`; `orchestrate-prepare` nie ładuje kart warstwy z `layers_skip`; karta loggera ma zakres per token. Claim: `DEV-orc-044-implementation` w dół o 50% (`engine=11de3f4`).
 - Silnik `/orchestrate` usuwa pliki za implementera bez Bash (ORC-135, TASK-ORCH-IMPLEMENTER-FILE-DELETE-001): pole `deleted_files` w wyniku implementera i krok mechaniczny `git rm` zamiast tombstone `export {}` lub „brak zmian". Ścieżki spoza zakresu warstwy, bezwzględne, z `..`, z metaznakiem powłoki i brudne przed startem są odrzucane; usunięte pliki nie wchodzą do `git add`, a weryfikator i bramka końcowa dostają ich listę. Claim: `DEV-orc-087-domain` w dół o 50% (`engine=cbe74d7`).
 - `npm run telemetry:weekly` i `telemetry:weekly:dry`: raport tygodniowy odpalany ręcznie z logiem na terminalu, bez crona (wrapper `scripts/cron/telemetry-weekly.sh` zostaje, nic go nie instaluje).
 - Reguła deklaruje metrykę (TASK-OBS-017, ADR 0015 D6, ADR 0011 aneks): pole `claim` (`metric`, `direction`, `threshold`, `engine`,

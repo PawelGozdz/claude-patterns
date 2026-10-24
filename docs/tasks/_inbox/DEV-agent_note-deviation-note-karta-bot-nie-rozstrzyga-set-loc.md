@@ -4,7 +4,7 @@ status: dismissed
 dismissed_reason: >
   Dotyczy karty BOT-* w repo ai-os-bot (SET LOCAL statement_timeout D10, B10 dla embeddingu):
   decyzja o karcie leży w ai-os-bot. Niestosowalność kart DDD/Fastify do tego stosu zbiera
-  TASK-ORCH-CARDS-STACK-MISMATCH-001.
+  TASK-ORCH-CARDS-STACK-MISMATCH-001 (wdrożone 2026-10-24 jako ORC-136, commit 11de3f4).
 trigger: agent_note
 category: pattern_card
 rule_ref: null

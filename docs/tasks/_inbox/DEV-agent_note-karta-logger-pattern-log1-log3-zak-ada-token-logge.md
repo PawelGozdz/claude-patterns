@@ -2,7 +2,7 @@
 id: DEV-agent_note-karta-logger-pattern-log1-log3-zak-ada-token-logge
 status: promoted
 resolution: >
-  Przeniesione do TASK-ORCH-CARDS-STACK-MISMATCH-001 (logger-pattern zakłada token
+  Przeniesione do TASK-ORCH-CARDS-STACK-MISMATCH-001 (wdrożone 2026-10-24 jako ORC-136, commit 11de3f4) (logger-pattern zakłada token
   LOGGER_SERVICE, którego marketing-hub nie ma).
 trigger: agent_note
 category: pattern_card

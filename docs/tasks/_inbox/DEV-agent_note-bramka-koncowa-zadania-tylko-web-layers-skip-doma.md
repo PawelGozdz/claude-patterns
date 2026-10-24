@@ -2,7 +2,7 @@
 id: DEV-agent_note-bramka-koncowa-zadania-tylko-web-layers-skip-doma
 status: promoted
 resolution: >
-  Przeniesione do TASK-ORCH-CARDS-STACK-MISMATCH-001 (zadanie tylko-web dostało karty warstwy
+  Przeniesione do TASK-ORCH-CARDS-STACK-MISMATCH-001 (wdrożone 2026-10-24 jako ORC-136, commit 11de3f4) (zadanie tylko-web dostało karty warstwy
   API mimo layers_skip).
 trigger: agent_note
 category: pattern_card

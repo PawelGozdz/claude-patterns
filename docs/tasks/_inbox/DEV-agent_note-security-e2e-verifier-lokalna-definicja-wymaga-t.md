@@ -3,7 +3,7 @@ id: DEV-agent_note-security-e2e-verifier-lokalna-definicja-wymaga-t
 status: promoted
 resolution: >
   Część o kartach cross-layer CV/ZOD/TP niestosowalnych do płaskiego Fastify przeniesiona do
-  TASK-ORCH-CARDS-STACK-MISMATCH-001. Część o narzędziach: lokalna definicja
+  TASK-ORCH-CARDS-STACK-MISMATCH-001 (wdrożone 2026-10-24 jako ORC-136, commit 11de3f4). Część o narzędziach: lokalna definicja
   security-e2e-verifier w iam wymaga Task(Explore), czego nie ma w tools; to config projektu
   (3.1), centralna definicja ma tryb pracy bez delegowania.
 trigger: agent_note

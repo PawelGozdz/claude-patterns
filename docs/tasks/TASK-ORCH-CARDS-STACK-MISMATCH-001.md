@@ -2,11 +2,11 @@
 id: TASK-ORCH-CARDS-STACK-MISMATCH-001
 title: 'Karty reguł DDD/NestJS trafiają do projektów o innym stosie (node-ts, Fastify, flat service, Python)'
 type: bugfix
-status: todo
+status: done
 priority: P2
 story_points: 5
 created_date: 2026-10-17
-updated_date: 2026-10-17
+updated_date: 2026-10-24
 assignee: '@unassigned'
 labels: [kaizen, orchestration, patterns, blocks]
 depends_on: []
@@ -90,3 +90,18 @@ nie odfiltrowuje kart warstw, które zadanie pomija.
 - Test w `tests/flow-evals/materialize-runtime` albo `orchestrate-prepare`: blok potomny z
   `remove:` zdejmuje kartę odziedziczoną; `layers_skip` zdejmuje karty tej warstwy.
 - Zgłoszenia z `source:` zamknięte w skrzynce z odesłaniem do wyniku.
+
+## Wynik (2026-10-24)
+
+Wpis [ORC-136](../decisions/orchestrate-rule-history.md#orc-136), commit `11de3f4`.
+
+- **Hipoteza 1** (`remove` z bloku potomnego): działa od 2026-10-10, config projektów bez zmian.
+- **Hipoteza 2** (karty ogólne): `blocks/node.yml` ma karty `-plain` (security-invariants z Fastify override iam, safe-error-propagation), `conventions-pattern` zdjęty. Konfiguracja ai-os-bot, ai-gateway, iam i framework-polityczny przeliczona `materialize-runtime`: zero kart `conventions`, sześć kart `-plain`.
+- **Hipoteza 3** (`layers_skip`): `orchestrate-prepare` nie ładuje kart pominiętej warstwy; trzy przypadki w evalu `orchestrate-prepare` (33/33), mutacja wykryta.
+- **Hipoteza 4** (karta bez `_summary`): ostrzeżenie z rozmiarem pliku już istnieje.
+- **marketing-hub**: nie zmienia się lista kart (to NestJS), tylko zakres karty loggera (LOG1–3 przy tokenie `LOGGER_SERVICE`).
+
+Odstępstwa od kryteriów:
+- Test „blok potomny z `remove:` zdejmuje kartę odziedziczoną" nie został dopisany: eval `materialize-runtime` nie obsługuje bloków lokalnych, a dopisanie tej obsługi to osobna zmiana. Zachowanie sprawdza złoty plik `node-kysely-zod-remove` i ręczna rematerializacja czterech projektów.
+- Rekordy ze `source:` zostają `promoted` z odesłaniem do ORC-136; `resolved` ustawi raport tygodniowy po zaufanym werdykcie claimu.
+- `iam` zachowuje własny `security-invariants-fastify.md` (niezmienniki SI6–SI10 są jego własne); od teraz nie przeczy już karcie centralnej.

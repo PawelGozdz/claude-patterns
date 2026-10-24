@@ -2,7 +2,7 @@
 id: DEV-agent_note-karty-regu-z-patterns-always-conventions-pattern
 status: promoted
 resolution: >
-  Zebrane w TASK-ORCH-CARDS-STACK-MISMATCH-001 (2026-10-18): karty reguł DDD/NestJS z patterns.always trafiają do projektów o innym stosie; zadanie ma hipotezy (patterns.remove w bloku potomnym, podział kart, layers_skip, _summary) i kryteria ukończenia. Ten rekord to ai-os-bot BOT-036 (conventions, security-invariants, safe-error-propagation, testing-pyramid, zod-schema).
+  Zebrane w TASK-ORCH-CARDS-STACK-MISMATCH-001 (wdrożone 2026-10-24 jako ORC-136, commit 11de3f4) (2026-10-18): karty reguł DDD/NestJS z patterns.always trafiają do projektów o innym stosie; zadanie ma hipotezy (patterns.remove w bloku potomnym, podział kart, layers_skip, _summary) i kryteria ukończenia. Ten rekord to ai-os-bot BOT-036 (conventions, security-invariants, safe-error-propagation, testing-pyramid, zod-schema).
 trigger: agent_note
 category: pattern_card
 sources:
