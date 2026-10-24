@@ -2,7 +2,7 @@
 id: DEV-orc-062-application
 status: promoted
 resolution: >
-  Nowe wystąpienie (juz-ide-api-2, 2026-10-18) to inna przyczyna niż typecheck z ORC-082/090/104 (zob. previous_*): implementer bez Bash nie może usuwać plików ani uruchamiać komend, więc zgłasza brak zmian i ORC-062 słusznie staje. Zebrane w TASK-ORCH-IMPLEMENTER-FILE-DELETE-001 (2026-10-18).
+  Nowe wystąpienie (juz-ide-api-2, 2026-10-18) to inna przyczyna niż typecheck z ORC-082/090/104 (zob. previous_*): implementer bez Bash nie może usuwać plików ani uruchamiać komend, więc zgłasza brak zmian i ORC-062 słusznie staje. Zebrane w TASK-ORCH-IMPLEMENTER-FILE-DELETE-001 (2026-10-18). Wariant „implementer bez Bash nie usuwa plików" wdrożony 2026-10-24 jako ORC-135 (pole `deleted_files` i krok mechaniczny `git rm`, commit cbe74d7).
 previous_dismissed_reason: >
   Nieaktualne po ORC-082 (czerwony typecheck tylko w późniejszych warstwach jest
   odroczony), ORC-090 (odroczenie typechecku w monorepo) i ORC-104 (sonda z

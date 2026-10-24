@@ -6,7 +6,7 @@ status: todo
 priority: P2
 story_points: 3
 created_date: 2026-10-18
-updated_date: 2026-10-18
+updated_date: 2026-10-24
 assignee: '@unassigned'
 labels: [kaizen, orchestration, engine]
 depends_on: []
@@ -55,3 +55,19 @@ Bash i nie zostawia plików-nagrobków czerwieniących testy.
 - Eval w `tests/flow-evals/orchestrate-script`: warstwa z implementerem zwracającym `deleted_files`
   kończy z plikami usuniętymi, a ścieżka spoza `dirs` jest odrzucona.
 - Rekordy z `source:` zamknięte w skrzynce z odesłaniem do wyniku.
+
+## Wynik (2026-10-24)
+
+Wybrana hipoteza 2, wpis [ORC-135](../decisions/orchestrate-rule-history.md#orc-135), commit `cbe74d7`.
+Implementer wskazuje pliki w `deleted_files`, a usuwa je krok mechaniczny (`git rm -f --ignore-unmatch` plus
+`rm -f`). Przepuszcza tylko ścieżki w `dirs` warstwy, bez `..`, bez ścieżek bezwzględnych i metaznaków
+powłoki, i bez plików brudnych przed startem. Usunięte pliki idą do weryfikatora i bramki końcowej jako lista,
+nie do `git add`. Eval `orchestrate-script`: 102/102 (3 nowe przypadki, mutacja filtra zakresu wykryta).
+
+Odstępstwa od kryteriów:
+- Eval jest L1 (czyste funkcje CORE plus sprawdzenie okablowania w szablonie), bo uruchomienia `Workflow` w
+  evalu nie ma. Pełny przebieg z agentem bez Bash potwierdzi dopiero prawdziwy przebieg.
+- Rekordy `DEV-orc-087-domain` i `DEV-orc-062-application` zostają `promoted` z odesłaniem do ORC-135. Status
+  `resolved` ustawia raport tygodniowy po zaufanym werdykcie claimu (`metric=DEV-orc-087-domain`), a nie
+  ręcznie. `DEV-orc-062-application` ma też wcześniejsze wystąpienia z innych przyczyn (typecheck), więc nie
+  jest podstawą claimu.

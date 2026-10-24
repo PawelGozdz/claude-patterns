@@ -11,6 +11,7 @@ and none of it is instruction — it is history.
 ## [Unreleased]
 
 ### Added
+- Silnik `/orchestrate` usuwa pliki za implementera bez Bash (ORC-135, TASK-ORCH-IMPLEMENTER-FILE-DELETE-001): pole `deleted_files` w wyniku implementera i krok mechaniczny `git rm` zamiast tombstone `export {}` lub „brak zmian". Ścieżki spoza zakresu warstwy, bezwzględne, z `..`, z metaznakiem powłoki i brudne przed startem są odrzucane; usunięte pliki nie wchodzą do `git add`, a weryfikator i bramka końcowa dostają ich listę. Claim: `DEV-orc-087-domain` w dół o 50% (`engine=cbe74d7`).
 - `npm run telemetry:weekly` i `telemetry:weekly:dry`: raport tygodniowy odpalany ręcznie z logiem na terminalu, bez crona (wrapper `scripts/cron/telemetry-weekly.sh` zostaje, nic go nie instaluje).
 - Reguła deklaruje metrykę (TASK-OBS-017, ADR 0015 D6, ADR 0011 aneks): pole `claim` (`metric`, `direction`, `threshold`, `engine`,
   opcjonalnie `process`) w rekordzie skrzynki `promoted` i linia `**Claim:**` we wpisie rule-history; nowy stan skrzynki `resolved`

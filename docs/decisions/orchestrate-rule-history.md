@@ -2448,3 +2448,13 @@ produktowe oceniamy raz, na całości zmiany, żeby nie płacić za nie w każde
 **Objaw (DEV-orc-062-domain, 2. wystąpienie, juz-ide-api-4 TS-MAP-MARKER-PRIVACY-001).** `npm run typecheck` (`tsc --noEmit` na całym repo) kończył się EXIT 134 (heap ~4 GB) bez żadnego `error TS`. Silnik traktował to jak czerwoną sondę, implementer słusznie raportował brak zmian, a warstwa `domain` dostała BLOCKED_BY_PRIOR.
 
 **Zmiana.** Prompt sondy każe zacząć `tail` od `EXIT:<kod>` przy kodzie 134/137 albo „heap out of memory”. `probeCrashed` rozpoznaje to po `tail` (i braku `tsErrors`/`testFailFiles`) i kończy warstwę od razu jako ESCALATE_AND_HALT cause=machine, z podpowiedzią o `NODE_OPTIONS=--max-old-space-size=…` w `checks` przez `--overrides`. Retry implementera nie ma czego naprawiać.
+
+### ORC-135 — usuwanie plików przez implementera bez Bash (2026-10-24)
+
+**Claim:** metric=DEV-orc-087-domain direction=down threshold=0.5 engine=cbe74d7 process=orchestrate
+
+**Objaw (DEV-orc-087-domain, DEV-orc-062-application, 4 wystąpienia w 3 projektach).** `domain-application-implementer` ma `disallowedTools: Bash` (czystość domeny), więc nie mógł usunąć pliku. W juz-ide-api-1 (TS-SEC-BLOCK-CACHE-001) zostawiał tombstone `export {}`, a pusty spec dawał „No test suite found" i czerwone testy do czasu ręcznego `git rm`. W juz-ide-api-2 (TS-SEC-MAP-GROUP-PIN-001) twierdził „brak zmian", więc ORC-062 zatrzymywał przebieg przez BLOCKED_BY_PRIOR.
+
+**Zmiana.** Wybrana hipoteza 2 z taska: wynik implementera ma pole `deleted_files`, a usuwa je krok mechaniczny silnika (agent z Bash, jak sonda drzewa): `git rm -q -f --ignore-unmatch` plus `rm -f` dla pliku nieśledzonego. `deletionPlan` przepuszcza wyłącznie ścieżki w zakresie warstwy; odrzuca bezwzględne, z `..`, ze spacją albo metaznakiem powłoki oraz brudne przed startem (ORC-124). Odrzucone i nieusunięte ścieżki trafiają do `report.warnings`. Usunięte pliki weryfikator i bramka końcowa dostają jako osobną listę, a `stageableFiles` pomija je w `git add` (usunięcie jest już w indeksie, a `git add` usuniętej ścieżki przerywa całą listę). Warstwa złożona z samych usunięć przechodzi bramkę „kod istnieje". Prompt implementera zakazuje tombstone.
+
+**Odrzucone.** Hipoteza 1 (wąski `Bash(git rm:*)` w agencie) zależy od tego, czy `tools` wspiera wzorce poleceń, i zmienia agenta współdzielonego między projektami. Hipoteza 3 (wykrywanie tombstone w drzewie) zgaduje intencję.
