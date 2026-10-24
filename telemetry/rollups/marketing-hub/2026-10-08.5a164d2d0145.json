@@ -9,6 +9,9 @@
       "costUsd": 4.306777,
       "costUsdRetried": 0.557562,
       "died": 0,
+      "finalGate": {
+        "judged": 1
+      },
       "repairs": {
         "fixSteps": 0,
         "fixed": 0,
@@ -74,6 +77,11 @@
           "toolCalls": 10
         },
         "verifier": {
+          "agents": {
+            "refine-quality-verifier": {
+              "goJudged": 1
+            }
+          },
           "causes": {},
           "costUsd": 0.447993,
           "durationMs": {
@@ -85,7 +93,10 @@
           "outcomes": {
             "go": 1
           },
-          "toolCalls": 7
+          "toolCalls": 7,
+          "verdicts": {
+            "goJudged": 1
+          }
         }
       },
       "steps": 12,
@@ -112,5 +123,16 @@
     }
   },
   "stepsTotal": 12,
+  "tasks": {
+    "TS-MH-018": {
+      "analyzeRuns": 0,
+      "costToGoUsd": 3.941119,
+      "costUsd": 4.306777,
+      "reachedGo": true,
+      "runs": 1,
+      "spanMs": 1139997,
+      "stepsWithoutCost": 7
+    }
+  },
   "v": 1
 }

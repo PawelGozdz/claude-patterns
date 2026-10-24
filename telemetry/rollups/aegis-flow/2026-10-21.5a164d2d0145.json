@@ -304,6 +304,9 @@
       "costUsd": 18.665935,
       "costUsdRetried": 1.321803,
       "died": 0,
+      "finalGate": {
+        "judged": 1
+      },
       "repairs": {
         "fixSteps": 0,
         "fixed": 0,
@@ -369,6 +372,16 @@
           "toolCalls": 25
         },
         "verifier": {
+          "agents": {
+            "python-quality-verifier": {
+              "goJudged": 1
+            },
+            "scope-invariants-verifier": {
+              "falseNoGo": 1,
+              "goJudged": 2,
+              "noGoJudged": 1
+            }
+          },
           "causes": {
             "verifier": 1
           },
@@ -383,7 +396,12 @@
             "go": 8,
             "no_go": 1
           },
-          "toolCalls": 82
+          "toolCalls": 82,
+          "verdicts": {
+            "falseNoGo": 1,
+            "goJudged": 3,
+            "noGoJudged": 1
+          }
         }
       },
       "steps": 40,
@@ -428,5 +446,16 @@
     }
   },
   "stepsTotal": 55,
+  "tasks": {
+    "TS-004": {
+      "analyzeRuns": 1,
+      "costToGoUsd": 23.84717,
+      "costUsd": 24.226179,
+      "reachedGo": true,
+      "runs": 1,
+      "spanMs": 14805370,
+      "stepsWithoutCost": 0
+    }
+  },
   "v": 1
 }

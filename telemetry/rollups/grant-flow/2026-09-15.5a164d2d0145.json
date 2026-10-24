@@ -66,6 +66,12 @@
           "toolCalls": 19
         },
         "verifier": {
+          "agents": {
+            "code-quality-verifier": {
+              "falseNoGo": 2,
+              "noGoJudged": 2
+            }
+          },
           "causes": {
             "verifier": 2
           },
@@ -80,7 +86,11 @@
             "go": 8,
             "no_go": 2
           },
-          "toolCalls": 59
+          "toolCalls": 59,
+          "verdicts": {
+            "falseNoGo": 2,
+            "noGoJudged": 2
+          }
         }
       },
       "steps": 47,
@@ -108,5 +118,25 @@
     }
   },
   "stepsTotal": 47,
+  "tasks": {
+    "TS-PROJ-READOWN-003": {
+      "analyzeRuns": 0,
+      "costToGoUsd": 5.467392,
+      "costUsd": 5.467392,
+      "reachedGo": true,
+      "runs": 1,
+      "spanMs": 1543125,
+      "stepsWithoutCost": 1
+    },
+    "TS-PROJ-WRITEOWN-001": {
+      "analyzeRuns": 0,
+      "costToGoUsd": null,
+      "costUsd": 8.290749,
+      "reachedGo": false,
+      "runs": 1,
+      "spanMs": 2299023,
+      "stepsWithoutCost": 1
+    }
+  },
   "v": 1
 }

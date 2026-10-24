@@ -98,5 +98,25 @@
     }
   },
   "stepsTotal": 16,
+  "tasks": {
+    "TS-SSO-049": {
+      "analyzeRuns": 0,
+      "costToGoUsd": 6.823593,
+      "costUsd": 6.823593,
+      "reachedGo": true,
+      "runs": 1,
+      "spanMs": 1691453,
+      "stepsWithoutCost": 1
+    },
+    "TS-SSO-050": {
+      "analyzeRuns": 0,
+      "costToGoUsd": 2.251002,
+      "costUsd": 2.251002,
+      "reachedGo": true,
+      "runs": 1,
+      "spanMs": 1471593,
+      "stepsWithoutCost": 1
+    }
+  },
   "v": 1
 }

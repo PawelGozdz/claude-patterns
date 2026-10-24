@@ -9,6 +9,13 @@
       "costUsd": 5.066356,
       "costUsdRetried": 2.17608,
       "died": 1,
+      "finalGate": {
+        "blamedUnits": 3,
+        "judged": 5,
+        "noGo": 3,
+        "noGoAttributed": 2,
+        "unattributed": 11
+      },
       "repairs": {
         "fixSteps": 0,
         "fixed": 0,
@@ -79,6 +86,14 @@
           "toolCalls": 267
         },
         "verifier": {
+          "agents": {
+            "code-quality-verifier": {
+              "falseGo": 3,
+              "falseNoGo": 1,
+              "goJudged": 6,
+              "noGoJudged": 1
+            }
+          },
           "causes": {
             "verifier": 4
           },
@@ -93,7 +108,13 @@
             "go": 24,
             "no_go": 4
           },
-          "toolCalls": 194
+          "toolCalls": 194,
+          "verdicts": {
+            "falseGo": 3,
+            "falseNoGo": 1,
+            "goJudged": 6,
+            "noGoJudged": 1
+          }
         }
       },
       "steps": 126,
@@ -121,5 +142,25 @@
     }
   },
   "stepsTotal": 126,
+  "tasks": {
+    "TS-REP-SIGNALS-SYSTEM-WAVE1-001": {
+      "analyzeRuns": 0,
+      "costToGoUsd": null,
+      "costUsd": 1.79755,
+      "reachedGo": false,
+      "runs": 3,
+      "spanMs": 2828770,
+      "stepsWithoutCost": 19
+    },
+    "TS-REP-SUBJECT-ERASURE-001": {
+      "analyzeRuns": 0,
+      "costToGoUsd": 3.268806,
+      "costUsd": 3.268806,
+      "reachedGo": true,
+      "runs": 6,
+      "spanMs": 12693542,
+      "stepsWithoutCost": 49
+    }
+  },
   "v": 1
 }

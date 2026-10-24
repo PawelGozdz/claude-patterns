@@ -39,6 +39,10 @@
       "costUsd": 43.510934,
       "costUsdRetried": 8.233207,
       "died": 0,
+      "finalGate": {
+        "judged": 3,
+        "unattributed": 1
+      },
       "repairs": {
         "fixSteps": 3,
         "fixed": 3,
@@ -105,6 +109,11 @@
           "toolCalls": 224
         },
         "verifier": {
+          "agents": {
+            "code-quality-verifier": {
+              "goJudged": 5
+            }
+          },
           "causes": {},
           "costUsd": 12.637926,
           "durationMs": {
@@ -116,7 +125,10 @@
           "outcomes": {
             "go": 32
           },
-          "toolCalls": 182
+          "toolCalls": 182,
+          "verdicts": {
+            "goJudged": 5
+          }
         }
       },
       "steps": 159,
@@ -144,5 +156,25 @@
     }
   },
   "stepsTotal": 159,
+  "tasks": {
+    "TS-AUTH-CAPABILITIES-INIT-001": {
+      "analyzeRuns": 0,
+      "costToGoUsd": 20.197791,
+      "costUsd": 20.69557,
+      "reachedGo": true,
+      "runs": 4,
+      "spanMs": 44124285,
+      "stepsWithoutCost": 38
+    },
+    "TS-AUTH-SMS-ERROR-MAPPING-001": {
+      "analyzeRuns": 0,
+      "costToGoUsd": 12.124745,
+      "costUsd": 22.815364,
+      "reachedGo": true,
+      "runs": 6,
+      "spanMs": 13043024,
+      "stepsWithoutCost": 33
+    }
+  },
   "v": 1
 }

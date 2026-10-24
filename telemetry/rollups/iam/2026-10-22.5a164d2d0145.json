@@ -303,6 +303,9 @@
       "costUsd": 18.484599,
       "costUsdRetried": 3.667572,
       "died": 0,
+      "finalGate": {
+        "judged": 1
+      },
       "repairs": {
         "fixSteps": 5,
         "fixed": 4,
@@ -367,6 +370,11 @@
           "toolCalls": 65
         },
         "verifier": {
+          "agents": {
+            "code-quality-verifier": {
+              "goJudged": 7
+            }
+          },
           "causes": {},
           "costUsd": 2.704376,
           "durationMs": {
@@ -378,7 +386,10 @@
           "outcomes": {
             "go": 11
           },
-          "toolCalls": 34
+          "toolCalls": 34,
+          "verdicts": {
+            "goJudged": 7
+          }
         }
       },
       "steps": 55,
@@ -423,5 +434,16 @@
     }
   },
   "stepsTotal": 80,
+  "tasks": {
+    "TS-SSO-065-admin-allowlist-sciezek": {
+      "analyzeRuns": 1,
+      "costToGoUsd": 21.717055,
+      "costUsd": 22.772704,
+      "reachedGo": true,
+      "runs": 1,
+      "spanMs": 28850105,
+      "stepsWithoutCost": 1
+    }
+  },
   "v": 1
 }

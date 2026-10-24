@@ -19,6 +19,9 @@
  *   8. indeks skrzynki: domyślna kategoria z triggera, brak `sources` = orchestrate, uszkodzony
  *      nagłówek pominięty, ręczna edycja wykrywana przez --check
  *   9. pre-commit-guards ma oba wpisy
+ *  10. fałszywe GO / NO_GO per rola i agent (TASK-OBS-012): przebieg bez przypisania nie wchodzi do liczników,
+ *      workflow nie dostaje werdyktów (brak `fixes`)
+ *  11. blok `tasks`: dwa przebiegi przez północ → jeden wpis w dniu ostatniego run.end; id taska tylko jako klucz tego bloku
  */
 
 const fs = require('fs');
@@ -78,6 +81,70 @@ const events = [
   // inna maszyna: osobny plik
   ev({ host: HOST_B, kind: 'step.end', process: 'orchestrate', ts: `${D1}T12:00:00.000Z`, outcome: 'go', step: { id: 'app:verifier#1', role: 'verifier' } }),
 ];
+
+// Poprawność werdyktów (TASK-OBS-012), dzień DV, host A, projekt demo. Ręczne przeliczenie:
+//   RUN_V: alpha go, beta go, gamma no_go → naprawa → go, delta no_go → go BEZ naprawy; pierwsza bramka
+//          no_go wskazuje beta i ghost (ghost nie ma werdyktu), 1 naruszenie bez właściciela
+//   RUN_G: eps go, bramka go z pustym blamed (mianownik)
+//   RUN_N: zeta go, bramka no_go BEZ pola blamed (przebieg bez przypisania nie wchodzi do liczników)
+//   goJudged: alpha, beta, gamma(#2), delta(#2), eps = 5; falseGo: beta = 1
+//   noGoJudged: gamma#1, delta#1 = 2; falseNoGo: delta = 1 (gamma miała krok z `fixes`)
+//   ver-a: go alpha, gamma(#2), eps → goJudged 3; no_go gamma#1 → noGoJudged 1
+//   ver-b: go beta, delta(#2) → goJudged 2, falseGo 1; no_go delta#1 → noGoJudged 1, falseNoGo 1
+//   bramka: judged 2 (V i G), noGo 1, noGoAttributed 1, blamedUnits 2, unattributed 1, blamedUnmatched 1
+const DV = '2026-02-10';
+const RUN_V = 'wf_v-run';
+const RUN_G = 'wf_g-run';
+const RUN_N = 'wf_n-run';
+const vstep = (runId, hhmm, id, role, outcome, step = {}) => ev({
+  runId, kind: 'step.end', process: 'orchestrate', ts: `${DV}T${hhmm}:00.000Z`, outcome,
+  step: { id, role, ...step },
+});
+const verdictEvents = [
+  ev({ runId: RUN_V, kind: 'run.start', process: 'orchestrate', ts: `${DV}T10:00:00.000Z` }),
+  vstep(RUN_V, '10:01', 'alpha:verifier#1', 'verifier', 'go', { agent: 'ver-a' }),
+  vstep(RUN_V, '10:02', 'beta:verifier#1', 'verifier', 'go', { agent: 'ver-b' }),
+  vstep(RUN_V, '10:03', 'gamma:verifier#1', 'verifier', 'no_go', { agent: 'ver-a' }),
+  vstep(RUN_V, '10:04', 'gamma:implementer#2', 'implementer', 'ok', { attempt: 2, fixes: 'gamma:verifier#1' }),
+  vstep(RUN_V, '10:05', 'gamma:verifier#2', 'verifier', 'go', { agent: 'ver-a', attempt: 2 }),
+  vstep(RUN_V, '10:06', 'delta:verifier#1', 'verifier', 'no_go', { agent: 'ver-b' }),
+  vstep(RUN_V, '10:07', 'delta:verifier#2', 'verifier', 'go', { agent: 'ver-b', attempt: 2 }),
+  vstep(RUN_V, '10:08', 'final:final:gate#1', 'gate', 'no_go', { blamed: ['beta', 'ghost'], unblamed: 1 }),
+  ev({ runId: RUN_V, kind: 'run.end', process: 'orchestrate', ts: `${DV}T10:09:00.000Z`, outcome: 'no_go' }),
+  vstep(RUN_G, '11:01', 'eps:verifier#1', 'verifier', 'go', { agent: 'ver-a' }),
+  vstep(RUN_G, '11:02', 'final:final:gate#1', 'gate', 'go', { blamed: [], unblamed: 0 }),
+  vstep(RUN_N, '12:01', 'zeta:verifier#1', 'verifier', 'go', { agent: 'ver-a' }),
+  vstep(RUN_N, '12:02', 'final:final:gate#1', 'gate', 'no_go'),
+];
+
+// Task na dwa przebiegi przez północ (TASK-OBS-012), projekt proj-t, host A. Ręczne przeliczenie TS-TWO-1:
+//   analyze 02-12 22:00–22:20 (krok 0.5) → orchestrate O1 02-12 23:00–23:50 (kroki 1, 0.5, bramka no_go 0.25)
+//   → orchestrate O2 02-13 00:10–00:40 (krok 2, bramka go 0.25, krok PO bramce 9)
+//   runs 2, analyzeRuns 1, costUsd 13.5, costToGoUsd 4.5 (bez kroku po bramce), spanMs 22:00 → 00:40 = 9 600 000
+//   blok ląduje w dniu ostatniego run.end (02-13), nie w 02-12
+// TS-ONE-1: jeden przebieg bez bramki go → reachedGo false, costToGoUsd null, blok w dniu 02-12
+const tev = (o) => ev({ project: 'proj-t', taskRef: 'TS-TWO-1', ...o });
+const tstep = (runId, process, ts, id, role, outcome, costUsd, taskRef = 'TS-TWO-1') =>
+  tev({ taskRef, runId, kind: 'step.end', process, ts, outcome, step: { id, role }, m: { costUsd } });
+const taskEvents = [
+  tev({ runId: 'wf_a1', kind: 'run.start', process: 'analyze', ts: '2026-02-12T22:00:00.000Z' }),
+  tstep('wf_a1', 'analyze', '2026-02-12T22:05:00.000Z', 'security:panel', 'panel', 'ok', 0.5),
+  tev({ runId: 'wf_a1', kind: 'run.end', process: 'analyze', ts: '2026-02-12T22:20:00.000Z', outcome: 'halted' }),
+  tev({ runId: 'wf_o1', kind: 'run.start', process: 'orchestrate', ts: '2026-02-12T23:00:00.000Z' }),
+  tstep('wf_o1', 'orchestrate', '2026-02-12T23:05:00.000Z', 'a:implementer#1', 'implementer', 'ok', 1),
+  tstep('wf_o1', 'orchestrate', '2026-02-12T23:10:00.000Z', 'a:verifier#1', 'verifier', 'go', 0.5),
+  tstep('wf_o1', 'orchestrate', '2026-02-12T23:20:00.000Z', 'final:final:gate#1', 'gate', 'no_go', 0.25),
+  tev({ runId: 'wf_o1', kind: 'run.end', process: 'orchestrate', ts: '2026-02-12T23:50:00.000Z', outcome: 'no_go' }),
+  tev({ runId: 'wf_o2', kind: 'run.start', process: 'orchestrate', ts: '2026-02-13T00:10:00.000Z' }),
+  tstep('wf_o2', 'orchestrate', '2026-02-13T00:15:00.000Z', 'a:implementer#2', 'implementer', 'ok', 2),
+  tstep('wf_o2', 'orchestrate', '2026-02-13T00:30:00.000Z', 'final:final:gate#1', 'gate', 'go', 0.25),
+  tstep('wf_o2', 'orchestrate', '2026-02-13T00:35:00.000Z', 'doc:fixer', 'fixer', 'ok', 9),
+  tev({ runId: 'wf_o2', kind: 'run.end', process: 'orchestrate', ts: '2026-02-13T00:40:00.000Z', outcome: 'ok' }),
+  tev({ taskRef: 'TS-ONE-1', runId: 'wf_x1', kind: 'run.start', process: 'orchestrate', ts: '2026-02-12T09:00:00.000Z' }),
+  tstep('wf_x1', 'orchestrate', '2026-02-12T09:05:00.000Z', 'a:implementer#1', 'implementer', 'ok', 1, 'TS-ONE-1'),
+  tev({ taskRef: 'TS-ONE-1', runId: 'wf_x1', kind: 'run.end', process: 'orchestrate', ts: '2026-02-12T09:30:00.000Z', outcome: 'no_go' }),
+];
+events.push(...verdictEvents, ...taskEvents);
 
 const rollupOf = (r, host = HOST_A, day = D1) => r.get(`demo|${day}|${host}`);
 // Kolejność kluczy w pamięci zależy od kolejności zdarzeń (sortuje dopiero serializacja) — porównujemy bez niej.
@@ -152,10 +219,53 @@ const tests = [
     name: 'no-private-fields-in-serialized-rollup',
     run(T, r) {
       const text = [...r.values()].map((x) => T.serializeRollup(x)).join('\n');
-      for (const bad of ['taskRef', 'TS-SECRET-1', 'runId', RUN, '/home/', '/opt/', 'domain:verifier', 'verify:core']) {
+      for (const bad of ['taskRef', 'runId', RUN, '/home/', '/opt/', 'domain:verifier', 'verify:core']) {
         if (text.includes(bad)) return `agregat zawiera "${bad}"`;
       }
+      // id taska wolno mieć wyłącznie jako klucz bloku `tasks` (ADR 0015 D3), nigdzie indziej
+      for (const x of r.values()) {
+        const { tasks, ...rest } = x;
+        if (T.serializeRollup(rest).includes('TS-SECRET-1')) return 'id taska poza blokiem tasks';
+      }
       return null;
+    },
+  },
+  {
+    name: 'verdict-correctness-false-go-and-false-no-go',
+    run(T, r) {
+      const o = rollupOf(r, HOST_A, DV).processes.orchestrate;
+      const agents = o.roles.verifier.agents;
+      return eq(o.roles.verifier.verdicts, { goJudged: 5, falseGo: 1, noGoJudged: 2, falseNoGo: 1 }, 'werdykty roli')
+        || eq(agents['ver-a'], { goJudged: 3, noGoJudged: 1 }, 'ver-a')
+        || eq(agents['ver-b'], { goJudged: 2, falseGo: 1, noGoJudged: 1, falseNoGo: 1 }, 'ver-b')
+        || eq(o.finalGate, { judged: 2, noGo: 1, noGoAttributed: 1, blamedUnits: 2, unattributed: 1, blamedUnmatched: 1 }, 'bramka');
+    },
+  },
+  {
+    name: 'run-without-blame-field-is-not-counted',
+    run(T, r) {
+      // RUN_N ma werdykt go zeta i bramkę no_go bez `blamed` — ani licznik, ani mianownik go nie widzą
+      const total = rollupOf(r, HOST_A, DV).processes.orchestrate.roles.verifier.verdicts.goJudged;
+      return eq(total, 5, 'goJudged bez przebiegu bez przypisania');
+    },
+  },
+  {
+    name: 'false-no-go-counts-only-orchestrate-without-fix-step',
+    run(T, r) {
+      // D1: domain (naprawa), infra (no_go → no_go), late (no_go → go BEZ naprawy, po północy) → 3 rozstrzygalne, 1 fałszywy
+      return eq(rollupOf(r).processes.orchestrate.roles.verifier.verdicts, { noGoJudged: 3, falseNoGo: 1 }, 'D1')
+        || eq(rollupOf(r).processes.workflow.roles.verifier.verdicts, undefined, 'workflow nie dostaje werdyktów');
+    },
+  },
+  {
+    name: 'task-block-two-runs-across-midnight-lands-on-last-run-end-day',
+    run(T, r) {
+      const two = r.get('proj-t|2026-02-13|' + HOST_A);
+      const want = { runs: 2, analyzeRuns: 1, costUsd: 13.5, stepsWithoutCost: 0, reachedGo: true, costToGoUsd: 4.5, spanMs: 9600000 };
+      return eq(two && two.tasks && two.tasks['TS-TWO-1'], want, 'TS-TWO-1')
+        || eq(r.get('proj-t|2026-02-12|' + HOST_A).tasks['TS-TWO-1'], undefined, 'task nie liczy się do dnia pierwszego przebiegu')
+        || eq(r.get('proj-t|2026-02-12|' + HOST_A).tasks['TS-ONE-1'],
+          { runs: 1, analyzeRuns: 0, costUsd: 1, stepsWithoutCost: 0, reachedGo: false, costToGoUsd: null, spanMs: 1800000 }, 'task bez GO');
     },
   },
   {

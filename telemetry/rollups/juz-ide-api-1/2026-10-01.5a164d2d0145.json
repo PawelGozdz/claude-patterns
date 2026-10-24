@@ -9,6 +9,13 @@
       "costUsd": 3.105258,
       "costUsdRetried": 1.270468,
       "died": 1,
+      "finalGate": {
+        "blamedUnits": 2,
+        "judged": 6,
+        "noGo": 4,
+        "noGoAttributed": 1,
+        "unattributed": 16
+      },
       "repairs": {
         "fixSteps": 2,
         "fixed": 2,
@@ -65,6 +72,14 @@
           "toolCalls": 147
         },
         "verifier": {
+          "agents": {
+            "code-quality-verifier": {
+              "falseGo": 2,
+              "falseNoGo": 1,
+              "goJudged": 8,
+              "noGoJudged": 2
+            }
+          },
           "causes": {
             "verifier": 2
           },
@@ -79,7 +94,13 @@
             "go": 11,
             "no_go": 2
           },
-          "toolCalls": 84
+          "toolCalls": 84,
+          "verdicts": {
+            "falseGo": 2,
+            "falseNoGo": 1,
+            "goJudged": 8,
+            "noGoJudged": 2
+          }
         }
       },
       "steps": 66,
@@ -106,5 +127,34 @@
     }
   },
   "stepsTotal": 66,
+  "tasks": {
+    "TS-REP-FACET-TIER-EXPOSURE-001": {
+      "analyzeRuns": 0,
+      "costToGoUsd": null,
+      "costUsd": 1.291701,
+      "reachedGo": false,
+      "runs": 1,
+      "spanMs": 1959447,
+      "stepsWithoutCost": 17
+    },
+    "TS-REP-PROJECTION-FRESHNESS-001": {
+      "analyzeRuns": 0,
+      "costToGoUsd": 1.495752,
+      "costUsd": 1.495752,
+      "reachedGo": true,
+      "runs": 6,
+      "spanMs": 69995111,
+      "stepsWithoutCost": 17
+    },
+    "TS-REP-PROJECTION-POLICY-VERSION-GATE-001": {
+      "analyzeRuns": 0,
+      "costToGoUsd": null,
+      "costUsd": 1.455867,
+      "reachedGo": false,
+      "runs": 1,
+      "spanMs": 2835458,
+      "stepsWithoutCost": 11
+    }
+  },
   "v": 1
 }

@@ -67,6 +67,12 @@
           "toolCalls": 52
         },
         "verifier": {
+          "agents": {
+            "code-quality-verifier": {
+              "falseNoGo": 2,
+              "noGoJudged": 2
+            }
+          },
           "causes": {
             "verifier": 2
           },
@@ -81,7 +87,11 @@
             "go": 8,
             "no_go": 2
           },
-          "toolCalls": 114
+          "toolCalls": 114,
+          "verdicts": {
+            "falseNoGo": 2,
+            "noGoJudged": 2
+          }
         }
       },
       "steps": 48,
@@ -108,5 +118,16 @@
     }
   },
   "stepsTotal": 48,
+  "tasks": {
+    "TS-SP-TIER-REDESIGN-001": {
+      "analyzeRuns": 0,
+      "costToGoUsd": null,
+      "costUsd": 12.09988,
+      "reachedGo": false,
+      "runs": 1,
+      "spanMs": 3218910,
+      "stepsWithoutCost": 1
+    }
+  },
   "v": 1
 }

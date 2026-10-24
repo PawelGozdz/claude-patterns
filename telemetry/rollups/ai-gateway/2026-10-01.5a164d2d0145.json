@@ -9,6 +9,11 @@
       "costUsd": 0.77334,
       "costUsdRetried": 0.07457,
       "died": 0,
+      "finalGate": {
+        "blamedUnits": 2,
+        "judged": 2,
+        "noGoAttributed": 2
+      },
       "repairs": {
         "fixSteps": 0,
         "fixed": 0,
@@ -60,6 +65,12 @@
           "toolCalls": 61
         },
         "verifier": {
+          "agents": {
+            "ecc:typescript-reviewer": {
+              "falseGo": 2,
+              "goJudged": 7
+            }
+          },
           "causes": {},
           "costUsd": 0,
           "durationMs": {
@@ -71,7 +82,11 @@
           "outcomes": {
             "go": 7
           },
-          "toolCalls": 25
+          "toolCalls": 25,
+          "verdicts": {
+            "falseGo": 2,
+            "goJudged": 7
+          }
         }
       },
       "steps": 38,
@@ -99,5 +114,25 @@
     }
   },
   "stepsTotal": 38,
+  "tasks": {
+    "TS-AIG-013": {
+      "analyzeRuns": 0,
+      "costToGoUsd": 0.37047,
+      "costUsd": 0.37047,
+      "reachedGo": true,
+      "runs": 2,
+      "spanMs": 436973,
+      "stepsWithoutCost": 8
+    },
+    "TS-AIG-018": {
+      "analyzeRuns": 0,
+      "costToGoUsd": 0.40287,
+      "costUsd": 0.40287,
+      "reachedGo": true,
+      "runs": 1,
+      "spanMs": 348337,
+      "stepsWithoutCost": 10
+    }
+  },
   "v": 1
 }

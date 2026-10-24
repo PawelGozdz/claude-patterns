@@ -11,6 +11,15 @@ and none of it is instruction — it is history.
 ## [Unreleased]
 
 ### Added
+- Fałszywe GO i koszt taska w rollupie (TASK-OBS-012, ADR 0012 aneks): pierwszy krok bramki końcowej niesie `step.blamed`
+  / `step.unblamed` (warstwy wskazane przez naruszenia; `final-gate-blame.mjs`, kolektor + `telemetry-backfill-gate-blame.mjs`
+  uzupełniający 216 przebiegów z `wf_*.json`). Rollup: `verdicts`/`agents` per rola (`goJudged`, `falseGo`, `noGoJudged`,
+  `falseNoGo`), `finalGate` per proces i lokalny blok `tasks` (przebiegi, koszt do pierwszego GO, czas); eksport wysyła
+  z `tasks` tylko rozkłady, `findLeaks` łapie też `BOT-005a`, `TS-SIM-002A`, `DS009-…`. Eval `telemetry-gate-blame`, rozszerzone
+  `telemetry-rollups` i `telemetry-export`. **Październik: 51 fałszywych GO na 406 ocenionych (12,6%, dolna granica)**;
+  per agent (≥ 20 ocenionych): `code-quality-verifier` 17,1% (28/164), `refine-quality-verifier` 13,0% (3/23),
+  `bot-code-verifier` 8,6% (3/35), `aig-code-verifier` 6,6% (7/106), `scope-invariants-verifier` 3,7% (1/27).
+  Dla 124 naruszeń bramki nie da się wskazać warstwy (dokumenty, luki, przyczyna maszynowa), więc to nie jest pełna miara.
 - Blokady z hooków w telemetrii (TASK-OBS-011, ADR 0012 aneks): nowy `process: hook`; 9 hooków blokujących
   (`block-root-grep`, `block-subagent-commit`, `pre-workflow-lint`, `check-delegation`, `check-patterns-read`,
   `check-subagent-pattern-reads`, `check-approval-before-impl`, `check-security-considerations`,

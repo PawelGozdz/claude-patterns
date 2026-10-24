@@ -274,5 +274,16 @@
     }
   },
   "stepsTotal": 114,
+  "tasks": {
+    "TS-MAP-MARKER-PRIVACY-001": {
+      "analyzeRuns": 2,
+      "costToGoUsd": null,
+      "costUsd": 8.495929,
+      "reachedGo": false,
+      "runs": 0,
+      "spanMs": 82781186,
+      "stepsWithoutCost": 2
+    }
+  },
   "v": 1
 }

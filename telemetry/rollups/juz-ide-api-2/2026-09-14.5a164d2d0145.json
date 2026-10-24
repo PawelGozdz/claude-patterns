@@ -69,5 +69,16 @@
     }
   },
   "stepsTotal": 6,
+  "tasks": {
+    "TS-INFRA-IDEMPOTENCY-002": {
+      "analyzeRuns": 0,
+      "costToGoUsd": null,
+      "costUsd": 0.913633,
+      "reachedGo": false,
+      "runs": 1,
+      "spanMs": 276920,
+      "stepsWithoutCost": 0
+    }
+  },
   "v": 1
 }

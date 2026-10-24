@@ -10,6 +10,29 @@ bramki bez nazw plików). Zapis best-effort, bez skanu dedupu (`dedup: false`), 
 `step.role` = `<hook>:<reguła>`, `runId` = `hook-<RRRRMMDD>`; przepuszczenie i tryb ostrzegawczy nie zapisują nic.
 Bez treści komendy, ścieżek i `session_id`; projekt = katalog roboczy hooka. Błąd zapisu nie zmienia decyzji
 hooka, a `HOOK_TELEMETRY=off` wyłącza zapis.
+**Aneks (2026-10-23, TASK-OBS-012)**: poprawność werdyktów i koszt taska (ADR 0015 D2, D3).
+- **Skąd wiadomo, które GO było fałszywe.** Samych zdarzeń nie wystarczy: tylko 26 ze 123 NO_GO pierwszej bramki
+  ma w tym samym przebiegu krok `*-final-fix`, a „NO_GO bramki + jednostka z GO" oznaczałoby fałszywe prawie
+  każde z 293 GO warstw. Naruszenia są tylko w wyniku Workflow (`finalGate.violations`, teksty ze ścieżkami).
+  Dlatego `step` pierwszej bramki końcowej przebiegu dostaje dwa opcjonalne pola: `blamed` (id warstw, których
+  pliki wskazują naruszenia; pole obecne, nawet puste, znaczy „przypisanie wykonano") i `unblamed` (naruszenia
+  bez właściciela). Id warstwy jest już w `plan`, ścieżek ani treści naruszeń w zdarzeniu nie ma. `v: 1` zostaje.
+  Przypisanie liczy `scripts/lib/final-gate-blame.mjs` (ścieżka z `layers[].files`; sama nazwa pliku tylko,
+  gdy jest jednoznaczna). Kolektor dopisuje pola od teraz, a `telemetry-backfill-gate-blame.mjs` uzupełnił 216
+  przebiegów z wyników `wf_*.json` (jedyny skrypt, który przepisuje zapisane zdarzenia; idempotentny).
+- **Rollup.** `processes.<p>.roles.verifier.verdicts` i `.agents.<agent>`: `goJudged`, `falseGo`, `noGoJudged`,
+  `falseNoGo`; `processes.<p>.finalGate`: `judged`, `noGo`, `noGoAttributed`, `blamedUnits`, `unattributed`,
+  `blamedUnmatched`. Fałszywe GO to `go` jednostki, po którym pierwsza bramka dała `no_go` wskazujące jej
+  warstwę; mianownik to jednostki, których ostatni werdykt przed bramką to `go`, w przebiegach z przypisaniem.
+  Fałszywy NO_GO liczy tylko `orchestrate` (tylko tam jest `fixes`). **To dolna granica**: naruszenia bez
+  ścieżki z plików warstwy (dokumenty, luki, przyczyna maszynowa) nie mają właściciela i liczą się w `unattributed`.
+- **Blok `tasks`** (klucz `taskRef`, dzień ostatniego `run.end`, plik hosta): `runs`, `analyzeRuns`, `costUsd`,
+  `reachedGo`, `costToGoUsd`, `spanMs`. To wyjątek od §3 (agregat bez `taskRef`), zapisany w ADR 0015 D3;
+  rollupy leżą w gicie wewnętrznego repo. Eksport bierze z niego wyłącznie rozkłady (p50/p90 kosztu do GO,
+  histogram 1/2/3/4plus), a klucze bloku nigdy nie trafiają do paczki. `findLeaks` łapie też `BOT-005a`,
+  `TS-SIM-002A` i `DS009-…`; numeru bez liter (`0007`) wzorzec nie odróżni od licznika, tego pilnuje biała lista.
+- Task wznowiony po ponad trzech dniach przenosi blok do późniejszego dnia, a cron liczy `--since` 3 dni wstecz,
+  więc stary plik zachowa nieaktualny wpis do czasu pełnego przeliczenia (`telemetry-aggregate.mjs` bez `--since`).
 **Rozszerza**: [ADR 0011](0011-raportowanie-dryfu-i-telemetria-floty.md) (punkt B6 — telemetria floty)
 **Context source**: decyzja użytkownika z 2026-10-10: „jak będziemy wstawiać tylko problemy, to nie
 da nam to procentowego rozbicia dobre vs błędy" + docelowo metryki trafiają na serwer zespołu
@@ -87,7 +110,7 @@ schematem).
 Zdarzenie NIE zawiera: treści promptów, treści `reason` ze skrzynki, ścieżek plików, nazw
 tasków poza `taskRef` (TS-ID), niczego z konfiguracji projektu (np. assetów z `scope.yaml`
 aegis-flow). Opis problemu żyje w skrzynce, w gicie — zdarzenie niesie tylko jego sygnaturę.
-`taskRef` zostaje lokalnie; agregaty i wysyłka na serwer go pomijają.
+`taskRef` zostaje lokalnie; agregaty i wysyłka na serwer go pomijają (wyjątek: lokalny blok `tasks` w rollupie, patrz aneks 2026-10-23).
 
 ### 4. Gdzie leżą dane
 

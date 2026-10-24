@@ -9,6 +9,10 @@
       "costUsd": 4.242262,
       "costUsdRetried": 0.937687,
       "died": 0,
+      "finalGate": {
+        "judged": 1,
+        "unattributed": 1
+      },
       "repairs": {
         "fixSteps": 0,
         "fixed": 0,
@@ -60,6 +64,13 @@
           "toolCalls": 15
         },
         "verifier": {
+          "agents": {
+            "flutter-quality-verifier": {
+              "falseNoGo": 1,
+              "goJudged": 1,
+              "noGoJudged": 2
+            }
+          },
           "causes": {
             "verifier": 2
           },
@@ -74,7 +85,12 @@
             "go": 2,
             "no_go": 2
           },
-          "toolCalls": 26
+          "toolCalls": 26,
+          "verdicts": {
+            "falseNoGo": 1,
+            "goJudged": 1,
+            "noGoJudged": 2
+          }
         }
       },
       "steps": 21,

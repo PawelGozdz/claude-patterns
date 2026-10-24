@@ -101,5 +101,16 @@
     }
   },
   "stepsTotal": 18,
+  "tasks": {
+    "TS-MH-001": {
+      "analyzeRuns": 0,
+      "costToGoUsd": 5.587779,
+      "costUsd": 5.587779,
+      "reachedGo": true,
+      "runs": 2,
+      "spanMs": 3625971,
+      "stepsWithoutCost": 1
+    }
+  },
   "v": 1
 }

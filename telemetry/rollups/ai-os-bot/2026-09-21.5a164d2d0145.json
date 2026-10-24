@@ -9,6 +9,10 @@
       "costUsd": 4.085296,
       "costUsdRetried": 1.486358,
       "died": 0,
+      "finalGate": {
+        "judged": 1,
+        "noGo": 1
+      },
       "repairs": {
         "fixSteps": 0,
         "fixed": 0,
@@ -62,6 +66,11 @@
           "toolCalls": 9
         },
         "verifier": {
+          "agents": {
+            "architecture-verifier": {
+              "goJudged": 2
+            }
+          },
           "causes": {},
           "costUsd": 0.13905,
           "durationMs": {
@@ -73,7 +82,10 @@
           "outcomes": {
             "go": 2
           },
-          "toolCalls": 6
+          "toolCalls": 6,
+          "verdicts": {
+            "goJudged": 2
+          }
         }
       },
       "steps": 14,

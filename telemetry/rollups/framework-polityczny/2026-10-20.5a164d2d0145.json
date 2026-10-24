@@ -422,5 +422,16 @@
     }
   },
   "stepsTotal": 161,
+  "tasks": {
+    "FP-005": {
+      "analyzeRuns": 1,
+      "costToGoUsd": null,
+      "costUsd": 15.425461,
+      "reachedGo": false,
+      "runs": 1,
+      "spanMs": 17720066,
+      "stepsWithoutCost": 0
+    }
+  },
   "v": 1
 }

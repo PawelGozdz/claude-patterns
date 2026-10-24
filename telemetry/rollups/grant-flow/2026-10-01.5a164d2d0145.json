@@ -9,6 +9,10 @@
       "costUsd": 0.956825,
       "costUsdRetried": 0.504444,
       "died": 1,
+      "finalGate": {
+        "judged": 1,
+        "unattributed": 1
+      },
       "repairs": {
         "fixSteps": 2,
         "fixed": 1,
@@ -61,6 +65,12 @@
           "toolCalls": 80
         },
         "verifier": {
+          "agents": {
+            "refine-quality-verifier": {
+              "goJudged": 3,
+              "noGoJudged": 2
+            }
+          },
           "causes": {
             "verifier": 2
           },
@@ -75,7 +85,11 @@
             "go": 8,
             "no_go": 2
           },
-          "toolCalls": 69
+          "toolCalls": 69,
+          "verdicts": {
+            "goJudged": 3,
+            "noGoJudged": 2
+          }
         }
       },
       "steps": 34,
@@ -103,5 +117,25 @@
     }
   },
   "stepsTotal": 34,
+  "tasks": {
+    "TS-UI-003": {
+      "analyzeRuns": 0,
+      "costToGoUsd": null,
+      "costUsd": 0.370971,
+      "reachedGo": false,
+      "runs": 1,
+      "spanMs": 497324,
+      "stepsWithoutCost": 4
+    },
+    "TS-UI-003-refine-web-bootstrap": {
+      "analyzeRuns": 0,
+      "costToGoUsd": null,
+      "costUsd": 0.585854,
+      "reachedGo": false,
+      "runs": 2,
+      "spanMs": 3847597,
+      "stepsWithoutCost": 13
+    }
+  },
   "v": 1
 }

@@ -9,6 +9,10 @@
       "costUsd": 32.793797,
       "costUsdRetried": 14.159563,
       "died": 4,
+      "finalGate": {
+        "judged": 1,
+        "unattributed": 9
+      },
       "repairs": {
         "fixSteps": 6,
         "fixed": 3,
@@ -62,6 +66,12 @@
           "toolCalls": 97
         },
         "verifier": {
+          "agents": {
+            "code-quality-verifier": {
+              "goJudged": 1,
+              "noGoJudged": 3
+            }
+          },
           "causes": {
             "verifier": 5
           },
@@ -76,7 +86,11 @@
             "go": 11,
             "no_go": 5
           },
-          "toolCalls": 166
+          "toolCalls": 166,
+          "verdicts": {
+            "goJudged": 1,
+            "noGoJudged": 3
+          }
         }
       },
       "steps": 79,
@@ -104,5 +118,25 @@
     }
   },
   "stepsTotal": 79,
+  "tasks": {
+    "TS-RATE-003": {
+      "analyzeRuns": 0,
+      "costToGoUsd": null,
+      "costUsd": 41.435892,
+      "reachedGo": false,
+      "runs": 9,
+      "spanMs": 60260235,
+      "stepsWithoutCost": 0
+    },
+    "TS-RATE-003-rate-card-per-role": {
+      "analyzeRuns": 0,
+      "costToGoUsd": 12.687405,
+      "costUsd": 12.687405,
+      "reachedGo": true,
+      "runs": 3,
+      "spanMs": 81938027,
+      "stepsWithoutCost": 2
+    }
+  },
   "v": 1
 }

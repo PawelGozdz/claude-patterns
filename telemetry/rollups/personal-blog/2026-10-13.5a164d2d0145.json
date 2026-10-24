@@ -35,5 +35,16 @@
     }
   },
   "stepsTotal": 0,
+  "tasks": {
+    "BLOG-RF-P01": {
+      "analyzeRuns": 1,
+      "costToGoUsd": null,
+      "costUsd": 0,
+      "reachedGo": false,
+      "runs": 0,
+      "spanMs": 163252,
+      "stepsWithoutCost": 0
+    }
+  },
   "v": 1
 }

@@ -66,6 +66,12 @@
           "toolCalls": 48
         },
         "verifier": {
+          "agents": {
+            "code-quality-verifier": {
+              "falseNoGo": 1,
+              "noGoJudged": 1
+            }
+          },
           "causes": {
             "silent": 1,
             "verifier": 1
@@ -82,7 +88,11 @@
             "go": 23,
             "no_go": 1
           },
-          "toolCalls": 204
+          "toolCalls": 204,
+          "verdicts": {
+            "falseNoGo": 1,
+            "noGoJudged": 1
+          }
         }
       },
       "steps": 101,
@@ -110,5 +120,16 @@
     }
   },
   "stepsTotal": 101,
+  "tasks": {
+    "TS-DR-OUTBOX-002-adopt-library-outbox-processor": {
+      "analyzeRuns": 0,
+      "costToGoUsd": 8.025996,
+      "costUsd": 41.700251,
+      "reachedGo": true,
+      "runs": 8,
+      "spanMs": 15206936,
+      "stepsWithoutCost": 8
+    }
+  },
   "v": 1
 }

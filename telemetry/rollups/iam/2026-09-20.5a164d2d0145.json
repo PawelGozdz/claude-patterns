@@ -106,5 +106,25 @@
     }
   },
   "stepsTotal": 24,
+  "tasks": {
+    "TS-SSO-015": {
+      "analyzeRuns": 0,
+      "costToGoUsd": 4.137964,
+      "costUsd": 4.8433,
+      "reachedGo": true,
+      "runs": 2,
+      "spanMs": 422309417,
+      "stepsWithoutCost": 2
+    },
+    "TS-SSO-046-discord-pat-deposit": {
+      "analyzeRuns": 0,
+      "costToGoUsd": 12.348916,
+      "costUsd": 12.348916,
+      "reachedGo": true,
+      "runs": 2,
+      "spanMs": 8604069,
+      "stepsWithoutCost": 2
+    }
+  },
   "v": 1
 }

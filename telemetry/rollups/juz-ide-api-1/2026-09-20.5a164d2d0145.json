@@ -63,6 +63,12 @@
           "toolCalls": 22
         },
         "verifier": {
+          "agents": {
+            "code-quality-verifier": {
+              "falseNoGo": 3,
+              "noGoJudged": 3
+            }
+          },
           "causes": {
             "verifier": 3
           },
@@ -77,7 +83,11 @@
             "go": 4,
             "no_go": 3
           },
-          "toolCalls": 89
+          "toolCalls": 89,
+          "verdicts": {
+            "falseNoGo": 3,
+            "noGoJudged": 3
+          }
         }
       },
       "steps": 31,
@@ -104,5 +114,16 @@
     }
   },
   "stepsTotal": 31,
+  "tasks": {
+    "TS-NOTIFY-FCM-REAL-001": {
+      "analyzeRuns": 0,
+      "costToGoUsd": 11.528297,
+      "costUsd": 11.528297,
+      "reachedGo": true,
+      "runs": 1,
+      "spanMs": 2647028,
+      "stepsWithoutCost": 1
+    }
+  },
   "v": 1
 }

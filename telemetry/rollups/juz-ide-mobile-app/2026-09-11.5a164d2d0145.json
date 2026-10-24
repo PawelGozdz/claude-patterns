@@ -69,5 +69,16 @@
     }
   },
   "stepsTotal": 6,
+  "tasks": {
+    "DEVICE-ATTESTATION-001": {
+      "analyzeRuns": 0,
+      "costToGoUsd": null,
+      "costUsd": 2.214189,
+      "reachedGo": false,
+      "runs": 1,
+      "spanMs": 701976,
+      "stepsWithoutCost": 0
+    }
+  },
   "v": 1
 }

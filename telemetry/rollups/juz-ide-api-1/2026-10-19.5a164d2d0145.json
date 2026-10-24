@@ -192,6 +192,12 @@
       "costUsd": 62.668102,
       "costUsdRetried": 19.559087,
       "died": 2,
+      "finalGate": {
+        "blamedUnits": 2,
+        "judged": 2,
+        "noGo": 1,
+        "noGoAttributed": 1
+      },
       "repairs": {
         "fixSteps": 17,
         "fixed": 16,
@@ -262,6 +268,13 @@
           "toolCalls": 240
         },
         "verifier": {
+          "agents": {
+            "code-quality-verifier": {
+              "falseGo": 2,
+              "goJudged": 11,
+              "noGoJudged": 2
+            }
+          },
           "causes": {
             "verifier": 2
           },
@@ -276,7 +289,12 @@
             "go": 32,
             "no_go": 2
           },
-          "toolCalls": 147
+          "toolCalls": 147,
+          "verdicts": {
+            "falseGo": 2,
+            "goJudged": 11,
+            "noGoJudged": 2
+          }
         }
       },
       "steps": 161,
@@ -304,5 +322,16 @@
     }
   },
   "stepsTotal": 271,
+  "tasks": {
+    "TS-SEC-D0-BETA-HARDENING-001": {
+      "analyzeRuns": 1,
+      "costToGoUsd": 141.617929,
+      "costUsd": 142.09893,
+      "reachedGo": true,
+      "runs": 12,
+      "spanMs": 40874359,
+      "stepsWithoutCost": 0
+    }
+  },
   "v": 1
 }

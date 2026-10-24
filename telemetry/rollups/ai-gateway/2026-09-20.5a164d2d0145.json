@@ -102,5 +102,25 @@
     }
   },
   "stepsTotal": 9,
+  "tasks": {
+    "TS-AIG-010": {
+      "analyzeRuns": 0,
+      "costToGoUsd": null,
+      "costUsd": 0,
+      "reachedGo": false,
+      "runs": 1,
+      "spanMs": 0,
+      "stepsWithoutCost": 0
+    },
+    "TS-AIG-014": {
+      "analyzeRuns": 0,
+      "costToGoUsd": 4.588279,
+      "costUsd": 4.588279,
+      "reachedGo": true,
+      "runs": 1,
+      "spanMs": 1102960,
+      "stepsWithoutCost": 0
+    }
+  },
   "v": 1
 }

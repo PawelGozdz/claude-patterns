@@ -15,6 +15,7 @@
 
 import path from 'node:path';
 import { normalizeOutcome, deterministicId } from './telemetry-events.mjs';
+import { firstFinalGates } from './final-gate-blame.mjs';
 import { resolveProjectSlug } from '../workflow-metrics-lib.mjs';
 
 // Slug '-opt-projects-juz-ide-api-1' → 'juz-ide-api-1'. Najpierw prawdziwy katalog (slug jest
@@ -164,6 +165,16 @@ export function legacyRunToEvents({ steps = [], run = null, project }) {
         costUsd: Number.isFinite(s.costUsd) ? s.costUsd : null,
       },
     });
+  }
+
+  // TASK-OBS-012: naruszenia pierwszej bramki końcowej → warstwy (id są już w id kroków; bez ścieżek).
+  const blame = run && run.gateBlame;
+  if (blame && Array.isArray(blame.units)) {
+    const gate = firstFinalGates(events).get(runId);
+    if (gate) {
+      gate.step.blamed = blame.units.filter((u) => typeof u === 'string');
+      gate.step.unblamed = Number.isInteger(blame.unblamed) && blame.unblamed >= 0 ? blame.unblamed : 0;
+    }
   }
 
   const runTs = run ? iso(run.ts) : null;

@@ -41,7 +41,18 @@
         "agent": { "type": ["string", "null"] },
         "model": { "type": ["string", "null"] },
         "attempt": { "type": ["integer", "null"], "minimum": 1 },
-        "fixes": { "type": ["string", "null"] }
+        "fixes": { "type": ["string", "null"] },
+        "blamed": {
+          "description": "Tylko pierwszy krok bramki końcowej przebiegu (TASK-OBS-012): id warstw, których pliki wskazują naruszenia bramki. Pole obecne (nawet puste) = przypisanie wykonano. Bez ścieżek i treści naruszeń.",
+          "type": "array",
+          "items": { "type": "string", "maxLength": 120 },
+          "maxItems": 64
+        },
+        "unblamed": {
+          "description": "Liczba naruszeń bramki, których nie da się przypisać do warstwy (dokument, luka w sprawdzeniu, przyczyna maszynowa).",
+          "type": "integer",
+          "minimum": 0
+        }
       }
     },
     "outcome": { "enum": ["ok", "go", "no_go", "fixed", "failed", "died", "skipped", "cached", "halted", "killed", "unknown"] },

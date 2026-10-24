@@ -9,6 +9,12 @@
       "costUsd": 4.201935,
       "costUsdRetried": 0.190258,
       "died": 0,
+      "finalGate": {
+        "blamedUnits": 1,
+        "judged": 1,
+        "noGo": 1,
+        "noGoAttributed": 1
+      },
       "repairs": {
         "fixSteps": 0,
         "fixed": 0,
@@ -77,6 +83,12 @@
           "toolCalls": 16
         },
         "verifier": {
+          "agents": {
+            "bot-code-verifier": {
+              "falseGo": 1,
+              "goJudged": 2
+            }
+          },
           "causes": {},
           "costUsd": 0.992786,
           "durationMs": {
@@ -88,7 +100,11 @@
           "outcomes": {
             "go": 4
           },
-          "toolCalls": 15
+          "toolCalls": 15,
+          "verdicts": {
+            "falseGo": 1,
+            "goJudged": 2
+          }
         }
       },
       "steps": 24,

@@ -7,8 +7,15 @@
 // maszynami, a percentyle nie dają się sumować — więc plik hosta niesie liczniki (sumowalne) i
 // percentyle (liczone lokalnie), a scalanie robi odbiorca.
 //
-// Prywatność: agregat NIE niesie `taskRef`, `runId`, ścieżek ani id kroków (te zdradzają nazwy
-// jednostek z konfiguracji projektu). Kroki grupuje po `process × role`, odstępstwa po sygnaturze.
+// Prywatność: agregat NIE niesie `runId`, ścieżek ani id kroków (te zdradzają nazwy jednostek z
+// konfiguracji projektu). Kroki grupuje po `process × role`, odstępstwa po sygnaturze. Jedyny wyjątek to
+// lokalny blok `tasks` (klucz `taskRef`, ADR 0015 D3) — eksport bierze z niego wyłącznie rozkłady.
+
+import { unitOf, percentile } from './telemetry-stats.mjs';
+import { judgeVerdicts } from './telemetry-verdicts.mjs';
+import { buildTaskBlocks } from './telemetry-tasks.mjs';
+
+export { unitOf, percentile };
 
 const MISSING_ROLE = 'none';
 const VERDICTS = new Set(['go', 'no_go']);
@@ -16,21 +23,6 @@ const VERDICTS = new Set(['go', 'no_go']);
 const round = (x) => Math.round(x * 1e6) / 1e6;
 const bump = (obj, key, by = 1) => { obj[key] = (obj[key] || 0) + by; };
 const dayOf = (ev) => String(ev.ts).slice(0, 10);
-
-/**
- * Jednostka weryfikacji = id kroku bez numeru rundy. Runda ma w danych kilka postaci:
- * `…verifier#2` (orchestrate), `verify:core.2`, `verify:schemas:1`, `verify:x:a1` (workflow).
- * `fixes` wskazuje werdykt rundy N, a następny werdykt jednostki to runda N+1 — oba dają ten sam klucz.
- */
-export function unitOf(stepId) {
-  return String(stepId).replace(/#\d+$/, '').replace(/\.\d+$/, '').replace(/:a?\d+$/, '');
-}
-
-/** Nearest-rank. `sorted` rosnąco; pusta lista → null. */
-export function percentile(sorted, p) {
-  if (!sorted.length) return null;
-  return sorted[Math.max(0, Math.min(sorted.length - 1, Math.ceil((p / 100) * sorted.length) - 1))];
-}
 
 function stats(values) {
   const v = values.filter((x) => Number.isFinite(x)).sort((a, b) => a - b);
@@ -157,8 +149,27 @@ export function buildRollups(events) {
     if (ev.outcome === 'go') p.verification.firstPassGo++;
   }
 
+  tallyVerdicts(events, get);
+  for (const [key, tasks] of buildTaskBlocks(events)) {
+    const r = rollups.get(key);
+    if (r) r.tasks = tasks;
+  }
+
   for (const r of rollups.values()) finalize(r);
   return rollups;
+}
+
+// Poprawność werdyktów (TASK-OBS-012): liczniki wchodzą do dnia werdyktu (jak first-pass), per rola i agent.
+// Bloki powstają leniwie — dni bez takich werdyktów zostają bajt w bajt takie same.
+function tallyVerdicts(events, get) {
+  const add = (target, counts) => { for (const [k, n] of Object.entries(counts)) bump(target, k, n); };
+  const { tallies, gates } = judgeVerdicts(events);
+  for (const { ev, counts } of tallies) {
+    const rb = roleBlock(processBlock(get(ev), ev.process), 'verifier');
+    add((rb.verdicts ||= {}), counts);
+    add(((rb.agents ||= {})[ev.step.agent || 'unknown'] ||= {}), counts);
+  }
+  for (const { ev, counts } of gates) add((processBlock(get(ev), ev.process).finalGate ||= {}), counts);
 }
 
 function finalize(r) {

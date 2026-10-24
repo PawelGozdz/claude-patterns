@@ -188,6 +188,9 @@
       "costUsd": 6.892538,
       "costUsdRetried": 1.911122,
       "died": 0,
+      "finalGate": {
+        "judged": 1
+      },
       "repairs": {
         "fixSteps": 0,
         "fixed": 0,
@@ -252,6 +255,11 @@
           "toolCalls": 24
         },
         "verifier": {
+          "agents": {
+            "flutter-quality-verifier": {
+              "goJudged": 2
+            }
+          },
           "causes": {},
           "costUsd": 1.269433,
           "durationMs": {
@@ -263,7 +271,10 @@
           "outcomes": {
             "go": 2
           },
-          "toolCalls": 10
+          "toolCalls": 10,
+          "verdicts": {
+            "goJudged": 2
+          }
         }
       },
       "steps": 18,
@@ -290,5 +301,16 @@
     }
   },
   "stepsTotal": 128,
+  "tasks": {
+    "MAP-BASEMAP-STYLE-001": {
+      "analyzeRuns": 1,
+      "costToGoUsd": 12.438275,
+      "costUsd": 13.378933,
+      "reachedGo": true,
+      "runs": 2,
+      "spanMs": 161617681,
+      "stepsWithoutCost": 0
+    }
+  },
   "v": 1
 }

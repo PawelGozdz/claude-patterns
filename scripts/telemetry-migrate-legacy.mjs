@@ -18,7 +18,7 @@ import { findRunCandidates, runResultFields } from './workflow-metrics-collect.m
 // wf.taskId i nieistniejące result.escalatedAt). Pliki wf_*.json przebiegów wciąż leżą w
 // ~/.claude/projects — uzupełniamy z nich, bez zmiany pliku źródłowego (nowy obiekt).
 function enrichRun(run, wfPaths) {
-  if (!run || ('taskRef' in run && 'finalVerdict' in run)) return run;
+  if (!run || ('taskRef' in run && 'finalVerdict' in run && 'gateBlame' in run)) return run;
   const wfPath = wfPaths.get(run.runId);
   if (!wfPath) return run;
   try {

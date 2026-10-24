@@ -294,6 +294,9 @@
       "costUsd": 1.056677,
       "costUsdRetried": 0.330538,
       "died": 0,
+      "finalGate": {
+        "judged": 1
+      },
       "repairs": {
         "fixSteps": 1,
         "fixed": 1,
@@ -344,6 +347,11 @@
           "toolCalls": 16
         },
         "verifier": {
+          "agents": {
+            "ecc:typescript-reviewer": {
+              "goJudged": 1
+            }
+          },
           "causes": {},
           "costUsd": 0.29035,
           "durationMs": {
@@ -355,7 +363,10 @@
           "outcomes": {
             "go": 2
           },
-          "toolCalls": 8
+          "toolCalls": 8,
+          "verdicts": {
+            "goJudged": 1
+          }
         }
       },
       "steps": 11,
@@ -399,5 +410,25 @@
     }
   },
   "stepsTotal": 38,
+  "tasks": {
+    "FP-005b": {
+      "analyzeRuns": 1,
+      "costToGoUsd": 1.949832,
+      "costUsd": 1.949832,
+      "reachedGo": true,
+      "runs": 1,
+      "spanMs": 2748522,
+      "stepsWithoutCost": 0
+    },
+    "FP-005c": {
+      "analyzeRuns": 1,
+      "costToGoUsd": null,
+      "costUsd": 1.682317,
+      "reachedGo": false,
+      "runs": 0,
+      "spanMs": 1026703,
+      "stepsWithoutCost": 0
+    }
+  },
   "v": 1
 }

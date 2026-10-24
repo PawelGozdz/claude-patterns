@@ -98,5 +98,16 @@
     }
   },
   "stepsTotal": 9,
+  "tasks": {
+    "TS-SSO-044": {
+      "analyzeRuns": 0,
+      "costToGoUsd": 10.321729,
+      "costUsd": 10.321729,
+      "reachedGo": true,
+      "runs": 1,
+      "spanMs": 2018989,
+      "stepsWithoutCost": 1
+    }
+  },
   "v": 1
 }

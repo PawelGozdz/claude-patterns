@@ -9,6 +9,13 @@
       "costUsd": 3.523236,
       "costUsdRetried": 0.184498,
       "died": 0,
+      "finalGate": {
+        "blamedUnits": 2,
+        "judged": 5,
+        "noGo": 2,
+        "noGoAttributed": 2,
+        "unattributed": 2
+      },
       "repairs": {
         "fixSteps": 0,
         "fixed": 0,
@@ -63,6 +70,12 @@
           "toolCalls": 33
         },
         "verifier": {
+          "agents": {
+            "architecture-verifier": {
+              "falseGo": 2,
+              "goJudged": 7
+            }
+          },
           "causes": {},
           "costUsd": 0.403521,
           "durationMs": {
@@ -74,7 +87,11 @@
           "outcomes": {
             "go": 7
           },
-          "toolCalls": 27
+          "toolCalls": 27,
+          "verdicts": {
+            "falseGo": 2,
+            "goJudged": 7
+          }
         }
       },
       "steps": 36,
@@ -102,5 +119,61 @@
     }
   },
   "stepsTotal": 36,
+  "tasks": {
+    "BOT-008b": {
+      "analyzeRuns": 0,
+      "costToGoUsd": 0.439125,
+      "costUsd": 0.439125,
+      "reachedGo": true,
+      "runs": 2,
+      "spanMs": 88711779,
+      "stepsWithoutCost": 0
+    },
+    "BOT-015": {
+      "analyzeRuns": 0,
+      "costToGoUsd": null,
+      "costUsd": 0.527471,
+      "reachedGo": false,
+      "runs": 1,
+      "spanMs": 221867,
+      "stepsWithoutCost": 0
+    },
+    "BOT-016": {
+      "analyzeRuns": 0,
+      "costToGoUsd": 1.123809,
+      "costUsd": 1.123809,
+      "reachedGo": true,
+      "runs": 1,
+      "spanMs": 360071,
+      "stepsWithoutCost": 0
+    },
+    "BOT-017": {
+      "analyzeRuns": 0,
+      "costToGoUsd": 0.602772,
+      "costUsd": 0.602772,
+      "reachedGo": true,
+      "runs": 1,
+      "spanMs": 201285,
+      "stepsWithoutCost": 0
+    },
+    "BOT-018": {
+      "analyzeRuns": 0,
+      "costToGoUsd": null,
+      "costUsd": 0.569593,
+      "reachedGo": false,
+      "runs": 1,
+      "spanMs": 230577,
+      "stepsWithoutCost": 0
+    },
+    "BOT-019": {
+      "analyzeRuns": 0,
+      "costToGoUsd": null,
+      "costUsd": 0.43684,
+      "reachedGo": false,
+      "runs": 1,
+      "spanMs": 158302,
+      "stepsWithoutCost": 0
+    }
+  },
   "v": 1
 }

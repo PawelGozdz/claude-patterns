@@ -9,6 +9,13 @@
       "costUsd": 12.341379,
       "costUsdRetried": 4.799038,
       "died": 0,
+      "finalGate": {
+        "blamedUnits": 1,
+        "judged": 2,
+        "noGo": 1,
+        "noGoAttributed": 1,
+        "unattributed": 1
+      },
       "repairs": {
         "fixSteps": 0,
         "fixed": 0,
@@ -77,6 +84,12 @@
           "toolCalls": 110
         },
         "verifier": {
+          "agents": {
+            "flutter-quality-verifier": {
+              "falseGo": 1,
+              "goJudged": 2
+            }
+          },
           "causes": {},
           "costUsd": 1.592535,
           "durationMs": {
@@ -88,7 +101,11 @@
           "outcomes": {
             "go": 3
           },
-          "toolCalls": 9
+          "toolCalls": 9,
+          "verdicts": {
+            "falseGo": 1,
+            "goJudged": 2
+          }
         }
       },
       "steps": 36,
@@ -115,5 +132,34 @@
     }
   },
   "stepsTotal": 36,
+  "tasks": {
+    "DS009-DRAFT-ROUTE-ENTRY-001": {
+      "analyzeRuns": 0,
+      "costToGoUsd": 3.517915,
+      "costUsd": 4.111911,
+      "reachedGo": true,
+      "runs": 1,
+      "spanMs": 301275,
+      "stepsWithoutCost": 0
+    },
+    "DS009-PUBLIKACJA-WIRING": {
+      "analyzeRuns": 0,
+      "costToGoUsd": null,
+      "costUsd": 3.234659,
+      "reachedGo": false,
+      "runs": 1,
+      "spanMs": 514419,
+      "stepsWithoutCost": 0
+    },
+    "DS009-PUBLIKACJA-WIRING-2": {
+      "analyzeRuns": 0,
+      "costToGoUsd": 4.994809,
+      "costUsd": 4.994809,
+      "reachedGo": true,
+      "runs": 1,
+      "spanMs": 421277,
+      "stepsWithoutCost": 0
+    }
+  },
   "v": 1
 }

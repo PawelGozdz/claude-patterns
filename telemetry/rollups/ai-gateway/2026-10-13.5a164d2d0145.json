@@ -29,6 +29,9 @@
       "costUsd": 0.61519,
       "costUsdRetried": 0,
       "died": 0,
+      "finalGate": {
+        "judged": 1
+      },
       "repairs": {
         "fixSteps": 0,
         "fixed": 0,
@@ -89,5 +92,16 @@
     }
   },
   "stepsTotal": 3,
+  "tasks": {
+    "TS-AIG-090": {
+      "analyzeRuns": 0,
+      "costToGoUsd": 5.141649,
+      "costUsd": 6.13563,
+      "reachedGo": true,
+      "runs": 2,
+      "spanMs": 440033205,
+      "stepsWithoutCost": 11
+    }
+  },
   "v": 1
 }

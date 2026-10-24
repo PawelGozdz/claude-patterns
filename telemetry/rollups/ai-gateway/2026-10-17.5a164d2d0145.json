@@ -306,6 +306,9 @@
       "costUsd": 26.146992,
       "costUsdRetried": 4.728765,
       "died": 0,
+      "finalGate": {
+        "judged": 2
+      },
       "repairs": {
         "fixSteps": 7,
         "fixed": 7,
@@ -370,6 +373,11 @@
           "toolCalls": 109
         },
         "verifier": {
+          "agents": {
+            "aig-code-verifier": {
+              "goJudged": 11
+            }
+          },
           "causes": {},
           "costUsd": 5.58072,
           "durationMs": {
@@ -381,7 +389,10 @@
           "outcomes": {
             "go": 18
           },
-          "toolCalls": 89
+          "toolCalls": 89,
+          "verdicts": {
+            "goJudged": 11
+          }
         }
       },
       "steps": 87,
@@ -420,5 +431,25 @@
     }
   },
   "stepsTotal": 145,
+  "tasks": {
+    "TS-AIG-091": {
+      "analyzeRuns": 1,
+      "costToGoUsd": 11.110147,
+      "costUsd": 11.685862,
+      "reachedGo": true,
+      "runs": 1,
+      "spanMs": 17261704,
+      "stepsWithoutCost": 1
+    },
+    "TS-AIG-097": {
+      "analyzeRuns": 1,
+      "costToGoUsd": 22.773922,
+      "costUsd": 23.362981,
+      "reachedGo": true,
+      "runs": 1,
+      "spanMs": 7489489,
+      "stepsWithoutCost": 0
+    }
+  },
   "v": 1
 }

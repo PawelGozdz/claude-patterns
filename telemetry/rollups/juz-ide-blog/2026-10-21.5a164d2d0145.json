@@ -220,6 +220,11 @@
       "costUsd": 15.903557,
       "costUsdRetried": 2.664189,
       "died": 0,
+      "finalGate": {
+        "judged": 2,
+        "noGo": 1,
+        "unattributed": 2
+      },
       "repairs": {
         "fixSteps": 6,
         "fixed": 6,
@@ -287,6 +292,11 @@
           "toolCalls": 70
         },
         "verifier": {
+          "agents": {
+            "content-reviewer": {
+              "goJudged": 2
+            }
+          },
           "causes": {
             "verifier": 1
           },
@@ -301,7 +311,10 @@
             "go": 17,
             "no_go": 1
           },
-          "toolCalls": 67
+          "toolCalls": 67,
+          "verdicts": {
+            "goJudged": 2
+          }
         }
       },
       "steps": 77,
@@ -346,5 +359,16 @@
     }
   },
   "stepsTotal": 86,
+  "tasks": {
+    "BLOG-HOWTO-001": {
+      "analyzeRuns": 1,
+      "costToGoUsd": 15.898753,
+      "costUsd": 15.903557,
+      "reachedGo": true,
+      "runs": 5,
+      "spanMs": 16405368,
+      "stepsWithoutCost": 0
+    }
+  },
   "v": 1
 }

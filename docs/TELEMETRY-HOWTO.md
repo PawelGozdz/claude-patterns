@@ -39,6 +39,11 @@ node scripts/report-deviation.mjs --list         # skrzynka odstępstw, triage
 
 ## Częste pułapki
 
+- Blok `tasks` w rollupie ląduje w dniu ostatniego `run.end` taska. Cron liczy `--since` 3 dni wstecz, więc task wznowiony
+  po dłuższej przerwie zostawia nieaktualny wpis w starym dniu — raz w tygodniu przelicz całość: `node scripts/telemetry-aggregate.mjs`.
+- `step.blamed` (fałszywe GO) dopisuje kolektor. Zdarzenia sprzed 2026-10-23 uzupełnia `node scripts/telemetry-backfill-gate-blame.mjs`
+  (idempotentny, czyta `wf_*.json`; przepisuje pliki zdarzeń atomowo, więc zrób kopię `telemetry/events/` przed pierwszym użyciem na nowej maszynie).
+
 - Cron ma ubogi PATH — dlatego jest wrapper `scripts/cron/audit-daily.sh`, a podprocesy używają `process.execPath`.
 - Ten sam plik hooka nie może stać pod dwoma zdarzeniami: `sync-global-hooks` identyfikuje hook po nazwie pliku (stąd osobny `workflow-metrics-stop.js`).
 - `--project` w `telemetry-emit.mjs` musi być ścieżką, nie nazwą — hooki dopasowują agentów po katalogu roboczym.

@@ -16,6 +16,8 @@
  *   5. ten sam wejściowy zestaw → bajt w bajt ta sama paczka; --since i host filtrują
  *   6. findLeaks łapie ścieżkę i id zadania w kluczu oraz wartości; czysta paczka przechodzi
  *   7. CLI: exit 0 dla prawdziwych rollupów, zły --since = exit 1; eval zarejestrowany w pre-commit
+ *   8. blok `tasks` wychodzi tylko jako rozkłady (TASK-OBS-012); liczniki werdyktów przechodzą przez białą listę,
+ *      agent z niebezpiecznym kluczem odpada; findLeaks łapie formaty `BOT-005a`, `TS-SIM-002A`, `DS009-…`
  */
 
 const fs = require('fs');
@@ -84,6 +86,43 @@ const tests = [
     },
   },
   {
+    name: 'tasks-block-leaves-only-distributions',
+    run({ ex }) {
+      // runs 1/2/3/5 → histogram 1,1,1,4plus; koszt do GO policzony tylko dla tasków z GO: [1, 3, 10] → p50 3, p90 10
+      const tasks = {
+        'TS-AAA-001': { runs: 1, reachedGo: true, costToGoUsd: 1, costUsd: 1, spanMs: 100 },
+        'TS-BBB-002': { runs: 2, reachedGo: true, costToGoUsd: 3, costUsd: 4, spanMs: 200 },
+        'TS-CCC-003': { runs: 5, reachedGo: false, costToGoUsd: null, costUsd: 99, spanMs: 300 },
+        'BOT-005a': { runs: 3, reachedGo: true, costToGoUsd: 10, costUsd: 12, spanMs: 400 },
+      };
+      const rec = ex.projectRollup(rollup({ tasks }));
+      const text = JSON.stringify(rec);
+      const leaked = ['TS-AAA', 'TS-BBB', 'TS-CCC', 'BOT-005a', 'spanMs', '"costUsd":99'].find((t) => text.includes(t));
+      return (leaked ? `wyciekło: ${leaked}` : null)
+        || eq(rec.tasks, { n: 4, reachedGo: 3, costToGoUsd: { n: 3, p50: 3, p90: 10 }, runs: { 1: 1, 2: 1, 3: 1, '4plus': 1 } }, 'rozkłady tasków')
+        || eq(ex.findLeaks(rec), [], 'paczka z rozkładami jest czysta')
+        || eq('tasks' in ex.projectRollup(rollup()), false, 'rollup bez tasks nie dostaje bloku');
+    },
+  },
+  {
+    name: 'verdict-counters-pass-by-whitelist-and-unsafe-agent-keys-drop',
+    run({ ex }) {
+      const r = rollup();
+      const v = { goJudged: 5, falseGo: 1, noGoJudged: 2, falseNoGo: 1, path: '/opt/x' };
+      r.processes.orchestrate.roles.verifier.verdicts = v;
+      r.processes.orchestrate.roles.verifier.agents = { 'ver-a': { ...v }, 'Zły Agent/ścieżka': { ...v } };
+      r.processes.orchestrate.finalGate = { judged: 2, noGo: 1, noGoAttributed: 1, blamedUnits: 2, unattributed: 1, blamedUnmatched: 1, cwd: '/opt/x' };
+      const ctx = { dropped: [] };
+      const rec = ex.projectRollup(r, ctx);
+      const role = rec.processes.orchestrate.roles.verifier;
+      return eq(role.verdicts, { goJudged: 5, falseGo: 1, noGoJudged: 2, falseNoGo: 1 }, 'liczniki werdyktów bez cudzych pól')
+        || eq(Object.keys(role.agents), ['ver-a'], 'agenci w paczce')
+        || eq(ctx.dropped.length, 1, 'odrzucony agent zgłoszony')
+        || eq(rec.processes.orchestrate.finalGate, { judged: 2, noGo: 1, noGoAttributed: 1, blamedUnits: 2, unattributed: 1, blamedUnmatched: 1 }, 'bramka')
+        || eq('verdicts' in ex.projectRollup(rollup()).processes.orchestrate.roles.verifier, false, 'stary rollup nie dostaje pustego bloku');
+    },
+  },
+  {
     name: 'id-is-stable-and-content-hash-follows-content',
     run({ ex }) {
       const a = ex.projectRollup(rollup());
@@ -119,7 +158,10 @@ const tests = [
     run({ ex }) {
       const bad = (v) => ex.findLeaks({ a: v }).length > 0;
       return eq([bad({ '/opt/x': 1 }), bad({ k: 'a b' }), bad({ k: 'TS-FOO-123' }), bad({ 'TASK-OBS-008': 1 }), bad({ k: 'C:\\x' })], [true, true, true, true, true], 'wykryte')
-        || eq([bad({ verifier: 1, go: 2 }), bad({ cause: 'config', day: '2026-10-16' }), bad({ h: '5a164d2d0145' })], [false, false, false], 'nie krzyczy na poprawne');
+        // formaty z danych (TASK-OBS-012): litera po numerze, prefiks z cyframi
+        || eq([bad({ 'BOT-005a': 1 }), bad({ 'TS-SIM-002A': 1 }), bad({ 'FP-005b': 1 }), bad({ 'DS009-PUBLIKACJA-WIRING': 1 }), bad({ k: 'TS-AIG-081a' })], [true, true, true, true, true], 'nowe formaty id')
+        || eq([bad({ verifier: 1, go: 2 }), bad({ cause: 'config', day: '2026-10-16' }), bad({ h: '5a164d2d0145' })], [false, false, false], 'nie krzyczy na poprawne')
+        || eq([bad({ '4plus': 1, 'ver-a': 2 }), bad({ kind: 'rollup-batch' }), bad({ id: '0c5e1f2a-9b7d-4a31-8e6f-2d4b6a8c0e1f' })], [false, false, false], 'nie krzyczy na histogram, agentów i uuid');
     },
   },
   {

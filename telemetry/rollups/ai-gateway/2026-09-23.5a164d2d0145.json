@@ -9,6 +9,11 @@
       "costUsd": 8.853707,
       "costUsdRetried": 2.879959,
       "died": 0,
+      "finalGate": {
+        "judged": 1,
+        "noGo": 1,
+        "unattributed": 3
+      },
       "repairs": {
         "fixSteps": 0,
         "fixed": 0,
@@ -62,6 +67,11 @@
           "toolCalls": 7
         },
         "verifier": {
+          "agents": {
+            "general-purpose": {
+              "goJudged": 2
+            }
+          },
           "causes": {},
           "costUsd": 0.547074,
           "durationMs": {
@@ -73,7 +83,10 @@
           "outcomes": {
             "go": 2
           },
-          "toolCalls": 18
+          "toolCalls": 18,
+          "verdicts": {
+            "goJudged": 2
+          }
         }
       },
       "steps": 21,
@@ -101,5 +114,34 @@
     }
   },
   "stepsTotal": 21,
+  "tasks": {
+    "TS-AIG-012": {
+      "analyzeRuns": 0,
+      "costToGoUsd": null,
+      "costUsd": 1.180029,
+      "reachedGo": false,
+      "runs": 1,
+      "spanMs": 406223,
+      "stepsWithoutCost": 0
+    },
+    "TS-AIG-015": {
+      "analyzeRuns": 0,
+      "costToGoUsd": null,
+      "costUsd": 2.545678,
+      "reachedGo": false,
+      "runs": 1,
+      "spanMs": 909413,
+      "stepsWithoutCost": 0
+    },
+    "TS-SSO-053": {
+      "analyzeRuns": 0,
+      "costToGoUsd": null,
+      "costUsd": 5.128,
+      "reachedGo": false,
+      "runs": 1,
+      "spanMs": 1768003,
+      "stepsWithoutCost": 1
+    }
+  },
   "v": 1
 }
