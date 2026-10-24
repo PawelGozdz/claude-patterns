@@ -1468,6 +1468,8 @@ plik z zakresu należy do zakresu automatycznie. Resztę plików towarzyszących
 nie zgadnie. `patterns_exclude: [<ścieżka wzorca>]` usuwa wzorzec z doboru, a wpis, który niczego
 nie wykluczył, daje ostrzeżenie (literówka).
 
+**Uzupełnienie (2026-10-25).** Zgłoszenia aegis-flow TS-007 (reguła D2 unieważnia testy loadera i kontraktu audytu, niezmiennik liczników wymaga emittera i testu loadera) i juz-ide-api-2 (usunięcie `radiusKm` dotyka plików infrastruktury) to ta sama klasa co przeniesienie eksportu: usunięcie lub zawężenie pola, typu albo reguły wymaga w `dirs` konsumentów i testów. ORC-042 zadziałał poprawnie (zgłoszenie zamiast edycji), brakowało ich w planie.
+
 <a id="orc-081"></a>
 
 ### ORC-081 — prompt weryfikatora nazywa wynik sondy obiektem `checks` (2026-09-29)

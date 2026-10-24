@@ -83,7 +83,7 @@ orchestrate:
         tags: ["api:app"], checks: ["typecheck:api", "lint:check:api"],
         role: "Przypadki użycia w apps/api: handlery komend i zapytań orkiestrujące domenę. Bez reguł biznesowych." }
     - { id: infrastructure,
-        dirs: [infrastructure/, apps/api/src/app/, apps/api/src/shared/, packages/contracts/, docker-compose.yaml, infra/],
+        dirs: [infrastructure/, apps/api/src/app/, apps/api/src/shared/, apps/api/tools/, packages/contracts/, docker-compose.yaml, infra/],
         agent: "infrastructure-implementer",
         tags: ["api:data-access", "api:api-surface"],
         checks: ["typecheck:api", "lint:check:api"],
