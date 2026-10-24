@@ -11,6 +11,13 @@ and none of it is instruction — it is history.
 ## [Unreleased]
 
 ### Added
+- Raport nad rollupami (TASK-OBS-014, ADR 0015 D6): `scripts/telemetry-report.mjs` czyta wyłącznie `telemetry/rollups/`
+  (liczniki sumowane po hostach). Widoki `--by engine|process|role|project|week`, `--engine <hash>` (okno 7 dni z danymi przed i po
+  pierwszym dniu silnika: first-pass, fałszywe GO, NO_GO bramki, udział kosztu powtórek, cichy zgon, gęstość odstępstw per
+  sygnatura; szum poniżej 20% albo 2 pp, próba poniżej 10 = `insufficient_data`; podaje też udział przebiegów pod tym silnikiem
+  w oknie „po"), `--data-quality`, `--json`, `--md`. Wspólny czytnik `telemetry-rollup-reader.mjs` zastąpił pętlę w
+  `flow-live.loadBaseline`. Eval `telemetry-report` (10 przypadków, pre-commit). Na danych z października `--data-quality`
+  pokazuje: 78% przebiegów bez `engine`, 43% kroków bez kosztu, 53% odstępstw w `other`.
 - Taksonomia przyczyn i wynik PAUSE (TASK-OBS-013, ADR 0012 aneks, ADR 0015 D5): `cause` dostaje `pattern_card` i `plan`;
   `defaultCategory(trigger, ruleRef)` mapuje `ANZ-LAYER-*` → `plan`, `ANZ-PATTERN-*` → `pattern_card`.
   `report-deviation --trigger agent_note` bez `--category` to błąd użycia (exit 1); opis `deviation_note` w szablonie Workflow

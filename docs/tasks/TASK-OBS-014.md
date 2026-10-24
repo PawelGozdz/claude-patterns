@@ -2,11 +2,11 @@
 id: TASK-OBS-014
 title: 'telemetry-report.mjs: raport nad rollupami, delta per wersja silnika'
 type: feature
-status: todo
+status: done
 priority: P1
 story_points: 3
 created_date: 2026-10-22
-updated_date: 2026-10-22
+updated_date: 2026-10-24
 assignee: '@unassigned'
 labels: [observability, telemetry, dashboard]
 epic: EP-OBSERVABILITY-002
@@ -46,6 +46,7 @@ czyta. Potrzebny jest jeden skrypt, który czyta wyłącznie rollupy i odpowiada
 
 ## Kryteria akceptacji
 
-- [ ] `node scripts/telemetry-report.mjs --engine <hash>` pokazuje delta przed/po dla wymienionych metryk.
-- [ ] `--data-quality` wypisuje cztery liczniki jakości danych.
-- [ ] Eval zielony; wpis w `TELEMETRY-HOWTO.md` w sekcji „Codzienne komendy".
+- [x] `node scripts/telemetry-report.mjs --engine <hash>` pokazuje delta przed/po dla wymienionych metryk.
+- [x] `--data-quality` wypisuje cztery liczniki jakości danych (`other` w dwóch ujęciach: kroki i odstępstwa; „bez taskRef" to
+      przybliżenie z bloku `tasks`, bo rollup nie niesie przebiegów bez taskRef).
+- [x] Eval zielony (10 przypadków, wpięty w pre-commit); wpis w `TELEMETRY-HOWTO.md` w sekcji „Codzienne komendy".
