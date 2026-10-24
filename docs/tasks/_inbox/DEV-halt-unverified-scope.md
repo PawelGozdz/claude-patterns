@@ -6,7 +6,7 @@ resolution: >
   innych jednostek, a weryfikator ocenia tylko fragmenty wynikające z powodu jednostki i nie
   wpisuje pliku do unverified_scope z tego powodu.
 trigger: halt
-category: other
+category: verifier
 sources:
   - orchestrate
 rule_ref: null

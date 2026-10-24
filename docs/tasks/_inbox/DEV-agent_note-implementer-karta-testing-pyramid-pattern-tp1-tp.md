@@ -6,6 +6,7 @@ dismissed_reason: >
   na warstwie implementation (testy dochodzą dopiero w warstwie testing). Informacyjne, nie
   błąd.
 trigger: agent_note
+category: pattern_card
 rule_ref: null
 first_seen: 2026-09-27
 last_seen: 2026-09-27

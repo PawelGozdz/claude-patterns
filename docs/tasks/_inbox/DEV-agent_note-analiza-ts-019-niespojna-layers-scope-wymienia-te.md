@@ -4,7 +4,7 @@ status: dismissed
 dismissed_reason: >
   Jednorazowa niespójność analizy aegis-flow TS-019 (layers_scope wymienia test compose D19, a compose przeniesiono do zadania HTTP, Q1=B), wychwycona i obsłużona w przebiegu wf_3a5c22ec-f69; raport TS-019.report.md trafia do decyzji człowieka. Nie jest wadą wzorców ani silnika.
 trigger: agent_note
-category: other
+category: plan
 sources:
   - orchestrate
 rule_ref: null

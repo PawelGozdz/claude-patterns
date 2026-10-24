@@ -10,6 +10,7 @@ dismissed_reason: >
   taka karta jest potrzebna, to decyzja projektowa dodania jej lokalnie albo promocji po
   drugim użyciu (docs/CONTRIBUTING.md).
 trigger: agent_note
+category: pattern_card
 rule_ref: null
 first_seen: 2026-09-28
 last_seen: 2026-09-28

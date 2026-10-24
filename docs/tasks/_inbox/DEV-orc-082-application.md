@@ -5,6 +5,7 @@ resolution: >
   Naprawione jako ORC-090 (2026-10-03): layerOwnsPath dopasowuje ścieżki
   względne pakietu i pełne dirs późniejszych warstw.
 trigger: blocked_by_prior
+category: plan
 rule_ref: ORC-082
 first_seen: 2026-10-03
 last_seen: 2026-10-03

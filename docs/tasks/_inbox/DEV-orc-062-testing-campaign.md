@@ -10,6 +10,7 @@ dismissed_reason: >
   Decyzja właściciela warstwy shared/security nadal potrzebna w marketing-hub, poza zakresem
   claude-patterns.
 trigger: blocked_by_prior
+category: lint
 rule_ref: ORC-062
 first_seen: 2026-09-27
 last_seen: 2026-09-27

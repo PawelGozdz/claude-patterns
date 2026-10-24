@@ -4,7 +4,7 @@ status: dismissed
 dismissed_reason: >
   Zachowanie zamierzone przy podziale na jednostki (units): testy app/auth/ należą do późniejszej jednostki testing, więc sonda warstwy api je pomija, a pokrycie sprawdza ta jednostka i bramka końcowa. Notatka agenta to ostrzeżenie, nie odstępstwo od reguły.
 trigger: agent_note
-category: other
+category: test
 sources:
   - orchestrate
 rule_ref: null

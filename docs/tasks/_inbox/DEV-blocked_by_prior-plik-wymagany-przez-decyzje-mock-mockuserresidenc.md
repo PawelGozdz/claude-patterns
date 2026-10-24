@@ -7,7 +7,7 @@ dismissed_reason: >
   TS-SEC-D0-BETA-HARDENING-001.analysis.md (juz-ide-api-1): tests-geo-revoke ma go w dirs.
   Odroczenie czerwieni do późniejszej warstwy (ORC-099) działa, gdy plik ma właściciela.
 trigger: blocked_by_prior
-category: other
+category: typecheck
 sources:
   - orchestrate
 rule_ref: null

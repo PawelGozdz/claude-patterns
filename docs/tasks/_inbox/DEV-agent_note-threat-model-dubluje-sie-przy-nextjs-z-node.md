@@ -7,6 +7,7 @@ dismissed_reason: >
   Zostaje potencjalny szum ANZ-STAGE-SKIPPED w inboxie (commands/analyze.md, krok 4) —
   opcje opisane w docs/tasks/TASK-PANEL-NODE-ADVISOR-001.md, czekają na decyzję.
 trigger: agent_note
+category: config
 rule_ref: null
 first_seen: 2026-10-13
 last_seen: 2026-10-13

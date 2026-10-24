@@ -7,7 +7,7 @@ dismissed_reason: >
   konfiguracja oczekuje. Chcąc uruchamiać testy w tej warstwie ai-gateway zmienia swój blok
   (tests/checks).
 trigger: agent_note
-category: other
+category: test
 sources:
   - orchestrate
 rule_ref: null

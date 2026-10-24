@@ -16,6 +16,7 @@ resolution: >
   osobnej inwestygacji, zanim powstanie kolejna reguła ORC. Zostawione jako otwarta obserwacja
   w docs/decisions/orchestrate-rule-history.md#orc-071.
 trigger: halt
+category: plan
 rule_ref: ORC-070
 first_seen: 2026-09-27
 last_seen: 2026-09-27

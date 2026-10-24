@@ -6,7 +6,7 @@ resolution: >
   więc eslint . w korzeniu projektu nie linituje wyemitowanego skryptu
   (docs/decisions/orchestrate-rule-history.md#orc-114).
 trigger: agent_note
-category: other
+category: lint
 sources:
   - orchestrate
 rule_ref: ORC-065

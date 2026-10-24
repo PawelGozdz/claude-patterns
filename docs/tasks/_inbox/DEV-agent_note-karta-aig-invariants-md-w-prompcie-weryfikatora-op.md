@@ -5,7 +5,7 @@ dismissed_reason: >
   Kolejność jednostek: karta aig-invariants.md w prompcie weryfikatora była starsza niż zmiany
   warstwy (ai-gateway TS-AIG-093). Karta jest własnością projektu; bez defektu silnika.
 trigger: agent_note
-category: other
+category: pattern_card
 sources:
   - orchestrate
 rule_ref: null

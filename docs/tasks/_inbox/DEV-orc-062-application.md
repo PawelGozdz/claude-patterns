@@ -28,7 +28,7 @@ reopened_at: 2026-10-18
 reopened_from_status: dismissed
 sources:
   - orchestrate
-category: other
+category: plan
 ---
 
 # DEV-orc-062-application

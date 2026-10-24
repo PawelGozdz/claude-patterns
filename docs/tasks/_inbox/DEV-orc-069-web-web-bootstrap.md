@@ -6,6 +6,7 @@ dismissed_reason: >
   warstwie), ORC-084 i ORC-100 (powtarzające się luki zamykają warstwę jako GO_WITH_GAPS).
   Ostatnie wystąpienie 2026-10-01.
 trigger: halt
+category: verifier
 rule_ref: ORC-069
 first_seen: 2026-10-01
 last_seen: 2026-10-01

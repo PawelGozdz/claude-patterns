@@ -4,7 +4,7 @@ status: dismissed
 dismissed_reason: >
   Zgodne z projektem: warstwa config w aegis-flow to schemat i YAML (dirs config/), więc karty Python SI/I nie mają tam czego sprawdzać. Weryfikacja bez trafień jest tu normalna, a kod z tych kart sprawdzają warstwy engine i api. Zmiana nie jest potrzebna.
 trigger: agent_note
-category: other
+category: pattern_card
 sources:
   - orchestrate
 rule_ref: null

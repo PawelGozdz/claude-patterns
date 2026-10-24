@@ -10,6 +10,7 @@ dismissed_reason: >
   nie trzeba dopisywać do listy zakazanych komend, bo to nie był przypadek bez
   zgody, tylko legalne wykonanie instrukcji użytkownika.
 trigger: halt
+category: infra
 rule_ref: ORC-041
 first_seen: 2026-09-28
 last_seen: 2026-09-28

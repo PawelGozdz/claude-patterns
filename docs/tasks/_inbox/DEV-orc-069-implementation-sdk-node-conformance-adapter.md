@@ -6,6 +6,7 @@ dismissed_reason: >
   oba punkty jako N/A — dokładnie mechanizm, który istniał już przed ORC-072 na poziomie
   warstw (decisions[]). Potwierdza wartość tego kanału. Nie wymaga zmiany w silniku.
 trigger: halt
+category: verifier
 rule_ref: ORC-069
 first_seen: 2026-09-27
 last_seen: 2026-09-27

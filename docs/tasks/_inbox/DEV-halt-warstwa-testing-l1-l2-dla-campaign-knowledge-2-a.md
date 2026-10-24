@@ -6,6 +6,7 @@ dismissed_reason: >
   na jeden budżet tury, 2x cicha śmierć implementera. Wymaga podziału units[] w analizie
   marketing-hub (per-context albo L1/L2), nie zmiany silnika.
 trigger: halt
+category: budget
 rule_ref: null
 first_seen: 2026-09-27
 last_seen: 2026-09-27

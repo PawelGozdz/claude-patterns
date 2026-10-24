@@ -5,6 +5,7 @@ resolution: >
   Przeniesione do TASK-ORCH-CARDS-STACK-MISMATCH-001 (weryfikator z listą stałą nie ocenia
   wstrzykniętych kart niedopasowanych do stosu).
 trigger: agent_note
+category: pattern_card
 rule_ref: null
 first_seen: 2026-10-01
 last_seen: 2026-10-01

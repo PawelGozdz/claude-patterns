@@ -4,7 +4,7 @@ status: promoted
 resolution: >
   Naprawione 2026-10-18 w ai-gateway .claude/blocks/aig-panel.yml: when etapu threat-model rozszerzony o poison|inject|identity|tożsam (TS-AIG-075 i TS-AIG-076), runtime.yml zmaterializowane.
 trigger: analyze_note
-category: other
+category: config
 sources:
   - analyze
 rule_ref: ANZ-WHEN-GAP

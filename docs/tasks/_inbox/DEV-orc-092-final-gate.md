@@ -8,7 +8,7 @@ dismissed_reason: >
   projektu juz-ide-api-1 jest nadrzędna wobec generycznej karty, to świadome odstępstwo
   projektu.
 trigger: agent_note
-category: other
+category: infra
 sources:
   - orchestrate
 rule_ref: ORC-092

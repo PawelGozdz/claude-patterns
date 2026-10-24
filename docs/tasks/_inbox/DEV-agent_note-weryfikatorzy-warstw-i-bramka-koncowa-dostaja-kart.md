@@ -5,7 +5,7 @@ resolution: >
   Przeniesione do TASK-ORCH-CARDS-STACK-MISMATCH-001 (karty DDD/NestJS dla stosu
   node-ts-claude-api, bot-invariants.md bez _summary).
 trigger: agent_note
-category: other
+category: pattern_card
 sources:
   - orchestrate
 rule_ref: null

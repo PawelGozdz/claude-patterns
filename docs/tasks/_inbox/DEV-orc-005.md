@@ -4,6 +4,7 @@ status: promoted
 resolution: >
   Naprawione jako ORC-102 (2026-10-08): prepare kończy exit 2 z treścią błędu YAML zamiast gubić decisions[]/minor_fixes[]; hook check-human-voice ostrzega przy zapisie analizy.
 trigger: agent_note
+category: config
 rule_ref: ORC-005
 first_seen: 2026-10-08
 last_seen: 2026-10-08

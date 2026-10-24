@@ -5,6 +5,7 @@ resolution: >
   Przeniesione do docs/tasks/TASK-ORCH-PATTERN-GAPS-001.md (2026-09-26) razem z innymi
   znaleziskami kart wzorców z tego samego dnia.
 trigger: halt
+category: lint
 rule_ref: ORC-026
 first_seen: 2026-09-26
 last_seen: 2026-09-26

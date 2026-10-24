@@ -9,6 +9,7 @@ resolution: >
   TS-RATE-003) — jeśli pojawi się CZWARTE z inną frazą, następny krok to dopasowanie po
   rzeczywistych id warstw z allLayers, nie kolejny wariant regexu (patrz dodatek w rule-history).
 trigger: halt
+category: pattern_card
 rule_ref: ORC-069
 first_seen: 2026-09-27
 last_seen: 2026-09-27

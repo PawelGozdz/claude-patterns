@@ -5,7 +5,7 @@ dismissed_reason: >
   Zmiany spoza zakresu warstwy w drzewie to prace innych jednostek tego samego przebiegu
   (ai-gateway TS-AIG-091); odfiltrowują je ORC-070 i ORC-093.
 trigger: agent_note
-category: other
+category: pattern_card
 sources:
   - orchestrate
 rule_ref: null

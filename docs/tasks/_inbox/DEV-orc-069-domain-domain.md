@@ -9,6 +9,7 @@ resolution: >
   (duplikat weryfikacji z innej jednostki/przebiegu) POZOSTAJE poza zasięgiem tego filtra —
   nie da się mechanicznie odróżnić duplikatu od realnej luki bez historii poprzednich jednostek.
 trigger: halt
+category: plan
 rule_ref: ORC-069
 first_seen: 2026-09-26
 last_seen: 2026-09-26

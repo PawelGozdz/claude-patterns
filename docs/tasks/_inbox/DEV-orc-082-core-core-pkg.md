@@ -4,7 +4,7 @@ status: promoted
 resolution: >
   Konfiguracja framework-polityczny (3.1), nie silnik. Naprawione 2026-10-18: lint:boundaries usunięty z checks warstwy core w .claude/blocks/fp-modular-monolith.yml (depcruise skanuje apps/, którego w tej warstwie jeszcze nie ma); zostaje w worker, web i final_gate. runtime.yml zmaterializowany. ORC-082 bez zmian: dotyczy czerwonego typecheck w plikach późniejszych warstw, nie braku katalogu.
 trigger: blocked_by_prior
-category: other
+category: lint
 sources:
   - orchestrate
 rule_ref: ORC-082

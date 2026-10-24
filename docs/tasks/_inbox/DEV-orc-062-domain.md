@@ -6,6 +6,7 @@ resolution: >
   błędy TS leżą w dirs późniejszych warstw (mechanicznie, w CORE szablonu); błędy we własnym
   zakresie, w wcześniejszych warstwach i bez ścieżki nadal blokują.
 trigger: blocked_by_prior
+category: typecheck
 rule_ref: ORC-062
 first_seen: 2026-09-30
 last_seen: 2026-09-30

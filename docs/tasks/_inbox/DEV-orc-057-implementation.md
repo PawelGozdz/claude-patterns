@@ -4,6 +4,7 @@ status: promoted
 resolution: >
   Naprawione jako ORC-087 (2026-10-01): ZAKAZ COMMITOWANIA w prompcie implementera + licznik commitów od bazy w report.warnings.
 trigger: agent_note
+category: infra
 rule_ref: ORC-057
 first_seen: 2026-10-01
 last_seen: 2026-10-01

@@ -2,7 +2,7 @@
 id: DEV-orc-103-testing-docs-security
 status: proposed
 trigger: agent_note
-category: other
+category: infra
 sources:
   - orchestrate
 rule_ref: ORC-103

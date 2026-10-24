@@ -8,7 +8,7 @@ dismissed_reason: >
   .env.example). Na stałe: analiza zadań z testami L2 ma wpisywać checks jako komendę dosłowną z
   DATABASE_URL=postgres://fp:fp_local_dev@127.0.0.1:5432/fp (dane lokalne z .env.example).
 trigger: blocked_by_prior
-category: other
+category: test
 sources:
   - orchestrate
 rule_ref: ORC-062

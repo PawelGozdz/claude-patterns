@@ -8,6 +8,7 @@ dismissed_reason: >
   plików. Nie błąd silnika — marketing-hub musi zdecydować (osobna poprawka importów w
   knowledge-application, albo świadomy override zakresu), to działanie poza claude-patterns.
 trigger: blocked_by_prior
+category: lint
 rule_ref: ORC-062
 first_seen: 2026-09-27
 last_seen: 2026-09-27

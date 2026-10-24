@@ -4,6 +4,7 @@ status: promoted
 resolution: >
   Naprawione jako ORC-094 (2026-10-03): hook block-subagent-commit (mechaniczny zakaz commitów subagentów przy świeżym orchestrating.json) + ostrzeżenie w raporcie, gdy sonda drzewa nie zwróci licznika commitów.
 trigger: agent_note
+category: infra
 rule_ref: ORC-087
 first_seen: 2026-10-03
 last_seen: 2026-10-03

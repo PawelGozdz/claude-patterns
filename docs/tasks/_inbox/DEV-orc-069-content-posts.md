@@ -4,7 +4,7 @@ status: promoted
 resolution: >
   Ten sam halt co DEV-orc-092-content-screens-data (BLOG-HOWTO-001): GO z unverified_scope po 3 próbach, bo content-reviewer wyczerpywał maxTurns 30; podniesione do 60. Twierdzenie, że weryfikator nie widzi plików nieśledzonych, nie potwierdza się: lista plików od silnika (treeFilesCmd) zawiera git ls-files -o, a definicja agenta nie używa git diff. Jeśli halt wróci przy maxTurns 60, otworzyć rekord ponownie i sprawdzić dziennik przebiegu wf_93c5345d.
 trigger: halt
-category: other
+category: verifier
 sources:
   - orchestrate
 rule_ref: ORC-069

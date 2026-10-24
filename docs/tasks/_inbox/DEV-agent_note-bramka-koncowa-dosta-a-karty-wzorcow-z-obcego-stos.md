@@ -7,7 +7,7 @@ resolution: >
   kolejne wystąpienie, juz-ide-mobile-app MAP-BASEMAP-STYLE-001). Brak karty dla zewnętrznych
   dostawców kafelków to luka wzorca projektu, nie silnika.
 trigger: agent_note
-category: other
+category: pattern_card
 sources:
   - orchestrate
 rule_ref: null

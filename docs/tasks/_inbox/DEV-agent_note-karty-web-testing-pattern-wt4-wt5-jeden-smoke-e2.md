@@ -8,7 +8,7 @@ resolution: >
   VITE_FEATURE_* i publiczne adresy własnego originu nie są sekretami, reguła ESLint ma
   dopuszczać je listą nazw. Reguła ESLint w grant-flow (WS6-N5) to konfiguracja projektu.
 trigger: agent_note
-category: other
+category: pattern_card
 sources:
   - orchestrate
 rule_ref: null

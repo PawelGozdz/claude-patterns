@@ -8,7 +8,7 @@ dismissed_reason: >
   ANL-038 (decyzja usuwająca eksport wymaga w dirs także importerów albo jednostki, która je
   domknie). Silnik działał zgodnie z zakresem.
 trigger: agent_note
-category: other
+category: plan
 sources:
   - orchestrate
 rule_ref: null

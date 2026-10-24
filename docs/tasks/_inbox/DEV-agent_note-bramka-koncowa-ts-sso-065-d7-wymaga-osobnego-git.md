@@ -8,7 +8,7 @@ dismissed_reason: >
   go z osobnego `git worktree` albo trzyma zmianę Caddyfile poza przebiegiem. Silnik nie wie,
   które drzewo jest bind-mountowane. Przy powtórzeniu rekord otworzy się sam.
 trigger: agent_note
-category: other
+category: infra
 sources:
   - orchestrate
 rule_ref: null

@@ -4,6 +4,7 @@ status: dismissed
 dismissed_reason: >
   Konfiguracja slotu weryfikatora w ai-os-bot (bot-verifiers: stała lista bez kart CV/SI/SEP/LGP/RPP/TP/ZOD), nie silnik claude-patterns. Do rozstrzygnięcia po stronie projektu — dodać weryfikator jakości kodu do slotu.
 trigger: agent_note
+category: pattern_card
 rule_ref: null
 first_seen: 2026-10-01
 last_seen: 2026-10-01

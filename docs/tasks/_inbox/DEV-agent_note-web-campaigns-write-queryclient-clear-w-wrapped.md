@@ -7,7 +7,7 @@ dismissed_reason: >
   szczegółach. Agent słusznie zgłosił go jako poza zakresem poprawki (ORC-042). Do wzięcia
   jako osobne zadanie w marketing-hub.
 trigger: agent_note
-category: other
+category: scope
 sources:
   - orchestrate
 rule_ref: null

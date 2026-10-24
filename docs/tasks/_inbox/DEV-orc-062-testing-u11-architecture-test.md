@@ -4,6 +4,7 @@ status: dismissed
 dismissed_reason: >
   BLOCKED_BY_PRIOR słuszny: test bezpieczeństwa czytający main.ts jest czerwony po przeniesieniu filtra author.bot do dispatchera (u4); naprawa wymaga zmiany *.security.test.ts, czyli decyzji człowieka. Do obserwacji: weryfikator u4 dał GO mimo czerwonego testu bezpieczeństwa.
 trigger: blocked_by_prior
+category: test
 rule_ref: ORC-062
 first_seen: 2026-10-03
 last_seen: 2026-10-03

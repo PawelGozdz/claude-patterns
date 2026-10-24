@@ -6,7 +6,7 @@ dismissed_reason: >
   logu przebiegu nie pozwala wykazać, że agent sondy ją pominął. Powiązana przyczyna (lista
   padających plików) naprawiona w ORC-106. Wróci jako nowe wystąpienie, jeśli to prawda.
 trigger: agent_note
-category: other
+category: test
 sources:
   - orchestrate
 rule_ref: ORC-099

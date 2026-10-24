@@ -7,7 +7,7 @@ dismissed_reason: >
   dokumentacyjnym. Brakuje tylko zdania w karcie projektu, co należy do właściciela
   ai-gateway przy zamykaniu 100/102, nie do silnika.
 trigger: agent_note
-category: other
+category: pattern_card
 sources:
   - orchestrate
 rule_ref: null

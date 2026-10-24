@@ -13,6 +13,7 @@ resolution: >
   pokrywają wszystkie 3 elementy tego zgłoszenia. Eval: verdict-unverified-scope-filters-
   other-layers-own-scope + rozszerzony verifier-prompt-carries-probe-facts-and-forbids-rerun.
 trigger: halt
+category: plan
 rule_ref: ORC-069
 first_seen: 2026-09-27
 last_seen: 2026-09-27

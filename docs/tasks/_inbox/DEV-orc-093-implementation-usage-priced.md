@@ -5,6 +5,7 @@ resolution: >
   Naprawione jako ORC-098b (2026-10-04): wpis dirs będący plikiem ma właściciela (dokładne
   dopasowanie, najwyższa ranga), remis samych późniejszych warstw odracza czerwień.
 trigger: blocked_by_prior
+category: plan
 rule_ref: ORC-093
 first_seen: 2026-10-04
 last_seen: 2026-10-04

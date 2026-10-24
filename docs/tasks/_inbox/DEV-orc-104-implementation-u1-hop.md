@@ -4,7 +4,7 @@ status: promoted
 resolution: >
   Naprawione w części jako ORC-105 (2026-10-17): kotwica korzenia repo przypisuje `_root=$(git rev-parse --show-toplevel) || exit 1` i dopiero potem cd, więc poza repo git sonda kończy się exit 1 zamiast biec w cwd (eval: probe-root-anchor-fails-outside-git-repo). NIEZWERYFIKOWANE i nienaprawione: zarzut, że resumeFromRunId po naprawie cwd zwraca wynik z cache (prompt sondy bez zmian, 6 ms). Jeśli wróci na działającym przebiegu, zgłoszenie otworzy się ponownie.
 trigger: halt
-category: other
+category: infra
 sources:
   - orchestrate
 rule_ref: ORC-104

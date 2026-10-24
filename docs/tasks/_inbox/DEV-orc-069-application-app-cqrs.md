@@ -5,6 +5,7 @@ dismissed_reason: >
   Nieaktualne po ORC-081 (prompt weryfikatora nazywa wynik sondy obiektem checks; zgłoszony brak
   obiektu checks w prompcie), ORC-084 i ORC-100. Ostatnie wystąpienie 2026-09-29.
 trigger: halt
+category: budget
 rule_ref: ORC-069
 first_seen: 2026-09-29
 last_seen: 2026-09-29

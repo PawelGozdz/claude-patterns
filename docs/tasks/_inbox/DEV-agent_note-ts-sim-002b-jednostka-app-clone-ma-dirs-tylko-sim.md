@@ -5,7 +5,7 @@ dismissed_reason: >
   Mechanizm zadziałał: bramka końcowa wyłapała brak okablowania simulation.module.ts (CH10).
   Przypisanie plików do jednostek to jakość analizy grant-flow TS-SIM-002B, nie silnik.
 trigger: agent_note
-category: other
+category: plan
 sources:
   - orchestrate
 rule_ref: null

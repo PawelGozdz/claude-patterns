@@ -8,6 +8,7 @@ resolution: >
   za ostrzeżeniami z shared/ na końcu logu). Podejrzenie zgłaszającego (ekstrakcja w
   orchestrate.template.mjs, nie implementer) potwierdzone i naprawione u źródła.
 trigger: blocked_by_prior
+category: lint
 rule_ref: ORC-062
 first_seen: 2026-09-27
 last_seen: 2026-09-27

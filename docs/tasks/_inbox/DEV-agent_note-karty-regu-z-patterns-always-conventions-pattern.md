@@ -4,7 +4,7 @@ status: promoted
 resolution: >
   Zebrane w TASK-ORCH-CARDS-STACK-MISMATCH-001 (2026-10-18): karty reguł DDD/NestJS z patterns.always trafiają do projektów o innym stosie; zadanie ma hipotezy (patterns.remove w bloku potomnym, podział kart, layers_skip, _summary) i kryteria ukończenia. Ten rekord to ai-os-bot BOT-036 (conventions, security-invariants, safe-error-propagation, testing-pyramid, zod-schema).
 trigger: agent_note
-category: other
+category: pattern_card
 sources:
   - orchestrate
 rule_ref: null

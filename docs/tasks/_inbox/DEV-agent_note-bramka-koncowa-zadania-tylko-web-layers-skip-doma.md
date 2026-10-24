@@ -5,7 +5,7 @@ resolution: >
   Przeniesione do TASK-ORCH-CARDS-STACK-MISMATCH-001 (zadanie tylko-web dostało karty warstwy
   API mimo layers_skip).
 trigger: agent_note
-category: other
+category: pattern_card
 sources:
   - orchestrate
 rule_ref: null

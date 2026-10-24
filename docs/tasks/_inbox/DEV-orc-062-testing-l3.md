@@ -7,6 +7,7 @@ dismissed_reason: >
   (audyt request_id NOT NULL vs kanal cli, stare e2e na naglowku) do naprawy w
   marketing-hub jako osobna praca, nie tutaj.
 trigger: blocked_by_prior
+category: plan
 rule_ref: ORC-062
 first_seen: 2026-09-26
 last_seen: 2026-09-26

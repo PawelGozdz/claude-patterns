@@ -4,7 +4,7 @@ status: dismissed
 dismissed_reason: >
   Decyzja projektu, nie błąd wzorca ani silnika: karta conventions opisuje domyślną nazwę implementacji repozytorium (`*-kysely.repository.ts`), a kontekst metrics w juz-ide-api-1 ma utrwaloną, lokalną konwencję `*.kysely-repository.ts`. Spójność w obrębie kontekstu wygrywa nad kartą; nowe konteksty stosują kartę. Jeśli ma to być reguła, dopisać ją do lokalnych rules/ projektu. Przy powtórzeniu rekord otworzy się sam.
 trigger: agent_note
-category: other
+category: pattern_card
 sources:
   - orchestrate
 rule_ref: null

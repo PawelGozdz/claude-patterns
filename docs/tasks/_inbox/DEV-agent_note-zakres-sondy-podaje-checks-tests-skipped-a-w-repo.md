@@ -6,7 +6,7 @@ dismissed_reason: >
   API (TS-020 done, merge 1a4671e). Luka dotyczyła kolejności warstw w jednym tasku, nie
   silnika.
 trigger: agent_note
-category: other
+category: test
 sources:
   - orchestrate
 rule_ref: null

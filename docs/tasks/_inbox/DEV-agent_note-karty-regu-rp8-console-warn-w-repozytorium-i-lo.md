@@ -7,7 +7,7 @@ resolution: >
   console.warn tylko w repozytorium bez loggera (RP2-EXCEPTION), bez dodawania DI wyłącznie
   dla tego ostrzeżenia. Przykład w karcie i wiersz tabeli weryfikatora zaktualizowane.
 trigger: agent_note
-category: other
+category: pattern_card
 sources:
   - orchestrate
 rule_ref: null

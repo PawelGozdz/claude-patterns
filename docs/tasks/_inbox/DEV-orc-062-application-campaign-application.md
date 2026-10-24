@@ -6,6 +6,7 @@ dismissed_reason: >
   warstwy (shared/security/validation), implementer odmówił naprawy cudzych plików. Decyzja
   właściciela shared/security potrzebna w marketing-hub, nie błąd silnika.
 trigger: blocked_by_prior
+category: plan
 rule_ref: ORC-062
 first_seen: 2026-09-27
 last_seen: 2026-09-27

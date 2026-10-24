@@ -4,7 +4,7 @@ status: dismissed
 dismissed_reason: >
   Zachowanie zamierzone: weryfikator warstwy engine widzi pliki poza zawężonym zakresem (tests/, app/), które naprawiają kolejne jednostki planu TS-003. Ustalenia poza zakresem są odnotowane, nie blokują warstwy. Zmiana silnika nie jest potrzebna.
 trigger: agent_note
-category: other
+category: verifier
 sources:
   - orchestrate
 rule_ref: null

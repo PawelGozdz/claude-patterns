@@ -8,7 +8,7 @@ resolution: >
   naruszenie CH10. Drugi wątek (port backfill w application/interfaces bez implementacji) to zwykły podział
   na warstwy: implementację dostarcza infrastructure.
 trigger: agent_note
-category: other
+category: plan
 sources:
   - orchestrate
 rule_ref: ORC-042

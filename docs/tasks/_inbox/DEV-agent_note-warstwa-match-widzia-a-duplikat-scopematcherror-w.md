@@ -6,7 +6,7 @@ dismissed_reason: >
   scope_guardrail.py i scope_match poza zakresem warstwy match to kolejność jednostek w jednym
   przebiegu.
 trigger: agent_note
-category: other
+category: scope
 sources:
   - orchestrate
 rule_ref: null

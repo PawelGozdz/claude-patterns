@@ -6,7 +6,7 @@ dismissed_reason: >
   iam-invariants.md wymagają decyzji projektu, poza zakresem warstwy docs. Do rozstrzygnięcia w
   iam.
 trigger: agent_note
-category: other
+category: scope
 sources:
   - orchestrate
 rule_ref: null

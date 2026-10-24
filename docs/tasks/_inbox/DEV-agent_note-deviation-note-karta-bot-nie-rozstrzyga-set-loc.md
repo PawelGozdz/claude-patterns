@@ -6,6 +6,7 @@ dismissed_reason: >
   decyzja o karcie leży w ai-os-bot. Niestosowalność kart DDD/Fastify do tego stosu zbiera
   TASK-ORCH-CARDS-STACK-MISMATCH-001.
 trigger: agent_note
+category: pattern_card
 rule_ref: null
 first_seen: 2026-10-07
 last_seen: 2026-10-07

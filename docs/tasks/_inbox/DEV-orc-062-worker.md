@@ -7,7 +7,7 @@ resolution: >
   takiej jednostki. Silnik to dopuszcza, remis własności rozstrzyga ORC-112. Tu luka była w units[]
   analizy FP-005 (barrel packages/sources/src/index.ts tylko w sources-http), wyleczona --overrides.
 trigger: blocked_by_prior
-category: other
+category: plan
 sources:
   - orchestrate
 rule_ref: ORC-062

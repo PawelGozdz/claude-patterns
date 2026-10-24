@@ -6,7 +6,7 @@ dismissed_reason: >
   została zsynchronizowana z erratum ADR-0010 w kolejnej jednostce implementation:docs-card
   tego samego przebiegu. Nie błąd claude-patterns.
 trigger: agent_note
-category: other
+category: pattern_card
 sources:
   - orchestrate
 rule_ref: null

@@ -9,6 +9,7 @@ dismissed_reason: >
   osobny, niezwiązany czerwony test do naprawienia (geographic-location.schemas.test.ts:123),
   to działanie poza claude-patterns.
 trigger: blocked_by_prior
+category: typecheck
 rule_ref: ORC-062
 first_seen: 2026-09-26
 last_seen: 2026-09-26

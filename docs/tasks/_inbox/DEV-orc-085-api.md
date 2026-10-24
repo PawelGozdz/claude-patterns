@@ -4,7 +4,7 @@ status: promoted
 resolution: >
   ORC-118: prompt sondy kończył się bezwarunkowo linią o braku skryptu w package.json, także dla komend dosłownych (make typecheck) w projekcie Pythona. Teraz dla samych komend dosłownych linia znika, a skipped znaczy tylko brak samej komendy (docs/decisions/orchestrate-rule-history.md#orc-118). Przyczyna jest prawdopodobna, bez dziennika przebiegu; gdy ślepa sonda wróci, trzeba zajrzeć w dziennik.
 trigger: agent_note
-category: other
+category: typecheck
 sources:
   - orchestrate
 rule_ref: ORC-085

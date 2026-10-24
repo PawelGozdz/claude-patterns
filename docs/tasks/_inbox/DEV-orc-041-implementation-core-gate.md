@@ -8,7 +8,7 @@ resolution: >
   „kod istnieje" nie liczą plików brudnych, chyba że implementer sam je zgłosił. Zniszczona
   praca właściciela została przywrócona ręcznie w projekcie.
 trigger: agent_note
-category: other
+category: infra
 sources:
   - orchestrate
 rule_ref: ORC-041

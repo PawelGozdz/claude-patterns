@@ -6,7 +6,7 @@ resolution: >
   rozbieżność; silnik sam niczego nie stage'uje, a nowe pliki były tylko git add -N z sond
   (ORC-096). Zduplikowane ścieżki bezwzględne usunięte w ORC-125 (finalFileList).
 trigger: agent_note
-category: other
+category: infra
 sources:
   - orchestrate
 rule_ref: ORC-067

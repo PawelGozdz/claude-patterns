@@ -5,6 +5,7 @@ dismissed_reason: >
   Dotyczy karty aig-invariants.md w ai-gateway (INV-D7: czy testy mogą używać as unknown as).
   Rozstrzygnięcie w karcie projektu.
 trigger: agent_note
+category: pattern_card
 rule_ref: null
 first_seen: 2026-10-03
 last_seen: 2026-10-03

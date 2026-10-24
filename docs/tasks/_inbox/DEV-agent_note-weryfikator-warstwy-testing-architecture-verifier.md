@@ -14,6 +14,7 @@ dismissed_reason: >
   "Rule cards outside your competence" w architecture-verifier.md — agent ma teraz jawny
   nakaz zgłaszać (`deviation_note`) karty poza swoją kompetencją zamiast je cicho podmieniać.
 trigger: agent_note
+category: pattern_card
 rule_ref: null
 first_seen: 2026-09-26
 last_seen: 2026-09-26

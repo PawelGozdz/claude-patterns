@@ -4,6 +4,7 @@ status: dismissed
 dismissed_reason: >
   Pominięcie konkretnego dopisku (INV-A2) przez implementera jednostki docs w ai-gateway TS-AIG-070; wykryła je bramka końcowa jako deviation_note, czyli system zadziałał. Brak wzorca systemowego — do obserwacji, jeśli weryfikator warstwy docs będzie systematycznie pomijał dopiski wymagane decyzjami.
 trigger: agent_note
+category: verifier
 rule_ref: null
 first_seen: 2026-10-03
 last_seen: 2026-10-03

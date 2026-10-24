@@ -29,6 +29,7 @@ resolution_note: >
   checks jako komendy dosłowne, clean-arch dostał flutter analyze/test.
   Wcześniejsza diagnoza „do obserwacji” nieaktualna.
 trigger: halt
+category: verifier
 rule_ref: ORC-069
 first_seen: 2026-09-28
 last_seen: 2026-10-04

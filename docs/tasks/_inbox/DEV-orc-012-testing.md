@@ -4,7 +4,7 @@ status: dismissed
 dismissed_reason: >
   python/testing-pattern.md ma sekcję Applicability, która opisuje ten przypadek wprost: bez DDD i SQLAlchemy (engine/ + plik dziennika, jak aegis-flow) zostają idee, a części domain.* i SQLAlchemy się pomija. Karty _summary.md nie ma celowo, bo wzorzec jest doradczy, nie wiążący.
 trigger: agent_note
-category: other
+category: pattern_card
 sources:
   - orchestrate
 rule_ref: ORC-012

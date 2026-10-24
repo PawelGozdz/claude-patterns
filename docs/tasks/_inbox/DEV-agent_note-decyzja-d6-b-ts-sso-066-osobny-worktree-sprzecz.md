@@ -9,7 +9,7 @@ resolution: >
   zadania w iam: /orchestrate pracuje w głównym checkoucie i trybu worktree nie ma, więc zmiany
   bramy trzeba prowadzić inaczej albo zmienić decyzję. To wymaga człowieka, nie silnika.
 trigger: agent_note
-category: other
+category: infra
 sources:
   - orchestrate
 rule_ref: null

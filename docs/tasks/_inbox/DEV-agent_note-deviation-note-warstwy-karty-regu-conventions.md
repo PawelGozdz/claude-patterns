@@ -4,7 +4,7 @@ status: promoted
 resolution: >
   Zebrane w TASK-ORCH-CARDS-STACK-MISMATCH-001 (2026-10-18): karty reguł DDD/NestJS z patterns.always trafiają do projektów o innym stosie; zadanie ma hipotezy (patterns.remove w bloku potomnym, podział kart, layers_skip, _summary) i kryteria ukończenia. Ten rekord to iam TS-SSO-062 (zadania Caddyfile/bash/python/CI). Część o ślepej sondzie warstwy caddy to konfiguracja iam: warstwa bez package.json potrzebuje checks jako komend dosłownych, np. `caddy validate`.
 trigger: agent_note
-category: other
+category: pattern_card
 sources:
   - orchestrate
 rule_ref: null

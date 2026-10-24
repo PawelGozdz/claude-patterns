@@ -9,6 +9,7 @@ dismissed_reason: >
   że warto rozważyć wzmocnienie ORC-064 o wykrywanie brakującego pokrycia (nie tylko złego
   formatu units[]) — do zrobienia, jeśli powtórzy się w INNYM projekcie.
 trigger: halt
+category: pattern_card
 rule_ref: ORC-064
 first_seen: 2026-09-27
 last_seen: 2026-09-27

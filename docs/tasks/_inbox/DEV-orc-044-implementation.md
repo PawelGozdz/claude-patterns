@@ -11,7 +11,7 @@ resolution: >
   implementation i testing dostały karty NestJS/DDD/HTTP bez zastosowania do zmiany w core/safety;
   bot-invariants.md nadal bez karty _summary (decyzja razem z wyborem kart w always).
 trigger: agent_note
-category: other
+category: pattern_card
 sources:
   - orchestrate
 rule_ref: ORC-044

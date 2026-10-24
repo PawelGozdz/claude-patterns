@@ -8,7 +8,7 @@ resolution: >
   właściciela, które karty zostają i kto streszcza bot-invariants.md; tagi api:* nie
   odfiltrują ich (ORC-122), bo warstwy ai-os-bot nie mają tagów.
 trigger: agent_note
-category: other
+category: pattern_card
 sources:
   - orchestrate
 rule_ref: ORC-044

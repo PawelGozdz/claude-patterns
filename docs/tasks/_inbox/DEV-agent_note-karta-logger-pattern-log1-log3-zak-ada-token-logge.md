@@ -5,7 +5,7 @@ resolution: >
   Przeniesione do TASK-ORCH-CARDS-STACK-MISMATCH-001 (logger-pattern zakłada token
   LOGGER_SERVICE, którego marketing-hub nie ma).
 trigger: agent_note
-category: other
+category: pattern_card
 sources:
   - orchestrate
 rule_ref: null

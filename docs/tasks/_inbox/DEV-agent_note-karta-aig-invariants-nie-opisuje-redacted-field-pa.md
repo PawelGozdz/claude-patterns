@@ -5,6 +5,7 @@ dismissed_reason: >
   Rozwiązane w projekcie 2026-10-05: commit 21b30f1 (ai-gateway, TS-AIG-083) dopisał do karty
   aig-invariants opis REDACTED_FIELD_PATHS (INV-D4) i core/origin.ts (INV-A5/E3).
 trigger: agent_note
+category: pattern_card
 rule_ref: null
 first_seen: 2026-10-05
 last_seen: 2026-10-05

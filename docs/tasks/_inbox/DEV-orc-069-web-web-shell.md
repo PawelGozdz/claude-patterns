@@ -7,6 +7,7 @@ dismissed_reason: >
   o budżet co poprzednie zgłoszenia tej klasy. Brak nowej przyczyny; decyzja o rozdzieleniu
   budżetów zostaje przy istniejącym spike'u.
 trigger: halt
+category: verifier
 rule_ref: ORC-069
 first_seen: 2026-09-28
 last_seen: 2026-09-28

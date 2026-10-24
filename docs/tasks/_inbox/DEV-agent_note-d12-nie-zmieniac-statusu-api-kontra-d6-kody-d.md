@@ -8,7 +8,7 @@ dismissed_reason: >
   grant-flow TS-UI-009, rozstrzygana decyzją człowieka, nie regułą silnika. Przy powtórzeniu
   rekord otworzy się sam.
 trigger: agent_note
-category: other
+category: budget
 sources:
   - orchestrate
 rule_ref: null

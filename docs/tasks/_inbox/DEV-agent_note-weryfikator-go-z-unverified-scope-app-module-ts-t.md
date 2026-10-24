@@ -6,6 +6,7 @@ resolution: >
   ten sam wzorzec co DEV-agent_note-weryfikator-go-po-13-15-tur-z-unverified-scope-w: GO z
   niepustym unverified_scope teraz konsumuje próbę zamiast przechodzić czysto.
 trigger: agent_note
+category: verifier
 rule_ref: null
 first_seen: 2026-09-26
 last_seen: 2026-09-26

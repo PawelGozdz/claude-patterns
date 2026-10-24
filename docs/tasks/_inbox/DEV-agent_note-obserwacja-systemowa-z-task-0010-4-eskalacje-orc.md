@@ -9,6 +9,7 @@ resolution: >
   resume tego taska ją zobaczy na bramce końcowej. Sugestia z tego zgłoszenia (kanał
   analogiczny do layer.scope.reason) zrealizowana dokładnie tak, jak zaproponowano.
 trigger: agent_note
+category: pattern_card
 rule_ref: null
 first_seen: 2026-09-27
 last_seen: 2026-09-27
