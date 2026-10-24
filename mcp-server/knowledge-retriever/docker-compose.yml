@@ -36,5 +36,5 @@ services:
       KR_HTTP_PORT: "6403"
       KR_QDRANT_URL: http://qdrant:6333   # internal docker network — service name, internal port (not host 6401)
       KR_EMBED_PROVIDER: ${KR_EMBED_PROVIDER:-ct301}
-      KR_EMBED_URL: ${KR_EMBED_URL:-http://192.168.0.150:8000/v1/embeddings/generate}
+      KR_EMBED_URL: ${KR_EMBED_URL:-http://192.168.0.150:8301/v1/embeddings/generate}
       KR_EMBED_MODEL: ${KR_EMBED_MODEL:-multilingual-e5-large}
