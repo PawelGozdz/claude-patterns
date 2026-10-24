@@ -14,6 +14,8 @@
  *   4. brak logu albo log sprzed oczekiwanego biegu = stale; log po biegu = świeży
  *   5. nadmiary: agent/kategoria/skill spoza kompozycji = INFO; wnoszone przez runtime.yml / project.yml — cisza
  *   6. pre-commit-guards drukuje postarzanie i ma eval zarejestrowany
+ *   7. (TASK-OBS-017) `resolved` nie starzeje się, rekord otwarty ponownie starzeje się od reopened_at
+ *   8. (TASK-OBS-017) pre-commit ostrzega o regułach bez claimu; raport tygodniowy ma wrapper crona i pilnuje go freshness
  */
 
 const fs = require('fs');
@@ -124,10 +126,40 @@ const tests = [
       return wrapper.mode & 0o111 ? null : 'scripts/cron/audit-daily.sh nie jest wykonywalny';
     },
   },
+  {
+    // TASK-OBS-017 (ADR 0011 aneks): `resolved` to stan końcowy — nie gnije jak promoted/proposed — ale rekord
+    // otwarty ponownie (regresja claimu) wraca do `proposed` i starzeje się od `reopened_at`.
+    name: 'resolved-does-not-age-but-reopened-does',
+    run({ inbox }) {
+      const rows = [
+        { id: 'resolved-old', status: 'resolved', first_seen: daysAgo(90), last_seen: daysAgo(90) },
+        { id: 'reopened-fresh', status: 'proposed', first_seen: daysAgo(90), last_seen: daysAgo(90), reopened_at: daysAgo(3), reopened_from_status: 'resolved' },
+        { id: 'reopened-stale', status: 'proposed', first_seen: daysAgo(90), last_seen: daysAgo(90), reopened_at: daysAgo(20), reopened_from_status: 'resolved' },
+      ];
+      return eq(inbox.staleInboxEntries(rows, NOW).map((r) => r.id), ['reopened-stale'], 'rekordy bez ruchu');
+    },
+  },
+  {
+    // TASK-OBS-017 (ADR 0015 D6): nowa reguła ORC/ANL bez `**Claim:**` daje ostrzeżenie w pre-commit, nie błąd;
+    // raport tygodniowy ma wrapper crona i jest pilnowany przez telemetry-freshness.
+    name: 'guards-warn-about-rules-without-claim-and-weekly-wrapper',
+    run({ claims }) {
+      const src = fs.readFileSync(path.join(REPO, 'scripts', 'pre-commit-guards.mjs'), 'utf8');
+      if (!src.includes('printClaimWarning') || !src.includes('rulesWithoutClaim')) return 'pre-commit nie ostrzega o regułach bez claimu';
+      const history = '### ORC-200 — z claimem (2026-10-24)\n\n**Claim:** metric=died direction=down threshold=0.2 engine=57f8f64\n\n### ORC-201 — bez claimu (2026-10-24)\n\ntreść\n';
+      const e = eq(claims.rulesWithoutClaim(history, ['ORC-200', 'ORC-201']), ['ORC-201'], 'reguły bez claimu');
+      if (e) return e;
+      const wrapper = fs.statSync(path.join(REPO, 'scripts', 'cron', 'telemetry-weekly.sh'));
+      if (!(wrapper.mode & 0o111)) return 'scripts/cron/telemetry-weekly.sh nie jest wykonywalny';
+      const fresh = fs.readFileSync(path.join(REPO, 'scripts', 'telemetry-freshness.mjs'), 'utf8');
+      return fresh.includes('expectedWeeklyReport') ? null : 'telemetry-freshness nie pilnuje raportu tygodniowego';
+    },
+  },
 ];
 
 (async () => {
   const libs = {
+    claims: await import(path.join(REPO, 'scripts/lib/telemetry-claims.mjs')),
     inbox: await import(path.join(REPO, 'scripts/lib/inbox.mjs')),
     cron: await import(path.join(REPO, 'scripts/lib/cron-freshness.mjs')),
     audit: await import(path.join(REPO, 'scripts/lib/audit-checks.mjs')),

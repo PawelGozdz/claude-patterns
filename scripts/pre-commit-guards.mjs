@@ -35,6 +35,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readInboxEntries, staleInboxEntries, STALE_AFTER_DAYS } from './lib/inbox.mjs';
 import { emitPrecommitRun, gateId } from './lib/precommit-telemetry.mjs';
+import { addedRuleIds, rulesWithoutClaim } from './lib/telemetry-claims.mjs';
 
 const REPO = join(dirname(fileURLToPath(import.meta.url)), '..');
 const RUN_STARTED = Date.now();
@@ -250,6 +251,29 @@ function printInboxSummary() {
   console.log('');
 }
 
+// TASK-OBS-017 (ADR 0015 D6): nowa reguła ORC/ANL bez `**Claim:**` w rule-history. Ostrzeżenie, nie błąd:
+// reguły wstecz nie dostają claimu hurtem, a reguła bez mierzalnego celu bywa uzasadniona (np. czysto porządkowa).
+// Nowa reguła = nowy wiersz tabeli (`+| ORC-NNN |`) w zastage'owanym diffie komendy.
+function printClaimWarning() {
+  try {
+    const git = (args) => execFileSync('git', args, { cwd: REPO, encoding: 'utf8' });
+    const staged = git(['diff', '--cached', '--name-only', '--diff-filter=ACMR']).split('\n');
+    const commands = staged.filter((f) => f === 'commands/orchestrate.md' || f === 'commands/analyze.md');
+    if (!commands.length) return;
+    const added = [...new Set(commands.flatMap((f) => addedRuleIds(git(['diff', '--cached', '-U0', '--', f]))))];
+    if (!added.length) return;
+    // `git show :plik` = wersja z indeksu (to, co wejdzie do commita), także gdy plik nie jest zmieniany.
+    const history = git(['show', ':docs/decisions/orchestrate-rule-history.md']);
+    const missing = rulesWithoutClaim(history, added);
+    if (missing.length) {
+      console.log(`⚠ claim: ${missing.length} ${missing.length === 1 ? 'nowa reguła' : 'nowe reguły'} bez \`**Claim:**\` w rule-history: ${missing.join(', ')}`);
+      console.log('  → którą liczbę ma poprawić? Format i lista metryk: docs/decisions/orchestrate-rule-history.md (wstęp)\n');
+    }
+  } catch (e) {
+    console.log(`  (sprawdzenie claimów pominięte: ${e.message})`);
+  }
+}
+
 // TASK-OBS-010: zapis telemetrii PO zebraniu wszystkich wyników — bramki nie mierzą samego zapisu,
 // a jego błąd (emitPrecommitRun nie rzuca) jest jedną linią na stderr i nigdy nie zmienia kodu wyjścia.
 const telemetry = emitPrecommitRun({ results, startedAt: RUN_STARTED });
@@ -262,6 +286,7 @@ const failed = results.filter((r) => !r.ok);
 if (!failed.length) {
   console.log(`✔ pre-commit: wszystkie bramki przeszły (${results.map((r) => r.label).join(', ')})`);
   printInboxSummary();
+  printClaimWarning();
   process.exit(0);
 }
 
@@ -272,4 +297,5 @@ for (const r of failed) {
   console.error('');
 }
 printInboxSummary();
+printClaimWarning();
 process.exit(1);

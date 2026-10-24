@@ -2,11 +2,11 @@
 id: TASK-OBS-017
 title: 'Reguła deklaruje metrykę: claim w rule-history i skrzynce, raport tygodniowy, status resolved'
 type: feature
-status: todo
+status: done
 priority: P2
 story_points: 3
 created_date: 2026-10-22
-updated_date: 2026-10-22
+updated_date: 2026-10-24
 assignee: '@unassigned'
 labels: [observability, reporting]
 epic: EP-OBSERVABILITY-002
@@ -46,6 +46,16 @@ poprawić, a raport tygodniowy to sprawdza i sam zmienia status w skrzynce.
 
 ## Kryteria akceptacji
 
-- [ ] Rekord z `claim` i wystarczającymi danymi dostaje werdykt w raporcie; `confirmed` zmienia status.
-- [ ] Pierwszy raport tygodniowy leży w `telemetry/reports/` i ma cztery sekcje.
-- [ ] Nowa reguła bez `claim` daje ostrzeżenie w pre-commit.
+- [x] Rekord z `claim` i wystarczającymi danymi dostaje werdykt w raporcie; `confirmed` zmienia status
+      (eval: 32% → 16% daje `resolved`, regres otwiera rekord; na prawdziwych danych `DEV-orc-074-engine` ma werdykt `no_effect`,
+      udział silnika 4,8% — status bez zmian).
+- [x] Pierwszy raport tygodniowy leży w `telemetry/reports/` (2026-W42.md) i ma cztery sekcje.
+- [x] Nowa reguła bez `claim` daje ostrzeżenie w pre-commit (sprawdzone na dodanym wierszu ORC-998: ostrzeżenie, exit 0).
+
+## Wynik
+
+- Odchylenia od planu: (1) `claim` dostało opcjonalne pole `process`, bo `retryCost` po wszystkich procesach (audit, hooki, pre-commit)
+  mierzył coś innego niż reguła ORC; (2) status zmienia się tylko przy werdykcie zaufanym (udział silnika w oknie „po" >= 50%),
+  bo hasz silnika to `HEAD` claude-patterns i zmienia się niemal z każdym commitem; (3) claimów dla ORC-098 i ORC-100 nie dopisano:
+  powstały 2026-10-04, a rollupy mają hasze silnika od 2026-10-10, więc nie da się ich ocenić; dopisano ORC-117.
+- Cron: w repo jest wrapper `scripts/cron/telemetry-weekly.sh` (poniedziałek 07:45); wpis do crontabu użytkownika dodaje człowiek.

@@ -53,6 +53,15 @@ export function toIndexEntry(row) {
     projects: asList(row.projects),
     first_seen: asDate(row.first_seen),
     last_seen: asDate(row.last_seen),
+    // Deklaracja „którą liczbę to poprawi" (TASK-OBS-017); tylko gdy rekord ją ma, żeby indeks nie puchł o null-e.
+    ...(row.claim && typeof row.claim === 'object'
+      ? {
+        claim: {
+          metric: row.claim.metric ?? null, direction: row.claim.direction ?? null, threshold: row.claim.threshold ?? null, engine: row.claim.engine ?? null,
+          ...(row.claim.process !== undefined ? { process: row.claim.process } : {}),
+        },
+      }
+      : {}),
   };
 }
 

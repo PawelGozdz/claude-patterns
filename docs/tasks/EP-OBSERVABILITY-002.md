@@ -50,7 +50,7 @@ części nie dotykają `hooks/` i mogą iść od razu.
 | `telemetry-report.mjs` nad rollupami, delta per silnik | ✅ | TASK-OBS-014 |
 | `outcome.human`: hook commit + revert w audycie | ⏳ po odmrożeniu hooków | TASK-OBS-015 |
 | `process: tool`: emiter Skill/Agent + plan w każdej komendzie | ⏳ po odmrożeniu hooków | TASK-OBS-016 |
-| `claim` w regułach i skrzynce, raport tygodniowy, status `resolved` | ⏳ po OBS-014 | TASK-OBS-017 |
+| `claim` w regułach i skrzynce, raport tygodniowy, status `resolved` | ✅ | TASK-OBS-017 |
 | Blokady hooków w metrykach | ⏳ zostaje w EP-001 | TASK-OBS-011 |
 
 ## Kolejność
