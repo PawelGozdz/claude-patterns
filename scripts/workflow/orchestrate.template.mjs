@@ -289,10 +289,16 @@ function buildImplPrompt(a, layer, attempt, violations, silentDeaths, probeRed) 
     'NIE pisz niczego na siłę. Zwróć changed_files: [] i no_changes_reason z konkretnym uzasadnieniem: ' +
     'co sprawdziłeś i dlaczego nic tu nie trzeba (odwołaj się do decyzji D-x lub jednostek pracy z analizy). ' +
     'Pusta lista BEZ no_changes_reason liczy się jako niewykonana praca.'
+  // ORC-135: plik do usunięcia wskazuje się w wyniku, nie zastępuje tombstone'em.
+  const del = '\n\nUSUWANIE PLIKÓW: gdy zadanie wymaga USUNIĘCIA pliku z zakresu tej warstwy, wpisz jego ścieżkę ' +
+    '(względną od korzenia repo) do `deleted_files`; usunie go silnik (`git rm`), także gdy nie masz Bash. ' +
+    'NIE zostawiaj pustego pliku, `export {}` ani samego komentarza w miejsce usuwanego — pusty spec to ' +
+    'czerwony test („No test suite found"). Usunięty plik nie wchodzi do `changed_files`. ' +
+    'Silnik odrzuci ścieżkę spoza zakresu warstwy, bezwzględną, z `..`, ze spacją albo metaznakiem powłoki.'
   // Przy poprawce (violations) nie powtarzamy bloku SZUKANIE — implementer ma listę
   // plik/linia/reguła, nie ma czego lokalizować; blok tylko dokładałby kontekstu.
   return spec + decisions + '\n\n' + scopeBlock(layer, a) + '\n' + renderCards(cardsFor(a, baseId(layer))) +
-    (violations ? '' : SEARCH_BUDGET) + soft + silent + (probeRed ? RED_PROBE_RULE : '') + fix + minorFromAnalysis + noop +
+    (violations ? '' : SEARCH_BUDGET) + soft + silent + (probeRed ? RED_PROBE_RULE : '') + fix + minorFromAnalysis + noop + del +
     dirtyBlock(a, 'implementer') + NO_REVERT
 }
 
@@ -527,7 +533,7 @@ function buildDiffProbePrompt(base) {
 // Jeden kanoniczny builder promptu weryfikatora — WL10 liczy go RAZ dla wszystkich wywołań.
 // Ręczne składanie promptu per-warstwa jest dokładnie tym, co zawiodło w incydencie
 // TS-REP-PIPELINE-001-F3a-remediation.
-function buildVerifierPrompt(a, layer, probe, changedFiles, mode, noopClaim, priorViolations) {
+function buildVerifierPrompt(a, layer, probe, changedFiles, mode, noopClaim, priorViolations, deletedFiles) {
   const calls = scaledBudget(a, 'verify', (changedFiles || []).length)
   if (mode === 'verify-noop') {
     const spec = 'ZADANIE ' + a.task.id + (a.task.title ? ' — ' + a.task.title : '') +
@@ -570,6 +576,11 @@ function buildVerifierPrompt(a, layer, probe, changedFiles, mode, noopClaim, pri
     ? 'ZMIENIONE PLIKI (lista, nie treść — treść czytaj celowanym odczytem tam, gdzie oceniasz):\n  ' +
       changedFiles.join('\n  ') + '\n'
     : ''
+  // ORC-135: usunięte krokiem mechanicznym (`git rm`) — nie istnieją na dysku, nie ma czego czytać; oceń, czy
+  // usunięcie jest zgodne z zadaniem i czy żaden import ani rejestr nie wskazuje już na te ścieżki.
+  const removed = deletedFiles && deletedFiles.length
+    ? 'USUNIĘTE PLIKI (`git rm`, celowo — nie szukaj ich na dysku i nie zgłaszaj braku):\n  ' + deletedFiles.join('\n  ') + '\n'
+    : ''
   const existing = mode === 'verify-existing'
     ? 'TRYB: praca leży już w drzewie roboczym (implementer zakończył bez raportu). Oceniaj STAN ' +
       'FAKTYCZNY, nie raport. Braki zgłoś jako naruszenia do punktowej poprawki.\n'
@@ -589,7 +600,7 @@ function buildVerifierPrompt(a, layer, probe, changedFiles, mode, noopClaim, pri
     'więcej — bez nawiasów, wyjaśnień, kilku plików w jednym stringu ani gołych nazw plików bez ' +
     'katalogu. Zdanie prozą zamiast ścieżki nie da się mechanicznie rozpoznać jako „poza ' +
     'zakresem" po drugiej stronie.\n'
-  return existing + scopeBlock(layer, a) + '\n\n' + facts + files + dirtyBlock(a, 'verifier') +
+  return existing + scopeBlock(layer, a) + '\n\n' + facts + files + removed + dirtyBlock(a, 'verifier') +
     renderCards(cardsFor(a, baseId(layer))) +
     '\nOceń zgodność zmiany z regułami powyżej. Zwróć werdykt GO albo NO_GO i listę naruszeń ' +
     '(plik, linia, reguła, co poprawić).\n' + scopeReminder + (a.autoFixMinor !== false ? MINOR_REMINDER : '') +
@@ -639,7 +650,7 @@ function renderCanon(canon) {
 // raportów warstw: warstwa zakończona no-op oddaje `files: []`, więc bramka nie widziała
 // infrastruktury, migracji ani kontraktów (TS-MH-005 — weryfikator sam zajrzał do HEAD).
 // Karty: wszystkie wzorce przebiegu — bramka oceniała całość zmiany bez reguł.
-function buildFinalGatePrompt(a, checks, changedFiles, treeSource, knownGaps, probe) {
+function buildFinalGatePrompt(a, checks, changedFiles, treeSource, knownGaps, probe, deletedFiles) {
   const calls = scaledBudget(a, 'final-gate', (changedFiles || []).length)
   // ORC-084: luki, które warstwy już zapisały jako GO_WITH_GAPS — bramka nie wymusza za nie NO_GO
   // (filterKnownLayerGaps), ale ma je sprawdzić celowanym odczytem, jeśli starczy budżetu.
@@ -685,6 +696,8 @@ function buildFinalGatePrompt(a, checks, changedFiles, treeSource, knownGaps, pr
         '`violations` — przy zielonych checks i zerze naruszeń nie powodują NO_GO, trafiają do raportu.\n'
       : (checks.length ? 'Deterministyczne bramki do wykonania raz, na całości: ' + checks.join(', ') + '\n' : '')) +
     (changedFiles.length ? 'Pliki objęte zmianą (z drzewa, względem bazy przebiegu):\n  ' + changedFiles.join('\n  ') + '\n' : '') +
+    // ORC-135: usunięte celowo krokiem mechanicznym — bramka nie szuka ich na dysku
+    ((deletedFiles || []).length ? 'Pliki USUNIĘTE celowo (`git rm`, nie ma ich na dysku — nie zgłaszaj braku):\n  ' + deletedFiles.join('\n  ') + '\n' : '') +
     source + dirty + decisions + gapsBlock + renderCanon(a.canon) +
     renderCards(a.patterns || [], 'wszystkie wzorce tego przebiegu') +
     '\nZwróć werdykt GO albo NO_GO i listę naruszeń.\n' +
@@ -1307,10 +1320,51 @@ function statusLine(report, kind, info) {
 // ai-os-bot BOT-007: stageForReview zastage'ował `.claude/**`, KANBAN i cudze pliki, które
 // człowiek musiał ręcznie zdejmować z indeksu. Wyjątek: plik, który zmieniła któraś warstwa tego
 // przebiegu (jest w jej raporcie), zostaje.
-function stageableFiles(finalFiles, dirtyAtStart, layerFiles) {
+function stageableFiles(finalFiles, dirtyAtStart, layerFiles, deleted) {
   const dirty = (dirtyAtStart || []).map(String)
   const mine = (layerFiles || []).map(String)
-  return (finalFiles || []).filter((f) => dirty.indexOf(f) === -1 || mine.indexOf(f) !== -1)
+  const gone = (deleted || []).map(String)
+  // ORC-135: usunięcie jest już zestage'owane przez `git rm`; `git add <usunięta ścieżka>` kończy się
+  // „pathspec did not match" i przerywa dodawanie całej listy.
+  return (finalFiles || []).filter((f) => gone.indexOf(f) === -1 && (dirty.indexOf(f) === -1 || mine.indexOf(f) !== -1))
+}
+
+// ORC-135 (TASK-ORCH-IMPLEMENTER-FILE-DELETE-001): implementer bez Bash (domain-application-implementer,
+// `disallowedTools: Bash` — czystość domeny) nie usunie pliku, więc zostawiał tombstone `export {}`, a vitest
+// na pustym specu = „No test suite found" (juz-ide-api-1 TS-SEC-BLOCK-CACHE-001) albo twierdził „brak zmian"
+// i ORC-062 zatrzymywał przebieg (juz-ide-api-2 TS-SEC-MAP-GROUP-PIN-001). Teraz implementer WSKAZUJE pliki
+// w `deleted_files`, a usuwa je krok mechaniczny (agent z Bash, jak sonda drzewa). Ten plan odsiewa wszystko,
+// czego krok nie ma prawa ruszyć: ścieżki poza zakresem warstwy, bezwzględne, z `..`, z metaznakami powłoki
+// (polecenie idzie do powłoki w apostrofach) i pliki brudne przed startem (cudza praca, ORC-124).
+function deletionPlan(layer, deleted, dirtyAtStart) {
+  const dirty = new Set((dirtyAtStart || []).map(String))
+  const accepted = []
+  const rejected = []
+  for (const raw of deleted || []) {
+    const p = String(raw).trim().replace(/^\.\//, '')
+    if (!p || accepted.indexOf(p) !== -1) continue
+    let why = null
+    if (p[0] === '/') why = 'ścieżka bezwzględna'
+    else if (p.split('/').indexOf('..') !== -1) why = 'wyjście poza repo (..)'
+    else if (/[\s*?[\]{}$`;|&<>"'\\!~]/.test(p)) why = 'biały znak albo metaznak powłoki w ścieżce'
+    else if (dirty.has(p)) why = 'plik brudny przed startem przebiegu (cudza praca, ORC-124)'
+    else if (!layerTouches(layer, p)) why = 'poza zakresem warstwy'
+    if (why) rejected.push({ path: p, reason: why })
+    else accepted.push(p)
+  }
+  return { accepted, rejected }
+}
+
+// `git rm` zdejmuje z indeksu i z dysku pliki śledzone; `rm -f` domyka plik nieśledzony (utworzony w tym
+// przebiegu), którego `git rm --ignore-unmatch` nie rusza. Pętla wypisuje to, czego na dysku już nie ma.
+function deleteFilesCmd(paths) {
+  const q = (paths || []).map((p) => "'" + p + "'").join(' ')
+  return 'git rm -q -f --ignore-unmatch -- ' + q + '; rm -f -- ' + q + '; for f in ' + q + '; do [ -e "$f" ] || echo "$f"; done'
+}
+
+function buildDeletePrompt(paths) {
+  return 'W repo uruchom dokładnie: ' + deleteFilesCmd(paths) + '\nNIC więcej — nie czytaj plików, nie analizuj, ' +
+    'nie poprawiaj. Zwróć w `removed` ścieżki wypisane przez pętlę (te, których już nie ma na dysku).'
 }
 
 // ORC-133: implementer twierdzi „brak zmian", ale praca warstwy już leży w drzewie (wznowienie po
@@ -1422,6 +1476,12 @@ const FINGERPRINT_SCHEMA = {
   properties: { fingerprint: { type: 'string' } },
 }
 
+const DELETE_SCHEMA = {
+  type: 'object',
+  required: ['removed'],
+  properties: { removed: { type: 'array', items: { type: 'string' } } },
+}
+
 const DIFF_PROBE_SCHEMA = {
   type: 'object',
   required: ['files'],
@@ -1465,6 +1525,9 @@ const IMPL_SCHEMA = {
     // „ta warstwa nie wymaga zmian dla tego taska" — z uzasadnieniem. Pusta lista plików BEZ
     // tego pola to niewykonana praca (powtórka); Z tym polem — twierdzenie do zweryfikowania.
     no_changes_reason: { type: 'string' },
+    // ORC-135: pliki do USUNIĘCIA (ścieżki względne repo, w zakresie warstwy). Usuwa je krok mechaniczny
+    // silnika (`git rm`), więc działa też dla agenta bez Bash; zamiast tombstone `export {}`.
+    deleted_files: { type: 'array', items: { type: 'string' } },
     // Pole FAKTOGRAFICZNE (nie self-ocena, więc nie podlega WL1): „trafiłem na sytuację, którą
     // reguły/wzorce nie opisują" — nie blokuje pracy, tylko zgłasza się do docs/tasks/_inbox/
     // w claude-patterns przez krok 5 /orchestrate (ORC-066), zamiast ginąć w logu przebiegu.
@@ -1522,6 +1585,38 @@ const maxAttempts = (a.verifiers && a.verifiers.maxAttempts) || DEFAULTS.maxAtte
 const plan = layerPlan(a, (a.createWhenHits) || {})
 const report = { taskId: a.task && a.task.id, telemetryPlan: a.telemetryPlan || null, engine: a.engine || null, layers: [], gaps: [], minorFindings: [], askErrors, finalGate: null, exit: a.exit || 'STAGE_NOT_COMMIT' }
 const allChangedFiles = []
+// ORC-135: pliki usunięte krokiem mechanicznym (`git rm`) — poza `git add`, poza listą dla bramki końcowej.
+const deletedAll = []
+report.deleted = deletedAll
+
+// ORC-135: usunięcie plików wskazanych przez implementera w `deleted_files`. Zwraca ścieżki, których już
+// nie ma na dysku. Odrzucone ścieżki i pliki, które zostały mimo `git rm`, idą do `report.warnings`
+// (nie zatrzymują przebiegu: bramka „kod istnieje" i weryfikator ocenią drzewo takie, jakie jest).
+async function applyDeletions(layer, impl, tag) {
+  const dp = deletionPlan(layer, impl && impl.deleted_files, a.dirtyAtStart)
+  for (const r of dp.rejected) {
+    report.warnings = (report.warnings || []).concat(layer.id + ': odrzucono usunięcie ' + r.path + ' — ' + r.reason + ' (ORC-135)')
+  }
+  if (!dp.accepted.length) return []
+  const delOpts = Object.assign(
+    { label: layer.id + '-delete-' + tag, maxTurns: DEFAULTS.diffProbeTurns, schema: DELETE_SCHEMA },
+    modelFor('probe'),
+  )
+  let res = null
+  try {
+    res = await ask(buildDeletePrompt(dp.accepted), delOpts)
+  } catch (e) {
+    res = null
+  }
+  const removed = res && Array.isArray(res.removed) ? res.removed.map(String).filter((p) => dp.accepted.indexOf(p) !== -1) : []
+  for (const p of removed) if (deletedAll.indexOf(p) === -1) deletedAll.push(p)
+  const left = dp.accepted.filter((p) => removed.indexOf(p) === -1)
+  if (left.length) {
+    report.warnings = (report.warnings || []).concat(layer.id + ': nie udało się usunąć ' + left.join(', ') + ' (ORC-135)')
+  }
+  if (removed.length) log(layer.id + ': usunięto ' + removed.length + ' plików krokiem mechanicznym (ORC-135): ' + removed.join(', '))
+  return removed
+}
 
 phase('Warstwy')
 
@@ -1541,6 +1636,8 @@ for (const step of plan) {
   let cleanupNext = false
   let mode = 'implement'
   let layerFiles = []
+  // ORC-135: pliki usunięte krokiem mechanicznym w tej warstwie (praca warstwy bez pliku w diffie)
+  let layerDeleted = []
   let settled = null
   let noopClaim = null
   // Wynik ostatniej CZERWONEJ sondy tej warstwy (null po zielonej). Po czerwieni ścieżka
@@ -1613,6 +1710,12 @@ for (const step of plan) {
         // warstwy" do weryfikacji twierdzenia — warstwa była już GO, idziemy zwykłą ścieżką.
         if (isCleanup) noopClaim = null
         if (typeof impl.deviation_note === 'string' && impl.deviation_note.trim()) deviationNote = impl.deviation_note.trim()
+        // ORC-135: usunięcia wskazane przez implementera robi krok mechaniczny; usunięty plik nie jest „zmianą" do weryfikacji
+        const removedNow = await applyDeletions(layer, impl, String(attempt))
+        for (const p of removedNow) if (layerDeleted.indexOf(p) === -1) layerDeleted.push(p)
+        if (layerDeleted.length) layerFiles = layerFiles.filter((f) => layerDeleted.indexOf(String(f)) === -1)
+        // usunięcie jest pracą warstwy: „brak zmian" z równoczesnym `deleted_files` to sprzeczność, nie no-op
+        if (removedNow.length) noopClaim = null
       }
     }
 
@@ -1699,8 +1802,8 @@ for (const step of plan) {
     // ORC-124: plik brudny przed startem liczy się jako praca warstwy tylko, gdy implementer sam go zgłosił
     const dirtyBeforeGate = new Set((a.dirtyAtStart || []).map(String))
     const claimedFiles = new Set((layerFiles || []).map(String))
-    const changed = gate && gate.files ? gate.files.filter((f) => layerTouches(layer, f) && (!dirtyBeforeGate.has(f) || claimedFiles.has(f))) : []
-    if (!changed.length && mode !== 'verify-existing') {
+    const changed = gate && gate.files ? gate.files.filter((f) => layerTouches(layer, f) && (!dirtyBeforeGate.has(f) || claimedFiles.has(f)) && layerDeleted.indexOf(f) === -1) : []
+    if (!changed.length && !layerDeleted.length && mode !== 'verify-existing') {
       violations = 'bramka „kod istnieje": żaden plik w zakresie warstwy nie został zmieniony'
       log(layer.id + ': ' + violations)
       if (attempt >= maxAttempts) {
@@ -1796,7 +1899,7 @@ for (const step of plan) {
     )
     let verdict = null
     try {
-      verdict = await ask(buildVerifierPrompt(a, layer, probe, layerFiles, mode), verifyOpts)
+      verdict = await ask(buildVerifierPrompt(a, layer, probe, layerFiles, mode, undefined, undefined, layerDeleted), verifyOpts)
     } catch (e) {
       verdict = null
     }
@@ -1956,7 +2059,7 @@ if (tree && typeof tree.commits === 'number' && tree.commits > 0) {
     'implementery zacommitowały ' + tree.commits + ' commit(ów) od bazy ' + a.baseSha +
     ' — przejrzyj `git log ' + a.baseSha + '..HEAD`; spłaszczenie do stagingu: `git reset --soft ' + a.baseSha + '`')
 }
-const finalFiles = finalFileList(tree && tree.files, allChangedFiles)
+const finalFiles = finalFileList(tree && tree.files, allChangedFiles).filter((f) => deletedAll.indexOf(f) === -1)
 if (treeSource === 'layers') log('sonda drzewa przed bramką końcową bez wyniku — lista plików z raportów warstw (może być niepełna)')
 
 const finalAgent = firstAgentName(a.verifiers && a.verifiers.finalGate)
@@ -2011,6 +2114,8 @@ if (!finalAgent) {
       }
       // ORC-121: pozycje spoza zakresu warstwy implementer POMIJA i opisuje w deviation_note — runda 2 ma o tym wiedzieć
       if (typeof fixed.deviation_note === 'string' && fixed.deviation_note.trim()) skipped.push(layer.id + ': ' + fixed.deviation_note.trim())
+      // ORC-135: usunięcia przed odciskiem — naprawa złożona wyłącznie z usunięć zmienia drzewo
+      await applyDeletions(layer, fixed, 'final-fix')
       const fpAfter = await fingerprint('final-fix-fp-' + layer.id)
       if (fixLeftTreeUnchanged(fpBefore, fpAfter)) {
         ok = false
@@ -2061,7 +2166,7 @@ if (!finalAgent) {
   let forcedGaps = null
   let final = null
   try {
-    final = await ask(buildFinalGatePrompt(a, finalChecks, finalFiles, treeSource, report.gaps, finalProbe) + roundExtra, gateOpts)
+    final = await ask(buildFinalGatePrompt(a, finalChecks, finalFiles, treeSource, report.gaps, finalProbe, deletedAll) + roundExtra, gateOpts)
   } catch (e) {
     final = null
   }
@@ -2075,7 +2180,7 @@ if (!finalAgent) {
     log('bramka końcowa bez wyniku — ponawiam raz z werdyktem po ~70% budżetu (ORC-087)')
     try {
       final = await ask(
-        buildFinalGatePrompt(a, finalChecks, finalFiles, treeSource, report.gaps, finalProbe) + roundExtra +
+        buildFinalGatePrompt(a, finalChecks, finalFiles, treeSource, report.gaps, finalProbe, deletedAll) + roundExtra +
           '\n\nPOPRZEDNIE WYWOŁANIE NIE ZWRÓCIŁO WYNIKU (budżet wyczerpany bez werdyktu). Wydaj werdykt ' +
           'NAJPÓŹNIEJ po ' + Math.floor(retryCalls * 0.7) + ' wywołaniach: najpierw deterministyczne bramki, ' +
           'potem pliki najwyższego ryzyka (migracje, auth, kontrakty, publiczne API); resztę wpisz do ' +
@@ -2092,7 +2197,7 @@ if (!finalAgent) {
     ? Object.assign({}, final, { cause: undefined })
     : { verdict: 'NO_GO', violations: ['bramka końcowa nie zwróciła werdyktu (także po ponowieniu)'], cause: 'machine' }
   // ORC-087: brak werdyktu przy wszystkich warstwach GO — pliki idą do stagingu z flagą przeglądu.
-  if (!final) report.stageForReview = stageableFiles(finalFiles, a.dirtyAtStart, allChangedFiles)
+  if (!final) report.stageForReview = stageableFiles(finalFiles, a.dirtyAtStart, allChangedFiles, deletedAll)
   // Bramka końcowa nie ma pętli retry (jeden strzał) — GO z niepustym unverified_scope nie może
   // więc "skonsumować próby" jak w decideVerdict(); jedyna bezpieczna reakcja to potraktować to
   // jak NO_GO, żeby uczciwie przyznana luka trafiła do człowieka zamiast do cichego stage'owania.
@@ -2117,13 +2222,13 @@ if (!finalAgent) {
     // z flagą przeglądu, luki do raportu (statusLine: „niesprawdzone fragmenty", „wymaga uważnego przeglądu").
     report.gaps.push({ layer: 'final-gate', items: finalUnverified })
     report.finalGate.gaps_accepted = finalUnverified
-    report.stageForReview = stageableFiles(finalFiles, a.dirtyAtStart, allChangedFiles)
+    report.stageForReview = stageableFiles(finalFiles, a.dirtyAtStart, allChangedFiles, deletedAll)
     log('bramka końcowa: GO z lukami (ORC-098) — checks zielone, zero naruszeń; luki w raporcie: ' + finalUnverified.join(', '))
   } else if (String(report.finalGate.verdict).toUpperCase() === 'GO' && finalUnverified.length) {
     // ORC-084: NO_GO wymuszone WYŁĄCZNIE przez unverified_scope (zero własnych naruszeń) —
     // pliki idą do stagingu z flagą „wymaga przeglądu"; człowiek i tak robi review przed commitem.
     if (!(report.finalGate.violations || []).length) {
-      report.stageForReview = stageableFiles(finalFiles, a.dirtyAtStart, allChangedFiles)
+      report.stageForReview = stageableFiles(finalFiles, a.dirtyAtStart, allChangedFiles, deletedAll)
       forcedGaps = finalUnverified
     }
     report.finalGate.verdict = 'NO_GO'
@@ -2197,7 +2302,7 @@ if (!finalAgent) {
 }
 
 // ── 6. wyjście: staged, NIE zacommitowane. Commit robi człowiek.
-report.staged = stageableFiles(finalFiles, a.dirtyAtStart, allChangedFiles)
+report.staged = stageableFiles(finalFiles, a.dirtyAtStart, allChangedFiles, deletedAll)
 report.statusLine = statusLine(report, 'ok')
 log('Gotowe. Stan: staged, not committed — ' + finalFiles.length + ' plików. Commit robi człowiek.')
 return report
