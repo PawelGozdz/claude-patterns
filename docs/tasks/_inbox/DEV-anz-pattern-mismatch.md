@@ -2,23 +2,23 @@
 id: DEV-anz-pattern-mismatch
 status: proposed
 resolution: >
-  Część aegis-flow naprawiona 2026-10-17: python/testing-pattern.md (fixture
-  event_loop usunięty w pytest-asyncio 1.0, przykłady SQLAlchemy/domain.*
-  oznaczone jako zależne od stosu). Część ai-os-bot (karty DDD/NestJS w
-  patterns.always bloku node) przeniesiona do
-  TASK-ORCH-CARDS-STACK-MISMATCH-001. Wystąpienie marketing-hub (TS-MH-025,
-  2026-10-18): rules/nestjs-ddd/error-mapper.md zakładała bramkę `D_` i
-  DomainErrorHandler (łańcuch LocalHero), a marketing-hub kieruje błędy samym
-  IDomainErrorMapper (kody typu VALIDATION_FAILED, bez DomainErrorHandler) —
-  dodane zastrzeżenie „Scope of step (1)”: bez handlera pomijać klauzule
-  D_/canHandle, a rejestrację w mapperze i test guardian zostawić. Wystąpienie
-  aegis-flow TS-004 (2026-10-21): fałszywy alarm. python/ w
-  .claude/knowledge/patterns/ to symlink do patterns/python/
-  (security-invariants, safe-error-propagation i testing-pattern istnieją, a
-  prepare rozwiązuje je po ścieżce względnej, nie po nazwie pliku); cross-layer/
-  to osobne, TS-owe wersje. Agent najpewniej szukał bez -L. Dopisane ostrzeżenie
-  w ANL-008 (commands/analyze.md). Otwarta zostaje część juz-ide-api-2 (zod,
-  brakujące wzorce).
+  Część aegis-flow naprawiona 2026-10-17: python/testing-pattern.md (fixture event_loop
+  usunięty w pytest-asyncio 1.0, przykłady SQLAlchemy/domain.* oznaczone jako zależne od
+  stosu). Część ai-os-bot (karty DDD/NestJS w patterns.always bloku node) przeniesiona do
+  TASK-ORCH-CARDS-STACK-MISMATCH-001. Wystąpienie marketing-hub (TS-MH-025, 2026-10-18):
+  rules/nestjs-ddd/error-mapper.md zakładała bramkę `D_` i DomainErrorHandler (łańcuch
+  LocalHero), a marketing-hub kieruje błędy samym IDomainErrorMapper (kody typu
+  VALIDATION_FAILED, bez DomainErrorHandler) — dodane zastrzeżenie „Scope of step (1)”: bez
+  handlera pomijać klauzule D_/canHandle, a rejestrację w mapperze i test guardian zostawić.
+  Wystąpienie aegis-flow TS-004 (2026-10-21): fałszywy alarm. python/ w
+  .claude/knowledge/patterns/ to symlink do patterns/python/ (security-invariants,
+  safe-error-propagation i testing-pattern istnieją, a prepare rozwiązuje je po ścieżce
+  względnej, nie po nazwie pliku); cross-layer/ to osobne, TS-owe wersje. Agent najpewniej
+  szukał bez -L. Dopisane ostrzeżenie w ANL-008 (commands/analyze.md). Otwarta zostaje część
+  juz-ide-api-2 (zod, brakujące wzorce). 2026-10-23 juz-ide-api-4 (TS-MAP-MARKER-PRIVACY-001):
+  brak wzorców punktu ujawnionego z polityką ujawniania, guardiana L1 producentów, projekcji
+  markera fail-closed i wsadowego ACL zwracającego klasę. Zostaje project-specific do czasu
+  drugiego niezależnego adoptera (CLAUDE.md); promocja do wzorca wymaga decyzji właściciela.
 trigger: analyze_note
 category: other
 sources:

@@ -4,22 +4,25 @@ status: proposed
 resolution: >
   Plik decisions-index.json istniał, więc to nie ANZ-GATE-INPUT-MISSING: gałąź
   refactor/TS-SEC-MAP-GROUP-PIN-001 była 5 commitów za origin/develop, a indeks
-  (gitignorowany, budowany z drzewa roboczego) nie miał BDR-081..084. Naprawione
-  2026-10-18 w silniku: scripts/index-decisions.mjs ostrzega na stderr o wpisach
-  rejestru obecnych tylko na origin/develop lub origin/main (ANL-012,
-  uzupełnienie w orchestrate-rule-history.md). W projekcie: merge/rebase na
-  develop i ponowne index-decisions.mjs. 2026-10-21 marketing-hub (TS-MH-022):
-  kolekcja code_marketing_hub była w knowledge.json, ale nie w Qdrancie —
+  (gitignorowany, budowany z drzewa roboczego) nie miał BDR-081..084. Naprawione 2026-10-18 w
+  silniku: scripts/index-decisions.mjs ostrzega na stderr o wpisach rejestru obecnych tylko na
+  origin/develop lub origin/main (ANL-012, uzupełnienie w orchestrate-rule-history.md). W
+  projekcie: merge/rebase na develop i ponowne index-decisions.mjs. 2026-10-21 marketing-hub
+  (TS-MH-022): kolekcja code_marketing_hub była w knowledge.json, ale nie w Qdrancie —
   dopisana do reseed.config.json (origin/develop, apps/api/src, apps/web/src,
-  packages/contracts/src, libs) i zaindeksowana (2380 fragmentów), retrieve_code
-  działa. 2026-10-22 iam (TS-SSO-065): kolekcji code_iam nie było w
-  reseed.config.json — dopisana (origin/develop, src) i zaindeksowana (1923
-  fragmenty). Otwarta zostaje część aegis-flow (brak docs/adr/ — decyzja
-  projektu). 2026-10-23 aegis-flow (TS-001): knowledge.json deklaruje
-  code_aegis_flow, ale kolekcji nie ma w reseed.config.json, a runtime.yml nie
-  ma knowledge.collection (ANL-009). Projekt jest w Pythonie (app, engine,
-  daemon), więc wymaga decyzji, które katalogi indeksować; wpisać kolekcję i
-  blok knowledge albo świadomie zostać bez RAG.
+  packages/contracts/src, libs) i zaindeksowana (2380 fragmentów), retrieve_code działa.
+  2026-10-22 iam (TS-SSO-065): kolekcji code_iam nie było w reseed.config.json — dopisana
+  (origin/develop, src) i zaindeksowana (1923 fragmenty). Otwarta zostaje część aegis-flow
+  (brak docs/adr/ — decyzja projektu). 2026-10-23 aegis-flow (TS-001): knowledge.json
+  deklaruje code_aegis_flow, ale kolekcji nie ma w reseed.config.json, a runtime.yml nie ma
+  knowledge.collection (ANL-009). Projekt jest w Pythonie (app, engine, daemon), więc wymaga
+  decyzji, które katalogi indeksować; wpisać kolekcję i blok knowledge albo świadomie zostać
+  bez RAG. 2026-10-23 juz-ide-api-2 (TS-SEC-SP-LOCATION-001): BDR-090 ma supersedes: [BDR-083,
+  BDR-089], a uchylane wpisy mają superseded_by: null, więc indeks dawał im
+  needs_scope_check=false. index-decisions.mjs wyprowadza teraz odwrotne powiązanie
+  (needs_scope_check, superseded_by_inferred, ⚠uchylany w briefie,
+  problems.supersedes_not_reciprocated). Lista BDR w runtime.yml (rozwinięty glob
+  docs/decisions/*) odświeżona materialize-runtime 2026-10-24.
 trigger: analyze_gate
 category: config
 sources:

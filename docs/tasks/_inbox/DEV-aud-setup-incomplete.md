@@ -1,9 +1,10 @@
 ---
 id: DEV-aud-setup-incomplete
-status: proposed
+status: dismissed
 dismissed_reason: >
-  Nieodtwarzalne 2026-10-17: audit-projects.mjs --all nie zgłasza niekompletnego
-  setupu w juz-ide-mobile-app.
+  Nieodtwarzalne 2026-10-17: audit-projects.mjs --all nie zgłasza niekompletnego setupu w
+  juz-ide-mobile-app. 2026-10-24: setup niekompletny juz-ide-api-1 ustąpił po
+  materialize-runtime; audit-projects bez błędów.
 trigger: setup_drift
 category: config
 sources:

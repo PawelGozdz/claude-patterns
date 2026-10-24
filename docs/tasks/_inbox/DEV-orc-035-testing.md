@@ -1,6 +1,11 @@
 ---
 id: DEV-orc-035-testing
-status: proposed
+status: promoted
+resolution: >
+  ORC-131: deltaGateFails nie wyzwala się, gdy wcześniejsza próba tej warstwy w przebiegu
+  zmierzyła przyrost bloków > 0 (zero po dodatnim to sprzeczność pomiaru). Przyczyna
+  sprzeczności (praca zacommitowana między próbami albo błąd sondy) to wniosek z kodu, bez
+  dziennika przebiegu wf_04685e97-c0f.
 trigger: no_go
 category: verifier
 sources:

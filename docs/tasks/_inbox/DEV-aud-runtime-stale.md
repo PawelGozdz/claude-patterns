@@ -1,12 +1,15 @@
 ---
 id: DEV-aud-runtime-stale
-status: proposed
+status: dismissed
 dismissed_reason: >
-  Nieodtwarzalne 2026-10-19: po materialize-runtime (pcu, my-intelligence,
-  personal-blog) audit-projects nie zgłasza już "runtime.yml nieaktualny" dla
-  żadnego projektu z rekordu (juz-ide-api-1/-2/-4 czyste od 2026-10-17). Wejścia
-  kompozycji zmieniły się po materializacji z 2026-10-17; verify-project-setup:
-  setup kompletny.
+  Nieodtwarzalne 2026-10-19: po materialize-runtime (pcu, my-intelligence, personal-blog)
+  audit-projects nie zgłasza już "runtime.yml nieaktualny" dla żadnego projektu z rekordu
+  (juz-ide-api-1/-2/-4 czyste od 2026-10-17). Wejścia kompozycji zmieniły się po
+  materializacji z 2026-10-17; verify-project-setup: setup kompletny. 2026-10-24: 22
+  wystąpienia z 2026-10-22 wynikały ze zmian bloków governance, zacommitowanych później;
+  materialize-runtime dla 10 projektów (aegis-flow, ai-gateway, ai-os-bot, grant-flow, iam,
+  juz-ide-api-1/-2, juz-ide-mobile-app, marketing-hub, my-intelligence), audit-projects bez
+  błędów. Rekord wraca po każdej zmianie bloku bez materializacji.
 trigger: setup_drift
 sources:
   - audit

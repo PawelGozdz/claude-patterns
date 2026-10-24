@@ -18,7 +18,7 @@ model: haiku
 permissionMode: dontAsk
 effort: low
 memory: project
-maxTurns: 8
+maxTurns: 14
 ---
 
 # state-reader
@@ -98,3 +98,7 @@ issues_detected:
 - ❌ Reading and analyzing 10 task files in one call → too much context. Ask invoker to scope.
 - ❌ Loading entire TEAM-STATE.md if only "Sprint Focus" section was requested.
 - ❌ Editing files to "fix" formatting issues → report them, don't fix.
+
+## Changelog
+
+- 2026-10-24 — `maxTurns` podniesione z 8 do 14: slot `decision-gate` bloku decision-registry ma budżet 12 wywołań narzędzi, a limit z frontmattera wygrywa z budżetem bloku, więc agent kończył bez raportu (juz-ide-api-2 TS-SEC-EVENT-GEOFILTER-ORACLE-001, ta sama klasa co ORC-092).

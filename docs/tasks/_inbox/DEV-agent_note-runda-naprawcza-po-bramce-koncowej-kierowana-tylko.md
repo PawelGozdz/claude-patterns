@@ -1,6 +1,10 @@
 ---
 id: DEV-agent_note-runda-naprawcza-po-bramce-koncowej-kierowana-tylko
-status: proposed
+status: promoted
+resolution: >
+  ORC-131: kandydaci rundy naprawczej po bramce końcowej obejmują warstwy z layers_done; przy
+  wznowieniu z samą warstwą testową ustalenia w kodzie produkcyjnym idą do warstwy-właściciela
+  pliku, a nie do fallbacku z zakazem zmian kodu.
 trigger: agent_note
 category: other
 sources:

@@ -196,7 +196,25 @@ const all = [
 for (const d of all) validateTags(d);
 
 // ── kontrola jakości rejestru ─────────────────────────────────────────────
-const problems = { duplicate_ids: [], missing_status: [], unknown_status: [], scope_pending_registration: [] };
+// Odwrotne powiązania: `supersedes: [X]` w nowszym wpisie deklaruje, że X jest uchylony (choćby
+// częściowo), nawet gdy X nie ma `superseded_by` (juz-ide-api-2: BDR-090 → BDR-083/089, BDR-096 →
+// BDR-090; uchylane wpisy zostawały z needs_scope_check=false i scope=null, więc decision-gate nie
+// sprawdzał ich zakresu). Status uchylanego NIE jest zmieniany (nie wiemy, czy w całości) — dostaje
+// needs_scope_check i `superseded_by_inferred`, a rozbieżność trafia do problems.
+const byKey = new Map();
+for (const d of all) if (d.id) byKey.set(`${d.kind}:${d.id}`, d);
+const supersedesNotReciprocated = [];
+for (const d of all) {
+  for (const ref of d.supersedes ?? []) {
+    const t = byKey.get(`${d.kind}:${ref}`) ?? [...byKey.values()].find((x) => x.id === ref);
+    if (!t || t === d || (t.superseded_by ?? []).includes(d.id)) continue;
+    t.superseded_by_inferred = [...(t.superseded_by_inferred ?? []), d.id];
+    t.needs_scope_check = true;
+    supersedesNotReciprocated.push(`${d.kind.toUpperCase()}-${d.id} supersedes ${t.kind.toUpperCase()}-${t.id}, ale ${basename(t.file)} nie ma superseded_by`);
+  }
+}
+
+const problems = { duplicate_ids: [], missing_status: [], unknown_status: [], scope_pending_registration: [], supersedes_not_reciprocated: supersedesNotReciprocated };
 const byId = new Map();
 for (const d of all) {
   if (!d.id) continue;
@@ -265,7 +283,8 @@ const index = {
   brief: active.map((d) => {
     const text = d.summary ?? d.title ?? '';
     const trimmed = text.length > 200 ? `${text.slice(0, 200)}…` : text;
-    return `${d.kind.toUpperCase()}-${d.id ?? '????'} | ${d.status}${d.needs_scope_check ? ' ⚠zakres' : ''}` +
+    const inferred = d.superseded_by_inferred?.length ? ` ⚠uchylany przez ${d.superseded_by_inferred.map((x) => `${d.kind.toUpperCase()}-${x}`).join(',')}` : '';
+    return `${d.kind.toUpperCase()}-${d.id ?? '????'} | ${d.status}${d.needs_scope_check ? ' ⚠zakres' : ''}${inferred}` +
       `${d.tags.length ? ` | ${d.tags.join(' ')}` : ''} | ${trimmed}`;
   }),
   filtered_out: all.filter((d) => !active.includes(d)).map((d) => ({ id: d.id, file: d.file, status: d.status })),
@@ -293,6 +312,9 @@ if (problems.unknown_status.length)
 if (problems.scope_pending_registration.length)
   console.error(`  UWAGA: ${problems.scope_pending_registration.length} wpisów wspomina o niezarejestrowanej decyzji (sprawdź, czy luka nadal istnieje):\n    ` +
     problems.scope_pending_registration.join('\n    '));
+if (problems.supersedes_not_reciprocated.length)
+  console.error(`  UWAGA: ${problems.supersedes_not_reciprocated.length} uchyleń zadeklarowanych tylko po jednej stronie (uchylany wpis dostał needs_scope_check; uzupełnij superseded_by albo scope):\n    ` +
+    problems.supersedes_not_reciprocated.slice(0, 8).join('\n    ') + (problems.supersedes_not_reciprocated.length > 8 ? '\n    …' : ''));
 if (problems.missing_status.length)
   console.error(`  UWAGA: ${problems.missing_status.length} plików bez czytelnego statusu — traktowane jako aktywne: ` +
     problems.missing_status.slice(0, 5).map((f) => basename(f)).join(', ') + (problems.missing_status.length > 5 ? ', …' : ''));

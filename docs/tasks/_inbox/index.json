@@ -889,7 +889,7 @@
     },
     {
       "id": "DEV-agent_note-runda-naprawcza-po-bramce-koncowej-kierowana-tylko",
-      "status": "proposed",
+      "status": "promoted",
       "trigger": "agent_note",
       "category": "other",
       "sources": [
@@ -1795,7 +1795,7 @@
     },
     {
       "id": "DEV-aud-runtime-stale",
-      "status": "proposed",
+      "status": "dismissed",
       "trigger": "setup_drift",
       "category": "config",
       "sources": [
@@ -1830,7 +1830,7 @@
     },
     {
       "id": "DEV-aud-setup-incomplete",
-      "status": "proposed",
+      "status": "dismissed",
       "trigger": "setup_drift",
       "category": "config",
       "sources": [
@@ -2285,7 +2285,7 @@
     },
     {
       "id": "DEV-orc-035-testing",
-      "status": "proposed",
+      "status": "promoted",
       "trigger": "no_go",
       "category": "verifier",
       "sources": [
@@ -3394,7 +3394,7 @@
     },
     {
       "id": "DEV-orc-084-domain-u1-domain",
-      "status": "proposed",
+      "status": "promoted",
       "trigger": "halt",
       "category": "other",
       "sources": [
