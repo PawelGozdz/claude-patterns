@@ -6,6 +6,8 @@
   "description": "Shared patterns, agents, skills and stack blocks for claude-code projects",
   "scripts": {
     "materialize": "node scripts/materialize-runtime.mjs",
+    "telemetry:weekly": "bash scripts/cron/telemetry-weekly.sh",
+    "telemetry:weekly:dry": "node scripts/telemetry-report.mjs --weekly --dry-run",
     "prepare": "npx simple-git-hooks",
     "pre-commit": "node scripts/pre-commit-guards.mjs"
   },

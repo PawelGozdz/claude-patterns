@@ -25,7 +25,8 @@ node scripts/telemetry-freshness.mjs --verbose   # czy pomiar nie stanął
 node scripts/telemetry-report.mjs --engine <hash>   # raport tylko z rollupów: okno 7 dni przed i po silniku (first-pass, fałszywe GO, NO_GO bramki, koszt powtórek, zgon, gęstość odstępstw); szum < 20%
 node scripts/telemetry-report.mjs --data-quality    # jakość danych: udział `other` w cause, kroki bez kosztu, przebiegi bez engine i bez taskRef (widoki: --by engine|process|role|project|week; --md plik, --json)
 node scripts/telemetry-report.mjs --claims          # czy reguły i poprawki ze skrzynki zrobiły to, co deklarują (`claim`): werdykt confirmed|no_effect|regressed|insufficient_data; --write-status zapisuje zmianę statusu rekordu
-node scripts/telemetry-report.mjs --weekly          # raport tygodniowy do telemetry/reports/<RRRR>-W<ww>.md (4 sekcje) + statusy claimów; cron: scripts/cron/telemetry-weekly.sh (pon 07:45, wpis w komentarzu skryptu)
+node scripts/telemetry-report.mjs --weekly          # raport tygodniowy do telemetry/reports/<RRRR>-W<ww>.md (4 sekcje) + statusy claimów
+npm run telemetry:weekly                        # to samo ręcznie, z agregatem dziennym przed raportem i logiem na terminalu (bez crona); `npm run telemetry:weekly:dry` tylko wypisuje raport, nic nie zapisuje
 node scripts/telemetry-export.mjs --check      # paczka agregatów dla serwera zespołu: walidacja (bez --check: JSON na stdout, --out plik); niczego nie wysyła
 node scripts/audit-projects.mjs --all --report   # audyt floty; --report przekazuje błędy do docs/tasks/_inbox/
 node scripts/report-deviation.mjs --list         # skrzynka odstępstw, triage

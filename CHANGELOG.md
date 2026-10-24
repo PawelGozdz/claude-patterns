@@ -11,6 +11,7 @@ and none of it is instruction — it is history.
 ## [Unreleased]
 
 ### Added
+- `npm run telemetry:weekly` i `telemetry:weekly:dry`: raport tygodniowy odpalany ręcznie z logiem na terminalu, bez crona (wrapper `scripts/cron/telemetry-weekly.sh` zostaje, nic go nie instaluje).
 - Reguła deklaruje metrykę (TASK-OBS-017, ADR 0015 D6, ADR 0011 aneks): pole `claim` (`metric`, `direction`, `threshold`, `engine`,
   opcjonalnie `process`) w rekordzie skrzynki `promoted` i linia `**Claim:**` we wpisie rule-history; nowy stan skrzynki `resolved`
   (zamknięty, `report-deviation` otwiera go ponownie przy nowym wystąpieniu). `telemetry-report.mjs --claims` daje werdykt
