@@ -1358,10 +1358,15 @@ function finalFileList(treeFiles, layerFiles) {
 // kontraktu, zero nowych bloków) jest z bramki zwolniona — legalny refaktor testów ma zerowy przyrost.
 // ORC-115: w trybie `verify-existing` (reverify po GO z unverified_scope) implementer nie pracuje, a do
 // weryfikatora dochodzi się tylko po przejściu tej bramki — ponowny pomiar to fałszywy alarm.
-function deltaGateFails(layer, probe, changedFiles, mode) {
+// ORC-131: `seenBlocks` = największy przyrost, jaki sonda TEJ warstwy zmierzyła we wcześniejszych
+// próbach przebiegu. Pomiar 0 po dodatnim to sprzeczność pomiaru (praca zacommitowana między próbami,
+// błąd sondy), a nie brak testów — próba naprawcza zmieniająca nazwy i asercje ma 0 NOWYCH bloków,
+// choć warstwa dodała 111 (juz-ide-api TS-SEC-SP-LOCATION-001: fałszywy ESCALATE_AND_HALT).
+function deltaGateFails(layer, probe, changedFiles, mode, seenBlocks) {
   if (!layer.tests || layer.repair === true || mode === 'verify-existing' || !probe) return null
   if (probe.newTestBlocks == null) return null
   if (probe.newTestBlocks > 0) return null
+  if (seenBlocks > 0) return null
   if (!changedFiles || changedFiles.length === 0) return null
   return 'warstwa testowa zmieniła pliki, ale przyrost bloków wykonywalnych = 0 — ' +
     'to komentarze albo opis zamiast testów. NO_GO niezależnie od zielonego typechecku.'
@@ -1509,6 +1514,7 @@ for (const step of plan) {
   // no-op jest zamknięta — patrz blockedByPrior().
   let probeRed = null
   let probeRedFacts = null
+  let blocksSeen = 0
   // ORC-066: ostatnia niepusta adnotacja „to nie jest udokumentowane" od implementera albo
   // weryfikatora tej warstwy — dopisywana do `settled` tuż przed `report.layers.push`, żeby
   // krok 5 /orchestrate mógł ją zgłosić do docs/tasks/_inbox/ w claude-patterns.
@@ -1703,7 +1709,8 @@ for (const step of plan) {
 
     probeRed = null
     probeRedFacts = null
-    const deltaFail = deltaGateFails(layer, probe, layerFiles, mode)
+    const deltaFail = deltaGateFails(layer, probe, layerFiles, mode, blocksSeen)
+    if (probe && probe.newTestBlocks > 0) blocksSeen = Math.max(blocksSeen, probe.newTestBlocks)
     if (deltaFail) {
       violations = deltaFail
       log(layer.id + ': ' + deltaFail)
@@ -1906,7 +1913,10 @@ if (!finalAgent) {
   // ścieżkach; reszta do ostatniej warstwy produkcyjnej), po każdej naprawie biegnie sonda warstwy.
   // Zwraca false, gdy implementer zamilkł albo sonda po naprawie jest czerwona.
   const repairFinalFindings = async (blocking, minor) => {
-    const ranLayers = plan.filter((s) => s.run).map((s) => s.layer)
+    // ORC-131: warstwy zamknięte w poprzednim przebiegu (layers_done) są właścicielami swoich plików
+    // także teraz. Bez nich wznowienie z samą warstwą testową kierowało WSZYSTKIE ustalenia do niej
+    // (zakaz zmian kodu produkcyjnego): 5 z 6 wróciło bez zmian (juz-ide-api TS-SEC-SP-LOCATION-001).
+    const ranLayers = plan.filter((s) => s.run || /layers_done/.test(s.reason || '')).map((s) => s.layer)
     const implLayers = ranLayers.filter((l) => l.agent)
     const fallback = (implLayers.filter((l) => !l.tests).slice(-1)[0] || implLayers.slice(-1)[0] || {}).id
     const items = blocking.map((x) => '[BLOKUJĄCE] ' + x).concat(minor.map((x) => '[DROBNE] ' + x))
