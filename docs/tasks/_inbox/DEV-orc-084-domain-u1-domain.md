@@ -1,11 +1,14 @@
 ---
 id: DEV-orc-084-domain-u1-domain
-status: proposed
+status: promoted
 resolution: >
-  ORC-126: typecheck odroczony do późniejszych warstw (deferred, ORC-082) liczy
-  się jako dowód zielonej sondy dla GO_WITH_GAPS; warstwa domenowa z tests:
-  skipped nie miała inaczej żadnego pass. Wniosek z kodu, bez dziennika
-  przebiegu wf_c48daa31-31c; przy powtórzeniu rekord otworzyć z wynikiem sondy.
+  ORC-126: typecheck odroczony do późniejszych warstw (deferred, ORC-082) liczy się jako dowód
+  zielonej sondy dla GO_WITH_GAPS; warstwa domenowa z tests: skipped nie miała inaczej żadnego
+  pass. Wniosek z kodu, bez dziennika przebiegu wf_c48daa31-31c; przy powtórzeniu rekord
+  otworzyć z wynikiem sondy. Drugie wystąpienie (marketing-hub TS-MH-027, halt nr 3 po
+  wznowieniach): ORC-132 — prepare zapisuje baseline brudnych plików w .claude/run-state/ i
+  przy ponownym uruchomieniu na tym samym HEAD liczy jako cudze tylko pliki sprzed pierwszego
+  prepare, więc praca poprzednich prób nie zaburza zakresu.
 trigger: halt
 category: other
 sources:

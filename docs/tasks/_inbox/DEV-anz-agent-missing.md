@@ -1,6 +1,12 @@
 ---
 id: DEV-anz-agent-missing
 status: proposed
+resolution: >
+  2026-10-24: wystąpienie juz-ide-api-2 (decision-gate bez raportu po 8 turach) to limit
+  maxTurns: 8 w state-reader.md, który wygrywa z budżetem 12 wywołań slotu decision-gate.
+  Podniesione do 14. Otwarte zostają starsze wystąpienia: filtr bezpieczeństwa na slotach
+  red-team-review i abuse-case-threat-model (aegis-flow TS-005) oraz skill threat-model
+  (ai-os-bot BOT-030).
 trigger: analyze_gate
 category: config
 sources:

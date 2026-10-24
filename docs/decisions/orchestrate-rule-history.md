@@ -2378,3 +2378,21 @@ produktowe oceniamy raz, na całości zmiany, żeby nie płacić za nie w każde
 
 **Zmiana.** `prepare` ostrzega przy ≥ 20 brudnych plikach albo przy brudnym drzewie ze wznowieniem (`layers_done`): mówi, że silnik uzna je za cudzą pracę, i podaje obejście `--overrides {"dirtyAtStart": []}`. Nagłówek skryptu dokumentuje ten klucz. Bez automatu, bo zgadywanie własności wróciłoby do błędu z ORC-090/124.
 
+<a id="orc-131"></a>
+
+### ORC-131 — pomiar przyrostu 0 po dodatnim i warstwy z layers_done w rundzie naprawczej (2026-10-24)
+
+**Objaw (DEV-orc-035-testing i agent_note, juz-ide-api TS-SEC-SP-LOCATION-001, run `wf_04685e97-c0f`).** (a) Bramka przyrostu testów (ORC-035) dała fałszywy `ESCALATE_AND_HALT` po przejściu naprawczym, które tylko zmieniało nazwy i asercje (0 nowych bloków), choć ta sama warstwa dodała 111 bloków, a weryfikator dał GO. Obejście: `layers.testing.tests=false`. (b) Runda naprawcza po bramce końcowej poszła wyłącznie do warstwy `testing` (zakaz zmian kodu produkcyjnego): 5 z 6 ustaleń w plikach `application`, `discovery`, `config` i `infrastructure` wróciło bez zmian.
+
+**Przyczyna.** (a) `deltaGateFails` ufa jednemu pomiarowi sondy. Zero po wcześniejszym dodatnim pomiarze tej warstwy to sprzeczność (praca zacommitowana między próbami albo błąd sondy), nie brak testów. Wniosek z kodu, bez dziennika przebiegu. (b) `repairFinalFindings` brało kandydatów z `plan` tylko z `run: true`. Warstwy zamknięte w poprzednim przebiegu (`layers_done`) nie były właścicielami żadnej ścieżki, więc `groupFindingsByLayer` wszystko kierowało do fallbacku.
+
+**Zmiana.** `deltaGateFails(…, seenBlocks)`: bramka nie wyzwala się, gdy wcześniejsza próba tej warstwy w przebiegu zmierzyła przyrost > 0 (`blocksSeen` w pętli prób). Kandydaci rundy naprawczej to warstwy uruchamiane oraz warstwy z `layers_done`.
+
+<a id="orc-132"></a>
+
+### ORC-132 — baseline brudnych plików przy ponownym prepare (2026-10-24)
+
+**Objaw (DEV-orc-084-domain-u1-domain, 2. wystąpienie, marketing-hub TS-MH-027).** `domain:u1-domain` zatrzymało się trzeci raz po wznowieniach z `--overrides`. Implementer odnotował, że pliki domenowe były brudne przed startem (ORC-042) po ponownym `prepare`, więc `dirtyAtStart` z wcześniejszych prób mógł zaburzyć zakres. To ta sama klasa co ORC-130, tyle że przy kilku plikach ostrzeżenie o liczbie się nie wyzwala.
+
+**Zmiana.** `orchestrate-prepare` zapisuje przy pierwszym uruchomieniu `<projekt>/.claude/run-state/<TASK>.dirty-baseline.json` (`baseSha`, `dirty`, `at`). Kolejny `prepare` na tym samym `baseSha`, nie starszy niż 7 dni, liczy jako cudze (`dirtyAtStart`) tylko pliki brudne już w baseline i ostrzega, ile plików uznał za pracę poprzednich prób. Nowy HEAD (commit) albo usunięcie pliku zaczyna liczenie od nowa, ręczny `--overrides {"dirtyAtStart": [...]}` nadal wygrywa. Ścieżki `.claude/run-state/` nie są liczone jako brudne. Kompromis: edycja właściciela między dwiema próbami tego samego taska na tym samym HEAD zostanie uznana za pracę taska.
+

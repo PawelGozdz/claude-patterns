@@ -30,6 +30,21 @@ and none of it is instruction — it is history.
 
 - ADR 0015 i EP-OBSERVABILITY-002 (2026-10-22): przegląd telemetrii pokazał, że metryki kończą się na werdykcie bramki (samoocena), nie widzą skilli, komend ani agentów poza Workflow, nie sprawdzają, czy reguły ORC coś poprawiły, a 97 ze 106 kategorii w skrzynce to `other`. Kierunek: `kind: outcome.human` (decyzja człowieka po przebiegu, przetrwanie diffu, revert), `process: tool` i plan w każdej komendzie, blok `tasks` i fałszywe GO w rollupie, `telemetry-report.mjs` z deltą per wersja silnika, `claim` w regułach i skrzynce z automatycznym `resolved`. Sześć tasków TASK-OBS-012…017; dwa dotykające `hooks/` czekają na odmrożenie.
 
+- Triage skrzynki zgłoszeń 2026-10-22…24, silnik `/orchestrate` ORC-120…132: `build` w `checks.finalGate` liczy się jak `typecheck` (ORC-120);
+  `final_checks` z analizy, lint w sondzie po naprawie i uczciwy prompt rundy 2 (ORC-121); karta z tagami spoza uruchamianych warstw nie
+  wchodzi do doboru (ORC-122); NO_GO wymuszone lukami podaje stan sondy, a po naprawie luki są oceniane od nowa (ORC-123); pliki brudne
+  przed startem są chronione w promptach i sondach, po zniszczeniu pracy właściciela w ai-os-bot BOT-041 (ORC-124); ścieżka względna
+  i bezwzględna to jeden plik (ORC-125); `deferred` jest dowodem dla GO_WITH_GAPS (ORC-126); plik wspólny jednostek nie jest luką jednostki
+  (ORC-127); `prepare` ostrzega o plikach z decyzji bez właściciela (ORC-128), o tasku bez uruchamianych warstw (ORC-129) i o brudnym
+  drzewie z pracą taska, z obejściem `--overrides {"dirtyAtStart": []}` (ORC-130); runda naprawcza obejmuje warstwy z `layers_done`,
+  a pomiar przyrostu testów 0 po dodatnim nie daje fałszywego haltu (ORC-131); `prepare` zapisuje baseline brudnych plików w
+  `.claude/run-state/` i przy wznowieniu na tym samym HEAD liczy jako cudze tylko pliki sprzed pierwszego uruchomienia (ORC-132).
+- Karty wzorców: DS5/CH10 (asynchroniczne `policy.check`), WT4/WT5/WS2/N5 (refine-spa), RP8 (nieznany event zgłaszany przez logger
+  repozytorium); kolekcje RAG `code_iam` i `code_marketing_hub`; `**/.claude/run-state/` w szablonie `.gitignore`. Agenci:
+  `content-reviewer` maxTurns 60, `security-e2e-verifier` bez `Task(Explore)`, `state-reader` maxTurns 14 (limit z frontmattera wygrywał
+  z budżetem 12 wywołań slotu `decision-gate`). `index-decisions.mjs` wyprowadza `needs_scope_check` z odwrotnego `supersedes`
+  (juz-ide-api-2: BDR-090 → BDR-083/089 bez `superseded_by` w uchylanych wpisach).
+
 - `governance` (juz-ide-api-2, 2026-10-21): (1) globy kanonu zostają globami — `runtime.yml → params_globs`, `scripts/resolve-params.mjs` rozwija je w chwili startu `/analyze` (ANL-042), `verify-project-setup` ostrzega o rozjeździe wzorzec ↔ lista, wspólny kod w `scripts/lib/path-globs.mjs`; (2) kanon dociera do `/orchestrate` — `orchestrate-prepare` składa `canon` (`canon_inject` + `strategy_ref`/`canon_ref` taska), bramka końcowa dostaje sekcję „Zgodność z kanonem” z VETO za naruszenie inwariantu (ORC-119, `security-e2e-verifier`); (3) `strategy_fit_when_extra` i `strategy_fit_always_for` zamiast lokalnego bloku z drugim stage'em (ANL-043). Eval: `tests/flow-evals/governance/run.js`.
 - ORC-118: sonda warstwy z samymi komendami dosłownymi (`make typecheck`) nie dostaje już linii „skryptu nie ma w package.json → skipped"; `skipped` znaczy tylko brak samej komendy, niezerowy EXIT istniejącej to `fail` (aegis-flow TS-004, ślepa sonda w warstwie `api`).
 - `orchestrate-prepare`: ostrzeżenie, gdy `dirs` jednostki lub `layers_scope` zawiera samą nazwę pliku, której nie ma w korzeniu repo (ai-gateway TS-AIG-102: `CLAUDE-LOCAL.md` leży w `.claude/config/`); ANL-038 przypomina, że `dirs` to ścieżki od korzenia.
