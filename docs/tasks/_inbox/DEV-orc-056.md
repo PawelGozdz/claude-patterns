@@ -5,7 +5,7 @@ dismissed_reason: >
   Nieaktualne w części silnikowej: bramka końcowa bez werdyktu (agent empty result) obsłużona w
   ORC-087, brak checks dla Fluttera/lint w ORC-088. Pozostałe wystąpienia to realne ustalenia
   bramki (format:check, test:visual, VETO-1 JIT z guarda): mechanizm zadziałał, a brak karty na
-  efekty uboczne komend z guarda jest w TASK-ORCH-PATTERN-GAPS-001 pkt 1. Ostatnie wystąpienie
+  efekty uboczne komend z guarda jest w TASK-ORCH-PATTERN-GAPS-001 (zamknięte 2026-10-25: ORC-136, ORC-137, commit 0acca0b) pkt 1. Ostatnie wystąpienie
   2026-10-03.
 previous_dismissed_reason: >
   Reopen (TS-MH-009, 2026-09-28) to zupełnie inny, realny zestaw braków

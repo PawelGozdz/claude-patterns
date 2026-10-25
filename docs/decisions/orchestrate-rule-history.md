@@ -2470,3 +2470,11 @@ produktowe oceniamy raz, na całości zmiany, żeby nie płacić za nie w każde
 **Zmiana.** (1) `blocks/node.yml`: w `always` są teraz `security-invariants-pattern-plain` i `safe-error-propagation-pattern-plain` (pierwszy to uogólniony Fastify override, który iam napisał sobie sam, bo karty centralnej „nie da się odjąć"), `conventions-pattern` zniknął bez zamiennika. (2) `orchestrate-prepare` pomija `layerPatterns` warstwy z `layers_skip` i opcjonalnej bez trafienia `create_when`; `layers_done` zostaje, bo bramka końcowa ocenia całość zmiany. (3) Karta `logger-pattern_summary` dostała zakres: LOG1–3, LOG5–6, N1–N3 obowiązują przy tokenie `LOGGER_SERVICE`, projekt z nestjs-pino stosuje LOG4, N4, N5.
 
 **Sprawdzone, bez zmiany.** Hipoteza 1: `patterns.remove` bloku lokalnego z `extends` zdejmuje kartę odziedziczoną już od 2026-10-10 (materialize-runtime), więc config projektów nie wymaga poprawki. Hipoteza 4: brak `_summary` karty projektowej ostrzega `orchestrate-prepare` z rozmiarem pełnego pliku.
+
+### ORC-137 — tail sondy jako cytat, nie streszczenie (2026-10-25)
+
+**Claim:** metric=DEV-orc-026 direction=down threshold=0.5 engine=0acca0b process=orchestrate
+
+**Objaw (DEV-orc-026, marketing-hub TS-MH-010, run `wf_c1bc4f18-d4f`, warstwa `infrastructure:auth-switch`).** Eslint w formacie stylish wypisuje ścieżkę pliku w osobnej linii nad jego błędami. Sonda zwróciła w `tail` same linie błędów, a plik dopisała z własnego domysłu: błąd import/order trafił do `business-rule.decorator.ts`, choć należał do `permissions.guard.spec.ts`. Runda naprawcza nie mogła trafić w błąd, trzy próby przepadły i warstwa skończyła ESCALATE.
+
+**Zmiana.** `buildProbePrompt` dostał `verbatimInstruction`: `tail` jest cytatem, linie kopiowane bez zmian, błędy lintu razem z linią nagłówkową pliku, bez zgadywania i bez ścieżek spoza logu. Instrukcja dotyczy też warstw bez `checks`, bo i one zwracają `tail`. Surowe pola `tsErrors` i `testFailFiles` (ORC-082, ORC-099) działały tak od początku; luka dotyczyła tylko lintu.

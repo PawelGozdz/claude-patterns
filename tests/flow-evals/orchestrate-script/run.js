@@ -1553,6 +1553,20 @@ const CASES = (c) => [
     },
   },
 
+  // ── ORC-137: tail sondy to cytat, nie streszczenie ─────────────────────────────────────
+  {
+    name: 'probe-prompt-demands-verbatim-tail-with-file-header',
+    run() {
+      const p = c.buildProbePrompt(ARGS, { id: 'infrastructure', dirs: ['src/infrastructure/'], checks: ['typecheck', 'lint'] });
+      if (!/`tail` to CYTAT/.test(p) || !/bez streszczania/.test(p)) return 'prompt sondy nie wymusza dosłownego tail';
+      if (!/RAZEM z tą linią nagłówkową/.test(p)) return 'brak polecenia kopiowania linii nagłówkowej pliku (eslint stylish)';
+      if (!/nie zgaduj/i.test(p)) return 'brak zakazu zgadywania, do którego pliku należy błąd';
+      const bare = c.buildProbePrompt(ARGS, { id: 'bare', dirs: ['src/x/'], checks: [] });
+      if (!/CYTAT/.test(bare)) return 'warstwa bez checks też zwraca tail — instrukcja musi być i tam';
+      return null;
+    },
+  },
+
   // ── ORC-135: usuwanie plików przez implementera bez Bash ───────────────────────────────
   {
     name: 'deletion-plan-accepts-layer-paths-and-rejects-the-rest',

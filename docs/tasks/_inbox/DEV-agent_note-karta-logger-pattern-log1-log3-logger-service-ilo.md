@@ -2,7 +2,7 @@
 id: DEV-agent_note-karta-logger-pattern-log1-log3-logger-service-ilo
 status: promoted
 resolution: >
-  Przeniesione do docs/tasks/TASK-ORCH-PATTERN-GAPS-001.md (2026-09-26) razem z innymi
+  Przeniesione do docs/tasks/TASK-ORCH-PATTERN-GAPS-001 (zamknięte 2026-10-25: ORC-136, ORC-137, commit 0acca0b).md (2026-09-26) razem z innymi
   znaleziskami kart wzorców z tego samego dnia.
 trigger: agent_note
 category: pattern_card

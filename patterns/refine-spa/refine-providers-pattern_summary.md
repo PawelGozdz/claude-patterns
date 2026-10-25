@@ -13,8 +13,12 @@
 
 - **PRV1** — Cały ruch do API idzie przez `dataProvider` albo dedykowany hook w
   `providers/`. Komponent w `features/` nie woła `fetch` bezpośrednio.
-- **PRV2** — `authProvider.check()` = `GET /api/me`; 401 → `{ authenticated: false,
-  redirectTo }`; `logout()` = przekierowanie na end-session `iam`; brak lokalnego
+- **PRV2** — `authProvider.check()` = `GET /api/me`; wynik negatywny (401, zła koperta, błąd
+  sieci) → `{ authenticated: false }`. Redirect na logowanie w JEDNYM miejscu: `redirectTo` z
+  `check()` ALBO `<RedirectToSignIn>` jako `fallback` `<Authenticated>` (wariant D7, marketing-hub) —
+  ten drugi ma flagę jednokrotności modułu i wyłącznik pętli `auth_retry=1`; `rd` budowane tylko z
+  `window.location`. `login()`/`logout()`/401 w `onError()` nawigują bezpośrednio.
+  `logout()` = przekierowanie na end-session `iam`; brak lokalnego
   stanu sesji poza tym, co zwróci API.
 - **PRV3** — `accessControlProvider.can()` czyta `GET /api/me/permissions` z cache
   (TanStack Query, `staleTime` z konfiguracji). Zero zahardkodowanych map ról w kliencie.

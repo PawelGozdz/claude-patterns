@@ -33,8 +33,16 @@ rozlewają się po komponentach i nie da się ich podmienić ani przetestować w
 
 - **PRV1** — Cały ruch do API idzie przez `dataProvider` albo dedykowany hook w
   `providers/`. Komponent w `features/` nie woła `fetch` bezpośrednio.
-- **PRV2** — `authProvider.check()` → `GET /api/me`; 401 → `{ authenticated: false,
-  redirectTo }`; `logout()` → przekierowanie na URL end-session `iam`; `getIdentity()`
+- **PRV2** — `authProvider.check()` → `GET /api/me`; każdy wynik negatywny (401, odpowiedź
+  niebędąca kopertą JSend, błąd sieci) → `{ authenticated: false }`. Przekierowanie na logowanie
+  dzieje się w JEDNYM miejscu, nie w obu naraz: albo `redirectTo` zwracane z `check()`, albo (wariant
+  marketing-hub, D7) komponent `<RedirectToSignIn>` jako `fallback` dla `<Authenticated>`. Wariant z
+  fallbackiem jest bierną, automatyczną ścieżką, więc MUSI mieć flagę jednokrotności na poziomie
+  modułu (React 18 StrictMode woła efekt dwa razy) i wyłącznik pętli `auth_retry=1` w URL powrotu
+  (drugi negatywny `check()` po powrocie z IdP → ekran fail-closed, nie kolejny redirect). Adres
+  powrotu (`rd`) budowany WYŁĄCZNIE z `window.location`, nigdy z parametru zapytania (open redirect).
+  `login()`, `logout()` i gałąź 401 w `onError()` to pojedyncze, jawnie wywołane nawigacje i wołają
+  nawigację bezpośrednio. `logout()` → przekierowanie na URL end-session `iam`; `getIdentity()`
   zwraca DTO `Identity` ze wspólnego pakietu kontraktów projektu.
 - **PRV3** — `accessControlProvider.can({resource, action})` → `GET /api/me/permissions`,
   cache w TanStack Query ze `staleTime` z konfiguracji; brak własnej tabeli uprawnień w

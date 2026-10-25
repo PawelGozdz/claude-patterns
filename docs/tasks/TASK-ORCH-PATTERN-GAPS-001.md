@@ -2,11 +2,11 @@
 id: TASK-ORCH-PATTERN-GAPS-001
 title: 'Luki w kartach wzorców i precyzji sondy wykryte przez ORC-066 (marketing-hub TS-MH-010, ai-os-bot BOT-010)'
 type: bugfix
-status: todo
+status: done
 priority: P2
 story_points: 5
 created_date: 2026-09-26
-updated_date: 2026-09-26
+updated_date: 2026-10-25
 assignee: '@unassigned'
 labels: [kaizen, orchestration, patterns, knowledge-base]
 depends_on: []
@@ -81,3 +81,15 @@ wymuszać cytowanie ścieżek z outputu narzędzia dosłownie, nie streszczanie 
 - [ ] `docs/tasks/_inbox/DEV-agent_note-karta-logger-pattern...`,
       `DEV-agent_note-karty-wzorcow-ddd...`, `DEV-agent_note-refine-providers-prv2...`,
       `DEV-orc-026.md` przeniesione do `## Wynik` i usunięte z `_inbox/`
+
+## Wynik (2026-10-25)
+
+Punkty 2 i 3 zamknął wcześniej [ORC-136](../decisions/orchestrate-rule-history.md#orc-136) (karta loggera ma zakres per token `LOGGER_SERVICE`, blok `node` niesie karty `-plain`). Reszta: [ORC-137](../decisions/orchestrate-rule-history.md#orc-137), commit `0acca0b`.
+
+1. **Karta na efekty uboczne komend z guarda: odłożona świadomie.** Wciąż jedno wystąpienie (marketing-hub TS-MH-010, `DEV-orc-056`); w skrzynce nie ma drugiego niezależnego projektu z tym kształtem. Konwencja repo (`docs/CONTRIBUTING.md`) każe czekać na drugi. Wracamy, gdy pojawi się drugie wystąpienie.
+2. **Logger:** ORC-136.
+3. **Karty DDD bez DDD:** ORC-136 (blok `node`: `-plain`, bez `conventions-pattern`).
+4. **PRV2:** karta `refine-providers-pattern` (pełna i `_summary`) opisuje teraz oba warianty: `redirectTo` z `check()` albo `<RedirectToSignIn>` jako fallback `<Authenticated>` (D7) z flagą jednokrotności modułu i wyłącznikiem pętli `auth_retry=1`. Wzorzec zgodny z `apps/web/src/providers/auth-provider.ts` w marketing-hub.
+5. **Sonda:** `tail` jako cytat z linią nagłówkową pliku; eval `orchestrate-script` 103/103.
+
+Odstępstwa od kryteriów: rekordy `DEV-orc-026*`, `DEV-agent_note-karta-logger*`, `DEV-agent_note-refine-providers-prv2*` zostają w skrzynce z odesłaniem do ORC-136/137 zamiast być usunięte. `DEV-orc-026` jest celem claimu ORC-137, a usunięcie rekordów zrywa liczenie nawrotu; status zmieni raport tygodniowy.

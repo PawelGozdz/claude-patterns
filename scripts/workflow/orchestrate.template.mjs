@@ -467,6 +467,14 @@ function buildProbePrompt(a, layer) {
       'Dopiero gdy ten grep nic nie znajdzie (błąd bez ścieżki pliku, np. konfiguracyjny) — ' +
       'zwróć ostatnie 40 linii CAŁEGO logu w `tail`.'
     : ' Przy niezerowym — zwróć ostatnie 40 linii w `tail`.'
+  // ORC-137 (marketing-hub TS-MH-010, DEV-orc-026): sonda streściła ogon i przypisała błąd import/order do
+  // `business-rule.decorator.ts` zamiast do `permissions.guard.spec.ts`; runda naprawcza nie mogła trafić w
+  // błąd i trzy próby przepadły. Eslint (format stylish) wypisuje ścieżkę pliku w OSOBNEJ linii nad jego
+  // błędami, więc tail złożony z samych linii błędów gubi, czyj to błąd — a parafraza zgaduje.
+  const verbatimInstruction = ' `tail` to CYTAT: skopiuj linie z logu bez zmian i bez streszczania. Błędy lintu ' +
+    'wypisywane pod linią z nazwą pliku (eslint) kopiuj RAZEM z tą linią nagłówkową — błąd bez swojej ścieżki ' +
+    'nie wolno przypisać do żadnego pliku. Nie zgaduj, do którego pliku należy błąd, i nie podawaj ścieżki, ' +
+    'której nie ma w logu.'
   // ORC-134: awaria samej sondy (brak pamięci) nie zostawia żadnego `error TS`, a bez kodu wyjścia w `tail`
   // silnik nie odróżni jej od czerwieni kodu (juz-ide-api-4 TS-MAP-MARKER-PRIVACY-001: EXIT 134).
   const crashInstruction = ' Gdy kod wyjścia to 134 albo 137, albo log zawiera „heap out of memory" / „Killed" — ' +
@@ -509,7 +517,7 @@ function buildProbePrompt(a, layer) {
       'NIE jest "skipped" — wtedy zwróć "fail" i w `tail` napisz, że polecenie nie skończyło się w limicie.'
     : ''
   return 'Uruchom dokładnie to i NIC więcej:\n' + run + literalMapping +
-    '\nPrzy EXIT:0 NIE otwieraj pliku logu wcale.' + tailInstruction + crashInstruction + tsErrorsInstruction + testFailInstruction +
+    '\nPrzy EXIT:0 NIE otwieraj pliku logu wcale.' + tailInstruction + verbatimInstruction + crashInstruction + tsErrorsInstruction + testFailInstruction +
     delta +
     '\nNIC nie czytaj, nie analizuj, nie poprawiaj, nie komentuj kodu.' +
     (scoped ? '\nZakres zmiany: ' + scoped : '') +
