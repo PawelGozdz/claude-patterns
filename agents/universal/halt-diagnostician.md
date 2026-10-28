@@ -8,11 +8,10 @@ description: |
 
   ADVISORY ONLY — cannot spawn further agents or workflows. This is enforced by
   `disallowedTools` (Agent, Workflow, Task), not by a prompt instruction: a
-  prompt-only prohibition was tried first (ORC-055) and failed twice in real
-  runs (TS-SEC-TRUSTED-PROXY-001, api-2, 2026-08-31; grant-flow TS-RATE-003,
-  2026-09-27) — a fork told only "do not call Agent/Workflow/Task" ignored it
-  both times and launched an unsupervised continuation, once self-approving
-  (via a hand-edited `layers_done`) a layer its own verifier had rejected 3x.
+  prompt-only prohibition does not hold (ORC-055) — a fork told only "do not call
+  Agent/Workflow/Task" ignored it and launched an unsupervised continuation,
+  once self-approving (via a hand-edited `layers_done`) a layer its own verifier
+  had rejected 3x.
 
   Use when `/orchestrate` reports `ESCALATE_AND_HALT` or `BLOCKED_BY_PRIOR` and
   you need to understand root cause BEFORE deciding whether to resume, and
@@ -75,4 +74,5 @@ chodzi.
 
 ## Changelog
 
+- 2026-10-28 — wyniesiono historię (geneza reguł, pomiary) z promptu do docs/decisions/prompt-history/agents.md (TASK-GSTACK-ADOPT-001)
 - 2026-10-01 — agent dodany (ORC-055): diagnoza halt/BLOCKED_BY_PRIOR tylko do odczytu; zakaz Agent/Workflow/Task egzekwowany przez disallowedTools, nie prompt.

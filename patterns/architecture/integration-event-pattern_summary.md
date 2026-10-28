@@ -2,11 +2,8 @@
 
 **Tags**: "api:events:integration", "api:events:outbox"
 <!-- Egzekwowalne streszczenie integration-event-pattern.md. WIĄŻĄCE dla implementacji.
-     Pełny wzorzec (kontekst, decision tree, incydenty, przykłady): integration-event-pattern.md
-     Verifier sprawdza KAŻDĄ regułę z ID poniżej i cytuje ją przy naruszeniu.
-     Karta dopisana 2026-09-09 (TASK-KAIZEN-002 follow-up) — do tej pory brak karty zmuszał
-     orchestrate-prepare.mjs do wstrzykiwania PEŁNEGO pliku (38KB) do promptu implementera
-     przy każdej turze, ilekroć ten wzorzec się dopasował. -->
+     Pełny wzorzec (kontekst, decision tree, przykłady): integration-event-pattern.md
+     Verifier sprawdza KAŻDĄ regułę z ID poniżej i cytuje ją przy naruszeniu. -->
 
 **Layer**: Architecture · **Applies to**: klasy `*IntegrationEvent`, domain event handlery
 publikujące do outboxa, `IntegrationEventFanOutService`/routing table, `@Processor` per kontekst
@@ -27,7 +24,7 @@ publikujące do outboxa, `IntegrationEventFanOutService`/routing table, `@Proces
 - **IE5** — Statyczna `fromPayload()` — fabryka do rekonstrukcji w pollerze/procesorze.
 - **IE6** — Publikacja to zmiana TRZYCZĘŚCIOWA w jednym diffie: zapis do outboxa +
   wpis w `routingTable` + `case` w procesorze docelowego kontekstu. Brak jednej części = martwy
-  kod albo cicha utrata eventu (INC 2026-06-04, TS-INTEGRATION-EVENT-WIRING-AUDIT-001).
+  kod albo cicha utrata eventu.
 - **IE7** — Konsument idempotentny (outbox = at-least-once). `default:` w `switch (eventName)`
   loguje i NIE rzuca.
 - **IE8** — Zdarzenia domenowe in-process lecą PRZED commitem transakcji. Skutek cross-context i audytowy zawsze przez outbox (rollbackuje się z tx); handler zdarzenia robi tylko to, co cofa się razem z transakcją — nigdy `queue.add`/cache invalidation/HTTP.

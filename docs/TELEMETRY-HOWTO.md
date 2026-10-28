@@ -14,6 +14,7 @@ higiena raportowania: [ADR 0011](adr/0011-raportowanie-dryfu-i-telemetria-floty.
 | Cron 08:15 pon (opcjonalny) | `scripts/cron/osv-scan.sh` → skan zależności (`osv-scanner`) | `~/.claude/metrics/osv-scan.log` |
 | Hooki blokujące (9: `block-root-grep`, `block-subagent-commit`, `pre-workflow-lint`, `check-delegation`, …) | `process: hook`: jedno zdarzenie przy zablokowaniu, `step.role` = `<hook>:<reguła>` (np. `pre-workflow-lint:WL3`); przepuszczenia i ostrzeżenia nie zapisują nic; wyłączenie `HOOK_TELEMETRY=off` | `telemetry/events/*.jsonl` |
 | `scripts/pre-commit-guards.mjs` | `process: pre-commit`: krok per bramka (`step.role` = stała nazwa, np. `eval-hooks`), odsetek porażek per bramka w agregacie | `telemetry/events/*.jsonl` |
+| `/review-panel` (przez `scripts/reviewer-stats.mjs --record`) | `process: review-panel`: jedno zdarzenie na reviewera w przebiegu (`step.id` = `step.role` = nazwa reviewera, `ok` + `step.findings` albo `skipped`); z tych zdarzeń `--select` liczy, kogo pominąć | `telemetry/events/*.jsonl` |
 
 ## Codzienne komendy
 
@@ -29,6 +30,7 @@ node scripts/telemetry-report.mjs --claims          # czy reguły i poprawki ze 
 node scripts/telemetry-report.mjs --weekly          # raport tygodniowy do telemetry/reports/<RRRR>-W<ww>.md (4 sekcje) + statusy claimów
 npm run telemetry:weekly                        # to samo ręcznie, z agregatem dziennym przed raportem i logiem na terminalu (bez crona); `npm run telemetry:weekly:dry` tylko wypisuje raport, nic nie zapisuje
 node scripts/telemetry-export.mjs --check      # paczka agregatów dla serwera zespołu: walidacja (bez --check: JSON na stdout, --out plik); niczego nie wysyła
+node scripts/reviewer-stats.mjs [--project <nazwa>] [--json]   # statystyka reviewerów /review-panel ze zdarzeń telemetrii (decyzja RUN/SKIP/PROBE); `--check-config` sprawdza podpięcie; bez `--process review-panel` panel nie wchodzi do sum w `telemetry-report`
 node scripts/audit-projects.mjs --all --report   # audyt floty; --report przekazuje błędy do docs/tasks/_inbox/
 node scripts/report-deviation.mjs --list         # skrzynka odstępstw, triage
 ```
@@ -62,6 +64,8 @@ Ostatnie linie logu to podsumowanie („brak znanych podatności…” albo list
   po dłuższej przerwie zostawia nieaktualny wpis w starym dniu — raz w tygodniu przelicz całość: `node scripts/telemetry-aggregate.mjs`.
 - `step.blamed` (fałszywe GO) dopisuje kolektor. Zdarzenia sprzed 2026-10-23 uzupełnia `node scripts/telemetry-backfill-gate-blame.mjs`
   (idempotentny, czyta `wf_*.json`; przepisuje pliki zdarzeń atomowo, więc zrób kopię `telemetry/events/` przed pierwszym użyciem na nowej maszynie).
+- Statystyka reviewerów `/review-panel` leży teraz w `telemetry/events/` checkoutu, z którego działa skrypt (wcześniej w `~/.claude/`); katalog zmienia `CLAUDE_TELEMETRY_DIR`. Świeży klon albo worktree zaczyna bez danych, więc każdy reviewer jest uruchamiany, dopóki nie zbierze własnej historii (bezpieczny kierunek).
+- Stary dziennik `/review-panel` (`~/.claude/review-panel-stats/invocations.jsonl`) migruje się sam przy pierwszym `reviewer-stats.mjs --record|--select` i dostaje nazwę `.migrated`. Jeśli plik jest uszkodzony, polecenie kończy się exit 2 i niczego nie rusza: napraw linię wskazaną w błędzie albo usuń plik. Migrację chroni plik blokady `invocations.jsonl.lock` (zastarzały po 2 minutach jest odzyskiwany); równoległe procesy czekają, aż pierwszy skończy. Uszkodzoną linię `review-panel` w `telemetry/events/*.jsonl` też zgłasza exit 2 z numerem linii; po naprawie nie trzeba nic przeliczać.
 
 - Cron ma ubogi PATH — dlatego jest wrapper `scripts/cron/audit-daily.sh`, a podprocesy używają `process.execPath`.
 - Ten sam plik hooka nie może stać pod dwoma zdarzeniami: `sync-global-hooks` identyfikuje hook po nazwie pliku (stąd osobny `workflow-metrics-stop.js`).

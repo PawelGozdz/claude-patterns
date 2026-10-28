@@ -113,8 +113,8 @@ standard mode) before dispatching — same as the standard-mode announcement.
 
 A reviewer that found nothing in its last 10 invocations in this project is skipped by default —
 the panel costs less without losing detection, because the reviewers that keep finding things
-still run. The data is the panel's own log (`~/.claude/review-panel-stats/invocations.jsonl`;
-telemetry v1 carries no per-reviewer result, see "Stats log" below).
+still run. The data is the panel's own telemetry events (`process: review-panel`, see "Stats log"
+below).
 
 **Skip this step entirely — run the whole panel from 2a/2b — when** `--full` or `--thorough` was
 given (or inferred), or the stats call below fails. Otherwise, after 2a/2b produced the planned
@@ -132,9 +132,9 @@ It returns `run` (dispatch these), `skip` (do not dispatch; each has a `reason`)
 - `NEVER_GATE` — `reviewer-security`, `reviewer-compliance`, `reviewer-pragmatist` — are never in `skip`,
   whatever their history (pragmatist is the panel's blocking-decision floor);
 - every 10th skipped panel a skipped reviewer is run once as a `probe`; a finding resets its streak;
-- the script exits non-zero (exit 2 = corrupt log: it names the file and line) → **run the full
-  panel** and say in the report "adaptive selection off: <error>". Never treat a failed call as
-  "no skips needed" silently and never repair or delete the log yourself.
+- the script exits non-zero (exit 2 = corrupt telemetry event or legacy log: it names the file and
+  line) → **run the full panel** and say in the report "adaptive selection off: <error>". Never treat
+  a failed call as "no skips needed" silently and never repair or delete the data file yourself.
 
 Every skipped reviewer is named in the report (Phase 3, section "Skipped reviewers"). Nothing
 disappears silently, and the user can override with `--full`.
@@ -159,7 +159,7 @@ Collect all responses (each returns `inline_comments` JSON + a summary + interna
 finding later merged into another reviewer's entry still counts for the reviewer who found it):
 
 ```
-node <claude-patterns>/scripts/reviewer-stats.mjs --record --project <project> --branch <branch> \
+node <claude-patterns>/scripts/reviewer-stats.mjs --record --project <project> \
   --ran eagle=<N inline_comments>,security=<N>,... --skipped nitpicker,newbie
 ```
 
@@ -237,14 +237,18 @@ Ready for PR when all CRITICAL and HIGH issues are resolved.
 
 ## Stats log (adaptive selection)
 
-- File: `~/.claude/review-panel-stats/invocations.jsonl` (override: `REVIEW_PANEL_STATS_FILE`). One
-  JSON line per reviewer per panel run: `ts`, `project`, `branch`, `reviewer`, `outcome`
-  (`ran` + `findings` count | `skipped`). Counts only — no diff, paths or finding text. Like the
-  snapshots, it lives under `~/.claude/`, never in the reviewed repo.
-- Why not telemetry v1 (ADR 0012): the event schema has `additionalProperties: false`, no
-  `review-panel` process and no findings-count field. Moving this data there needs a schema change
-  and is the owner's call; until then the log is the single source and `reviewer-stats.mjs` the only
-  reader/writer.
+- Source: telemetry v1 events (ADR 0012, annex "review-panel") in `telemetry/events/<YYYY-MM>.jsonl` of
+  claude-patterns, outside git and per machine like the rest of the telemetry. One `step.end` per
+  reviewer per panel run: `step.id` = reviewer name, `outcome` `ok` + `step.findings` (count) or
+  `skipped`. Counts only — no diff, paths, branch or finding text. Written only through
+  `reviewer-stats.mjs --record`, never into the reviewed repo.
+- Location: the events live in the claude-patterns checkout the script runs from (`telemetry/events/`,
+  override: `CLAUDE_TELEMETRY_DIR`), no longer under `~/.claude/`. A fresh clone or worktree starts with
+  no data, so every reviewer runs (fail-safe) until it collects its own history.
+- Migration: a legacy log from before telemetry (`~/.claude/review-panel-stats/invocations.jsonl`)
+  is imported once, on the first `--record` / `--select` / table call, and renamed to
+  `invocations.jsonl.migrated`. No such file = nothing happens. A corrupt legacy file stays untouched
+  and the call exits 2.
 - Inspect: `node <claude-patterns>/scripts/reviewer-stats.mjs [--project <name>] [--json]` prints per
   reviewer the invocations, invocations with a finding, the trailing zero streak, and
   `[GATE_CANDIDATE]` / `[NEVER_GATE]`. Wiring check: `reviewer-stats.mjs --check-config`.

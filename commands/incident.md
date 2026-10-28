@@ -42,9 +42,9 @@ Thin wrapper that invokes the `incident` skill from
    T+0 and **edited** as the timeline unfolds through T+72h;
 2. `docs/security/incidents/INC-{YYYYMMDD}-{slug}-postmortem.md` — the postmortem.
 
-Nothing else. No source file, no commit. `Write` was denied until 2026-08-14, which
-made the skill's own final step (save the postmortem) impossible — the closed list
-above is the guard, not the missing tool. `Edit` belongs here for the same reason:
+Nothing else. No source file, no commit. `Write` stays open because the skill's own
+final step (save the postmortem) needs it — the closed list above is the guard, not a
+missing tool. `Edit` belongs here for the same reason:
 the incident log is appended to across the whole response, and rewriting it wholesale
 with `Write` on every update would drop everything recorded earlier.
 

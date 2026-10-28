@@ -13,7 +13,7 @@ Pięć niezmienników obowiązujących KAŻDĄ implementację, niezależnie od z
 ## MUST
 
 - **SI1** — Tożsamość użytkownika pochodzi z kontekstu uwierzytelnionego żądania. Schematy Zod ciała żądania na granicy kontrolera **nie zawierają pola `userId`** (IDOR: klient podstawia cudze ID i działa w jego imieniu).
-- **SI2** — Każda metoda kontrolera ma jawny dekorator: `@Auth()` (opcjonalnie z `@RequirePermissions(...)`) albo `@Public()` z komentarzem uzasadniającym. Brak dekoratora spada na domyślną politykę, która w incydentach produkcyjnych bywała po cichu przestawiona na „allow".
+- **SI2** — Każda metoda kontrolera ma jawny dekorator: `@Auth()` (opcjonalnie z `@RequirePermissions(...)`) albo `@Public()` z komentarzem uzasadniającym. Brak dekoratora spada na domyślną politykę, która bywa po cichu przestawiona na „allow".
 - **SI3** — Rate limit działa **fail-closed**: gdy backend limitu (Redis, store w pamięci) jest niedostępny, guard rzuca 503. Fail-open pozwala obejść limit przez wywołanie awarii backendu.
 - **SI4** — Odpowiedzi HTTP nie zawierają surowego `error.message` ani `error.stack` z błędów infrastruktury — mapowanie na komunikaty generyczne wg `safe-error-propagation-pattern.md`.
 - **SI5** — Wywołania loggera nie zawierają PII. Identyfikuj po ID, nie po danych osobowych.

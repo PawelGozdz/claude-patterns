@@ -3,29 +3,36 @@
  * reviewer-stats.mjs — adaptacyjny dobór reviewerów /review-panel (TASK-GSTACK-ADOPT-001, B3).
  *
  * DLACZEGO: panel odpala 5–10 reviewerów na każdy diff, a część z nich w danym projekcie nigdy nic nie
- * znajduje (np. nitpicker przy formatterze w CI). Telemetria v1 (ADR 0012) nie niesie wyniku per reviewer
- * (brak `process: review-panel`, brak liczby findingów, schemat ma additionalProperties:false), a snapshot
- * z `~/.claude/review-panel-snapshots/` zapisuje findingi bez autora i jest nadpisywany per gałąź. Dlatego
- * /review-panel dopisuje własny, minimalny dziennik JSONL — ten skrypt go zapisuje (--record), czyta
- * i z niego liczy decyzję (--select).
+ * znajduje (np. nitpicker przy formatterze w CI). Snapshot z `~/.claude/review-panel-snapshots/` zapisuje
+ * findingi bez autora i jest nadpisywany per gałąź, więc wynik per reviewer idzie do telemetrii v1
+ * (ADR 0012, aneks „review-panel"): ten skrypt zapisuje go (--record), czyta i z niego liczy decyzję (--select).
  *
- * Dziennik: `~/.claude/review-panel-stats/invocations.jsonl` (nadpisanie: REVIEW_PANEL_STATS_FILE albo --file).
- * Jedna linia = jeden reviewer w jednym przebiegu panelu:
- *   {"v":1,"ts":"…","project":"api-1","branch":"feature/x","reviewer":"nitpicker","outcome":"ran","findings":0}
- *   {"v":1,"ts":"…","project":"api-1","branch":"feature/x","reviewer":"nitpicker","outcome":"skipped"}
- * Bez treści diffu, bez ścieżek plików, bez treści findingów — tylko liczby.
+ * Dane: zdarzenia `process: review-panel` w `telemetry/events/<RRRR-MM>.jsonl` (nadpisanie katalogu:
+ * CLAUDE_TELEMETRY_DIR, jak u pozostałych emiterów). Jedno `step.end` = jeden reviewer w jednym przebiegu panelu:
+ *   step.id = step.role = "nitpicker", outcome "ok" + step.findings (wywołany) albo "skipped" (pominięty).
+ * Bez treści diffu, ścieżek, gałęzi i treści findingów — tylko liczby.
  *
  * Reguła: reviewer, który w ≥10 OSTATNICH z rzędu wywołań (`ran`) nie zgłosił nic, to [GATE_CANDIDATE]
  * i jest pomijany — chyba że jest na liście NEVER_GATE. Pominięty reviewer nie zbiera nowych danych, więc
  * co PROBE_EVERY-ty pominięty przebieg dostaje `PROBE` (jedno wywołanie kontrolne); finding zeruje serię.
  * Statystyka jest per projekt: zero w jednym repo nie wyłącza reviewera w innym.
  *
+ * Uszkodzony wpis = jawny błąd (exit 2), nie ciche zero. Czytnik bierze pod uwagę tylko linie z napisem
+ * "review-panel": linia z tym napisem, której nie da się sparsować albo która łamie schemat, zatrzymuje dobór
+ * z numerem linii; uszkodzone linie innych procesów nie należą do tej statystyki i są pomijane jak wszędzie w telemetrii.
+ *
+ * Migracja (jednorazowa): stary dziennik `~/.claude/review-panel-stats/invocations.jsonl` (sprzed telemetrii) jest
+ * importowany przy pierwszym wywołaniu (--record/--select/tabela) i przemianowany na `invocations.jsonl.migrated`.
+ * Brak pliku = nic. Zły plik zostaje nietknięty (exit 2). Import jest idempotentny (id wyprowadzone z treści linii).
+ *
  * Użycie:
- *   node scripts/reviewer-stats.mjs [--project <nazwa> | --all-projects] [--json] [--file <plik>]
+ *   node scripts/reviewer-stats.mjs [--project <nazwa> | --all-projects] [--json]
  *   node scripts/reviewer-stats.mjs --select eagle,security,nitpicker [--project <nazwa>] [--json]
  *   node scripts/reviewer-stats.mjs --record --project <nazwa> [--branch <b>] --ran eagle=2,newbie=0 --skipped nitpicker
  *   node scripts/reviewer-stats.mjs --check-config
- * Kody wyjścia: 0 ok · 1 błąd użycia / --check-config nie przeszło · 2 uszkodzony dziennik (jawny błąd, nie ciche zero).
+ * (--branch jest przyjmowane dla zgodności i ignorowane: nazwa gałęzi bywa nazwą zadania, a telemetria jej nie niesie;
+ *  --legacy-file <plik> wskazuje stary dziennik do migracji — tylko testy.)
+ * Kody wyjścia: 0 ok · 1 błąd użycia / --check-config nie przeszło · 2 uszkodzone dane (jawny błąd, nie ciche zero).
  */
 
 import fs from 'node:fs';
@@ -33,6 +40,10 @@ import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import {
+  PROCESSES, REVIEW_PANEL, REVIEWER_NAME_RE, appendEventsDedup, buildReviewPanelEvents,
+  deterministicId, emitReviewPanelRun, eventsDir, validateEvent,
+} from './lib/telemetry-events.mjs';
 
 const REPO = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -46,8 +57,9 @@ export const PROBE_EVERY = 10;
  */
 export const NEVER_GATE = Object.freeze(['security', 'compliance', 'pragmatist']);
 
-const NAME_RE = /^[a-z][a-z0-9-]{0,40}$/;
-const PROJECT_RE = /^[A-Za-z0-9._-]{1,80}$/;
+const NAME_RE = REVIEWER_NAME_RE;
+// Jak w schemacie telemetrii: „.” i „..” odpadają (nazwa projektu trafia do ścieżki rollupu).
+const PROJECT_RE = /^(?!\.{1,2}$)[A-Za-z0-9._-]{1,80}$/;
 
 export class StatsError extends Error {
   constructor(message, exitCode = 1) {
@@ -60,9 +72,9 @@ export class LogError extends StatsError {
   constructor(message) { super(message, 2); }
 }
 
-export function defaultFile() {
-  return process.env.REVIEW_PANEL_STATS_FILE
-    || path.join(os.homedir(), '.claude', 'review-panel-stats', 'invocations.jsonl');
+/** Stary dziennik sprzed telemetrii — źródło jednorazowej migracji. */
+export function defaultLegacyFile() {
+  return path.join(os.homedir(), '.claude', 'review-panel-stats', 'invocations.jsonl');
 }
 
 /** `reviewer-security` i `security` to ten sam reviewer. */
@@ -72,8 +84,62 @@ export function normalizeName(raw) {
   return name;
 }
 
-/** Parsuje dziennik. Brak pliku = brak danych ([]); uszkodzona linia = StatsError z numerem linii. */
-export function readLog(file) {
+/**
+ * Czyta wywołania reviewerów ze zdarzeń telemetrii (`process: review-panel`) z katalogu `dir`.
+ * Brak katalogu = brak danych ([]). Linia z napisem "review-panel", której nie da się sparsować albo która łamie schemat
+ * zdarzenia (także niepoprawny `ts`) = LogError z numerem linii. Zdarzenie o tym samym `id` liczy się raz.
+ * Kolejność: najpierw wpisy zaimportowane z dawnego dziennika (runId `rpm-…`), posortowane po `ts` — migracja dopisuje je do
+ * plików historycznych miesięcy już po nowszych; potem zdarzenia natywne w kolejności zapisu (miesiące rosnąco, w pliku
+ * kolejność dopisywania), więc cofnięty zegar nie przestawia historii.
+ */
+export function readReviews(dir = eventsDir()) {
+  let files;
+  try {
+    files = fs.readdirSync(dir).filter((f) => /^\d{4}-\d{2}\.jsonl$/.test(f)).sort();
+  } catch (e) {
+    if (e.code === 'ENOENT') return [];
+    throw new LogError(`nie mogę odczytać katalogu telemetrii ${dir}: ${e.message}`);
+  }
+  const imported = [];
+  const native = [];
+  const seen = new Set();
+  for (const f of files) {
+    const file = path.join(dir, f);
+    let text;
+    try {
+      text = fs.readFileSync(file, 'utf8');
+    } catch (e) {
+      throw new LogError(`nie mogę odczytać ${file}: ${e.message}`);
+    }
+    text.split('\n').forEach((line, i) => {
+      if (!line.includes(REVIEW_PANEL)) return; // szybki filtr: cudzych zdarzeń nie parsujemy
+      const at = `${file}:${i + 1}`;
+      let ev;
+      try {
+        ev = JSON.parse(line);
+      } catch (e) {
+        throw new LogError(`${at}: uszkodzony JSON (${e.message})`);
+      }
+      if (ev === null || typeof ev !== 'object' || Array.isArray(ev)) throw new LogError(`${at}: wpis nie jest obiektem`);
+      if (ev.process !== REVIEW_PANEL) return; // napis w treści innego zdarzenia (np. sygnatura odstępstwa)
+      const errors = validateEvent(ev);
+      if (errors.length) throw new LogError(`${at}: ${errors.join('; ')}`);
+      const t = Date.parse(ev.ts);
+      if (Number.isNaN(t)) throw new LogError(`${at}: niepoprawny ts "${ev.ts}"`);
+      if (seen.has(ev.id)) return; // duplikat (np. zdublowana migracja) nie zawyża statystyki
+      seen.add(ev.id);
+      const rec = ev.outcome === 'ok'
+        ? { ts: ev.ts, project: ev.project, reviewer: ev.step.id, outcome: 'ran', findings: ev.step.findings }
+        : { ts: ev.ts, project: ev.project, reviewer: ev.step.id, outcome: 'skipped' };
+      (ev.runId.startsWith('rpm-') ? imported : native).push({ rec, t });
+    });
+  }
+  const byTime = (x, y) => x.t - y.t; // Array.sort jest stabilny
+  return [...imported.sort(byTime), ...native].map((x) => x.rec);
+}
+
+/** Parsuje stary dziennik (tylko do migracji). Uszkodzona linia = LogError z numerem linii. */
+export function readLegacyLog(file) {
   let text;
   try {
     text = fs.readFileSync(file, 'utf8');
@@ -101,7 +167,7 @@ export function readLog(file) {
     } else if (rec.outcome !== 'skipped') {
       throw new LogError(`${at}: outcome musi być "ran" albo "skipped"`);
     }
-    records.push(rec);
+    records.push({ ...rec, line: i + 1 });
   });
   return records;
 }
@@ -156,7 +222,7 @@ export function selectPanel(planned, stats) {
   return { run: [...run, ...probe], skip, probe };
 }
 
-function buildRecordLines({ project, branch, ran, skipped, now }) {
+function buildRecordEntries({ project, branch, ran, skipped }) {
   if (!project || !PROJECT_RE.test(project)) throw new StatsError('--record wymaga --project o poprawnej nazwie');
   if (branch !== undefined && (typeof branch !== 'string' || branch.length > 200 || /[\u0000-\u001f]/.test(branch))) throw new StatsError('nieprawidłowa --branch');
   const entries = [];
@@ -176,24 +242,126 @@ function buildRecordLines({ project, branch, ran, skipped, now }) {
     if (seen.has(e.reviewer)) throw new StatsError(`reviewer-${e.reviewer} wymieniony dwa razy w jednym przebiegu`);
     seen.add(e.reviewer);
   }
-  const ts = now.toISOString();
-  return entries.map((e) => JSON.stringify({ v: 1, ts, project, ...(branch ? { branch } : {}), ...e }));
+  return entries;
 }
 
-export function recordRun(file, opts) {
-  const lines = buildRecordLines({ ...opts, now: opts.now ?? new Date() });
-  try {
-    fs.mkdirSync(path.dirname(file), { recursive: true });
-    fs.appendFileSync(file, lines.join('\n') + '\n');
-  } catch (e) {
-    throw new StatsError(`nie mogę zapisać do ${file}: ${e.message}`);
+/** Zapisuje przebieg panelu jako zdarzenia telemetrii. Zwraca liczbę zapisanych zdarzeń; błąd zapisu = StatsError. */
+export function recordRun(opts) {
+  const entries = buildRecordEntries(opts);
+  const res = emitReviewPanelRun({ project: opts.project, entries, ts: (opts.now ?? new Date()).toISOString() });
+  if (res.error) throw new StatsError(`nie mogę zapisać do telemetrii: ${res.error}`);
+  if (res.rejected.length) throw new StatsError(`telemetria odrzuciła zdarzenie: ${res.rejected[0].errors.join('; ')}`);
+  if (res.written !== entries.length) throw new StatsError(`zapisano ${res.written} z ${entries.length} zdarzeń`);
+  return res.written;
+}
+
+/** Zdarzenia telemetrii ze starych wpisów: id i runId wyprowadzone z treści, więc powtórny import niczego nie dubluje. */
+function legacyToFields(records) {
+  const groups = new Map();
+  for (const rec of records) {
+    const ts = new Date(rec.ts).toISOString();
+    const key = `${rec.project}|${ts}|${rec.branch ?? ''}`;
+    if (!groups.has(key)) groups.set(key, { project: rec.project, ts, runId: `rpm-${deterministicId(`review-panel-run|${key}`).slice(0, 12)}`, entries: [] });
+    groups.get(key).entries.push({
+      reviewer: rec.reviewer, outcome: rec.outcome, findings: rec.findings,
+      id: deterministicId(`review-panel-legacy|${key}|${rec.reviewer}|${rec.line}`),
+    });
   }
-  return lines.length;
+  return [...groups.values()].flatMap((g) => buildReviewPanelEvents(g));
 }
 
-/** Spójność konfiguracji: lista NEVER_GATE, istnienie agentów, podpięcie w skillu i komendzie, parsowanie dziennika. */
-export function checkConfig(file, repo = REPO) {
+function archiveName(file) {
+  const base = `${file}.migrated`;
+  return fs.existsSync(base) ? `${base}.${Date.now()}` : base;
+}
+
+/** Importuje `claimed` (stary dziennik, już zajęty przez ten proces) do telemetrii i archiwizuje go. */
+function importClaimed(claimed, file) {
+  const restore = () => { if (claimed !== file && !fs.existsSync(file)) { try { fs.renameSync(claimed, file); } catch { /* zostaje pod nazwą .migrating */ } } };
+  try {
+    const records = readLegacyLog(claimed);
+    const res = appendEventsDedup(legacyToFields(records), { dedup: true });
+    if (res.error) throw new StatsError(`migracja: nie mogę zapisać do telemetrii: ${res.error}`);
+    if (res.rejected.length) throw new StatsError(`migracja: telemetria odrzuciła wpis: ${res.rejected[0].errors.join('; ')}`);
+    try {
+      fs.renameSync(claimed, archiveName(file));
+    } catch (e) {
+      if (e.code !== 'ENOENT') throw new StatsError(`migracja: nie mogę zarchiwizować ${claimed}: ${e.message}`);
+      // ENOENT: ktoś inny dokończył archiwizację — dane są w telemetrii, więc to sukces
+    }
+    return records.length;
+  } catch (e) {
+    restore();
+    throw e;
+  }
+}
+
+const LOCK_STALE_MS = 120_000; // blokada starsza niż tyle = proces zginął w trakcie migracji
+const LOCK_WAIT_MS = 30_000;   // tyle czeka proces, który zastał świeżą blokadę
+const sleep = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+
+/**
+ * Atomowa blokada migracji: `open(…, 'wx')` tworzy plik tylko wtedy, gdy go nie ma. Zastałą blokadę (mtime starszy niż
+ * LOCK_STALE_MS) odzyskujemy; świeżej nie ruszamy — czekamy, aż właściciel skończy. Zwraca funkcję zwalniającą.
+ */
+function acquireLock(lock) {
+  const deadline = Date.now() + LOCK_WAIT_MS;
+  for (;;) {
+    try {
+      const fd = fs.openSync(lock, 'wx');
+      fs.writeSync(fd, `pid:${process.pid}\n`);
+      fs.closeSync(fd);
+      return () => { try { fs.unlinkSync(lock); } catch { /* już usunięta */ } };
+    } catch (e) {
+      if (e.code !== 'EEXIST') throw new StatsError(`migracja: nie mogę utworzyć blokady ${lock}: ${e.message}`);
+    }
+    try {
+      if (Date.now() - fs.statSync(lock).mtimeMs > LOCK_STALE_MS) { fs.unlinkSync(lock); continue; }
+    } catch (e) {
+      if (e.code === 'ENOENT') continue; // właściciel właśnie zwolnił — próbujemy od nowa
+      throw new StatsError(`migracja: nie mogę sprawdzić blokady ${lock}: ${e.message}`);
+    }
+    if (Date.now() > deadline) throw new StatsError(`migracja trwa w innym procesie (blokada ${lock}); spróbuj ponownie`);
+    sleep(50);
+  }
+}
+
+/**
+ * Jednorazowa migracja starego dziennika do telemetrii. Brak pliku = 0, nic nie robi (bez blokady).
+ * Całość działa pod blokadą (`<plik>.lock`), więc równoległe procesy nie importują dwa razy: ten, który zastał blokadę,
+ * czeka, a po jej zwolnieniu nie ma już czego migrować. Plik jest dodatkowo zajmowany przemianowaniem na `.migrating`;
+ * po sukcesie trafia do `.migrated`, po błędzie wraca pod starą nazwę — dane nigdy nie giną. Pozostałość `.migrating`
+ * po przerwanym procesie jest dokańczana przy następnym wywołaniu (import jest idempotentny, a czytnik odrzuca duplikaty id).
+ */
+export function migrateLegacy(file = defaultLegacyFile()) {
+  const claimed = `${file}.migrating`;
+  if (!fs.existsSync(file) && !fs.existsSync(claimed)) return 0;
+  const release = acquireLock(`${file}.lock`);
+  try {
+    let total = 0;
+    if (fs.existsSync(claimed)) total += importClaimed(claimed, file);
+    if (fs.existsSync(file)) {
+      try {
+        fs.renameSync(file, claimed);
+      } catch (e) {
+        if (e.code === 'ENOENT') return total;
+        throw new StatsError(`migracja: nie mogę zająć ${file}: ${e.message}`);
+      }
+      total += importClaimed(claimed, file);
+    }
+    return total;
+  } finally {
+    release();
+  }
+}
+
+/**
+ * Spójność konfiguracji: lista NEVER_GATE, istnienie agentów, podpięcie w skillu i komendzie, proces w schemacie
+ * telemetrii, parsowanie zdarzeń review-panel i (jeśli jeszcze czeka) starego dziennika. Tylko odczyt — niczego nie migruje.
+ */
+export function checkConfig({ repo = REPO, dir = eventsDir(), legacyFile = defaultLegacyFile() } = {}) {
   const problems = [];
+  if (!PROCESSES.includes(REVIEW_PANEL)) problems.push(`schemas/telemetry-event-v1.schema.json nie zna process "${REVIEW_PANEL}"`);
   for (const must of ['security', 'compliance', 'pragmatist']) {
     if (!NEVER_GATE.includes(must)) problems.push(`NEVER_GATE nie zawiera obowiązkowego "${must}"`);
   }
@@ -209,7 +377,10 @@ export function checkConfig(file, repo = REPO) {
       if (!text.includes(needle)) problems.push(`${rel} nie wspomina "${needle}" — dobór reviewerów nie jest podpięty`);
     }
   }
-  try { readLog(file); } catch (e) { problems.push(e.message); }
+  try { readReviews(dir); } catch (e) { problems.push(e.message); }
+  for (const f of [legacyFile, `${legacyFile}.migrating`]) {
+    try { readLegacyLog(f); } catch (e) { problems.push(e.message); }
+  }
   return problems;
 }
 
@@ -236,7 +407,7 @@ function parseArgs(argv) {
     else if (a === '--check-config') opts.checkConfig = true;
     else if (a === '--project') opts.project = need(i++, a);
     else if (a === '--branch') opts.branch = need(i++, a);
-    else if (a === '--file') opts.file = need(i++, a);
+    else if (a === '--legacy-file') opts.legacyFile = need(i++, a);
     else if (a === '--select') opts.select = list(need(i++, a));
     else if (a === '--ran') opts.ran.push(...list(need(i++, a)));
     else if (a === '--skipped') opts.skipped.push(...list(need(i++, a)));
@@ -256,10 +427,10 @@ function renderTable(stats, project) {
 
 function main() {
   const opts = parseArgs(process.argv.slice(2));
-  const file = opts.file ?? defaultFile();
+  const legacyFile = opts.legacyFile ?? defaultLegacyFile();
 
   if (opts.checkConfig) {
-    const problems = checkConfig(file);
+    const problems = checkConfig({ legacyFile });
     if (problems.length) {
       console.error(`reviewer-stats --check-config: ${problems.length} problem(ów)\n- ${problems.join('\n- ')}`);
       process.exit(1);
@@ -268,14 +439,18 @@ function main() {
     return;
   }
 
+  // Stary dziennik trafia do telemetrii zanim cokolwiek zapiszemy albo odczytamy — inaczej statystyka go nie zobaczy.
+  const migrated = migrateLegacy(legacyFile);
+  if (migrated > 0) console.error(`reviewer-stats: zmigrowano ${migrated} wpis(ów) ze starego dziennika do telemetrii (${legacyFile} → .migrated)`);
+
   if (opts.record) {
-    const n = recordRun(file, { project: opts.project, branch: opts.branch, ran: opts.ran, skipped: opts.skipped });
-    console.log(`reviewer-stats: zapisano ${n} wpis(ów) → ${file}`);
+    const n = recordRun({ project: opts.project, branch: opts.branch, ran: opts.ran, skipped: opts.skipped });
+    console.log(`reviewer-stats: zapisano ${n} zdarzeń(ia) telemetrii → ${eventsDir()}`);
     return;
   }
 
   const project = opts.project ?? detectProject();
-  const all = readLog(file);
+  const all = readReviews();
   const records = opts.allProjects ? all : all.filter((r) => r.project === project);
   const stats = computeStats(records);
   const scope = opts.allProjects ? '(wszystkie projekty)' : project;
@@ -294,7 +469,7 @@ function main() {
   }
 
   if (opts.json) {
-    console.log(JSON.stringify({ file, project: scope, gateAfter: GATE_AFTER, probeEvery: PROBE_EVERY, neverGate: NEVER_GATE, reviewers: stats }, null, 2));
+    console.log(JSON.stringify({ source: eventsDir(), project: scope, gateAfter: GATE_AFTER, probeEvery: PROBE_EVERY, neverGate: NEVER_GATE, reviewers: stats }, null, 2));
   } else {
     console.log(renderTable(stats, scope));
   }

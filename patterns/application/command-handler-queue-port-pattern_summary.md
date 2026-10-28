@@ -3,10 +3,7 @@
 **Tags**: "api:events:queue", "api:app"
 <!-- Egzekwowalne streszczenie command-handler-queue-port-pattern.md. WIĄŻĄCE dla implementacji.
      Pełny wzorzec (kod portu, adapterów, uzasadnienie): command-handler-queue-port-pattern.md
-     Verifier sprawdza KAŻDĄ regułę z ID poniżej i cytuje ją przy naruszeniu.
-     Geneza (2026-10-21): TS-SEC-D0-BETA-HARDENING-001 w juz-ide-api-1 — dwa handlery komend
-     (register-with-phone, login-with-phone) dostały @InjectQueue wprost, bo żadna karta tego nie
-     zakazywała, a analiza uzasadniała to zdaniem „handler nie pisze do bazy" (fałszywym). -->
+     Verifier sprawdza KAŻDĄ regułę z ID poniżej i cytuje ją przy naruszeniu. -->
 
 **Layer**: Application · **Applies to**: `*.handler.ts` w `**/application/commands|queries/`
 **Poza zakresem**: event handlery i serwisy (patrz `bullmq-queue-pattern`; handler eventu DOMENOWEGO dodatkowo przez outbox — OB1/N1), procesory BullMQ w `infrastructure/`.

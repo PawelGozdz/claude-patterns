@@ -3,9 +3,7 @@
 **Tags**: "api:events:outbox", "api:data-access:transaction"
 <!-- Egzekwowalne streszczenie transactional-outbox-pattern.md. WIĄŻĄCE dla implementacji.
      Pełny wzorzec (kontekst, poller, przykłady): transactional-outbox-pattern.md
-     Verifier sprawdza KAŻDĄ regułę z ID poniżej i cytuje ją przy naruszeniu.
-     Geneza karty (2026-07-03): reguły istniały TYLKO w pełnym wzorcu, poza ścieżką
-     wstrzykiwania — implementerzy wołali fanOut wprost z handlerów eventów domenowych. -->
+     Verifier sprawdza KAŻDĄ regułę z ID poniżej i cytuje ją przy naruszeniu. -->
 
 **Layer**: Architecture · **Applies to**: handlery eventów domenowych w `application/**/event-handlers/`, `outbox*.service.ts`, `outbox-poller*`
 

@@ -3,9 +3,7 @@
 **Tags**: "api:domain:errors"
 <!-- Egzekwowalne streszczenie domain-errors-pattern.md. WIĄŻĄCE dla implementacji.
      Pełny wzorzec (Result API, hierarchia błędów, przykłady): domain-errors-pattern.md
-     Verifier sprawdza KAŻDĄ regułę z ID poniżej i cytuje ją przy naruszeniu.
-     Geneza karty (2026-07-03): cross-layer nie miał ŻADNYCH Rule Cards — RULE 7 pełnego
-     wzorca (aktualizacja mappera) była łamana w ~90% przypadków → produkcyjne 500-tki. -->
+     Verifier sprawdza KAŻDĄ regułę z ID poniżej i cytuje ją przy naruszeniu. -->
 
 **Layer**: Cross-Layer · **Applies to**: `domain/**/errors/`, enumy kodów błędów, `*error-mapper*` / `ERROR_HTTP_STATUS`, handlery CQRS (obsługa `Result.fail`)
 

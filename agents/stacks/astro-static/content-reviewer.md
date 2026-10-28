@@ -31,8 +31,7 @@ Blog content gate. Cheap (Haiku) — runs on every post PR.
 > Schema source of truth: `juz-ide-blog/src/content.config.ts` +
 > `juz-ide-blog/src/content-system/taxonomy.ts`. If those files change, update
 > this checklist in the same PR — this agent's checks are only as good as their
-> last sync with the real schema (fixed 2026-10-09 after drift: `slug`/`date`/
-> 160-char limit referenced here no longer existed in the real schema).
+> last sync with the real schema.
 
 ## Frontmatter checklist
 
@@ -122,6 +121,7 @@ These rules add reasoning only; the output format and its fields stay unchanged.
 
 ## Changelog
 
+- 2026-10-28 — wyniesiono historię (geneza reguł, pomiary) z promptu do docs/decisions/prompt-history/agents.md (TASK-GSTACK-ADOPT-001)
 - 2026-10-28 — added shared `evidence-kernel` block (`templates/fragments/`, synced by `sync-fragments.mjs`); output contract unchanged (TASK-GSTACK-ADOPT-001, A1)
 - 2026-10-21 — `maxTurns` 30 → 60 (ponad sufit `scaledBudget` = 50), jak w pozostałych weryfikatorach po ORC-092: `/orchestrate` obiecuje weryfikatorowi do 50 wywołań, a agent ginął na 30 i oddawał `unverified_scope` (juz-ide-blog BLOG-HOWTO-001, `content:screens-data` i `content:posts`, 3 próby → ESCALATE_AND_HALT).
 - 2026-10-09 — synced frontmatter checklist with `juz-ide-blog`'s actual schema (`content.config.ts`/`taxonomy.ts`): checks referenced `slug`/`date`/160-char limit that no longer existed after the schema migrated to `id`/`type`/`pillar`/`arc`/`pubDatetime`/`description(200)` — VETO logic was silently no-op against real posts; added content-security grep pass (internal repo codenames, old brand name, absolute hard bans) per EDITORIAL-GUIDE §4a.

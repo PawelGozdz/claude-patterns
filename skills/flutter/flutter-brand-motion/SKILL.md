@@ -15,11 +15,11 @@ Animation patterns grounded in two source-of-truth brand documents — read them
 designing anything non-trivial, this skill only distills the motion-relevant subset:
 
 - `/opt/projects/juz-ide-mobile-app/BRAND.md` — visual language, tone, "miękki kierunek" (soft
-  direction) decision (2026-07-06)
+  direction) decision
 - `/opt/projects/juz-ide-api-1/docs/brand/brand-principles.md` — persuasion constitution
   ("jak traktujemy w produkcie = jak mówimy w marketingu"), applies to motion too
 
-> **Status [2026-09-27]:** motion tokens below (`Duration`/`Curve`) are still current — the new
+> **Status:** motion tokens below (`Duration`/`Curve`) are still current — the new
 > `juz_ide_tokens` package (Faza 5 część A, `wdrozenie/POSTEP.md`) does not export motion values
 > yet (checked in `design-system/scripts/lib/generate-dart.ts`: color/typography/spacing/status
 > only). Colors used inside these examples (`v1Cream`, `v1Latte`, `v1Coffee`) describe the
@@ -59,7 +59,7 @@ color shift, medium = card/sheet transitions, slow = hero/page-level reveals) �
 a new numeric duration unless the token set genuinely doesn't cover the case, and if so, add
 it to `LocalHeroDesignTokens`, don't inline a magic number.
 
-## 2. "Miękki kierunek" (soft direction, 2026-07-06) — the current default
+## 2. "Miękki kierunek" (soft direction) — the current default
 
 **Deprecated** (do not copy, even though it still exists in un-migrated legacy files):
 hard `boxShadow: offset(3,3) blurRadius:0` + thick border, and press feedback implemented as

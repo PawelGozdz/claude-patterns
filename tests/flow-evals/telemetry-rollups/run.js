@@ -21,6 +21,8 @@
  *   9. pre-commit-guards ma oba wpisy
  *  10. fałszywe GO / NO_GO per rola i agent (TASK-OBS-012): przebieg bez przypisania nie wchodzi do liczników,
  *      workflow nie dostaje werdyktów (brak `fixes`)
+ *  12. process `review-panel` (aneks TASK-GSTACK-ADOPT-001): liczy się per reviewer (ok/skipped + findings), nie ma kosztu ani przebiegów,
+ *      a blok orchestrate w tym samym dniu i projekcie jest identyczny jak bez zdarzeń panelu (nic nie fałszuje metryk)
  *  11. blok `tasks`: dwa przebiegi przez północ → jeden wpis w dniu ostatniego run.end; id taska tylko jako klucz tego bloku
  */
 
@@ -359,6 +361,40 @@ const tests = [
         || eq(got.def5678.orchestrate.started, 1, 'engine def5678')
         || eq(Object.keys(got).sort(), ['abc1234', 'def5678'], 'przebieg bez engine nie tworzy bloku')
         || eq(Object.keys(T.buildRollups(mk('r5', null, d, 'go', 1)).get(`demo|${d}|${HOST_A}`)).includes('engines'), false, 'brak engines bez engine');
+    },
+  },
+  {
+    name: 'review-panel-counts-per-reviewer-without-touching-orchestrate',
+    run(T) {
+      const d = '2026-03-01';
+      const base = [
+        ev({ runId: 'r-o', kind: 'run.start', process: 'orchestrate', ts: `${d}T10:00:00.000Z`, engine: 'abc1234' }),
+        ev({ runId: 'r-o', kind: 'step.end', process: 'orchestrate', ts: `${d}T10:01:00.000Z`, outcome: 'go', step: { id: 'a:verifier#1', role: 'verifier' }, m: { costUsd: 0.5 } }),
+        ev({ runId: 'r-o', kind: 'step.end', process: 'orchestrate', ts: `${d}T10:02:00.000Z`, outcome: 'died', cause: 'silent', step: { id: 'b:implementer#1', role: 'implementer' } }),
+        ev({ runId: 'r-o', kind: 'run.end', process: 'orchestrate', ts: `${d}T10:03:00.000Z`, outcome: 'ok' }),
+      ];
+      const rp = (ts, reviewer, findings) => ev({
+        runId: 'rp-1', taskRef: undefined, kind: 'step.end', process: 'review-panel', ts: `${d}T${ts}.000Z`,
+        outcome: findings === undefined ? 'skipped' : 'ok', step: { id: reviewer, role: reviewer, ...(findings === undefined ? {} : { findings }) },
+      });
+      const panel = [rp('11:00:00', 'eagle', 3), rp('11:00:01', 'nitpicker', 0), rp('11:05:00', 'eagle', 2), rp('11:05:01', 'nitpicker')];
+      const key = `demo|${d}|${HOST_A}`;
+      const without = T.buildRollups(base).get(key);
+      const withPanel = T.buildRollups([...base, ...panel]).get(key);
+      const err = eq(withPanel.processes.orchestrate, without.processes.orchestrate, 'blok orchestrate zmienił się po dodaniu zdarzeń panelu')
+        || eq(withPanel.runs, without.runs, 'runs zmienione przez panel')
+        || eq(withPanel.engines, without.engines, 'engines zmienione przez panel');
+      if (err) return err;
+      const p = withPanel.processes['review-panel'];
+      return eq(p.steps, 4, 'kroki review-panel')
+        || eq(p.costUsd, 0, 'koszt review-panel') || eq(p.died, 0, 'zgony review-panel')
+        || eq(p.stepsWithoutCost, 0, 'review-panel nie ma kosztu z natury — nie jest luką pomiaru')
+        || eq(p.roles.eagle.outcomes, { ok: 2 }, 'eagle outcomes') || eq(p.roles.eagle.findings, 5, 'eagle findings')
+        || eq(p.roles.nitpicker.outcomes, { ok: 1, skipped: 1 }, 'nitpicker outcomes') || eq(p.roles.nitpicker.findings, 0, 'nitpicker findings')
+        || eq('review-panel' in withPanel.runs, false, 'panel nie tworzy przebiegów (brak run.start)')
+        || eq(withPanel.stepsTotal, without.stepsTotal + 4, 'stepsTotal')
+        || eq('findings' in without.processes.orchestrate.roles.verifier, false, 'findings tylko tam, gdzie je podano')
+        || (JSON.stringify(withPanel).includes('rp-1') ? 'runId panelu wyciekł do agregatu' : null);
     },
   },
   {

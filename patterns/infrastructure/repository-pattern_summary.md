@@ -9,14 +9,6 @@
 **Layer**: Infrastructure · **Applies to**: `*.repository.ts` w `**/infrastructure/repositories/` lub `**/infrastructure/persistence/`; interfejsy portów w `**/domain/repositories/`; RP12/N7 dodatkowo obejmują `*.cron.ts`/`*.scheduler.ts`/`*.job.ts` w `**/infrastructure/**` i serwisy w `**/application/services/`
 **ADR**: 0025 (Hybrid Event System)
 
-**Geneza RP12/N7 (2026-07-05):** pierwszy live przebieg `/orchestrate-ddd` w juz-ide-api-1
-(TS-SEC-ANTI-SPOOF-003) wygenerował `DeviceNoncePurgeCron` z `@Inject(DATABASE_TOKEN) private
-readonly db: Kysely<Database>` i inline `deleteFrom('device_nonces')...` zamiast przez
-`IDeviceNonceRepository` — human review złapał to (port nie miał jeszcze metody `purgeExpired()`,
-więc implementer poszedł na skróty zamiast dodać metodę do portu). Sprawdzone: WSZYSTKIE 18 innych
-cronów/schedulerów w tym repo idą przez repozytorium/port/command-bus, żaden inny nie wstrzykuje
-`DATABASE_TOKEN` bezpośrednio — to był jedyny wyjątek.
-
 ## MUST
 
 - **RP1** — Command repository implementuje interfejs domenowy (port z `domain/repositories/`) — separacja warstw.

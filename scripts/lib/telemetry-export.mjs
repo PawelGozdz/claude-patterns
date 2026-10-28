@@ -62,7 +62,7 @@ const VERDICT_FIELDS = ['goJudged', 'falseGo', 'noGoJudged', 'falseNoGo'];
 const GATE_FIELDS = ['judged', 'noGo', 'noGoAttributed', 'blamedUnits', 'unattributed', 'blamedUnmatched'];
 
 const roleBlock = (src, at, ctx) => ({
-  ...counters(src, ['n', 'costUsd', 'toolCalls']),
+  ...counters(src, ['n', 'costUsd', 'toolCalls', 'findings']),
   durationMs: stats(src.durationMs),
   outcomes: countMap(src.outcomes, `${at}.outcomes`, ctx),
   causes: countMap(src.causes, `${at}.causes`, ctx),

@@ -16,6 +16,9 @@
  *   5. report-deviation zapisuje `deviation` bez treści powodu
  *   6. konwersja starych rekordów: rola/runda/`fixes` z etykiety, proces kanoniczny vs ręczny,
  *      wynik przebiegu z werdyktu bramki końcowej, zapis idempotentny
+ *   7. process `review-panel` (aneks TASK-GSTACK-ADOPT-001): poprawne zdarzenia przechodzą, a złamanie którejkolwiek
+ *      reguły (findings przy ok obowiązkowe, przy skipped zabronione, outcome tylko ok|skipped, step.findings tylko
+ *      w review-panel, nazwa reviewera, pole spoza schematu) jest odrzucane; dotychczasowe procesy bez zmian
  */
 
 const fs = require('fs');
@@ -286,6 +289,129 @@ const tests = [
       if (bad.status !== 1) return `nieznana kategoria: exit ${bad.status}, oczekiwano 1`;
       const src = fs.readFileSync(REPORT, 'utf8');
       if (!/args\.trigger === 'agent_note' && !args\.category/.test(src)) return 'brak sprawdzenia agent_note w main';
+      return null;
+    },
+  },
+  {
+    name: 'review-panel-valid-events-pass-and-old-processes-kept',
+    run(t) {
+      for (const old of ['orchestrate', 'workflow', 'analyze', 'audit', 'setup', 'blog-seed', 'pre-commit', 'hook']) {
+        if (!t.PROCESSES.includes(old)) return `schemat stracił process ${old} (zmiana ma być addytywna)`;
+      }
+      if (!t.PROCESSES.includes('review-panel')) return 'schemat nie zna process review-panel';
+      const base = { kind: 'step.end', process: 'review-panel', project: 'demo', runId: 'rp-test-1' };
+      const good = [
+        { ...base, step: { id: 'eagle', role: 'eagle', findings: 3 }, outcome: 'ok' },
+        { ...base, step: { id: 'nitpicker', role: 'nitpicker', findings: 0 }, outcome: 'ok' },
+        { ...base, step: { id: 'newbie', role: 'newbie' }, outcome: 'skipped' },
+      ];
+      for (const g of good) {
+        const errs = t.validateEvent(t.buildEvent(g));
+        if (errs.length) return `poprawne zdarzenie odrzucone: ${errs.join('; ')} ${JSON.stringify(g)}`;
+      }
+      // zdarzenia innych procesów (bez step.findings) walidują się jak dotąd
+      const orch = t.validateEvent(t.buildEvent({ kind: 'step.end', process: 'orchestrate', project: 'demo', runId: 'wf_1', step: { id: 'a:impl', role: 'implementer', blamed: ['a'], unblamed: 0 }, outcome: 'go' }));
+      if (orch.length) return `orchestrate step.end przestał przechodzić: ${orch.join('; ')}`;
+      return null;
+    },
+  },
+  {
+    name: 'review-panel-malformed-events-rejected',
+    run(t) {
+      const base = { kind: 'step.end', process: 'review-panel', project: 'demo', runId: 'rp-test-1' };
+      const okStep = { id: 'eagle', role: 'eagle', findings: 1 };
+      const bad = {
+        'ok bez findings': { ...base, step: { id: 'eagle', role: 'eagle' }, outcome: 'ok' },
+        'skipped z findings': { ...base, step: { id: 'eagle', role: 'eagle', findings: 0 }, outcome: 'skipped' },
+        'outcome go': { ...base, step: okStep, outcome: 'go' },
+        'outcome failed': { ...base, step: okStep, outcome: 'failed' },
+        'brak outcome': { ...base, step: okStep },
+        'brak step': { ...base, outcome: 'skipped' },
+        'kind run.end': { ...base, kind: 'run.end', step: okStep, outcome: 'ok' },
+        'findings ujemne': { ...base, step: { ...okStep, findings: -1 }, outcome: 'ok' },
+        'findings ułamek': { ...base, step: { ...okStep, findings: 0.5 }, outcome: 'ok' },
+        'findings napis': { ...base, step: { ...okStep, findings: '3' }, outcome: 'ok' },
+        'findings null': { ...base, step: { ...okStep, findings: null }, outcome: 'ok' },
+        'nazwa z wielkiej litery': { ...base, step: { id: 'Eagle', role: 'Eagle', findings: 1 }, outcome: 'ok' },
+        'nazwa ze ścieżką': { ...base, step: { id: 'a/b', role: 'a/b', findings: 1 }, outcome: 'ok' },
+        'brak role': { ...base, step: { id: 'eagle', findings: 1 }, outcome: 'ok' },
+        'pole spoza schematu (branch)': { ...base, branch: 'feature/x', step: okStep, outcome: 'ok' },
+        'pole spoza schematu w step': { ...base, step: { ...okStep, text: 'finding' }, outcome: 'ok' },
+        'step.id ≠ step.role': { ...base, step: { id: 'eagle', role: 'newbie', findings: 1 }, outcome: 'ok' },
+        'm.costUsd': { ...base, step: okStep, outcome: 'ok', m: { costUsd: 0.1 } },
+        'cause': { ...base, step: okStep, outcome: 'ok', cause: 'other' },
+        'cause null': { ...base, step: okStep, outcome: 'ok', cause: null },
+        'taskRef': { ...base, step: okStep, outcome: 'ok', taskRef: 'TS-001' },
+        'step.fixes': { ...base, step: { ...okStep, fixes: 'x' }, outcome: 'ok' },
+        'step.attempt': { ...base, step: { ...okStep, attempt: 2 }, outcome: 'ok' },
+        'step.agent': { ...base, step: { ...okStep, agent: 'reviewer-eagle' }, outcome: 'ok' },
+        'findings w orchestrate': { kind: 'step.end', process: 'orchestrate', project: 'demo', runId: 'wf_1', step: { id: 'a', role: 'implementer', findings: 2 }, outcome: 'ok' },
+        'findings w hook': { kind: 'step.end', process: 'hook', project: 'demo', runId: 'hook-1', step: { id: 'x', role: 'x', findings: 0 }, outcome: 'halted' },
+      };
+      for (const [name, fields] of Object.entries(bad)) {
+        const errs = t.validateEvent(t.buildEvent(fields));
+        if (!errs.length) return `zdarzenie „${name}" przeszło walidację`;
+      }
+      return null;
+    },
+  },
+  {
+    name: 'review-panel-emit-helper-writes-and-never-throws',
+    run(t) {
+      const res = t.emitReviewPanelRun({ project: 'demo-rp', entries: [
+        { reviewer: 'eagle', outcome: 'ran', findings: 2 }, { reviewer: 'newbie', outcome: 'skipped' }] });
+      if (res.error || res.written !== 2 || res.rejected.length) return 'zapis: ' + JSON.stringify(res);
+      const evs = allEvents(t).filter((e) => e.runId === res.runId);
+      if (evs.length !== 2 || !evs.every((e) => t.validateEvent(e).length === 0)) return 'zapisane zdarzenia niezgodne ze schematem';
+      if (evs[0].step.findings !== 2 || evs[0].outcome !== 'ok' || evs[1].outcome !== 'skipped' || 'findings' in evs[1].step) return 'ran/skipped źle odwzorowane';
+      for (const entries of [
+        [{ reviewer: 'Zły', outcome: 'ran', findings: 1 }], [{ reviewer: 'eagle', outcome: 'ran' }],
+        [{ reviewer: 'eagle', outcome: 'ran', findings: -1 }], [{ reviewer: 'eagle', outcome: 'maybe' }],
+      ]) {
+        const r = t.emitReviewPanelRun({ project: 'demo-rp', entries });
+        if (!r.error || r.written !== 0) return `złe wejście ${JSON.stringify(entries)} nie dało błędu bez rzucania: ${JSON.stringify(r)}`;
+      }
+      // deterministyczne id (migracja) + dedup = idempotencja
+      const entry = { reviewer: 'ops', outcome: 'ran', findings: 0, id: t.deterministicId('rp-test|ops') };
+      const first = t.emitReviewPanelRun({ project: 'demo-rp', ts: '2026-08-01T00:00:00.000Z', runId: 'rpm-test', entries: [entry] }, { dedup: true });
+      const again = t.emitReviewPanelRun({ project: 'demo-rp', ts: '2026-08-01T00:00:00.000Z', runId: 'rpm-test', entries: [entry] }, { dedup: true });
+      if (first.written !== 1 || again.written !== 0 || again.skipped !== 1) return 'powtórny zapis z tym samym id zdublował: ' + JSON.stringify([first, again]);
+      return null;
+    },
+  },
+  {
+    name: 'project-name-cannot-be-dot-or-dotdot',
+    run(t) {
+      // Nazwa projektu trafia do ścieżki rollupu: „.” i „..” wyprowadziłyby plik poza katalog.
+      const mk = (project) => t.validateEvent(t.buildEvent({ kind: 'step.end', process: 'orchestrate', project, runId: 'r1', outcome: 'ok', step: { id: 'a' } }));
+      for (const bad of ['.', '..']) if (!mk(bad).length) return `project "${bad}" przeszedł walidację`;
+      for (const good of ['_claude-patterns', 'a.b', '.hidden', '...', 'aegis-flow', 'x..y']) {
+        const e = mk(good);
+        if (e.length) return `project "${good}" odrzucony: ${e.join('; ')}`;
+      }
+      const agg = fs.readFileSync(path.join(REPO, 'scripts', 'telemetry-aggregate.mjs'), 'utf8');
+      if (!/SAFE_NAME = \/\^\(\?!\\\.\{1,2\}\$\)/.test(agg)) return 'telemetry-aggregate nie odrzuca „.” i „..” w nazwie projektu';
+      return null;
+    },
+  },
+  {
+    name: 'validator-supports-conditionals',
+    run(t) {
+      // Konstrukcje dodane do minimalnego walidatora: allOf, if/then/else, not, required bez properties.
+      const schema = {
+        type: 'object',
+        allOf: [
+          { if: { required: ['a'], properties: { a: { const: 1 } } }, then: { required: ['b'] }, else: { not: { required: ['b'] } } },
+        ],
+      };
+      const v = (x) => t.validateWith(schema, x).length === 0;
+      if (!v({ a: 1, b: 2 })) return 'if prawdziwe, then spełnione — odrzucone';
+      if (v({ a: 1 })) return 'if prawdziwe, then niespełnione — przyjęte';
+      if (!v({ a: 2 })) return 'if fałszywe, else spełnione — odrzucone';
+      if (v({ a: 2, b: 1 })) return 'if fałszywe, else (not required) niespełnione — przyjęte';
+      const eqSchema = { type: 'object', 'x-equalProperties': ['id', 'role'] };
+      if (t.validateWith(eqSchema, { id: 'a', role: 'a' }).length || t.validateWith(eqSchema, { id: 'a' }).length) return 'x-equalProperties odrzuca poprawne';
+      if (!t.validateWith(eqSchema, { id: 'a', role: 'b' }).length) return 'x-equalProperties przepuszcza różne wartości';
       return null;
     },
   },

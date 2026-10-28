@@ -83,7 +83,7 @@
         "reviewer-stats.mjs --select",
         "reviewer-stats.mjs --record"
       ],
-      "why": "kształt odpowiedzi reviewerów (inline_comments), ścieżki snapshotu i logu statystyk oraz dwa wywołania reviewer-stats.mjs"
+      "why": "kształt odpowiedzi reviewerów (inline_comments), ścieżka snapshotu, nazwa starego dziennika invocations.jsonl (migrowanego do telemetrii, wzmianka o migracji musi zostać) oraz dwa wywołania reviewer-stats.mjs"
     },
     {
       "files": [

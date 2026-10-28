@@ -23,7 +23,7 @@
 - **CS11** — dane autora/organizatora/twórcy w odpowiedzi jako zagnieżdżony `authorSnapshotSchema` (`{ userId, displayName, avatarUrl }`), nigdy jako płaskie pola (ADR drift prevention).
 - **CS12** *(tylko w repo z mechanizmem Idempotency-Key — patrz uwaga o zakresie)* — endpoint z `options.idempotent` (TS-INFRA-IDEMPOTENCY-002, AC-S5) zwraca WYŁĄCZNIE pokwitowanie akcji (id + pola potwierdzenia), nigdy pełną projekcję mogącą nieść pole poświadczeń (token sesji, hasło, kod OTP, klucz API) — odpowiedź jest odtwarzana dosłownie przy powtórce, więc jej zapamiętanie równa się zapamiętaniu poświadczenia. Automatyczny strażnik w `@AuthEndpointSchema({ idempotent: true, ... })` (`endpoint-schema.decorator.ts`, TM finding -006) skanuje WYŁĄCZNIE nazwy pól na najwyższym poziomie — zagnieżdżony kształt (np. `{ data: { accessToken } }`) przechodzi bez alarmu, więc ta reguła jest egzekwowana projektem schematu odpowiedzi, nie tylko automatem.
 
-> **Uwaga o zakresie (CS12):** reguła dotyczy wyłącznie repo, które faktycznie mają mechanizm `Idempotency-Key` (`@Idempotent()` / `options.idempotent`) — stan na 2026-09-14: tylko `juz-ide-api-*`. Repo bez tego mechanizmu (np. `grant-flow`, `marketing-hub`) nie mają `options.idempotent` do nadużycia — nie traktuj braku spełnienia CS12 w takich repo jako luki.
+> **Uwaga o zakresie (CS12):** reguła dotyczy wyłącznie repo, które faktycznie mają mechanizm `Idempotency-Key` (`@Idempotent()` / `options.idempotent`) — obecnie tylko `juz-ide-api-*`. Repo bez tego mechanizmu (np. `grant-flow`, `marketing-hub`) nie mają `options.idempotent` do nadużycia — nie traktuj braku spełnienia CS12 w takich repo jako luki.
 
 ## MUST NOT
 

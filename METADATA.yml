@@ -1,9 +1,9 @@
 # Global Claude Patterns Repository - Metadata
 
-version: "3.8.0"
+version: "3.9.0"
 created: "2026-02-05"
-last_updated: "2026-09-27"  # v3.8: refine-spa + monorepo-layers bloki, +4 wzorce (krok 0 przed grant-flow-ui)
-author: "LocalHero Team"
+last_updated: "2026-10-28"  # v3.9: techniki z gstack (kernel dowodowy, hash drzewa, ratchety kontekstu i archeologii, telemetria review-panel)
+author: "Juz-Ide Team"
 source_project: "LocalHero v3"
 license: "MIT"
 
@@ -371,3 +371,11 @@ notes: |
     consumers (e.g. grant-flow's current flat single-package shape) — full
     rationale in blocks/monorepo-layers.yml header; that restructuring
     decision is left to grant-flow's own session.
+  - v3.9.0: Techniki z gstack (TASK-GSTACK-ADOPT-001). Kernel dowodowy dla
+    weryfikatorów VETO (templates/fragments + scripts/sync-fragments.mjs),
+    werdykt związany z hashem drzewa roboczego (ORC-139), klasyfikacja decyzji
+    w /analyze (ANL-047, ANL-048), adaptacyjny dobór reviewerów z telemetrią
+    v1 (process review-panel), ratchety kontekstu stałego i archeologii w
+    promptach (scripts/context-bill.mjs, validate-prompt-structure.mjs),
+    polityka powtórzeń evali i kontrola sędziów LLM, higiena repo (LICENSE,
+    SECURITY.md, skan zależności). Wydanie skonsolidowane od 3.5.

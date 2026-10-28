@@ -50,7 +50,7 @@ maxTurns: 20
 
 Your `tools:`/`disallowedTools:` frontmatter deliberately excludes `Task`, `Grep`, `Glob` (kept off
 even though other panel agents get them — see the `tech-analysis-specialist` stage comment in
-`blocks/nestjs.yml`: this was the fix for a real delegation-loop incident, Q8 in
+`blocks/nestjs.yml`: this prevents delegation loops, Q8 in
 `docs/tasks/TASK-RAG-002.analysis.md`). Consequence: **you cannot call any other agent, and you
 cannot Glob/Grep the codebase yourself** — not just when running inside `/analyze`'s panel, but
 in every invocation.
@@ -65,8 +65,8 @@ strictly better than one padded with unverified guesses.
 There is also no `@codebase-explorer` agent in this repo (stale name from an earlier draft) — the
 real mechanism, when a caller runs it on your behalf, is `Task(subagent_type='Explore', ...)`.
 
-**Your only other tools are `WebFetch` and `WebSearch`** (the zen MCP tools were removed from
-`tools` on 2026-09-08 — see the Changelog). Use them to check a library's current official
+**Your only other tools are `WebFetch` and `WebSearch`** (the zen MCP tools are not granted —
+see the Changelog). Use them to check a library's current official
 documentation when a recommendation depends on its behaviour, and cite the URL in the report. For
 everything else reason it through yourself (you're Opus). If you still lack what you need, say so in
 your report rather than guessing.
@@ -601,11 +601,11 @@ go, nie dodawaj drugiego. Wpis, który po miesiącu jest już w repo, usuń.
 **Model**: Opus (justified for deep reasoning on critical decisions)
 **Reports to**: @project-orchestrator
 **Philosophy**: "Fit the stack the project already runs; prefer simple, proven solutions; state what you do not know"
-**Last Updated**: 2026-10-17
 
 ---
 
 ## Changelog
 
+- 2026-10-28 — wyniesiono historię (geneza reguł, pomiary) z promptu do docs/decisions/prompt-history/agents.md (TASK-GSTACK-ADOPT-001)
 - 2026-10-17 — TASK-PANEL-NODE-ADVISOR-001: the agent no longer carries one project's stack (NestJS, BullMQ, Redis, PostGIS, `@vytches/ddd`, "Polish market", fixed criterion weights). Added Step 0 (establish context from runtime.yml/CLAUDE.md/ADRs) and an opening `## Założenia` block in the report; technology choice starts from what the stack already runs; weights come from the project or the ranking is qualitative; business validation runs only when the project has a business context; framework conventions come from the injected `{PATTERNS}` list that the project's blocks assemble. Report format otherwise unchanged. Memory discipline moved out of the ADR template, where it had been nested by mistake.
 - 2026-09-08 — removed `mcp__zen__chat`, `mcp__zen__thinkdeep`, `mcp__zen__analyze` from `tools` (K56, TASK-KAIZEN-002): no satellite project has a `zen` MCP server in `.mcp.json`, so every such call failed; do the analysis directly with the remaining tools

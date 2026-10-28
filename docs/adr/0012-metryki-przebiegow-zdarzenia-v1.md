@@ -50,6 +50,42 @@ hooka, a `HOOK_TELEMETRY=off` wyłącza zapis.
   człowiek. Wynik: `other` 209/244 (85,7%) → 34/244 (13,9%). Słowa kluczowe mylą się na rekordach wielozdaniowych (np. brak narzędzi
   weryfikatora wpadał do `verifier`, nie `infra`), więc `--apply` przyjmuje `id=kategoria` i `unambiguous`. Skrypt jest jednorazowy;
   nowe rekordy dostają kategorię od agenta (`agent_note`) albo z reguły.
+**Aneks (2026-10-28, TASK-GSTACK-ADOPT-001 B3)**: telemetria `/review-panel`. Wynik per reviewer przechodzi z osobnego dziennika do zdarzeń v1.
+- **Co dodano.** `process: review-panel` i jedno pole `step.findings` (liczba całkowita ≥ 0). Panel zapisuje po jednym `step.end` na
+  reviewera w przebiegu: `step.id` = `step.role` = nazwa bez prefiksu `reviewer-` (np. `nitpicker`), `outcome: ok` (reviewer się wykonał,
+  `findings` obowiązkowe) albo `skipped` (pominięty adaptacyjnie, `findings` zabronione). `findings` istnieje tylko w tym procesie. Reguły
+  siedzą w schemacie (`allOf` + `if/then`), a minimalny walidator w `telemetry-events.mjs` nauczył się `allOf`, `if/then/else` i `not`.
+  Helper emisji: `emitReviewPanelRun` (nie rzuca, jak reszta emiterów).
+- **Czemu tak, a nie inaczej.** `ran` i `skipped` to istniejące wartości `outcome` (`ok`, `skipped`), więc lista wyników się nie powiększa.
+  Nazwa reviewera jedzie w `step.role`, bo to oś rollupu (tak samo `pre-commit`, gdzie rola to nazwa bramki): agregat dostaje podział per
+  reviewer bez nowego pola. `findings` leży w `step` obok `blamed` i `unblamed`, bo opisuje krok, nie przebieg. Bez `run.start`/`run.end`
+  (jak `hook`): panel nie ma planu ani kosztu, przebieg spina `runId` (`rp-…`). Gałąź nie trafia do zdarzenia: bywa nazwą zadania (§3),
+  a statystyce jest zbędna; import starego dziennika ją pomija.
+- **Dlaczego addytywnie.** `v: 1` zostaje, żadne istniejące pole ani wartość nie zmienia znaczenia, stare zdarzenia i rollupy dalej są
+  poprawne. W rollupie `findings` powstaje leniwie (dni bez panelu zostają bajt w bajt takie same), a odbiorca, który nie zna procesu,
+  widzi po prostu nowy klucz w mapie `processes`.
+- **Konsumenci.** Rollup liczy `outcomes` i sumę `findings` per reviewer; kroki panelu nie wchodzą do `stepsWithoutCost` (koszt nie jest
+  tu luką pomiaru). `telemetry-report` ma zbiór `NON_RUN_PROCESSES`: bez `--process` panel nie wchodzi do sum, liczników jakości danych
+  ani widoku ról, bo kroki reviewerów rozcieńczałyby mianowniki `died` i `retryCost` (w teście: zgon 10% spadał do 2,5%). Widać go w
+  `--by process` i z `--process review-panel`. Eksport przepuszcza `findings` przez białą listę. `telemetry-tasks`, werdykty i blok
+  `tasks` filtrują proces po jawnej liście, więc panelu nie dotykają.
+- **Czemu nie osobny dziennik.** Dwa źródła prawdy o wyniku kroku, bez `host`, `id`, deduplikacji, rollupów i eksportu, z własnym
+  parserem i własną walidacją prywatności. Cena przeniesienia: `reviewer-stats.mjs` czyta pliki zdarzeń, ale parsuje tylko linie z napisem
+  `review-panel`.
+- **Semantyka doboru bez zmian**: próg 10 zer z rzędu, `NEVER_GATE`, `PROBE` co 10. pominięcie, statystyka per projekt. Linia z napisem
+  `review-panel`, której nie da się sparsować albo która łamie schemat, nadal kończy się jawnym błędem (exit 2) z numerem linii; uszkodzone
+  linie innych procesów pomija czytnik telemetrii, jak wszędzie. Dane są per maszyna (zdarzenia leżą poza gitem), tak jak stary dziennik.
+- **Migracja.** Pierwsze wywołanie `--record`, `--select` albo tabeli importuje `~/.claude/review-panel-stats/invocations.jsonl` do
+  zdarzeń (id wyprowadzone z treści linii, więc powtórka niczego nie dubluje) i zmienia nazwę pliku na `.migrated`. Brak pliku: nic.
+  Uszkodzony plik zostaje nietknięty, a polecenie kończy się exit 2. Migrację chroni atomowa blokada (`<plik>.lock`, zastarzała po 2 minutach
+  jest odzyskiwana), bo równoległe `--select` zdublowały wcześniej import; czytnik dodatkowo liczy zdarzenie o tym samym `id` raz.
+  Zmienna `REVIEW_PANEL_STATS_FILE` została usunięta.
+- **Kolejność i zakres.** Wpisy zaimportowane (`runId` `rpm-…`) są porządkowane po `ts`, zdarzenia natywne zachowują kolejność zapisu
+  (cofnięty zegar nie ukrywa świeżego findingu). Schemat zabrania dla panelu pól innych procesów (`m`, `cause`, `taskRef`, `engine`, `plan`,
+  `signature`, `trigger`, `seed`, `step.group/agent/model/attempt/fixes/blamed/unblamed`) i wymaga `step.id` = `step.role` — przez lokalne
+  słowo `x-equalProperties`, które zwykły walidator JSON Schema pomija; czytnik `reviewer-stats` sprawdza to przez ten sam walidator.
+  Wzorzec `project` odrzuca teraz `.` i `..` (nazwa trafia do ścieżki rollupu), reszta nazw bez zmian. Dni z samym panelem nie zajmują
+  slotów okna silnika ani nie zawyżają kolumny `dni`.
 **Rozszerza**: [ADR 0011](0011-raportowanie-dryfu-i-telemetria-floty.md) (punkt B6 — telemetria floty)
 **Context source**: decyzja użytkownika z 2026-10-10: „jak będziemy wstawiać tylko problemy, to nie
 da nam to procentowego rozbicia dobre vs błędy" + docelowo metryki trafiają na serwer zespołu

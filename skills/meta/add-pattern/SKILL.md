@@ -17,11 +17,8 @@ edytuj plik i zrób reseed.
 ## Dlaczego to jest skill, a nie „napisz plik ręcznie"
 
 Procedura z `CLAUDE.md` ma siedem kroków i łatwo z niej wypaść po cichu. Realny koszt
-wypadnięcia (2026-08-14): karta reguł geo-spatial z 13 regułami nie miała ani jednego
-nagłówka `## `, więc `markdown-chunker` nie wyprodukował z niej żadnego chunka — plik
-leżał na dysku i **nie istniał** dla `retrieve_patterns`. Reseed raportował sukces.
-W tym samym czasie implementerzy w juz-ide-api-2 wykonali 126 grepów, szukając wiedzy,
-którą ta karta zawierała.
+wypadnięcia: plik bez ani jednego nagłówka `## ` nie daje żadnego chunka w `markdown-chunker`,
+więc leży na dysku i **nie istnieje** dla `retrieve_patterns`, a reseed raportuje sukces.
 
 Podział pracy: `scripts/new-pattern.mjs` robi to, co deterministyczne (struktura,
 walidacja słownika, sparowana karta). Ty piszesz treść. Nie odwrotnie — generator

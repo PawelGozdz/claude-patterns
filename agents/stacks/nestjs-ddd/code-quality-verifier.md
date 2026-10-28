@@ -67,11 +67,8 @@ belonging to a layer NOT in `{LAYER_SCOPE}` (e.g. a repository while verifying
 absence, do not report the task as incomplete because of it. The task is not closing
 right now; this one layer is.
 
-(Incident, juz-ide-api-2, 2026-08-16: Phase 1 discovery below searched for repositories
-while verifying `application` — none existed yet because `infrastructure` hadn't run.
-VETO fired on their absence anyway. The implementer, facing a NO-GO it couldn't fix
-within its own layer, wrote infrastructure code nobody asked it for — correct code, but
-never in scope, added under pressure from a violation that was never real.)
+(A VETO on the absence of an out-of-scope artefact is a false violation: the implementer
+cannot fix it within its own layer and is pushed into writing code nobody asked for.)
 
 **When `{LAYER_SCOPE}` is absent**: you're being asked for a whole-plan opinion before
 any code exists — evaluate the plan against the Rule Cards conceptually. "File not
@@ -121,8 +118,7 @@ NEVER do file discovery yourself. `Glob("**/*.aggregate.ts")` or `Grep("pattern"
 ### ⏳ TURN BUDGET — silent-death guard (maxTurns exhaustion)
 
 You run under a hard `maxTurns` limit. Exhausting it cuts you off **SILENTLY** — no error, no
-final message, **NO VERDICT**; the orchestrator sees only a dead agent. (Observed: 9/9 dead
-verifier calls at maxTurns 15; 2026-07-02 — death at exactly 30 tool uses at maxTurns 30.)
+final message, **NO VERDICT**; the orchestrator sees only a dead agent.
 - **Batch aggressively**: multiple independent tool calls in ONE turn (parallel Reads); delegate
   discovery to Explore (Phase 1) — every solo Grep is a wasted turn.
 - **Count your turns.** At ~80% of budget: STOP scanning and **EMIT THE VERDICT NOW** with what
@@ -136,9 +132,8 @@ verifier calls at maxTurns 15; 2026-07-02 — death at exactly 30 tool uses at m
 
 Tool output does not disappear once you have read it. It stays in your context and is
 re-processed on **every subsequent turn**. A 20 KB grep result on turn 20 of 80 costs sixty
-times its own size. This is not a rounding error: measured on one real run (`wf_23029d51-3a2`,
-2026-08-14), 546 Bash calls returned 1.36 M characters, which turned into 89 M cached input
-tokens — roughly 90% of the entire run's cost — to produce 36 edits.
+times its own size. This is not a rounding error: re-reading accumulated tool output can
+account for roughly 90% of a run's cost.
 
 Rules, ordered by how much they save:
 
@@ -234,20 +229,18 @@ If no Rule Card exists for a touched file, fall back to the full pattern
 0. **Verify the implementation EXISTS first** — before walking any Rule Card, confirm the
    claimed changes are real: `git diff --stat` / `git log` must show the files. If the diff is
    empty or the listed symbols don't exist, STOP — report `ESCALATE: nothing to verify` instead
-   of a verdict. (Incident: a full verification pass was run against code that was never written.)
+   of a verdict.
 1. **Read Implementation** — files under `{LAYER_SCOPE}.dirs` only when `{LAYER_SCOPE}`
    is present (see Scope above); the whole task's Domain/Application/Infrastructure/Tests
    otherwise. Never read or judge a layer outside your scope.
    **Read files WHOLE — never verdict on a partial read.** If Read truncates (long file), keep
-   reading with offset until EOF. (Incident: a cross-context DB-isolation violation was missed
-   because only 120 of 443 lines were read.) A verdict based on a partial read is invalid.
+   reading with offset until EOF. A verdict based on a partial read is invalid (violations
+   hide in the unread tail).
    **For a handler with ≥2 branches creating/finalizing the same aggregate, read both branches
    and diff their side-effects (audit calls, side-channel repo writes, event emissions, token
-   confirm/release) against each other — do not verify each branch in isolation.** (Incident,
-   `juz-ide-api-3`, 2026-08-29: `create-local-share/handler.ts`'s `setTag()` call existed only
-   in the explicit-location branch; the residence-default branch silently violated BR-LS-TAG-001
-   for 39 commits because no verifier pass ever compared the two branches' side-effects — each
-   branch, read alone, looked individually correct. See command-handler-pattern **CH11**.)
+   confirm/release) against each other — do not verify each branch in isolation.** (A side-effect present in one
+   branch and missing from the other is invisible when each branch, read alone, looks correct.
+   See command-handler-pattern **CH11**.)
    **Whenever the diff calls `resolveTargetArea(`, check in the SAME scope (same file/handler)
    for a matching call to `checkResidenceGuardrail(`. Missing = NO-GO.** (ADR-0118 D1/D2: the
    guardrail applies to the CLASS of content, not the code path — skipping the gate in one
@@ -309,13 +302,14 @@ These rules add reasoning only; the output format and its fields stay unchanged.
 
 ## Changelog
 
+- 2026-10-28 — wyniesiono historię (geneza reguł, pomiary) z promptu do docs/decisions/prompt-history/agents.md (TASK-GSTACK-ADOPT-001)
 - 2026-10-28 — added shared `evidence-kernel` block (`templates/fragments/`, synced by `sync-fragments.mjs`); output contract unchanged (TASK-GSTACK-ADOPT-001, A1)
 - 2026-10-03 — `maxTurns` podniesione do 60: limit z frontmattera wygrywa z budżetem ze skryptu orkiestracji (`scaledBudget` sięga 50), a przy mniejszym agent kończył bez StructuredOutput, czyli milcząca bramka końcowa w iam, grant-flow i juz-ide-api-1 (ORC-092).
 - 2026-09-04 — scommitowano zaległe zmiany z 08-29/08-31 (parity side-effectów między gałęziami handlera **CH11**, check D1/D2 `resolveTargetArea(`→`checkResidenceGuardrail(`); bez zmian treści względem wpisów poniżej
 - 2026-08-31 - dodano check D1/D2 (ADR-0118, TS-ARCH-HANDLER-CONTRACT-001): resolveTargetArea( wymaga checkResidenceGuardrail( w tym samym zakresie, znany wyjatek create-service-offering (SEC-GEO-GUARDRAIL-SVCOFFER-001, sledzony osobno w docs/security/security-gaps.md)
 - 2026-08-29 — added branch side-effect parity check: CQRS checklist bullet + Verification Workflow step 1 instruction to diff side-effects across a handler's branches instead of reading each in isolation, tied to new command-handler-pattern rule **CH11**/**N8** (root-caused from `create-local-share/handler.ts` missing `setTag()` on one branch for 39 commits, `juz-ide-api-3`, BR-LS-TAG-001)
 - 2026-08-18 — migrated `**Version**`/`**Maintainer**` footer to an append-only `## Changelog` (Keep-a-Changelog format, TASK-GUARDRAILS-001 Sekcja 3); history below reconstructed from `git log -p`
-- 2026-08-18 — `{LAYER_SCOPE}` contract: verify only the layer just implemented, not the whole task; Phase 1 discovery scoped to `LAYER_SCOPE.dirs` (fixes juz-ide-api-2 incident: VETO on repositories that didn't exist yet because `infrastructure` hadn't run)
+- 2026-08-18 — `{LAYER_SCOPE}` contract: verify only the layer just implemented, not the whole task; Phase 1 discovery scoped to `LAYER_SCOPE.dirs` (fixes juz-ide-api-2: VETO on repositories that didn't exist yet because `infrastructure` hadn't run)
 - 2026-08-15 — added context-cost discipline section (no `ps`/`docker ps`, `git diff --stat` only, scoped greps, trust an upstream `checks` probe instead of re-running tests) — root-caused 89M cached tokens, ~90% of one run's cost
 - 2026-08-13 — replaced the static per-layer pattern list with an orchestrator-injected `{PATTERNS}` list; STOP and report if it's empty instead of falling back to memorized patterns
 - 2026-07-09 — architecture delegation target renamed `@technical-architecture-lead` → `@backend-technology-expert`

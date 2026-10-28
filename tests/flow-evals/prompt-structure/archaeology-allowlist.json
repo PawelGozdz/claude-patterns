@@ -26,6 +26,11 @@
       "file": "commands/cost-report.md",
       "match": "--since 2026-04-01",
       "reason": "Przykładowa wartość flagi --since w opisie użycia komendy, nie data zdarzenia."
+    },
+    {
+      "file": "commands/orchestrate.md",
+      "match": "2026-10-03/04",
+      "reason": "Data w kolumnie „problem” wiersza rejestru ORC-098, który czyta maszyna; wiersza nie wolno zmieniać, historia reguły jest w orchestrate-rule-history.md#orc-098."
     }
   ]
 }

@@ -43,8 +43,7 @@ skillu `design-tokens`, egzekwowane tu też przez hook `check-design-tokens`.
 ## Golden testy — zabezpieczenie przed regresją
 
 Zmiana w `tokens/brand.json`/`product.json` przelicza `theme.dart` całościowo — golden test
-`JuzIdeTheme` (light/dark) w `juz-ide-mobile-app` (wprowadzony 2026-09-26, `wdrozenie/POSTEP.md`
-"Faza 5, część A") jest tym, co łapie niezamierzoną zmianę wizualną przy bumpie pakietu.
+`JuzIdeTheme` (light/dark) w `juz-ide-mobile-app` jest tym, co łapie niezamierzoną zmianę wizualną przy bumpie pakietu.
 Przy każdej zmianie wersji `juz_ide_tokens`:
 
 1. `flutter test --update-goldens` **tylko** gdy zmiana jest zamierzona (nowy motyw, patch
@@ -54,7 +53,7 @@ Przy każdej zmianie wersji `juz_ide_tokens`:
 
 ## Czego ten skill NIE uczy
 
-Generator (`generate-dart.ts`, sprawdzone 2026-09-27) eksportuje wyłącznie to, co w tabeli
+Generator (`generate-dart.ts`) eksportuje wyłącznie to, co w tabeli
 wyżej. **Nie generuje**: animacji (`Duration`/`Curve`), helperów cienia/bordera, ikon. Te
 trzy warstwy zostają w `LocalHeroDesignTokens`/`AppTypography`
 (`patterns/flutter/design-token-pattern.md`) — ten skill ich nie powiela, tylko rozgranicza

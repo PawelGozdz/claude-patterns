@@ -40,7 +40,7 @@ Setup wizard zapyta o:
 - URL grant-flow (przez bramę `iam`, np. `https://grant-flow.app.dev.juz-ide.pl`)
 - URL panelu `iam` (do wydania PAT, np. `https://admin.app.dev.juz-ide.pl`)
 - Otwiera przeglądarkę do loopback-redirect logowania (RFC 8252, jak `gh auth login`) —
-  **nie hasło**: od TS-SSO-023 (2026-08-24) grant-flow nie ma już logowania email+hasło.
+  **nie hasło**: grant-flow nie ma już logowania email+hasło (TS-SSO-023).
   Testuje login, pokazuje projekty, opcjonalnie mapuje bieżące repo
 
 ### `projects`
