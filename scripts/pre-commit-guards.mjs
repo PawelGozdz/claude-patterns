@@ -89,6 +89,7 @@ runCheck('eval: telemetry-report', 'node', ['tests/flow-evals/telemetry-report/r
 runCheck('eval: pre-commit-telemetry', 'node', ['tests/flow-evals/pre-commit-telemetry/run.js']);
 runCheck('eval: hook-telemetry', 'node', ['tests/flow-evals/hook-telemetry/run.js']);
 // TASK-GSTACK-ADOPT-001 (techniki z gstack): kontekst stały, fragmenty, hash drzewa, polityka evali, sędziowie, reviewerzy, higiena.
+runCheck('eval: context-budget', 'node', ['tests/flow-evals/context-budget/run.js']);
 runCheck('eval: fragments', 'node', ['tests/flow-evals/fragments/run.js']);
 runCheck('eval: tree-hash-binding', 'node', ['tests/flow-evals/tree-hash-binding/run.js']);
 runCheck('eval: eval-policy', 'node', ['tests/flow-evals/eval-policy/run.js']);
@@ -104,6 +105,7 @@ runCheck('validate-blocks', 'node', ['scripts/ci/validate-blocks.mjs']);
 runCheck('validate-rules', 'node', ['scripts/ci/validate-rules.js']);
 runCheck('validate-skills', 'node', ['scripts/ci/validate-skills.js']);
 // TASK-GSTACK-ADOPT-001: ratchet kontekstu stałego (A4), świeżość wstrzykniętych fragmentów (B4), konfiguracja doboru reviewerów (B3).
+runCheck('context-bill --check', 'node', ['scripts/context-bill.mjs', '--check']);
 runCheck('sync-fragments --check', 'node', ['scripts/sync-fragments.mjs', '--check']);
 runCheck('reviewer-stats --check-config', 'node', ['scripts/reviewer-stats.mjs', '--check-config']);
 runCheck('count-assets --check', 'node', ['scripts/count-assets.mjs', '--check']);

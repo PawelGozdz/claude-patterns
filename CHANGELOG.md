@@ -15,6 +15,7 @@ and none of it is instruction — it is history.
 
 ### Added
 - Techniki z gstack (TASK-GSTACK-ADOPT-001):
+  - `scripts/context-bill.mjs` (A4): rachunek kontekstu stałego (katalog `name`+`description`) i kosztu wywołania (ciało) per agent, skill i komenda, z raportem top N, `--json` i ratchetem `--check` względem `tests/flow-evals/context-budget/ceilings.json` (stan +5% oraz sufit sumaryczny katalogu); legalny wzrost wymaga `--capture` w tym samym commicie.
   - `scripts/sync-fragments.mjs` (B4): wspólne fragmenty z `templates/fragments/` wstrzykiwane między markery `<!-- fragment:NAZWA START/END -->` (`--check`, `--apply`).
   - Kernel dowodowy (A1): pięć reguł dla weryfikatorów i reguła cytatu (finding bez `plik:linia` nie blokuje) we fragmencie `evidence-kernel`, wstrzykniętym do 15 agentów z VETO. Kontrakt wyjścia bez zmian, ok. 1 KB kontekstu stałego na agenta.
   - Werdykt związany z hashem drzewa (A2, ORC-139): silnik liczy hash drzewa roboczego (`git write-tree` z tymczasowego indeksu) przed i po weryfikatorze oraz bramce końcowej; GO z rozjazdem jest odrzucane. Nowy `scripts/orchestrate-tree-hash.mjs` (krok 4 sprawdza przed `git add`, że staged kod to kod zweryfikowany).
