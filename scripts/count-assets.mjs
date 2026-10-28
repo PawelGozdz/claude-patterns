@@ -121,8 +121,27 @@ for (const key of Object.keys(actual)) {
   console.log(`  ${ok ? '✓' : '✗'} ${key.padEnd(28)} METADATA=${expected}  realnie=${actual[key]}`);
 }
 
+// ── jedna wersja (TASK-GSTACK-ADOPT-001, C1): METADATA.yml `version:` jest źródłem prawdy ──
+// package.json i korzeń package-lock.json mają ją powtarzać. Ścieżki do podmiany w testach
+// dwukierunkowych (tests/flow-evals/version-sync):
+// COUNT_ASSETS_PACKAGE_JSON, COUNT_ASSETS_PACKAGE_LOCK.
+const metaVersionMatch = metaSrc.match(/^version:\s*"?([\d.]+)"?/m);
+const metaVersionValue = metaVersionMatch ? metaVersionMatch[1] : null;
+function versionOf(label, file, pick) {
+  let found = null;
+  try { found = pick(JSON.parse(readFileSync(file, 'utf8'))); }
+  catch (e) { console.log(`  ✗ ${label.padEnd(28)} nie da się odczytać ${file}: ${e.message}`); return false; }
+  const ok = metaVersionValue !== null && found === metaVersionValue;
+  console.log(`  ${ok ? '✓' : '✗'} ${label.padEnd(28)} METADATA=${metaVersionValue}  ${label}=${found}`);
+  return ok;
+}
+console.log('\nWersja (METADATA.yml = źródło prawdy):');
+if (!versionOf('package.json.version', process.env.COUNT_ASSETS_PACKAGE_JSON || join(REPO, 'package.json'), (j) => j.version ?? null)) mismatches++;
+if (!versionOf('package-lock.json.version', process.env.COUNT_ASSETS_PACKAGE_LOCK || join(REPO, 'package-lock.json'), (j) => j.version ?? null)) mismatches++;
+if (!versionOf('package-lock packages[""]', process.env.COUNT_ASSETS_PACKAGE_LOCK || join(REPO, 'package-lock.json'), (j) => j.packages?.['']?.version ?? null)) mismatches++;
+
 if (mismatches > 0) {
-  console.log(`\n${mismatches} rozjazd(ów) — zaktualizuj METADATA.yml albo popraw drzewo.`);
+  console.log(`\n${mismatches} rozjazd(ów) — zaktualizuj METADATA.yml (wersję ustawiaj tam, package.json i package-lock.json dociągnij do niej) albo popraw drzewo.`);
   if (CHECK) process.exit(1);
 } else {
   console.log('\n✔ METADATA.yml zgodne z drzewem.');

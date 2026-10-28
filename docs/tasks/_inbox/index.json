@@ -1722,16 +1722,15 @@
       "sources": [
         "analyze"
       ],
-      "occurrences": 8,
+      "occurrences": 7,
       "projects": [
         "juz-ide-api-2",
         "aegis-flow",
         "marketing-hub",
-        "iam",
-        "my-intelligence"
+        "iam"
       ],
       "first_seen": "2026-10-17",
-      "last_seen": "2026-10-25"
+      "last_seen": "2026-10-24"
     },
     {
       "id": "DEV-anz-layer-mismatch",
