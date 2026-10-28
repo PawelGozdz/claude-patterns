@@ -40,9 +40,21 @@
         "steps": 49,
         "stepsWithoutCost": 0
       }
+    },
+    "fce003b": {
+      "orchestrate": {
+        "costUsd": 22.060079,
+        "died": 2,
+        "ended": {
+          "ok": 2
+        },
+        "started": 2,
+        "steps": 31,
+        "stepsWithoutCost": 0
+      }
     }
   },
-  "events": 95,
+  "events": 150,
   "host": "5a164d2d0145",
   "processes": {
     "audit": {
@@ -64,9 +76,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 3,
+          "n": 4,
           "outcomes": {
-            "ok": 3
+            "ok": 4
           },
           "toolCalls": 0
         },
@@ -78,9 +90,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 3,
+          "n": 4,
           "outcomes": {
-            "ok": 3
+            "ok": 4
           },
           "toolCalls": 0
         },
@@ -92,9 +104,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 3,
+          "n": 4,
           "outcomes": {
-            "ok": 3
+            "ok": 4
           },
           "toolCalls": 0
         },
@@ -106,9 +118,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 3,
+          "n": 4,
           "outcomes": {
-            "ok": 3
+            "ok": 4
           },
           "toolCalls": 0
         },
@@ -120,9 +132,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 3,
+          "n": 4,
           "outcomes": {
-            "ok": 3
+            "ok": 4
           },
           "toolCalls": 0
         },
@@ -134,15 +146,15 @@
             "p50": null,
             "p90": null
           },
-          "n": 3,
+          "n": 4,
           "outcomes": {
-            "ok": 3
+            "ok": 4
           },
           "toolCalls": 0
         },
         "runtime": {
           "causes": {
-            "config": 3
+            "config": 4
           },
           "costUsd": 0,
           "durationMs": {
@@ -150,9 +162,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 3,
+          "n": 4,
           "outcomes": {
-            "failed": 3
+            "failed": 4
           },
           "toolCalls": 0
         },
@@ -164,9 +176,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 3,
+          "n": 4,
           "outcomes": {
-            "ok": 3
+            "ok": 4
           },
           "toolCalls": 0
         },
@@ -180,16 +192,16 @@
             "p50": null,
             "p90": null
           },
-          "n": 3,
+          "n": 4,
           "outcomes": {
             "failed": 2,
-            "ok": 1
+            "ok": 2
           },
           "toolCalls": 0
         },
         "verify-setup": {
           "causes": {
-            "config": 3
+            "config": 4
           },
           "costUsd": 0,
           "durationMs": {
@@ -197,15 +209,15 @@
             "p50": null,
             "p90": null
           },
-          "n": 3,
+          "n": 4,
           "outcomes": {
-            "failed": 3
+            "failed": 4
           },
           "toolCalls": 0
         }
       },
-      "steps": 30,
-      "stepsWithoutCost": 30,
+      "steps": 40,
+      "stepsWithoutCost": 40,
       "verification": {
         "firstPassGo": 0,
         "units": 0
@@ -222,6 +234,34 @@
       },
       "retried": 0,
       "roles": {
+        "block-root-grep:root-grep": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 0,
+            "p50": null,
+            "p90": null
+          },
+          "n": 4,
+          "outcomes": {
+            "halted": 4
+          },
+          "toolCalls": 0
+        },
+        "block-subagent-commit:subagent-git": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 0,
+            "p50": null,
+            "p90": null
+          },
+          "n": 1,
+          "outcomes": {
+            "halted": 1
+          },
+          "toolCalls": 0
+        },
         "check-subagent-pattern-reads:pattern-grounding": {
           "causes": {},
           "costUsd": 0,
@@ -230,24 +270,24 @@
             "p50": null,
             "p90": null
           },
-          "n": 7,
+          "n": 12,
           "outcomes": {
-            "halted": 7
+            "halted": 12
           },
           "toolCalls": 0
         }
       },
-      "steps": 7,
-      "stepsWithoutCost": 7,
+      "steps": 17,
+      "stepsWithoutCost": 17,
       "verification": {
         "firstPassGo": 0,
         "units": 0
       }
     },
     "orchestrate": {
-      "costUsd": 26.525906,
-      "costUsdRetried": 4.387494,
-      "died": 1,
+      "costUsd": 48.585985,
+      "costUsdRetried": 11.485021,
+      "died": 3,
       "finalGate": {
         "judged": 1
       },
@@ -256,7 +296,7 @@
         "fixed": 4,
         "open": 0
       },
-      "retried": 22,
+      "retried": 36,
       "roles": {
         "fixer": {
           "causes": {},
@@ -276,94 +316,105 @@
           "causes": {
             "silent": 1
           },
-          "costUsd": 14.909686,
+          "costUsd": 14.970486,
           "durationMs": {
-            "n": 2,
-            "p50": 452941,
-            "p90": 468978
+            "n": 10,
+            "p50": 8736,
+            "p90": 452941
           },
-          "n": 2,
+          "n": 10,
           "outcomes": {
             "died": 1,
-            "go": 1
-          },
-          "toolCalls": 103
-        },
-        "implementer": {
-          "causes": {},
-          "costUsd": 5.430219,
-          "durationMs": {
-            "n": 8,
-            "p50": 45051,
-            "p90": 111807
-          },
-          "n": 8,
-          "outcomes": {
+            "go": 1,
             "ok": 8
           },
-          "toolCalls": 98
+          "toolCalls": 121
+        },
+        "implementer": {
+          "causes": {
+            "silent": 2
+          },
+          "costUsd": 25.082187,
+          "durationMs": {
+            "n": 18,
+            "p50": 89986,
+            "p90": 298716
+          },
+          "n": 18,
+          "outcomes": {
+            "died": 2,
+            "ok": 16
+          },
+          "toolCalls": 469
         },
         "probe": {
           "causes": {},
-          "costUsd": 0.202451,
+          "costUsd": 0.341256,
           "durationMs": {
-            "n": 23,
-            "p50": 14298,
-            "p90": 356757
+            "n": 33,
+            "p50": 16153,
+            "p90": 361682
           },
-          "n": 23,
+          "n": 33,
           "outcomes": {
-            "ok": 23
+            "ok": 33
           },
-          "toolCalls": 60
+          "toolCalls": 99
         },
         "verifier": {
           "agents": {
             "code-quality-verifier": {
-              "goJudged": 3
+              "falseNoGo": 1,
+              "goJudged": 3,
+              "noGoJudged": 1
             }
           },
-          "causes": {},
-          "costUsd": 4.337128,
+          "causes": {
+            "verifier": 1
+          },
+          "costUsd": 6.545634,
           "durationMs": {
-            "n": 10,
-            "p50": 23189,
-            "p90": 29391
+            "n": 13,
+            "p50": 24878,
+            "p90": 44438
           },
-          "n": 10,
+          "n": 13,
           "outcomes": {
-            "go": 10
+            "go": 12,
+            "no_go": 1
           },
-          "toolCalls": 62,
+          "toolCalls": 93,
           "verdicts": {
-            "goJudged": 3
+            "falseNoGo": 1,
+            "goJudged": 3,
+            "noGoJudged": 1
           }
         }
       },
-      "steps": 49,
+      "steps": 80,
       "stepsWithoutCost": 0,
       "verification": {
-        "firstPassGo": 6,
-        "units": 6
+        "firstPassGo": 7,
+        "units": 8
       }
     }
   },
   "project": "juz-ide-api-1",
   "runs": {
     "orchestrate": {
-      "costUsd": 26.525906,
+      "costUsd": 48.585985,
       "durationMs": {
-        "n": 2,
-        "p50": 506163,
+        "n": 4,
+        "p50": 563107,
         "p90": 3284081
       },
       "ended": {
-        "ok": 2
+        "ok": 4
       },
-      "started": 2
+      "started": 4
     }
   },
-  "stepsTotal": 86,
+  "stepsTotal": 137,
   "tasks": {
     "TS-SEC-D0-FOLLOWUPS-001": {
       "analyzeRuns": 1,

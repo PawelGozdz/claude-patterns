@@ -37,7 +37,7 @@
       }
     }
   },
-  "events": 45,
+  "events": 55,
   "host": "5a164d2d0145",
   "processes": {
     "analyze": {
@@ -176,9 +176,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 3,
+          "n": 4,
           "outcomes": {
-            "ok": 3
+            "ok": 4
           },
           "toolCalls": 0
         },
@@ -190,9 +190,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 3,
+          "n": 4,
           "outcomes": {
-            "ok": 3
+            "ok": 4
           },
           "toolCalls": 0
         },
@@ -204,9 +204,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 3,
+          "n": 4,
           "outcomes": {
-            "ok": 3
+            "ok": 4
           },
           "toolCalls": 0
         },
@@ -218,9 +218,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 3,
+          "n": 4,
           "outcomes": {
-            "ok": 3
+            "ok": 4
           },
           "toolCalls": 0
         },
@@ -232,9 +232,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 3,
+          "n": 4,
           "outcomes": {
-            "ok": 3
+            "ok": 4
           },
           "toolCalls": 0
         },
@@ -246,15 +246,15 @@
             "p50": null,
             "p90": null
           },
-          "n": 3,
+          "n": 4,
           "outcomes": {
-            "ok": 3
+            "ok": 4
           },
           "toolCalls": 0
         },
         "runtime": {
           "causes": {
-            "config": 3
+            "config": 4
           },
           "costUsd": 0,
           "durationMs": {
@@ -262,9 +262,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 3,
+          "n": 4,
           "outcomes": {
-            "failed": 3
+            "failed": 4
           },
           "toolCalls": 0
         },
@@ -276,9 +276,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 3,
+          "n": 4,
           "outcomes": {
-            "ok": 3
+            "ok": 4
           },
           "toolCalls": 0
         },
@@ -292,10 +292,10 @@
             "p50": null,
             "p90": null
           },
-          "n": 3,
+          "n": 4,
           "outcomes": {
             "failed": 2,
-            "ok": 1
+            "ok": 2
           },
           "toolCalls": 0
         },
@@ -307,15 +307,15 @@
             "p50": null,
             "p90": null
           },
-          "n": 3,
+          "n": 4,
           "outcomes": {
-            "ok": 3
+            "ok": 4
           },
           "toolCalls": 0
         }
       },
-      "steps": 30,
-      "stepsWithoutCost": 30,
+      "steps": 40,
+      "stepsWithoutCost": 40,
       "verification": {
         "firstPassGo": 0,
         "units": 0
@@ -343,7 +343,7 @@
       "skipped:no_topic": 1
     }
   },
-  "stepsTotal": 37,
+  "stepsTotal": 47,
   "tasks": {
     "TS-001": {
       "analyzeRuns": 1,
