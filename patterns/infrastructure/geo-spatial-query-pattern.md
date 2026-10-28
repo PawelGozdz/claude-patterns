@@ -367,9 +367,13 @@ backfill migration `267`; the read-time variant was considered and explicitly re
 
 **Bucket distances for untrusted consumers.** An API that returns metric distance to a caller
 who controls the origin is a trilateration oracle even when every predicate is cast correctly
-— three probes recover exact coordinates. Return coarse ordinal buckets
-(`same_cell` / `adjacent_cell` / `beyond`) instead of metres; keep the metric value
-server-side for ordering only. Reference implementation (juz-ide): `distance-bucket.ts` —
+— three probes recover exact coordinates. Return coarse ordinal buckets (named labels, no
+numbers) instead of metres; keep the metric value server-side for ordering only. No bucket
+boundary may lie below the maximum displacement error of the stored point (juz-ide: 1.2 km,
+`HOME_POINT_REACH_MARGIN_METERS`, BDR-099 pkt 7), and both ends of the distance must come from
+the server, never from a point supplied by the client. Cell-based names (`same_cell` /
+`adjacent_cell`) are not used: a cell bucket is finer than the displacement error (juz-ide
+labels: BDR-014, "bardzo blisko / w pobliżu / dalej"). Reference implementation (juz-ide): `distance-bucket.ts` —
 `buildDistanceExpression` still computes metres, but the value crossing the trust boundary is
 the bucket.
 

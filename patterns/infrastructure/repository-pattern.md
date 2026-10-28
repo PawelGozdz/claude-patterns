@@ -1001,6 +1001,21 @@ not that nobody looked.
   with `VersionError`); idempotent; static error messages; `// RP2-EXCEPTION:` annotation above the
   class. Precedent in shape: the disclosed-point projection repair ports.
 
+- `MapMarkerBackfillKyselyRepository` (RP12 + RP2, juz-ide `discovery` context,
+  `infrastructure/backfill/`, TS-MAP-MARKER-PRIVACY-001, D2/D12) — the persistence adapter behind
+  the application port `IMapMarkerBackfillPort`; it re-derives `location`, `target_area`,
+  `location_provenance` and the density class of EXISTING `map_markers` rows (EVENT, JOB,
+  LOCAL_SHARE) from the disclosed home point obtained through the geographic-auth ACL. It works
+  across the rows of one projection table, not on an aggregate: no aggregate is loaded or saved,
+  no domain event is dispatched, and there is no mapper, event dispatch or optimistic lock to
+  bypass, so the injected `DATABASE_TOKEN` and the missing `BaseKyselyRepository` are accepted.
+  Checked before accepting: the caller (`BackfillMapMarkersHandler`) depends on the port only and is
+  tested against a port double; the port is bound in the lightweight CLI module
+  (`src/app/cli/backfill-map-markers/`, `cli-runner.md`), not in `DiscoveryModule`; static
+  `MapMarkerBackfillError`, no logger in the repository, the handler logs counters only; the run is
+  idempotent and resumable by the `afterOwnerId` cursor; `// RP12-EXCEPTION:` annotation in the
+  class docblock.
+
 ---
 
 ## 📚 References
