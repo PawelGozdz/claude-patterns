@@ -2,7 +2,7 @@
 id: TASK-GSTACK-ADOPT-001
 title: 'Przejęcie z gstack 11 sprawdzonych technik: rzetelniejsze werdykty, testy promptów, kontrola kosztu kontekstu, higiena repo'
 type: task
-status: in-progress
+status: done
 priority: P1
 story_points: 13
 created_date: 2026-10-26
@@ -156,26 +156,21 @@ w `.gitignore` (A2), obejście walidacji wyjątków osv przez komentarz w nagł�
 markerów fragmentów przy zagnieżdżonych ogrodzeniach (B4) oraz pole `unchecked-scope` w kernelu zamiast
 `unverified_scope` (A1). Każda poprawka ma przypadek regresyjny w evalu.
 
-### Do decyzji / zrobienia po commicie
-1. **Numeracja reguł i `engine=` w Claimach.** Druga sesja miała w tym samym czasie zestage'owane w głównym drzewie własne reguły `ORC-138` i `ANL-046` (`.env*` w zakresie jednostki, rejestry kodów błędów), więc reguły z tego zadania dostały kolejne wolne numery: **ORC-139** (hash drzewa), **ANL-047** (klasy decyzji) i **ANL-048** (`door_type`, `(recommended)`). `engine=` w ich Claimach wskazuje commity wprowadzające reguły: ORC-139 → `a1e9480`, ANL-047 i ANL-048 → `c5cb0a0` (`docs/decisions/orchestrate-rule-history.md`). Hash `bfd45a3` z pierwszej wersji był hashem sprzed zmian i przypisałby regułom przebiegi sprzed wdrożenia. Przed scaleniem sprawdzić, czy tamta sesja nie zajęła w międzyczasie ORC-139 ani ANL-047+ (po zmianie hashy commitów, np. przy rebase, podmienić `engine=` ponownie).
-2. **LICENSE**: właściciel praw `LocalHero Team` pochodzi z `author` w `METADATA.yml` — potwierdzić.
-3. **SECURITY.md**: brak kanału kontaktu w repo; uzupełnić (nie wymyślano adresu).
-4. **B3 / ADR 0012**: dziennik `~/.claude/review-panel-stats/invocations.jsonl` jest tymczasowy; przeniesienie do
-   telemetrii v1 wymaga rozszerzenia schematu (`process: review-panel`, `step.findings`) — decyzja właściciela.
-5. **CHANGELOG**: treść wydań 3.6–3.8 siedzi w `[Unreleased]` (nagłówki kończą się na `[3.5]`); nie cięto.
-6. **Sprzątanie archeologii** (A3): baseline 78 trafień w 42 plikach, głównie daty i anegdoty o incydentach w
-   agentach i kartach reguł (top: `code-quality-verifier`, `test-implementer`, `skills/design-system/ui-patterns`);
-   przenieść do `docs/decisions/` i przechwycić baseline (`--capture`) w tym samym commicie. Szacunek ok. 40 trafień.
-7. **Koszt kontekstu** (A4/A1/B3/C2): kernel dodaje ok. 1 KB na 15 agentów; `skills/quality/review-panel/SKILL.md`
-   urósł o ok. 4 KB (+43%), `commands/checkpoint.md` o ok. 2,3 KB (+85%), `commands/analyze.md` o ok. 2,2 KB.
-   Baseline w `tests/flow-evals/context-budget/ceilings.json` przechwycony po zmianach — pierwszy kandydat do
-   odchudzenia to skill `review-panel`. Przy okazji: koordynatorzy `legal/finance/marketing-strategist` mają w
-   `description` cały poradnik „When to invoke” (ok. 5,5 KB w każdej sesji do odzyskania).
-8. **Scalanie z `feature/TASK-ENGINE-GUARDRAILS-001`**: oba dotykają `orchestrate-rule-history.md`,
-   `commands/orchestrate.md` i `scripts/workflow/`; sprawdzić kolizje numerów ORC/ANL. Zgodnie z ustaleniem nie
-   scalać do sygnału użytkownika (fala poprawek w api-1).
-9. **Po scaleniu**: `./scripts/reseed-patterns.sh` nie jest wymagane (zmiany nie dotyczą `patterns/`),
-   natomiast `audit-projects` → `materialize-runtime` → `verify-project-setup`, bo zmienia się szablon `/orchestrate`.
+### Domknięcie (2026-10-28, gałąź `feature/TASK-GSTACK-ADOPT-001-followup`)
+Decyzje właściciela i ich skutek:
+1. **LICENSE**: właściciel praw to **Juz-Ide Team**; `author` w `METADATA.yml` ujednolicony.
+2. **SECURITY.md**: kontaktu nie uzupełniamy (decyzja: pominąć). Plik zostaje z zapisem „zgłoszenia do właściciela repozytorium, kanał prywatny".
+3. **Telemetria review-panel**: schemat v1 rozszerzony addytywnie (`process: review-panel`, `step.findings`), dobór reviewerów czyta i zapisuje zdarzenia telemetrii, stary dziennik migruje się sam do `.migrated` (ADR 0012, aneks). Niezależny przegląd znalazł dwa ważne błędy (wyścig przy migracji, dni samego panelu zajmujące sloty okna silnika) — naprawione z testami.
+4. **Archeologia w promptach**: 78 trafień w 42 plikach → 0; historia wyniesiona do `docs/decisions/prompt-history/{agents,cards,skills-commands}.md`; baseline ratchetu 0, jedyny wyjątek w allowliście to wiersz rejestru ORC-098.
+5. **CHANGELOG**: skonsolidowane wydanie **3.9.0** (wersje 3.6.0 z 2026-07-31 i 3.8.0 z 2026-10-01 nie miały osobnych wpisów, więc nie da się ich uczciwie rozdzielić); `METADATA.yml`, `package.json`, lockfile i README podbite do 3.9.0.
+6. **Numeracja reguł i `engine=` w Claimach**: ORC-139 → commit `a1e9480`, ANL-047 i ANL-048 → commit `c5cb0a0` (ORC-138 i ANL-046 zajęła w tym czasie druga sesja).
+
+Nadal otwarte (poza zakresem tego zadania):
+- **Koszt kontekstu** (A4/A1/B3/C2): kernel dodaje ok. 1 KB na 15 agentów, `skills/quality/review-panel/SKILL.md` urósł o ok. 4 KB, `commands/checkpoint.md` o ok. 2,3 KB. Pierwszy kandydat do odchudzenia to skill `review-panel`; koordynatorzy `legal/finance/marketing-strategist` mają w `description` cały poradnik „When to invoke" (ok. 5,5 KB w każdej sesji do odzyskania).
+- **Czas pre-commit** ok. 23 s (nowe bramki ok. 9–10 s); do optymalizacji, jeśli będzie przeszkadzać (`prompt-structure` 5,2 s, `context-budget` 1,3 s).
+- **Scalanie z `feature/TASK-ENGINE-GUARDRAILS-001`**: oba dotykają `orchestrate-rule-history.md`, `commands/orchestrate.md` i `scripts/workflow/`; sprawdzić kolizje numerów ORC/ANL. Nie scalać do sygnału użytkownika (fala poprawek w api-1).
+- **`materialize-runtime`** dla juz-ide-api-1, -2, -3 (nieaktualne `runtime.yml`, niezwiązane z tym zadaniem) po zakończeniu fali poprawek w api-1.
+- **Pola `**Claim:**`** brakują w regułach ANL-028, ANL-040, ANL-038, ANL-046 i ORC-138 (pre-commit ostrzega, nie blokuje).
 
 ### Po scaleniu (2026-10-28)
 - Scalenie wymagało najpierw zacommitowania pracy drugiej sesji (reguły ORC-138 i ANL-046, karty RP2/RP3/VO7, `cli-runner.md`, skrzynka) oraz `./scripts/reseed-patterns.sh`, bo karty `_summary` zmieniły się po ostatnim zaszczepieniu RAG; eval retrievalu hit@5 = 0,97. Pięć konfliktów (CHANGELOG, `analyze.md`, `orchestrate.md`, historia reguł, indeks skrzynki) rozwiązano zachowując obie strony. Po scaleniu przechodzi 49 z 49 bramek.

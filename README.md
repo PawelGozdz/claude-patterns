@@ -1,6 +1,6 @@
 # Global Claude Code Patterns Repository
 
-**Version**: 3.8.0
+**Version**: 3.9.0
 **Created**: 2026-02-05
 **Updated**: 2026-09-27
 **Purpose**: Reusable patterns, agents, skills, project management, marketing skills, finance skills, and legal skills for Claude Code
@@ -1165,5 +1165,5 @@ cat .claude/settings.json  # Ensure patterns path is correct
 - `patterns/orchestration/project-management-system.md` — PM system docs
 
 ---
-**Version**: 3.8.0
+**Version**: 3.9.0
 **Last Updated**: 2026-09-27
