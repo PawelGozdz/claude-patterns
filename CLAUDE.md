@@ -29,7 +29,7 @@ symlinks. Think carefully before removing or renaming anything.
 patterns/       122 production patterns (61 core + 56 stack-specific + 1 marketing + 2 finance + 2 legal)
 agents/         25 universal + 35 stack-specific agents
 skills/         203 skills across 24 categories (42 marketing + 91 finance + 12 legal + others)
-hooks/          47 hooks (44 js + 3 sh, incl. pm-task-check.js — PM, per-project)
+hooks/          48 hooks (45 js + 3 sh, incl. pm-task-check.js — PM, per-project)
 templates/      CLAUDE.md composition + project-orchestration/ + per-stack settings and hook configs
 commands/       35 global commands (PM, orchestration, quality, marketing, finance, legal)
 tools/          External tool reference (vendored): marketing/ (CLIs + integrations)
