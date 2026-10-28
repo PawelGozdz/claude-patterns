@@ -11,6 +11,7 @@ higiena raportowania: [ADR 0011](adr/0011-raportowanie-dryfu-i-telemetria-floty.
 | Collector (ten sam, uruchamiany przez hooki) | zdarzenia v1 | `telemetry/events/*.jsonl` (poza gitem) |
 | `/analyze` | `telemetry-emit.mjs run-start` / `run-end` | to samo |
 | Cron 07:30 pon–pt | `scripts/cron/audit-daily.sh` → audyt floty | `~/.claude/metrics/audit-daily.log` |
+| Cron 08:15 pon (opcjonalny) | `scripts/cron/osv-scan.sh` → skan zależności (`osv-scanner`) | `~/.claude/metrics/osv-scan.log` |
 | Hooki blokujące (9: `block-root-grep`, `block-subagent-commit`, `pre-workflow-lint`, `check-delegation`, …) | `process: hook`: jedno zdarzenie przy zablokowaniu, `step.role` = `<hook>:<reguła>` (np. `pre-workflow-lint:WL3`); przepuszczenia i ostrzeżenia nie zapisują nic; wyłączenie `HOOK_TELEMETRY=off` | `telemetry/events/*.jsonl` |
 | `scripts/pre-commit-guards.mjs` | `process: pre-commit`: krok per bramka (`step.role` = stała nazwa, np. `eval-hooks`), odsetek porażek per bramka w agregacie | `telemetry/events/*.jsonl` |
 
@@ -40,7 +41,20 @@ node scripts/report-deviation.mjs --list         # skrzynka odstępstw, triage
 3. **Cron żyje:** `ls -l ~/.claude/metrics/audit-daily.log` — data z ostatniego dnia roboczego, ostatnie linie to podsumowanie
    („N projekt(ów) wymaga uwagi"), nie stos błędu Node. Brak zapisu od ostatniego dnia roboczego 07:30 (+2 h) wykryje `telemetry-freshness`.
 4. **Agregaty aktualne:** `node scripts/telemetry-aggregate.mjs --check` (dzisiejszy, wciąż rosnący dzień bywa „nieaktualny" — to normalne).
-5. **Przed commitem:** `node scripts/pre-commit-guards.mjs` — 29 bramek, w tym evale telemetrii; wypisuje też zgłoszenia w skrzynce bez ruchu.
+5. **Przed commitem:** `node scripts/pre-commit-guards.mjs` — 48 bramek stałych (nagłówek „N/48”) plus 2 warunkowe, gdy w indeksie są pliki `blocks/**.yml`, `templates/*-hooks.json`, `templates/settings/*.json` albo `docs/tasks/_inbox/*` (`audit-projects --gate`, `generate-inbox-index --check`); w tym evale telemetrii; wypisuje też zgłoszenia w skrzynce bez ruchu.
+
+## Skan zależności (osv-scanner)
+
+`scripts/cron/osv-scan.sh` skanuje `package-lock.json` z korzenia i z `mcp-server/knowledge-retriever`. Bez zainstalowanego
+`osv-scanner` wypisuje komunikat i kończy się kodem 0. Wyjątki od skanu trafiają do `.osv-scanner.toml` i muszą mieć
+`ignoreUntil` oraz `reason` (walidacja: `node scripts/osv-ignore-check.mjs`; wyjątek bez daty wygaśnięcia jest błędem).
+Wpis do crontaba dodaje użytkownik sam (skrypt niczego nie instaluje): `crontab -e`, a w nim jedna linia
+
+```
+15 8 * * 1 /opt/projects/claude-patterns/scripts/cron/osv-scan.sh >> /home/dev/.claude/metrics/osv-scan.log 2>&1
+```
+
+Ostatnie linie logu to podsumowanie („brak znanych podatności…” albo lista z `osv-scanner`). Ręcznie: `bash scripts/cron/osv-scan.sh`.
 
 ## Częste pułapki
 

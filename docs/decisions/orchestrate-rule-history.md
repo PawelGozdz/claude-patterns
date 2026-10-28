@@ -1154,7 +1154,7 @@ pusty parametr usuwa klucze ze slotu. `always_for` omija też sito ANL-018 — j
 
 ### ANL-047 — decyzje w analizie mają klasę: mechaniczne bez pytania, gust razem, zmiana kierunku zawsze do człowieka (2026-10-28)
 
-**Claim:** metric=gateNoGo direction=down threshold=0.1 engine=bfd45a3 process=orchestrate
+**Claim:** metric=gateNoGo direction=down threshold=0.1 engine=c5cb0a0 process=orchestrate
 
 **Objaw (TASK-GSTACK-ADOPT-001 B5, wzór: autoplan z gstack).** Każda decyzja i pytanie w artefakcie analizy szły do człowieka tak samo, więc rzeczy z jedną sensowną odpowiedzią zabierały uwagę, a zmianę kierunku ustalonego przez użytkownika dało się wpisać do `decisions[].choice` obok drobiazgów.
 
@@ -1166,7 +1166,7 @@ pusty parametr usuwa klucze ze slotu. `always_for` omija też sito ANL-018 — j
 
 ### ANL-048 — `one-way` zawsze do człowieka, rekomendacja ma znacznik, który da się sparsować (2026-10-28)
 
-**Claim:** metric=gateNoGo direction=down threshold=0.1 engine=bfd45a3 process=orchestrate
+**Claim:** metric=gateNoGo direction=down threshold=0.1 engine=c5cb0a0 process=orchestrate
 
 **Objaw (TASK-GSTACK-ADOPT-001 B5).** Decyzja trudna do cofnięcia (migracja danych, kontrakt, usunięcie) mogła zostać rozstrzygnięta jako „mechaniczna" i nie dotrzeć do człowieka. Rekomendacja siedziała w prozie `ask`, której nic nie czyta maszynowo.
 
@@ -2505,7 +2505,7 @@ produktowe oceniamy raz, na całości zmiany, żeby nie płacić za nie w każde
 
 ### ORC-139 — werdykt związany z hashem drzewa (2026-10-28)
 
-**Claim:** metric=falseGo direction=down threshold=0.2 engine=bfd45a3 process=orchestrate
+**Claim:** metric=falseGo direction=down threshold=0.2 engine=a1e9480 process=orchestrate
 
 **Objaw (TASK-GSTACK-ADOPT-001 A2; baza TASK-ORCH-FALSE-GO-001).** Ok. 12,6% przebiegów kończyło się fałszywym GO (51 z 406, dolna granica). Jedna z dróg: GO zapadało dla innego kodu niż ten, który szedł do stagingu. Weryfikator mógł edytować pliki, zmiana mogła wejść w trakcie oceny, albo ktoś edytował drzewo między końcem Workflow a `git add`. Silnik nie miał jak tego wykryć.
 
