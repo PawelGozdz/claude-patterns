@@ -1154,6 +1154,8 @@ pusty parametr usuwa klucze ze slotu. `always_for` omija też sito ANL-018 — j
 
 ### ANL-046 — rejestry kodów błędów, zdarzeń i komunikatów mają właściciela w planie (2026-10-28)
 
+**Claim:** metric=DEV-orc-128-domain-consent-domain direction=down threshold=0.5 engine=f3e4b14 process=orchestrate
+
 **Objaw (5 rekordów, 4 projekty).** Plan dodawał kod błędu albo zdarzenie, ale nie wskazywał plików, które je rejestrują: juz-ide-api-1 TS-SEC-SP-PIN-CONSENT-001 (`DEV-orc-128-domain-consent-domain`: `error-codes.ts` i `event-names.enum.ts` bez jednostki, `BLOCKED_BY_PRIOR` z czerwonego typecheck), juz-ide-api-1 TS-SEC-SP-LOCATION-001 (`DEV-orc-044-domain`: DE3 chce wpisu w mapperze, a ten leży w infrastrukturze), juz-ide-api-2 TS-EVENT-VENUE-001 (`DEV-orc-062-infrastructure-venue-wiring`: nowy członek `LocalHeroErrorCode`, `layers_scope` pusty), grant-flow TS-UI-010 (eventMap RP6/RP9 i wpis mappera DE3 dla `TaskUpdatedEvent`), marketing-hub TS-MH-028 (`DEV-orc-plan-web-dict`: kod `CAMPAIGN_*` wymaga wpisu w słowniku `apps/web`, web L1 czerwony w bramce końcowej).
 
 **Przyczyna.** ANL-045 (24.10) wymienia moduły, providery, mappery błędów i schematy create, ale nie rejestry kodów i zdarzeń ani słownik komunikatów web. Karta DE3 słusznie wymaga wpisu w mapperze razem z klasą błędu, a ORC-042 słusznie zabrania implementerowi ruszać plik spoza zakresu. Brakowało właściciela po stronie planu.
@@ -1161,6 +1163,8 @@ pusty parametr usuwa klucze ze slotu. `always_for` omija też sito ANL-018 — j
 **Zmiana.** Reguła tylko w prompcie, rozszerzenie ANL-045: analiza wpisuje rejestry (`error-codes.ts`, `event-names.enum.ts`, eventMap, mapper błędów, słownik komunikatów web) do `dirs` jednostki albo jednostki wiringu. Mechanicznej bramki w `prepare` nie ma z tego samego powodu co przy ANL-045: nazwy rejestrów zależą od stosu projektu. ORC-128 widzi tylko ścieżki wskazane w decyzjach.
 
 **Bez zmiany.** `DEV-orc-128-infrastructure-consent-persistence` (providery bez modułu) to przypadek ANL-045, a przebieg powstał z analizy sprzed tej reguły.
+
+**Uwaga o claimie.** Sygnatura to jeden z pięciu rekordów z objawu (juz-ide-api-1, jedyny z nich widoczny w rollupach). `engine=` to commit reguły, nie hash z rollupów: po pierwszych przebiegach pod nowszym silnikiem podmienić go na pierwszy hash z `telemetry-report.mjs --by engine`, który zawiera `f3e4b14`.
 
 <a id="anl-047"></a>
 
@@ -1486,8 +1490,37 @@ dowodów, jeśli się powtórzy z konkretnymi ścieżkami. Egzekwuje `orchestrat
 `final-gate-filters-items-adjudicated-by-decision-id` w `tests/flow-evals/orchestrate-script/
 run.js`.
 
+<a id="anl-028"></a>
+
+### ANL-028 — artefakt analizy ma stały kształt, odpowiedzi żyją tylko we frontmatterze (2026-09-09)
+
+**Claim:** metric=firstPass direction=up threshold=0.1 engine=1a99827 process=orchestrate
+
+Wiersz rejestru w `commands/analyze.md` nie miał dotąd wpisu w tym pliku. Artefakt `{TASK-ID}.analysis.md` powstaje według `templates/task-analysis-template.md`
+(`task`, `status`, `threat_model`, `open_questions[]`, `decisions[]`, `patterns[]`, `rag:`, `stack_blocks:`), a odpowiedzi człowieka trafiają wyłącznie do frontmattera,
+bo stamtąd czyta je `orchestrate-prepare`; odpowiedź zapisana w prozie jest dla silnika niewidoczna. Reguła wprowadzona w `d174046`.
+Od 2026-10-28 szablon ma też opcjonalne pola klasyfikacji decyzji (ANL-047, ANL-048).
+
+**Uwaga o claimie.** Reguła ma charakter porządkowy i nie ma własnej metryki; `firstPass` jest pośrednikiem (czytelny, kompletny artefakt zmniejsza liczbę przebiegów
+startujących z błędnym planem). Reguła jest starsza niż pierwszy hash silnika widoczny w rollupach (od 2026-10-10), więc okno „przed/po” miesza wiele innych zmian; werdykt jest orientacyjny, a metryka bywa tylko pośrednikiem.
+
+<a id="anl-040"></a>
+
+### ANL-040 — pytania do człowieka pokazywane dosłownie, krótko, z rekomendacją (2026-10-07)
+
+**Claim:** metric=gateNoGo direction=down threshold=0.1 engine=1a99827 process=orchestrate
+
+Uzasadnienie jest w [ORC-095](#orc-095): człowiek musiał przy każdym przebiegu dopisywać „wytłumacz prostym językiem biznesowym w 1-2 zdaniach", bo pytania i
+podsumowania były „elaboratami". ANL-040 (wprowadzona w `98a14f3`) rozciąga to na pytania z `open_questions[]`: `ask` pokazywane DOSŁOWNIE, po jednym pytaniu na linię,
+do dwóch zdań, w formie „tak/nie" albo „A czy B", z rekomendacją i domyślną odpowiedzią; `USER_CHALLENGE` i `one-way` najpierw (ANL-047), potem wszystkie `TASTE` razem.
+
+**Uwaga o claimie.** Cel reguły to mniej pomyłek i mniej dopytywania po stronie człowieka, czego żadna metryka z `telemetry-report` nie mierzy; `gateNoGo` jest najbliższym
+pośrednikiem (trafniejsze odpowiedzi → mniej NO_GO bramki końcowej). Reguła jest starsza niż pierwszy hash silnika widoczny w rollupach (od 2026-10-10), więc okno „przed/po” miesza wiele innych zmian; werdykt jest orientacyjny, a metryka bywa tylko pośrednikiem.
+
 <a id="anl-038"></a>
 ### ANL-038 — jednostki, pliki towarzyszące i fałszywe trafienia wzorców mają swoje pola (2026-09-24)
+
+**Claim:** metric=retryCost direction=down threshold=0.2 engine=1a99827 process=orchestrate
 
 marketing-hub, TS-MH-005. Analiza wyraziła trzy rzeczy, których silnik nie umiał przenieść.
 Podział infrastruktury na cztery obszary poszedł do `units`, którego nikt nie czytał (ORC-064).
@@ -1505,6 +1538,8 @@ nie wykluczył, daje ostrzeżenie (literówka).
 **Uzupełnienie (2026-10-25).** Zgłoszenia aegis-flow TS-007 (reguła D2 unieważnia testy loadera i kontraktu audytu, niezmiennik liczników wymaga emittera i testu loadera) i juz-ide-api-2 (usunięcie `radiusKm` dotyka plików infrastruktury) to ta sama klasa co przeniesienie eksportu: usunięcie lub zawężenie pola, typu albo reguły wymaga w `dirs` konsumentów i testów. ORC-042 zadziałał poprawnie (zgłoszenie zamiast edycji), brakowało ich w planie.
 
 **Uzupełnienie (2026-10-28).** Z listy plików towarzyszących zniknął `.env.example`: patrz [ORC-138](#orc-138).
+
+**Uwaga o claimie.** Zmarnowane próby po spec poza zakresem i po niewykluczonym wzorcu to koszt powtórek, stąd `retryCost`. Reguła jest starsza niż pierwszy hash silnika widoczny w rollupach (od 2026-10-10), więc okno „przed/po” miesza wiele innych zmian; werdykt jest orientacyjny, a metryka bywa tylko pośrednikiem.
 
 <a id="orc-081"></a>
 
@@ -2519,6 +2554,8 @@ produktowe oceniamy raz, na całości zmiany, żeby nie płacić za nie w każde
 
 ### ORC-138 — `.env*` w zakresie jednostki to konflikt z regułą deny (2026-10-28)
 
+**Claim:** metric=retryCost direction=down threshold=0.2 engine=f3e4b14 process=orchestrate
+
 **Objaw (agent_note, ai-gateway TS-AIG-104, run `wf_451d6c4c-9a7`, `implementation:wiring`).** `.env.example` był w `dirs` jednostki wiring, a reguła deny na `.env*` blokuje agentom odczyt i zapis. Trzy próby kończyły NO_GO z tego samego powodu, a silnik zapisał `cause=code`, choć realnie był to konflikt zakresu z uprawnieniami.
 
 **Przyczyna.** Dwie reguły silnika mówiły sprzeczne rzeczy. ANL-038 kazał dopisywać `.env.example` do `dirs` jako plik towarzyszący, a `audit-projects` (AUD-ENV-DENY) wymaga w każdym projekcie `Read(./.env)` i `Read(./.env.*)` w `permissions.deny`.
@@ -2526,6 +2563,8 @@ produktowe oceniamy raz, na całości zmiany, żeby nie płacić za nie w każde
 **Zmiana.** (1) ANL-038 nie wymienia już `.env.example` i mówi wprost, że plików `.env*` nie wpisuje się do zakresu, tylko zapisuje jako krok ręczny po przebiegu. (2) `warnBareMissingDirs` w `orchestrate-prepare.mjs` ostrzega o każdym wpisie `.env`, `.env.*` (także w podkatalogu) w `dirs` jednostki lub `layers_scope`. Tylko ostrzeżenie: projekt bez reguły deny mógłby ten plik edytować. Eval: `units-env-file-in-dirs-warns`.
 
 **Poza zakresem.** `cause=code` przy NO_GO z odmowy uprawnień zostaje. Rozpoznanie odmowy po treści błędu agenta wymagałoby parsowania komunikatów narzędzi.
+
+**Uwaga o claimie.** Odstępstwo z `agent_note` (ai-gateway TS-AIG-104) nie trafia do rollupów, więc claim na jego sygnaturze nic by nie pokazał; trzy próby NO_GO z tego samego powodu to koszt powtórek, stąd `retryCost`. `engine=` to commit reguły: po pierwszych przebiegach pod nowszym silnikiem podmienić go na pierwszy hash z rollupów, który zawiera `f3e4b14`.
 
 <a id="orc-139"></a>
 

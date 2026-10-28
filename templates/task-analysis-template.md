@@ -25,7 +25,7 @@ open_questions:                 # człowiek wypełnia answer; null = blokuje imp
   - id: Q2
     ask: "..."
     q: "..."
-    # Klasyfikacja (ANL-047/047) — pola OPCJONALNE, starsze artefakty ich nie mają i przechodzą bramkę bez zmian.
+    # Klasyfikacja (ANL-047/048) — pola OPCJONALNE, starsze artefakty ich nie mają i przechodzą bramkę bez zmian.
     # Nie kopiuj wartości z przykładu: klasę i typ drzwi ustala treść pytania, nie szablon.
     class: <MECHANICAL|TASTE|USER_CHALLENGE>
     door_type: <one-way|two-way>   # one-way = trudne do cofnięcia; one-way ZAWSZE trafia do człowieka
@@ -41,7 +41,7 @@ decisions:                      # propozycje z analizy; człowiek weryfikuje/pop
     choice: "ACL Registry (getGlobalRequired)"
     means: "Dwa obszary systemu przestają zależeć od siebie wprost, więc awaria jednego nie zatrzymuje drugiego."
     rationale: "..."
-    # Klasyfikacja (ANL-047/047), opcjonalna. MECHANICAL rozstrzygasz sam i cytujesz w `rationale` regułę/wzorzec/kartę;
+    # Klasyfikacja (ANL-047/048), opcjonalna. MECHANICAL rozstrzygasz sam i cytujesz w `rationale` regułę/wzorzec/kartę;
     # TASTE, USER_CHALLENGE i każde one-way mają parę w `open_questions` (pole `decision: <id>`), a `choice` jest wtedy tylko propozycją.
     # class: <MECHANICAL|TASTE|USER_CHALLENGE>
     # door_type: <one-way|two-way>

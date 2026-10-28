@@ -10,6 +10,13 @@ and none of it is instruction — it is history.
 
 ## [Unreleased]
 
+### Changed
+- Opisy 8 agentów w frontmatterze skrócone (`legal-`, `finance-`, `marketing-strategist`, `backend-technology-expert`, `halt-diagnostician`, `tech-lead`, `product-owner`, `business-rules-auditor`): suma opisów w katalogu agentów spadła o ok. 8,7 KB (ok. 2,2 tys. tokenów w każdej sesji). Tematy routingu zostały w opisach jako słowa kluczowe, przykłady próśb i tryby dostępu przeniesione do sekcji „When to invoke" w ciele. Baseline kontekstu (`ceilings.json`) przechwycony przy każdej zmianie.
+- Claimy dopisane do reguł ANL-028, ANL-038, ANL-040, ANL-046 i ORC-138 w `docs/decisions/orchestrate-rule-history.md`; ANL-028 i ANL-040 dostały własne wpisy (miały tylko wiersz w tabeli). Starsze reguły (`engine=1a99827`, pierwszy hash w rollupach) mają adnotację, że okno „przed/po" miesza wiele zmian.
+
+### Fixed
+- Szablon analizy i wiersz ANL-028 odsyłały do „ANL-047/047" zamiast „ANL-047/048" (skutek przenumerowania reguł); szablon zsynchronizowany ponownie do projektów.
+
 ## [3.9.0] — 2026-10-28
 
 > Wydanie skonsolidowane: obejmuje wszystkie zmiany od [3.5] (2026-05-07). Wersje 3.6.0 (2026-07-31) i 3.8.0 (2026-10-01) były podbijane w `METADATA.yml`
