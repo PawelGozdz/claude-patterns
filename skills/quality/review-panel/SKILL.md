@@ -23,9 +23,10 @@ Never commits or pushes — it stages fixes with `Edit` only. Committing is the 
 ## Arguments
 
 `$ARGUMENTS` — optional:
-- `--full` — ignore any saved snapshot, review everything from scratch.
+- `--full` — ignore any saved snapshot, review everything from scratch **and** run the whole
+  planned panel with no adaptive skipping (Phase 2c).
 - `--thorough` — dynamically select 10 of the 16 personas based on what the diff actually
-  contains (see Phase 2b), instead of the fixed per-stack set.
+  contains (see Phase 2b), instead of the fixed per-stack set. Also disables adaptive skipping.
 - `--pr <number>` — review a GitHub PR's diff (`gh pr diff <number>`) instead of the local
   branch vs `origin/main`.
 
@@ -108,7 +109,37 @@ Select exactly 10, always including `eagle` and `pragmatist`. Present the select
 one-line reason per pick and wait for confirmation (`yes` / `swap X for Y` / `no` → fall back to
 standard mode) before dispatching — same as the standard-mode announcement.
 
-### 2c. Dispatch
+### 2c. Adaptive reviewer selection (B3, TASK-GSTACK-ADOPT-001)
+
+A reviewer that found nothing in its last 10 invocations in this project is skipped by default —
+the panel costs less without losing detection, because the reviewers that keep finding things
+still run. The data is the panel's own log (`~/.claude/review-panel-stats/invocations.jsonl`;
+telemetry v1 carries no per-reviewer result, see "Stats log" below).
+
+**Skip this step entirely — run the whole panel from 2a/2b — when** `--full` or `--thorough` was
+given (or inferred), or the stats call below fails. Otherwise, after 2a/2b produced the planned
+panel, ask the script what to do with it (`<project>` = repo directory name, or the PR's repo):
+
+```
+node <claude-patterns>/scripts/reviewer-stats.mjs --select eagle,security,pragmatist,... --project <project> --json
+```
+
+It returns `run` (dispatch these), `skip` (do not dispatch; each has a `reason`) and `probe`
+(reviewers in `run` that are control invocations of a skipped reviewer). Rules:
+
+- no data or fewer than 10 invocations for a reviewer = **always run** (the script says `brak danych` /
+  `za mało danych`);
+- `NEVER_GATE` — `reviewer-security`, `reviewer-compliance`, `reviewer-pragmatist` — are never in `skip`,
+  whatever their history (pragmatist is the panel's blocking-decision floor);
+- every 10th skipped panel a skipped reviewer is run once as a `probe`; a finding resets its streak;
+- the script exits non-zero (exit 2 = corrupt log: it names the file and line) → **run the full
+  panel** and say in the report "adaptive selection off: <error>". Never treat a failed call as
+  "no skips needed" silently and never repair or delete the log yourself.
+
+Every skipped reviewer is named in the report (Phase 3, section "Skipped reviewers"). Nothing
+disappears silently, and the user can override with `--full`.
+
+### 2d. Dispatch
 
 Run all selected `reviewer-*` agents in parallel (single message, multiple `Agent` calls) as
 leaves — no nested Task/Agent calls inside them. Give each agent the same context block:
@@ -123,6 +154,23 @@ Diff to review:
 
 Collect all responses (each returns `inline_comments` JSON + a summary + internal-only
 `learnings`, per its own agent file's Output Format).
+
+**Record the outcome** (one call per panel run, right after collecting, before deduplication — a
+finding later merged into another reviewer's entry still counts for the reviewer who found it):
+
+```
+node <claude-patterns>/scripts/reviewer-stats.mjs --record --project <project> --branch <branch> \
+  --ran eagle=<N inline_comments>,security=<N>,... --skipped nitpicker,newbie
+```
+
+- `--ran` lists only reviewers that returned a parseable response; `N` = length of that
+  reviewer's `inline_comments` array (0 for a clean response). A reviewer that errored, timed out
+  or returned garbage is **not** recorded as `ran` (a failure is not a clean pass) — mention it in
+  the report.
+- `--skipped` lists the reviewers from the `skip` list of 2c. In forced mode (`--full` /
+  `--thorough` / stats call failed) there is no `--skipped`.
+- Incremental run with nothing to dispatch → nothing to record.
+- A failed `--record` is reported to the user in one line; it does not stop the review.
 
 ## Phase 3: Synthesize report
 
@@ -151,6 +199,13 @@ Collect all responses (each returns `inline_comments` JSON + a summary + interna
 
    **Requires your decision:** C2, H3 (architectural/business-logic — described above)
    ```
+   Add one more section to every report, even when the list is empty:
+   ```
+   ### Skipped reviewers (adaptive selection)
+   - reviewer-nitpicker — 12 invocations in a row without a finding (threshold 10); control run in 6 panels
+   - none skipped — <reason: forced by --full/--thorough | too little data | stats unavailable: <error>>
+   ```
+   One line per skipped reviewer, with the `reason` from the script. `--full` runs the whole panel.
 4. Ask: `Which fixes should I apply? → all / 1,2,4 / all except 3 / none / cancel`. Wait for the
    answer before Phase 4.
 
@@ -179,6 +234,20 @@ doesn't exist. Save **after** the user has acted on Phase 3/4, not before.
 Snapshot saved — next /review-panel run on this branch will be incremental.
 Ready for PR when all CRITICAL and HIGH issues are resolved.
 ```
+
+## Stats log (adaptive selection)
+
+- File: `~/.claude/review-panel-stats/invocations.jsonl` (override: `REVIEW_PANEL_STATS_FILE`). One
+  JSON line per reviewer per panel run: `ts`, `project`, `branch`, `reviewer`, `outcome`
+  (`ran` + `findings` count | `skipped`). Counts only — no diff, paths or finding text. Like the
+  snapshots, it lives under `~/.claude/`, never in the reviewed repo.
+- Why not telemetry v1 (ADR 0012): the event schema has `additionalProperties: false`, no
+  `review-panel` process and no findings-count field. Moving this data there needs a schema change
+  and is the owner's call; until then the log is the single source and `reviewer-stats.mjs` the only
+  reader/writer.
+- Inspect: `node <claude-patterns>/scripts/reviewer-stats.mjs [--project <name>] [--json]` prints per
+  reviewer the invocations, invocations with a finding, the trailing zero streak, and
+  `[GATE_CANDIDATE]` / `[NEVER_GATE]`. Wiring check: `reviewer-stats.mjs --check-config`.
 
 ## Notes
 

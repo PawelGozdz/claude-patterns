@@ -113,6 +113,8 @@ anything missing or wrong, to keep false-positive rate low.
 | **reviewer-champion** | Only positive reviewer — praises good patterns worth repeating | Sonnet | No |
 | **reviewer-professor** | Subtle language/runtime bugs (closures, async, coercion), explains why | Sonnet | No |
 
+Adaptacyjny dobór: `/review-panel` pomija reviewera po 10 kolejnych wywołaniach bez findingu w projekcie (`scripts/reviewer-stats.mjs`). Nigdy nie pomija `reviewer-security`, `reviewer-compliance` ani `reviewer-pragmatist`; `--full` i `--thorough` uruchamiają pełny panel, a pominięci są wymienieni w raporcie z powodem.
+
 Skill: `skills/quality/review-panel/SKILL.md` · Command: `/review-panel` · Pattern:
 `patterns/cross-layer/snapshot-incremental-review-pattern.md`
 

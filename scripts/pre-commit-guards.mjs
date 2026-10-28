@@ -93,6 +93,7 @@ runCheck('eval: fragments', 'node', ['tests/flow-evals/fragments/run.js']);
 runCheck('eval: tree-hash-binding', 'node', ['tests/flow-evals/tree-hash-binding/run.js']);
 runCheck('eval: eval-policy', 'node', ['tests/flow-evals/eval-policy/run.js']);
 runCheck('eval: judge-controls', 'node', ['tests/flow-evals/judge-controls/run.js']);
+runCheck('eval: reviewer-stats', 'node', ['tests/flow-evals/reviewer-stats/run.js']);
 runCheck('eval: osv-scan', 'node', ['tests/flow-evals/osv-scan/run.js']);
 runCheck('eval: version-sync', 'node', ['tests/flow-evals/version-sync/run.js']);
 runCheck('validate-agents', 'node', ['scripts/ci/validate-agents.js']);
@@ -104,6 +105,7 @@ runCheck('validate-rules', 'node', ['scripts/ci/validate-rules.js']);
 runCheck('validate-skills', 'node', ['scripts/ci/validate-skills.js']);
 // TASK-GSTACK-ADOPT-001: ratchet kontekstu stałego (A4), świeżość wstrzykniętych fragmentów (B4), konfiguracja doboru reviewerów (B3).
 runCheck('sync-fragments --check', 'node', ['scripts/sync-fragments.mjs', '--check']);
+runCheck('reviewer-stats --check-config', 'node', ['scripts/reviewer-stats.mjs', '--check-config']);
 runCheck('count-assets --check', 'node', ['scripts/count-assets.mjs', '--check']);
 runCheck('count-assets --check-docs', 'node', ['scripts/count-assets.mjs', '--check-docs']);
 // K84 (TASK-KAIZEN-002, 2026-09-07): jeden schemat METADATA.yml katalogów wzorców.
