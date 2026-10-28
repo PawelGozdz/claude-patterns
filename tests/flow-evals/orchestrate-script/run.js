@@ -1767,6 +1767,77 @@ const CASES = (c) => [
       return null;
     },
   },
+  // ── ORC-141: drobne ustalenia nie zmieniają zachowania ──────────────────────────
+  {
+    name: 'behavior-change-in-minor-findings-moves-to-violations-and-flips-go',
+    run() {
+      const v = c.reclassifyMinor({ verdict: 'GO', violations: [], minor_findings: ['handler.ts:12 — Zrób throw zamiast Result.fail — popraw', '[zachowanie] a.ts:3 — zmień zwracaną wartość', 'a.ts:5 — literówka w komentarzu — popraw'] });
+      if (v.verdict !== 'NO_GO') return 'GO z uwagą o zmianie zachowania nie zmienił się w NO_GO';
+      if (v.violations.length !== 2 || v.minor_findings.length !== 1) return 'zły podział: violations=' + v.violations.length + ' minor=' + v.minor_findings.length;
+      if (!v.violations.every((x) => /ORC-141/.test(x)) || v.violations.some((x) => /^\[zachowanie\]/.test(x))) return 'znacznik nie został zdjęty albo brak adnotacji: ' + JSON.stringify(v.violations);
+      return null;
+    },
+  },
+  {
+    name: 'ordinary-nits-stay-minor-the-net-is-narrow',
+    // wąska siatka: zwykłe uwagi o nazwach, importach i komentarzach nie mogą zamieniać GO w NO_GO
+    run() {
+      const nits = ['a.ts:1 — zbędny await przed return — usuń', 'a.ts:2 — zmień kolejność importów — popraw', 'a.ts:3 — nazwa zmiennej commitMessage myląca — zmień', 'a.ts:4 — komentarz o kolejce jest nieaktualny — popraw', 'a.ts:5 — try/catch w komentarzu — usuń', 'a.ts:6 — brak spacji przed klamrą — popraw'];
+      const v = c.reclassifyMinor({ verdict: 'GO', violations: [], minor_findings: nits });
+      if (v.verdict !== 'GO' || v.minor_findings.length !== nits.length) return 'zwykłe uwagi przeniesione do violations: ' + JSON.stringify(v.violations);
+      return null;
+    },
+  },
+  {
+    name: 'reclassify-minor-leaves-clean-and-no-go-verdicts-alone',
+    run() {
+      const clean = { verdict: 'GO', minor_findings: [] };
+      if (c.reclassifyMinor(clean) !== clean) return 'czysty werdykt zmieniony';
+      const nogo = c.reclassifyMinor({ verdict: 'NO_GO', violations: ['x'], minor_findings: ['rzuć wyjątek'] });
+      if (nogo.verdict !== 'NO_GO' || nogo.violations.length !== 2) return 'NO_GO zmieniony niepoprawnie';
+      if (c.reclassifyMinor(null) !== null) return 'null';
+      return null;
+    },
+  },
+  {
+    name: 'verifier-and-final-gate-prompts-carry-the-narrow-minor-definition-and-card-precedence',
+    run() {
+      const probe = { typecheck: 'pass', tests: 'pass' };
+      const v = c.buildVerifierPrompt(ARGS, ARGS.layers[1], probe, ['src/a.ts'], 'implement');
+      const g = c.buildFinalGatePrompt(ARGS, ['typecheck'], ['src/a.ts'], 'git', [], probe, []);
+      for (const [n, p] of [['weryfikator', v], ['bramka', g]]) {
+        if (!/KARTA MA PIERWSZEŃSTWO NAD KOMENTARZEM/.test(p)) return n + ': brak akapitu o pierwszeństwie karty';
+        if (!/NIE jest drobiazg/.test(p) || !/\[zachowanie\]/.test(p)) return n + ': brak zawężonej definicji drobnego i znacznika';
+        if (/do kilku linii, bez/.test(p)) return n + ': stara definicja drobnego (do kilku linii)';
+      }
+      const off = c.buildVerifierPrompt({ ...ARGS, autoFixMinor: false }, ARGS.layers[1], probe, ['src/a.ts'], 'implement');
+      if (/minor_findings/.test(off) && /KARTA MA/.test(off) === false) return 'przy autoFixMinor=false akapit karty też powinien zostać (dotyczy oceny, nie poprawek)';
+      return null;
+    },
+  },
+  {
+    name: 'minor-findings-tag-anywhere-wider-net-and-non-string-items',
+    run() {
+      const mk = (items) => c.reclassifyMinor({ verdict: 'GO', violations: [], minor_findings: items });
+      for (const bad of ['a.ts:3 — [zachowanie] zmień zwracaną wartość', 'a.ts:4 — rethrow the error in catch', 'a.ts:5 — wyrzuć wyjątek zamiast zwracać', 'a.ts:6 — zwróć status 409 zamiast 400', 'a.ts:7 — raise an error when empty']) {
+        if (mk([bad]).verdict !== 'NO_GO') return 'zmiana zachowania przeszła jako drobiazg: ' + bad;
+      }
+      const ok = mk(['a.ts:1 — JSDoc @throws nieaktualny — popraw', 'a.ts:2 — raise the log level — zmień']);
+      if (ok.verdict !== 'GO' || ok.minor_findings.length !== 2) return 'nit przeniesiony do violations: ' + JSON.stringify(ok);
+      const obj = mk([{ text: 'a.ts:9 — [zachowanie] x' }, null, { foo: 'bar' }]);
+      if (obj.verdict !== 'NO_GO' || obj.violations.some((v) => /object Object/.test(v))) return 'pozycja obiektowa zgubiona albo „[object Object]": ' + JSON.stringify(obj);
+      if (c.collectMinor({ minor_findings: [{ text: 'abc' }, null] }).join('|') !== 'abc') return 'collectMinor psuje pozycje obiektowe i null';
+      return null;
+    },
+  },
+  {
+    name: 'verify-noop-verdict-also-goes-through-reclassify-minor',
+    run() {
+      const src = fs.readFileSync(TEMPLATE, 'utf8');
+      if (!/noopVerdict = reclassifyMinor\(noopVerdict\)/.test(src)) return 'werdykt verify-noop pomija reclassifyMinor';
+      return null;
+    },
+  },
 ];
 
 // ── bieg ─────────────────────────────────────────────────────────────────────────

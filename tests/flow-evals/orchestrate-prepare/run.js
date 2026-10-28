@@ -341,6 +341,48 @@ CASES.push({
   },
 });
 
+// ORC-142: pakiet zadań
+const unitsYaml = (n, ctxCount) => 'units:\n' + Array.from({ length: n }, (_, i) => `  - { id: u${i}, layer: domain, dirs: [src/contexts/c${i % ctxCount}/domain/${i}/] }`).join('\n');
+const bundleCase = (name, extra, task, check) => CASES.push({
+  name,
+  build: () => makeProject({ taskId: 'TS-FIX-001', analysis: withFm(extra), task: taskFile(task) }),
+  check,
+});
+bundleCase('bundle-two-signals-stop-the-run-exit-2', unitsYaml(21, 5), 'Dodaj aggregate.', (r) => {
+  if (r.code !== 2) return `oczekiwano exit 2, było ${r.code} (${r.stderr.trim().slice(0, 160)})`;
+  if (!/PAKIET/.test(r.stderr) || !/bundle_ack/.test(r.stderr)) return 'komunikat bez nazwy problemu i wyjścia (bundle_ack): ' + r.stderr;
+  return null;
+});
+bundleCase('bundle-ack-lets-it-through-with-a-warning', unitsYaml(21, 5) + '\nbundle_ack: "jeden PR, wspólna migracja"', 'Dodaj aggregate.', (r) => {
+  if (r.code !== 0) return `oczekiwano exit 0 z bundle_ack, było ${r.code} (${r.stderr.trim().slice(0, 160)})`;
+  if (!r.json.warnings.some((w) => /bundle_ack/.test(w))) return 'brak ostrzeżenia o zaakceptowanym pakiecie';
+  return null;
+});
+bundleCase('bundle-one-signal-only-warns', unitsYaml(21, 2), 'Dodaj aggregate.', (r) => {
+  if (r.code !== 0) return `oczekiwano exit 0, było ${r.code}`;
+  if (!r.json.warnings.some((w) => /rozmiar zadania/.test(w) && /dużo jednostek/.test(w))) return 'brak ostrzeżenia o jednym sygnale: ' + JSON.stringify(r.json.warnings);
+  return null;
+});
+bundleCase('bundle-pr-mentions-alone-never-stop', '', 'PR1 schema, PR2 api, PR3 ui, PR4 docs.', (r) => {
+  if (r.code !== 0) return `samo „PRn" zatrzymało start: exit ${r.code}`;
+  if (!r.json.warnings.some((w) => /kilka PR-ów/.test(w))) return 'brak ostrzeżenia o wielu PR-ach';
+  return null;
+});
+bundleCase('bundle-pr-mentions-plus-one-real-signal-stop', unitsYaml(21, 2), 'PR1 schema, PR2 api, PR3 ui.', (r) => {
+  if (r.code !== 2) return `PRn + dużo jednostek powinno zatrzymać, było exit ${r.code}`;
+  return null;
+});
+
+bundleCase('bundle-ack-with-wrong-type-is-explained-not-ignored', unitsYaml(21, 5) + '\nbundle_ack: true', 'Dodaj aggregate.', (r) => {
+  if (r.code !== 2) return `bundle_ack: true nie powinno być zgodą: exit ${r.code}`;
+  if (!/musi być napisem z powodem/.test(r.stderr)) return 'komunikat nie tłumaczy, czemu bundle_ack nie zadziałał: ' + r.stderr;
+  return null;
+});
+bundleCase('bundle-non-array-units-fail-in-the-analysis-gate-not-with-a-crash', 'units: "to nie jest lista"', 'Dodaj aggregate.', (r) => {
+  if (r.code !== 2) return `units jako napis: exit ${r.code}, oczekiwano 2 z bramki analizy`;
+  if (/TypeError|at .*\.mjs:\d+/.test(r.stderr)) return 'nieobsłużony wyjątek zamiast komunikatu: ' + r.stderr.slice(0, 200);
+  return null;
+});
 CASES.push({
   name: 'units-expand-into-sub-layers',
   build: () => makeProject({

@@ -759,7 +759,7 @@ function buildVerifierPrompt(a, layer, probe, changedFiles, mode, noopClaim, pri
   return existing + scopeBlock(layer, a) + '\n\n' + facts + files + removed + dirtyBlock(a, 'verifier') +
     renderCards(cardsFor(a, baseId(layer))) +
     '\nOceń zgodność zmiany z regułami powyżej. Zwróć werdykt GO albo NO_GO i listę naruszeń ' +
-    '(plik, linia, reguła, co poprawić).\n' + scopeReminder + (a.autoFixMinor !== false ? MINOR_REMINDER : '') +
+    '(plik, linia, reguła, co poprawić).\n' + scopeReminder + (a.autoFixMinor !== false ? MINOR_REMINDER : '') + CARD_PRECEDENCE +
     'CZYTAJ TYLKO zmienione pliki z listy (Read z offset/limit, gdy plik > 300 linii); plik spoza ' +
     'listy otwieraj wyłącznie, gdy zmieniony plik go importuje i bez niego nie da się ocenić ' +
     'reguły. Nie grepuj po całym drzewie „dla kontekstu" — każdy wynik zostaje w Twoim kontekście ' +
@@ -858,7 +858,7 @@ function buildFinalGatePrompt(a, checks, changedFiles, treeSource, knownGaps, pr
     source + dirty + decisions + gapsBlock + renderCanon(a.canon) +
     renderCards(a.patterns || [], 'wszystkie wzorce tego przebiegu') +
     '\nZwróć werdykt GO albo NO_GO i listę naruszeń.\n' +
-    (a.autoFixMinor !== false ? MINOR_REMINDER : '') +
+    (a.autoFixMinor !== false ? MINOR_REMINDER : '') + CARD_PRECEDENCE +
     // ORC-097: bramka oddawała średnio 27 tys. tokenów wyjścia na werdykt (najwięcej ze wszystkich
     // kroków). Pełne rozumowanie zostaje po stronie agenta; w wyjściu tylko to, co czytają inni.
     'WYJŚCIE (limit długości): `rationale` najwyżej 5 zdań; każde naruszenie i ustalenie to JEDNA ' +
@@ -869,11 +869,37 @@ function buildFinalGatePrompt(a, checks, changedFiles, treeSource, knownGaps, pr
 }
 
 // ORC-091: wspólny akapit dla weryfikatorów warstw i bramki końcowej.
+// ORC-141: „drobne" = WYŁĄCZNIE rzeczy, które nie zmieniają tego, co kod robi. Wcześniej definicją było „do kilku linii, bez zmiany
+// zachowania", czyli ocena tego samego modelu, który się pomylił; wpis „zrób throw…" wykonywał potem implementer jako poprawkę
+// mechaniczną, bez weryfikacji (ORC-091/117).
 const MINOR_REMINDER =
-  'POLE `minor_findings`: ostrzeżenia i nity ŁATWE do mechanicznego naprawienia (do kilku linii, bez ' +
-  'zmiany zachowania, bez decyzji) wpisz TUTAJ, nie do `violations`, i nie zmieniaj przez nie werdyktu — ' +
-  'orchestrator każe je naprawić od razu. Format wpisu: `plik:linia — problem — konkretna poprawka`. ' +
-  '`violations` zostaje dla rzeczy blokujących.\n'
+  'POLE `minor_findings`: wyłącznie rzeczy, które NIE zmieniają tego, co kod robi — komentarze i dokumentacja, treść ' +
+  'komunikatów logu, formatowanie, nieużywane importy i zmienne, nazwy lokalne. Wpisz je TUTAJ, nie do `violations`, i nie ' +
+  'zmieniaj przez nie werdyktu — orchestrator każe je naprawić od razu. Format wpisu: `plik:linia — problem — konkretna ' +
+  'poprawka`. Wszystko, co dodaje lub usuwa `throw`/`catch`, zmienia zwracaną wartość lub kod odpowiedzi, kolejność operacji, ' +
+  'wywołania bazy lub kolejki, walidację albo uprawnienia, to NIE jest drobiazg: wpisz do `violations`. Gdyby mimo to trafiło ' +
+  'do `minor_findings`, poprzedź wpis znacznikiem `[zachowanie]` — orchestrator przeniesie go do `violations`.\n'
+
+// ORC-141: komentarz w kodzie albo zdanie z analizy nie jest dowodem zgodności z kartą. Wspólny akapit weryfikatora warstwy i
+// bramki końcowej.
+const CARD_PRECEDENCE =
+  'KARTA MA PIERWSZEŃSTWO NAD KOMENTARZEM: uzasadnienie w komentarzu kodu, w analizie albo w raporcie implementera ' +
+  '(„callback wymaga wyjątków", „handler nie pisze do bazy") to TWIERDZENIE do sprawdzenia w kodzie, nie dowód zgodności. ' +
+  'Gdy twierdzenie przeczy regule karty, to jest naruszenie (`violations`) albo luka (`unverified_scope`) — nigdy GO. Zanim ' +
+  'zaakceptujesz odstępstwo, sprawdź jego przesłankę w źródle (czy w handlerze naprawdę nie ma `save(`; czy wołana usługa ' +
+  'naprawdę wymaga wyjątku). Odstępstwo od karty jest dopuszczalne wyłącznie z wyjątkiem, który był w kodzie lub w ' +
+  '.claude/conformance.json PRZED tym przebiegiem, albo z decyzją człowieka z listy DECYZJE; wyjątek dopisany w tym przebiegu ' +
+  'zgłoś jako naruszenie.\n'
+
+// ORC-141: znacznik z modelu (`[zachowanie]`) plus WĄSKA siatka po tekście uwagi. Siatka celowo nie zawiera słów, które w zwykłych
+// uwagach o nazwach i importach trafiają się często (`await`, `try`, `commit`, `queue`, „kolejność"): woli przepuścić niejasny
+// wpis niż zamieniać GO w NO_GO przy każdym nicie. Szeroką wersję odrzucono, bo trafiałaby w „zbędny await" i „zmień kolejność importów".
+const BEHAVIOR_TAG = /\[zachowanie\]/i
+const BEHAVIOR_NET = /(?<![@\w])throws?\b|\brethrow\w*|\braise\s+(?:an?\s+)?(?:error|exception)|\bwyrzu[cć]\w*|\bstatus\s+[1-5]\d\d\b|\bHTTP\s*[1-5]\d\d\b|\bResult\.(?:fail|ok)\b|\brollback\b|\bInjectQueue\b|\bbullmq\b|status\w*\s+HTTP|kod\s+(?:błędu|odpowiedzi)|\brzu[cć]\w*/i
+function isBehaviorChange(text) {
+  const s = String(text || '')
+  return BEHAVIOR_TAG.test(s) || BEHAVIOR_NET.test(s)
+}
 
 // ORC-071 (docs/decisions/orchestrate-rule-history.md#orc-071): weryfikator czasem PISZE
 // PROZĄ, że pozycja unverified_scope jest poza jego zakresem ("... - poza zakresem tej
@@ -1403,9 +1429,37 @@ function orphanMinorFixes(fixes, layers) {
 // ORC-091 (docs/decisions/orchestrate-rule-history.md#orc-091): drobne ustalenia (ostrzeżenia,
 // nity, łatwe poprawki) naprawia agent od razu, zamiast czekać na ręczne zlecenie przy każdym
 // przebiegu. Weryfikator wpisuje je do `minor_findings` (nie do `violations`).
+function minorText(x) {
+  if (x == null) return ''
+  if (typeof x === 'string') return x.trim()
+  if (typeof x === 'object') return String(x.text || x.finding || x.message || JSON.stringify(x)).trim()
+  return String(x).trim()
+}
 function collectMinor(verdict) {
   const raw = verdict && Array.isArray(verdict.minor_findings) ? verdict.minor_findings : []
-  return raw.map((x) => String(x).trim()).filter(Boolean).slice(0, 25)
+  return raw.map(minorText).filter(Boolean).slice(0, 25)
+}
+
+// ORC-141: pozycje `minor_findings`, które zmieniają zachowanie, przechodzą do `violations`, a GO z takim wpisem staje się NO_GO —
+// zamiast trafić do automatycznej, nieweryfikowanej poprawki ORC-091/117. Wołane tylko przy włączonym `autoFixMinor`
+// (przy wyłączonym nic nie jest wykonywane automatycznie).
+function reclassifyMinor(verdict) {
+  if (!verdict || !Array.isArray(verdict.minor_findings) || !verdict.minor_findings.length) return verdict
+  const safe = []
+  const escalated = []
+  for (const raw of verdict.minor_findings) {
+    const s = minorText(raw)
+    if (!s) continue
+    ;(isBehaviorChange(s) ? escalated : safe).push(s)
+  }
+  if (!escalated.length) return verdict
+  const out = Object.assign({}, verdict, {
+    minor_findings: safe,
+    violations: (Array.isArray(verdict.violations) ? verdict.violations : [])
+      .concat(escalated.map((x) => x.replace(BEHAVIOR_TAG, '').trim() + ' [zmienia zachowanie — to nie drobiazg, ORC-141]')),
+  })
+  if (String(out.verdict).toUpperCase() === 'GO') out.verdict = 'NO_GO'
+  return out
 }
 
 // ORC-117 (docs/decisions/orchestrate-rule-history.md#orc-117): GO z `unverified_scope` idzie w
@@ -1963,6 +2017,7 @@ for (const step of plan) {
       } catch (e) {
         noopVerdict = null
       }
+      if (a.autoFixMinor !== false) noopVerdict = reclassifyMinor(noopVerdict) // ORC-141
       if (noopVerdict && typeof noopVerdict.deviation_note === 'string' && noopVerdict.deviation_note.trim()) deviationNote = noopVerdict.deviation_note.trim()
       const noopDecision = decideVerdict(noopVerdict, attempt, maxAttempts, layer, plan.map((s) => s.layer))
       if (noopDecision.next === 'go') {
@@ -2127,6 +2182,7 @@ for (const step of plan) {
     } catch (e) {
       verdict = null
     }
+    if (a.autoFixMinor !== false) verdict = reclassifyMinor(verdict) // ORC-141
     if (verdict && typeof verdict.deviation_note === 'string' && verdict.deviation_note.trim()) deviationNote = verdict.deviation_note.trim()
     const treePost = await treeHash(layer.id + '-tree-post-' + attempt)
     const bound = treeBindingOn ? treeBinding(treePre, treePost) : { state: 'off' }
@@ -2487,6 +2543,7 @@ if (!finalAgent) {
   report.finalGate = final
     ? Object.assign({}, final, { cause: undefined })
     : { verdict: 'NO_GO', violations: [staleFinalReason || 'bramka końcowa nie zwróciła werdyktu (także po ponowieniu)'], cause: 'machine' }
+  if (final && a.autoFixMinor !== false) report.finalGate = reclassifyMinor(report.finalGate) // ORC-141
   if (gateTreeHash) report.finalGate.treeHash = gateTreeHash
   // ORC-140: deterministyczny fakt wygrywa z werdyktem LLM — czerwone `conformance` z sondy bramki to NO_GO z naruszeniami
   // `plik:linia — reguła`, nawet gdy bramka dała GO; cause=code (nie machine), więc wchodzi runda naprawcza ORC-091.

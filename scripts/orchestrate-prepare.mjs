@@ -219,6 +219,35 @@ function patternOutsideLayerNamespaces(content, runningNs) {
   return ![...ns].some((n) => runningNs.has(n));
 }
 
+// ── ORC-142: sygnały pakietu zadań ───────────────────────────────────────────────
+// Progi skalibrowane na istniejących artefaktach analizy (440 analiz 16 projektów): dwa sygnały naraz zatrzymałyby 1 z nich —
+// pakiet pięciu „niezależnych PR-ów" (47 jednostek, 6 kontekstów), od którego reguła się wzięła; jeden sygnał trafia się w 8
+// (mediana jednostek 0, p90 = 6). Pomiar nie widział tekstu tasków, więc sygnał „PRn" jest zaniżony. Sygnał „PRn" jest też
+// najszumniejszy, ale jest tylko jednym z trzech sygnałów, więc sam nigdy nie zatrzymuje. Skoryguj progi po pierwszych przebiegach, nie gub sygnału.
+const BUNDLE_LIMITS = { prs: 3, units: 20, contexts: 4 };
+
+function bundleSignals(units, analysisDoc, taskDoc) {
+  const list = Array.isArray(units) ? units : [];
+  const text = [taskDoc?.fm?.title, taskDoc?.body, analysisDoc?.body, ...list.map((u) => u?.id)].filter(Boolean).join('\n');
+  const prs = new Set((text.match(/\bPR\s?-?\d{1,2}\b/gi) ?? []).map((m) => m.replace(/\D/g, '')));
+  const ctx = new Set();
+  for (const u of list) {
+    for (const d of [u?.dirs].flat(Infinity)) {
+      const m = (typeof d === 'string' ? d : '').match(/(?:^|\/)contexts\/([^/]+)/);
+      if (m) ctx.add(m[1]);
+    }
+  }
+  return { prs: prs.size, units: list.length, contexts: ctx.size };
+}
+
+function bundleHits(sig) {
+  const hits = [];
+  if (sig.prs >= BUNDLE_LIMITS.prs) hits.push('kilka PR-ów w tekście zadania');
+  if (sig.units > BUNDLE_LIMITS.units) hits.push('dużo jednostek');
+  if (sig.contexts > BUNDLE_LIMITS.contexts) hits.push('wiele kontekstów');
+  return hits;
+}
+
 // ── dopasowanie keywordów ────────────────────────────────────────────────────────
 function buildHaystack(taskDoc, analysisDoc) {
   const parts = [];
@@ -688,6 +717,27 @@ function main() {
   let taskDoc = null;
   if (taskPath) taskDoc = splitFrontmatter(readFileSync(taskPath, 'utf8'));
   else warnings.push(`brak pliku taska ${args.taskId}*.md w project-orchestration/tasks/ — keywordy dopasowane wyłącznie z artefaktu analizy`);
+
+  // ORC-142: pakiet zadań w jednym przebiegu. Dwa sygnały zatrzymują start (exit 2), jeden to ostrzeżenie; wyjście: osobny
+  // przebieg na zadanie albo `bundle_ack: <powód>` w artefakcie (świadoma zgoda człowieka).
+  {
+    const sig = bundleSignals(analysisDoc?.fm?.units, analysisDoc, taskDoc);
+    const hits = bundleHits(sig);
+    const ack = typeof analysisDoc?.fm?.bundle_ack === 'string' && analysisDoc.fm.bundle_ack.trim();
+    // pole jest, ale nie jest napisem z powodem (`true`, lista): bez tej uwagi użytkownik nie wiedziałby, czemu zgoda „nie działa"
+    const ackBadType = analysisDoc?.fm?.bundle_ack != null && !ack;
+    const desc = `${sig.prs} różnych „PRn" w tekście (próg ${BUNDLE_LIMITS.prs}), ${sig.units} jednostek (próg ${BUNDLE_LIMITS.units}), ${sig.contexts} kontekstów (próg ${BUNDLE_LIMITS.contexts})`;
+    if (hits.length >= 2 && !ack) {
+      process.stderr.write('✘ orchestrate-prepare: to wygląda na PAKIET kilku zadań w jednym przebiegu — start wstrzymany (ORC-142).\n');
+      process.stderr.write(`  • sygnały: ${hits.join(', ')} — ${desc}\n`);
+      if (ackBadType) process.stderr.write('  • bundle_ack jest w artefakcie, ale musi być napisem z powodem (nie true/lista/puste) — dlatego nie zadziałał.\n');
+      process.stderr.write('  • duży pakiet = ponad 200 plików w jednym przebiegu zamiast typowych 58–99 i weryfikacja bez szansy na głębię; progi zatrzymałyby 1 z 440 dotychczasowych analiz.\n');
+      process.stderr.write(`\n  Napraw: rozbij na osobne zadania (jedno zadanie = jedno TASK-ID) albo dopisz w ${analysisPath ? relative(args.project, analysisPath) : 'artefakcie analizy'} pole \`bundle_ack: "<dlaczego jeden przebieg>"\`.\n`);
+      process.exit(EXIT.GATE);
+    }
+    if (hits.length >= 2 && ack) warnings.push(`pakiet w jednym przebiegu zaakceptowany (bundle_ack: ${ack}) — ${desc}`);
+    else if (hits.length >= 1) warnings.push(`rozmiar zadania: sygnał pakietu „${hits.join('", "')}" — ${desc}; rozważ podział na osobne przebiegi (ORC-142)`);
+  }
 
   // 4. wzorce: always → triggers (po keywordach) → patterns[] z artefaktu
   const haystack = buildHaystack(taskDoc, analysisDoc);

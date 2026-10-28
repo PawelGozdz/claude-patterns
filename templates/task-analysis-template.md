@@ -56,6 +56,7 @@ patterns_exclude: []            # fałszywe trafienia keywordów (np. wzorzec we
 final_checks: []                # skrypty/komendy, które decyzje analizy każą uruchomić w bramce końcowej
   # (np. [test:l3, test:gateway] po zmianie konfiguracji e2e) — dopisywane do checks z bloków (ORC-121).
 
+# bundle_ack: "<dlaczego jeden przebieg>"   # ORC-142: pakiet kilku zadań (dwa sygnały: ponad 20 jednostek, ponad 4 konteksty; samo „PRn" nie zatrzymuje) startuje tylko z tą zgodą
 units: []                       # podział warstwy na jednostki — każda to osobny przebieg
   # implement→verify (pod-warstwa <layer>:<id>). Pusty = warstwy z runtime.yml bez podziału.
   # Warstwa z jednostkami NIE może być w layers_skip ani layers_scope. W dirs dopisz też

@@ -2593,3 +2593,29 @@ produktowe oceniamy raz, na całości zmiany, żeby nie płacić za nie w każde
 **Sprawdzone na danych.** Na stanie api-1 sprzed audytu narzędzie zwraca 4 nowe `throw` w ChangePasswordHandler przy 8 w baseline oraz BullMQ w dwóch handlerach.
 
 **Ograniczenia.** Statyczna analiza jednego pliku: nie wykryje błędu semantycznego u konsumentów ani `throw` ukrytego w wywołanej usłudze. Odpowiedź sondy (Haiku) jest twierdzeniem modelu, dlatego krok 4 powtarza kontrolę programem. Projekty z własną listą `layers` (marketing-hub, grant-flow) dopisują `conformance` do `checks:` same, po pomiarze długu. Zakres `--only`, który nie dopasował żadnego zmienionego pliku, kończy się exit 0 z ostrzeżeniem w JSON (`scope.emptyScope`) i na stderr: warstwa często legalnie nie zmienia handlerów, więc nie jest to błąd; literówkę w `dirs` wyłapuje ostrzeżenie prepare o nieistniejącym katalogu. Ciche zawężenia (brak SHA startu, odrzucone ścieżki, ponad 60 plików brudnych przed startem) trafiają do `report.warnings`. Włączenie w projektach wymaga `materialize-runtime`.
+
+### ORC-141 — drobiazg nie zmienia zachowania, a komentarz nie jest dowodem zgodności (2026-10-28)
+
+**Claim:** metric=falseGo direction=down threshold=0.2 engine=15e2802 process=orchestrate
+
+**Objaw (juz-ide-api-1, TS-SEC-D0-BETA-HARDENING-001).** Weryfikator zaakceptował `throw` w ChangePasswordHandler, powołując się na komentarz z HEAD, że `SecureOperationLockService` oczekuje callbacków rzucających wyjątki; komentarz był fałszywy. Gdy weryfikator wpisał do `minor_findings` zdanie „Zrób throw…", następny implementer wykonał je jako mechaniczną poprawkę (ORC-091), bez weryfikacji.
+
+**Przyczyna.** Definicją „drobnego" było „do kilku linii, bez zmiany zachowania", co ocenia ten sam model, który się pomylił. Prompt weryfikatora nie mówił, że uzasadnienie w komentarzu trzeba sprawdzić w kodzie.
+
+**Zmiana.** `MINOR_REMINDER` wylicza, co jest drobne (komentarze, treść logów, formatowanie, importy i zmienne, nazwy lokalne), i wprost wyklucza `throw`/`catch`, kontrakt zwrotny, kolejność operacji, bazę i kolejkę, walidację i uprawnienia. Model oznacza wątpliwą pozycję znacznikiem `[zachowanie]`; `reclassifyMinor` przenosi taką pozycję oraz pozycję pasującą do wąskiej siatki `BEHAVIOR_NET` (throw, Result.fail, rollback, InjectQueue, bullmq, status HTTP, kod odpowiedzi, „rzuć") do `violations` i zmienia GO w NO_GO (tylko przy włączonym `autoFixMinor`). `CARD_PRECEDENCE` w promptach weryfikatora i bramki: twierdzenie z komentarza lub analizy to hipoteza do sprawdzenia, sprzeczna z kartą jest naruszeniem, a wyjątek liczy się tylko, gdy istniał przed przebiegiem albo wynika z decyzji człowieka.
+
+**Odrzucone.** Szeroki regex po tekście uwagi (z `await`, `try`, `commit`, `queue`, „kolejność"): trafiałby w „zbędny await" i „zmień kolejność importów" i zamieniał GO w NO_GO przy zwykłych nitach we wszystkich stackach. Schemat obiektowy z polem `behavior_change` przy każdej uwadze: nie wiadomo, czy `schema` silnika Workflow obsługuje elementy niebędące napisami, więc znacznik w treści wpisu daje ten sam sygnał bez zmiany schematu.
+
+**Ograniczenia.** Siatka jest heurystyką po tekście i woli przepuścić niejasny wpis niż blokować nity; szczelność zależy od znacznika wpisywanego przez model. Nie zastępuje głębszej weryfikacji (budżet 15 wywołań to osobna decyzja). Siatki nie zmierzono na zapisanych raportach, bo rollupy nie niosą treści `minor_findings`; do zmierzenia po pierwszych przebiegach.
+
+### ORC-142 — pakiet kilku zadań w jednym przebiegu zatrzymuje start (2026-10-28)
+
+**Claim:** metric=retryCost direction=down threshold=0.2 engine=15e2802 process=orchestrate
+
+**Objaw (juz-ide-api-1, TS-SEC-D0-BETA-HARDENING-001).** Pakiet pięciu „niezależnych PR-ów" (24 SP) puszczony jako jeden przebieg: 218 plików (typowo 58–99), około 47 jednostek, 12 uruchomień Workflow, 3 kompaktacje kontekstu i 4 rundy pytania „dodać jednostkę?". Wąskie `layers_scope` ukryło konsumentów zmienianego kodu.
+
+**Zmiana.** `orchestrate-prepare` liczy trzy sygnały: co najmniej 3 różne „PRn" w tekście zadania i analizy, więcej niż 20 jednostek, więcej niż 4 konteksty w `units[].dirs`. Dwa naraz kończą się exit 2 z komunikatem o podziale; wyjściem jest `bundle_ack: "<powód>"` w artefakcie analizy. Jeden sygnał albo same „PRn" dają ostrzeżenie.
+
+**Sprawdzone na danych.** Progi przeliczono na 440 istniejących artefaktach analizy 16 projektów (api-1 jako reprezentant bliźniaków): dwa sygnały naraz wystąpiły raz (przypadek wyjściowy: 5 PR, 47 jednostek, 6 kontekstów), jeden sygnał osiem razy; mediana jednostek 0, p90 równe 6, maksimum 47. Sygnał „PRn" jest najszumniejszy (7 z 8 pojedynczych trafień), stąd zakaz zatrzymywania samym nim.
+
+**Ograniczenia.** Pomiar nie widział tekstu zadań, więc sygnał „PRn" jest zaniżony, i jest skalibrowany na przypadku, który ma wychwycić. Sygnał kontekstów zna tylko układ `contexts/<nazwa>/`. Reguła działa w `prepare`, więc obejmuje od razu wszystkie projekty używające `/orchestrate`, także bez bloku DDD.
