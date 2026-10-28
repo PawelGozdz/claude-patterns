@@ -1150,6 +1150,28 @@ pusty parametr usuwa klucze ze slotu. `always_for` omija też sito ANL-018 — j
 
 **Zmiana.** Reguła tylko w prompcie: analiza wpisuje pliki rejestrujące do `dirs` jednostki albo rozpisuje jednostkę wiringu. Karta CH10 zostaje bez zmian: zakaz edycji spoza zakresu (ORC-042) jest słuszny, brakowało właściciela po stronie planu. Mechaniczna bramka w `prepare` (np. nowy `*.handler.ts` bez żadnego `*.module.ts` w jednostkach) jest możliwa, ale wymaga znajomości stosu, więc na razie nie ma.
 
+<a id="anl-047"></a>
+
+### ANL-047 — decyzje w analizie mają klasę: mechaniczne bez pytania, gust razem, zmiana kierunku zawsze do człowieka (2026-10-28)
+
+**Claim:** metric=gateNoGo direction=down threshold=0.1 engine=bfd45a3 process=orchestrate
+
+**Objaw (TASK-GSTACK-ADOPT-001 B5, wzór: autoplan z gstack).** Każda decyzja i pytanie w artefakcie analizy szły do człowieka tak samo, więc rzeczy z jedną sensowną odpowiedzią zabierały uwagę, a zmianę kierunku ustalonego przez użytkownika dało się wpisać do `decisions[].choice` obok drobiazgów.
+
+**Zmiana.** Reguła tylko w prompcie. Pola `class` (MECHANICAL, TASTE, USER_CHALLENGE) są opcjonalne, więc stare artefakty działają bez zmian. MECHANICAL analiza rozstrzyga sama, z uzasadnieniem w `rationale`. TASTE człowiek dostaje razem, w jednej wiadomości. USER_CHALLENGE nigdy sama: `choice` zostaje przy kierunku użytkownika, propozycja zmiany żyje tylko w pytaniu. Wątpliwość rozstrzyga się w stronę człowieka. Mechanicznej bramki w `prepare` nie ma: wymagałaby osądu, czym jest „kierunek użytkownika".
+
+**Uwaga o claimie.** Żadna metryka z `telemetry-report` nie mierzy „mniej pytań do człowieka"; `gateNoGo` jest najbliższym pośrednikiem (mniej złych decyzji w planie, mniej NO_GO bramki końcowej), więc `no_effect` jest realnym wynikiem.
+
+<a id="anl-048"></a>
+
+### ANL-048 — `one-way` zawsze do człowieka, rekomendacja ma znacznik, który da się sparsować (2026-10-28)
+
+**Claim:** metric=gateNoGo direction=down threshold=0.1 engine=bfd45a3 process=orchestrate
+
+**Objaw (TASK-GSTACK-ADOPT-001 B5).** Decyzja trudna do cofnięcia (migracja danych, kontrakt, usunięcie) mogła zostać rozstrzygnięta jako „mechaniczna" i nie dotrzeć do człowieka. Rekomendacja siedziała w prozie `ask`, której nic nie czyta maszynowo.
+
+**Zmiana.** Reguła tylko w prompcie: `door_type: one-way` idzie do człowieka niezależnie od klasy. Pytanie z wyborem ma `options: [...]` w jednej linii (lista blokowa myli hook `check-human-voice`) i dokładnie jedną opcję z ` (recommended)`; wzorzec `\(recommended\)\s*$`.
+
 <a id="anl-024"></a>
 
 ### ANL-024 — do slotu idzie STRESZCZENIE poprzednich stage'ów, nigdy surowy output

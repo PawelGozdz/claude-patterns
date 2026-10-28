@@ -25,6 +25,12 @@ open_questions:                 # człowiek wypełnia answer; null = blokuje imp
   - id: Q2
     ask: "..."
     q: "..."
+    # Klasyfikacja (ANL-047/047) — pola OPCJONALNE, starsze artefakty ich nie mają i przechodzą bramkę bez zmian.
+    # Nie kopiuj wartości z przykładu: klasę i typ drzwi ustala treść pytania, nie szablon.
+    class: <MECHANICAL|TASTE|USER_CHALLENGE>
+    door_type: <one-way|two-way>   # one-way = trudne do cofnięcia; one-way ZAWSZE trafia do człowieka
+    decision: D2                   # id decyzji z `decisions`, której to pytanie dotyczy (gdy dotyczy)
+    options: ["<opcja A> (recommended)", "<opcja B>"]   # JEDNA linia (flow), nie lista blokowa; dokładnie jedna opcja z (recommended)
     answer: null
 
 decisions:                      # propozycje z analizy; człowiek weryfikuje/poprawia
@@ -35,6 +41,10 @@ decisions:                      # propozycje z analizy; człowiek weryfikuje/pop
     choice: "ACL Registry (getGlobalRequired)"
     means: "Dwa obszary systemu przestają zależeć od siebie wprost, więc awaria jednego nie zatrzymuje drugiego."
     rationale: "..."
+    # Klasyfikacja (ANL-047/047), opcjonalna. MECHANICAL rozstrzygasz sam i cytujesz w `rationale` regułę/wzorzec/kartę;
+    # TASTE, USER_CHALLENGE i każde one-way mają parę w `open_questions` (pole `decision: <id>`), a `choice` jest wtedy tylko propozycją.
+    # class: <MECHANICAL|TASTE|USER_CHALLENGE>
+    # door_type: <one-way|two-way>
 
 patterns:                       # grounding (z Pattern Discovery) — to samo w research i impl
   - domain/aggregate-pattern.md
@@ -75,10 +85,12 @@ layers_scope: []                # warstwy dotknięte CZĘŚCIOWO — wchodzą, a
 <co robić, w jakiej kolejności, kluczowe ryzyka — wypełnia panel /analyze>
 
 ## Otwarte pytania (DO DYSKUSJI — odpowiedz w frontmatter `answer:`)
+<!-- Kolejność dla człowieka (ANL-047): najpierw USER_CHALLENGE i one-way, każde osobno; potem wszystkie TASTE razem. -->
 - **Q1**: ...
-- **Q2**: ...
+- **Q2** [klasa, drzwi]: ...
 
 ## Decyzje (proponowane — zweryfikuj)
+<!-- MECHANICAL: rozstrzygnięte bez pytania, z uzasadnieniem. Reszta czeka na odpowiedź z sekcji wyżej. -->
 - **D1**: ...
 
 ## Ryzyka / uwagi
