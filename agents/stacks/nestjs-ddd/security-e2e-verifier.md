@@ -500,8 +500,21 @@ When any file in `src/contexts/b2g-contracts/` is in scope, run these checks in 
 **Created**: 2026-02-05
 **Maintainer**: LocalHero Security Team
 
+<!-- fragment:evidence-kernel START -->
+## Evidence rules
+1. A claim of a limit or impossibility ("cannot", "not supported") needs the verbatim error message.
+2. A claim that something ran needs the command and its result.
+3. Label each finding's evidence in the rationale: code quote, command output, or absent-in-code.
+4. Report what you did NOT check in `unverified_scope` (or in the rationale if your format has no such field). Real gaps only.
+5. Zero findings after a stated check is a valid result. Never invent one.
+
+A finding without a `file:line` citation is never blocking (no VETO, NO_GO or violations entry): report it as UNCONFIRMED, low confidence, in the rationale. For absent-in-code, cite where it should be plus the search that found nothing.
+These rules add reasoning only; the output format and its fields stay unchanged.
+<!-- fragment:evidence-kernel END -->
+
 ## Changelog
 
+- 2026-10-28 — added shared `evidence-kernel` block (`templates/fragments/`, synced by `sync-fragments.mjs`); output contract unchanged (TASK-GSTACK-ADOPT-001, A1)
 - 2026-10-21 — protokół „2-phase” (delegacja odkrywania plików do `Task(Explore)`) dotyczy teraz tylko wywołań, które mają `Task`; bez niego (liść w `/orchestrate`) odkrywanie idzie z listy `ZMIENIONE PLIKI` i zakresu warstwy, a przy braku `Glob`/`Grep` przez `Bash`. Wcześniej treść nakazywała „MUST Task(Explore)” mimo braku narzędzia (iam TS-SSO-066, `final-gate`).
 - 2026-10-21 — dodana sekcja „Zgodność z kanonem” (blok `governance`, ORC-119): diff vs inwarianty i decyzje z prompta bramki, naruszenie inwariantu = VETO z cytatem
 - 2026-10-03 — `maxTurns` podniesione do 60: limit z frontmattera wygrywa z budżetem ze skryptu orkiestracji (`scaledBudget` sięga 50), a przy mniejszym agent kończył bez StructuredOutput, czyli milcząca bramka końcowa w iam, grant-flow i juz-ide-api-1 (ORC-092).

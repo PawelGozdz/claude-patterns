@@ -1,0 +1,14 @@
+# Konfiguracja osv-scanner dla scripts/cron/osv-scan.sh (TASK-GSTACK-ADOPT-001, C1).
+#
+# Wyjątek od skanu MUSI mieć datę wygaśnięcia i uzasadnienie — inaczej `scripts/osv-ignore-check.mjs` (a z nim
+# osv-scan.sh) kończy się błędem. Po dacie osv-scanner znów zgłasza lukę; wtedy usuń wpis albo przedłuż go
+# z nowym uzasadnieniem (co najmniej: czemu luka jest nieosiągalna z naszego kodu i na co czekamy).
+#
+# Format wpisu:
+#
+#   [[IgnoredVulns]]
+#   id = "GHSA-xxxx-xxxx-xxxx"
+#   ignoreUntil = 2026-12-31
+#   reason = "Zależność tylko w devDependencies, ścieżka podatna nieużywana; czekamy na wydanie X."
+#
+# Aktualnie brak wyjątków.

@@ -8,7 +8,10 @@
 # tooling (reseed.sh/reseed.mjs, manual curl diagnostics) to reach localhost:6401 directly.
 services:
   qdrant:
-    image: qdrant/qdrant:latest
+    # Przypięte do dokładnej wersji (nie :latest): 1.18.2 = wersja działającego dedykowanego Qdrant na :6401
+    # (odczyt 2026-10-28: `curl -s localhost:6401/` -> version 1.18.2, commit 44ad62f). Zmiana wersji = świadoma
+    # decyzja po przeczytaniu notatek wydania Qdrant; kolekcje na wolumenie nie zawsze są wstecznie zgodne.
+    image: qdrant/qdrant:v1.18.2
     container_name: cp-knowledge-qdrant
     restart: unless-stopped
     ports:

@@ -44,6 +44,8 @@ ten typ dyscypliny, który zawodzi (lekcja pola `rag:`: instrukcja bez wymuszeni
       gitSha}` do `results.jsonl` po każdym runie. Nie duplikować tutaj.
 
 ## Faza 2 — korpusy L2 (jawna luka z ADR 0004)
+> **Warunek wstępny (TASK-GSTACK-ADOPT-001 B1):** każdy sędzia użyty w L2 musi najpierw zostać dopuszczony przez paczkę
+> kontrolną — [`docs/EVAL-JUDGE-CONTROLS.md`](../EVAL-JUDGE-CONTROLS.md). Polityka powtórzeń: `tests/flow-evals/lib/eval-policy.mjs`.
 - [ ] **Seeded-bugs dla `code-quality-verifier`**: pliki z celowo wstrzykniętymi naruszeniami
       (≥1 per rule-ID z Rule Cards, w tym N4-dekorator-bez-delegacji) + pliki czyste →
       czułość / false-positive rate. Scorer = porównanie z etykietami, zero LLM-judge.

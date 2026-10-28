@@ -1,0 +1,94 @@
+{
+  "_comment": "Wymagane kroki promptów (część required-steps w scripts/ci/validate-prompt-structure.mjs). `steps` = uporządkowane (obecność + kolejność), `present` = wymagane bez kolejności. Krok: { id, heading | line | text }. heading = linia zaczynająca się tym tekstem poza blokiem kodu; line = regex na linii (także w bloku kodu, np. diagram przebiegu); text = literał. Wpisuj tylko kroki, których usunięcie byłoby regresją, nie kosmetykę. Zmieniasz przebieg komendy świadomie? Popraw ten plik w tym samym commicie.",
+  "schema": 1,
+  "files": [
+    {
+      "file": "commands/analyze.md",
+      "steps": [
+        { "id": "tytuł komendy", "heading": "# /analyze" },
+        { "id": "sekcja Przebieg", "heading": "## Przebieg" },
+        { "id": "0. bramka runtime.yml", "line": "^0\\.\\s+bramka runtime\\.yml" },
+        { "id": "0.a preflight drzewa", "line": "^0\\.a\\s+preflight" },
+        { "id": "0.b dobór materiału", "line": "^0\\.b\\s+dobór" },
+        { "id": "0.c telemetria: start", "line": "^0\\.c\\s+telemetria: start" },
+        { "id": "1. panel", "line": "^1\\.\\s+panel\\s+→" },
+        { "id": "2. artefakt", "line": "^2\\.\\s+artefakt\\s+→" },
+        { "id": "3. wyjście wg analyze.exit", "line": "^3\\.\\s+wyjście\\s+→\\s+analyze\\.exit" },
+        { "id": "3.a telemetria: koniec", "line": "^3\\.a\\s+telemetria: koniec" },
+        { "id": "4. zgłoszenia", "line": "^4\\.\\s+zgłoszenia\\s+→" },
+        { "id": "5. zalążek wpisu", "line": "^5\\.\\s+zalążek wpisu\\s+→" },
+        { "id": "sekcja Telemetria przebiegu", "heading": "## Telemetria przebiegu" },
+        { "id": "sekcja Krok 4", "heading": "## Krok 4 — zgłoszenia do skrzynki" },
+        { "id": "lista zamknięta zapisów", "text": "**Co wolno zapisać — lista zamknięta.**" },
+        { "id": "sekcja Krok 5", "heading": "## Krok 5 — zalążek wpisu blogowego" },
+        { "id": "sekcja Klasyfikacja decyzji", "heading": "## Klasyfikacja decyzji" },
+        { "id": "sekcja Rejestr reguł", "heading": "## Rejestr reguł" },
+        { "id": "sekcja Co zrobić z regułą tylko prompt", "heading": "## Co zrobić z regułą" }
+      ],
+      "present": [
+        { "id": "0.d kanon na żywo (resolve-params)", "line": "^0\\.d\\s+kanon na żywo" },
+        { "id": "ZERO IMPLEMENTACJI", "text": "**ZERO IMPLEMENTACJI.**" }
+      ]
+    },
+    {
+      "file": "commands/orchestrate.md",
+      "steps": [
+        { "id": "tytuł komendy", "heading": "# /orchestrate" },
+        { "id": "sekcja Przebieg", "heading": "## Przebieg — pięć kroków" },
+        { "id": "1. znacznik przebiegu", "line": "^1\\.\\s+znacznik przebiegu" },
+        { "id": "2. przygotowanie (orchestrate-prepare)", "line": "^2\\.\\s+przygotowanie\\s+→\\s+node .*orchestrate-prepare\\.mjs" },
+        { "id": "3. silnik (Workflow)", "line": "^3\\.\\s+silnik\\s+→\\s+Workflow\\(" },
+        { "id": "4. wyjście: bramka końcowa", "line": "^4\\.\\s+wyjście\\s+→" },
+        { "id": "4a. sprawdzenie treeHash PRZED git add", "line": "orchestrate-tree-hash\\.mjs --project \\. --check" },
+        { "id": "4b. git add plików z report", "line": "`git add` plików z `report`" },
+        { "id": "4c. git status potwierdza staged", "line": "`git status --short` żeby POTWIERDZIĆ" },
+        { "id": "5. zgłoszenie odstępstw", "line": "^5\\.\\s+zgłoszenie odstępstw\\s+→" },
+        { "id": "6. zalążek wpisu", "line": "^6\\.\\s+zalążek wpisu\\s+→" },
+        { "id": "kody wyjścia kroku 2", "text": "Krok 2 kończy się kodem wyjścia" },
+        { "id": "sekcja Po zatrzymaniu", "heading": "## Po zatrzymaniu" },
+        { "id": "sekcja Komunikacja z człowiekiem", "heading": "## Komunikacja z człowiekiem" },
+        { "id": "sekcja Rejestr reguł", "heading": "## Rejestr reguł" },
+        { "id": "sekcja Co zrobić z regułą tylko prompt", "heading": "## Co zrobić z regułą" },
+        { "id": "sekcja Raport", "heading": "## Raport" }
+      ],
+      "present": [
+        { "id": "ZERO WŁASNEJ IMPLEMENTACJI", "text": "**ZERO WŁASNEJ IMPLEMENTACJI.**" },
+        { "id": "zakaz obchodzenia kodów 2 i 3", "text": "**Nie obchodź kodu 2 ani 3**" }
+      ]
+    },
+    {
+      "file": "commands/review-panel.md",
+      "steps": [
+        { "id": "tytuł komendy", "heading": "# /review-panel" },
+        { "id": "lista zamknięta zapisów", "heading": "## What this command may write" },
+        { "id": "kiedy używać", "heading": "## When to use" },
+        { "id": "kiedy NIE używać", "heading": "## When NOT to use" },
+        { "id": "powiązane", "heading": "## Related" },
+        { "id": "wywołanie skilla review-panel (ostatnia linia)", "line": "^Invoke skill: `review-panel`" }
+      ],
+      "present": []
+    },
+    {
+      "file": "skills/quality/review-panel/SKILL.md",
+      "steps": [
+        { "id": "tytuł skilla", "heading": "# review-panel" },
+        { "id": "argumenty", "heading": "## Arguments" },
+        { "id": "Phase 1 zakres i diff", "heading": "## Phase 1: Resolve scope and collect the diff" },
+        { "id": "Phase 2 dispatch", "heading": "## Phase 2: Dispatch reviewer agents in parallel" },
+        { "id": "2a tryb standardowy", "heading": "### 2a. Standard mode" },
+        { "id": "2b tryb thorough", "heading": "### 2b. Thorough mode" },
+        { "id": "2c selekcja adaptacyjna", "heading": "### 2c. Adaptive reviewer selection" },
+        { "id": "2d wywołanie agentów", "heading": "### 2d. Dispatch" },
+        { "id": "zapis wyniku panelu (--record)", "text": "reviewer-stats.mjs --record" },
+        { "id": "Phase 3 synteza", "heading": "## Phase 3: Synthesize report" },
+        { "id": "sekcja Skipped reviewers w raporcie", "text": "### Skipped reviewers (adaptive selection)" },
+        { "id": "Phase 4 poprawki", "heading": "## Phase 4: Apply approved fixes" },
+        { "id": "Phase 5 snapshot", "heading": "## Phase 5: Save snapshot" },
+        { "id": "Phase 6 podsumowanie", "heading": "## Phase 6: Final summary" },
+        { "id": "log statystyk", "heading": "## Stats log" },
+        { "id": "uwagi", "heading": "## Notes" }
+      ],
+      "present": []
+    }
+  ]
+}

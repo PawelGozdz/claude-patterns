@@ -838,6 +838,10 @@ function main() {
     canon: buildCanon({ projectDir: args.project, runtime, taskFm: taskDoc?.fm, analysisFm: analysisDoc?.fm, warnings }),
     // ORC-091: false (przez --overrides) wyłącza automatyczne naprawianie drobnych ustaleń.
     autoFixMinor: true,
+    // ORC-139: false (przez --overrides) wyłącza wiązanie werdyktów z hashem drzewa; `treeHashExclude` dokłada
+    // ścieżki (względem korzenia repo) pomijane w haszu obok wbudowanych artefaktów silnika.
+    treeBinding: true,
+    treeHashExclude: [],
     // ORC-097: model bramki końcowej — auto (Sonnet; model sesji dla tasków z threat_model) |
     // inherit | sonnet | opus | haiku; z runtime.yml `final_gate.model`.
     finalGateModel: finalGate.model ? String(finalGate.model) : 'auto',

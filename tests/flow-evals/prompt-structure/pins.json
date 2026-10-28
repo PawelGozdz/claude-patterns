@@ -1,0 +1,366 @@
+{
+  "_comment": "Piny strukturalne (część pins w scripts/ci/validate-prompt-structure.mjs). `pins` = tokeny czytane MASZYNOWO (marker, pole, enum, komenda, ścieżka) — literalnie, z wielkością liter; NIE zdania prozy (walidator odrzuca token >= 4 słowa albo kończący się kropką). Opcje pinu: `context: \"code\"` + `min_count` = token musi stać w kodzie (span `…`, blok kodu, wiersz tabeli) co najmniej tyle razy, bo samo słowo w prozie nie jest polem; `patterns` = regexy sprawdzane na liniach (np. definicja pola w schemacie skryptu). `mentions` = reguła bezpieczeństwa wyrażona prozą jako współwystępowanie słów kluczowych w jednej JEDNOSTCE (<= 600 znaków): scope=sentence to zdanie/pozycja listy/wiersz tabeli, scope=paragraph to blok (akapit, pozycja listy, wiersz tabeli, krok diagramu); wielkość liter bez znaczenia, dopasowanie na granicach słów (przedrostek: `ręczn*`); element `all` może być tablicą synonimów. Jednostka dłuższa niż 600 znaków nie spełnia reguły (błąd konfiguracji zamiast cichej bezzębności). `why` = kto czyta token albo jaką szkodę niesie zniknięcie reguły. Zmieniasz kontrakt świadomie? Popraw ten plik w tym samym commicie co czytnik.",
+  "schema": 1,
+  "pins": [
+    {
+      "files": [
+        "commands/orchestrate.md"
+      ],
+      "tokens": [
+        "ESCALATE_AND_HALT",
+        "BLOCKED_BY_PRIOR",
+        "GO_WITH_GAPS",
+        "status: approved",
+        "treeHash",
+        "layers_done",
+        "analyze.exit",
+        "resumeFromRunId",
+        "stageForReview",
+        "report.statusLine",
+        "orchestrate-prepare.mjs",
+        "orchestrate-tree-hash.mjs",
+        "report-deviation.mjs",
+        "workflow-lint",
+        ".claude/run-state/orchestrating.json",
+        "ORC-139"
+      ],
+      "why": "statusy warstw, pola raportu i skrypty, które /orchestrate wywołuje albo których wyjścia czyta (orchestrate-prepare, orchestrate-tree-hash, report-deviation)"
+    },
+    {
+      "files": [
+        "commands/analyze.md"
+      ],
+      "tokens": [
+        "analyze.exit",
+        "PAUSE",
+        "status: approved",
+        "status: awaiting-human",
+        "status: ready",
+        "status: already-done",
+        "door_type",
+        "(recommended)",
+        "one-way",
+        "two-way",
+        "MECHANICAL",
+        "TASTE",
+        "USER_CHALLENGE",
+        "decisions[]",
+        "open_questions[]",
+        "layers_skip",
+        "layers_scope",
+        "telemetry_run",
+        "telemetry-emit.mjs",
+        "blog-seed-emit.mjs",
+        "report-deviation.mjs",
+        "ANZ-LAYER-MISMATCH",
+        "ANZ-GATE-INPUT-MISSING"
+      ],
+      "why": "pola artefaktu analizy czytane przez orchestrate-prepare.mjs i hook check-human-voice, enumy klasyfikacji decyzji i skrypty telemetrii/zgłoszeń"
+    },
+    {
+      "files": [
+        "commands/review-panel.md",
+        "skills/quality/review-panel/SKILL.md"
+      ],
+      "tokens": [
+        "reviewer-stats.mjs",
+        "NEVER_GATE",
+        "--full",
+        "--thorough"
+      ],
+      "why": "wywołanie reviewer-stats.mjs (--select/--record) i nazwy flag, które komenda przekazuje do skilla"
+    },
+    {
+      "files": [
+        "skills/quality/review-panel/SKILL.md"
+      ],
+      "tokens": [
+        "inline_comments",
+        "--pr",
+        "origin/main",
+        "~/.claude/review-panel-snapshots/",
+        "invocations.jsonl",
+        "reviewer-stats.mjs --select",
+        "reviewer-stats.mjs --record"
+      ],
+      "why": "kształt odpowiedzi reviewerów (inline_comments), ścieżki snapshotu i logu statystyk oraz dwa wywołania reviewer-stats.mjs"
+    },
+    {
+      "files": [
+        "templates/fragments/evidence-kernel.md"
+      ],
+      "tokens": [
+        "file:line",
+        "UNCONFIRMED",
+        "## Evidence rules"
+      ],
+      "why": "sync-fragments.mjs wstrzykuje tę treść do agentów VETO; cytat file:line i etykieta UNCONFIRMED to kontrakt A1 (finding bez cytatu nie blokuje)"
+    },
+    {
+      "files": [
+        "agents/stacks/astro-static/content-reviewer.md",
+        "agents/stacks/flutter-clean-arch/flutter-quality-verifier.md",
+        "agents/stacks/flutter-clean-arch/flutter-security-verifier.md",
+        "agents/stacks/flutter-clean-arch/flutter-ui-verifier.md",
+        "agents/stacks/nestjs-ddd/code-quality-verifier.md",
+        "agents/stacks/nestjs-ddd/security-e2e-verifier.md",
+        "agents/stacks/nextjs-app/nextjs-quality-verifier.md",
+        "agents/stacks/node-ts-claude-api/architecture-verifier.md",
+        "agents/stacks/node-ts-claude-api/safety-reviewer.md",
+        "agents/stacks/python/python-quality-verifier.md",
+        "agents/stacks/refine-spa/refine-quality-verifier.md",
+        "agents/stacks/sveltekit/sveltekit-quality-verifier.md",
+        "agents/stacks/typescript-library/library-api-guardian.md",
+        "agents/stacks/typescript-library/library-quality-verifier.md"
+      ],
+      "tokens": [
+        "<!-- fragment:evidence-kernel START -->",
+        "<!-- fragment:evidence-kernel END -->"
+      ],
+      "why": "markery bloku evidence-kernel, które sync-fragments.mjs rozpoznaje (treść bloku — w tym słowo `violations` — jest synchronizowana ze źródłem)"
+    },
+    {
+      "files": [
+        "agents/stacks/astro-static/content-reviewer.md",
+        "agents/stacks/flutter-clean-arch/flutter-quality-verifier.md",
+        "agents/stacks/flutter-clean-arch/flutter-security-verifier.md",
+        "agents/stacks/flutter-clean-arch/flutter-ui-verifier.md",
+        "agents/stacks/nestjs-ddd/code-quality-verifier.md",
+        "agents/stacks/nestjs-ddd/security-e2e-verifier.md",
+        "agents/stacks/nextjs-app/nextjs-quality-verifier.md",
+        "agents/stacks/node-ts-claude-api/architecture-verifier.md",
+        "agents/stacks/node-ts-claude-api/safety-reviewer.md",
+        "agents/stacks/python/python-quality-verifier.md",
+        "agents/stacks/refine-spa/refine-quality-verifier.md",
+        "agents/stacks/sveltekit/sveltekit-quality-verifier.md",
+        "agents/stacks/typescript-library/library-api-guardian.md",
+        "agents/stacks/typescript-library/library-quality-verifier.md"
+      ],
+      "tokens": [
+        "unverified_scope"
+      ],
+      "context": "code",
+      "min_count": 2,
+      "why": "pole `unverified_scope` weryfikatora jako nazwa pola (span `…`) co najmniej w kernelu dowodowym i w gwardzie budżetu tur; skrypt Workflow czyta je jako lukę pokrycia (samo słowo w prozie nie wystarcza)"
+    },
+    {
+      "files": [
+        "agents/stacks/python-ml/gpu-resource-verifier.md"
+      ],
+      "tokens": [
+        "<!-- fragment:evidence-kernel START -->",
+        "<!-- fragment:evidence-kernel END -->"
+      ],
+      "why": "markery bloku evidence-kernel w weryfikatorze VETO bez schematu StructuredOutput (python-ml); sync-fragments.mjs rozpoznaje je po markerach"
+    },
+    {
+      "files": [
+        "scripts/workflow/orchestrate.template.mjs"
+      ],
+      "patterns": [
+        "^\\s*required: \\['verdict'\\]",
+        "^\\s*verdict: \\{ type: 'string', enum: \\['GO', 'NO_GO'\\]",
+        "^\\s*violations: \\{ type: 'array'",
+        "^\\s*unverified_scope: \\{ type: 'array'"
+      ],
+      "why": "schemat StructuredOutput weryfikatora: tu, a nie w plikach agentów, definiowane są pola verdict, violations i unverified_scope, które czyta /orchestrate"
+    }
+  ],
+  "mentions": [
+    {
+      "id": "orchestrate: nie dopisuj layers_done ręcznie",
+      "file": "commands/orchestrate.md",
+      "scope": "sentence",
+      "all": [
+        [
+          "nigdy",
+          "nie wolno",
+          "zabronione"
+        ],
+        "layers_done",
+        [
+          "ręcznie",
+          "ręczn*"
+        ]
+      ],
+      "why": "ręcznie dopisana warstwa omija weryfikatora: incydent z samozatwierdzoną warstwą (ORC-055)"
+    },
+    {
+      "id": "orchestrate: exit != 0 z orchestrate-tree-hash => NIE staguj",
+      "file": "commands/orchestrate.md",
+      "scope": "sentence",
+      "all": [
+        "każdy inny exit",
+        "nie staguj"
+      ],
+      "why": "bez tej reguły do stagingu trafia kod inny niż zweryfikowany albo błąd hasha jest ignorowany (ORC-139, krok 4)"
+    },
+    {
+      "id": "orchestrate: exit 2 = GO nieaktualne (kod zmienił się po weryfikacji)",
+      "file": "commands/orchestrate.md",
+      "scope": "sentence",
+      "all": [
+        "zmienił się po weryfikacji",
+        "go nieaktualne"
+      ],
+      "why": "exit 2 skryptu orchestrate-tree-hash oznacza, że werdykt dotyczy innego kodu niż ten, który pójdzie dalej (ORC-139, krok 4)"
+    },
+    {
+      "id": "orchestrate: wznowienie po nieaktualnym GO to nowy przebieg",
+      "file": "commands/orchestrate.md",
+      "scope": "sentence",
+      "all": [
+        "resumeFromRunId",
+        "cache",
+        "stary werdykt"
+      ],
+      "why": "wznowienie z cache zwróciłoby stary werdykt dla zmienionego kodu"
+    },
+    {
+      "id": "orchestrate: nie obchodzić kodów wyjścia 2 i 3 kroku 2",
+      "file": "commands/orchestrate.md",
+      "scope": "sentence",
+      "all": [
+        [
+          "nie obchodź",
+          "nie omijaj"
+        ],
+        [
+          "kodu 2",
+          "kodów 2"
+        ]
+      ],
+      "why": "kody 2 i 3 to bramki analizy i kompozycji bloków; obejście startuje implementację bez zatwierdzonej analizy"
+    },
+    {
+      "id": "orchestrate: cause=code nie jest odstępstwem maszyny",
+      "file": "commands/orchestrate.md",
+      "scope": "sentence",
+      "all": [
+        "cause === 'code'",
+        "nie odstępstwo",
+        "nie zgłaszaj"
+      ],
+      "why": "bez tego błędy w kodzie zaśmiecają skrzynkę zgłoszeń maszyny (ORC-083, krok 5)"
+    },
+    {
+      "id": "analyze: PAUSE kończy przebieg bez implementacji",
+      "file": "commands/analyze.md",
+      "scope": "sentence",
+      "all": [
+        "PAUSE",
+        [
+          "koniec",
+          "stop"
+        ],
+        [
+          "nie implementuj",
+          "nie wołaj orkiestracji"
+        ]
+      ],
+      "why": "bramka approval: po PAUSE analiza nigdy nie rusza implementacji (ANL-034)"
+    },
+    {
+      "id": "analyze: one-way zawsze do człowieka",
+      "file": "commands/analyze.md",
+      "scope": "sentence",
+      "all": [
+        "one-way",
+        [
+          "zawsze",
+          "always"
+        ],
+        "człowieka"
+      ],
+      "why": "decyzja trudna do cofnięcia nie może być rozstrzygnięta automatycznie (ANL-048)"
+    },
+    {
+      "id": "analyze: USER_CHALLENGE nigdy sam",
+      "file": "commands/analyze.md",
+      "scope": "sentence",
+      "all": [
+        "USER_CHALLENGE",
+        [
+          "nigdy",
+          "never"
+        ]
+      ],
+      "why": "zmiana kierunku ustalonego przez użytkownika wolno proponować, nie rozstrzygać (ANL-047)"
+    },
+    {
+      "id": "analyze: zapisy tylko z listy zamkniętej, nic w src/",
+      "file": "commands/analyze.md",
+      "scope": "paragraph",
+      "all": [
+        [
+          "nic poza tym",
+          "wyłącznie z listy"
+        ],
+        "src/"
+      ],
+      "why": "analiza nie może zapisać pliku źródłowego (ANL-001)"
+    },
+    {
+      "id": "review-panel (komenda): nigdy nie commituje ani nie pushuje",
+      "file": "commands/review-panel.md",
+      "scope": "sentence",
+      "all": [
+        "never",
+        "commit*",
+        "push*"
+      ],
+      "why": "panel stage'uje poprawki, a commit należy do użytkownika"
+    },
+    {
+      "id": "review-panel (skill): nigdy nie commituje ani nie pushuje",
+      "file": "skills/quality/review-panel/SKILL.md",
+      "scope": "sentence",
+      "all": [
+        "never",
+        "commit*",
+        "push*"
+      ],
+      "why": "panel stage'uje poprawki, a commit należy do użytkownika"
+    },
+    {
+      "id": "review-panel (skill): reviewerów NEVER_GATE nie pomija się",
+      "file": "skills/quality/review-panel/SKILL.md",
+      "scope": "sentence",
+      "all": [
+        "NEVER_GATE",
+        "reviewer-security",
+        "reviewer-compliance",
+        "reviewer-pragmatist"
+      ],
+      "why": "selekcja adaptacyjna nie może wyciąć recenzentów bezpieczeństwa, zgodności i pragmatysty"
+    },
+    {
+      "id": "review-panel (skill): awaria statystyk => pełny panel",
+      "file": "skills/quality/review-panel/SKILL.md",
+      "scope": "sentence",
+      "all": [
+        [
+          "non-zero",
+          "fails",
+          "failed"
+        ],
+        "full panel"
+      ],
+      "why": "błąd reviewer-stats.mjs nie może po cichu zmniejszyć panelu"
+    },
+    {
+      "id": "review-panel (skill): --full i --thorough wyłączają pomijanie",
+      "file": "skills/quality/review-panel/SKILL.md",
+      "scope": "sentence",
+      "all": [
+        "--full",
+        "--thorough",
+        [
+          "skip this step",
+          "whole panel"
+        ]
+      ],
+      "why": "użytkownik musi móc wymusić pełny panel"
+    }
+  ]
+}

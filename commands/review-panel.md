@@ -12,6 +12,8 @@ description: |
 
   Usage: /review-panel [--full] [--thorough] [--pr <number>]
 
+  --full and --thorough run the whole planned panel (no adaptive reviewer skipping).
+
 tools: Read, Write, Edit, Glob, Grep, Bash, Task, Skill
 disallowedTools: MultiEdit, NotebookEdit
 ---
@@ -26,6 +28,11 @@ skill performs:
 - **Panel dispatch**: standard mode picks the persona set from `stack_blocks` in
   `.claude/config/runtime.yml` (ADR 0008 — not `stack_profile`); `--thorough`
   dynamically selects 10 of the 16 `reviewer-*` personas based on diff signals
+- **Adaptive selection** (B3): a reviewer with 10 invocations in a row without a finding in this
+  project is skipped (`node <claude-patterns>/scripts/reviewer-stats.mjs --select …`); no data or
+  fewer than 10 invocations = always run; `reviewer-security`, `-compliance`, `-pragmatist`
+  (`NEVER_GATE`) are never skipped; `--full` / `--thorough` force the whole panel; every skipped
+  reviewer is named with its reason in the report — nothing disappears silently
 - **Synthesis**: dedupe findings, split auto-fixable vs requires-decision, severity-graded report
 - **Apply fixes** one at a time on approval (never commits/pushes)
 - **Snapshot save** so the next run on the same branch is incremental
@@ -33,7 +40,9 @@ skill performs:
 ## What this command may write — closed list
 
 1. `~/.claude/review-panel-snapshots/<branch>.json` — the incremental-review snapshot;
-2. source files touched by fixes the user explicitly approved in Phase 3.
+2. `~/.claude/review-panel-stats/invocations.jsonl` — per-reviewer finding counts for adaptive
+   selection (append-only, written only through `reviewer-stats.mjs --record`);
+3. source files touched by fixes the user explicitly approved in Phase 3.
 
 Never commits, never pushes. `Write`/`Edit` were denied until 2026-08-14, which killed
 both Phase 4 (apply approved fixes) and Phase 5 (save snapshot) — incremental mode could
@@ -60,6 +69,7 @@ never actually engage. The guard is the approval step in Phase 3, not a missing 
 - Skill source: `skills/quality/review-panel/SKILL.md`
 - Agents: `agents/universal/reviewer-*.md` (16 personas)
 - Pattern: `patterns/cross-layer/snapshot-incremental-review-pattern.md`
+- Stats and rules of adaptive selection: `scripts/reviewer-stats.mjs` (`--check-config` verifies the wiring)
 
 ---
 

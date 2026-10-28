@@ -31,7 +31,7 @@ When running handoff mode:
 2. Ask the user (or infer from conversation):
    - **Current phase** — what task/wave/epic are we in?
    - **Completed this session** — concrete items done (commits, decisions)
-   - **Remaining work** — ordered list, top = next thing to do
+   - **Remaining work** — ordered list, top = next thing to do; every item carries a provenance marker (see below)
    - **Environment state** — pending migrations, services that need to be running
    - **Resume command** — exact command(s) for next session start
    - **Notes for next Claude** — gotchas, in-progress decisions, what NOT to touch
@@ -42,6 +42,7 @@ When running handoff mode:
 
 > Handoff document. Update at end of each session with `/checkpoint handoff`.
 > Read at start of next session before doing anything.
+> Punkty z `(zgadnięto)` albo bez znacznika to hipotezy, nie fakty: wynieś je do „Zweryfikuj najpierw".
 
 ---
 
@@ -59,8 +60,13 @@ When running handoff mode:
 
 ## Remaining Work
 
-- [ ] {next}
-- [ ] {after that}
+- [ ] {next} (uruchomiono) — {komenda} → {wynik w jednym zdaniu}
+- [ ] {after that} (przeczytano) — {plik:linia albo fragment outputu}
+- [ ] {item bez sprawdzenia} (zgadnięto)
+
+## Zweryfikuj najpierw
+
+<!-- Wypełnia sesja wznawiająca, nie piszący: tu trafiają punkty (zgadnięto) i bez znacznika. -->
 
 ## Environment State
 
@@ -80,6 +86,40 @@ When running handoff mode:
 ```
 
 4. Report: `.claude/work/SESSION_STATE.md updated — {N} remaining items, resume with: {command}`
+
+## Provenance markers (Remaining Work)
+
+Each item in `## Remaining Work` ends its first line with exactly one marker. The marker says
+what THIS session did to establish the claim behind the item, not how sure the writer feels:
+
+| Marker | Meaning | Evidence after the marker |
+|---|---|---|
+| `(uruchomiono)` | command or test actually executed in this session and its output seen | the command and the result, one sentence |
+| `(przeczytano)` | confirmed by reading a file or tool output in this session | `plik:linia` or the quoted fragment |
+| `(zgadnięto)` | inferred without checking | none |
+
+Rules for the writer:
+
+- Evidence is mandatory for `(uruchomiono)` and `(przeczytano)`. No evidence to point to = `(zgadnięto)`.
+- Something the user said and nobody checked in the repo is `(zgadnięto)`. It may well be true; it is not verified.
+- When refreshing an existing file, do not copy old markers. A claim carried over from an earlier
+  session and not re-checked in this one is `(zgadnięto)`.
+- One item, one marker. If an item mixes a checked part and a guessed part, split it into two items.
+
+Parsing token (for scripts and for the reader): `\((uruchomiono|przeczytano|zgadnięto)\)`.
+
+## Reading the file at session start
+
+The note is read by the next Claude, not by a command, so the rule lives here and in the file's header.
+Before any work:
+
+1. Collect every `Remaining Work` item marked `(zgadnięto)`, and every item with no marker (files written
+   before this convention existed).
+2. Move them into a `## Zweryfikuj najpierw` list in the first reply, and into the file if you rewrite it.
+   They are hypotheses: check each one (run the command, read the file) before building on it, and
+   re-mark it `(uruchomiono)` or `(przeczytano)` with evidence, or drop it.
+3. Treat `(uruchomiono)` and `(przeczytano)` items as leads, not as current state: the tree may have changed
+   since. The SHA in `## Last Updated` against `git rev-parse --short HEAD` tells you how much.
 
 ## Arguments
 

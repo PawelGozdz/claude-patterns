@@ -2,6 +2,7 @@
 
 > Handoff document. Update at end of each session with `/checkpoint handoff`.
 > Read at start of next session before doing anything.
+> Punkty z `(zgadnięto)` albo bez znacznika to hipotezy, nie fakty: wynieś je do „Zweryfikuj najpierw".
 
 ---
 
@@ -19,8 +20,13 @@
 
 ## Remaining Work
 
-- [ ]
-- [ ]
+- [ ] {zadanie} (uruchomiono) — {komenda} → {wynik w jednym zdaniu}
+- [ ] {zadanie} (przeczytano) — {plik:linia albo fragment outputu}
+- [ ] {zadanie bez sprawdzenia} (zgadnięto)
+
+## Zweryfikuj najpierw
+
+<!-- Wypełnia sesja wznawiająca, nie piszący: tu trafiają punkty (zgadnięto) i bez znacznika. -->
 
 ## Environment State
 

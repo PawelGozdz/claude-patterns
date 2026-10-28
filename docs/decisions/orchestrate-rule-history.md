@@ -1162,6 +1162,28 @@ pusty parametr usuwa klucze ze slotu. `always_for` omija też sito ANL-018 — j
 
 **Bez zmiany.** `DEV-orc-128-infrastructure-consent-persistence` (providery bez modułu) to przypadek ANL-045, a przebieg powstał z analizy sprzed tej reguły.
 
+<a id="anl-047"></a>
+
+### ANL-047 — decyzje w analizie mają klasę: mechaniczne bez pytania, gust razem, zmiana kierunku zawsze do człowieka (2026-10-28)
+
+**Claim:** metric=gateNoGo direction=down threshold=0.1 engine=c5cb0a0 process=orchestrate
+
+**Objaw (TASK-GSTACK-ADOPT-001 B5, wzór: autoplan z gstack).** Każda decyzja i pytanie w artefakcie analizy szły do człowieka tak samo, więc rzeczy z jedną sensowną odpowiedzią zabierały uwagę, a zmianę kierunku ustalonego przez użytkownika dało się wpisać do `decisions[].choice` obok drobiazgów.
+
+**Zmiana.** Reguła tylko w prompcie. Pola `class` (MECHANICAL, TASTE, USER_CHALLENGE) są opcjonalne, więc stare artefakty działają bez zmian. MECHANICAL analiza rozstrzyga sama, z uzasadnieniem w `rationale`. TASTE człowiek dostaje razem, w jednej wiadomości. USER_CHALLENGE nigdy sama: `choice` zostaje przy kierunku użytkownika, propozycja zmiany żyje tylko w pytaniu. Wątpliwość rozstrzyga się w stronę człowieka. Mechanicznej bramki w `prepare` nie ma: wymagałaby osądu, czym jest „kierunek użytkownika".
+
+**Uwaga o claimie.** Żadna metryka z `telemetry-report` nie mierzy „mniej pytań do człowieka"; `gateNoGo` jest najbliższym pośrednikiem (mniej złych decyzji w planie, mniej NO_GO bramki końcowej), więc `no_effect` jest realnym wynikiem.
+
+<a id="anl-048"></a>
+
+### ANL-048 — `one-way` zawsze do człowieka, rekomendacja ma znacznik, który da się sparsować (2026-10-28)
+
+**Claim:** metric=gateNoGo direction=down threshold=0.1 engine=c5cb0a0 process=orchestrate
+
+**Objaw (TASK-GSTACK-ADOPT-001 B5).** Decyzja trudna do cofnięcia (migracja danych, kontrakt, usunięcie) mogła zostać rozstrzygnięta jako „mechaniczna" i nie dotrzeć do człowieka. Rekomendacja siedziała w prozie `ask`, której nic nie czyta maszynowo.
+
+**Zmiana.** Reguła tylko w prompcie: `door_type: one-way` idzie do człowieka niezależnie od klasy. Pytanie z wyborem ma `options: [...]` w jednej linii (lista blokowa myli hook `check-human-voice`) i dokładnie jedną opcję z ` (recommended)`; wzorzec `\(recommended\)\s*$`.
+
 <a id="anl-024"></a>
 
 ### ANL-024 — do slotu idzie STRESZCZENIE poprzednich stage'ów, nigdy surowy output
@@ -2504,3 +2526,15 @@ produktowe oceniamy raz, na całości zmiany, żeby nie płacić za nie w każde
 **Zmiana.** (1) ANL-038 nie wymienia już `.env.example` i mówi wprost, że plików `.env*` nie wpisuje się do zakresu, tylko zapisuje jako krok ręczny po przebiegu. (2) `warnBareMissingDirs` w `orchestrate-prepare.mjs` ostrzega o każdym wpisie `.env`, `.env.*` (także w podkatalogu) w `dirs` jednostki lub `layers_scope`. Tylko ostrzeżenie: projekt bez reguły deny mógłby ten plik edytować. Eval: `units-env-file-in-dirs-warns`.
 
 **Poza zakresem.** `cause=code` przy NO_GO z odmowy uprawnień zostaje. Rozpoznanie odmowy po treści błędu agenta wymagałoby parsowania komunikatów narzędzi.
+
+<a id="orc-139"></a>
+
+### ORC-139 — werdykt związany z hashem drzewa (2026-10-28)
+
+**Claim:** metric=falseGo direction=down threshold=0.2 engine=a1e9480 process=orchestrate
+
+**Objaw (TASK-GSTACK-ADOPT-001 A2; baza TASK-ORCH-FALSE-GO-001).** Ok. 12,6% przebiegów kończyło się fałszywym GO (51 z 406, dolna granica). Jedna z dróg: GO zapadało dla innego kodu niż ten, który szedł do stagingu. Weryfikator mógł edytować pliki, zmiana mogła wejść w trakcie oceny, albo ktoś edytował drzewo między końcem Workflow a `git add`. Silnik nie miał jak tego wykryć.
+
+**Zmiana.** CORE dostał `treeHashCmd`, `treeHashExcludes`, `parseTreeHash` i `treeBinding` (stany fresh, stale, missing, unknown). Hash to `git write-tree` z tymczasowego indeksu po `git add -A -- .`; wykluczenia zdejmuje się z tego indeksu (`git ls-files … | git update-index --force-remove`), bo pathspec `:(exclude)` w `git add` kończy się błędem, gdy wykluczony katalog istnieje i jest w `.gitignore` (hash byłby zawsze pusty). Pomijane są artefakty silnika: run-state, dziennik pracy, telemetria, skrzynka odstępstw, plik analizy i taska. Pętla warstwy liczy hash przed i po weryfikatorze. GO z rozjazdem to ponowna weryfikacja bez implementera, a po wyczerpaniu prób ESCALATE_AND_HALT `machine`. Bramka końcowa robi jedną powtórkę pod nową etykietą (ORC-077), potem NO_GO `machine`. `report.treeHash.{verified,sealed}` trafia do kroku 4, który wywołuje `scripts/orchestrate-tree-hash.mjs --check` przed `git add`. Po odrzuconym GO prompt weryfikatora dostaje dopisek z numerem próby, bo cache kluczuje etykietą i promptem (ORC-077), a etykieta musi zostać zgodna z `final-gate-blame`. `report.treeHash` niesie `enabled`, `bound` i `unbound`, a `statusLine` ostrzega o werdyktach bez hasha. Brak hasha (sonda bez wyniku, artefakt sprzed ORC-139) to ostrzeżenie. Wyłączenie: `--overrides {"treeBinding": false}`.
+
+**Odrzucone.** Pełna ponowna bramka po rundzie naprawczej ORC-091/123: znosi jej oszczędność, więc zmiana jest oznaczona `postGateChanges` i ostrzeżeniem. Hash przez `sha1sum` plików (jak odcisk ORC-103): pomija tryby plików i nie daje porównywalnego obiektu drzewa. Fail-closed przy braku wyniku sondy: halt z powodu zawodności Haiku, nie kodu. Hash przed sondą `checks`: testy i lint zapisują pliki, więc dawałby fałszywe stale w każdej próbie.
