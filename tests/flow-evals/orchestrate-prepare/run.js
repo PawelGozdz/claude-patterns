@@ -375,6 +375,22 @@ CASES.push({
 });
 
 CASES.push({
+  name: 'units-env-file-in-dirs-warns',
+  build: () => makeProject({
+    taskId: 'TS-FIX-001',
+    analysis: withFm('units:\n  - { id: wiring, layer: domain, dirs: [apps/api/.env.example, contexts/nowy-plik.ts] }'),
+    task: taskFile('Dodaj aggregate.'),
+  }),
+  check(r) {
+    if (r.code !== 0) return `oczekiwano exit 0, było ${r.code} (${r.stderr.trim()})`;
+    const hits = r.json.warnings.filter((w) => /dirs/.test(w) && /poza zasięgiem agentów/.test(w));
+    if (hits.length !== 1) return `oczekiwano 1 ostrzeżenia o pliku .env*, było ${hits.length}`;
+    if (!/units\[wiring\].*"apps\/api\/\.env\.example"/.test(hits[0])) return 'ostrzeżenie bez nazwy jednostki albo ścieżki pliku';
+    return null;
+  },
+});
+
+CASES.push({
   name: 'patterns-exclude-drops-false-trigger-hit',
   build: () => makeProject({
     taskId: 'TS-FIX-001',

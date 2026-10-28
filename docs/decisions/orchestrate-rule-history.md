@@ -1150,6 +1150,18 @@ pusty parametr usuwa klucze ze slotu. `always_for` omija też sito ANL-018 — j
 
 **Zmiana.** Reguła tylko w prompcie: analiza wpisuje pliki rejestrujące do `dirs` jednostki albo rozpisuje jednostkę wiringu. Karta CH10 zostaje bez zmian: zakaz edycji spoza zakresu (ORC-042) jest słuszny, brakowało właściciela po stronie planu. Mechaniczna bramka w `prepare` (np. nowy `*.handler.ts` bez żadnego `*.module.ts` w jednostkach) jest możliwa, ale wymaga znajomości stosu, więc na razie nie ma.
 
+<a id="anl-046"></a>
+
+### ANL-046 — rejestry kodów błędów, zdarzeń i komunikatów mają właściciela w planie (2026-10-28)
+
+**Objaw (5 rekordów, 4 projekty).** Plan dodawał kod błędu albo zdarzenie, ale nie wskazywał plików, które je rejestrują: juz-ide-api-1 TS-SEC-SP-PIN-CONSENT-001 (`DEV-orc-128-domain-consent-domain`: `error-codes.ts` i `event-names.enum.ts` bez jednostki, `BLOCKED_BY_PRIOR` z czerwonego typecheck), juz-ide-api-1 TS-SEC-SP-LOCATION-001 (`DEV-orc-044-domain`: DE3 chce wpisu w mapperze, a ten leży w infrastrukturze), juz-ide-api-2 TS-EVENT-VENUE-001 (`DEV-orc-062-infrastructure-venue-wiring`: nowy członek `LocalHeroErrorCode`, `layers_scope` pusty), grant-flow TS-UI-010 (eventMap RP6/RP9 i wpis mappera DE3 dla `TaskUpdatedEvent`), marketing-hub TS-MH-028 (`DEV-orc-plan-web-dict`: kod `CAMPAIGN_*` wymaga wpisu w słowniku `apps/web`, web L1 czerwony w bramce końcowej).
+
+**Przyczyna.** ANL-045 (24.10) wymienia moduły, providery, mappery błędów i schematy create, ale nie rejestry kodów i zdarzeń ani słownik komunikatów web. Karta DE3 słusznie wymaga wpisu w mapperze razem z klasą błędu, a ORC-042 słusznie zabrania implementerowi ruszać plik spoza zakresu. Brakowało właściciela po stronie planu.
+
+**Zmiana.** Reguła tylko w prompcie, rozszerzenie ANL-045: analiza wpisuje rejestry (`error-codes.ts`, `event-names.enum.ts`, eventMap, mapper błędów, słownik komunikatów web) do `dirs` jednostki albo jednostki wiringu. Mechanicznej bramki w `prepare` nie ma z tego samego powodu co przy ANL-045: nazwy rejestrów zależą od stosu projektu. ORC-128 widzi tylko ścieżki wskazane w decyzjach.
+
+**Bez zmiany.** `DEV-orc-128-infrastructure-consent-persistence` (providery bez modułu) to przypadek ANL-045, a przebieg powstał z analizy sprzed tej reguły.
+
 <a id="anl-024"></a>
 
 ### ANL-024 — do slotu idzie STRESZCZENIE poprzednich stage'ów, nigdy surowy output
@@ -1469,6 +1481,8 @@ nie zgadnie. `patterns_exclude: [<ścieżka wzorca>]` usuwa wzorzec z doboru, a 
 nie wykluczył, daje ostrzeżenie (literówka).
 
 **Uzupełnienie (2026-10-25).** Zgłoszenia aegis-flow TS-007 (reguła D2 unieważnia testy loadera i kontraktu audytu, niezmiennik liczników wymaga emittera i testu loadera) i juz-ide-api-2 (usunięcie `radiusKm` dotyka plików infrastruktury) to ta sama klasa co przeniesienie eksportu: usunięcie lub zawężenie pola, typu albo reguły wymaga w `dirs` konsumentów i testów. ORC-042 zadziałał poprawnie (zgłoszenie zamiast edycji), brakowało ich w planie.
+
+**Uzupełnienie (2026-10-28).** Z listy plików towarzyszących zniknął `.env.example`: patrz [ORC-138](#orc-138).
 
 <a id="orc-081"></a>
 
@@ -2478,3 +2492,15 @@ produktowe oceniamy raz, na całości zmiany, żeby nie płacić za nie w każde
 **Objaw (DEV-orc-026, marketing-hub TS-MH-010, run `wf_c1bc4f18-d4f`, warstwa `infrastructure:auth-switch`).** Eslint w formacie stylish wypisuje ścieżkę pliku w osobnej linii nad jego błędami. Sonda zwróciła w `tail` same linie błędów, a plik dopisała z własnego domysłu: błąd import/order trafił do `business-rule.decorator.ts`, choć należał do `permissions.guard.spec.ts`. Runda naprawcza nie mogła trafić w błąd, trzy próby przepadły i warstwa skończyła ESCALATE.
 
 **Zmiana.** `buildProbePrompt` dostał `verbatimInstruction`: `tail` jest cytatem, linie kopiowane bez zmian, błędy lintu razem z linią nagłówkową pliku, bez zgadywania i bez ścieżek spoza logu. Instrukcja dotyczy też warstw bez `checks`, bo i one zwracają `tail`. Surowe pola `tsErrors` i `testFailFiles` (ORC-082, ORC-099) działały tak od początku; luka dotyczyła tylko lintu.
+
+<a id="orc-138"></a>
+
+### ORC-138 — `.env*` w zakresie jednostki to konflikt z regułą deny (2026-10-28)
+
+**Objaw (agent_note, ai-gateway TS-AIG-104, run `wf_451d6c4c-9a7`, `implementation:wiring`).** `.env.example` był w `dirs` jednostki wiring, a reguła deny na `.env*` blokuje agentom odczyt i zapis. Trzy próby kończyły NO_GO z tego samego powodu, a silnik zapisał `cause=code`, choć realnie był to konflikt zakresu z uprawnieniami.
+
+**Przyczyna.** Dwie reguły silnika mówiły sprzeczne rzeczy. ANL-038 kazał dopisywać `.env.example` do `dirs` jako plik towarzyszący, a `audit-projects` (AUD-ENV-DENY) wymaga w każdym projekcie `Read(./.env)` i `Read(./.env.*)` w `permissions.deny`.
+
+**Zmiana.** (1) ANL-038 nie wymienia już `.env.example` i mówi wprost, że plików `.env*` nie wpisuje się do zakresu, tylko zapisuje jako krok ręczny po przebiegu. (2) `warnBareMissingDirs` w `orchestrate-prepare.mjs` ostrzega o każdym wpisie `.env`, `.env.*` (także w podkatalogu) w `dirs` jednostki lub `layers_scope`. Tylko ostrzeżenie: projekt bez reguły deny mógłby ten plik edytować. Eval: `units-env-file-in-dirs-warns`.
+
+**Poza zakresem.** `cause=code` przy NO_GO z odmowy uprawnień zostaje. Rozpoznanie odmowy po treści błędu agenta wymagałoby parsowania komunikatów narzędzi.

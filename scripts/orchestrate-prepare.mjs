@@ -579,6 +579,13 @@ function main() {
       for (const d of dirs) {
         if (typeof d !== 'string') continue;
         const p = d.trim();
+        // `.env*` leży pod regułą deny `Read(./.env.*)` (AUD-ENV-DENY), więc agent nie odczyta ani nie
+        // zapisze go: jednostka z takim wpisem kończy NO_GO z konfliktu zakresu z uprawnieniami
+        // (ai-gateway TS-AIG-104, `.env.example` w `wiring`, 3 próby).
+        if (/(^|\/)\.env(\.[^/]*)?$/.test(p)) {
+          warnings.push(`${tag}: \`dirs\` zawiera "${p}" — plik .env* jest poza zasięgiem agentów (deny Read(./.env.*)); usuń go z zakresu i zapisz zmianę jako krok ręczny po przebiegu`);
+          continue;
+        }
         if (!p || p.includes('/') || existsSync(join(args.project, p))) continue;
         warnings.push(`${tag}: \`dirs\` zawiera "${p}" — brak takiego pliku w korzeniu repo; podaj ścieżkę od korzenia (np. .claude/config/${p})`);
       }

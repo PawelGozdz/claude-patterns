@@ -15,7 +15,7 @@
 - **VO4** — wszystkie pola `readonly`, ZERO setterów (immutability).
 - **VO5** — normalizacja w fabryce: trim whitespace, lowercase/uppercase gdy wymagane.
 - **VO6** — TYLKO walidacja formatu/struktury (ADR-0021): długość, zakres, regex, format.
-- **VO7** — implementacja `getEqualityComponents()` — wymagana dla poprawnego `.equals()`.
+- **VO7** — implementacja abstrakcyjnej metody równości klasy bazowej VO — wymagana dla poprawnego `.equals()`. Nazwa zależy od projektu: `getEqualityComponents()` (VytchesDDD, juz-ide) albo `getIdentityComponents()` (`@marketing-hub/ddd`); obowiązuje ta, którą deklaruje klasa bazowa projektu.
 - **VO8** — implementacja `validate(props)` wymagana przez `BaseValueObject`.
 - **VO9** — metody obliczeniowe jako czyste funkcje (zero side effects, zero async).
 - **VO10** — dla VO opartych na enumach: `declare public readonly value: EnumType` (re-deklaracja bez emisji JS).
