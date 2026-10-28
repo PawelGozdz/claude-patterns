@@ -73,7 +73,7 @@
     "commands/capture.md": {"catalog_bytes":94,"body_bytes":1390},
     "commands/checkpoint.md": {"catalog_bytes":152,"body_bytes":5242},
     "commands/claude-updates.md": {"catalog_bytes":242,"body_bytes":4472},
-    "commands/conformance-check.md": {"catalog_bytes":481,"body_bytes":2987},
+    "commands/conformance-check.md": {"catalog_bytes":481,"body_bytes":3429},
     "commands/cost-report.md": {"catalog_bytes":494,"body_bytes":3263},
     "commands/design-audit.md": {"catalog_bytes":344,"body_bytes":685},
     "commands/finance.md": {"catalog_bytes":523,"body_bytes":3935},

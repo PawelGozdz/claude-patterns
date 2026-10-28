@@ -10,5 +10,28 @@
     { "kind": "specification",     "match": "\\.specification\\.ts$",       "expectExtends": "CompositeSpecification" },
     { "kind": "domain-service",    "match": "\\.domain-service\\.ts$",      "expectDecorator": "Injectable" },
     { "kind": "kysely-repository", "match": "kysely.*repository\\.ts$",     "_note": "majority-only (no expectExtends) — CQRS command-side repos typically extend BaseKyselyRepository, but read-side query/projection repos and documented one-off exceptions (no event sourcing needed) legitimately skip it" }
+  ],
+  "_bodyRules_comment": "Rules about the BODY of a file (check.mjs --ratchet turns them into a delta against a git baseline). Scope is command/query handlers ONLY: event handlers (BullMQ retry rethrows a failure on purpose) and processors are out of scope. Waiver: the rule's exceptionMarker comment WITH a reason, or an entry in .claude/conformance.json `exceptions` (rule + file + reason).",
+  "bodyRules": [
+    {
+      "id": "CH-NO-THROW",
+      "match": "(^|/)application/(commands|queries)/(.+/)?([^/]*\\.)?handler\\.ts$",
+      "detect": "throw",
+      "exceptionMarker": "THROW-EXCEPTION",
+      "message": "throw in a command/query handler file (also in private helper methods)",
+      "card": "command-handler CH5/N3",
+      "hint": "return Result.fail(error); a justified exception needs `// THROW-EXCEPTION: <reason>` or an entry in .claude/conformance.json"
+    },
+    {
+      "id": "CH-NO-BULLMQ",
+      "match": "(^|/)application/(commands|queries)/(.+/)?([^/]*\\.)?handler\\.ts$",
+      "detect": "import",
+      "modules": ["bullmq", "@nestjs/bullmq", "bull", "@nestjs/bull"],
+      "identifiers": ["InjectQueue"],
+      "exceptionMarker": "QUEUE-EXCEPTION",
+      "message": "BullMQ import or @InjectQueue in a command/query handler",
+      "card": "command-handler-queue-port QP1/N1",
+      "hint": "enqueue through a port (Symbol + interface in application, adapter in the module/infrastructure); exception: `// QUEUE-EXCEPTION: <reason>`"
+    }
   ]
 }
