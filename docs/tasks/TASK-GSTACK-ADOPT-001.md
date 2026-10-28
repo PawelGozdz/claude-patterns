@@ -147,7 +147,7 @@ pada z założenia (brak lokalnego `.rag-seed-state.json`), pozostałe 34 z 35 p
 ## Stan realizacji (2026-10-28)
 
 Wszystkie 11 punktów zaimplementowane na gałęzi `feature/TASK-GSTACK-ADOPT-001` (10 commitów, po jednym na logiczną zmianę),
-gotowe do scalenia z `develop`. Bramki zielone poza `rag-freshness`, która w osobnym worktree pada z założenia (lokalny stan
+scalone do `develop` (merge `56826e2`, 2026-10-28; gałąź i worktree usunięte). Bramki zielone poza `rag-freshness`, która w osobnym worktree pada z założenia (lokalny stan
 RAG pochodzi z głównego drzewa, gdzie są niezacommitowane zmiany w `patterns/` i `rules/`). Commity powstały z
 `SKIP_SIMPLE_GIT_HOOKS=1`, bo hook zatrzymałby każdy z nich na samej `rag-freshness`; przed każdym commitem pełny zestaw
 bramek był uruchamiany ręcznie i miał być czerwony wyłącznie na tej jednej. Dwa niezależne przeglądy kodu (poprawność skryptów,
@@ -176,3 +176,9 @@ markerów fragmentów przy zagnieżdżonych ogrodzeniach (B4) oraz pole `uncheck
    scalać do sygnału użytkownika (fala poprawek w api-1).
 9. **Po scaleniu**: `./scripts/reseed-patterns.sh` nie jest wymagane (zmiany nie dotyczą `patterns/`),
    natomiast `audit-projects` → `materialize-runtime` → `verify-project-setup`, bo zmienia się szablon `/orchestrate`.
+
+### Po scaleniu (2026-10-28)
+- Scalenie wymagało najpierw zacommitowania pracy drugiej sesji (reguły ORC-138 i ANL-046, karty RP2/RP3/VO7, `cli-runner.md`, skrzynka) oraz `./scripts/reseed-patterns.sh`, bo karty `_summary` zmieniły się po ostatnim zaszczepieniu RAG; eval retrievalu hit@5 = 0,97. Pięć konfliktów (CHANGELOG, `analyze.md`, `orchestrate.md`, historia reguł, indeks skrzynki) rozwiązano zachowując obie strony. Po scaleniu przechodzi 49 z 49 bramek.
+- `audit-projects` pokazał 12 projektów z rozjechaną kopią `project-orchestration/analysis/TEMPLATE.md` (zmiana szablonu przy ANL-047). Wszystkie kopie były identyczne ze starym szablonem centrali, więc zsynchronizowano je `cp` z centrali (zmiany w drzewach roboczych tych projektów, niezacommitowane). Błędów audytu: 15 → 3.
+- Zostają 3 błędy `runtime.yml nieaktualny` w juz-ide-api-1, -2 i -3. Nie wynikają z tego zadania (nie zmieniano `blocks/`); `materialize-runtime` dla nich czeka na koniec fali poprawek w api-1.
+- Reguły ANL-028 i ANL-040 oraz ORC-138 i ANL-046 (druga sesja) nie mają pola `**Claim:**` — pre-commit ostrzega, nie blokuje.
