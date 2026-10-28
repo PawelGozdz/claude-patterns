@@ -2,7 +2,7 @@
 id: TASK-ENGINE-GUARDRAILS-001
 title: 'Silnik przepuścił wzorce-naruszenia w juz-ide-api-1 TS-SEC-D0-BETA-HARDENING-001 — bramki mechaniczne zamiast samego weryfikatora-LLM'
 type: implementation
-status: todo
+status: in-progress
 priority: P1
 story_points: 8
 created_date: 2026-10-21
@@ -95,6 +95,19 @@ Wg agenta badawczego (transkrypty i konfiguracja api-1; nie sprawdzałem osobno 
 Hipoteza (niezweryfikowana): ostrzeżenia z exit 0 nie dochodzą do modelu.
 
 Propozycje poza tym zadaniem (wymagają decyzji): hook SubagentStart wstrzykujący karty z routingu dla agentów `*-implementer`; rozszerzenie `check-subagent-pattern-reads` o zapisy przez Bash; wymóg uruchomienia `code-quality-verifier` po ręcznym implementerze.
+
+## Postęp (gałąź feature/TASK-ENGINE-GUARDRAILS-001, analiza zatwierdzona)
+
+| Krok | Stan | Commit |
+|---|---|---|
+| 2 reguły ciała pliku + ratchet (`tools/conformance`) | zrobione, z `exception-new`, `CONFIG-CHANGED`, `--only/--skip` | 8c5107b |
+| 7 hook zakresu `test-implementera` | zrobione; rejestracja odłożona | fd0a122 |
+| 3 sonda `conformance` (ORC-140) | zrobione | 15e2802 |
+| 4 `minor_findings` (ORC-141), 6 próg pakietu (ORC-142) | zrobione | 9bc385e |
+| 5 `/analyze` (ANL-049..051) | zrobione | e1a4f86 |
+| Paczka konfiguracji: rejestracja hooka (`blocks/ddd/core.yml`, `templates/settings/nestjs-ddd.json`), `blocks/ddd/{cqrs,layers}.yml`, schemat, fixture materialize, karty | ODŁOŻONA (`git stash`, patrz niżej) | — |
+
+Dlaczego odłożona: zmiana `blocks/**/*.yml` albo `templates/settings/*.json` uruchamia w pre-commit `audit-projects --gate`, który wymaga zmaterializowanych `runtime.yml` w żywych projektach. Commit pakietu wchodzi razem ze scaleniem: stage → `materialize-runtime` projektów → commit. Reguła numerowana w planie jako ORC-143 (hook) nie ma jeszcze wiersza w tabeli komendy, bo hook jest nieaktywny do rejestracji.
 
 ## Do zrobienia po scaleniu
 
