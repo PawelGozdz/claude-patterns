@@ -2619,3 +2619,33 @@ produktowe oceniamy raz, na całości zmiany, żeby nie płacić za nie w każde
 **Sprawdzone na danych.** Progi przeliczono na 440 istniejących artefaktach analizy 16 projektów (api-1 jako reprezentant bliźniaków): dwa sygnały naraz wystąpiły raz (przypadek wyjściowy: 5 PR, 47 jednostek, 6 kontekstów), jeden sygnał osiem razy; mediana jednostek 0, p90 równe 6, maksimum 47. Sygnał „PRn" jest najszumniejszy (7 z 8 pojedynczych trafień), stąd zakaz zatrzymywania samym nim.
 
 **Ograniczenia.** Pomiar nie widział tekstu zadań, więc sygnał „PRn" jest zaniżony, i jest skalibrowany na przypadku, który ma wychwycić. Sygnał kontekstów zna tylko układ `contexts/<nazwa>/`. Reguła działa w `prepare`, więc obejmuje od razu wszystkie projekty używające `/orchestrate`, także bez bloku DDD.
+
+### ANL-049 — przesłanki decyzji o kodzie sprawdza się w kodzie (2026-10-28)
+
+**Claim:** metric=falseGo direction=down threshold=0.2 engine=9bc385e process=analyze
+
+**Objaw (juz-ide-api-1, TS-SEC-D0-BETA-HARDENING-001, decyzja D2).** SMS przez `queue.add` w handlerze komendy z uzasadnieniem „handler nie pisze do bazy"; `register-with-phone` zapisuje użytkownika. Człowiek zatwierdził analizę w około 18 minut, część odpowiedzi brzmiała „nie wiem", a prompt implementera mówił „decyzje zatwierdzone, stosuj, nie re-decyduj".
+
+**Zmiana.** Przed zapisem `decisions[]` każda przesłanka o kodzie z `rationale` jest sprawdzana celowanym odczytem i zapisywana jako `premises: [{ claim, evidence, holds }]`. `holds: false` ustawia `premise_failed: true` na decyzji i wymaga sparowanego pytania w `open_questions` (`decision: <id>`). `orchestrate-prepare` zatrzymuje start (exit 2), dopóki to pytanie nie ma odpowiedzi zatwierdzającej.
+
+**Odrzucone.** Drugie pole zgody (`exception_approved: true`) obok pytania: dwa kanały mogą się rozjechać (pytanie bez odpowiedzi i flaga, albo odwrotnie). Zgoda jest jedna: odpowiedź na pytanie.
+
+**Ograniczenia.** Pola `premises`, `premise_failed`, `card_conflict` są opcjonalne, więc starsze artefakty przechodzą bez zmian. Sprawdzenie przesłanek jest po stronie promptu: skrypt wymusza tylko parę pytanie–odpowiedź dla decyzji już oznaczonej. Kto po odpowiedzi „zmieniamy podejście" aktualizuje `choice`, rozstrzyga człowiek albo ponowna analiza; do tego czasu bramka nie puszcza oznaczonej decyzji.
+
+### ANL-050 — decyzja sprzeczna z kartą nie jest rozstrzygnięta (2026-10-28)
+
+**Claim:** metric=falseGo direction=down threshold=0.2 engine=9bc385e process=analyze
+
+**Objaw.** Ten sam przebieg: zatwierdzona decyzja łamiąca kartę (kolejka w handlerze komendy) dostawała od silnika status „stosuj, nie re-decyduj" i implementer zbudował na niej kod.
+
+**Zmiana.** `choice` każdej decyzji jest porównywany z regułami MUST/MUST NOT kart wybranych wzorców. Sprzeczność ustawia `card_conflict: [<ID>]` i wymaga sparowanego pytania z `options` w jednej linii: „Zatwierdzam wyjątek od <ID>: <powód>" oraz „Zmieniamy podejście: <jak>". `orchestrate-prepare` przepuszcza oznaczoną decyzję tylko, gdy odpowiedź jest tekstem jednej z `options` i zaczyna się od „Zatwierdzam"; inaczej exit 2 z poleceniem poprawienia `choice` i zdjęcia flagi. Karta, która nie rozstrzyga (`gap`), to twardy stop, nie notatka.
+
+**Ograniczenia.** Konwencja prefiksu „Zatwierdzam wyjątek/decyzję" jest tekstowa; trzyma ją prompt (`options` piszą /analyze), a skrypt tylko ją sprawdza (odpowiedź = dokładnie jedna z options, z ID reguł z `card_conflict`). Skrypt nie porównuje `choice` z kartami: agent analizy, który nie ustawi `card_conflict`, omija regułę, a `answer` leży w pliku, który ten agent pisze; skrypt łapie tylko niespójność wewnątrz artefaktu (`premises[].holds: false` bez pary, zniekształcone flagi). Zdjęcie flagi po odpowiedzi „zmieniamy podejście" bez zmiany `choice` nie jest wykrywane. Pola klasyfikacji (`class`, `door_type`) pozostają „tylko prompt" (ANL-047/048); skrypt czyta `decision`, `options` i `answer` wyłącznie dla decyzji oznaczonych.
+
+### ANL-051 — wynik częściowy bramki blokującej nie jest wynikiem (2026-10-28)
+
+**Claim:** metric=gateNoGo direction=down threshold=0.2 engine=9bc385e process=analyze
+
+**Objaw.** Stage `decision-gate` (haiku, budżet 12 wywołań, `on_limit: emit-partial`) wyczerpał budżet, a synteza poszła dalej na tym, co dostała, uzupełniona przez głównego agenta. To wniosek z transkryptu sesji analizy; nie sprawdzano, które decyzje bramka pominęła.
+
+**Zmiana.** Wynik częściowy ze stage'a `blocking: true`: jedno ponowienie na brakującą resztę, a gdy nadal niepełny, pozycja w `open_questions` z `answer: null` („Bramka X nie sprawdziła: …"), co blokuje `prepare` do potwierdzenia przez człowieka. Budżet `decision-gate` zostaje bez zmian. Bez zmian w skrypcie: blokuje istniejąca bramka `answer: null`.

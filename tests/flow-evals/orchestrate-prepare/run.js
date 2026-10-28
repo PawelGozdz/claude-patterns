@@ -383,6 +383,83 @@ bundleCase('bundle-non-array-units-fail-in-the-analysis-gate-not-with-a-crash', 
   if (/TypeError|at .*\.mjs:\d+/.test(r.stderr)) return 'nieobsłużony wyjątek zamiast komunikatu: ' + r.stderr.slice(0, 200);
   return null;
 });
+// ANL-049/050: decyzja sprzeczna z kartą albo z fałszywą przesłanką wymaga sparowanego, zatwierdzonego pytania
+const flagged = (decisionExtra, questions, check, name) => CASES.push({
+  name,
+  build: () => {
+    const fm = analysisFm({});
+    const withDecision = fm.replace('    rationale: "uzasadnienie"\n', '    rationale: "uzasadnienie"\n' + decisionExtra);
+    const withQuestions = withDecision.replace("    answer: 'tak'\n", "    answer: 'tak'\n" + questions);
+    return makeProject({ taskId: 'TS-FIX-001', analysis: withQuestions, task: taskFile('Dodaj aggregate.') });
+  },
+  check,
+});
+const PAIRED = (answer, opts = '["Zatwierdzam wyjątek od CH5: callback blokady wymaga wyjątku (recommended)", "Zmieniamy podejście: Result.fail w callbacku"]') =>
+  `  - id: Q2\n    ask: "Decyzja łamie regułę CH5. Zatwierdzasz wyjątek?"\n    q: "wyjątek od CH5"\n    decision: D1\n    options: ${opts}\n    answer: ${answer}\n`;
+flagged('    card_conflict: [CH5]\n', '', (r) => {
+  if (r.code !== 2) return `decyzja sprzeczna z kartą bez pytania powinna zatrzymać: exit ${r.code}`;
+  if (!/nie ma pytania z `decision: D1`/.test(r.stderr)) return 'komunikat bez wskazania brakującego pytania: ' + r.stderr;
+  return null;
+}, 'card-conflict-without-paired-question-stops');
+flagged('    card_conflict: [CH5]\n', PAIRED('"Zatwierdzam wyjątek od CH5: callback blokady wymaga wyjątku"'), (r) => {
+  if (r.code !== 0) return `zatwierdzony wyjątek powinien przejść: exit ${r.code} (${r.stderr.trim().slice(0, 200)})`;
+  return null;
+}, 'card-conflict-with-approving-answer-passes');
+flagged('    card_conflict: [CH5]\n', PAIRED('"Zmieniamy podejście: Result.fail w callbacku"'), (r) => {
+  if (r.code !== 2) return `odpowiedź „zmieniamy podejście" przy nadal oznaczonej decyzji powinna zatrzymać: exit ${r.code}`;
+  if (!/nie zatwierdza wyjątku/.test(r.stderr) || !/zdejmij flagę/.test(r.stderr)) return 'komunikat bez wskazówki, co zrobić: ' + r.stderr;
+  return null;
+}, 'card-conflict-answered-change-approach-stops-until-flag-removed');
+flagged('    card_conflict: [CH5]\n', PAIRED('"tak"'), (r) => {
+  if (r.code !== 2 || !/nie jest żadną z options/.test(r.stderr)) return `odpowiedź spoza options powinna zatrzymać: exit ${r.code} ${r.stderr.slice(0, 160)}`;
+  return null;
+}, 'answer-outside-options-stops');
+flagged('    card_conflict: [CH5]\n', PAIRED('null'), (r) => {
+  if (r.code !== 2 || !/open_questions bez odpowiedzi/.test(r.stderr)) return `pytanie bez odpowiedzi powinno zatrzymać istniejącą bramką: exit ${r.code}`;
+  return null;
+}, 'paired-question-without-answer-stops-via-existing-gate');
+flagged('    premise_failed: true\n', PAIRED('"Zatwierdzam wyjątek od CH5: callback blokady wymaga wyjątku"'), (r) => {
+  if (r.code !== 0) return `premise_failed z zatwierdzeniem powinno przejść: exit ${r.code}`;
+  return null;
+}, 'premise-failed-with-approving-answer-passes');
+flagged('    premise_failed: true\n', '', (r) => {
+  if (r.code !== 2 || !/przesłanka decyzji nie potwierdziła się/.test(r.stderr)) return `premise_failed bez pytania powinno zatrzymać: exit ${r.code}`;
+  return null;
+}, 'premise-failed-without-paired-question-stops');
+flagged('    premises: [{ claim: "handler nie pisze do bazy", evidence: "h.ts:94", holds: true }]\n', '', (r) => {
+  if (r.code !== 0) return `przesłanki z holds: true bez flagi nie mogą blokować: exit ${r.code}`;
+  return null;
+}, 'verified-premises-without-flags-do-not-block');
+
+flagged('    card_conflict: "CH5"\n', '', (r) => {
+  if (r.code !== 2 || !/musi być listą ID reguł/.test(r.stderr)) return `card_conflict jako napis powinno zatrzymać: exit ${r.code} ${r.stderr.slice(0, 160)}`;
+  return null;
+}, 'malformed-card-conflict-is-an-error-not-a-silent-skip');
+flagged('    premise_failed: "true"\n', '', (r) => {
+  if (r.code !== 2 || !/premise_failed. musi być true\/false/.test(r.stderr)) return `premise_failed jako napis powinno zatrzymać: exit ${r.code}`;
+  return null;
+}, 'malformed-premise-failed-is-an-error-not-a-silent-skip');
+flagged('    card_conflict: []\n', '', (r) => {
+  if (r.code !== 0) return `pusta lista card_conflict = brak sprzeczności, nie może blokować: exit ${r.code}`;
+  return null;
+}, 'empty-card-conflict-list-means-no-conflict');
+flagged('    premises: [{ claim: "handler nie pisze do bazy", evidence: "h.ts:94", holds: false }]\n', '', (r) => {
+  if (r.code !== 2 || !/przesłanka decyzji nie potwierdziła się/.test(r.stderr)) return `holds: false bez premise_failed powinno oznaczyć decyzję: exit ${r.code}`;
+  return null;
+}, 'false-premise-flags-the-decision-even-without-premise-failed');
+flagged('    card_conflict: [CH5]\n', "  - id: Q2\n    ask: \"Zatwierdzasz?\"\n    q: \"x\"\n    decision: D1\n    answer: \"Zatwierdzam wyjątek od CH5: powód\"\n", (r) => {
+  if (r.code !== 2 || !/musi mieć `options`/.test(r.stderr)) return `odpowiedź swobodnym tekstem bez options nie jest zgodą: exit ${r.code}`;
+  return null;
+}, 'paired-question-without-options-is-not-an-approval-channel');
+flagged('    card_conflict: [CH5]\n', PAIRED('"Zatwierdzam wyjątek od CH9: inna reguła"', '["Zatwierdzam wyjątek od CH9: inna reguła (recommended)", "Zmieniamy podejście: Result.fail"]'), (r) => {
+  if (r.code !== 2 || !/nie wymienia reguł: CH5/.test(r.stderr)) return `zgoda na inną regułę nie może pokryć CH5: exit ${r.code} ${r.stderr.slice(0, 160)}`;
+  return null;
+}, 'approval-must-name-the-conflicting-rule');
+flagged('    card_conflict: [CH5]\n', PAIRED('"Zatwierdzam wyjątek od CH5: callback blokady wymaga wyjątku"').replace('decision: D1', 'decision: d1'), (r) => {
+  if (r.code !== 0) return `dopasowanie pary nie powinno zależeć od wielkości liter: exit ${r.code} ${r.stderr.slice(0, 160)}`;
+  return null;
+}, 'pairing-is-case-insensitive');
+
 CASES.push({
   name: 'units-expand-into-sub-layers',
   build: () => makeProject({

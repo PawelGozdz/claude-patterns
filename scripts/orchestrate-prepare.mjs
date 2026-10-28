@@ -590,6 +590,50 @@ function main() {
       for (const d of decisions) {
         if (!d || typeof d !== 'object') continue;
         const id = String(d.id ?? '?');
+        // ANL-049/050: /analyze oznacza decyzję, która przeczy karcie (`card_conflict: [CH5, QP1]`) albo której przesłanka o kodzie
+        // okazała się fałszywa (`premise_failed: true`). Taka decyzja NIE jest rozstrzygnięta: implementer dostaje decyzje z
+        // poleceniem „stosuj, nie re-decyduj". Zgodę wyraża człowiek w JEDNYM miejscu, odpowiedzią na sparowane pytanie
+        // (`decision: <id>`, z `options`); odpowiedź zatwierdzająca jest jedną z `options`, zaczyna się od „Zatwierdzam wyjątek/decyzję" i wymienia reguły.
+        const conflictRaw = d.card_conflict;
+        const flagBad = [];
+        if (conflictRaw !== undefined && conflictRaw !== null && !(Array.isArray(conflictRaw) && conflictRaw.every((x) => typeof x === 'string' && x.trim()))) {
+          flagBad.push('`card_conflict` musi być listą ID reguł (np. [CH5, QP1]), nie ' + typeof conflictRaw);
+        }
+        if (d.premise_failed !== undefined && d.premise_failed !== null && typeof d.premise_failed !== 'boolean') {
+          flagBad.push('`premise_failed` musi być true/false, nie ' + JSON.stringify(d.premise_failed));
+        }
+        for (const msg of flagBad) gateFailures.push(`decisions[${id}]: ${msg} — zniekształcona flaga wyłączałaby bramkę po cichu`);
+        const conflicts = Array.isArray(conflictRaw) ? conflictRaw.map((x) => String(x).trim()).filter(Boolean) : [];
+        // przesłanka z `holds: false` oznacza decyzję także wtedy, gdy autor analizy nie ustawił `premise_failed`
+        const premiseFalse = d.premise_failed === true || (Array.isArray(d.premises) && d.premises.some((p) => p && p.holds === false));
+        if (conflicts.length || premiseFalse) {
+          const why = conflicts.length ? `sprzeczna z kartą ${conflicts.join(', ')}` : 'przesłanka decyzji nie potwierdziła się w kodzie';
+          const norm = (x) => String(x ?? '').trim().toUpperCase();
+          const paired = (Array.isArray(oq) ? oq : []).filter((q) => q && norm(q.decision) === norm(id));
+          const strip = (s) => String(s).replace(/\s*\(recommended\)\s*$/i, '').trim();
+          if (!paired.length) {
+            gateFailures.push(`decisions[${id}]: ${why}, ale w open_questions nie ma pytania z \`decision: ${id}\` — zgodę na wyjątek człowiek wyraża odpowiedzią na to pytanie`);
+          }
+          for (const q of paired) {
+            const qid = q.id ?? '?';
+            if (!Array.isArray(q.options) || !q.options.length) {
+              gateFailures.push(`decisions[${id}]: pytanie ${qid} musi mieć \`options\` (lista, w jednej linii) z opcją „Zatwierdzam …" i „Zmieniamy podejście …" — odpowiedź swobodnym tekstem nie jest zgodą`);
+              continue;
+            }
+            if (q.answer === null || q.answer === undefined) continue; // pokryte przez „open_questions bez odpowiedzi"
+            const ans = strip(q.answer);
+            const opts = q.options.map(strip);
+            if (!opts.includes(ans)) {
+              gateFailures.push(`decisions[${id}]: odpowiedź na ${qid} nie jest żadną z options (${opts.map((o) => `„${o.slice(0, 50)}"`).join(' / ')})`);
+            } else if (!/^zatwierdzam\s+(wyjątek|decyzję)\b/i.test(ans)) {
+              gateFailures.push(`decisions[${id}]: ${why}; odpowiedź na ${qid} („${ans.slice(0, 60)}") nie zatwierdza wyjątku (zatwierdzenie zaczyna się od „Zatwierdzam wyjątek" albo „Zatwierdzam decyzję"). ` +
+                'Zmieniasz podejście: popraw `choice` w decyzji i zdejmij flagę (`card_conflict` / `premise_failed`, oraz `holds: false` w `premises`)');
+            } else {
+              const missing = conflicts.filter((c) => !ans.toUpperCase().includes(c.toUpperCase()));
+              if (missing.length) gateFailures.push(`decisions[${id}]: zatwierdzenie w ${qid} nie wymienia reguł: ${missing.join(', ')} — zgoda dotyczy konkretnych reguł, nie wyjątku „w ogóle"`);
+            }
+          }
+        }
         if (typeof d.choice === 'string' && d.choice.trim()) continue;
         const alias = ALIASES.find((k) => typeof d[k] === 'string' && d[k].trim());
         gateFailures.push(alias

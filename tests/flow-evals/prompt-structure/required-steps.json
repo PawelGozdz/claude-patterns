@@ -12,6 +12,7 @@
         { "id": "0.b dobór materiału", "line": "^0\\.b\\s+dobór" },
         { "id": "0.c telemetria: start", "line": "^0\\.c\\s+telemetria: start" },
         { "id": "1. panel", "line": "^1\\.\\s+panel\\s+→" },
+        { "id": "1.a kontrola decyzji", "line": "^1\\.a\\s+kontrola decyzji" },
         { "id": "2. artefakt", "line": "^2\\.\\s+artefakt\\s+→" },
         { "id": "3. wyjście wg analyze.exit", "line": "^3\\.\\s+wyjście\\s+→\\s+analyze\\.exit" },
         { "id": "3.a telemetria: koniec", "line": "^3\\.a\\s+telemetria: koniec" },

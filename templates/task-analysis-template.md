@@ -45,6 +45,11 @@ decisions:                      # propozycje z analizy; człowiek weryfikuje/pop
     # TASTE, USER_CHALLENGE i każde one-way mają parę w `open_questions` (pole `decision: <id>`), a `choice` jest wtedy tylko propozycją.
     # class: <MECHANICAL|TASTE|USER_CHALLENGE>
     # door_type: <one-way|two-way>
+    # Kontrola decyzji przed zapisem (ANL-049/050) — FAKTY o decyzji; zgodę wyraża człowiek odpowiedzią na sparowane pytanie.
+    # premises: [{ claim: "handler nie pisze do bazy", evidence: "src/.../handler.ts:94", holds: false }]   # przesłanki o kodzie, sprawdzone w źródle
+    # premise_failed: true          # którakolwiek przesłanka ma holds: false → decyzja NIE jest rozstrzygnięta
+    # card_conflict: [CH5, QP1]     # choice przeczy regułom kart (ID reguł)
+    # Decyzja z premise_failed / card_conflict wymaga pytania z `decision: <id>`; odpowiedź zatwierdzająca zaczyna się od „Zatwierdzam".
 
 patterns:                       # grounding (z Pattern Discovery) — to samo w research i impl
   - domain/aggregate-pattern.md

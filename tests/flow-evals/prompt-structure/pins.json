@@ -58,7 +58,12 @@
         "blog-seed-emit.mjs",
         "report-deviation.mjs",
         "ANZ-LAYER-MISMATCH",
-        "ANZ-GATE-INPUT-MISSING"
+        "ANZ-GATE-INPUT-MISSING",
+        "premise_failed",
+        "card_conflict",
+        "ANL-049",
+        "ANL-050",
+        "ANL-051"
       ],
       "why": "pola artefaktu analizy czytane przez orchestrate-prepare.mjs i hook check-human-voice, enumy klasyfikacji decyzji i skrypty telemetrii/zgłoszeń"
     },
