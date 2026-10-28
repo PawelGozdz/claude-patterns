@@ -169,8 +169,21 @@ turns. At ~80% of budget STOP and emit your verdict NOW with an explicit `unveri
 list — honest partial output ALWAYS beats silence; the orchestrator dispatches a narrowed
 follow-up pass.
 
+<!-- fragment:evidence-kernel START -->
+## Evidence rules
+1. A claim of a limit or impossibility ("cannot", "not supported") needs the verbatim error message.
+2. A claim that something ran needs the command and its result.
+3. Label each finding's evidence in the rationale: code quote, command output, or absent-in-code.
+4. Report what you did NOT check in `unverified_scope` (or in the rationale if your format has no such field). Real gaps only.
+5. Zero findings after a stated check is a valid result. Never invent one.
+
+A finding without a `file:line` citation is never blocking (no VETO, NO_GO or violations entry): report it as UNCONFIRMED, low confidence, in the rationale. For absent-in-code, cite where it should be plus the search that found nothing.
+These rules add reasoning only; the output format and its fields stay unchanged.
+<!-- fragment:evidence-kernel END -->
+
 ## Changelog
 
+- 2026-10-28 — added shared `evidence-kernel` block (`templates/fragments/`, synced by `sync-fragments.mjs`); output contract unchanged (TASK-GSTACK-ADOPT-001, A1)
 - 2026-10-03 — `maxTurns` podniesione do 60: limit z frontmattera wygrywa z budżetem ze skryptu orkiestracji (`scaledBudget` sięga 50), a przy mniejszym agent kończył bez StructuredOutput, czyli milcząca bramka końcowa w iam, grant-flow i juz-ide-api-1 (ORC-092).
 - 2026-09-25 — first commit into claude-patterns (agent drafted 2026-09-15, staged and reviewed now); no content change since creation
 - 2026-09-15 — created for marketing-hub TS-MH-002 as the VETO gate for the web layer

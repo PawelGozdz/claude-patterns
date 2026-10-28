@@ -15,6 +15,8 @@ and none of it is instruction — it is history.
 
 ### Added
 - Techniki z gstack (TASK-GSTACK-ADOPT-001):
+  - `scripts/sync-fragments.mjs` (B4): wspólne fragmenty z `templates/fragments/` wstrzykiwane między markery `<!-- fragment:NAZWA START/END -->` (`--check`, `--apply`).
+  - Kernel dowodowy (A1): pięć reguł dla weryfikatorów i reguła cytatu (finding bez `plik:linia` nie blokuje) we fragmencie `evidence-kernel`, wstrzykniętym do 15 agentów z VETO. Kontrakt wyjścia bez zmian, ok. 1 KB kontekstu stałego na agenta.
   - Polityka powtórzeń evali zależna od rodzaju testu (B2, `tests/flow-evals/lib/eval-policy.mjs`) i kontrola sędziów LLM przed użyciem (B1, `tests/flow-evals/judge-controls/`, `docs/EVAL-JUDGE-CONTROLS.md`).
   - Higiena repozytorium (C1): `LICENSE` (MIT), `SECURITY.md`, obraz Qdrant przypięty do `v1.18.2`, skan zależności `scripts/cron/osv-scan.sh` z `.osv-scanner.toml` i walidacją wyjątków (`ignoreUntil` + powód), kontrola zgodności wersji METADATA.yml z `package.json` i `package-lock.json` w `count-assets --check`.
 - Sonda `/orchestrate` cytuje `tail` zamiast go streszczać (ORC-137, TASK-ORCH-PATTERN-GAPS-001): błędy lintu kopiowane razem z linią nagłówkową pliku, żeby runda naprawcza trafiała w właściwy plik. Karta `refine-providers` PRV2 opisuje wariant D7 (`<RedirectToSignIn>` jako fallback `<Authenticated>` z flagą jednokrotności i wyłącznikiem `auth_retry`). Claim: `DEV-orc-026` w dół o 50% (`engine=0acca0b`).

@@ -108,8 +108,21 @@ awk '/^description:/{print length($0), FILENAME}' src/content/posts/*.mdx | awk 
 - Any content-security violation from the section above (internal codenames,
   old brand name, absolute hard bans)
 
+<!-- fragment:evidence-kernel START -->
+## Evidence rules
+1. A claim of a limit or impossibility ("cannot", "not supported") needs the verbatim error message.
+2. A claim that something ran needs the command and its result.
+3. Label each finding's evidence in the rationale: code quote, command output, or absent-in-code.
+4. Report what you did NOT check in `unverified_scope` (or in the rationale if your format has no such field). Real gaps only.
+5. Zero findings after a stated check is a valid result. Never invent one.
+
+A finding without a `file:line` citation is never blocking (no VETO, NO_GO or violations entry): report it as UNCONFIRMED, low confidence, in the rationale. For absent-in-code, cite where it should be plus the search that found nothing.
+These rules add reasoning only; the output format and its fields stay unchanged.
+<!-- fragment:evidence-kernel END -->
+
 ## Changelog
 
+- 2026-10-28 — added shared `evidence-kernel` block (`templates/fragments/`, synced by `sync-fragments.mjs`); output contract unchanged (TASK-GSTACK-ADOPT-001, A1)
 - 2026-10-21 — `maxTurns` 30 → 60 (ponad sufit `scaledBudget` = 50), jak w pozostałych weryfikatorach po ORC-092: `/orchestrate` obiecuje weryfikatorowi do 50 wywołań, a agent ginął na 30 i oddawał `unverified_scope` (juz-ide-blog BLOG-HOWTO-001, `content:screens-data` i `content:posts`, 3 próby → ESCALATE_AND_HALT).
 - 2026-10-09 — synced frontmatter checklist with `juz-ide-blog`'s actual schema (`content.config.ts`/`taxonomy.ts`): checks referenced `slug`/`date`/160-char limit that no longer existed after the schema migrated to `id`/`type`/`pillar`/`arc`/`pubDatetime`/`description(200)` — VETO logic was silently no-op against real posts; added content-security grep pass (internal repo codenames, old brand name, absolute hard bans) per EDITORIAL-GUIDE §4a.
 

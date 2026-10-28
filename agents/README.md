@@ -260,6 +260,7 @@ as agent folders — they compose from existing blocks (`python` + `flat-service
 cd ~/projects/claude-patterns
 ./scripts/setup-global.sh
 # Creates per-file symlinks in ~/.claude/agents/
+```
 
 ## Agent Frontmatter Schema
 
@@ -287,6 +288,33 @@ how to work here, cross-cutting `project` facts not written anywhere else,
 `reference` pointers. Never task status, verification results or findings lists.
 One note ≤ 15 lines, `MEMORY.md` ≤ 40 lines. `hooks/agent-memory-size-guard.js`
 warns when a memory directory starts looking like a run log.
+
+## Shared fragments and the evidence kernel
+
+A subagent does not resolve includes, so a block that must appear in many agents is injected
+inline from one source: `templates/fragments/<name>.md` (not `agents/shared/`, which is for
+shared *agents* and is walked by `validate-agents.js`). A consumer marks the place with a
+pair of markers, each on its own line, **below** the frontmatter:
+
+```
+<!-- fragment:evidence-kernel START -->
+<!-- fragment:evidence-kernel END -->
+```
+
+Everything between the markers is generated — never edit it by hand.
+`node scripts/sync-fragments.mjs --apply` rewrites the blocks, `--check` (pre-commit) fails
+when any block is stale. An unknown fragment name, an unclosed marker or a marker outside
+the body is an error. Markers inside a fenced code block are ignored, so docs can show the syntax.
+
+**`evidence-kernel`** (TASK-GSTACK-ADOPT-001, A1) is injected into every verifier with VETO
+(each `Yes` row in the tables above). Five rules: a limit claim needs the verbatim error;
+an execution claim needs the command and its result; label the evidence kind of each finding;
+disclose what was not checked; a zero result is a valid result. A finding without a
+`file:line` citation is never blocking — it is reported as UNCONFIRMED. The kernel adds
+reasoning rules only: it does not touch the output contract (`verdict`, `violations`,
+`unverified_scope`, `minor_findings`) that `/orchestrate` parses. Cost: about 840 bytes of
+constant context per VETO agent. A new agent with `VETO = Yes` in this README must carry the
+block — `tests/flow-evals/fragments/run.js` fails otherwise.
 
 ---
 
