@@ -1,42 +1,47 @@
 ---
 id: DEV-anz-layer-mismatch
-status: promoted
+status: proposed
 resolution: >
-  Oba wystąpienia to luki regexów `when` w konfiguracji projektów (3.1), naprawione
-  2026-10-18: ai-gateway .claude/blocks/aig-panel.yml (threat-model: budżet, poison, inject,
-  identity, tożsam; ai-specialist: budżet, koszt) oraz framework-polityczny
-  .claude/blocks/fp-modular-monolith.yml (boundary-analysis: tabel, właściciel, ownership);
-  runtime.yml zmaterializowane. Dwa etapy tech-analysis (nextjs, node) są celowe i opisane w
-  blocks/nextjs.yml („Nie scalać ani nie dropować”). Trzecie wystąpienie (ai-gateway
-  TS-AIG-100, 2026-10-18): regexy `when` w aig-panel.yml rozszerzone o dostawc, anthropic,
-  wydat (threat-model) oraz dostawc, anthropic, sdk, wydat (ai-specialist); runtime.yml
-  zmaterializowane. Sloty i tak uruchomiły się wg ANL-020. Czwarte wystąpienie (aegis-flow
-  TS-020, 2026-10-18): threat-model w blocks/python.yml łapał tylko angielskie
-  auth/token/secret; regex rozszerzony o cors, principal oraz uwierzytel, autoryzac, tożsam,
-  poświadcz; runtime.yml aegis-flow zmaterializowany (pcu i my-intelligence dostaną zmianę
-  przy następnym materialize). Piąte wystąpienie (framework-polityczny FP-005, 2026-10-20):
-  sloty nextjs-architecture-expert i nextjs-quality-verifier w blocks/nextjs.yml nie miały
-  `when:` i szły przy każdym zadaniu; dodany `when:` (web, komponent, stron, routing, layout,
-  formularz, ui, css, seo, middleware, app router, server action), runtime.yml
-  framework-polityczny zmaterializowany (jedyny adopter bloku), verify OK. Regex
-  boundary-analysis zna już `tabel`, więc luka z tego zgłoszenia dotyczyła sformułowania
-  zadania, nie słownika; slot można uruchomić wg ANL-020. Szóste wystąpienie (aegis-flow
-  TS-001, 2026-10-23): task wyłącznie dokumentacyjny, wszystkie 6 warstw w layers_skip.
-  ORC-129: prepare ostrzega, że żadna warstwa nie jest uruchamiana i /orchestrate nie ma czego
-  wykonać. Trafienie create_when na słowa z tekstu taska rozstrzyga layers_skip z powodem.
+  Oba wystąpienia to luki regexów `when` w konfiguracji projektów (3.1),
+  naprawione 2026-10-18: ai-gateway .claude/blocks/aig-panel.yml (threat-model:
+  budżet, poison, inject, identity, tożsam; ai-specialist: budżet, koszt) oraz
+  framework-polityczny .claude/blocks/fp-modular-monolith.yml
+  (boundary-analysis: tabel, właściciel, ownership); runtime.yml
+  zmaterializowane. Dwa etapy tech-analysis (nextjs, node) są celowe i opisane w
+  blocks/nextjs.yml („Nie scalać ani nie dropować”). Trzecie wystąpienie
+  (ai-gateway TS-AIG-100, 2026-10-18): regexy `when` w aig-panel.yml rozszerzone
+  o dostawc, anthropic, wydat (threat-model) oraz dostawc, anthropic, sdk, wydat
+  (ai-specialist); runtime.yml zmaterializowane. Sloty i tak uruchomiły się wg
+  ANL-020. Czwarte wystąpienie (aegis-flow TS-020, 2026-10-18): threat-model w
+  blocks/python.yml łapał tylko angielskie auth/token/secret; regex rozszerzony
+  o cors, principal oraz uwierzytel, autoryzac, tożsam, poświadcz; runtime.yml
+  aegis-flow zmaterializowany (pcu i my-intelligence dostaną zmianę przy
+  następnym materialize). Piąte wystąpienie (framework-polityczny FP-005,
+  2026-10-20): sloty nextjs-architecture-expert i nextjs-quality-verifier w
+  blocks/nextjs.yml nie miały `when:` i szły przy każdym zadaniu; dodany `when:`
+  (web, komponent, stron, routing, layout, formularz, ui, css, seo, middleware,
+  app router, server action), runtime.yml framework-polityczny zmaterializowany
+  (jedyny adopter bloku), verify OK. Regex boundary-analysis zna już `tabel`,
+  więc luka z tego zgłoszenia dotyczyła sformułowania zadania, nie słownika;
+  slot można uruchomić wg ANL-020. Szóste wystąpienie (aegis-flow TS-001,
+  2026-10-23): task wyłącznie dokumentacyjny, wszystkie 6 warstw w layers_skip.
+  ORC-129: prepare ostrzega, że żadna warstwa nie jest uruchamiana i
+  /orchestrate nie ma czego wykonać. Trafienie create_when na słowa z tekstu
+  taska rozstrzyga layers_skip z powodem.
 trigger: analyze_note
 category: plan
 sources:
   - analyze
 rule_ref: ANZ-LAYER-MISMATCH
 first_seen: 2026-10-12
-last_seen: 2026-10-23
-occurrences: 6
+last_seen: 2026-10-28
+occurrences: 8
 projects:
   - ai-gateway
   - framework-polityczny
   - aegis-flow
-reopened_at: 2026-10-23
+  - pcu
+reopened_at: 2026-10-28
 reopened_from_status: promoted
 ---
 
@@ -44,6 +49,8 @@ reopened_from_status: promoted
 
 ## Occurrences
 
+- 2026-10-28 aegis-flow (TS-008) — minor_fixes (ANL-039) dotyczące docs/ i project-orchestration/ nie mają warstwy w runtime.yml orchestrate.layers (dirs: config/, engine/, workers/docker/, app/, daemon/, tests/), więc implementer ich nie ruszy (ORC-042); poprawki dokumentów z analizy wymagają ręcznego zastosowania
+- 2026-10-28 pcu (TASK-062) — Sloty sveltekit (tech-analysis, impl-analysis) w analyze.panel nie mają when:, więc wchodzą przy każdym tasku, także backendowym bez frontendu (TASK-062); pominięte ręcznie
 - 2026-10-23 aegis-flow (TS-001) — TS-001 to task wyłącznie dokumentacyjny (docs/, project-orchestration/): żadna warstwa z runtime.yml orchestrate.layers nie obejmuje docs/, więc wszystkie 6 warstw trafia do layers_skip, a /orchestrate nie ma czego wykonać; jednocześnie create_when warstw engine i config trafia na słowa z tekstu taska (audyt, LLM, guardrail), choć praca ich dirs nie dotyka
 - 2026-10-20 framework-polityczny (FP-005) — Panel zawiera sloty nextjs-architecture-expert i nextjs-quality-verifier bez when:, a task ingestion nie dotyka apps/web; pominięte recznie. Regex when: boundary-analysis nie lapie nowych tabel w infra.sources
 - 2026-10-18 aegis-flow (TS-020) — slot threat-model: regex when: (python block) nie trafia na polskie 'uwierzytelnienie/uwierzytelniania', 'cors', 'principal' — zadanie HTTP z tożsamością i CORS uruchomione ręcznie wg ANL-020

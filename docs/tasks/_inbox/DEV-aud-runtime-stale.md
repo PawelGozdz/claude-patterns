@@ -2,21 +2,15 @@
 id: DEV-aud-runtime-stale
 status: dismissed
 dismissed_reason: >
-  Nieodtwarzalne 2026-10-19: po materialize-runtime (pcu, my-intelligence, personal-blog)
-  audit-projects nie zgłasza już "runtime.yml nieaktualny" dla żadnego projektu z rekordu
-  (juz-ide-api-1/-2/-4 czyste od 2026-10-17). Wejścia kompozycji zmieniły się po
-  materializacji z 2026-10-17; verify-project-setup: setup kompletny. 2026-10-24: 22
-  wystąpienia z 2026-10-22 wynikały ze zmian bloków governance, zacommitowanych później;
-  materialize-runtime dla 10 projektów (aegis-flow, ai-gateway, ai-os-bot, grant-flow, iam,
-  juz-ide-api-1/-2, juz-ide-mobile-app, marketing-hub, my-intelligence), audit-projects bez
-  błędów. Rekord wraca po każdej zmianie bloku bez materializacji.
+  Nieodtwarzalne 2026-10-28: materialize-runtime auth i juz-ide-blog, audit-projects bez
+  błędów, verify-project-setup czysty. Poprzednie rozstrzygnięcie zostaje w historii rekordu.
 trigger: setup_drift
 sources:
   - audit
 rule_ref: AUD-RUNTIME-STALE
 first_seen: 2026-10-10
-last_seen: 2026-10-22
-occurrences: 22
+last_seen: 2026-10-26
+occurrences: 23
 projects:
   - juz-ide-api-4
   - juz-ide-api-2
@@ -40,14 +34,26 @@ projects:
   - platform
   - vytches-ddd
 category: config
-reopened_at: 2026-10-22
+reopened_at: 2026-10-26
 reopened_from_status: dismissed
+previous_dismissed_reason: >
+  Nieodtwarzalne 2026-10-19: po materialize-runtime (pcu, my-intelligence,
+  personal-blog) audit-projects nie zgłasza już "runtime.yml nieaktualny" dla
+  żadnego projektu z rekordu (juz-ide-api-1/-2/-4 czyste od 2026-10-17). Wejścia
+  kompozycji zmieniły się po materializacji z 2026-10-17; verify-project-setup:
+  setup kompletny. 2026-10-24: 22 wystąpienia z 2026-10-22 wynikały ze zmian
+  bloków governance, zacommitowanych później; materialize-runtime dla 10
+  projektów (aegis-flow, ai-gateway, ai-os-bot, grant-flow, iam,
+  juz-ide-api-1/-2, juz-ide-mobile-app, marketing-hub, my-intelligence),
+  audit-projects bez błędów. Rekord wraca po każdej zmianie bloku bez
+  materializacji.
 ---
 
 # DEV-aud-runtime-stale
 
 ## Occurrences
 
+- 2026-10-26 auth — runtime.yml nieaktualny: zmieniły się wejścia kompozycji (bloki / project.yml / aliasy / taksonomia)
 - 2026-10-22 vytches-ddd — runtime.yml nieaktualny: zmieniły się wejścia kompozycji (bloki / project.yml / aliasy / taksonomia)
 - 2026-10-22 platform — runtime.yml nieaktualny: zmieniły się wejścia kompozycji (bloki / project.yml / aliasy / taksonomia)
 - 2026-10-22 personal-blog — runtime.yml nieaktualny: zmieniły się wejścia kompozycji (bloki / project.yml / aliasy / taksonomia)
