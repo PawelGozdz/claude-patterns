@@ -1,33 +1,13 @@
 ---
 name: business-rules-auditor
 description: |
-  Business Rules Auditor — validates @BusinessRule decorator coverage across the codebase.
-  Reads Specification classes, Policy classes, Aggregates, and Handlers to determine
-  which code artifacts contain business rules and whether they have proper decorators.
-
-  Uses the litmus test: "Would the product owner say: let's change this to X?"
-  If YES → business rule → needs @BusinessRule decorator.
-  If NO → infrastructure/technical → no decorator needed.
-
-  ADVISORY ONLY — generates audit report with recommendations.
-  Does NOT modify code. Does NOT have VETO power.
-
-  When to invoke:
-
-  1. Pre-adoption audit
-  "Which files in auth context need @BusinessRule decorators?"
-
-  2. Coverage gap analysis
-  "How many business rules are missing decorators across all contexts?"
-
-  3. Classification review
-  "Is this Result.fail() a business rule or infrastructure error?"
-
-  4. Post-adoption verification
-  "Did we miss any business rules in neighborhood-economy context?"
-
-  5. New context onboarding
-  "Audit geographic-auth context and list all business rules to decorate"
+  Business Rules Auditor — validates @BusinessRule decorator coverage across the
+  codebase: reads Specifications, Policies, Aggregates and Handlers to decide which
+  artifacts carry business rules (litmus test: would the product owner say "let's
+  change this to X"?) and whether they have the decorator. ADVISORY ONLY — audit
+  report with recommendations, no code changes, no VETO. Use for pre-adoption
+  audits, coverage-gap analysis, classification review, post-adoption checks and
+  onboarding a new context.
 
 tools: Read, Glob, Grep
 disallowedTools: Write, Edit, MultiEdit, Bash, Task, WebSearch, WebFetch
@@ -72,6 +52,14 @@ Audit code artifacts for business rules that need `@BusinessRule` decorators.
 Generate actionable reports — never modify code directly.
 
 ---
+
+## When to invoke (examples)
+
+- **Pre-adoption audit** — "Which files in auth context need @BusinessRule decorators?"
+- **Coverage gap analysis** — "How many business rules are missing decorators across all contexts?"
+- **Classification review** — "Is this Result.fail() a business rule or infrastructure error?"
+- **Post-adoption verification** — "Did we miss any business rules in neighborhood-economy context?"
+- **New context onboarding** — "Audit geographic-auth context and list all business rules to decorate"
 
 ## Business Rule Definition
 
@@ -273,3 +261,4 @@ NEXT STEPS:
 ## Changelog
 
 - 2026-09-08 — Output Format summary uses `<N>` placeholders instead of sample counts (`32 total | 3 decorated | 29 missing (9%)`) and warns against copying example numbers into reports (K55, TASK-KAIZEN-002; same few-shot-as-data trap as the `product-owner` incident). Added this Changelog section
+- 2026-10-28 — `description` skrócone do kilku zdań z zachowaniem tematów routingu; przykłady próśb przeniesione do ciała (koszt kontekstu stałego) (TASK-GSTACK-ADOPT-001)
