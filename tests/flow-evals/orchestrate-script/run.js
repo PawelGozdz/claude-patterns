@@ -1624,6 +1624,149 @@ const CASES = (c) => [
       return null;
     },
   },
+
+  // ── ORC-140: wbudowana kontrola conformance ────────────────────────────────────
+  {
+    name: 'conformance-command-is-built-by-code-with-scope-sha-and-safe-skips',
+    run() {
+      const sha = 'a'.repeat(40);
+      const args = { ...ARGS, baseSha: sha, conformance: { tool: '/opt/cp/tools/conformance/check.mjs' },
+        dirtyAtStart: ['src/a.ts', 'x y.ts', 'a;rm -rf x.ts', '../etc/passwd', '-rf', '/abs/path.ts', 'ok/dir/b.ts'] };
+      const cmd = c.conformanceCommand(args, { id: 'application', dirs: ['application/', 'src/ctx/$(id)/', 'app/(group)/[id]/zażółć gęślą/'], checks: ['conformance'] });
+      if (!cmd.startsWith('node "/opt/cp/tools/conformance/check.mjs" --changed --ratchet')) return 'zła baza komendy: ' + cmd;
+      if (!cmd.includes('--baseline-ref ' + sha)) return 'brak przypiętego SHA startu: ' + cmd;
+      if (!cmd.includes("--only 'application/'")) return 'brak zakresu warstwy: ' + cmd;
+      if (!cmd.includes("--skip 'src/a.ts'") || !cmd.includes("--skip 'ok/dir/b.ts'")) return 'brak plików brudnych przed startem: ' + cmd;
+      if (!cmd.includes("--only 'app/(group)/[id]/zażółć gęślą/'") || !cmd.includes("--skip 'x y.ts'")) return 'ścieżki z nawiasami, spacją i Unicode odrzucone: ' + cmd;
+      for (const bad of ['rm -rf', '$(id)', '../etc', "'-rf'", '/abs/path.ts']) if (cmd.includes(bad)) return 'niebezpieczna ścieżka przeszła do powłoki: ' + bad + ' w ' + cmd;
+      return null;
+    },
+  },
+  {
+    name: 'conformance-command-caps-the-number-of-skips-and-omits-invalid-sha',
+    run() {
+      const many = Array.from({ length: 200 }, (_, i) => 'src/f' + i + '.ts');
+      const cmd = c.conformanceCommand({ ...ARGS, baseSha: 'nie-sha', conformance: { tool: '/opt/cp/check.mjs' }, dirtyAtStart: many }, { id: 'final', dirs: [], checks: ['conformance'] });
+      const n = (cmd.match(/--skip /g) || []).length;
+      if (n !== 60) return 'skip: ' + n + ', oczekiwano limitu 60';
+      if (cmd.includes('--baseline-ref')) return 'niepoprawny SHA trafił do komendy';
+      return null;
+    },
+  },
+  {
+    name: 'conformance-command-without-tool-path-is-loud-exit-3-not-silent-success',
+    run() {
+      const cmd = c.conformanceCommand({ ...ARGS }, { id: 'application', dirs: ['application/'], checks: ['conformance'] });
+      if (!/exit 3/.test(cmd) || !/a\.conformance\.tool/.test(cmd)) return 'brak głośnego exit 3: ' + cmd;
+      return null;
+    },
+  },
+  {
+    name: 'probe-prompt-expands-bare-conformance-and-maps-its-own-field',
+    run() {
+      const args = { ...ARGS, baseSha: 'b'.repeat(40), conformance: { tool: '/opt/cp/tools/conformance/check.mjs' } };
+      const p = c.buildProbePrompt(args, { id: 'application', dirs: ['application/'], checks: ['typecheck', 'conformance'], tests: false });
+      if (/npm run conformance/.test(p) || /_chk conformance/.test(p)) return 'gołe id conformance poszło jako skrypt package.json';
+      if (!p.includes('tools/conformance/check.mjs" --changed --ratchet')) return 'komenda conformance nie trafiła do sondy';
+      if (!/pole `conformance`/.test(p) || !/conformanceReport/.test(p)) return 'brak mapowania na własne pole i raportu dosłownego';
+      if (!/check-application-2\.log/.test(p)) return 'raport czytany ze złego logu (conformance jest drugą komendą)';
+      return null;
+    },
+  },
+  {
+    name: 'red-conformance-is-red-in-every-decision-function',
+    // test behawioralny strażnika: sonda zielona poza conformance NIGDY nie daje zieleni, odroczenia ani flaky
+    run() {
+      const probe = { typecheck: 'pass', tests: 'pass', lint: 'pass', conformance: 'fail', conformanceReport: '✗ NEW a.ts:1 [CH-NO-THROW] M.m — throw' };
+      if (!c.probeIsRed(probe)) return 'probeIsRed nie widzi conformance';
+      if (c.probeHasGreenEvidence(probe)) return 'probeHasGreenEvidence: czerwone conformance policzone jako dowód zieleni';
+      const layer = { id: 'application', dirs: ['application/'] };
+      const red = { ...probe, typecheck: 'fail', tsErrors: "src/later/x.ts(1,1): error TS2322: x" };
+      if (c.typecheckRedIsLaterLayers(red, layer, [layer])) return 'typecheckRedIsLaterLayers odroczył czerwień przy czerwonym conformance';
+      const tred = { ...probe, tests: 'fail', testFailFiles: 'FAIL src/later/x.spec.ts', testFilesFailed: 1, testsRerunPassed: true };
+      if (c.testsRedIsLaterLayers(tred, layer, [layer])) return 'testsRedIsLaterLayers odroczył czerwień przy czerwonym conformance';
+      if (c.testsFlakyUnderLoad(tred)) return 'testsFlakyUnderLoad uznał testy za flaky przy czerwonym conformance';
+      if (c.probeCrashed({ ...probe, tail: 'EXIT:137 Killed' }) === null) return 'probeCrashed ignoruje czerwień z conformance';
+      return null;
+    },
+  },
+  {
+    name: 'no-probe-field-comparison-to-fail-forgets-conformance',
+    // test strażnik (statyczny): każda linia kodu porównująca pole sondy (dowolna zmienna) z 'fail' musi też obsługiwać
+    // conformance, inaczej dopisanie pola sondy zostanie po cichu pominięte w tym miejscu. Komentarz nie liczy się jako obsługa.
+    run() {
+      const src = fs.readFileSync(TEMPLATE, 'utf8').split('\n');
+      const offenders = [];
+      src.forEach((line, i) => {
+        const code = line.replace(/\/\/.*$/, '');
+        const cmp = /\.(?:typecheck|tests|lint)\s*[!=]==\s*'fail'/.test(code) || /\w\[[^\]]+\]\s*[!=]==\s*'fail'/.test(code) || /\[\s*'fail'\s*[,\]]/.test(code);
+        if (cmp && !/conformance/.test(code)) offenders.push((i + 1) + ': ' + line.trim().slice(0, 100));
+      });
+      return offenders.length ? 'porównania z "fail" bez conformance:\n  ' + offenders.join('\n  ') : null;
+    },
+  },
+  {
+    name: 'final-probe-skipped-conformance-is-reported-and-summary-shows-it',
+    run() {
+      const probe = { typecheck: 'pass', tests: 'pass', conformance: 'skipped' };
+      const sk = c.finalProbeSkippedFields(['typecheck', 'test', 'conformance'], probe);
+      if (JSON.stringify(sk) !== JSON.stringify(['conformance'])) return 'skipped conformance niezgłoszone: ' + JSON.stringify(sk);
+      if (!/conformance=skipped/.test(c.finalProbeSummary(probe))) return 'podsumowanie sondy nie pokazuje conformance';
+      return null;
+    },
+  },
+  {
+    name: 'conformance-violations-are-parsed-from-the-literal-report',
+    run() {
+      const probe = { conformance: 'fail', conformanceReport: 'CONFORMANCE REPORT\n  ✗ NEW src/a/handler.ts:12 [CH-NO-THROW] H.run — throw new Error(\'x\')\n      throw in a command handler\n  ○ excepted x' };
+      const v = c.conformanceViolations(probe);
+      if (v.length !== 1 || !v[0].startsWith('src/a/handler.ts:12 [CH-NO-THROW]')) return 'zły parsing: ' + JSON.stringify(v);
+      if (c.conformanceViolations({ conformance: 'fail' }).length !== 1) return 'fail bez raportu musi dać jedno ustalenie awaryjne';
+      if (!c.conformanceFixText(probe).includes('Result.fail')) return 'tekst poprawki bez wskazówki Result.fail';
+      return null;
+    },
+  },
+  {
+    name: 'conformance-scope-reports-what-it-dropped-instead-of-narrowing-silently',
+    run() {
+      const many = Array.from({ length: 65 }, (_, i) => 'src/f' + i + '.ts');
+      const sc = c.conformanceScope({ dirtyAtStart: many.concat(["bad'quote.ts", 'x;y.ts']) }, { id: 'u', dirs: ['ok/dir/', 'bad|dir/', '../up/'] });
+      if (JSON.stringify(sc.only) !== JSON.stringify(['ok/dir/'])) return 'only: ' + JSON.stringify(sc.only);
+      if (sc.droppedOnly.length !== 2) return 'droppedOnly: ' + JSON.stringify(sc.droppedOnly);
+      if (sc.skip.length !== 60 || sc.truncatedSkip !== 5 || sc.droppedSkip.length !== 2) return 'skip=' + sc.skip.length + ' truncated=' + sc.truncatedSkip + ' dropped=' + sc.droppedSkip.length;
+      if (c.conformanceBaseShaOk({ baseSha: 'x' }) || !c.conformanceBaseShaOk({ baseSha: 'c'.repeat(40) })) return 'conformanceBaseShaOk';
+      return null;
+    },
+  },
+  {
+    name: 'missing-conformance-field-counts-as-blind-probe-in-final-gate',
+    run() {
+      const sk = c.finalProbeSkippedFields(['typecheck', 'conformance'], { typecheck: 'pass', tests: 'pass' });
+      if (JSON.stringify(sk) !== JSON.stringify(['conformance'])) return 'brak pola conformance niezgłoszony: ' + JSON.stringify(sk);
+      if (c.finalProbeSkippedFields(['typecheck'], { typecheck: 'pass', tests: 'pass' }).length) return 'brak pola zgłoszony, choć conformance nie jest w checks';
+      return null;
+    },
+  },
+  {
+    name: 'conformance-report-parser-tolerates-prefixes-and-keeps-file-line',
+    run() {
+      const probe = { conformance: 'fail', conformanceReport: '- ✗ NEW src/a/handler.ts:3 [CH-NO-THROW] H.m — throw\n> ✗ src/b/handler.ts:9 [CH-NO-BULLMQ] H — import\n     ✗ NEW src/c/handler.ts:1 [CONFIG-CHANGED] (config) — zmieniono' };
+      const v = c.conformanceViolations(probe);
+      if (v.length !== 3 || !v[0].startsWith('src/a/handler.ts:3') || !v[1].startsWith('src/b/handler.ts:9') || !v[2].startsWith('src/c/handler.ts:1')) return 'zły parsing: ' + JSON.stringify(v);
+      return null;
+    },
+  },
+  {
+    name: 'final-gate-with-red-conformance-never-stages-for-review',
+    // statycznie: pętla nie jest w CORE. Linia stageForReview musi wykluczać czerwone conformance, a nadpisanie werdyktu
+    // musi ustawiać cause=code poza nieaktualnym GO (inaczej runda naprawcza ORC-091 się nie uruchomi)
+    run() {
+      const src = fs.readFileSync(TEMPLATE, 'utf8');
+      if (!/if \(!final && !staleFinalReason && !\(finalProbe && finalProbe\.conformance === 'fail'\)\) report\.stageForReview/.test(src)) return 'stageForReview nie wyklucza czerwonego conformance';
+      if (!/if \(!staleFinalReason\) report\.finalGate\.cause = undefined/.test(src)) return 'nadpisanie werdyktu nie ustawia cause=code';
+      return null;
+    },
+  },
 ];
 
 // ── bieg ─────────────────────────────────────────────────────────────────────────

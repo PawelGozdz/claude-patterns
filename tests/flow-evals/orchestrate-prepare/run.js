@@ -322,6 +322,25 @@ CASES.push({
   },
 });
 
+const RUNTIME_CONFORMANCE = RUNTIME_GATE_CHECKS.replace(
+  'checks: ["typecheck"]}', 'checks: ["typecheck", "conformance"]}').replace(
+  'checks: ["test", "lint:check"]}', 'checks: ["test", "conformance"]}');
+
+CASES.push({
+  name: 'conformance-stays-a-bare-id-and-prepare-only-supplies-the-tool-path',
+  // ORC-140: komendę składa template (zakres warstwy / SHA / pliki cudze znane dopiero tam), nie prepare
+  build: () => makeProject({ taskId: 'TS-FIX-001', runtime: RUNTIME_CONFORMANCE, analysis: withFm(''), task: taskFile('Dodaj aggregate.') }),
+  check(r) {
+    if (r.code !== 0) return `oczekiwano exit 0, było ${r.code} (${r.stderr.trim()})`;
+    const dom = r.json.layers.find((l) => l.id === 'domain');
+    if (!dom.checks.includes('conformance') || dom.checks.some((c) => /check\.mjs/.test(c))) return 'wpis conformance rozwinięty w prepare: ' + dom.checks.join(' | ');
+    if (!r.json.checks.finalGate.includes('conformance')) return 'conformance z final_gate.checks zgubione: ' + r.json.checks.finalGate.join(',');
+    const tool = r.json.conformance && r.json.conformance.tool;
+    if (!tool || !/\/tools\/conformance\/check\.mjs$/.test(tool) || !require('fs').existsSync(tool)) return 'brak/zła ścieżka narzędzia w out.conformance.tool: ' + tool;
+    return null;
+  },
+});
+
 CASES.push({
   name: 'units-expand-into-sub-layers',
   build: () => makeProject({

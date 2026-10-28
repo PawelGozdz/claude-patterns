@@ -40,6 +40,7 @@
         { "id": "3. silnik (Workflow)", "line": "^3\\.\\s+silnik\\s+→\\s+Workflow\\(" },
         { "id": "4. wyjście: bramka końcowa", "line": "^4\\.\\s+wyjście\\s+→" },
         { "id": "4a. sprawdzenie treeHash PRZED git add", "line": "orchestrate-tree-hash\\.mjs --project \\. --check" },
+        { "id": "4a2. kontrola conformance PRZED git add", "line": "tools/conformance/check\\.mjs --changed --ratchet --baseline-ref" },
         { "id": "4b. git add plików z report", "line": "`git add` plików z `report`" },
         { "id": "4c. git status potwierdza staged", "line": "`git status --short` żeby POTWIERDZIĆ" },
         { "id": "5. zgłoszenie odstępstw", "line": "^5\\.\\s+zgłoszenie odstępstw\\s+→" },

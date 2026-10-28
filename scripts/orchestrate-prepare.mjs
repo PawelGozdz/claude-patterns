@@ -846,6 +846,9 @@ function main() {
     // inherit | sonnet | opus | haiku; z runtime.yml `final_gate.model`.
     finalGateModel: finalGate.model ? String(finalGate.model) : 'auto',
     baseSha: git.baseSha,
+    // ORC-140: wbudowane id `conformance` w `checks:` — komendę składa template (zakres warstwy, SHA startu, pliki cudze);
+    // prepare podaje tylko ścieżkę do narzędzia, wynikającą z położenia TEGO pliku (projekt nie zna lokalizacji claude-patterns)
+    conformance: { tool: join(REPO_ROOT, 'tools', 'conformance', 'check.mjs') },
     dirtyAtStart: git.dirtyAtStart,
     layers,
     patterns,

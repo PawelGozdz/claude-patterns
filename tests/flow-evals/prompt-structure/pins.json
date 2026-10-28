@@ -22,7 +22,9 @@
         "report-deviation.mjs",
         "workflow-lint",
         ".claude/run-state/orchestrating.json",
-        "ORC-139"
+        "ORC-139",
+        "ORC-140",
+        "tools/conformance/check.mjs"
       ],
       "why": "statusy warstw, pola raportu i skrypty, które /orchestrate wywołuje albo których wyjścia czyta (orchestrate-prepare, orchestrate-tree-hash, report-deviation)"
     },

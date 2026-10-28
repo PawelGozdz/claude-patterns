@@ -416,10 +416,74 @@ function treeBinding(recorded, current) {
   }
 }
 
+// ORC-140: wbudowana kontrola `conformance` (reguły ciała pliku z tools/conformance, ratchet względem SHA startu).
+// W `checks:` stoi jako GOŁE id; komendę składa KOD (nie model i nie prepare), bo zakres zna dopiero ten moment:
+// `effectiveDirs(layer)` (jednostka / layers_scope) i `a.dirtyAtStart` (cudza praca, ORC-124/130/132). Prepare podaje
+// tylko `a.conformance.tool` (ścieżka do check.mjs) i `a.baseSha`. Ścieżki z frontmattera analizy trafiają do powłoki,
+// więc przechodzą ten sam filtr co wykluczenia hasha drzewa (ORC-139).
+const CONFORMANCE_ID = 'conformance'
+const CONFORMANCE_MAX_SKIP = 60
+function isConformanceCheck(c) { return String(c).trim() === CONFORMANCE_ID || /tools\/conformance\/check\.mjs/.test(String(c)) }
+// Ścieżki trafiają do powłoki w apostrofach, więc litery (także spoza ASCII), cyfry, spacje i nawiasy z nazw Next.js
+// (`[id]`, `(group)`) są bezpieczne; odrzucamy wszystko, co kończy apostrof albo coś uruchamia lub przekierowuje.
+function conformancePathOk(p) {
+  return typeof p === 'string' && /^[\p{L}\p{N} _.\/@+()[\],-]+$/u.test(p) && p.indexOf('..') === -1 && p.charAt(0) !== '-' && p.charAt(0) !== '/' && p.trim() === p
+}
+// Zakres kontroli: co wejdzie do komendy i co zostało odrzucone (raport w ostrzeżeniu, nie po cichu).
+function conformanceScope(a, layer) {
+  const dirs = effectiveDirs(layer || {})
+  const dirty = a && Array.isArray(a.dirtyAtStart) ? a.dirtyAtStart : []
+  const okDirty = dirty.filter(conformancePathOk)
+  return {
+    only: dirs.filter(conformancePathOk),
+    droppedOnly: dirs.filter((d) => !conformancePathOk(d)),
+    skip: okDirty.slice(0, CONFORMANCE_MAX_SKIP),
+    droppedSkip: dirty.filter((d) => !conformancePathOk(d)),
+    truncatedSkip: Math.max(0, okDirty.length - CONFORMANCE_MAX_SKIP),
+  }
+}
+function conformanceBaseShaOk(a) { return !!a && typeof a.baseSha === 'string' && /^[0-9a-f]{40,64}$/.test(a.baseSha) }
+function conformanceCommand(a, layer) {
+  const tool = a && a.conformance && a.conformance.tool
+  if (typeof tool !== 'string' || !/^\/[\w./@+-]+$/.test(tool) || tool.indexOf('..') !== -1) {
+    // brak narzędzia = głośne "skipped" (exit 3), nigdy cichy sukces
+    return 'sh -c \'echo "conformance: prepare nie podał ścieżki do tools/conformance/check.mjs (a.conformance.tool)" >&2; exit 3\''
+  }
+  const parts = ['node "' + tool + '" --changed --ratchet']
+  if (conformanceBaseShaOk(a)) parts.push('--baseline-ref ' + a.baseSha)
+  const sc = conformanceScope(a, layer)
+  for (const d of sc.only) parts.push("--only '" + d + "'")
+  for (const p of sc.skip) parts.push("--skip '" + p + "'")
+  return parts.join(' ')
+}
+
+// Jeden predykat „sonda czerwona" zamiast kopii warunku w każdej funkcji decyzyjnej: dopisanie kolejnego pola sondy nie może
+// zgubić żadnego miejsca (odroczenia ORC-082/099/103 i flaky też muszą widzieć czerwone `conformance`).
+function probeIsRed(probe) {
+  return !!probe && (probe.typecheck === 'fail' || probe.tests === 'fail' || probe.lint === 'fail' || probe.conformance === 'fail')
+}
+
+// Treść poprawki dla implementera przy czerwonym `conformance`: dosłowny raport narzędzia + co z nim zrobić.
+function conformanceFixText(probe) {
+  return 'REGUŁY CIAŁA PLIKU (tools/conformance, ratchet względem SHA startu) — popraw KAŻDE ustalenie NEW poniżej. ' +
+    '`throw` w handlerze komendy → `Result.fail(...)` (także w metodach prywatnych); BullMQ/@InjectQueue w handlerze → port ' +
+    '(karta command-handler-queue-port). Wyjątku nie dopisuj sam: ustalenie `exception-new` i zmiana .claude/conformance.json czekają na człowieka.\n' +
+    String((probe && probe.conformanceReport) || '(sonda nie zwróciła raportu — uruchom tools/conformance/check.mjs --changed --ratchet)')
+}
+
+// Pojedyncze naruszenia z raportu narzędzia (linie `✗ NEW plik:linia [REGUŁA] metoda — tekst`), do `violations` bramki końcowej.
+function conformanceViolations(probe) {
+  const lines = String((probe && probe.conformanceReport) || '').split('\n')
+    .map((l) => l.trim().replace(/^[>*\-\s]+/, '')).filter((l) => /^✗/.test(l)).map((l) => l.replace(/^✗\s*(?:NEW\s*)?/, ''))
+  return lines.length ? lines : ['conformance: kontrola reguł ciała pliku zwróciła fail bez raportu (sprawdź ręcznie: tools/conformance/check.mjs --changed --ratchet)']
+}
+
 // Sonda: deterministyczne bramki uruchomione RAZ, tanio, bez czytania kodu. Verifier
 // dostaje jej wynik jako FAKT i ma zakaz ponawiania — inaczej ten sam typecheck wykonuje
 // się kilkadziesiąt razy, a każde 16-23 KB wyjścia zostaje w kontekście na resztę przebiegu.
 function buildProbePrompt(a, layer) {
+  // ORC-140: wbudowane id `conformance` rozwija się tu do komendy dosłownej (zakres warstwy, SHA startu, pliki cudze)
+  const checks = (layer.checks || []).map((c) => (isConformanceCheck(c) && !/\s/.test(String(c).trim()) ? conformanceCommand(a, layer) : c))
   // ORC-016 (2026-09-27 uzupełnienie kodem — do tej pory czysta proza): goły `npm run <check>`
   // w monorepo z turbo/nx (`dependsOn: ["^build"]`) buduje WSZYSTKIE zależności upstream, nie
   // tylko pakiet tej warstwy. Silnik Workflow nie ma dostępu do fs (patrz nagłówek pliku), więc
@@ -452,9 +516,9 @@ function buildProbePrompt(a, layer) {
   // a realny błąd wychodził dopiero z ręcznego `flutter test` (juz-ide-mobile-app
   // DESIGN-SYSTEM-009, `presentation`, 9 wystąpień). Komendy dosłowne biegną z korzenia repo.
   const isLiteralCheck = (c) => /\s/.test(String(c).trim())
-  const hasLiteral = (layer.checks || []).some(isLiteralCheck)
-  const allLiteral = hasLiteral && (layer.checks || []).every(isLiteralCheck)
-  const cmds = (layer.checks || []).map((c) => isLiteralCheck(c) ? String(c).trim() : (firstDir ? '_chk ' + c : 'npm run ' + c))
+  const hasLiteral = checks.some(isLiteralCheck)
+  const allLiteral = hasLiteral && checks.every(isLiteralCheck)
+  const cmds = checks.map((c) => isLiteralCheck(c) ? String(c).trim() : (firstDir ? '_chk ' + c : 'npm run ' + c))
   const scoped = effectiveDirs(layer).join(' ')
   // Pathspecy monorepo: `layer.dirs` to nazwy typu "__tests__/"/"domain/", nigdy katalogi
   // TOP-LEVEL repo (prawdziwa ścieżka to src/contexts/<ctx>/domain/...). Literalny pathspec
@@ -585,13 +649,21 @@ function buildProbePrompt(a, layer) {
     ? '\nMapowanie wyników na pola (każdy check do SWOJEGO pola, nie mieszaj): nazwa/komenda z `lint` → ' +
       '`lint`; z `typecheck`, `tsc`, `mypy`, `pyright`, `analyze`, `vet` albo `build` → `typecheck`; z `test` → `tests` ' +
       '(EXIT:0 = pass, niezerowy = fail, brak skryptu = skipped). Pole `typecheck` = fail tylko wtedy, ' +
-      'gdy padł typecheck/analyze/build, nigdy z powodu lintu.' +
+      'gdy padł typecheck/analyze/build, nigdy z powodu lintu. Komenda z `tools/conformance/check.mjs` → pole `conformance` ' +
+      '(EXIT:0 = pass, 1 lub 2 = fail, 3 = skipped); jej wynik NIGDY nie trafia do `typecheck` ani `lint`.' +
       // ORC-120: build (astro build + pagefind, next build) trwa minuty; domyślny timeout Basha (2 min) ucina polecenie,
       // a sonda oddawała wtedy „skipped" zamiast wyniku. „skipped" znaczy brak komendy, nigdy brak czasu.
       '\nPolecenia mogą trwać kilka minut: wywołuj Bash z `timeout: 600000`. Przekroczenie czasu albo brak wyniku to ' +
       'NIE jest "skipped" — wtedy zwróć "fail" i w `tail` napisz, że polecenie nie skończyło się w limicie.'
     : ''
-  return 'Uruchom dokładnie to i NIC więcej:\n' + run + literalMapping +
+  // przy czerwonej kontroli implementer musi dostać DOSŁOWNY raport (plik:linia, reguła, metoda): streszczenie sondy gubi,
+  // KTÓRY throw jest nowy, a który stary dług (ratchet)
+  const confIdx = checks.findIndex(isConformanceCheck)
+  const conformanceInstruction = confIdx >= 0
+    ? ' Przy EXIT innym niż 0 dla komendy conformance zwróć w `conformanceReport` zawartość jej logu DOSŁOWNIE ' +
+      '(bez streszczania i parafraz): `head -120 /tmp/check-' + layer.id + '-' + (confIdx + 1) + '.log`.'
+    : ''
+  return 'Uruchom dokładnie to i NIC więcej:\n' + run + literalMapping + conformanceInstruction +
     '\nPrzy EXIT:0 NIE otwieraj pliku logu wcale.' + tailInstruction + verbatimInstruction + crashInstruction + tsErrorsInstruction + testFailInstruction +
     delta +
     '\nNIC nie czytaj, nie analizuj, nie poprawiaj, nie komentuj kodu.' +
@@ -643,6 +715,7 @@ function buildVerifierPrompt(a, layer, probe, changedFiles, mode, noopClaim, pri
     ? 'FAKTY Z SONDY — obiekt `checks` (już wykonane, traktuj jak dane wejściowe):\n' +
       '  checks.typecheck: ' + probe.typecheck + '\n  checks.tests: ' + probe.tests +
       (probe.lint != null ? '\n  checks.lint: ' + probe.lint : '') +
+      (probe.conformance != null ? '\n  checks.conformance: ' + probe.conformance : '') +
       (probe.newTestBlocks != null ? '\n  checks.newTestBlocks: ' + probe.newTestBlocks : '') +
       (probe.typecheck === 'deferred'
         ? '\n  (typecheck: czerwień wyłącznie w plikach PÓŹNIEJSZYCH warstw — odroczona do ich sond, ' +
@@ -774,6 +847,7 @@ function buildFinalGatePrompt(a, checks, changedFiles, treeSource, knownGaps, pr
       ? 'FAKTY Z SONDY — checks wykonane na całości (traktuj jak dane wejściowe): ' + checks.join(', ') +
         '\n  checks.typecheck: ' + probe.typecheck + '\n  checks.tests: ' + probe.tests +
         (probe.lint != null ? '\n  checks.lint: ' + probe.lint : '') +
+        (probe.conformance != null ? '\n  checks.conformance: ' + probe.conformance : '') +
         '\nNIE uruchamiaj ich ponownie. Rzeczy niesprawdzalne w tym repo (deploy, kopie u konsumentów, ' +
         'inne repozytoria, przeglądarka, środowisko produkcyjne) wpisz do `unverified_scope`, nie do ' +
         '`violations` — przy zielonych checks i zerze naruszeń nie powodują NO_GO, trafiają do raportu.\n'
@@ -963,14 +1037,16 @@ function finalProbeSkippedFields(finalChecks, probe) {
   if (!probe) return []
   // ORC-120: `build` sonda mapuje na pole `typecheck` (buildProbePrompt) — bez tego `checks.finalGate: [build]`
   // ze `skipped` nie zostawiał śladu (juz-ide-blog BLOG-HOWTO-001, final-gate NO_GO, ręczny build EXIT:0)
-  const kinds = { typecheck: /typecheck|tsc|build/i, tests: /test/i, lint: /lint/i }
+  const kinds = { typecheck: /typecheck|tsc|build/i, tests: /test/i, lint: /lint/i, conformance: /conformance/i }
   const names = (finalChecks || []).map(String)
-  return Object.keys(kinds).filter((k) => probe[k] === 'skipped' && names.some((n) => kinds[k].test(n)))
+  // sonda mogła pominąć pole (nie jest wymagane w schemacie): dla conformance brak pola to też brak dowodu
+  const blind = (k) => probe[k] === 'skipped' || (k === 'conformance' && probe[k] == null)
+  return Object.keys(kinds).filter((k) => blind(k) && names.some((n) => kinds[k].test(n)))
 }
 
 function probeHasGreenEvidence(probe) {
   if (!probe) return false
-  if (probe.typecheck === 'fail' || probe.tests === 'fail' || probe.lint === 'fail') return false
+  if (probeIsRed(probe)) return false
   // ORC-126: `deferred` (czerwień wyłącznie w plikach późniejszych warstw, ORC-082/099) znaczy, że
   // WŁASNE pliki warstwy przeszły kontrolę — to dowód, nie jego brak. Warstwa domenowa z checks
   // [typecheck, lint] i `tests: skipped` nie miała inaczej żadnego `pass` i GO_WITH_GAPS było
@@ -984,7 +1060,7 @@ function probeHasGreenEvidence(probe) {
 // przy sondzie czerwonej, ślepej (same skipped) i nieobecnej (grant-flow TS-UI-009, marketing-hub TS-MH-026).
 function finalProbeSummary(probe) {
   if (!probe) return 'sonda bez wyniku'
-  const state = ['typecheck', 'tests', 'lint'].map((k) => k + '=' + (probe[k] == null ? 'brak' : probe[k])).join(', ')
+  const state = ['typecheck', 'tests', 'lint', 'conformance'].map((k) => k + '=' + (probe[k] == null ? 'brak' : probe[k])).join(', ')
   return state + (probeHasGreenEvidence(probe) ? ' (zielona)' : ' (brak zielonego dowodu: czerwień albo same skipped)')
 }
 
@@ -1236,7 +1312,7 @@ function ownerLayerOf(file, layers) {
 // zrzucona na niego kończyła się BLOCKED_BY_PRIOR bez przyczyny. Zwraca komunikat albo null.
 const PROBE_CRASH = /EXIT:\s*(?:134|137)\b|heap out of memory|JavaScript heap|\bKilled\b|SIGKILL|SIGABRT/i
 function probeCrashed(probe) {
-  if (!probe || (probe.typecheck !== 'fail' && probe.tests !== 'fail' && probe.lint !== 'fail')) return null
+  if (!probeIsRed(probe)) return null
   const text = String(probe.tail || '')
   if (!PROBE_CRASH.test(text)) return null
   // prawdziwy błąd kodu obok awarii: błąd TS w `tsErrors` albo plik testu w `testFailFiles`
@@ -1246,7 +1322,7 @@ function probeCrashed(probe) {
 }
 
 function typecheckRedIsLaterLayers(probe, layer, allLayers) {
-  if (!probe || probe.typecheck !== 'fail' || probe.tests === 'fail' || probe.lint === 'fail') return false
+  if (!probe || probe.typecheck !== 'fail' || probe.tests === 'fail' || probe.lint === 'fail' || probe.conformance === 'fail') return false
   const { total, paths } = typecheckErrorPaths(probe.tsErrors || probe.tail)
   if (!paths.length || paths.length !== total) return false
   const withDirs = (allLayers || []).filter((l) => (l.dirs || []).length || effectiveDirs(l).length)
@@ -1289,7 +1365,7 @@ function testFailExpectedCount(text) {
 // nie są czerwone) — odroczone do sond tamtych warstw, tak jak typecheck w ORC-082. Zgodność liczby
 // wyłapanych plików z podsumowaniem runnera jest warunkiem: niepełna lista = brak odroczenia.
 function testsRedIsLaterLayers(probe, layer, allLayers) {
-  if (!probe || probe.tests !== 'fail' || probe.typecheck === 'fail' || probe.lint === 'fail') return false
+  if (!probe || probe.tests !== 'fail' || probe.typecheck === 'fail' || probe.lint === 'fail' || probe.conformance === 'fail') return false
   const paths = testFailPaths(probe.testFailFiles)
   if (!paths.length || typeof probe.testFilesFailed !== 'number' || testFailExpectedCount(probe.testFailFiles) !== probe.testFilesFailed) return false
   const withDirs = (allLayers || []).filter((l) => (l.dirs || []).length || effectiveDirs(l).length)
@@ -1305,7 +1381,7 @@ function testsRedIsLaterLayers(probe, layer, allLayers) {
 // (niestabilne pod obciążeniem). Warunki: typecheck i lint nie są czerwone, sonda wyłapała pliki, a ich
 // liczba zgadza się z podsumowaniem runnera (niepełna lista = nie wiemy, co jeszcze padło).
 function testsFlakyUnderLoad(probe) {
-  if (!probe || probe.tests !== 'fail' || probe.typecheck === 'fail' || probe.lint === 'fail') return false
+  if (!probe || probe.tests !== 'fail' || probe.typecheck === 'fail' || probe.lint === 'fail' || probe.conformance === 'fail') return false
   if (probe.testsRerunPassed !== true) return false
   const paths = testFailPaths(probe.testFailFiles)
   return paths.length > 0 && typeof probe.testFilesFailed === 'number' && testFailExpectedCount(probe.testFailFiles) === probe.testFilesFailed
@@ -1548,6 +1624,9 @@ const CHECKS_SCHEMA = {
     typecheck: { type: 'string', enum: ['pass', 'fail', 'skipped'] },
     tests: { type: 'string', enum: ['pass', 'fail', 'skipped'] },
     lint: { type: 'string', enum: ['pass', 'fail', 'skipped'] },
+    // ORC-140: wbudowana kontrola reguł ciała pliku (tools/conformance, ratchet) — własne pole, nie `lint`/`typecheck` (ORC-094)
+    conformance: { type: 'string', enum: ['pass', 'fail', 'skipped'] },
+    conformanceReport: { type: 'string' },
     newTestBlocks: { type: 'number' },
     tail: { type: 'string' },
     tsErrors: { type: 'string' },
@@ -1944,6 +2023,24 @@ for (const step of plan) {
       probe = null
     }
 
+    // ORC-140: `skipped` z kontroli conformance (brak baseline / narzędzia, exit 3) znaczy, że reguły ciała pliku NIE zostały
+    // sprawdzone — to nie jest zieleń, więc zawsze w raporcie (inaczej brak SHA wyglądałby jak czysty kod).
+    if (probe && (layer.checks || []).some(isConformanceCheck)) {
+      if (probe.conformance === 'skipped' || probe.conformance == null) {
+        report.warnings = (report.warnings || []).concat(layer.id + ': kontrola conformance ' + (probe.conformance == null ? 'nie zwróciła pola' : 'zwróciła skipped (brak baseline albo narzędzia)') + ' — reguły ciała pliku NIE zostały sprawdzone (ORC-140)')
+      }
+      // #4/#5: ciche zawężenia kontroli (brak SHA startu → porównanie z HEAD; odrzucone ścieżki) zawsze w raporcie, raz na warstwę
+      const sc = conformanceScope(a, layer)
+      const notes = []
+      if (!conformanceBaseShaOk(a)) notes.push('brak przypiętego SHA startu (a.baseSha) — porównanie z HEAD, commit w trakcie przebiegu ukryje naruszenia')
+      if (sc.droppedOnly.length) notes.push('odrzucone ścieżki zakresu (' + sc.droppedOnly.join(', ') + ')' + (sc.only.length ? ' — kontrola węższa niż warstwa' : ' — kontrola obejmie całe repo'))
+      if (sc.droppedSkip.length || sc.truncatedSkip) notes.push('pominięte pliki brudne przed startem: ' + sc.droppedSkip.length + ' odrzuconych, ' + sc.truncatedSkip + ' ponad limit — mogą wrócić jako cudze naruszenia')
+      if (notes.length && !(report.conformanceNoted || {})[layer.id]) {
+        report.conformanceNoted = Object.assign({}, report.conformanceNoted, { [layer.id]: true })
+        report.warnings = (report.warnings || []).concat(layer.id + ': conformance — ' + notes.join('; ') + ' (ORC-140)')
+      }
+    }
+
     // ORC-085: warstwa ma skonfigurowane checks, a sonda zwróciła „skipped" dla obu — ślepa
     // sonda (złe nazwy skryptów/brak skryptów). Głośno, nie po cichu: weryfikator dostaje
     // fakty „skipped" jako brak dowodu, a GO_WITH_GAPS wymaga co najmniej jednego `pass`.
@@ -1972,9 +2069,11 @@ for (const step of plan) {
       settled = { id: layer.id, status: 'ESCALATE_AND_HALT', reason: crashed, cause: 'machine' }
       break
     }
-    if (probe && (probe.typecheck === 'fail' || probe.tests === 'fail' || probe.lint === 'fail')) {
+    if (probeIsRed(probe)) {
       violations = 'deterministyczna bramka na czerwono (typecheck: ' + probe.typecheck +
-        ', testy: ' + probe.tests + (probe.lint != null ? ', lint: ' + probe.lint : '') + ')\n' + (probe.tail || '')
+        ', testy: ' + probe.tests + (probe.lint != null ? ', lint: ' + probe.lint : '') +
+        (probe.conformance != null ? ', conformance: ' + probe.conformance : '') + ')\n' + (probe.tail || '') +
+        (probe.conformance === 'fail' ? '\n' + conformanceFixText(probe) : '')
       log(layer.id + ': sonda NO_GO — bez analizy kodu, prosto do poprawki')
       probeRed = violations
       probeRedFacts = probe
@@ -2283,7 +2382,7 @@ if (!finalAgent) {
       const prOpts =Object.assign({ label: layer.id + '-final-fix-checks', maxTurns: DEFAULTS.probeTurns, schema: CHECKS_SCHEMA }, modelFor('probe'))
       const pr = await ask(buildProbePrompt(a, layer), prOpts)
       // ORC-121: lint też liczy się jako czerwona sonda — naprawa, która wnosi błędy import/order i prettier, nie jest zieloną naprawą
-      if (pr && (pr.typecheck === 'fail' || pr.tests === 'fail' || pr.lint === 'fail')) {
+      if (probeIsRed(pr)) {
         ok = false
         report.warnings = (report.warnings || []).concat(layer.id + ': sonda czerwona po naprawie ustaleń bramki końcowej (typecheck: ' + pr.typecheck + ', testy: ' + pr.tests + (pr.lint != null ? ', lint: ' + pr.lint : '') + ')')
       }
@@ -2389,9 +2488,18 @@ if (!finalAgent) {
     ? Object.assign({}, final, { cause: undefined })
     : { verdict: 'NO_GO', violations: [staleFinalReason || 'bramka końcowa nie zwróciła werdyktu (także po ponowieniu)'], cause: 'machine' }
   if (gateTreeHash) report.finalGate.treeHash = gateTreeHash
+  // ORC-140: deterministyczny fakt wygrywa z werdyktem LLM — czerwone `conformance` z sondy bramki to NO_GO z naruszeniami
+  // `plik:linia — reguła`, nawet gdy bramka dała GO; cause=code (nie machine), więc wchodzi runda naprawcza ORC-091.
+  if (finalProbe && finalProbe.conformance === 'fail') {
+    report.finalGate = Object.assign({}, report.finalGate, {
+      verdict: 'NO_GO',
+      violations: (report.finalGate.violations || []).concat(conformanceViolations(finalProbe)),
+    })
+    if (!staleFinalReason) report.finalGate.cause = undefined // czerwone conformance to błąd kodu: wchodzi runda naprawcza, także bez werdyktu LLM
+  }
   // ORC-087: brak werdyktu przy wszystkich warstwach GO — pliki idą do stagingu z flagą przeglądu.
   // ORC-139: nieaktualne GO to NO_GO bez wiarygodnej oceny tego drzewa — nic nie idzie do `git add`
-  if (!final && !staleFinalReason) report.stageForReview = stageableFiles(finalFiles, a.dirtyAtStart, allChangedFiles, deletedAll)
+  if (!final && !staleFinalReason && !(finalProbe && finalProbe.conformance === 'fail')) report.stageForReview = stageableFiles(finalFiles, a.dirtyAtStart, allChangedFiles, deletedAll)
   // Bramka końcowa nie ma pętli retry (jeden strzał) — GO z niepustym unverified_scope nie może
   // więc "skonsumować próby" jak w decideVerdict(); jedyna bezpieczna reakcja to potraktować to
   // jak NO_GO, żeby uczciwie przyznana luka trafiła do człowieka zamiast do cichego stage'owania.
