@@ -18,6 +18,9 @@ import { buildTaskBlocks } from './telemetry-tasks.mjs';
 export { unitOf, percentile };
 
 const MISSING_ROLE = 'none';
+// Procesy, których kroki nie mają kosztu z natury (review-panel: statystyka reviewerów, bez pomiaru tokenów).
+// Nie liczą się do `stepsWithoutCost`, żeby „kroki bez kosztu" nie udawały luki w pomiarze.
+const COSTLESS_PROCESSES = new Set(['review-panel']);
 const VERDICTS = new Set(['go', 'no_go']);
 
 const round = (x) => Math.round(x * 1e6) / 1e6;
@@ -124,15 +127,17 @@ export function buildRollups(events) {
       rb.n++;
       bump(rb.outcomes, ev.outcome || 'unknown');
       if (ev.cause) bump(rb.causes, ev.cause);
+      // Licznik findingów (tylko review-panel); pole powstaje leniwie, więc inne dni zostają bajt w bajt takie same.
+      if (Number.isInteger(ev.step.findings)) rb.findings = (rb.findings || 0) + ev.step.findings;
       if (ev.m && Number.isFinite(ev.m.toolCalls)) rb.toolCalls += ev.m.toolCalls;
       if (ev.m && Number.isFinite(ev.m.durationMs)) rb._dur.push(ev.m.durationMs);
       if (ev.outcome === 'died') p.died++;
-      if (cost === null) p.stepsWithoutCost++;
+      if (cost === null) { if (!COSTLESS_PROCESSES.has(ev.process)) p.stepsWithoutCost++; }
       else { p.costUsd += cost; rb.costUsd += cost; }
       if (eb) {
         eb.steps++;
         if (ev.outcome === 'died') eb.died++;
-        if (cost === null) eb.stepsWithoutCost++;
+        if (cost === null) { if (!COSTLESS_PROCESSES.has(ev.process)) eb.stepsWithoutCost++; }
         else eb.costUsd += cost;
       }
       if (ev.step.attempt > 1) { p.retried++; if (cost !== null) p.costUsdRetried += cost; }

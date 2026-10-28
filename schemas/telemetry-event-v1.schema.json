@@ -6,13 +6,50 @@
   "type": "object",
   "additionalProperties": false,
   "required": ["v", "id", "ts", "kind", "process", "project", "host", "runId"],
+  "allOf": [
+    {
+      "description": "review-panel (ADR 0012, aneks TASK-GSTACK-ADOPT-001): jedno step.end na reviewera w przebiegu panelu, bez pomiarów i pól innych procesów (m, cause, taskRef, engine, plan, signature, trigger, seed oraz step.group/agent/model/attempt/fixes/blamed/unblamed są zabronione). step.id = step.role = nazwa reviewera bez prefiksu reviewer- (np. nitpicker); outcome ok = reviewer się wykonał (wtedy step.findings jest obowiązkowe), skipped = adaptacyjnie pominięty (findings zabronione).",
+      "if": { "required": ["process"], "properties": { "process": { "const": "review-panel" } } },
+      "then": {
+        "required": ["step", "outcome"],
+        "not": { "anyOf": [{ "required": ["cause"] }, { "required": ["m"] }, { "required": ["signature"] }, { "required": ["trigger"] }, { "required": ["seed"] }, { "required": ["plan"] }, { "required": ["engine"] }, { "required": ["taskRef"] }] },
+        "properties": {
+          "kind": { "const": "step.end" },
+          "outcome": { "enum": ["ok", "skipped"] },
+          "step": {
+            "description": "x-equalProperties to słowo kluczowe lokalnego walidatora (scripts/lib/telemetry-events.mjs): id i role muszą być tą samą nazwą. Zwykły walidator JSON Schema je pomija.",
+            "required": ["id", "role"],
+            "x-equalProperties": ["id", "role"],
+            "not": { "anyOf": [{ "required": ["group"] }, { "required": ["agent"] }, { "required": ["model"] }, { "required": ["attempt"] }, { "required": ["fixes"] }, { "required": ["blamed"] }, { "required": ["unblamed"] }] },
+            "properties": {
+              "id": { "pattern": "^[a-z][a-z0-9-]{0,40}$" },
+              "role": { "pattern": "^[a-z][a-z0-9-]{0,40}$" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "required": ["process", "outcome"], "properties": { "process": { "const": "review-panel" }, "outcome": { "const": "ok" } } },
+      "then": { "required": ["step"], "properties": { "step": { "required": ["findings"] } } }
+    },
+    {
+      "if": { "required": ["process", "outcome"], "properties": { "process": { "const": "review-panel" }, "outcome": { "const": "skipped" } } },
+      "then": { "properties": { "step": { "not": { "required": ["findings"] } } } }
+    },
+    {
+      "description": "step.findings istnieje wyłącznie w zdarzeniach review-panel — inne procesy nie mają jak przemycić licznika.",
+      "if": { "required": ["step"], "properties": { "step": { "required": ["findings"] } } },
+      "then": { "properties": { "process": { "const": "review-panel" } } }
+    }
+  ],
   "properties": {
     "v": { "const": 1 },
     "id": { "type": "string", "pattern": "^[0-9a-f-]{36}$" },
     "ts": { "type": "string", "format": "date-time" },
     "kind": { "enum": ["run.start", "step.end", "run.end", "deviation", "seed"] },
-    "process": { "enum": ["orchestrate", "workflow", "analyze", "audit", "setup", "blog-seed", "pre-commit", "hook"] },
-    "project": { "type": "string", "pattern": "^[A-Za-z0-9._-]{1,80}$" },
+    "process": { "enum": ["orchestrate", "workflow", "analyze", "audit", "setup", "blog-seed", "pre-commit", "hook", "review-panel"] },
+    "project": { "type": "string", "pattern": "^(?!\\.{1,2}$)[A-Za-z0-9._-]{1,80}$" },
     "host": { "type": "string", "pattern": "^[0-9a-f]{12}$" },
     "runId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]{1,80}$" },
     "taskRef": { "type": ["string", "null"], "pattern": "^[A-Za-z0-9._-]{1,80}$" },
@@ -50,6 +87,11 @@
         },
         "unblamed": {
           "description": "Liczba naruszeń bramki, których nie da się przypisać do warstwy (dokument, luka w sprawdzeniu, przyczyna maszynowa).",
+          "type": "integer",
+          "minimum": 0
+        },
+        "findings": {
+          "description": "Tylko process=review-panel, outcome=ok (ADR 0012, aneks TASK-GSTACK-ADOPT-001): liczba findingów zgłoszonych przez reviewera w jednym przebiegu panelu. Sama liczba — bez treści, ścieżek i autorów findingów.",
           "type": "integer",
           "minimum": 0
         }

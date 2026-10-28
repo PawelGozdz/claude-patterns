@@ -17,6 +17,8 @@
  *   5. liczniki jakości danych na ręcznie policzonym zestawie
  *   6. tydzień ISO na granicach roku
  *   7. CLI: tekst, --json, --md, błędy użycia (exit 1)
+ *   9. review-panel (aneks TASK-GSTACK-ADOPT-001): poza sumami „wszystkich procesów", liczniki jakości danych i widok ról;
+ *      metryki orchestrate (first-pass, fałszywe GO, NO_GO bramki, koszt powtórek, zgon) takie same z kroków panelu i bez
  *   8. loadBaseline korzysta ze wspólnego czytnika; raport nie sięga do zdarzeń; guard w pre-commit
  */
 
@@ -229,6 +231,74 @@ const tests = [
       for (let i = 0; i < want.length; i++) {
         if (rows[i].num !== want[i][0] || rows[i].den !== want[i][1]) return `${rows[i].metric}: ${rows[i].num}/${rows[i].den}, oczekiwano ${want[i][0]}/${want[i][1]}`;
       }
+      return null;
+    },
+  },
+  {
+    name: 'review-panel-does-not-distort-run-metrics',
+    run(m) {
+      const orch = {
+        day: '2026-04-01', host: 'h', project: 'p', events: 1, runs: { orchestrate: { started: 2 } },
+        processes: { orchestrate: {
+          steps: 20, died: 2, costUsd: 10, costUsdRetried: 3, stepsWithoutCost: 1,
+          verification: { units: 10, firstPassGo: 7 }, finalGate: { judged: 4, noGo: 1 },
+          roles: { verifier: { n: 5, outcomes: { ok: 5 }, causes: { config: 1 }, verdicts: { goJudged: 5, falseGo: 1 } } },
+        } },
+      };
+      const panel = {
+        ...orch, processes: { ...orch.processes, 'review-panel': {
+          steps: 60, died: 0, costUsd: 0, costUsdRetried: 0, stepsWithoutCost: 0,
+          roles: { eagle: { n: 30, outcomes: { ok: 20, skipped: 10 }, findings: 41 }, nitpicker: { n: 30, outcomes: { ok: 30 }, findings: 0 } },
+        } },
+      };
+      const a = m.report.metricsOf(m.report.totalsOf([orch]));
+      const b = m.report.metricsOf(m.report.totalsOf([panel]));
+      const err = (JSON.stringify(a) === JSON.stringify(b)) ? null : `metryki bez procesu zmienione przez review-panel: ${JSON.stringify(a)} ≠ ${JSON.stringify(b)}`;
+      if (err) return err;
+      if (m.report.totalsOf([panel]).steps !== 20) return 'sumy wszystkich procesów liczą kroki panelu';
+      if (m.report.totalsOf([panel], { process: 'review-panel' }).steps !== 60) return 'jawne --process review-panel nie widzi kroków panelu';
+      if (m.report.totalsOf([panel], { process: 'orchestrate' }).steps !== 20) return 'process orchestrate zmieniony przez panel';
+      const dq = (r) => JSON.stringify(m.report.reportDataQuality([r]).sections[0].rows.map((x) => [x.num, x.den]));
+      if (dq(orch) !== dq(panel)) return 'liczniki jakości danych zmienione przez review-panel';
+      const roles = m.report.reportView('role', [panel]).sections[0].rows.map((r) => r.key);
+      if (roles.includes('eagle')) return 'widok ról (bez --process) pokazuje reviewerów panelu';
+      if (!m.report.reportView('role', [panel], { process: 'review-panel' }).sections[0].rows.some((r) => r.key === 'eagle')) return '--process review-panel nie pokazuje ról panelu';
+      const procRows = m.report.reportView('process', [panel]).sections[0].rows;
+      const rp = procRows.find((r) => r.key === 'review-panel');
+      if (!rp || rp.steps !== 60 || rp.firstPass !== null || rp.died !== null || rp.costUsd !== null) return `widok --by process: ${JSON.stringify(rp)}`;
+      return null;
+    },
+  },
+  {
+    name: 'panel-only-days-do-not-occupy-engine-window-slots',
+    run(m) {
+      const H = 'abcdef1';
+      const day = (n) => `2026-05-${String(n).padStart(2, '0')}`;
+      const orch = (d, withEngine) => ({
+        day: d, host: 'h', project: 'p', events: 1, runs: { orchestrate: { started: 1 } },
+        engines: withEngine ? { [H]: { orchestrate: { started: 1 } } } : {},
+        processes: { orchestrate: { steps: 1, died: 0, costUsd: 1, costUsdRetried: 0, stepsWithoutCost: 0, verification: { units: 1, firstPassGo: 1 } } },
+      });
+      const panel = (d) => ({ day: d, host: 'h', project: 'p', events: 3, runs: {}, engines: {}, deviations: {}, processes: { 'review-panel': { steps: 3, died: 0, costUsd: 0, costUsdRetried: 0, stepsWithoutCost: 0, roles: { eagle: { n: 3, outcomes: { ok: 3 }, findings: 1 } } } } });
+      // orchestrate co drugi dzień od 8., silnik od 14.; trzy dni z samym panelem tuż po wdrożeniu silnika
+      const base = [8, 10, 12].map((n) => orch(day(n), false)).concat([14, 16, 18, 20, 22, 24, 26].map((n) => orch(day(n), true)));
+      const withPanel = [...base, panel(day(15)), panel(day(17)), panel(day(19))];
+      const w0 = m.report.engineWindows(base, H, { window: 7 });
+      const w1 = m.report.engineWindows(withPanel, H, { window: 7 });
+      if (w0.after.steps !== 7) return `kontrola: after.steps bez panelu = ${w0.after.steps}`;
+      if (w1.after.steps !== w0.after.steps || w1.afterDays.length !== w0.afterDays.length || JSON.stringify(w1.beforeDays) !== JSON.stringify(w0.beforeDays)) {
+        return `dni z samym panelem zmieniły okno: after.steps ${w0.after.steps}→${w1.after.steps}, afterDays ${w0.afterDays.length}→${w1.afterDays.length}`;
+      }
+      if (m.report.totalsOf(withPanel).days !== m.report.totalsOf(base).days) return 'kolumna dni liczy dni z samym panelem';
+      if (m.report.totalsOf(withPanel, { process: 'review-panel' }).days !== m.report.totalsOf(base).days + 3) return '--process review-panel nie widzi swoich dni';
+      for (const by of ['project', 'week']) {
+        const rows = (rs) => m.report.reportView(by, rs).sections[0].rows;
+        if (JSON.stringify(rows(withPanel)) !== JSON.stringify(rows(base))) return `widok --by ${by} zmieniony przez dni z samym panelem`;
+        if (rows(withPanel).some((r) => r.steps === 0)) return `widok --by ${by} ma wiersz z 0 kroków`;
+      }
+      // dzień z panelem I orchestrate liczy się jak zwykły dzień orchestrate
+      const mixed = { ...orch(day(28), true), processes: { ...orch(day(28), true).processes, ...panel(day(28)).processes } };
+      if (m.report.totalsOf([mixed]).days !== 1) return 'dzień mieszany (orchestrate + panel) nie jest policzony';
       return null;
     },
   },

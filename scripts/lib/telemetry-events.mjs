@@ -108,8 +108,8 @@ export function buildEvent(fields) {
 }
 
 // Minimalny walidator JSON Schema — tylko konstrukcje użyte w schematach repo (type, const,
-// enum, pattern, minimum/maximum, min/maxLength, min/maxItems, anyOf, required, properties,
-// additionalProperties:false, items).
+// enum, pattern, minimum/maximum, min/maxLength, min/maxItems, anyOf, allOf, if/then/else, not,
+// required, properties, additionalProperties:false, items) oraz lokalne `x-equalProperties`.
 // Bez zależności (ajv nie ma w repo), a pełny walidator to przesada dla jednego schematu.
 function typeOk(value, type) {
   const types = Array.isArray(type) ? type : [type];
@@ -139,12 +139,32 @@ function check(value, schema, at, errors) {
     return;
   }
   if (Array.isArray(value) && schema.items) value.forEach((v, i) => check(v, schema.items, `${at}[${i}]`, errors));
-  if (value && typeof value === 'object' && !Array.isArray(value) && schema.properties) {
-    for (const req of schema.required || []) if (!(req in value)) errors.push(`${at}.${req}: brak`);
+  const isObject = value !== null && typeof value === 'object' && !Array.isArray(value);
+  // `required` działa też bez `properties` — podschematy if/then niosą same wymagania.
+  if (isObject && schema.required) for (const req of schema.required) if (!(req in value)) errors.push(`${at}.${req}: brak`);
+  if (isObject && schema.properties) {
     for (const [k, v] of Object.entries(value)) {
       if (schema.properties[k]) check(v, schema.properties[k], `${at}.${k}`, errors);
       else if (schema.additionalProperties === false) errors.push(`${at}.${k}: pole spoza schematu`);
     }
+  }
+  // Rozszerzenie lokalne: `x-equalProperties: [a, b]` — obie właściwości (jeśli są) muszą mieć tę samą wartość.
+  if (isObject && Array.isArray(schema['x-equalProperties'])) {
+    const [a, b] = schema['x-equalProperties'];
+    if (a in value && b in value && value[a] !== value[b]) errors.push(`${at}: ${a} i ${b} muszą być równe ("${value[a]}" ≠ "${value[b]}")`);
+  }
+  // Warunki: `then`/`else` obowiązują wedle tego, czy `if` przeszło bez błędów.
+  for (const sub of schema.allOf || []) check(value, sub, at, errors);
+  if (schema.if) {
+    const probe = [];
+    check(value, schema.if, at, probe);
+    const branch = probe.length === 0 ? schema.then : schema.else;
+    if (branch) check(value, branch, at, errors);
+  }
+  if (schema.not) {
+    const probe = [];
+    check(value, schema.not, at, probe);
+    if (probe.length === 0) errors.push(`${at}: wartość zabroniona przez schemat`);
   }
 }
 
@@ -221,6 +241,53 @@ export function appendEvent(fields) {
     return { ok: true, event: ev };
   } catch (e) {
     return { ok: false, error: e && e.message ? e.message : String(e) };
+  }
+}
+
+// ── review-panel (ADR 0012, aneks TASK-GSTACK-ADOPT-001) ─────────────────────────────────────────
+//
+// Jedno `step.end` na reviewera w przebiegu panelu: step.id = step.role = nazwa reviewera bez prefiksu
+// `reviewer-`; `ran` → outcome `ok` + step.findings (liczba), `skipped` → outcome `skipped` bez licznika.
+// Bez run.start/run.end (jak process `hook`): panel nie ma planu ani kosztu, a przebieg identyfikuje runId.
+export const REVIEWER_NAME_RE = /^[a-z][a-z0-9-]{0,40}$/;
+export const REVIEW_PANEL = 'review-panel';
+
+const reviewRunId = () => `rp-${Date.now().toString(36)}-${crypto.randomBytes(3).toString('hex')}`;
+
+/**
+ * Pola zdarzeń (do appendEventsDedup) dla jednego przebiegu panelu.
+ * entries: [{ reviewer, outcome: 'ran'|'skipped', findings?, id? }] — `id` tylko dla migracji (deterministyczne).
+ * Rzuca Error przy złym wejściu: to błąd wołającego, nie metryki.
+ */
+export function buildReviewPanelEvents({ project, entries, runId = reviewRunId(), ts = new Date().toISOString() }) {
+  return entries.map((e) => {
+    if (!REVIEWER_NAME_RE.test(String(e.reviewer))) throw new Error(`nieprawidłowa nazwa reviewera: "${e.reviewer}"`);
+    if (e.outcome === 'ran') {
+      if (!Number.isInteger(e.findings) || e.findings < 0) throw new Error(`reviewer ${e.reviewer}: ran wymaga findings >= 0 (liczba całkowita)`);
+    } else if (e.outcome !== 'skipped') {
+      throw new Error(`reviewer ${e.reviewer}: outcome musi być "ran" albo "skipped"`);
+    }
+    return {
+      ...(e.id ? { id: e.id } : {}),
+      ts, kind: 'step.end', process: REVIEW_PANEL, project, runId,
+      step: { id: e.reviewer, role: e.reviewer, ...(e.outcome === 'ran' ? { findings: e.findings } : {}) },
+      outcome: e.outcome === 'ran' ? 'ok' : 'skipped',
+    };
+  });
+}
+
+/**
+ * Zapisuje przebieg panelu. Nigdy nie rzuca (jak reszta emiterów): zwraca { runId, written, rejected, error? }.
+ * `dedup: false` domyślnie — id są świeże; migracja podaje deterministyczne id i `dedup: true`.
+ */
+export function emitReviewPanelRun(input, { dedup = false } = {}) {
+  const runId = input.runId || reviewRunId();
+  try {
+    const fields = buildReviewPanelEvents({ ...input, runId });
+    const res = appendEventsDedup(fields, { dedup });
+    return { runId, written: res.written, skipped: res.skipped, rejected: res.rejected, ...(res.error ? { error: res.error } : {}) };
+  } catch (e) {
+    return { runId, written: 0, skipped: 0, rejected: [], error: e && e.message ? e.message : String(e) };
   }
 }
 

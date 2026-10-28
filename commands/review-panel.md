@@ -40,13 +40,11 @@ skill performs:
 ## What this command may write — closed list
 
 1. `~/.claude/review-panel-snapshots/<branch>.json` — the incremental-review snapshot;
-2. `~/.claude/review-panel-stats/invocations.jsonl` — per-reviewer finding counts for adaptive
-   selection (append-only, written only through `reviewer-stats.mjs --record`);
+2. telemetry events (`process: review-panel`, `telemetry/events/` of claude-patterns) — per-reviewer
+   finding counts for adaptive selection (append-only, written only through `reviewer-stats.mjs --record`);
 3. source files touched by fixes the user explicitly approved in Phase 3.
 
-Never commits, never pushes. `Write`/`Edit` were denied until 2026-08-14, which killed
-both Phase 4 (apply approved fixes) and Phase 5 (save snapshot) — incremental mode could
-never actually engage. The guard is the approval step in Phase 3, not a missing tool.
+Never commits, never pushes. The guard is the approval step in Phase 3, not a missing tool.
 
 ## When to use
 

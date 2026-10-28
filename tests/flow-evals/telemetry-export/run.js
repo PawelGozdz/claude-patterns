@@ -16,6 +16,8 @@
  *   5. ten sam wejściowy zestaw → bajt w bajt ta sama paczka; --since i host filtrują
  *   6. findLeaks łapie ścieżkę i id zadania w kluczu oraz wartości; czysta paczka przechodzi
  *   7. CLI: exit 0 dla prawdziwych rollupów, zły --since = exit 1; eval zarejestrowany w pre-commit
+ *   9. process `review-panel` (aneks TASK-GSTACK-ADOPT-001): liczniki per reviewer (n, findings) wychodzą przez białą listę, pola spoza niej nie;
+ *      paczka przechodzi skan wycieków
  *   8. blok `tasks` wychodzi tylko jako rozkłady (TASK-OBS-012); liczniki werdyktów przechodzą przez białą listę,
  *      agent z niebezpiecznym kluczem odpada; findLeaks łapie formaty `BOT-005a`, `TS-SIM-002A`, `DS009-…`
  */
@@ -120,6 +122,29 @@ const tests = [
         || eq(ctx.dropped.length, 1, 'odrzucony agent zgłoszony')
         || eq(rec.processes.orchestrate.finalGate, { judged: 2, noGo: 1, noGoAttributed: 1, blamedUnits: 2, unattributed: 1, blamedUnmatched: 1 }, 'bramka')
         || eq('verdicts' in ex.projectRollup(rollup()).processes.orchestrate.roles.verifier, false, 'stary rollup nie dostaje pustego bloku');
+    },
+  },
+  {
+    name: 'review-panel-counters-pass-whitelist',
+    run({ ex }) {
+      const r = rollup();
+      r.processes['review-panel'] = {
+        steps: 4, costUsd: 0, died: 0, stepsWithoutCost: 0, repairs: { fixSteps: 0, fixed: 0, open: 0 }, verification: { units: 0, firstPassGo: 0 },
+        roles: {
+          eagle: { n: 2, costUsd: 0, toolCalls: 0, outcomes: { ok: 2 }, causes: {}, findings: 5, text: 'treść findingu', durationMs: { n: 0, p50: null, p90: null } },
+          'Zły Reviewer/ścieżka': { n: 1, outcomes: { skipped: 1 } },
+        },
+      };
+      const ctx = { dropped: [] };
+      const rec = ex.projectRollup(r, ctx);
+      const eagle = rec.processes['review-panel'].roles.eagle;
+      return eq(eagle.findings, 5, 'findings w paczce')
+        || eq(eagle.n, 2, 'n w paczce')
+        || eq('text' in eagle, false, 'pole spoza białej listy wyjechało')
+        || eq(Object.keys(rec.processes['review-panel'].roles), ['eagle'], 'rola z niebezpiecznym kluczem odpada')
+        || eq(ctx.dropped.length, 1, 'odrzucona rola zgłoszona')
+        || eq(ex.findLeaks(rec), [], 'skan wycieków na bloku review-panel')
+        || eq('findings' in ex.projectRollup(rollup()).processes.orchestrate.roles.verifier, false, 'stary rollup nie dostaje findings');
     },
   },
   {

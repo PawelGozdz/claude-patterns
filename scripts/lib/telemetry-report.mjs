@@ -16,6 +16,21 @@ export const ABS_FLOOR = 0.02;
 export const DEFAULT_WINDOW = 7;
 
 const num = (v) => (Number.isFinite(v) ? v : 0);
+
+// Procesy spoza metryk jakości przebiegów: kroki review-panel to statystyka reviewerów (ran/skipped, findingi), bez
+// werdyktów, kosztu i zgonów — wliczone do sum „wszystkich procesów" rozcieńczałyby mianowniki `died` i `retryCost`.
+// Widać je tylko wprost: `--process review-panel` albo wiersz w widoku `--by process`.
+export const NON_RUN_PROCESSES = new Set(['review-panel']);
+const inScope = (p, process) => (process ? p === process : !NON_RUN_PROCESSES.has(p));
+
+// Rollup z samym panelem (żadnego innego procesu, przebiegu ani odstępstwa) nie jest dniem „z danymi" dla metryk przebiegów:
+// zajmowałby slot okna silnika i zawyżał kolumnę `dni`. Z jawnym `--process review-panel` liczy się normalnie.
+const panelOnly = (r) => {
+  const procs = Object.keys(r.processes || {});
+  return procs.length > 0 && procs.every((p) => NON_RUN_PROCESSES.has(p))
+    && Object.keys(r.runs || {}).length === 0 && Object.keys(r.deviations || {}).length === 0;
+};
+const countsAsDay = (r, process) => process === 'review-panel' || !panelOnly(r);
 const ratio = (a, b) => (b > 0 ? a / b : null);
 
 // Metryki jakości z ADR 0012 §6. `n` = liczność próby, od której zależy wiarygodność wartości.
@@ -36,9 +51,9 @@ export function totalsOf(rollups, { process } = {}) {
   };
   const days = new Set();
   for (const r of rollups) {
-    days.add(r.day);
+    if (countsAsDay(r, process)) days.add(r.day);
     for (const [p, d] of Object.entries(r.processes || {})) {
-      if (process && p !== process) continue;
+      if (!inScope(p, process)) continue;
       t.steps += num(d.steps); t.died += num(d.died); t.costUsd += num(d.costUsd);
       t.costUsdRetried += num(d.costUsdRetried); t.stepsWithoutCost += num(d.stepsWithoutCost);
       const v = d.verification || {};
@@ -116,7 +131,7 @@ export function engineWindows(rollups, hash, { window = DEFAULT_WINDOW, process 
   if (!hits.length) return { found: false, hash };
   const firstDay = hits.map((r) => r.day).sort()[0];
   const lastDay = hits.map((r) => r.day).sort().at(-1);
-  const days = [...new Set(rollups.map((r) => r.day))].sort();
+  const days = [...new Set(rollups.filter((r) => countsAsDay(r, process)).map((r) => r.day))].sort();
   const beforeDays = new Set(days.filter((d) => d < firstDay).slice(-window));
   const afterDays = new Set(days.filter((d) => d >= firstDay).slice(0, window));
   const pick = (set) => rollups.filter((r) => set.has(r.day));
@@ -173,7 +188,7 @@ function roleSection(rollups, process) {
   const roles = new Map();
   for (const r of rollups) {
     for (const [p, d] of Object.entries(r.processes || {})) {
-      if (process && p !== process) continue;
+      if (!inScope(p, process)) continue;
       for (const [name, role] of Object.entries(d.roles || {})) {
         const cur = roles.get(name) || { key: name, steps: 0, ok: 0, costUsd: 0, causes: 0, other: 0 };
         cur.steps += num(role.n); cur.ok += num((role.outcomes || {}).ok); cur.costUsd += num(role.costUsd);
@@ -233,11 +248,22 @@ export function reportView(by, rollups, { process } = {}) {
     };
   }
   let groups;
-  if (by === 'project') groups = groupRollups(rollups, (r) => r.project).map(([k, rs]) => [k, totalsOf(rs, { process })]);
-  else if (by === 'week') groups = groupRollups(rollups, (r) => isoWeek(r.day)).map(([k, rs]) => [k, totalsOf(rs, { process })]);
+  const counted = rollups.filter((r) => countsAsDay(r, process));
+  if (by === 'project') groups = groupRollups(counted, (r) => r.project).map(([k, rs]) => [k, totalsOf(rs, { process })]);
+  else if (by === 'week') groups = groupRollups(counted, (r) => isoWeek(r.day)).map(([k, rs]) => [k, totalsOf(rs, { process })]);
   else if (by === 'process') {
     const names = [...new Set(rollups.flatMap((r) => Object.keys(r.processes || {})))].sort();
     groups = names.map((p) => [p, totalsOf(rollups, { process: p })]);
+    // Panel nie ma zgonów ani kosztu (to statystyka reviewerów): „0.0%" i „$0.00" udawałyby pomiar, więc pokazujemy „–".
+    const blank = new Set(names.filter((p) => NON_RUN_PROCESSES.has(p)));
+    return {
+      ...common,
+      sections: [{
+        heading: 'Per process',
+        columns: [{ key: 'key', label: 'process', fmt: 'text' }, ...QUALITY_COLUMNS],
+        rows: groups.map(([k, t]) => (blank.has(k) ? { ...qualityRow(k, t), died: null, costUsd: null } : qualityRow(k, t))),
+      }],
+    };
   } else throw new Error(`--by musi być jednym z: engine, process, role, project, week (jest: ${by})`);
   return {
     ...common,
@@ -298,7 +324,8 @@ export function reportDataQuality(rollups) {
   let causeTotal = 0; let causeOther = 0; let devTotal = 0; let devOther = 0;
   let steps = 0; let noCost = 0; let started = 0; let withEngine = 0; let taskable = 0; let taskRuns = 0;
   for (const r of rollups) {
-    for (const d of Object.values(r.processes || {})) {
+    for (const [p, d] of Object.entries(r.processes || {})) {
+      if (NON_RUN_PROCESSES.has(p)) continue;
       steps += num(d.steps); noCost += num(d.stepsWithoutCost);
       for (const role of Object.values(d.roles || {})) {
         for (const [c, n] of Object.entries(role.causes || {})) { causeTotal += num(n); if (c === 'other') causeOther += num(n); }

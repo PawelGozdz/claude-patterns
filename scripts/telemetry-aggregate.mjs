@@ -22,7 +22,7 @@ import { eventsDir, readEvents, rollupsDir } from './lib/telemetry-events.mjs';
 import { buildRollups, serializeRollup } from './lib/telemetry-rollup.mjs';
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
-const SAFE_NAME = /^[A-Za-z0-9._-]{1,80}$/;
+const SAFE_NAME = /^(?!\.{1,2}$)[A-Za-z0-9._-]{1,80}$/; // „.” i „..” wyprowadziłyby plik poza katalog rollupów
 
 function die(msg) {
   process.stderr.write(`✘ telemetry-aggregate: ${msg}\n`);
