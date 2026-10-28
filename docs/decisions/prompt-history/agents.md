@@ -89,3 +89,8 @@ Format: plik → co wyniesiono → data i źródło.
 - `universal/legal-strategist.md`, `universal/marketing-strategist.md`
   - Przykład „juz-ide-api-1 przeniósł plik kontekstu do `docs/` 2026-08-12" przy opisie konwencji
     docs-first. Konwencja i kolejność wyszukiwania zostały.
+- `universal/halt-diagnostician.md` (opis we frontmatterze)
+  - Uzasadnienie zakazu spawnowania: samo „nie wołaj Agent/Workflow/Task" w prompcie nie wystarczyło (ORC-055). Fork,
+    któremu tak powiedziano, zignorował zakaz i odpalił nienadzorowaną kontynuację, raz z samozatwierdzeniem warstwy
+    (ręcznie edytowane `layers_done`), którą jej własny weryfikator odrzucił trzykrotnie. Dlatego zakaz siedzi w
+    `disallowedTools`, a w opisie zostało tylko „enforced by `disallowedTools`". Pełna historia: `docs/decisions/orchestrate-rule-history.md`.

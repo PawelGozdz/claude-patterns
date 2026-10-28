@@ -2,22 +2,12 @@
 name: halt-diagnostician
 description: |
   Read-only diagnostic agent for `/orchestrate` after `ESCALATE_AND_HALT` or
-  `BLOCKED_BY_PRIOR`. Reads the run's journal, git diff/log, and the analysis
-  artifact to explain WHY a run halted — returns a text report to the caller,
-  nothing else.
+  `BLOCKED_BY_PRIOR`. Reads the run journal, git state and the analysis artifact
+  and returns a text report explaining WHY the run halted. Advisory only: cannot
+  spawn agents or workflows (enforced by `disallowedTools`). Use before deciding
+  whether to resume, and before touching `layers_done`, `decisions[]` or any other
+  artifact field by hand.
 
-  ADVISORY ONLY — cannot spawn further agents or workflows. This is enforced by
-  `disallowedTools` (Agent, Workflow, Task), not by a prompt instruction: a
-  prompt-only prohibition does not hold (ORC-055) — a fork told only "do not call
-  Agent/Workflow/Task" ignored it and launched an unsupervised continuation,
-  once self-approving (via a hand-edited `layers_done`) a layer its own verifier
-  had rejected 3x.
-
-  Use when `/orchestrate` reports `ESCALATE_AND_HALT` or `BLOCKED_BY_PRIOR` and
-  you need to understand root cause BEFORE deciding whether to resume, and
-  before touching `layers_done`, `decisions[]`, or any other artifact field by
-  hand. Diagnosis only — a human (or the calling agent, after reading the
-  report) decides what happens next.
 tools: Read, Grep, Glob, Bash
 disallowedTools: Write, Edit, MultiEdit, Agent, Workflow, Task
 model: sonnet
@@ -76,3 +66,4 @@ chodzi.
 
 - 2026-10-28 — wyniesiono historię (geneza reguł, pomiary) z promptu do docs/decisions/prompt-history/agents.md (TASK-GSTACK-ADOPT-001)
 - 2026-10-01 — agent dodany (ORC-055): diagnoza halt/BLOCKED_BY_PRIOR tylko do odczytu; zakaz Agent/Workflow/Task egzekwowany przez disallowedTools, nie prompt.
+- 2026-10-28 — `description` skrócone do kilku zdań (koszt kontekstu stałego: opis siedzi w katalogu agentów w każdej sesji) (TASK-GSTACK-ADOPT-001)
