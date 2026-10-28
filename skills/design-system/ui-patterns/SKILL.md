@@ -1,7 +1,7 @@
 ---
 name: ui-patterns
 description: "Wzorce ekranów juz-ide i reguły ich użycia: lista, formularz, widok szczegółów, obowiązkowe stany brzegowe (pusty, ładowanie, błąd, brak uprawnień) i zakazy. Użyj przy budowie lub zmianie dowolnego ekranu UI."
-origin: juz-ide design system (wdrożenie, faza 2) — wzorce zatwierdzone przez użytkownika 2026-09-26
+origin: juz-ide design system (wdrożenie, faza 2) — wzorce zatwierdzone przez użytkownika
 allowed-tools: Read, Glob, Grep
 effort: low
 paths: "**/*.{tsx,ts,jsx,astro,svelte,eta,dart}"
@@ -10,7 +10,7 @@ paths: "**/*.{tsx,ts,jsx,astro,svelte,eta,dart}"
 # Wzorce ekranów
 
 To jest warstwa 4 systemu designu: reguły użycia, których nie da się zakodować w tokenach.
-Wzorce zatwierdził użytkownik 2026-09-26 (bramka decyzyjna fazy 2). Zmiana wzorca wymaga
+Wzorce zatwierdził użytkownik (bramka decyzyjna fazy 2). Zmiana wzorca wymaga
 jego zgody, a nie tylko dobrego powodu w bieżącym zadaniu.
 
 Źródło wizualne dla toolingu: canvas „juz-ide — tooling”, **Wariant A „Karty na kremie”**
@@ -73,8 +73,7 @@ const { tableQuery, setFilters, setSorters } = useTable({ resource: 'accounts' }
 
 Dotyczy aplikacji toolingowych (`AppLayout`: sidebar, nagłówek, obszar treści). Kolory i wymiary
 menu pochodzą z tokenów motywu antd (`components.Layout`, `components.Menu`, paczka tokenów
-≥ 0.3.0) — układ i to, czego tokeny antd nie obejmują, wynika z tego wzorca. Zatwierdzone
-2026-10-02 (źródło: Wariant A „Karty na kremie”).
+≥ 0.3.0) — układ i to, czego tokeny antd nie obejmują, wynika z tego wzorca. Źródło: Wariant A „Karty na kremie”.
 
 - **Układ wypełnia wysokość okna:** korzeń `Layout` ma `minHeight: 100vh`, sidebar sięga do
   dołu okna także przy krótkiej treści.
@@ -129,11 +128,11 @@ Teksty stanów po polsku, w tonie marki (ciepło, konkretnie, bez żargonu techn
 
 ## Znane odstępstwa w istniejącym kodzie
 
-Stan z 2026-10-03 (audyt `/design-audit` na `marketing-hub` i `grant-flow`), do poprawy przy
+Stan z audytu `/design-audit` na `marketing-hub` i `grant-flow`, do poprawy przy
 najbliższym dotknięciu ekranu. Nie kopiuj ich jako wzoru. Powłoka, 404 i ekran błędu startu są
 już w obu aplikacjach z paczki `react-ui` (`AppShell`, `NotFoundPage`, `BootstrapError`).
 
-- `marketing-hub` `auth-kit/screens/UsersAndRolesScreen.tsx` — naprawione 2026-10-03 (błąd zapisu w
+- `marketing-hub` `auth-kit/screens/UsersAndRolesScreen.tsx` — naprawione (błąd zapisu w
   modalu, błąd listy z ponowieniem, stan pusty, prawdziwa paginacja, „Pokazano X–Y z N”, komponenty
   `react-ui`, chipy ról filtrują po stronie serwera przez `role=`). Wyszukiwarki nie ma celowo: API
   nie ma wyszukiwania po e-mailu (decyzja D11, bez enumeracji osób).

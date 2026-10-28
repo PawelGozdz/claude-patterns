@@ -1,12 +1,11 @@
 # NestJS Module Import Pitfalls — Rule Card
 
 **Tags**: "api:platform:nestjs"
-<!-- Egzekwowalne streszczenie nestjs-module-import-pitfalls.md — 5 udokumentowanych
-     incydentów (TS-MENTIONS-001, TS-DISCORD-001).
+<!-- Egzekwowalne streszczenie nestjs-module-import-pitfalls.md.
      Pełny wzorzec: nestjs-module-import-pitfalls.md -->
 
 **Layer**: Infrastructure
-**Status**: Production (5 incidents documented: TS-MENTIONS-001, TS-DISCORD-001)
+**Status**: Production
 **Source**: nestjs-module-import-pitfalls.md
 
 ## MUST

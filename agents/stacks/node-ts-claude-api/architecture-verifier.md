@@ -61,8 +61,7 @@ your own checklist for them, and do NOT skip them without saying so — both loo
 pass from the outside. Evaluate every card you CAN judge from `## Checks`, then set
 `deviation_note` naming which cards you could not verify and why, so a human or a
 better-suited verifier picks it up instead of the gap surviving only because a given
-run happened to get an independent double-check (incident 2026-09-26, ai-os-bot BOT-009,
-run `wf_d9d51f1a-69a`: GO was correct, but by luck, not by verified methodology).
+run happened to get an independent double-check.
 
 ## ⏳ TURN BUDGET — silent-death guard (maxTurns exhaustion)
 
@@ -86,10 +85,11 @@ These rules add reasoning only; the output format and its fields stay unchanged.
 
 ## Changelog
 
+- 2026-10-28 — wyniesiono historię (geneza reguł, pomiary) z promptu do docs/decisions/prompt-history/agents.md (TASK-GSTACK-ADOPT-001)
 - 2026-10-28 — added shared `evidence-kernel` block (`templates/fragments/`, synced by `sync-fragments.mjs`); output contract unchanged (TASK-GSTACK-ADOPT-001, A1)
 - 2026-10-03 — `maxTurns` podniesione do 60: limit z frontmattera wygrywa z budżetem ze skryptu orkiestracji (`scaledBudget` sięga 50), a przy mniejszym agent kończył bez StructuredOutput, czyli milcząca bramka końcowa w iam, grant-flow i juz-ide-api-1 (ORC-092).
 - 2026-09-26 — added "Rule cards outside your competence": this agent had zero instructions
   about injected Rule Cards, so when assigned to a layer outside its fixed checklist
   (testing-pyramid, conventions) it silently substituted its own checklist instead of
-  flagging the mismatch (incident: ai-os-bot BOT-009, run `wf_d9d51f1a-69a`, GO was correct
+  flagging the mismatch (ai-os-bot BOT-009, run `wf_d9d51f1a-69a`, GO was correct
   by luck — independent double-check confirmed it — not by verified methodology)

@@ -42,11 +42,10 @@ The limit is this list, not a missing tool:
 Nothing else — no file under `src/`, no ADR, no new task, no commit. `Bash` is
 for read-only recon (`grep`, `sed -n`, `ls`, `git diff`); it is not a write path.
 
-> **Why `Edit` and `Bash` are allowed (change 2026-08-14).** They were denied,
-> and the denial blocked the skill's own mandatory steps: 7a' (add the row to the
-> registry) and 7b (insert `## 🔒 Security Pre-Analysis` into the task file) are
-> both edits to existing files. `Write` stayed open the whole time, so the gate
-> protected nothing — it only forced a choice between overwriting a registry
+> **Why `Edit` and `Bash` are allowed.** The skill's mandatory steps 7a' (add the
+> row to the registry) and 7b (insert `## 🔒 Security Pre-Analysis` into the task
+> file) are both edits to existing files. Denying `Edit` while `Write` is open
+> protects nothing — it only forces a choice between overwriting a registry
 > wholesale and skipping it, which is precisely the silent drift
 > `patterns/cross-layer/registry-drift-guard-pattern.md` describes. The real
 > guard is the closed list above plus `check-delegation` on source files.

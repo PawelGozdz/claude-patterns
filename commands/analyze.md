@@ -72,9 +72,8 @@ node <claude-patterns>/scripts/telemetry-emit.mjs run-end --process analyze \
 | przebieg przerwany po drodze (np. użytkownik zatrzymał go przed zapisem artefaktu) | `halted` |
 | panel nie dał artefaktu (agent padł, bramka wejścia, błąd narzędzia) | `failed` |
 
-PAUSE jest zaplanowanym końcem analizy, nie awarią (ADR 0015 D5): do 2026-10-24 61 z 62 przebiegów
-kończyło się jako `halted`, więc zaplanowane zatrzymanie wyglądało jak błąd. `halted` zostaje dla
-przerwań; `--cause` przy `ok` nie podajesz.
+PAUSE jest zaplanowanym końcem analizy, nie awarią (ADR 0015 D5), więc zaplanowane zatrzymanie
+nie wygląda jak błąd. `halted` zostaje dla przerwań; `--cause` przy `ok` nie podajesz.
 
 `run-end` sam dopisuje `skipped` dla slotów z planu bez agenta i `unknown` dla agentów, którzy nie
 zdążyli się zakończyć, a potem kasuje stan przebiegu. Przebieg, którego nikt nie zamknął
@@ -83,9 +82,9 @@ wywołania = jedno zdanie w `## Uwagi`, analiza idzie dalej.
 
 ## Krok 4 — zgłoszenia do skrzynki (best-effort, nie blokuje)
 
-Do 2026-10-10 skrzynkę `claude-patterns/docs/tasks/_inbox/` karmił wyłącznie `/orchestrate`.
-Błędy kompozycji, które w analizie degradują PO CICHU, nigdy tam nie trafiały — m.in. blokujący
-stage pomijany, bo inny stage zapisał już jego plik `output:` (aegis-flow, wykryte dopiero ręcznie).
+Skrzynkę `claude-patterns/docs/tasks/_inbox/` karmi też analiza, nie tylko `/orchestrate`.
+Błędy kompozycji, które w analizie degradują PO CICHU, muszą tam trafiać — m.in. blokujący
+stage pomijany, bo inny stage zapisał już jego plik `output:`.
 Zgłaszasz tylko to, co jest wadą **maszyny** (bloki, runtime.yml, wzorce, agenci), nie ryzyka
 samego taska — te należą do artefaktu.
 

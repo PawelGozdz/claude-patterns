@@ -60,8 +60,7 @@ go, nie dodawaj drugiego. Wpis, który po miesiącu jest już w repo, usuń.
 
 ## 🔧 Tools
 
-**Actually granted** (per `tools:` frontmatter — corrected 2026-07-08; `Task` and all `mcp__zen__*`
-entries previously listed here were never actually granted, a stale documentation mismatch):
+**Actually granted** (per `tools:` frontmatter; `Task` and `mcp__zen__*` are NOT granted):
 - **Read** - Examine code files
 - **Bash** - Run tests, security scans
 - **Glob** - Find files
@@ -152,9 +151,8 @@ Grep("password", path="src/")      // DELEGATE to Explore agent (Task with subag
 
 The 2-phase protocol above fixes *who* does discovery. This fixes *what you keep*: tool output
 does not disappear once read — it stays in your context and is re-processed on **every later
-turn**. A 20 KB grep result on turn 20 of 80 costs sixty times its own size. On one measured run
-(`wf_23029d51-3a2`, 2026-08-14) 546 Bash calls returned 1.36 M characters → 89 M cached input
-tokens, ~90% of the whole run's cost, for 36 edits.
+turn**. A 20 KB grep result on turn 20 of 80 costs sixty times its own size; re-reading
+accumulated tool output can account for ~90% of a run's cost.
 
 - **No `ps aux` / `top` / `docker ps`** or other process diagnostics (one agent pulled in 27.9 KB
   of process listing — it answered nothing about the code).
@@ -497,7 +495,6 @@ When any file in `src/contexts/b2g-contracts/` is in scope, run these checks in 
 
 ---
 
-**Created**: 2026-02-05
 **Maintainer**: LocalHero Security Team
 
 <!-- fragment:evidence-kernel START -->
@@ -514,6 +511,7 @@ These rules add reasoning only; the output format and its fields stay unchanged.
 
 ## Changelog
 
+- 2026-10-28 — wyniesiono historię (geneza reguł, pomiary) z promptu do docs/decisions/prompt-history/agents.md (TASK-GSTACK-ADOPT-001)
 - 2026-10-28 — added shared `evidence-kernel` block (`templates/fragments/`, synced by `sync-fragments.mjs`); output contract unchanged (TASK-GSTACK-ADOPT-001, A1)
 - 2026-10-21 — protokół „2-phase” (delegacja odkrywania plików do `Task(Explore)`) dotyczy teraz tylko wywołań, które mają `Task`; bez niego (liść w `/orchestrate`) odkrywanie idzie z listy `ZMIENIONE PLIKI` i zakresu warstwy, a przy braku `Glob`/`Grep` przez `Bash`. Wcześniej treść nakazywała „MUST Task(Explore)” mimo braku narzędzia (iam TS-SSO-066, `final-gate`).
 - 2026-10-21 — dodana sekcja „Zgodność z kanonem” (blok `governance`, ORC-119): diff vs inwarianty i decyzje z prompta bramki, naruszenie inwariantu = VETO z cytatem

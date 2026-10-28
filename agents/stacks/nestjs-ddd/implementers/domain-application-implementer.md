@@ -81,7 +81,7 @@ Haiku ($0.25/M input, $1.25/M output) = **60x cheaper**.
 
 ### PHASE 1: File Discovery & Examples (ALWAYS DELEGATE)
 
-**`retrieve_code` returns a pointer, not content** (TASK-RAG-004 R1, 2026-09-07). `source` is a
+**`retrieve_code` returns a pointer, not content.** `source` is a
 path RELATIVE to the repo root — open it with Read in YOUR working tree and work on what you read
 from disk. `evidence` is 12 lines justifying the hit; do NOT copy it — the index is built from
 `origin/develop` (`indexedSha`), your branch differs. Decision rule: unknown symbol name →
@@ -135,9 +135,8 @@ Task(
 
 Tool output does not disappear once you have read it. It stays in your context and is
 re-processed on **every subsequent turn**. A 20 KB grep result on turn 20 of 80 costs sixty
-times its own size. This is not a rounding error: measured on one real run (`wf_23029d51-3a2`,
-2026-08-14), 546 Bash calls returned 1.36 M characters, which turned into 89 M cached input
-tokens — roughly 90% of the entire run's cost — to produce 36 edits.
+times its own size. This is not a rounding error: re-reading accumulated tool output can
+account for roughly 90% of a run's cost.
 
 Rules, ordered by how much they save:
 
@@ -520,6 +519,7 @@ then ask strategic advisors.
 
 ## Changelog
 
+- 2026-10-28 — wyniesiono historię (geneza reguł, pomiary) z promptu do docs/decisions/prompt-history/agents.md (TASK-GSTACK-ADOPT-001)
 - 2026-09-25 — replaced every `Task(codebase-explorer)` reference with `Task(subagent_type='Explore')`: `codebase-explorer` has not existed since 2026-06-27, so the delegation call failed and the implementer fell back to grepping itself (part of the search-budget change, see ORC/ANL notes in CHANGELOG.md)
 - 2026-09-08 — repointed `@security-privacy-architect` to `@ecc:security-reviewer`: the agent is retired (K97, ADR 0009 — generic OWASP/GDPR advisory is covered by ECC; the VETO verifiers stay ours)
 - 2026-09-07 — `retrieve_code` contract: `source` is repo-relative, `evidence` is proof not content, index from `origin/develop` (TASK-RAG-004 R1 / K79, TASK-KAIZEN-002)

@@ -11,7 +11,7 @@
 
 ## Klasyfikacja NOWEGO domenowego eventu do audytu (Tier 1/2/3)
 
-**Uogólnione z ADR-0027 (2026-07-05) — żeby decyzja nie wymagała czytania projektowego ADR,
+**Uogólnione z ADR-0027 — żeby decyzja nie wymagała czytania projektowego ADR,
 którego inne projekty mogą nie mieć.** Przy DODAWANIU nowego domenowego eventu, klasyfikuj wg
 kryteriów (nie "audytuj wszystko" — odrzucone w ADR-0027: narusza GDPR Art. 5(1)(c) minimalizacja
 danych + koszty storage):

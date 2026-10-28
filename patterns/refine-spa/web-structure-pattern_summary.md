@@ -3,7 +3,7 @@
 **Tags**: "web:ui", "web:platform:react"
 
 <!-- Egzekwowalne streszczenie web-structure-pattern.md. WIĄŻĄCE dla apps/web.
-     Promowane z marketing-hub (TS-MH-002) 2026-09-27 — Scope: project-specific
+     Promowane z marketing-hub (TS-MH-002) — Scope: project-specific
      (marketing-hub), patrz plik bazowy. -->
 
 **Layer**: Cross-Layer · **Applies to**: każdy nowy plik `.ts`/`.tsx` w `apps/web/src`

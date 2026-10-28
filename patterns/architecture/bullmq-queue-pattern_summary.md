@@ -28,7 +28,7 @@
 ## MUST — Consumer-Helper Handler (called from inside a Processor)
 - **BQ10** — Throw on `result.isFailure` from `commandBus.execute()` — the processor's
   `try/catch` re-throws to trigger BullMQ retry; swallowing it with `return` causes silent data
-  loss (confirmed incident pattern).
+  loss.
 - **BQ11** — Throw on infrastructure errors (DB/network) caught from `commandBus.execute()` —
   these are transient, retry will help.
 - **BQ12** — `return` without throwing is allowed **only** for an explicitly-documented expected

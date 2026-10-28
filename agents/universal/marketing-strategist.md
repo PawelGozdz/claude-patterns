@@ -115,7 +115,7 @@ in this order (first one found wins):
 2. `docs/business/product-marketing-context.md` (docs-first convention —
    projects that keep only real agent definitions under `.claude/agents/`
    and treat everything else, including agent-context files, as regular
-   content that belongs in `docs/`; e.g. juz-ide-api-1 moved here 2026-08-12)
+   content that belongs in `docs/`)
 3. `.claude/product-marketing-context.md` (older convention)
 4. `templates/product-marketing-context.md` (template — repo-level only)
 
@@ -362,3 +362,7 @@ The 41 skills in `skills/marketing/` are vendored from
 (MIT license, by Corey Haines — corey.co). I am the local coordinator that
 makes them work consistently inside claude-patterns conventions and uses
 the same data-driven hedged voice as `@finance-strategist`.
+
+## Changelog
+
+- 2026-10-28 — wyniesiono historię (geneza reguł, pomiary) z promptu do docs/decisions/prompt-history/agents.md (TASK-GSTACK-ADOPT-001)

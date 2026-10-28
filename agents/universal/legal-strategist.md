@@ -210,7 +210,7 @@ order** (first one found wins):
 2. `docs/legal/legal-context.md` (docs-first convention — projects that keep
    only real agent definitions under `.claude/agents/` and treat everything
    else, including agent-context files, as regular content that belongs in
-   `docs/`; e.g. juz-ide-api-1 moved here 2026-08-12)
+   `docs/`)
 
 Whichever is found should declare:
 - **Jurisdiction**: PL, EU (general), specific EU member, US (federal +
@@ -410,3 +410,7 @@ conventions, applies jurisdiction-aware disclaimers, integrates with the
 broader strategy stack (`@product-owner`, `@marketing-strategist`,
 `@finance-strategist`), and never silently fabricates content from
 non-vendored skill domains.
+
+## Changelog
+
+- 2026-10-28 — wyniesiono historię (geneza reguł, pomiary) z promptu do docs/decisions/prompt-history/agents.md (TASK-GSTACK-ADOPT-001)
