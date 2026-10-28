@@ -989,6 +989,18 @@ not that nobody looked.
   add no behaviour here (read-model port without an aggregate). Checked before accepting: readonly (no
   writes), reads only the context's own table, `// RP12-EXCEPTION:` annotation above the class/constructor.
 
+- `EventReachCenterBackfillKyselyRepository` (RP2, juz-ide `community-communication` context,
+  TS-SEC-EVENT-GEOFILTER-ORACLE-001, D7, BR-GEO-EVT-012) — one-off backfill that re-centres EXISTING
+  `community_events` rows on the organizer's displaced home point and replaces the stored home address
+  text: no aggregate is loaded or saved and no domain event is dispatched (BDR-098: no event/outbox
+  purges or replays), so `BaseKyselyRepository` persist+dispatch does not apply. Checked before
+  accepting: port `IEventReachCenterBackfillRepository` in `domain/events/repositories/`; the write
+  joins the caller's per-event transaction (`Propagation.RequiresNew`) via `TransactionHost.tx` and
+  does its own optimistic locking (row `FOR UPDATE`, compare-and-set bump of
+  `community_communication_aggregate_versions.current_version`, so a concurrent aggregate save fails
+  with `VersionError`); idempotent; static error messages; `// RP2-EXCEPTION:` annotation above the
+  class. Precedent in shape: the disclosed-point projection repair ports.
+
 ---
 
 ## 📚 References
