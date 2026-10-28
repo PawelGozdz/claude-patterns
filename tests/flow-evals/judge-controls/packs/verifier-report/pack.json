@@ -1,0 +1,19 @@
+{
+  "id": "verifier-report",
+  "artifact": "Szkielet raportu weryfikatora: tabela `file | rules_checked | violations | verdict` z sekcji „Checklist the verifier output MUST include” w agents/stacks/nestjs-ddd/code-quality-verifier.md",
+  "scale": { "min": 1, "max": 5 },
+  "rubric": {
+    "dimensions": [
+      { "id": "grounding", "description": "Raport zaczyna się od linii `📚 Patterns read:` i każdy wiersz tabeli podaje rules_checked jako konkretne ID reguł z kart (np. CH1,CH8), nie ogólnik." },
+      { "id": "evidence", "description": "Każde naruszenie ma postać `ruleID @ plik:linia` (cytat miejsca), a nie opis bez lokalizacji." },
+      { "id": "verdict_consistency", "description": "Werdykt wiersza zgadza się z jego naruszeniami: wiersz z naruszeniem nie ma PASS, wiersz bez naruszeń nie ma VETO, a werdykt końcowy i liczba naruszeń zgadzają się z tabelą." },
+      { "id": "actionability", "description": "Naruszenie podpowiada, co poprawić (strzałka `→ poprawka`), a nie tylko co jest źle." }
+    ]
+  },
+  "variants": { "positive": "positive.md", "negative": "negative.md", "defect": "defect.md" },
+  "defect": {
+    "dimension": "verdict_consistency",
+    "marker": "CH1 @ create-demo.command.ts:12",
+    "description": "W wierszu create-demo.command.ts dopisano naruszenie CH1, ale werdykt wiersza został PASS (a werdykt końcowy nadal mówi o 1 naruszeniu)."
+  }
+}
