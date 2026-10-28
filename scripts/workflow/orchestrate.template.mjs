@@ -341,6 +341,81 @@ function fixLeftTreeUnchanged(before, after) {
   return !!(before && after && before === after)
 }
 
+// ORC-139: werdykt związany z hashem drzewa. GO weryfikatora dotyczy dokładnie tego stanu kodu, który
+// sprawdził; zmiana po weryfikacji unieważnia GO. Hash to `git write-tree` z TYMCZASOWEGO indeksu
+// (`GIT_INDEX_FILE`) po `git add -A`: prawdziwy indeks i HEAD zostają nietknięte, pliki nieśledzone
+// wchodzą, ignorowane nie, wynik zależy od treści i trybów plików, nie od mtime ani od tego, co jest
+// już staged. Do repo trafiają wyłącznie luźne obiekty blob/tree (nieosiągalne, sprząta je `git gc`).
+// Wyjątek: artefakty, które sam silnik dopisuje w trakcie i po przebiegu (stan przebiegu, dziennik
+// pracy, telemetria, skrzynka odstępstw, plik analizy i taska — `layers_done`, `status`).
+// Skrypt Workflow nie ma dostępu do powłoki, więc polecenie biegnie w sondzie (tak jak odcisk z
+// ORC-103): kod składa komendę i waliduje odpowiedź (`parseTreeHash`), model jej tylko uruchamia.
+const TREE_HASH_EXCLUDES = ['.claude/run-state', '.claude/work', 'telemetry/events', 'telemetry/rollups', 'docs/tasks/_inbox']
+
+// Wykluczenia trafiają do powłoki w apostrofach — ścieżka z innym znakiem niż [\w./@+-] jest pomijana.
+// Pominięcie jest bezpieczne w stronę „nieaktualne” (więcej plików w haszu), nigdy w stronę „aktualne”.
+function treeHashExcludes(a) {
+  const extra = []
+  if (a && a.task) {
+    for (const f of [a.task.analysisFile, a.task.taskFile]) if (typeof f === 'string' && f) extra.push(f)
+  }
+  if (a && Array.isArray(a.treeHashExclude)) {
+    for (const p of a.treeHashExclude) if (typeof p === 'string' && p) extra.push(p)
+  }
+  const all = TREE_HASH_EXCLUDES.concat(extra).map((p) => p.replace(/^\.\//, '').replace(/\/+$/, ''))
+  return [...new Set(all)].filter((p) => /^[\w./@+-]+$/.test(p) && p.indexOf('..') === -1 && p.charAt(0) !== '/')
+}
+
+function treeHashCmd(excludes) {
+  // Wykluczenia zdejmujemy z tymczasowego indeksu PO `git add -A -- .`, a nie pathspecem `:(exclude)` w `add`:
+  // `git add` kończy się błędem („paths are ignored by one of your .gitignore files”), gdy wykluczona ścieżka
+  // istnieje na dysku i jest w .gitignore (telemetry/events), a wtedy hash byłby zawsze pusty.
+  const specs = (excludes || []).map((p) => "':(top,literal)" + p + "'").join(' ')
+  const drop = specs
+    ? 'git ls-files -z -- ' + specs + ' | git update-index --force-remove -z --stdin && '
+    : ''
+  return '( cd "$(git rev-parse --show-toplevel)" && _i="$(mktemp -u)" && ' +
+    '{ export GIT_INDEX_FILE="$_i"; git add -A -- . >/dev/null && ' + drop + 'git write-tree; _rc=$?; ' +
+    'rm -f "$_i" "$_i.lock"; [ "$_rc" -eq 0 ]; } )'
+}
+
+function buildTreeHashPrompt(a) {
+  return 'W repo uruchom dokładnie to jedno polecenie:\n' + treeHashCmd(treeHashExcludes(a)) + '\n' +
+    'NIC więcej — nie czytaj plików, nie analizuj, nie poprawiaj, nie ponawiaj. Zwróć w `tree_hash` jedyną linię ' +
+    'jego wyjścia (40 albo 64 znaki hex), bez zmian. Gdy polecenie zakończy się błędem albo nic nie wypisze, ' +
+    'zwróć pusty napis — nie zgaduj i nie licz hasha inaczej.'
+}
+
+// Odpowiedź sondy to twierdzenie modelu, więc przechodzi przez walidację kształtu: tylko pełny hash obiektu gita.
+function parseTreeHash(raw) {
+  if (typeof raw !== 'string') return null
+  const h = raw.trim().toLowerCase()
+  return /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(h) ? h : null
+}
+
+// Zgodność hasha zapisanego przy werdykcie z bieżącym. Cztery stany:
+//   fresh   — oba znane i równe: werdykt dotyczy obecnego kodu;
+//   stale   — oba znane i różne: kod zmienił się po weryfikacji, werdykt NIEAKTUALNY;
+//   missing — brak zapisanego hasha (artefakt sprzed ORC-139 albo sonda bez wyniku): OSTRZEŻENIE, nie błąd;
+//   unknown — zapisany jest, ale bieżącego nie udało się policzyć albo któryś nie ma kształtu hasha.
+function treeBinding(recorded, current) {
+  if (recorded === undefined || recorded === null || recorded === '') {
+    return { state: 'missing', warning: 'werdykt bez hasha drzewa — nie da się potwierdzić, że dotyczy obecnego kodu (artefakt sprzed ORC-139 albo sonda hasha bez wyniku)' }
+  }
+  const r = parseTreeHash(recorded)
+  const c = parseTreeHash(current)
+  if (!r || !c) {
+    return { state: 'unknown', warning: 'hasha drzewa nie udało się porównać (' + (r ? 'bieżący' : 'zapisany') + ' nie jest poprawnym hashem obiektu gita)' }
+  }
+  if (r === c) return { state: 'fresh', hash: c }
+  return {
+    state: 'stale',
+    before: r,
+    after: c,
+    reason: 'kod zmienił się po weryfikacji (drzewo ' + r.slice(0, 10) + ' → ' + c.slice(0, 10) + ') — werdykt nieaktualny',
+  }
+}
+
 // Sonda: deterministyczne bramki uruchomione RAZ, tanio, bez czytania kodu. Verifier
 // dostaje jej wynik jako FAKT i ma zakaz ponawiania — inaczej ten sam typecheck wykonuje
 // się kilkadziesiąt razy, a każde 16-23 KB wyjścia zostaje w kontekście na resztę przebiegu.
@@ -1317,6 +1392,10 @@ function statusLine(report, kind, info) {
     if (report.stageForReview) bits.push('wymaga uważnego przeglądu')
     if (n(report.minorFindings)) bits.push('nienaprawione drobiazgi: ' + n(report.minorFindings))
     if (n(report.warnings)) bits.push('ostrzeżenia w raporcie: ' + n(report.warnings))
+    // ORC-139: ochrona przed zmianą kodu po werdykcie nie działa po cichu — wyłączona albo bez hasha
+    const th = report.treeHash
+    if (th && th.enabled === false) bits.push('werdykty niezwiązane z hashem drzewa (wyłączone)')
+    else if (th && th.unbound) bits.push('werdykty bez hasha drzewa: ' + th.unbound + ' z ' + (th.bound + th.unbound))
     return 'Gotowe do przeglądu: ' + n(report.staged) + ' plików w stagingu' + (bits.length ? '; ' + bits.join('; ') : '') + '.'
   }
   const where = info && info.id ? 'etapie „' + info.id + '"' : 'bramce końcowej'
@@ -1484,6 +1563,12 @@ const FINGERPRINT_SCHEMA = {
   properties: { fingerprint: { type: 'string' } },
 }
 
+const TREE_HASH_SCHEMA = {
+  type: 'object',
+  required: ['tree_hash'],
+  properties: { tree_hash: { type: 'string' } },
+}
+
 const DELETE_SCHEMA = {
   type: 'object',
   required: ['removed'],
@@ -1589,9 +1674,29 @@ async function ask(prompt, opts) {
 }
 
 const a = args || {}
-const maxAttempts = (a.verifiers && a.verifiers.maxAttempts) || DEFAULTS.maxAttempts
+// ORC-139: hash drzewa roboczego z sondy; null = sonda bez wyniku albo wyłączone (`--overrides {"treeBinding": false}`).
+// Odpowiedź przechodzi przez parseTreeHash — do porównań trafia tylko poprawny hash obiektu gita.
+const treeBindingOn = a.treeBinding !== false
+async function treeHash(label) {
+  if (!treeBindingOn) return null
+  try {
+    const r = await ask(buildTreeHashPrompt(a), Object.assign({ label, maxTurns: DEFAULTS.diffProbeTurns, schema: TREE_HASH_SCHEMA }, modelFor('probe')))
+    if (!r) return null // `ask` zapisał już powód w askErrors
+    const h = parseTreeHash(r.tree_hash)
+    if (!h) {
+      // odpowiedź jest, ale nie ma kształtu hasha (puste = polecenie padło) — ślad w raporcie, nie tylko „brak wyniku”
+      askErrors.push({ label, message: 'tree_hash odrzucony (zły kształt): ' + JSON.stringify(String(r.tree_hash).slice(0, 80)) })
+    }
+    return h
+  } catch (e) {
+    return null
+  }
+}
+const maxAttempts =(a.verifiers && a.verifiers.maxAttempts) || DEFAULTS.maxAttempts
 const plan = layerPlan(a, (a.createWhenHits) || {})
 const report = { taskId: a.task && a.task.id, telemetryPlan: a.telemetryPlan || null, engine: a.engine || null, layers: [], gaps: [], minorFindings: [], askErrors, finalGate: null, exit: a.exit || 'STAGE_NOT_COMMIT' }
+// ORC-139: zbiorczy wskaźnik wiązania werdyktów z hashem drzewa (bound/unbound liczą werdykty GO)
+report.treeHash = treeBindingOn ? { enabled: true, bound: 0, unbound: 0 } : { enabled: false }
 const allChangedFiles = []
 // ORC-135: pliki usunięte krokiem mechanicznym (`git rm`) — poza `git add`, poza listą dla bramki końcowej.
 const deletedAll = []
@@ -1657,6 +1762,10 @@ for (const step of plan) {
   // weryfikatora tej warstwy — dopisywana do `settled` tuż przed `report.layers.push`, żeby
   // krok 5 /orchestrate mógł ją zgłosić do docs/tasks/_inbox/ w claude-patterns.
   let deviationNote = null
+  // ORC-139: hash drzewa, dla którego zapadł OSTATNI werdykt weryfikatora tej warstwy (null = niepotwierdzony)
+  let layerTreeHash = null
+  // ORC-139: ile razy GO tej warstwy odrzucono jako nieaktualne (dopisek do promptu = inny klucz cache, ORC-077)
+  let staleRetries = 0
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     // ── 1. implementacja (albo, po cichej śmierci, weryfikacja istniejącego stanu)
@@ -1905,13 +2014,47 @@ for (const step of plan) {
       { label: layer.id + '-verify', agentType: verifyAgent, maxTurns: scaledBudget(a, 'verify', layerFiles.length), schema: VERDICT_SCHEMA },
       modelFor('verify'),
     )
+    // ORC-139: hash drzewa tuż przed weryfikatorem i tuż po nim (numer próby w etykiecie — ORC-077).
+    const treePre = await treeHash(layer.id + '-tree-pre-' + attempt)
     let verdict = null
     try {
-      verdict = await ask(buildVerifierPrompt(a, layer, probe, layerFiles, mode, undefined, undefined, layerDeleted), verifyOpts)
+      // Po odrzuconym (nieaktualnym) GO prompt dostaje dopisek z numerem próby: etykieta jest stała (`<id>-verify`,
+      // rozpoznaje ją final-gate-blame), a cache silnika kluczuje etykietą + promptem (ORC-077) — bez różnicy w
+      // prompcie wróciłoby to samo, nieaktualne GO.
+      const staleNote = staleRetries
+        ? '\n\nOCENA Z PRÓBY ' + (attempt - 1) + ' BYŁA NIEAKTUALNA: kod zmienił się w trakcie weryfikacji. Oceń obecny stan i NIE edytuj żadnych plików — każda zmiana w trakcie oceny unieważnia werdykt.'
+        : ''
+      verdict = await ask(buildVerifierPrompt(a, layer, probe, layerFiles, mode, undefined, undefined, layerDeleted) + staleNote, verifyOpts)
     } catch (e) {
       verdict = null
     }
     if (verdict && typeof verdict.deviation_note === 'string' && verdict.deviation_note.trim()) deviationNote = verdict.deviation_note.trim()
+    const treePost = await treeHash(layer.id + '-tree-post-' + attempt)
+    const bound = treeBindingOn ? treeBinding(treePre, treePost) : { state: 'off' }
+    layerTreeHash = bound.state === 'fresh' ? bound.hash : null
+    if (verdict && String(verdict.verdict).toUpperCase() === 'GO') {
+      if (bound.state === 'stale') {
+        // GO dotyczy innego kodu niż ten, który jest w drzewie (weryfikator edytował pliki albo ktoś zmienił je
+        // w trakcie). To nie jest werdykt o kodzie: ponowna weryfikacja bez implementera (jak ORC-074), na
+        // wyczerpaniu prób zatrzymanie z powodem `machine`.
+        log(layer.id + ': ' + bound.reason + ' (ORC-139)')
+        staleRetries++
+        report.warnings = (report.warnings || []).concat(layer.id + ': GO z próby ' + attempt + ' odrzucone — ' + bound.reason + ' (ORC-139)')
+        if (attempt >= maxAttempts) {
+          settled = { id: layer.id, status: 'ESCALATE_AND_HALT', reason: 'GO nieaktualne: ' + bound.reason + ' — w każdej próbie kod zmieniał się w trakcie weryfikacji (ORC-139)', files: layerFiles, cause: 'machine' }
+          break
+        }
+        violations = null
+        prevGaps = null
+        mode = 'verify-existing'
+        continue
+      }
+      if (bound.state === 'fresh') report.treeHash.bound++
+      if (bound.state === 'missing' || bound.state === 'unknown') {
+        report.treeHash.unbound++
+        report.warnings = (report.warnings || []).concat(layer.id + ': ' + bound.warning + ' (ORC-139)')
+      }
+    }
 
     const decision = decideVerdict(verdict, attempt, maxAttempts, layer, plan.map((s) => s.layer))
     if (decision.next === 'go') {
@@ -1989,6 +2132,7 @@ for (const step of plan) {
 
   if (!settled) settled = { id: layer.id, status: 'ESCALATE_AND_HALT', reason: 'pętla warstwy zamknęła się bez werdyktu', cause: 'machine' }
   if (deviationNote) settled.deviation_note = deviationNote
+  if (layerTreeHash && (settled.status === 'GO' || settled.status === 'GO_WITH_GAPS')) settled.treeHash = layerTreeHash
   report.layers.push(settled)
   for (const f of settled.files || []) if (allChangedFiles.indexOf(f) === -1) allChangedFiles.push(f)
 
@@ -2173,6 +2317,9 @@ if (!finalAgent) {
   }
   let forcedGaps = null
   let final = null
+  // ORC-139: hash drzewa tuż przed bramką końcową (po sondzie checks) i tuż po werdykcie.
+  const roundTag = round === 1 ? '' : '-r2'
+  const gatePre = await treeHash('final-tree-pre' + roundTag)
   try {
     final = await ask(buildFinalGatePrompt(a, finalChecks, finalFiles, treeSource, report.gaps, finalProbe, deletedAll) + roundExtra, gateOpts)
   } catch (e) {
@@ -2199,13 +2346,52 @@ if (!finalAgent) {
       final = null
     }
   }
+  // ORC-139: werdykt GO bramki końcowej wiąże się z hashem drzewa z chwili oceny. Kod zmienił się w trakcie
+  // (bramka edytowała pliki albo ktoś je ruszył) → GO nieważne. Jedna powtórka bramki z INNĄ etykietą (cache
+  // silnika zwróciłby ten sam nieaktualny wynik, ORC-077); nadal rozjazd → NO_GO `machine` bez werdyktu.
+  let gateTreeHash = null
+  let staleFinalReason = null
+  if (final && treeBindingOn) {
+    const gatePost = await treeHash('final-tree-post' + roundTag)
+    let gateBound = treeBinding(gatePre, gatePost)
+    if (gateBound.state === 'stale' && String(final.verdict).toUpperCase() === 'GO') {
+      log('bramka końcowa: ' + gateBound.reason + ' — powtarzam ocenę na obecnym drzewie (ORC-139)')
+      report.warnings = (report.warnings || []).concat('bramka końcowa: GO odrzucone — ' + gateBound.reason + ' (ORC-139)')
+      const gatePre2 = await treeHash('final-tree-pre-restale' + roundTag)
+      let final2 = null
+      try {
+        final2 = await ask(
+          buildFinalGatePrompt(a, finalChecks, finalFiles, treeSource, report.gaps, finalProbe, deletedAll) + roundExtra +
+            '\n\nPOPRZEDNIA OCENA BYŁA NIEAKTUALNA: drzewo robocze zmieniło się w trakcie bramki. Oceń je w stanie obecnym ' +
+            'i NIE edytuj żadnych plików — każda zmiana w trakcie oceny unieważnia werdykt.',
+          Object.assign({}, finalOpts, { label: 'final-gate-restale' + roundTag }),
+        )
+      } catch (e) {
+        final2 = null
+      }
+      const gatePost2 = await treeHash('final-tree-post-restale' + roundTag)
+      gateBound = treeBinding(gatePre2, gatePost2)
+      final = final2
+      if (final2 && gateBound.state === 'stale') {
+        staleFinalReason = 'GO bramki końcowej nieaktualne: ' + gateBound.reason + ' — także w powtórzonej ocenie (ORC-139)'
+        final = null
+      }
+    }
+    if (final && gateBound.state === 'fresh') { gateTreeHash = gateBound.hash; report.treeHash.bound++ }
+    if (final && (gateBound.state === 'missing' || gateBound.state === 'unknown')) {
+      report.treeHash.unbound++
+      report.warnings = (report.warnings || []).concat('bramka końcowa: ' + gateBound.warning + ' (ORC-139)')
+    }
+  }
   // ORC-083: `cause` — 'machine' = bramka nie dała werdyktu albo NO_GO wymuszone przez
   // unverified_scope (ORC-069); 'code' = weryfikator sam znalazł naruszenia w kodzie.
   report.finalGate = final
     ? Object.assign({}, final, { cause: undefined })
-    : { verdict: 'NO_GO', violations: ['bramka końcowa nie zwróciła werdyktu (także po ponowieniu)'], cause: 'machine' }
+    : { verdict: 'NO_GO', violations: [staleFinalReason || 'bramka końcowa nie zwróciła werdyktu (także po ponowieniu)'], cause: 'machine' }
+  if (gateTreeHash) report.finalGate.treeHash = gateTreeHash
   // ORC-087: brak werdyktu przy wszystkich warstwach GO — pliki idą do stagingu z flagą przeglądu.
-  if (!final) report.stageForReview = stageableFiles(finalFiles, a.dirtyAtStart, allChangedFiles, deletedAll)
+  // ORC-139: nieaktualne GO to NO_GO bez wiarygodnej oceny tego drzewa — nic nie idzie do `git add`
+  if (!final && !staleFinalReason) report.stageForReview = stageableFiles(finalFiles, a.dirtyAtStart, allChangedFiles, deletedAll)
   // Bramka końcowa nie ma pętli retry (jeden strzał) — GO z niepustym unverified_scope nie może
   // więc "skonsumować próby" jak w decideVerdict(); jedyna bezpieczna reakcja to potraktować to
   // jak NO_GO, żeby uczciwie przyznana luka trafiła do człowieka zamiast do cichego stage'owania.
@@ -2306,6 +2492,24 @@ if (!finalAgent) {
     return report
   }
   break
+  }
+}
+
+// ── 5b. ORC-139: pieczęć końcowa. `verified` = drzewo, dla którego zapadł werdykt bramki końcowej;
+// `sealed` = drzewo, które idzie do stagingu. Krok 4 komendy porównuje `sealed` z drzewem TUŻ PRZED `git add`
+// (`scripts/orchestrate-tree-hash.mjs --check`, kod, nie model — poza cache silnika, więc łapie też zmianę
+// między końcem Workflow a stagingiem). Rozjazd `verified` ≠ `sealed` oznacza, że po bramce drzewo zmieniła
+// runda naprawcza silnika (ORC-091/ORC-123: poprawki drobne przechodzą sondy warstw, nie ponowną bramkę) —
+// to zmiana zamierzona, ale jawna w raporcie, nie cicha.
+if (treeBindingOn) {
+  const sealed = await treeHash('final-tree-seal')
+  const verified = (report.finalGate && report.finalGate.treeHash) || null
+  Object.assign(report.treeHash, { verified, sealed, excludes: treeHashExcludes(a), postGateChanges: false })
+  if (!sealed) {
+    report.warnings = (report.warnings || []).concat('sonda hasha drzewa przed stagingiem bez wyniku — krok 4 nie potwierdzi, że staged kod to kod zweryfikowany (ORC-139)')
+  } else if (verified && verified !== sealed) {
+    report.treeHash.postGateChanges = true
+    report.warnings = (report.warnings || []).concat('po werdykcie bramki końcowej drzewo zmieniła runda naprawcza silnika (' + verified.slice(0, 10) + ' → ' + sealed.slice(0, 10) + ') — poprawki przeszły sondy warstw, ale nie ponowną bramkę; przejrzyj je przed commitem (ORC-139)')
   }
 }
 

@@ -90,6 +90,7 @@ runCheck('eval: pre-commit-telemetry', 'node', ['tests/flow-evals/pre-commit-tel
 runCheck('eval: hook-telemetry', 'node', ['tests/flow-evals/hook-telemetry/run.js']);
 // TASK-GSTACK-ADOPT-001 (techniki z gstack): kontekst stały, fragmenty, hash drzewa, polityka evali, sędziowie, reviewerzy, higiena.
 runCheck('eval: fragments', 'node', ['tests/flow-evals/fragments/run.js']);
+runCheck('eval: tree-hash-binding', 'node', ['tests/flow-evals/tree-hash-binding/run.js']);
 runCheck('eval: eval-policy', 'node', ['tests/flow-evals/eval-policy/run.js']);
 runCheck('eval: judge-controls', 'node', ['tests/flow-evals/judge-controls/run.js']);
 runCheck('eval: osv-scan', 'node', ['tests/flow-evals/osv-scan/run.js']);
