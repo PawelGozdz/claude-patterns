@@ -2577,3 +2577,75 @@ produktowe oceniamy raz, na całości zmiany, żeby nie płacić za nie w każde
 **Zmiana.** CORE dostał `treeHashCmd`, `treeHashExcludes`, `parseTreeHash` i `treeBinding` (stany fresh, stale, missing, unknown). Hash to `git write-tree` z tymczasowego indeksu po `git add -A -- .`; wykluczenia zdejmuje się z tego indeksu (`git ls-files … | git update-index --force-remove`), bo pathspec `:(exclude)` w `git add` kończy się błędem, gdy wykluczony katalog istnieje i jest w `.gitignore` (hash byłby zawsze pusty). Pomijane są artefakty silnika: run-state, dziennik pracy, telemetria, skrzynka odstępstw, plik analizy i taska. Pętla warstwy liczy hash przed i po weryfikatorze. GO z rozjazdem to ponowna weryfikacja bez implementera, a po wyczerpaniu prób ESCALATE_AND_HALT `machine`. Bramka końcowa robi jedną powtórkę pod nową etykietą (ORC-077), potem NO_GO `machine`. `report.treeHash.{verified,sealed}` trafia do kroku 4, który wywołuje `scripts/orchestrate-tree-hash.mjs --check` przed `git add`. Po odrzuconym GO prompt weryfikatora dostaje dopisek z numerem próby, bo cache kluczuje etykietą i promptem (ORC-077), a etykieta musi zostać zgodna z `final-gate-blame`. `report.treeHash` niesie `enabled`, `bound` i `unbound`, a `statusLine` ostrzega o werdyktach bez hasha. Brak hasha (sonda bez wyniku, artefakt sprzed ORC-139) to ostrzeżenie. Wyłączenie: `--overrides {"treeBinding": false}`.
 
 **Odrzucone.** Pełna ponowna bramka po rundzie naprawczej ORC-091/123: znosi jej oszczędność, więc zmiana jest oznaczona `postGateChanges` i ostrzeżeniem. Hash przez `sha1sum` plików (jak odcisk ORC-103): pomija tryby plików i nie daje porównywalnego obiektu drzewa. Fail-closed przy braku wyniku sondy: halt z powodu zawodności Haiku, nie kodu. Hash przed sondą `checks`: testy i lint zapisują pliki, więc dawałby fałszywe stale w każdej próbie.
+
+### ORC-140 — reguły ciała pliku jako wbudowana kontrola sondy, ratchet względem SHA startu (2026-10-28)
+
+**Claim:** metric=falseGo direction=down threshold=0.2 engine=fd0a122 process=orchestrate
+
+**Objaw (juz-ide-api-1, TS-SEC-D0-BETA-HARDENING-001, 218 plików).** Audyt po przebiegu znalazł w ChangePasswordHandler 12 `throw`, z czego 4 dopisano w tym przebiegu, oraz `@InjectQueue` w dwóch handlerach komend. Ze 110 uruchomień weryfikatora 106 dało GO, mediana 3 wywołań narzędzi przy limicie 15.
+
+**Przyczyna.** Karta command-handler mówi „w `executeBusinessLogic`", a wszystkie `throw` stały w prywatnej metodzie. Żadna karta nie zakazywała kolejki w handlerze komendy. Jedynym strażnikiem był weryfikator-LLM: sondy `checks:` uruchamiały typecheck i testy, a `tools/conformance` sprawdzał tylko `extends` i dekoratory i nie był wpięty w `/orchestrate`.
+
+**Zmiana.** `tools/conformance` dostaje `bodyRules` (`CH-NO-THROW`, `CH-NO-BULLMQ`) i tryb `--changed --ratchet` (baseline z commita, klucz plik + reguła + metoda + hash linii, porównanie wielozbiorem). Wpis `conformance` w `checks:` jest gołym id; komendę składa CORE (`conformanceCommand`): `--baseline-ref` to `baseSha` z prepare, `--only` to `effectiveDirs` warstwy lub jednostki, `--skip` to `dirtyAtStart` (do 60 plików), a każda ścieżka przechodzi filtr `[\w./@+-]` jak wykluczenia hasha drzewa. Prepare podaje wyłącznie `conformance.tool`. Sonda `checks` dostaje własne pole `conformance` z dosłownym `conformanceReport` (ORC-094: nie mieszać z `lint`). `probeIsRed` zastępuje sześć kopii warunku `=== 'fail'`; pole dopisano też w `probeCrashed`, `finalProbeSkippedFields`, `finalProbeSummary` i czterech funkcjach odroczeń/flaky. Czerwone = powrót do implementera z dosłownym raportem, nigdy odroczone (ORC-082/099/103). W bramce końcowej fakt deterministyczny wygrywa z werdyktem LLM (NO_GO `cause=code`, runda naprawcza ORC-091). `skipped` z kontroli (exit 3: brak baseline albo narzędzia) trafia do `report.warnings`. Krok 4 `/orchestrate` uruchamia przed `git add` tę samą kontrolę bez modelu, obok sprawdzenia hasha drzewa (ORC-139).
+
+**Odrzucone.** Dołożenie kontroli do sondy hasha drzewa: sonda hasha woła Haiku 2× na próbę warstwy, 2× na rundę bramki końcowej i raz przy pieczęci, ma schemat z jednym polem, a `parseTreeHash` przepuszcza wyłącznie hex; wynik ratchetu zależy od drzewa, nie od momentu. Rozwijanie komendy w prepare: overrides podmieniają tablice `checks` po fakcie, a zakres jednostki i pliki cudze zna dopiero ten moment. Same ostrzeżenie przy braku narzędzia: cichy sukces; zamiast tego głośne exit 3.
+
+**Sprawdzone na danych.** Na stanie api-1 sprzed audytu narzędzie zwraca 4 nowe `throw` w ChangePasswordHandler przy 8 w baseline oraz BullMQ w dwóch handlerach.
+
+**Ograniczenia.** Statyczna analiza jednego pliku: nie wykryje błędu semantycznego u konsumentów ani `throw` ukrytego w wywołanej usłudze. Odpowiedź sondy (Haiku) jest twierdzeniem modelu, dlatego krok 4 powtarza kontrolę programem. Projekty z własną listą `layers` (marketing-hub, grant-flow) dopisują `conformance` do `checks:` same, po pomiarze długu. Zakres `--only`, który nie dopasował żadnego zmienionego pliku, kończy się exit 0 z ostrzeżeniem w JSON (`scope.emptyScope`) i na stderr: warstwa często legalnie nie zmienia handlerów, więc nie jest to błąd; literówkę w `dirs` wyłapuje ostrzeżenie prepare o nieistniejącym katalogu. Ciche zawężenia (brak SHA startu, odrzucone ścieżki, ponad 60 plików brudnych przed startem) trafiają do `report.warnings`. Włączenie w projektach wymaga `materialize-runtime`.
+
+### ORC-141 — drobiazg nie zmienia zachowania, a komentarz nie jest dowodem zgodności (2026-10-28)
+
+**Claim:** metric=falseGo direction=down threshold=0.2 engine=15e2802 process=orchestrate
+
+**Objaw (juz-ide-api-1, TS-SEC-D0-BETA-HARDENING-001).** Weryfikator zaakceptował `throw` w ChangePasswordHandler, powołując się na komentarz z HEAD, że `SecureOperationLockService` oczekuje callbacków rzucających wyjątki; komentarz był fałszywy. Gdy weryfikator wpisał do `minor_findings` zdanie „Zrób throw…", następny implementer wykonał je jako mechaniczną poprawkę (ORC-091), bez weryfikacji.
+
+**Przyczyna.** Definicją „drobnego" było „do kilku linii, bez zmiany zachowania", co ocenia ten sam model, który się pomylił. Prompt weryfikatora nie mówił, że uzasadnienie w komentarzu trzeba sprawdzić w kodzie.
+
+**Zmiana.** `MINOR_REMINDER` wylicza, co jest drobne (komentarze, treść logów, formatowanie, importy i zmienne, nazwy lokalne), i wprost wyklucza `throw`/`catch`, kontrakt zwrotny, kolejność operacji, bazę i kolejkę, walidację i uprawnienia. Model oznacza wątpliwą pozycję znacznikiem `[zachowanie]`; `reclassifyMinor` przenosi taką pozycję oraz pozycję pasującą do wąskiej siatki `BEHAVIOR_NET` (throw, Result.fail, rollback, InjectQueue, bullmq, status HTTP, kod odpowiedzi, „rzuć") do `violations` i zmienia GO w NO_GO (tylko przy włączonym `autoFixMinor`). `CARD_PRECEDENCE` w promptach weryfikatora i bramki: twierdzenie z komentarza lub analizy to hipoteza do sprawdzenia, sprzeczna z kartą jest naruszeniem, a wyjątek liczy się tylko, gdy istniał przed przebiegiem albo wynika z decyzji człowieka.
+
+**Odrzucone.** Szeroki regex po tekście uwagi (z `await`, `try`, `commit`, `queue`, „kolejność"): trafiałby w „zbędny await" i „zmień kolejność importów" i zamieniał GO w NO_GO przy zwykłych nitach we wszystkich stackach. Schemat obiektowy z polem `behavior_change` przy każdej uwadze: nie wiadomo, czy `schema` silnika Workflow obsługuje elementy niebędące napisami, więc znacznik w treści wpisu daje ten sam sygnał bez zmiany schematu.
+
+**Ograniczenia.** Siatka jest heurystyką po tekście i woli przepuścić niejasny wpis niż blokować nity; szczelność zależy od znacznika wpisywanego przez model. Nie zastępuje głębszej weryfikacji (budżet 15 wywołań to osobna decyzja). Siatki nie zmierzono na zapisanych raportach, bo rollupy nie niosą treści `minor_findings`; do zmierzenia po pierwszych przebiegach.
+
+### ORC-142 — pakiet kilku zadań w jednym przebiegu zatrzymuje start (2026-10-28)
+
+**Claim:** metric=retryCost direction=down threshold=0.2 engine=15e2802 process=orchestrate
+
+**Objaw (juz-ide-api-1, TS-SEC-D0-BETA-HARDENING-001).** Pakiet pięciu „niezależnych PR-ów" (24 SP) puszczony jako jeden przebieg: 218 plików (typowo 58–99), około 47 jednostek, 12 uruchomień Workflow, 3 kompaktacje kontekstu i 4 rundy pytania „dodać jednostkę?". Wąskie `layers_scope` ukryło konsumentów zmienianego kodu.
+
+**Zmiana.** `orchestrate-prepare` liczy trzy sygnały: co najmniej 3 różne „PRn" w tekście zadania i analizy, więcej niż 20 jednostek, więcej niż 4 konteksty w `units[].dirs`. Dwa naraz kończą się exit 2 z komunikatem o podziale; wyjściem jest `bundle_ack: "<powód>"` w artefakcie analizy. Jeden sygnał albo same „PRn" dają ostrzeżenie.
+
+**Sprawdzone na danych.** Progi przeliczono na 440 istniejących artefaktach analizy 16 projektów (api-1 jako reprezentant bliźniaków): dwa sygnały naraz wystąpiły raz (przypadek wyjściowy: 5 PR, 47 jednostek, 6 kontekstów), jeden sygnał osiem razy; mediana jednostek 0, p90 równe 6, maksimum 47. Sygnał „PRn" jest najszumniejszy (7 z 8 pojedynczych trafień), stąd zakaz zatrzymywania samym nim.
+
+**Ograniczenia.** Pomiar nie widział tekstu zadań, więc sygnał „PRn" jest zaniżony, i jest skalibrowany na przypadku, który ma wychwycić. Sygnał kontekstów zna tylko układ `contexts/<nazwa>/`. Reguła działa w `prepare`, więc obejmuje od razu wszystkie projekty używające `/orchestrate`, także bez bloku DDD.
+
+### ANL-049 — przesłanki decyzji o kodzie sprawdza się w kodzie (2026-10-28)
+
+**Claim:** metric=falseGo direction=down threshold=0.2 engine=9bc385e process=analyze
+
+**Objaw (juz-ide-api-1, TS-SEC-D0-BETA-HARDENING-001, decyzja D2).** SMS przez `queue.add` w handlerze komendy z uzasadnieniem „handler nie pisze do bazy"; `register-with-phone` zapisuje użytkownika. Człowiek zatwierdził analizę w około 18 minut, część odpowiedzi brzmiała „nie wiem", a prompt implementera mówił „decyzje zatwierdzone, stosuj, nie re-decyduj".
+
+**Zmiana.** Przed zapisem `decisions[]` każda przesłanka o kodzie z `rationale` jest sprawdzana celowanym odczytem i zapisywana jako `premises: [{ claim, evidence, holds }]`. `holds: false` ustawia `premise_failed: true` na decyzji i wymaga sparowanego pytania w `open_questions` (`decision: <id>`). `orchestrate-prepare` zatrzymuje start (exit 2), dopóki to pytanie nie ma odpowiedzi zatwierdzającej.
+
+**Odrzucone.** Drugie pole zgody (`exception_approved: true`) obok pytania: dwa kanały mogą się rozjechać (pytanie bez odpowiedzi i flaga, albo odwrotnie). Zgoda jest jedna: odpowiedź na pytanie.
+
+**Ograniczenia.** Pola `premises`, `premise_failed`, `card_conflict` są opcjonalne, więc starsze artefakty przechodzą bez zmian. Sprawdzenie przesłanek jest po stronie promptu: skrypt wymusza tylko parę pytanie–odpowiedź dla decyzji już oznaczonej. Kto po odpowiedzi „zmieniamy podejście" aktualizuje `choice`, rozstrzyga człowiek albo ponowna analiza; do tego czasu bramka nie puszcza oznaczonej decyzji.
+
+### ANL-050 — decyzja sprzeczna z kartą nie jest rozstrzygnięta (2026-10-28)
+
+**Claim:** metric=falseGo direction=down threshold=0.2 engine=9bc385e process=analyze
+
+**Objaw.** Ten sam przebieg: zatwierdzona decyzja łamiąca kartę (kolejka w handlerze komendy) dostawała od silnika status „stosuj, nie re-decyduj" i implementer zbudował na niej kod.
+
+**Zmiana.** `choice` każdej decyzji jest porównywany z regułami MUST/MUST NOT kart wybranych wzorców. Sprzeczność ustawia `card_conflict: [<ID>]` i wymaga sparowanego pytania z `options` w jednej linii: „Zatwierdzam wyjątek od <ID>: <powód>" oraz „Zmieniamy podejście: <jak>". `orchestrate-prepare` przepuszcza oznaczoną decyzję tylko, gdy odpowiedź jest tekstem jednej z `options` i zaczyna się od „Zatwierdzam"; inaczej exit 2 z poleceniem poprawienia `choice` i zdjęcia flagi. Karta, która nie rozstrzyga (`gap`), to twardy stop, nie notatka.
+
+**Ograniczenia.** Konwencja prefiksu „Zatwierdzam wyjątek/decyzję" jest tekstowa; trzyma ją prompt (`options` piszą /analyze), a skrypt tylko ją sprawdza (odpowiedź = dokładnie jedna z options, z ID reguł z `card_conflict`). Skrypt nie porównuje `choice` z kartami: agent analizy, który nie ustawi `card_conflict`, omija regułę, a `answer` leży w pliku, który ten agent pisze; skrypt łapie tylko niespójność wewnątrz artefaktu (`premises[].holds: false` bez pary, zniekształcone flagi). Zdjęcie flagi po odpowiedzi „zmieniamy podejście" bez zmiany `choice` nie jest wykrywane. Pola klasyfikacji (`class`, `door_type`) pozostają „tylko prompt" (ANL-047/048); skrypt czyta `decision`, `options` i `answer` wyłącznie dla decyzji oznaczonych.
+
+### ANL-051 — wynik częściowy bramki blokującej nie jest wynikiem (2026-10-28)
+
+**Claim:** metric=gateNoGo direction=down threshold=0.2 engine=9bc385e process=analyze
+
+**Objaw.** Stage `decision-gate` (haiku, budżet 12 wywołań, `on_limit: emit-partial`) wyczerpał budżet, a synteza poszła dalej na tym, co dostała, uzupełniona przez głównego agenta. To wniosek z transkryptu sesji analizy; nie sprawdzano, które decyzje bramka pominęła.
+
+**Zmiana.** Wynik częściowy ze stage'a `blocking: true`: jedno ponowienie na brakującą resztę, a gdy nadal niepełny, pozycja w `open_questions` z `answer: null` („Bramka X nie sprawdziła: …"), co blokuje `prepare` do potwierdzenia przez człowieka. Budżet `decision-gate` zostaje bez zmian. Bez zmian w skrypcie: blokuje istniejąca bramka `answer: null`.

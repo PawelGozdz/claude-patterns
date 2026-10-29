@@ -10,7 +10,15 @@ and none of it is instruction — it is history.
 
 ## [Unreleased]
 
+### Added
+- Silnik `/orchestrate` sprawdza reguły ciała pliku bez udziału modelu (ORC-140, TASK-ENGINE-GUARDRAILS-001): wpis `conformance` w `checks:` warstwy i bramki końcowej uruchamia `tools/conformance/check.mjs --changed --ratchet` względem SHA startu, z zakresem warstwy lub jednostki i bez plików brudnych przed startem. Czerwona kontrola wraca do implementera z dosłownym raportem, w bramce końcowej wygrywa z werdyktem LLM, a krok 4 powtarza ją programem przed `git add`. Reguły `CH-NO-THROW` i `CH-NO-BULLMQ` (handlery komend i zapytań). Wyjątek dopisany w przebiegu (`exception-new`) i zmiana `.claude/conformance.json` czekają na człowieka. Wymaga `materialize-runtime` w projekcie; blok `ddd/layers` i rejestracja hooka czekają na scalenie.
+- Hook `check-test-implementer-scope` (ORC-143 w planie, bez wiersza reguły): blokuje agenta od testów, który zapisał kod produkcyjny, także przez skrypt. Plik jest nieaktywny, dopóki projekt go nie zarejestruje.
+- `orchestrate-prepare` zatrzymuje start przy pakiecie kilku zadań (ORC-142): dwa z trzech sygnałów (3 różne „PRn", ponad 20 jednostek, ponad 4 konteksty), wyjście `bundle_ack`. Progi przeliczone na 440 istniejących analizach: zatrzymany byłby jeden przypadek.
+- `/analyze` oznacza decyzje sprzeczne z kartą albo z fałszywą przesłanką (ANL-049, ANL-050, ANL-051); `orchestrate-prepare` wymaga dla nich sparowanego pytania z odpowiedzią „Zatwierdzam…" będącą jedną z `options`.
+
 ### Changed
+- „Drobne" ustalenia weryfikatora zawężone do komentarzy, logów, formatowania, importów i nazw lokalnych (ORC-141): wpis ze znacznikiem `[zachowanie]` albo pasujący do wąskiej siatki przechodzi do `violations` (GO → NO_GO). W promptach weryfikatora i bramki akapit „karta ma pierwszeństwo nad komentarzem".
+- `/conformance-check --dir` zwraca teraz exit 1 także za naruszenia reguł ciała pliku (bez baseline nie ma jak odróżnić długu); szczegóły w `tools/conformance/README.md`.
 - Opisy 8 agentów w frontmatterze skrócone (`legal-`, `finance-`, `marketing-strategist`, `backend-technology-expert`, `halt-diagnostician`, `tech-lead`, `product-owner`, `business-rules-auditor`): suma opisów w katalogu agentów spadła o ok. 8,7 KB (ok. 2,2 tys. tokenów w każdej sesji). Tematy routingu zostały w opisach jako słowa kluczowe, przykłady próśb i tryby dostępu przeniesione do sekcji „When to invoke" w ciele. Baseline kontekstu (`ceilings.json`) przechwycony przy każdej zmianie.
 - Claimy dopisane do reguł ANL-028, ANL-038, ANL-040, ANL-046 i ORC-138 w `docs/decisions/orchestrate-rule-history.md`; ANL-028 i ANL-040 dostały własne wpisy (miały tylko wiersz w tabeli). Starsze reguły (`engine=1a99827`, pierwszy hash w rollupach) mają adnotację, że okno „przed/po" miesza wiele zmian.
 

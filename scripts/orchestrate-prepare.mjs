@@ -219,6 +219,35 @@ function patternOutsideLayerNamespaces(content, runningNs) {
   return ![...ns].some((n) => runningNs.has(n));
 }
 
+// ── ORC-142: sygnały pakietu zadań ───────────────────────────────────────────────
+// Progi skalibrowane na istniejących artefaktach analizy (440 analiz 16 projektów): dwa sygnały naraz zatrzymałyby 1 z nich —
+// pakiet pięciu „niezależnych PR-ów" (47 jednostek, 6 kontekstów), od którego reguła się wzięła; jeden sygnał trafia się w 8
+// (mediana jednostek 0, p90 = 6). Pomiar nie widział tekstu tasków, więc sygnał „PRn" jest zaniżony. Sygnał „PRn" jest też
+// najszumniejszy, ale jest tylko jednym z trzech sygnałów, więc sam nigdy nie zatrzymuje. Skoryguj progi po pierwszych przebiegach, nie gub sygnału.
+const BUNDLE_LIMITS = { prs: 3, units: 20, contexts: 4 };
+
+function bundleSignals(units, analysisDoc, taskDoc) {
+  const list = Array.isArray(units) ? units : [];
+  const text = [taskDoc?.fm?.title, taskDoc?.body, analysisDoc?.body, ...list.map((u) => u?.id)].filter(Boolean).join('\n');
+  const prs = new Set((text.match(/\bPR\s?-?\d{1,2}\b/gi) ?? []).map((m) => m.replace(/\D/g, '')));
+  const ctx = new Set();
+  for (const u of list) {
+    for (const d of [u?.dirs].flat(Infinity)) {
+      const m = (typeof d === 'string' ? d : '').match(/(?:^|\/)contexts\/([^/]+)/);
+      if (m) ctx.add(m[1]);
+    }
+  }
+  return { prs: prs.size, units: list.length, contexts: ctx.size };
+}
+
+function bundleHits(sig) {
+  const hits = [];
+  if (sig.prs >= BUNDLE_LIMITS.prs) hits.push('kilka PR-ów w tekście zadania');
+  if (sig.units > BUNDLE_LIMITS.units) hits.push('dużo jednostek');
+  if (sig.contexts > BUNDLE_LIMITS.contexts) hits.push('wiele kontekstów');
+  return hits;
+}
+
 // ── dopasowanie keywordów ────────────────────────────────────────────────────────
 function buildHaystack(taskDoc, analysisDoc) {
   const parts = [];
@@ -561,6 +590,50 @@ function main() {
       for (const d of decisions) {
         if (!d || typeof d !== 'object') continue;
         const id = String(d.id ?? '?');
+        // ANL-049/050: /analyze oznacza decyzję, która przeczy karcie (`card_conflict: [CH5, QP1]`) albo której przesłanka o kodzie
+        // okazała się fałszywa (`premise_failed: true`). Taka decyzja NIE jest rozstrzygnięta: implementer dostaje decyzje z
+        // poleceniem „stosuj, nie re-decyduj". Zgodę wyraża człowiek w JEDNYM miejscu, odpowiedzią na sparowane pytanie
+        // (`decision: <id>`, z `options`); odpowiedź zatwierdzająca jest jedną z `options`, zaczyna się od „Zatwierdzam wyjątek/decyzję" i wymienia reguły.
+        const conflictRaw = d.card_conflict;
+        const flagBad = [];
+        if (conflictRaw !== undefined && conflictRaw !== null && !(Array.isArray(conflictRaw) && conflictRaw.every((x) => typeof x === 'string' && x.trim()))) {
+          flagBad.push('`card_conflict` musi być listą ID reguł (np. [CH5, QP1]), nie ' + typeof conflictRaw);
+        }
+        if (d.premise_failed !== undefined && d.premise_failed !== null && typeof d.premise_failed !== 'boolean') {
+          flagBad.push('`premise_failed` musi być true/false, nie ' + JSON.stringify(d.premise_failed));
+        }
+        for (const msg of flagBad) gateFailures.push(`decisions[${id}]: ${msg} — zniekształcona flaga wyłączałaby bramkę po cichu`);
+        const conflicts = Array.isArray(conflictRaw) ? conflictRaw.map((x) => String(x).trim()).filter(Boolean) : [];
+        // przesłanka z `holds: false` oznacza decyzję także wtedy, gdy autor analizy nie ustawił `premise_failed`
+        const premiseFalse = d.premise_failed === true || (Array.isArray(d.premises) && d.premises.some((p) => p && p.holds === false));
+        if (conflicts.length || premiseFalse) {
+          const why = conflicts.length ? `sprzeczna z kartą ${conflicts.join(', ')}` : 'przesłanka decyzji nie potwierdziła się w kodzie';
+          const norm = (x) => String(x ?? '').trim().toUpperCase();
+          const paired = (Array.isArray(oq) ? oq : []).filter((q) => q && norm(q.decision) === norm(id));
+          const strip = (s) => String(s).replace(/\s*\(recommended\)\s*$/i, '').trim();
+          if (!paired.length) {
+            gateFailures.push(`decisions[${id}]: ${why}, ale w open_questions nie ma pytania z \`decision: ${id}\` — zgodę na wyjątek człowiek wyraża odpowiedzią na to pytanie`);
+          }
+          for (const q of paired) {
+            const qid = q.id ?? '?';
+            if (!Array.isArray(q.options) || !q.options.length) {
+              gateFailures.push(`decisions[${id}]: pytanie ${qid} musi mieć \`options\` (lista, w jednej linii) z opcją „Zatwierdzam …" i „Zmieniamy podejście …" — odpowiedź swobodnym tekstem nie jest zgodą`);
+              continue;
+            }
+            if (q.answer === null || q.answer === undefined) continue; // pokryte przez „open_questions bez odpowiedzi"
+            const ans = strip(q.answer);
+            const opts = q.options.map(strip);
+            if (!opts.includes(ans)) {
+              gateFailures.push(`decisions[${id}]: odpowiedź na ${qid} nie jest żadną z options (${opts.map((o) => `„${o.slice(0, 50)}"`).join(' / ')})`);
+            } else if (!/^zatwierdzam\s+(wyjątek|decyzję)\b/i.test(ans)) {
+              gateFailures.push(`decisions[${id}]: ${why}; odpowiedź na ${qid} („${ans.slice(0, 60)}") nie zatwierdza wyjątku (zatwierdzenie zaczyna się od „Zatwierdzam wyjątek" albo „Zatwierdzam decyzję"). ` +
+                'Zmieniasz podejście: popraw `choice` w decyzji i zdejmij flagę (`card_conflict` / `premise_failed`, oraz `holds: false` w `premises`)');
+            } else {
+              const missing = conflicts.filter((c) => !ans.toUpperCase().includes(c.toUpperCase()));
+              if (missing.length) gateFailures.push(`decisions[${id}]: zatwierdzenie w ${qid} nie wymienia reguł: ${missing.join(', ')} — zgoda dotyczy konkretnych reguł, nie wyjątku „w ogóle"`);
+            }
+          }
+        }
         if (typeof d.choice === 'string' && d.choice.trim()) continue;
         const alias = ALIASES.find((k) => typeof d[k] === 'string' && d[k].trim());
         gateFailures.push(alias
@@ -688,6 +761,27 @@ function main() {
   let taskDoc = null;
   if (taskPath) taskDoc = splitFrontmatter(readFileSync(taskPath, 'utf8'));
   else warnings.push(`brak pliku taska ${args.taskId}*.md w project-orchestration/tasks/ — keywordy dopasowane wyłącznie z artefaktu analizy`);
+
+  // ORC-142: pakiet zadań w jednym przebiegu. Dwa sygnały zatrzymują start (exit 2), jeden to ostrzeżenie; wyjście: osobny
+  // przebieg na zadanie albo `bundle_ack: <powód>` w artefakcie (świadoma zgoda człowieka).
+  {
+    const sig = bundleSignals(analysisDoc?.fm?.units, analysisDoc, taskDoc);
+    const hits = bundleHits(sig);
+    const ack = typeof analysisDoc?.fm?.bundle_ack === 'string' && analysisDoc.fm.bundle_ack.trim();
+    // pole jest, ale nie jest napisem z powodem (`true`, lista): bez tej uwagi użytkownik nie wiedziałby, czemu zgoda „nie działa"
+    const ackBadType = analysisDoc?.fm?.bundle_ack != null && !ack;
+    const desc = `${sig.prs} różnych „PRn" w tekście (próg ${BUNDLE_LIMITS.prs}), ${sig.units} jednostek (próg ${BUNDLE_LIMITS.units}), ${sig.contexts} kontekstów (próg ${BUNDLE_LIMITS.contexts})`;
+    if (hits.length >= 2 && !ack) {
+      process.stderr.write('✘ orchestrate-prepare: to wygląda na PAKIET kilku zadań w jednym przebiegu — start wstrzymany (ORC-142).\n');
+      process.stderr.write(`  • sygnały: ${hits.join(', ')} — ${desc}\n`);
+      if (ackBadType) process.stderr.write('  • bundle_ack jest w artefakcie, ale musi być napisem z powodem (nie true/lista/puste) — dlatego nie zadziałał.\n');
+      process.stderr.write('  • duży pakiet = ponad 200 plików w jednym przebiegu zamiast typowych 58–99 i weryfikacja bez szansy na głębię; progi zatrzymałyby 1 z 440 dotychczasowych analiz.\n');
+      process.stderr.write(`\n  Napraw: rozbij na osobne zadania (jedno zadanie = jedno TASK-ID) albo dopisz w ${analysisPath ? relative(args.project, analysisPath) : 'artefakcie analizy'} pole \`bundle_ack: "<dlaczego jeden przebieg>"\`.\n`);
+      process.exit(EXIT.GATE);
+    }
+    if (hits.length >= 2 && ack) warnings.push(`pakiet w jednym przebiegu zaakceptowany (bundle_ack: ${ack}) — ${desc}`);
+    else if (hits.length >= 1) warnings.push(`rozmiar zadania: sygnał pakietu „${hits.join('", "')}" — ${desc}; rozważ podział na osobne przebiegi (ORC-142)`);
+  }
 
   // 4. wzorce: always → triggers (po keywordach) → patterns[] z artefaktu
   const haystack = buildHaystack(taskDoc, analysisDoc);
@@ -846,6 +940,9 @@ function main() {
     // inherit | sonnet | opus | haiku; z runtime.yml `final_gate.model`.
     finalGateModel: finalGate.model ? String(finalGate.model) : 'auto',
     baseSha: git.baseSha,
+    // ORC-140: wbudowane id `conformance` w `checks:` — komendę składa template (zakres warstwy, SHA startu, pliki cudze);
+    // prepare podaje tylko ścieżkę do narzędzia, wynikającą z położenia TEGO pliku (projekt nie zna lokalizacji claude-patterns)
+    conformance: { tool: join(REPO_ROOT, 'tools', 'conformance', 'check.mjs') },
     dirtyAtStart: git.dirtyAtStart,
     layers,
     patterns,

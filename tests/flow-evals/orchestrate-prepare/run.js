@@ -322,6 +322,144 @@ CASES.push({
   },
 });
 
+const RUNTIME_CONFORMANCE = RUNTIME_GATE_CHECKS.replace(
+  'checks: ["typecheck"]}', 'checks: ["typecheck", "conformance"]}').replace(
+  'checks: ["test", "lint:check"]}', 'checks: ["test", "conformance"]}');
+
+CASES.push({
+  name: 'conformance-stays-a-bare-id-and-prepare-only-supplies-the-tool-path',
+  // ORC-140: komendę składa template (zakres warstwy / SHA / pliki cudze znane dopiero tam), nie prepare
+  build: () => makeProject({ taskId: 'TS-FIX-001', runtime: RUNTIME_CONFORMANCE, analysis: withFm(''), task: taskFile('Dodaj aggregate.') }),
+  check(r) {
+    if (r.code !== 0) return `oczekiwano exit 0, było ${r.code} (${r.stderr.trim()})`;
+    const dom = r.json.layers.find((l) => l.id === 'domain');
+    if (!dom.checks.includes('conformance') || dom.checks.some((c) => /check\.mjs/.test(c))) return 'wpis conformance rozwinięty w prepare: ' + dom.checks.join(' | ');
+    if (!r.json.checks.finalGate.includes('conformance')) return 'conformance z final_gate.checks zgubione: ' + r.json.checks.finalGate.join(',');
+    const tool = r.json.conformance && r.json.conformance.tool;
+    if (!tool || !/\/tools\/conformance\/check\.mjs$/.test(tool) || !require('fs').existsSync(tool)) return 'brak/zła ścieżka narzędzia w out.conformance.tool: ' + tool;
+    return null;
+  },
+});
+
+// ORC-142: pakiet zadań
+const unitsYaml = (n, ctxCount) => 'units:\n' + Array.from({ length: n }, (_, i) => `  - { id: u${i}, layer: domain, dirs: [src/contexts/c${i % ctxCount}/domain/${i}/] }`).join('\n');
+const bundleCase = (name, extra, task, check) => CASES.push({
+  name,
+  build: () => makeProject({ taskId: 'TS-FIX-001', analysis: withFm(extra), task: taskFile(task) }),
+  check,
+});
+bundleCase('bundle-two-signals-stop-the-run-exit-2', unitsYaml(21, 5), 'Dodaj aggregate.', (r) => {
+  if (r.code !== 2) return `oczekiwano exit 2, było ${r.code} (${r.stderr.trim().slice(0, 160)})`;
+  if (!/PAKIET/.test(r.stderr) || !/bundle_ack/.test(r.stderr)) return 'komunikat bez nazwy problemu i wyjścia (bundle_ack): ' + r.stderr;
+  return null;
+});
+bundleCase('bundle-ack-lets-it-through-with-a-warning', unitsYaml(21, 5) + '\nbundle_ack: "jeden PR, wspólna migracja"', 'Dodaj aggregate.', (r) => {
+  if (r.code !== 0) return `oczekiwano exit 0 z bundle_ack, było ${r.code} (${r.stderr.trim().slice(0, 160)})`;
+  if (!r.json.warnings.some((w) => /bundle_ack/.test(w))) return 'brak ostrzeżenia o zaakceptowanym pakiecie';
+  return null;
+});
+bundleCase('bundle-one-signal-only-warns', unitsYaml(21, 2), 'Dodaj aggregate.', (r) => {
+  if (r.code !== 0) return `oczekiwano exit 0, było ${r.code}`;
+  if (!r.json.warnings.some((w) => /rozmiar zadania/.test(w) && /dużo jednostek/.test(w))) return 'brak ostrzeżenia o jednym sygnale: ' + JSON.stringify(r.json.warnings);
+  return null;
+});
+bundleCase('bundle-pr-mentions-alone-never-stop', '', 'PR1 schema, PR2 api, PR3 ui, PR4 docs.', (r) => {
+  if (r.code !== 0) return `samo „PRn" zatrzymało start: exit ${r.code}`;
+  if (!r.json.warnings.some((w) => /kilka PR-ów/.test(w))) return 'brak ostrzeżenia o wielu PR-ach';
+  return null;
+});
+bundleCase('bundle-pr-mentions-plus-one-real-signal-stop', unitsYaml(21, 2), 'PR1 schema, PR2 api, PR3 ui.', (r) => {
+  if (r.code !== 2) return `PRn + dużo jednostek powinno zatrzymać, było exit ${r.code}`;
+  return null;
+});
+
+bundleCase('bundle-ack-with-wrong-type-is-explained-not-ignored', unitsYaml(21, 5) + '\nbundle_ack: true', 'Dodaj aggregate.', (r) => {
+  if (r.code !== 2) return `bundle_ack: true nie powinno być zgodą: exit ${r.code}`;
+  if (!/musi być napisem z powodem/.test(r.stderr)) return 'komunikat nie tłumaczy, czemu bundle_ack nie zadziałał: ' + r.stderr;
+  return null;
+});
+bundleCase('bundle-non-array-units-fail-in-the-analysis-gate-not-with-a-crash', 'units: "to nie jest lista"', 'Dodaj aggregate.', (r) => {
+  if (r.code !== 2) return `units jako napis: exit ${r.code}, oczekiwano 2 z bramki analizy`;
+  if (/TypeError|at .*\.mjs:\d+/.test(r.stderr)) return 'nieobsłużony wyjątek zamiast komunikatu: ' + r.stderr.slice(0, 200);
+  return null;
+});
+// ANL-049/050: decyzja sprzeczna z kartą albo z fałszywą przesłanką wymaga sparowanego, zatwierdzonego pytania
+const flagged = (decisionExtra, questions, check, name) => CASES.push({
+  name,
+  build: () => {
+    const fm = analysisFm({});
+    const withDecision = fm.replace('    rationale: "uzasadnienie"\n', '    rationale: "uzasadnienie"\n' + decisionExtra);
+    const withQuestions = withDecision.replace("    answer: 'tak'\n", "    answer: 'tak'\n" + questions);
+    return makeProject({ taskId: 'TS-FIX-001', analysis: withQuestions, task: taskFile('Dodaj aggregate.') });
+  },
+  check,
+});
+const PAIRED = (answer, opts = '["Zatwierdzam wyjątek od CH5: callback blokady wymaga wyjątku (recommended)", "Zmieniamy podejście: Result.fail w callbacku"]') =>
+  `  - id: Q2\n    ask: "Decyzja łamie regułę CH5. Zatwierdzasz wyjątek?"\n    q: "wyjątek od CH5"\n    decision: D1\n    options: ${opts}\n    answer: ${answer}\n`;
+flagged('    card_conflict: [CH5]\n', '', (r) => {
+  if (r.code !== 2) return `decyzja sprzeczna z kartą bez pytania powinna zatrzymać: exit ${r.code}`;
+  if (!/nie ma pytania z `decision: D1`/.test(r.stderr)) return 'komunikat bez wskazania brakującego pytania: ' + r.stderr;
+  return null;
+}, 'card-conflict-without-paired-question-stops');
+flagged('    card_conflict: [CH5]\n', PAIRED('"Zatwierdzam wyjątek od CH5: callback blokady wymaga wyjątku"'), (r) => {
+  if (r.code !== 0) return `zatwierdzony wyjątek powinien przejść: exit ${r.code} (${r.stderr.trim().slice(0, 200)})`;
+  return null;
+}, 'card-conflict-with-approving-answer-passes');
+flagged('    card_conflict: [CH5]\n', PAIRED('"Zmieniamy podejście: Result.fail w callbacku"'), (r) => {
+  if (r.code !== 2) return `odpowiedź „zmieniamy podejście" przy nadal oznaczonej decyzji powinna zatrzymać: exit ${r.code}`;
+  if (!/nie zatwierdza wyjątku/.test(r.stderr) || !/zdejmij flagę/.test(r.stderr)) return 'komunikat bez wskazówki, co zrobić: ' + r.stderr;
+  return null;
+}, 'card-conflict-answered-change-approach-stops-until-flag-removed');
+flagged('    card_conflict: [CH5]\n', PAIRED('"tak"'), (r) => {
+  if (r.code !== 2 || !/nie jest żadną z options/.test(r.stderr)) return `odpowiedź spoza options powinna zatrzymać: exit ${r.code} ${r.stderr.slice(0, 160)}`;
+  return null;
+}, 'answer-outside-options-stops');
+flagged('    card_conflict: [CH5]\n', PAIRED('null'), (r) => {
+  if (r.code !== 2 || !/open_questions bez odpowiedzi/.test(r.stderr)) return `pytanie bez odpowiedzi powinno zatrzymać istniejącą bramką: exit ${r.code}`;
+  return null;
+}, 'paired-question-without-answer-stops-via-existing-gate');
+flagged('    premise_failed: true\n', PAIRED('"Zatwierdzam wyjątek od CH5: callback blokady wymaga wyjątku"'), (r) => {
+  if (r.code !== 0) return `premise_failed z zatwierdzeniem powinno przejść: exit ${r.code}`;
+  return null;
+}, 'premise-failed-with-approving-answer-passes');
+flagged('    premise_failed: true\n', '', (r) => {
+  if (r.code !== 2 || !/przesłanka decyzji nie potwierdziła się/.test(r.stderr)) return `premise_failed bez pytania powinno zatrzymać: exit ${r.code}`;
+  return null;
+}, 'premise-failed-without-paired-question-stops');
+flagged('    premises: [{ claim: "handler nie pisze do bazy", evidence: "h.ts:94", holds: true }]\n', '', (r) => {
+  if (r.code !== 0) return `przesłanki z holds: true bez flagi nie mogą blokować: exit ${r.code}`;
+  return null;
+}, 'verified-premises-without-flags-do-not-block');
+
+flagged('    card_conflict: "CH5"\n', '', (r) => {
+  if (r.code !== 2 || !/musi być listą ID reguł/.test(r.stderr)) return `card_conflict jako napis powinno zatrzymać: exit ${r.code} ${r.stderr.slice(0, 160)}`;
+  return null;
+}, 'malformed-card-conflict-is-an-error-not-a-silent-skip');
+flagged('    premise_failed: "true"\n', '', (r) => {
+  if (r.code !== 2 || !/premise_failed. musi być true\/false/.test(r.stderr)) return `premise_failed jako napis powinno zatrzymać: exit ${r.code}`;
+  return null;
+}, 'malformed-premise-failed-is-an-error-not-a-silent-skip');
+flagged('    card_conflict: []\n', '', (r) => {
+  if (r.code !== 0) return `pusta lista card_conflict = brak sprzeczności, nie może blokować: exit ${r.code}`;
+  return null;
+}, 'empty-card-conflict-list-means-no-conflict');
+flagged('    premises: [{ claim: "handler nie pisze do bazy", evidence: "h.ts:94", holds: false }]\n', '', (r) => {
+  if (r.code !== 2 || !/przesłanka decyzji nie potwierdziła się/.test(r.stderr)) return `holds: false bez premise_failed powinno oznaczyć decyzję: exit ${r.code}`;
+  return null;
+}, 'false-premise-flags-the-decision-even-without-premise-failed');
+flagged('    card_conflict: [CH5]\n', "  - id: Q2\n    ask: \"Zatwierdzasz?\"\n    q: \"x\"\n    decision: D1\n    answer: \"Zatwierdzam wyjątek od CH5: powód\"\n", (r) => {
+  if (r.code !== 2 || !/musi mieć `options`/.test(r.stderr)) return `odpowiedź swobodnym tekstem bez options nie jest zgodą: exit ${r.code}`;
+  return null;
+}, 'paired-question-without-options-is-not-an-approval-channel');
+flagged('    card_conflict: [CH5]\n', PAIRED('"Zatwierdzam wyjątek od CH9: inna reguła"', '["Zatwierdzam wyjątek od CH9: inna reguła (recommended)", "Zmieniamy podejście: Result.fail"]'), (r) => {
+  if (r.code !== 2 || !/nie wymienia reguł: CH5/.test(r.stderr)) return `zgoda na inną regułę nie może pokryć CH5: exit ${r.code} ${r.stderr.slice(0, 160)}`;
+  return null;
+}, 'approval-must-name-the-conflicting-rule');
+flagged('    card_conflict: [CH5]\n', PAIRED('"Zatwierdzam wyjątek od CH5: callback blokady wymaga wyjątku"').replace('decision: D1', 'decision: d1'), (r) => {
+  if (r.code !== 0) return `dopasowanie pary nie powinno zależeć od wielkości liter: exit ${r.code} ${r.stderr.slice(0, 160)}`;
+  return null;
+}, 'pairing-is-case-insensitive');
+
 CASES.push({
   name: 'units-expand-into-sub-layers',
   build: () => makeProject({

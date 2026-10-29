@@ -277,7 +277,7 @@ skills:
     jurisdictions_supported: ["PL", "EU general", "US", "UK", "FR (limited)"]
 
 hooks:
-  total: 47  # 44 .js + 3 .sh, płasko w hooks/ (lib/ to kod dzielony, nie osobne hooki); 53→42 po K98/K99 (ADR 0009); +2 telemetry-agent-start/-stop (ADR 0012); +1 workflow-metrics-stop (OBS-007)
+  total: 48  # 45 .js + 3 .sh, płasko w hooks/ (lib/ to kod dzielony, nie osobne hooki); 53→42 po K98/K99 (ADR 0009); +2 telemetry-agent-start/-stop (ADR 0012); +1 workflow-metrics-stop (OBS-007); +1 check-test-implementer-scope (TASK-ENGINE-GUARDRAILS-001)
 
 templates:
   stack_presets: 10

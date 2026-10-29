@@ -45,6 +45,11 @@ decisions:                      # propozycje z analizy; człowiek weryfikuje/pop
     # TASTE, USER_CHALLENGE i każde one-way mają parę w `open_questions` (pole `decision: <id>`), a `choice` jest wtedy tylko propozycją.
     # class: <MECHANICAL|TASTE|USER_CHALLENGE>
     # door_type: <one-way|two-way>
+    # Kontrola decyzji przed zapisem (ANL-049/050) — FAKTY o decyzji; zgodę wyraża człowiek odpowiedzią na sparowane pytanie.
+    # premises: [{ claim: "handler nie pisze do bazy", evidence: "src/.../handler.ts:94", holds: false }]   # przesłanki o kodzie, sprawdzone w źródle
+    # premise_failed: true          # którakolwiek przesłanka ma holds: false → decyzja NIE jest rozstrzygnięta
+    # card_conflict: [CH5, QP1]     # choice przeczy regułom kart (ID reguł)
+    # Decyzja z premise_failed / card_conflict wymaga pytania z `decision: <id>`; odpowiedź zatwierdzająca zaczyna się od „Zatwierdzam".
 
 patterns:                       # grounding (z Pattern Discovery) — to samo w research i impl
   - domain/aggregate-pattern.md
@@ -56,6 +61,7 @@ patterns_exclude: []            # fałszywe trafienia keywordów (np. wzorzec we
 final_checks: []                # skrypty/komendy, które decyzje analizy każą uruchomić w bramce końcowej
   # (np. [test:l3, test:gateway] po zmianie konfiguracji e2e) — dopisywane do checks z bloków (ORC-121).
 
+# bundle_ack: "<dlaczego jeden przebieg>"   # ORC-142: pakiet kilku zadań (dwa sygnały: ponad 20 jednostek, ponad 4 konteksty; samo „PRn" nie zatrzymuje) startuje tylko z tą zgodą
 units: []                       # podział warstwy na jednostki — każda to osobny przebieg
   # implement→verify (pod-warstwa <layer>:<id>). Pusty = warstwy z runtime.yml bez podziału.
   # Warstwa z jednostkami NIE może być w layers_skip ani layers_scope. W dirs dopisz też

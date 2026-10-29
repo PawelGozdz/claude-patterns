@@ -57,6 +57,11 @@ komendy. Zawsze wywołuj `check.mjs` jako pojedynczą, prostą komendę z pełn�
 - Domyślne reguły: `tools/conformance/rules.json` (z `rules/nestjs-ddd` + decision cards).
 - Override per-projekt: `.claude/conformance.json` (merge po `kind`) — gdy projekt ma własne base-classy.
 
+## Reguły ciała pliku i ratchet
+`bodyRules` (`CH-NO-THROW`, `CH-NO-BULLMQ` w `application/commands|queries/**/handler.ts`): `check.mjs --changed --ratchet --baseline-ref <SHA>`
+blokuje tylko nowe naruszenia; wyjątek dopisany w przebiegu (`exception-new`) i zmiana `.claude/conformance.json` czekają na człowieka.
+Zakres: `--only`, `--skip`. Szczegóły, kody wyjścia i ograniczenia: `tools/conformance/README.md`.
+
 ## Kiedy używać
 - Przed sprintem / w CI — wykryć drift konwencji w 6800-plikowym DDD.
 - Komplement do hooków `check-ddd-patterns`/`check-domain-purity` (te per-edit; to — całe repo naraz).
