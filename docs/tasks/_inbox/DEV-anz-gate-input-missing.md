@@ -29,20 +29,24 @@ resolution: >
   aegis-flow (TS-007): to samo co 2026-10-23 TS-001, brak knowledge.collection w
   runtime.yml; czeka na decyzję, które katalogi projektu w Pythonie
   zaindeksować.
+  2026-10-28 grant-flow (TS-PROJ-WRITEOWN-002): brak pliku taska. ANL-052 (2026-10-29): raport
+  zaczyna się od linii „Brak pliku zadania", artefakt ma sekcję „Źródła zakresu"; reguła tylko
+  w prompcie.
 trigger: analyze_gate
 category: config
 sources:
   - analyze
 rule_ref: ANZ-GATE-INPUT-MISSING
 first_seen: 2026-10-17
-last_seen: 2026-10-25
-occurrences: 8
+last_seen: 2026-10-28
+occurrences: 9
 projects:
   - juz-ide-api-2
   - aegis-flow
   - marketing-hub
   - iam
   - my-intelligence
+  - grant-flow
 reopened_at: 2026-10-20
 reopened_from_status: promoted
 ---
@@ -51,6 +55,7 @@ reopened_from_status: promoted
 
 ## Occurrences
 
+- 2026-10-28 grant-flow (TS-PROJ-WRITEOWN-002) — /analyze TS-PROJ-WRITEOWN-002 wystartował bez pliku project-orchestration/tasks/TS-PROJ-WRITEOWN-002*.md (KANBAN i dwie zatwierdzone analizy tylko go wspominają jako 'TO TRZEBA STWORZYĆ'); zakres odtworzono z analiz UI-009/UI-010, bramka wejścia nie ostrzega o braku taska
 - 2026-10-25 my-intelligence (TS-071) — knowledge.json wskazuje kolekcję code_my_intelligence, której nie ma w indeksie retrieve_code (dostępne: code_ai_gateway, code_grant_flow, ... bez my-intelligence); runtime.yml nie ma sekcji knowledge
 - 2026-10-24 aegis-flow (TS-007) — runtime.yml bez sekcji knowledge.collection: ANL-009/ANL-010 wymagają kolekcji RAG, więc analiza zapisała rag: skipped; mcp knowledge-retriever dostępny w sesji
 - 2026-10-23 juz-ide-api-2 (TS-SEC-SP-LOCATION-001) — decisions-index.json: needs_scope_check=false i scope=null dla BDR-083/089/090/096 mimo częściowych uchyleń opisanych w nagłówkach BDR; korpus strategy-fit w runtime.yml kończy się na BDR-090 (drift do BDR-099)

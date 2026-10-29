@@ -8,9 +8,154 @@
       "trigger": "setup_drift"
     }
   },
-  "events": 11,
+  "engines": {
+    "e9864d9": {
+      "analyze": {
+        "costUsd": 5.126692,
+        "died": 0,
+        "ended": {
+          "ok": 1
+        },
+        "started": 1,
+        "steps": 8,
+        "stepsWithoutCost": 0
+      }
+    }
+  },
+  "events": 246,
   "host": "5a164d2d0145",
   "processes": {
+    "analyze": {
+      "costUsd": 5.126692,
+      "costUsdRetried": 0,
+      "died": 0,
+      "repairs": {
+        "fixSteps": 0,
+        "fixed": 0,
+        "open": 0
+      },
+      "retried": 0,
+      "roles": {
+        "ddd-modeling": {
+          "causes": {},
+          "costUsd": 0.43458,
+          "durationMs": {
+            "n": 1,
+            "p50": 30302,
+            "p90": 30302
+          },
+          "n": 1,
+          "outcomes": {
+            "ok": 1
+          },
+          "toolCalls": 15
+        },
+        "decision-gate": {
+          "causes": {},
+          "costUsd": 0.012613,
+          "durationMs": {
+            "n": 1,
+            "p50": 25218,
+            "p90": 25218
+          },
+          "n": 1,
+          "outcomes": {
+            "ok": 1
+          },
+          "toolCalls": 13
+        },
+        "geo-analysis": {
+          "causes": {},
+          "costUsd": 0.526392,
+          "durationMs": {
+            "n": 1,
+            "p50": 41727,
+            "p90": 41727
+          },
+          "n": 1,
+          "outcomes": {
+            "ok": 1
+          },
+          "toolCalls": 15
+        },
+        "impl-analysis": {
+          "causes": {},
+          "costUsd": 0.525035,
+          "durationMs": {
+            "n": 1,
+            "p50": 37965,
+            "p90": 37965
+          },
+          "n": 1,
+          "outcomes": {
+            "ok": 1
+          },
+          "toolCalls": 13
+        },
+        "pattern-fit": {
+          "causes": {},
+          "costUsd": 0.312256,
+          "durationMs": {
+            "n": 1,
+            "p50": 12540,
+            "p90": 12540
+          },
+          "n": 1,
+          "outcomes": {
+            "ok": 1
+          },
+          "toolCalls": 6
+        },
+        "strategy-fit": {
+          "causes": {},
+          "costUsd": 1.05229,
+          "durationMs": {
+            "n": 1,
+            "p50": 52826,
+            "p90": 52826
+          },
+          "n": 1,
+          "outcomes": {
+            "ok": 1
+          },
+          "toolCalls": 20
+        },
+        "tech-analysis": {
+          "causes": {},
+          "costUsd": 0.878683,
+          "durationMs": {
+            "n": 1,
+            "p50": 40456,
+            "p90": 40456
+          },
+          "n": 1,
+          "outcomes": {
+            "ok": 1
+          },
+          "toolCalls": 16
+        },
+        "tech-analysis-specialist": {
+          "causes": {},
+          "costUsd": 1.384843,
+          "durationMs": {
+            "n": 1,
+            "p50": 216499,
+            "p90": 216499
+          },
+          "n": 1,
+          "outcomes": {
+            "ok": 1
+          },
+          "toolCalls": 15
+        }
+      },
+      "steps": 8,
+      "stepsWithoutCost": 0,
+      "verification": {
+        "firstPassGo": 0,
+        "units": 0
+      }
+    },
     "audit": {
       "costUsd": 0,
       "costUsdRetried": 0,
@@ -30,9 +175,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 23,
           "outcomes": {
-            "ok": 1
+            "ok": 23
           },
           "toolCalls": 0
         },
@@ -44,9 +189,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 23,
           "outcomes": {
-            "ok": 1
+            "ok": 23
           },
           "toolCalls": 0
         },
@@ -58,9 +203,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 23,
           "outcomes": {
-            "ok": 1
+            "ok": 23
           },
           "toolCalls": 0
         },
@@ -72,9 +217,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 23,
           "outcomes": {
-            "ok": 1
+            "ok": 23
           },
           "toolCalls": 0
         },
@@ -86,9 +231,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 23,
           "outcomes": {
-            "ok": 1
+            "ok": 23
           },
           "toolCalls": 0
         },
@@ -100,15 +245,15 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 23,
           "outcomes": {
-            "ok": 1
+            "ok": 23
           },
           "toolCalls": 0
         },
         "runtime": {
           "causes": {
-            "config": 1
+            "config": 14
           },
           "costUsd": 0,
           "durationMs": {
@@ -116,9 +261,10 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 23,
           "outcomes": {
-            "failed": 1
+            "failed": 14,
+            "ok": 9
           },
           "toolCalls": 0
         },
@@ -130,23 +276,26 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 23,
           "outcomes": {
-            "ok": 1
+            "ok": 23
           },
           "toolCalls": 0
         },
         "templates": {
-          "causes": {},
+          "causes": {
+            "config": 2
+          },
           "costUsd": 0,
           "durationMs": {
             "n": 0,
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 23,
           "outcomes": {
-            "ok": 1
+            "failed": 2,
+            "ok": 21
           },
           "toolCalls": 0
         },
@@ -158,15 +307,62 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 23,
           "outcomes": {
-            "ok": 1
+            "ok": 23
           },
           "toolCalls": 0
         }
       },
-      "steps": 10,
-      "stepsWithoutCost": 10,
+      "steps": 230,
+      "stepsWithoutCost": 230,
+      "verification": {
+        "firstPassGo": 0,
+        "units": 0
+      }
+    },
+    "hook": {
+      "costUsd": 0,
+      "costUsdRetried": 0,
+      "died": 0,
+      "repairs": {
+        "fixSteps": 0,
+        "fixed": 0,
+        "open": 0
+      },
+      "retried": 0,
+      "roles": {
+        "block-root-grep:root-grep": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 0,
+            "p50": null,
+            "p90": null
+          },
+          "n": 1,
+          "outcomes": {
+            "halted": 1
+          },
+          "toolCalls": 0
+        },
+        "check-subagent-pattern-reads:pattern-grounding": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 0,
+            "p50": null,
+            "p90": null
+          },
+          "n": 1,
+          "outcomes": {
+            "halted": 1
+          },
+          "toolCalls": 0
+        }
+      },
+      "steps": 2,
+      "stepsWithoutCost": 2,
       "verification": {
         "firstPassGo": 0,
         "units": 0
@@ -174,7 +370,42 @@
     }
   },
   "project": "juz-ide-api-3",
-  "runs": {},
-  "stepsTotal": 10,
+  "runs": {
+    "analyze": {
+      "costUsd": 0,
+      "durationMs": {
+        "n": 1,
+        "p50": 923870,
+        "p90": 923870
+      },
+      "ended": {
+        "ok": 1
+      },
+      "started": 1
+    }
+  },
+  "seeds": {
+    "personal": {
+      "emitted": 1
+    },
+    "product": {
+      "emitted": 1
+    },
+    "unknown": {
+      "checked": 1
+    }
+  },
+  "stepsTotal": 240,
+  "tasks": {
+    "TS-GEO-DISTANCE-BUCKETS-001": {
+      "analyzeRuns": 1,
+      "costToGoUsd": null,
+      "costUsd": 5.126692,
+      "reachedGo": false,
+      "runs": 0,
+      "spanMs": 923921,
+      "stepsWithoutCost": 0
+    }
+  },
   "v": 1
 }

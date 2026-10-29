@@ -8,7 +8,7 @@
       "trigger": "setup_drift"
     }
   },
-  "events": 11,
+  "events": 231,
   "host": "5a164d2d0145",
   "processes": {
     "audit": {
@@ -30,9 +30,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 23,
           "outcomes": {
-            "ok": 1
+            "ok": 23
           },
           "toolCalls": 0
         },
@@ -44,9 +44,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 23,
           "outcomes": {
-            "ok": 1
+            "ok": 23
           },
           "toolCalls": 0
         },
@@ -58,9 +58,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 23,
           "outcomes": {
-            "ok": 1
+            "ok": 23
           },
           "toolCalls": 0
         },
@@ -72,9 +72,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 23,
           "outcomes": {
-            "ok": 1
+            "ok": 23
           },
           "toolCalls": 0
         },
@@ -86,9 +86,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 23,
           "outcomes": {
-            "ok": 1
+            "ok": 23
           },
           "toolCalls": 0
         },
@@ -100,15 +100,15 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 23,
           "outcomes": {
-            "ok": 1
+            "ok": 23
           },
           "toolCalls": 0
         },
         "runtime": {
           "causes": {
-            "config": 1
+            "config": 14
           },
           "costUsd": 0,
           "durationMs": {
@@ -116,9 +116,10 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 23,
           "outcomes": {
-            "failed": 1
+            "failed": 14,
+            "ok": 9
           },
           "toolCalls": 0
         },
@@ -130,23 +131,26 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 23,
           "outcomes": {
-            "ok": 1
+            "ok": 23
           },
           "toolCalls": 0
         },
         "templates": {
-          "causes": {},
+          "causes": {
+            "config": 6
+          },
           "costUsd": 0,
           "durationMs": {
             "n": 0,
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 23,
           "outcomes": {
-            "ok": 1
+            "failed": 6,
+            "ok": 17
           },
           "toolCalls": 0
         },
@@ -158,15 +162,15 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 23,
           "outcomes": {
-            "ok": 1
+            "ok": 23
           },
           "toolCalls": 0
         }
       },
-      "steps": 10,
-      "stepsWithoutCost": 10,
+      "steps": 230,
+      "stepsWithoutCost": 230,
       "verification": {
         "firstPassGo": 0,
         "units": 0
@@ -175,6 +179,6 @@
   },
   "project": "feature-flags",
   "runs": {},
-  "stepsTotal": 10,
+  "stepsTotal": 230,
   "v": 1
 }

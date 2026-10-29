@@ -13,7 +13,7 @@
       "trigger": "setup_drift"
     }
   },
-  "events": 11,
+  "events": 209,
   "host": "5a164d2d0145",
   "processes": {
     "audit": {
@@ -35,9 +35,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 23,
           "outcomes": {
-            "ok": 1
+            "ok": 23
           },
           "toolCalls": 0
         },
@@ -49,9 +49,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 23,
           "outcomes": {
-            "ok": 1
+            "ok": 23
           },
           "toolCalls": 0
         },
@@ -63,9 +63,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 23,
           "outcomes": {
-            "ok": 1
+            "ok": 23
           },
           "toolCalls": 0
         },
@@ -77,9 +77,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 23,
           "outcomes": {
-            "ok": 1
+            "ok": 23
           },
           "toolCalls": 0
         },
@@ -91,15 +91,15 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 23,
           "outcomes": {
-            "ok": 1
+            "ok": 23
           },
           "toolCalls": 0
         },
         "runtime": {
           "causes": {
-            "config": 1
+            "config": 6
           },
           "costUsd": 0,
           "durationMs": {
@@ -107,9 +107,10 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 23,
           "outcomes": {
-            "failed": 1
+            "failed": 6,
+            "ok": 17
           },
           "toolCalls": 0
         },
@@ -121,15 +122,15 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 23,
           "outcomes": {
-            "ok": 1
+            "ok": 23
           },
           "toolCalls": 0
         },
         "templates": {
           "causes": {
-            "config": 1
+            "config": 15
           },
           "costUsd": 0,
           "durationMs": {
@@ -137,9 +138,10 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 23,
           "outcomes": {
-            "failed": 1
+            "failed": 15,
+            "ok": 8
           },
           "toolCalls": 0
         },
@@ -151,15 +153,15 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 23,
           "outcomes": {
-            "ok": 1
+            "ok": 23
           },
           "toolCalls": 0
         }
       },
-      "steps": 9,
-      "stepsWithoutCost": 9,
+      "steps": 207,
+      "stepsWithoutCost": 207,
       "verification": {
         "firstPassGo": 0,
         "units": 0
@@ -168,6 +170,6 @@
   },
   "project": "juz-ide-blog",
   "runs": {},
-  "stepsTotal": 9,
+  "stepsTotal": 207,
   "v": 1
 }

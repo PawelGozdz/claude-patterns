@@ -24,6 +24,9 @@ których adapter polega) ·
 - **ZOD6** — dane autora/organizatora/twórcy w response DTO jako zagnieżdżony obiekt
   `AuthorSnapshotDto { userId, displayName, avatarUrl }` (przez `authorSnapshotSchema`, opcjonalnie
   `.extend()`) — NIGDY jako płaskie pola (`authorId`, `authorName`, `authorAvatarUrl`).
+  *Zakres:* tylko repo ze współdzielonym `authorSnapshotSchema` (obecnie `juz-ide-api-*`); repo bez
+  niego (np. `marketing-hub`, gdzie `subject` z iam jest nieprzezroczysty) trzymają własny kształt
+  — brak `authorSnapshotSchema` nie jest tam luką.
 
 ## MUST NOT
 

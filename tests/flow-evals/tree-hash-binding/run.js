@@ -32,7 +32,7 @@ const [HA, HB, HC] = [H('a'), H('b'), H('c')];
 function git(cwd, ...args) {
   return execFileSync('git', args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
 }
-const ENGINE_DIRS = ['.claude/run-state', '.claude/work', 'telemetry/events', 'telemetry/rollups', 'docs/tasks/_inbox'];
+const ENGINE_DIRS = ['.claude/run-state', '.claude/work', '.claude/agent-memory', 'telemetry/events', 'telemetry/rollups', 'docs/tasks/_inbox'];
 /**
  * `ignoreEngine` (domyślnie true) = realistyczny satelita: katalogi artefaktów silnika ISTNIEJĄ na dysku
  * i są w .gitignore. Dokładnie ten układ wywalał `git add -- . ':(exclude)…'` (exit 1 → hash zawsze pusty).

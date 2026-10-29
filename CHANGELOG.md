@@ -11,6 +11,9 @@ and none of it is instruction — it is history.
 ## [Unreleased]
 
 ### Added
+- `/analyze` dostał dwie reguły z inboxa: ANL-052 (brak pliku zadania jest jawny w raporcie, nie cichy) i ANL-053 (zmiana sygnatury portu, komendy lub zdarzenia: `dirs` jednostki obejmuje implementację i wołających z późniejszych warstw). ANL-046 obejmuje też composition root i schemat konfiguracji.
+- Blok `nestjs` ma parametr `threat_model_when_extra` (doklejany do `when:` stage'a threat-model, jak `strategy_fit_when_extra`); juz-ide-api-1 wpisał słownictwo blokowania użytkowników i anty-stalkingu. Hash drzewa ORC-139 pomija `.claude/agent-memory`: zapis pamięci weryfikatora w trakcie bramki końcowej unieważniał GO.
+- Runda naprawcza po bramce końcowej `/orchestrate` daje implementerowi jawny wyjątek od zakresu dla plików z ustaleń, których nie obejmuje żadna warstwa (ORC-144, eval `final-fix-orphan-files-get-scope-exception`).
 - Silnik `/orchestrate` sprawdza reguły ciała pliku bez udziału modelu (ORC-140, TASK-ENGINE-GUARDRAILS-001): wpis `conformance` w `checks:` warstwy i bramki końcowej uruchamia `tools/conformance/check.mjs --changed --ratchet` względem SHA startu, z zakresem warstwy lub jednostki i bez plików brudnych przed startem. Czerwona kontrola wraca do implementera z dosłownym raportem, w bramce końcowej wygrywa z werdyktem LLM, a krok 4 powtarza ją programem przed `git add`. Reguły `CH-NO-THROW` i `CH-NO-BULLMQ` (handlery komend i zapytań). Wyjątek dopisany w przebiegu (`exception-new`) i zmiana `.claude/conformance.json` czekają na człowieka. Wymaga `materialize-runtime` w projekcie; blok `ddd/layers` i rejestracja hooka czekają na scalenie.
 - Hook `check-test-implementer-scope` (ORC-143 w planie, bez wiersza reguły): blokuje agenta od testów, który zapisał kod produkcyjny, także przez skrypt. Plik jest nieaktywny, dopóki projekt go nie zarejestruje.
 - `orchestrate-prepare` zatrzymuje start przy pakiecie kilku zadań (ORC-142): dwa z trzech sygnałów (3 różne „PRn", ponad 20 jednostek, ponad 4 konteksty), wyjście `bundle_ack`. Progi przeliczone na 440 istniejących analizach: zatrzymany byłby jeden przypadek.
@@ -35,6 +38,7 @@ and none of it is instruction — it is history.
 
 ### Added
 - `/analyze` wpisuje rejestry kodów błędów, zdarzeń i komunikatów (`error-codes.ts`, `event-names.enum.ts`, eventMap, mapper błędów, słownik `apps/web`) do `dirs` jednostki albo jednostki wiringu (ANL-046, rozszerzenie ANL-045). Karty `repository-pattern` RP3 i `value-object-pattern` VO7 doprecyzowane po zgłoszeniach z juz-ide-api-1 i marketing-hub.
+- Karty `controller-schema` (CS11) i `zod-schema-validation` (ZOD6) mają zastrzeżenie zakresu: zagnieżdżony `authorSnapshotSchema` obowiązuje tylko w repo, które go mają (obecnie `juz-ide-api-*`), nie w marketing-hub.
 - `orchestrate-prepare` ostrzega o plikach `.env*` w `dirs` jednostki lub `layers_scope` (ORC-138), a ANL-038 nie każe już wpisywać tam `.env.example`: reguła deny `Read(./.env.*)` blokuje agentom ten plik, co kończyło się trzema próbami NO_GO (ai-gateway TS-AIG-104). Eval `units-env-file-in-dirs-warns`.
 - Techniki z gstack (TASK-GSTACK-ADOPT-001):
   - `scripts/context-bill.mjs` (A4): rachunek kontekstu stałego (katalog `name`+`description`) i kosztu wywołania (ciało) per agent, skill i komenda, z raportem top N, `--json` i ratchetem `--check` względem `tests/flow-evals/context-budget/ceilings.json` (stan +5% oraz sufit sumaryczny katalogu); legalny wzrost wymaga `--capture` w tym samym commicie.

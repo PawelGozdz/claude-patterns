@@ -938,6 +938,27 @@ const CASES = (c) => [
     },
   },
   {
+    name: 'final-fix-orphan-files-get-scope-exception',
+    run() {
+      const layers = [{ id: 'domain', dirs: ['src/domain/'] }, { id: 'infrastructure', dirs: ['src/infrastructure/'] }];
+      const items = [
+        '[BLOKUJĄCE] src/compose.ts:40 — brak rejestracji handlera',
+        '[DROBNE] src/config.ts — brak pola w schemacie; Math.floor w src/domain/a.ts',
+        '[BLOKUJĄCE] src/infrastructure/repo.ts:9 — nit',
+        '[DROBNE] apps/api/.env.example — dopisz zmienną',
+        '[DROBNE] ../poza/repo.ts i /etc/passwd.ts',
+      ];
+      const f = c.orphanFindingFiles(items, layers);
+      if (JSON.stringify(f) !== JSON.stringify(['src/compose.ts', 'src/config.ts'])) return 'sieroty: ' + JSON.stringify(f);
+      if (c.orphanFindingFiles(items, [{ id: 'x', dirs: [] }]).length) return 'bez warstw z dirs nie ma jak wskazać sierot';
+      if (c.orphanFindingFiles(undefined, layers).length) return 'brak ustaleń = brak sierot';
+      const note = c.orphanFindingNote(f);
+      if (!/ORC-144/.test(note) || !/- src\/compose\.ts/.test(note)) return 'notatka bez listy plików: ' + note;
+      if (c.orphanFindingNote([]) !== '') return 'pusta lista = pusta notatka';
+      return null;
+    },
+  },
+  {
     name: 'verifier-and-final-gate-prompts-offer-minor-findings-and-impl-gets-analysis-minors',
     run() {
       const layer = L.infrastructure;

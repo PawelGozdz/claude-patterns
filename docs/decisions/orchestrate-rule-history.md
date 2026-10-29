@@ -1098,6 +1098,8 @@ pisanego z dywizem. Brak trafienia nie jest dowodem, że tematu nie ma — gdy w
 ryzyko, którego żaden `when:` nie złapał, potraktuj to jak trafienie i zgłoś lukę w regexie
 bloku.
 
+**Uzupełnienie (2026-10-29).** Luka w regexie slotu threat-model bloku `nestjs` zgłoszona drugi raz w tym samym projekcie (juz-ide-api-1: blokowanie użytkowników i anty-stalking w TS-SEC-BLOCK-CACHE-001 i TS-SEC-USER-BLOCK-001, brak słów auth/token/pii; analiza uruchomiła stage ręcznie). Słownictwo funkcji bezpieczeństwa społecznego jest sprawą produktu, a `block` z blokiem kodu dałoby fałszywe trafienia w każdym projekcie NestJS, więc blok dostał parametr `threat_model_when_extra` (mechanizm `when_extra` z ANL-043), a juz-ide-api-1 wpisał `blokad|blokow|zablokowa|stalk|anty-stalk|molest|harass`. Przy pustym parametrze `runtime.yml` innych projektów się nie zmienia (klucz znika przy materializacji).
+
 <a id="anl-042"></a>
 
 ### ANL-042 — kanon rozwijany w chwili analizy, nie setupu (2026-10-21)
@@ -1165,6 +1167,8 @@ pusty parametr usuwa klucze ze slotu. `always_for` omija też sito ANL-018 — j
 **Bez zmiany.** `DEV-orc-128-infrastructure-consent-persistence` (providery bez modułu) to przypadek ANL-045, a przebieg powstał z analizy sprzed tej reguły.
 
 **Uwaga o claimie.** Sygnatura to jeden z pięciu rekordów z objawu (juz-ide-api-1, jedyny z nich widoczny w rollupach). `engine=` to commit reguły, nie hash z rollupów: po pierwszych przebiegach pod nowszym silnikiem podmienić go na pierwszy hash z `telemetry-report.mjs --by engine`, który zawiera `f3e4b14`.
+
+**Uzupełnienie (2026-10-29).** Lista rejestrów obejmuje też composition root (`compose.ts`) i schemat konfiguracji (`config.ts`), gdy element wymaga rejestracji albo nowego pola. Powód: ai-gateway TS-AIG-104, gdzie obu plików nie miała żadna jednostka, a poprawki z bramki końcowej nie miały gdzie trafić (leczy to skutek: ORC-144).
 
 <a id="anl-047"></a>
 
@@ -2578,6 +2582,8 @@ produktowe oceniamy raz, na całości zmiany, żeby nie płacić za nie w każde
 
 **Odrzucone.** Pełna ponowna bramka po rundzie naprawczej ORC-091/123: znosi jej oszczędność, więc zmiana jest oznaczona `postGateChanges` i ostrzeżeniem. Hash przez `sha1sum` plików (jak odcisk ORC-103): pomija tryby plików i nie daje porównywalnego obiektu drzewa. Fail-closed przy braku wyniku sondy: halt z powodu zawodności Haiku, nie kodu. Hash przed sondą `checks`: testy i lint zapisują pliki, więc dawałby fałszywe stale w każdej próbie.
 
+**Uzupełnienie (2026-10-29).** Wykluczenia hasha drzewa obejmują `.claude/agent-memory`. Weryfikator `security-e2e-verifier` zapisał pamięć w trakcie bramki końcowej (w juz-ide-api-2 i api-4 katalog jest śledzony w gicie), hash się zmienił, GO zostało unieważnione i bramka biegła drugi raz (juz-ide-api-2 TS-GROUPS-REACTION-COUNTS-001, `DEV-agent_note-pamiec-agenta-security-e2e-verifier-lezy-w-drzewie`). Pamięć agenta nie jest kodem, więc jej zmiana nie powinna unieważniać werdyktu. Eval `tree-hash-binding` ma ten katalog na liście `ENGINE_DIRS`.
+
 ### ORC-140 — reguły ciała pliku jako wbudowana kontrola sondy, ratchet względem SHA startu (2026-10-28)
 
 **Claim:** metric=falseGo direction=down threshold=0.2 engine=fd0a122 process=orchestrate
@@ -2649,3 +2655,41 @@ produktowe oceniamy raz, na całości zmiany, żeby nie płacić za nie w każde
 **Objaw.** Stage `decision-gate` (haiku, budżet 12 wywołań, `on_limit: emit-partial`) wyczerpał budżet, a synteza poszła dalej na tym, co dostała, uzupełniona przez głównego agenta. To wniosek z transkryptu sesji analizy; nie sprawdzano, które decyzje bramka pominęła.
 
 **Zmiana.** Wynik częściowy ze stage'a `blocking: true`: jedno ponowienie na brakującą resztę, a gdy nadal niepełny, pozycja w `open_questions` z `answer: null` („Bramka X nie sprawdziła: …"), co blokuje `prepare` do potwierdzenia przez człowieka. Budżet `decision-gate` zostaje bez zmian. Bez zmian w skrypcie: blokuje istniejąca bramka `answer: null`.
+
+<a id="anl-052"></a>
+
+### ANL-052 — brak pliku zadania jest jawny, nie cichy (2026-10-29)
+
+**Objaw (grant-flow, TS-PROJ-WRITEOWN-002).** `/analyze` wystartował bez `project-orchestration/tasks/TS-PROJ-WRITEOWN-002*.md`. KANBAN i dwie zatwierdzone analizy wspominały zadanie jako „TO TRZEBA STWORZYĆ"; zakres odtworzono z analiz UI-009 i UI-010, a bramka wejścia nie ostrzegła (`DEV-anz-gate-input-missing`, wariant: brak taska).
+
+**Przyczyna.** `orchestrate-prepare` ostrzega o braku pliku zadania, ale dopiero przy implementacji. Analiza, która ma tylko komendę, nie ma kroku, który kazałby to powiedzieć. Zakres z cudzych analiz jest rozsądnym wyjściem, ale nie powinien wyglądać jak zakres z zadania.
+
+**Zmiana.** Reguła tylko w prompcie: pierwsza linia raportu „Brak pliku zadania", w artefakcie sekcja „Źródła zakresu", w kroku 3 linia dla człowieka o pliku do utworzenia. Analiza go nie tworzy: lista zapisów jest zamknięta (ANL-001).
+
+**Odrzucone.** STOP przy braku pliku: zadanie bywa zakładane właśnie przez analizę (przypadek grant-flow), więc twarda bramka zablokowałaby zamierzony przepływ. Dopisanie `tasks/` do listy zapisów: to rozszerza uprawnienia komendy z powodu jednego projektu.
+
+<a id="anl-053"></a>
+
+### ANL-053 — zmiana sygnatury przecina warstwy, `dirs` jednostki to uwzględnia (2026-10-29)
+
+**Objaw (2 projekty).** juz-ide-api-4 TS-GEO-ADDRESS-LOOKUP-001 (`DEV-anz-layer-mismatch-application`): zmiana sygnatury portu w `application/interfaces` wymusza jednoczesną zmianę repozytorium (infrastructure) i wołających (application); przy typechecku per warstwa i kolejności domain→application→infrastructure nie da się zachować zielonego typechecku między warstwami bez przesunięcia pliku infrastrukturalnego do jednostki warstwy application. grant-flow TS-PROJ-WRITEOWN-002 (`DEV-anz-layer-mismatch-infrastructure`, ponownie otwarty): kontroler w `infrastructure`, a zmiana sygnatury komend wymaga typechecku w `application`.
+
+**Przyczyna.** ANL-038 mówi o plikach importujących zmieniany plik, ale nie o tym, że zmiana kontraktu czerwieni typecheck wcześniejszej warstwy, dopóki implementacja i wołający z późniejszej warstwy nie zostaną zmienieni razem z nią. ORC-082 odracza cudzą czerwień, ale nie może jej naprawić.
+
+**Zmiana.** Reguła tylko w prompcie: `dirs` jednostki zmieniającej sygnaturę obejmują też implementację i wołających z późniejszych warstw, znalezionych grepem po symbolu. To ruch, który autorzy obu zgłoszeń wykonali ręcznie.
+
+**Ograniczenia.** Plik infrastrukturalny w jednostce warstwy application dostaje karty tej warstwy, nie infrastruktury; weryfikację kart infrastruktury robi bramka końcowa. Bez bramki w `prepare`: po stronie skryptu nie wiadomo, które pliki wołają zmienianą sygnaturę.
+
+<a id="orc-144"></a>
+
+### ORC-144 — plik z ustalenia bramki końcowej bez właściciela dostaje wyjątek od zakresu (2026-10-29)
+
+**Objaw (ai-gateway, TS-AIG-104, `final-gate`).** Poprawki po bramce końcowej trafiły do warstw bez praw zapisu do `compose.ts` i `config.ts`; wymagało to ręcznego rozszerzenia jednostek w analizie i trzech przebiegów (`DEV-agent_note-poprawki-po-bramce-koncowej-trafi-y-do-warstw-bez`).
+
+**Przyczyna.** `groupFindingsByLayer` przypisuje ustalenie do warstwy po ścieżce; plik, którego nie obejmuje żadna warstwa, szedł do warstwy zapasowej. Ta słusznie pomijała go jako poza zakresem (ORC-042), więc runda naprawcza nic nie zmieniała (ORC-103 to wykrywa, ale nie naprawia). ORC-101 daje taki wyjątek drobnym poprawkom z analizy, ustaleniom bramki końcowej nie dawał.
+
+**Zmiana.** `repairFinalFindings` dopisuje do polecenia dla warstwy jawny wyjątek od zakresu dla plików z jej ustaleń, których nie obejmuje żadna warstwa przebiegu: tylko ścieżki z rozszerzeniem pliku (nie `Math.floor`), bez `..`, bez ścieżek bezwzględnych i bez `.env*`. Wyjątek dotyczy wskazanych plików i wskazanych ustaleń. Eval `final-fix-orphan-files-get-scope-exception` (122/122).
+
+**Odrzucone.** Wyjątek dla każdego pliku z ustalenia: ominąłby zakres warstw, które mają właściciela. Rozszerzanie `dirs` po stronie `prepare`: ustalenia bramki powstają po starcie.
+
+**Ograniczenia.** To leczy skutek; przyczyną jest plan bez właściciela composition root i schematu konfiguracji, więc ANL-046 obejmuje je teraz wprost. Wyjątek nie rusza `.env*` (ORC-138). Numer ORC-143 zajmuje hook `check-test-implementer-scope` z planu bramek.

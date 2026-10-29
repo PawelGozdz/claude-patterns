@@ -1016,6 +1016,19 @@ not that nobody looked.
   idempotent and resumable by the `afterOwnerId` cursor; `// RP12-EXCEPTION:` annotation in the
   class docblock.
 
+- `EngagementGroupPostCountsACLImpl` (RP12, juz-ide `engagement` context,
+  `infrastructure/acl/engagement-group-post-counts-acl.impl.ts`, TS-GROUPS-REACTION-COUNTS-001,
+  BDR-119, BR-ENG-GROUP-POST-COUNTS-001) — ACL read-adapter returning the PUBLIC like counter of
+  group posts to `community-communication`: one aggregate `COUNT ... GROUP BY target_id, action_type`
+  over `engagement_actions`, no aggregate loaded or mapped, no events. The existing query port
+  `IUserActionQueryRepository.getBatchActionCounts` selects EVERY action type (report, hide, ...)
+  and takes a `targetType`, so it cannot enforce the BDR-119 whitelist at the SQL level; the adapter
+  hard-wires `target_type = 'group_post'` and `action_type IN (<whitelist>)`. Checked before
+  accepting: readonly, reads only the context's own table, typed `EngagementValidationError`
+  (static message, no ids, no `error.message` in logs), L1 guardian on the ACL key, L2 test against
+  real Postgres; `// RP12-EXCEPTION:` annotation above the injected `DATABASE_TOKEN`. Move behind the
+  query repository when it can express a whitelist.
+
 ---
 
 ## 📚 References

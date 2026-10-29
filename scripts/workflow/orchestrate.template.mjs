@@ -350,7 +350,9 @@ function fixLeftTreeUnchanged(before, after) {
 // pracy, telemetria, skrzynka odstępstw, plik analizy i taska — `layers_done`, `status`).
 // Skrypt Workflow nie ma dostępu do powłoki, więc polecenie biegnie w sondzie (tak jak odcisk z
 // ORC-103): kod składa komendę i waliduje odpowiedź (`parseTreeHash`), model jej tylko uruchamia.
-const TREE_HASH_EXCLUDES = ['.claude/run-state', '.claude/work', 'telemetry/events', 'telemetry/rollups', 'docs/tasks/_inbox']
+// `.claude/agent-memory`: weryfikatory zapisują tam swoją pamięć także w trakcie bramki końcowej (w repo
+// juz-ide jest śledzona w gicie); zapis unieważniał GO (TS-GROUPS-REACTION-COUNTS-001) i wymuszał powtórkę bramki.
+const TREE_HASH_EXCLUDES = ['.claude/run-state', '.claude/work', '.claude/agent-memory', 'telemetry/events', 'telemetry/rollups', 'docs/tasks/_inbox']
 
 // Wykluczenia trafiają do powłoki w apostrofach — ścieżka z innym znakiem niż [\w./@+-] jest pomijana.
 // Pominięcie jest bezpieczne w stronę „nieaktualne” (więcej plików w haszu), nigdy w stronę „aktualne”.
@@ -1498,6 +1500,36 @@ function groupFindingsByLayer(items, layers, fallbackId) {
   return groups
 }
 
+// ORC-144: ustalenie bramki końcowej wskazuje plik, którego nie obejmuje zakres ŻADNEJ warstwy
+// (composition root, schemat konfiguracji, rejestr). Trafiało do warstwy zapasowej, a ta pomijała je
+// jako poza zakresem — runda naprawcza nic nie zmieniała (ai-gateway TS-AIG-104: `compose.ts`,
+// `config.ts`, trzy przebiegi i ręczne rozszerzanie jednostek). Tylko ścieżki z rozszerzeniem pliku
+// (nie `Math.floor`), bez `..`, bez ścieżek bezwzględnych i bez `.env*` (deny, ORC-138).
+const FINDING_FILE_EXT = /\.(?:tsx?|jsx?|mjs|cjs|py|svelte|vue|sql|json|ya?ml|md|css|scss|html|toml|sh)$/i
+function orphanFindingFiles(items, layers) {
+  const scoped = (layers || []).filter((l) => effectiveDirs(l).length)
+  if (!scoped.length) return []
+  const files = []
+  for (const item of items || []) {
+    const tokens = String(item).match(/[\w@.\-/]+\.[a-z0-9]{1,6}/gi) || []
+    for (const raw of tokens) {
+      const p = raw.replace(/^\.\//, '')
+      if (!FINDING_FILE_EXT.test(p) || p[0] === '/' || p.split('/').indexOf('..') !== -1) continue
+      if (/(^|\/)\.env(\.[^/]*)?$/.test(p)) continue
+      if (scoped.some((l) => layerTouches(l, p))) continue
+      if (files.indexOf(p) === -1) files.push(p)
+    }
+  }
+  return files
+}
+
+function orphanFindingNote(files) {
+  if (!files.length) return ''
+  return '\n\nWYJĄTEK OD ZAKRESU WARSTWY (ORC-144): pliki poniżej nie należą do żadnej warstwy tego przebiegu, ' +
+    'a ustalenia ich dotyczą. Wolno Ci je edytować, ale WYŁĄCZNIE w zakresie wskazanych ustaleń i bez ' +
+    'dotykania czegokolwiek innego poza zakresem warstwy:\n' + files.map((f) => '- ' + f).join('\n')
+}
+
 // ORC-121: prompt rundy 2 bramki końcowej. Dotąd twierdził, że implementer poprawił WSZYSTKIE ustalenia,
 // choć pozycje spoza zakresu jego warstwy pomijał (marketing-hub TS-MH-022: poprawki w KANBAN i TM §8 leżały
 // poza dirs każdej jednostki, a runda 2 dostała je jako „poprawione"). `skipped` = deviation_note implementerów.
@@ -2408,7 +2440,9 @@ if (!finalAgent) {
       if (!layer) continue
       const text = 'USTALENIA BRAMKI KOŃCOWEJ do poprawy w zakresie TEJ warstwy (pozycje [BLOKUJĄCE] ' +
         'obowiązkowe; [DROBNE] mechanicznie, bez zmiany zachowania; pozycję wymagającą decyzji albo ' +
-        'spoza zakresu warstwy POMIŃ i opisz w `deviation_note`):\n' + groups[id].map((x, i) => (i + 1) + '. ' + x).join('\n')
+        'spoza zakresu warstwy POMIŃ i opisz w `deviation_note`):\n' + groups[id].map((x, i) => (i + 1) + '. ' + x).join('\n') +
+        // ORC-144: pliki z ustaleń grupy, których nie obejmuje żadna warstwa, to jawny wyjątek od zakresu
+        orphanFindingNote(orphanFindingFiles(groups[id], ranLayers))
       const fixOpts = Object.assign(
         { label: layer.id + '-final-fix', agentType: layer.agent, maxTurns: budgetFor(a, 'implement', DEFAULTS.implTurns), schema: IMPL_SCHEMA },
         modelFor('implement'),

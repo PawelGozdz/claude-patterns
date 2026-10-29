@@ -24,9 +24,19 @@ patterns:
       include:
         - testing/testing-pyramid-pattern.md
 
+params:
+  threat_model_when_extra:
+    type: string
+    required: false
+    default: ""
+    doc: "regex doklejany jako alternatywa do `when:` stage'a threat-model (słownictwo projektu, np. blokad|blokow|stalk dla funkcji bezpieczeństwa społecznego)"
+
 analyze:
   panel:
+    # `when_extra` wypełnia PROJEKT (threat_model_when_extra); materialize-runtime skleja go z `when:`,
+    # a przy pustym parametrze usuwa klucz ze slotu (jak strategy_fit_when_extra w bloku governance).
     - { stage: threat-model, agent: "/threat-model", when: "\\b(auth|authn|authz|authentication|authorization|login|sesj|session|token)\\b|\\bpii\\b|cross[-_ ]context|public[-_ ]api|publiczn\\w* endpoint",
+        when_extra: "${threat_model_when_extra}",
         output: "docs/security/threat-models/TM-{TASK_ID}.md", skip_if_exists: true }
     - { stage: tech-analysis, agent: "ecc:architect" }
     - { stage: tech-analysis-specialist, agent: "backend-technology-expert" }

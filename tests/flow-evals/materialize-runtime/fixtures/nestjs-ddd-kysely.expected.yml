@@ -187,6 +187,8 @@ taxonomy: # rdzeń blocks/_taxonomy.yml + .claude/taxonomy.yml projektu
     ui: [accessibility, design-token, forms, i18n, navigation, state]
 
 params:
+  nestjs:
+    threat_model_when_extra: ""
   ddd/core:
     ddd_library: "@vytches/ddd"
     ddd_library_min_version: null
