@@ -54,12 +54,13 @@ const findSpec = (name) => {
   const file = join(REPO, 'hooks', `${name}.js`);
   if (!existsSync(file)) return null;
   const head = readFileSync(file, 'utf8').slice(0, 800);
-  const event = (head.match(/\b(PreToolUse|PostToolUse|SubagentStop|SessionStart|Stop)\b/) ?? [])[1];
+  const event = (head.match(/\b(PreToolUse|PostToolUse|SubagentStart|SubagentStop|SessionStart|Stop)\b/) ?? [])[1];
   if (!event) return null;
   const needsMatcher = event === 'PreToolUse' || event === 'PostToolUse';
   return {
     event,
-    matcher: needsMatcher ? 'Write|Edit|MultiEdit' : undefined,
+    // Nagłówek może podać własny matcher: „PostToolUse hook (matcher: Agent)". Bez tego PostToolUse dostaje edycje plików.
+    matcher: needsMatcher ? ((head.match(/\(matcher:\s*([^)\s]+)\)/) ?? [])[1] ?? 'Write|Edit|MultiEdit') : undefined,
     hook: { type: 'command', command: `node "${file}"` },
     description: `${name} (zdarzenie odczytane z nagłówka hooka)`,
   };

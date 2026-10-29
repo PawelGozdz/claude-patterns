@@ -2,11 +2,11 @@
 id: TASK-AGENT-MANUAL-SPAWN-RULES-001
 title: 'Ręcznie uruchamiani implementerzy dostają reguły wprost w poleceniu — bez tego bramki silnika ich nie obejmują'
 type: implementation
-status: todo
+status: in_progress
 priority: P2
 story_points: 5
 created_date: 2026-10-28
-updated_date: 2026-10-28
+updated_date: 2026-10-29
 assignee: '@claude'
 labels: [orchestration, hooks, agents, rule-cards]
 depends_on: [TASK-ENGINE-GUARDRAILS-001]
@@ -45,3 +45,20 @@ skutek (kontrola `conformance`, hook zakresu `test-implementera`), ale nie przyc
 - Ręcznie uruchomiony `test-implementer` i `*-implementer` dostaje w kontekście karty właściwe dla plików, które edytuje (test na transkrypcie).
 - Zapis kodu przez Bash bez przeczytania karty jest blokowany tak samo jak przez Edit.
 - Eksperyment (pkt 4) opisany w `docs/decisions/` z wynikiem i decyzją, co z ostrzeżeniami exit 0.
+
+## Stan (2026-10-29)
+
+Zrobione w worktree `/opt/projects/_claude-patterns-manual-spawn`, gałąź zadania, zmiany zestage'owane, bez commita:
+
+| # | Wynik |
+|---|-------|
+| 1 | `hooks/inject-implementer-rule-cards.js` (SubagentStart). Payload ma tylko `agent_id`, `agent_type`, `cwd`, więc karty wybiera typ agenta i jego warstwa (`patterns.always` + `layers[].patterns`), nie pliki. Dokładne dopasowanie do plików zostaje przy `check-subagent-pattern-reads`. |
+| 2 | `hooks/lib/bash-writes.js` współdzielone z `check-test-implementer-scope`; `check-subagent-pattern-reads` skanuje zapisy przez Bash. |
+| 3 | `hooks/remind-verifier-after-manual-implementer.js` jako `PostToolUse` na `Agent`, nie SubagentStop: SubagentStop nie ma udokumentowanej drogi do sesji głównej. Tylko przypomnienie. |
+| 4 | `docs/decisions/hook-warning-visibility.md`: stderr i stdout z exit 0 nie docierają do modelu, `additionalContext` tak. `check-domain-purity` przeszedł na `additionalContext`, nadal nie blokuje. |
+
+Rejestracja: `blocks/ddd/core.yml` + `templates/settings/nestjs-ddd.json`. Evale: `manual-spawn-rules` 15/15, `hooks` 74/74, `test-implementer-scope` 20/20, `materialize-runtime` 4/4.
+
+Czeka na sygnał właściciela (hooki propagują się symlinkami): scalenie do develop, potem `audit-projects`, `materialize-runtime`, `sync-runtime-hooks --apply` w projektach na bloku ddd/core i `verify-project-setup`.
+
+Otwarte: test na transkrypcie z żywym ręcznym implementerem (kryterium 1); czy `Agent` w Workflow odpala `PostToolUse` sesji głównej.

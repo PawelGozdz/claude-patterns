@@ -9,8 +9,8 @@
  *
  * What it does, at subagent stop:
  *   1. Scan the subagent's transcript.
- *   2. Collect every source file it Wrote/Edited → map each to its governing
- *      pattern (lib/pattern-routing.js).
+ *   2. Collect every source file it Wrote/Edited — or wrote through Bash
+ *      (lib/bash-writes.js) → map each to its governing pattern (lib/pattern-routing.js).
  *   3. Collect every pattern the subagent Read (canonical OR _summary variant).
  *   4. For each edited pattern-file whose governing pattern was NOT read →
  *      a violation: the file was written from training data, not project canon.
@@ -29,6 +29,8 @@
  */
 
 const fs = require('fs');
+const path = require('path');
+const { bashWrites } = require('./lib/bash-writes');
 const { isExempt, findRequiredPattern } = require('./lib/pattern-routing');
 const { exitAfterBlock } = require('./lib/hook-telemetry');
 
@@ -52,7 +54,7 @@ function extractToolUses(entry) {
  * Scan a transcript JSONL file and return { editedFiles:Set, readPatterns:Set }.
  * readPatterns holds the trailing path of any Read under a patterns/ dir.
  */
-function scanTranscript(transcriptPath) {
+function scanTranscript(transcriptPath, cwd) {
   const editedFiles = new Set();
   const readPatterns = new Set();
   let lines;
@@ -66,6 +68,13 @@ function scanTranscript(transcriptPath) {
     let entry;
     try { entry = JSON.parse(line); } catch { continue; }
     for (const tu of extractToolUses(entry)) {
+      // Zapis przez Bash (sed -i, tee, `>`, python/node write) omijał bramkę: skanowaliśmy tylko Write/Edit/MultiEdit.
+      // Cele zapisu rozpoznaje wspólna heurystyka (lib/bash-writes.js); zwraca ścieżki względem cwd, więc
+      // składamy z powrotem absolutne, żeby routing (`/domain/aggregates/` itd.) trafiał jak dla Edit.
+      if (tu.name === 'Bash' && typeof tu.input?.command === 'string') {
+        for (const rel of bashWrites(tu.input.command, cwd)) editedFiles.add(path.join(cwd, rel));
+        continue;
+      }
       const fp = tu.input?.file_path || tu.input?.path;
       if (typeof fp !== 'string') continue;
 
@@ -110,7 +119,7 @@ function main() {
   const transcriptPath = payload.agent_transcript_path;
   if (!transcriptPath || !fs.existsSync(transcriptPath)) process.exit(0);
 
-  const { editedFiles, readPatterns } = scanTranscript(transcriptPath);
+  const { editedFiles, readPatterns } = scanTranscript(transcriptPath, payload.cwd || process.cwd());
   if (editedFiles.size === 0) process.exit(0);
 
   // Build violations: edited pattern-files whose governing pattern was unread.

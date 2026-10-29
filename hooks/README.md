@@ -122,6 +122,8 @@ User request → Claude picks a tool → PreToolUse hook runs → Tool executes 
 | **Agent memory guard** (`agent-memory-size-guard.js`) | `SubagentStop` | Warns when an agent's memory dir looks like a run log. `AGENT_MEMORY_SIZE_GUARD=off` |
 | **Subagent pattern reads** (`check-subagent-pattern-reads.js`) | `SubagentStop` | The moat: closes the gap left when `check-patterns-read.js` waves all subagents through. `PATTERN_READS_MODE=block\|warn\|off` |
 | **Test-implementer scope** (`check-test-implementer-scope.js`) | `SubagentStop` | Blocks a `test-implementer` from finishing when it wrote outside the test scope (spec/test/fixtures/mocks) — through Write/Edit AND Bash writes (python/sed/tee/redirect), plus a deterministic layer: after a write-capable shell command, any out-of-scope file git reports as changed during the agent's lifetime is flagged. `.claude/conformance.json` and `.claude/test-scope.json` are never writable by the agent; scope extensions are read from `HEAD`. Production changes must be reported as a gap. `TEST_SCOPE_MODE=block\|warn\|off`, extend via a committed `.claude/test-scope.json` |
+| **Implementer rule cards** (`inject-implementer-rule-cards.js`) | `SubagentStart` | Hand-spawned `*-implementer` agents get the project's rule cards (`patterns.always` + the agent's layer patterns from `runtime.yml`) as `additionalContext`, delivered to the subagent before its first prompt. Chosen by agent type, not by edited files. `MANUAL_SPAWN_RULES=off`, size cap `MANUAL_SPAWN_RULES_MAX_BYTES` |
+| **Verifier reminder** (`remind-verifier-after-manual-implementer.js`) | `PostToolUse` (`Agent`) | After a hand-spawned `*-implementer` returns, reminds the main session to run the verifier on its changes (the engine verifier runs only inside `/orchestrate`). Reminder only, never blocks. `MANUAL_SPAWN_REMINDER=off` |
 | **Worktree env copy** (`worktree-env-copy.js`) | `WorktreeCreate` | Copies `.env` files into a fresh worktree |
 
 Everything else at session boundaries — `SessionStart` context loading, `SessionEnd`
@@ -152,6 +154,8 @@ projects that set them keep working — the new name wins when both are present.
 | `KR_TRANSCRIPT_MAX_BYTES` | `lib/transcript-usage.js` | bytes | (internal cap) |
 | `PATTERN_READS_MODE` | `check-subagent-pattern-reads.js` | `block` \| `warn` \| `off` | `block` |
 | `TEST_SCOPE_MODE` | `check-test-implementer-scope.js` | `block` \| `warn` \| `off` | `block` |
+| `MANUAL_SPAWN_RULES` | `inject-implementer-rule-cards.js` | `off` | on |
+| `MANUAL_SPAWN_REMINDER` | `remind-verifier-after-manual-implementer.js` | `off` | on |
 | `PM_HOUSEKEEPING_MODE` | `pm-task-housekeeping.js` | `off` | (on) — alias deprecated: `PM_NO_AUTO_HOUSEKEEPING=true` |
 | `TYPECHECK_COOLDOWN_MS` | `post-edit-typecheck.js` | milliseconds | `120000` |
 | `TYPECHECK_MODE` | `post-edit-typecheck.js` | `off` | (on) |
@@ -327,6 +331,8 @@ if you add one, add its row.
 | `check-security-considerations.js` | PostToolUse | Security-aware task file analysis |
 | `check-subagent-pattern-reads.js` | SubagentStop | Closes the gap left when `check-patterns-read.js` passes all subagents |
 | `check-test-implementer-scope.js` | SubagentStop | Blocks a test-implementer that wrote outside the test scope (incl. Bash writes); production changes go back as a gap |
+| `inject-implementer-rule-cards.js` | SubagentStart | Injects the project's rule cards into a hand-spawned `*-implementer` |
+| `remind-verifier-after-manual-implementer.js` | PostToolUse (Agent) | Reminds the main session to verify a hand-spawned implementer's output |
 | `check-typography-tokens.js` | PostToolUse | Inline `TextStyle(fontSize:...)`/`EdgeInsets.*()` literals |
 | `cost-optimizer.sh` | — | Tool-restriction enforcement (renamed from `enforce-tool-restrictions.sh`) |
 | `pm-task-check.js` | PostToolUse | PM health check when `project-orchestration/` task files change |

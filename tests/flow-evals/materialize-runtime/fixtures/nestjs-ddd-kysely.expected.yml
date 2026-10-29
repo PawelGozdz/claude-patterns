@@ -128,7 +128,7 @@ orchestrate: # source: ddd/layers
   final_gate: {agent: "security-e2e-verifier", on_fail: ESCALATE_AND_HALT, checks: ["typecheck", "test", "conformance"]}
   exit: STAGE_NOT_COMMIT
 
-hooks: [check-security-considerations, check-context-isolation, check-delegation, check-patterns-read, check-subagent-pattern-reads, check-test-implementer-scope, check-approval-before-impl, check-ddd-patterns, check-domain-purity, check-human-voice]
+hooks: [check-security-considerations, check-context-isolation, check-delegation, check-patterns-read, check-subagent-pattern-reads, check-test-implementer-scope, inject-implementer-rule-cards, remind-verifier-after-manual-implementer, check-approval-before-impl, check-ddd-patterns, check-domain-purity, check-human-voice]
 
 env:
   ECC_GATEGUARD: "off" # source: ddd/core

@@ -11,7 +11,9 @@
  * 1. No `throw new` in configured layers — must use Result<T, E> pattern
  * 2. No forbidden imports in configured layers — must not import infra packages
  *
- * Always warns only (exit 0) — never blocks the agent.
+ * Never blocks the agent (exit 0). Findings go to the model as PostToolUse `additionalContext`:
+ * a warning on stderr / stdout with exit 0 never reaches Claude (experiment 2026-10-29,
+ * docs/decisions/hook-warning-visibility.md), so the previous `console.error` warnings were invisible to it.
  */
 
 const fs = require('fs');
@@ -88,6 +90,7 @@ async function main() {
     const content = fs.readFileSync(resolvedPath, 'utf8');
     const lines = content.split('\n');
     const basename = path.basename(filePath);
+    const findings = [];
 
     // Check 1: No `throw new`
     if (shouldCheckThrow) {
@@ -98,9 +101,7 @@ async function main() {
           const layer = noThrowLayers.find((l) =>
             new RegExp(`/${l}/`).test(normalized),
           );
-          console.error(
-            `[Hook] DDD: throw at line ${i + 1} in ${basename} (${layer}) — use Result<T, E> instead`,
-          );
+          findings.push(`throw at line ${i + 1} in ${basename} (${layer}) — use Result<T, E> instead`);
         }
       }
     }
@@ -118,11 +119,15 @@ async function main() {
           const layer = noInfraLayers.find((l) =>
             new RegExp(`/${l}/`).test(normalized),
           );
-          console.error(
-            `[Hook] DDD: Forbidden import "${forbidden}" at line ${i + 1} in ${basename} — ${layer} layer must not depend on infrastructure`,
-          );
+          findings.push(`forbidden import "${forbidden}" at line ${i + 1} in ${basename} — ${layer} layer must not depend on infrastructure`);
         }
       }
+    }
+
+    if (findings.length > 0) {
+      const additionalContext = `[Hook] DDD purity — fix before finishing:\n${findings.map((f) => `- ${f}`).join('\n')}`;
+      process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: 'PostToolUse', additionalContext } }));
+      process.exit(0);
     }
   } catch {
     // Invalid input — pass through

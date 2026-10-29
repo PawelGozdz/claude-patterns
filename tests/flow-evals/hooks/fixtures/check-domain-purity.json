@@ -16,7 +16,7 @@
       }
     },
     "expect": "pass",
-    "expect_stderr": "throw|Result"
+    "expect_context": "throw|Result"
   },
   {
     "name": "domain-purity-infra-import-warns",
@@ -35,7 +35,7 @@
       }
     },
     "expect": "pass",
-    "expect_stderr": "[Ff]orbidden|import"
+    "expect_context": "[Ff]orbidden|import"
   },
   {
     "name": "domain-purity-clean-domain-silent",

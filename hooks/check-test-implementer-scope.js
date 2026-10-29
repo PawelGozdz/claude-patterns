@@ -30,6 +30,7 @@
  */
 const fs = require('fs');
 const path = require('path');
+const { toRel, bashWrites } = require('./lib/bash-writes');
 const { spawnSync } = require('child_process');
 
 const MODE = process.env.TEST_SCOPE_MODE || 'block';
@@ -100,64 +101,10 @@ function gitChangedPaths(cwd) {
   return out;
 }
 
-function toRel(p, cwd) {
-  const abs = path.isAbsolute(p) ? p : path.join(cwd, p);
-  const rel = path.relative(cwd, abs);
-  return rel.startsWith('..') ? null : rel.split(path.sep).join('/'); // outside the project (e.g. /tmp) — not our business
-}
-
 function toolUses(entry) {
   if (entry?.type === 'tool_use') return [entry];
   const content = entry?.message?.content || entry?.content || [];
   return Array.isArray(content) ? content.filter((b) => b?.type === 'tool_use') : [];
-}
-
-// ── Bash: which files does a command WRITE? ──────────────────────────────────────
-// Attribution is deliberately narrow. The first version flagged every path in a command that contained a write
-// construct anywhere, and on the real transcript that listed files the agent only read (`tsc -p tsconfig.json > log`,
-// a YAML heredoc that merely MENTIONS production files). A path counts only when it is the TARGET of a write:
-//   • the word after `>` / `>>` / `tee` / the destination of `cp` / `mv`,
-//   • the files of `sed -i` / `perl -pi` in the same shell segment,
-//   • in a python/node snippet: a path assigned to p/f/path/file/…, or the first argument of open(…,'w') /
-//     Path(…).write_* / writeFileSync(…). Paths inside string content are NOT targets.
-// `$VAR` is resolved from simple `NAME=value` assignments in the same command; an unresolved `$VAR` is skipped.
-const SRC_EXT = /\.(?:[cm]?[jt]sx?|json|ya?ml|sql|prisma|env[\w.]*)$/;
-
-function resolveVars(command) {
-  const vars = {};
-  for (const m of command.matchAll(/(?:^|[\s;&])([A-Za-z_]\w*)=(?!=)(["']?)([^\s;&|"']+)\2/g)) vars[m[1]] = m[3];
-  const sub = (t) => t.replace(/\$\{?([A-Za-z_]\w*)\}?/g, (_, n) => (n in vars ? vars[n] : '$'));
-  return { sub };
-}
-
-function bashWrites(command, cwd) {
-  const { sub } = resolveVars(command);
-  const targets = new Set();
-  const add = (raw, requireSlash) => {
-    const t = sub(String(raw).replace(/^['"`]|['"`,;)]+$/g, ''));
-    if (!t || t.includes('$') || t.startsWith('-') || t.startsWith('/tmp/') || t.startsWith('/dev/')) return;
-    if (!SRC_EXT.test(t) || (requireSlash && !t.includes('/'))) return;
-    const rel = toRel(t, cwd);
-    if (rel) targets.add(rel);
-  };
-  // redirections and tee: the single word that follows
-  for (const m of command.matchAll(/(?:^|[^>&\d=])>>?\s*([^\s&|;<>()]+)/g)) add(m[1], false);
-  for (const m of command.matchAll(/\btee\s+(?:-\S+\s+)*([^\s|;&]+)/g)) add(m[1], false);
-  // cp / mv: the last argument of the segment is the destination
-  for (const seg of command.split(/\n|;|&&|\|\|/)) {
-    const cm = seg.match(/\b(?:cp|mv)\s+((?:-\S+\s+)*)(.+)$/);
-    if (cm) { const args = cm[2].trim().split(/\s+/); if (args.length >= 2) add(args[args.length - 1], false); }
-    // sed -i / perl -pi: every source-looking file argument in this segment
-    if (/\bsed\s+(?:-[a-zA-Z]*\s+)*-[a-zA-Z]*i|\bperl\s+-[a-zA-Z]*i/.test(seg)) for (const t of seg.split(/\s+/)) add(t, true);
-  }
-  // python / node: path-valued assignments and the target of an explicit write
-  if (/\.write(?:_text|_bytes)?\(|open\([^)]*['"][wa]b?\+?['"]|\b(?:writeFileSync|appendFileSync|writeFile)\b/.test(command)) {
-    for (const m of command.matchAll(/\b(?:p|f|fn|path|file|target|dst|out)\s*=\s*['"]([^'"\n]+)['"]/g)) add(m[1], true);
-    for (const m of command.matchAll(/open\(\s*['"]([^'"\n]+)['"]\s*,\s*['"][wa]/g)) add(m[1], true);
-    for (const m of command.matchAll(/Path\(\s*['"]([^'"\n]+)['"]\s*\)\.write_/g)) add(m[1], true);
-    for (const m of command.matchAll(/\b(?:writeFileSync|appendFileSync|writeFile)\(\s*['"`]([^'"`\n]+)['"`]/g)) add(m[1], true);
-  }
-  return [...targets];
 }
 
 function main() {

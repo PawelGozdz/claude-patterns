@@ -12,6 +12,8 @@
  * Asercje na wyjściu (hooki doradcze zawsze kończą exit 0, więc sam kod wyjścia
  * niczego nie odróżnia):
  *   expect_stderr: "<regex>"  — ten tekst MUSI paść na stderr (hook złapał naruszenie)
+ *   expect_context: "<regex>" — ten tekst MUSI paść w `additionalContext` (JSON na stdout). To jedyny kanał PostToolUse
+ *                              z exit 0, który dociera do modelu; stderr widzi tylko człowiek (doc/decisions/hook-warning-visibility.md)
  *   expect_silent: true      — stderr MUSI być pusty (hook przepuścił / brak configu)
  *   expect_typecheck_ran: <bool> — czy post-edit-typecheck doszedł do tsc (czyta znacznik
  *                              cooldownu; wymaga setup.typecheckCooldown)
@@ -143,6 +145,14 @@ function runFixture(fx) {
     // nic nie zrobił" u hooków doradczych — obie sytuacje kończą się exit 0.
     if (fx.expect_stderr && !new RegExp(fx.expect_stderr).test(stderr)) {
       return { ok: false, got: `stderr bez /${fx.expect_stderr}/`, stderr: stderr.split('\n')[0] || '(cisza)' };
+    }
+    // expect_context: wzorzec w `hookSpecificOutput.additionalContext` ze stdout.
+    if (fx.expect_context) {
+      let ctx = '';
+      try { ctx = JSON.parse(res.stdout).hookSpecificOutput.additionalContext || ''; } catch { /* brak JSON = brak kontekstu */ }
+      if (!new RegExp(fx.expect_context).test(ctx)) {
+        return { ok: false, got: `additionalContext bez /${fx.expect_context}/`, stderr: ctx.split('\n')[0] || '(brak additionalContext)' };
+      }
     }
     // expect_typecheck_ran: czy post-edit-typecheck w ogóle doszedł do uruchomienia tsc.
     // Cisza na stderr tego nie rozstrzyga (czysty projekt też milczy), a to jest CAŁA

@@ -116,6 +116,28 @@
           }
         ],
         "description": "Warn when task files are missing ## Security Considerations section"
+      },
+      {
+        "matcher": "Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$HOME/.claude/hooks/remind-verifier-after-manual-implementer.js\""
+          }
+        ],
+        "description": "After a hand-spawned *-implementer finishes, remind the main session (additionalContext) to run the verifier on its changes — the engine verifier runs only inside /orchestrate. Disable via MANUAL_SPAWN_REMINDER=off."
+      }
+    ],
+    "SubagentStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$HOME/.claude/hooks/inject-implementer-rule-cards.js\""
+          }
+        ],
+        "description": "Rule cards for hand-spawned *-implementer agents: injects the project's cards (patterns.always + the agent's layer patterns) as additionalContext at subagent start. Disable via MANUAL_SPAWN_RULES=off."
       }
     ],
     "Stop": [
