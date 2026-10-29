@@ -59,6 +59,6 @@ Zrobione w worktree `/opt/projects/_claude-patterns-manual-spawn`, gałąź zada
 
 Rejestracja: `blocks/ddd/core.yml` + `templates/settings/nestjs-ddd.json`. Evale: `manual-spawn-rules` 15/15, `hooks` 74/74, `test-implementer-scope` 20/20, `materialize-runtime` 4/4.
 
-Czeka na sygnał właściciela (hooki propagują się symlinkami): scalenie do develop, potem `audit-projects`, `materialize-runtime`, `sync-runtime-hooks --apply` w projektach na bloku ddd/core i `verify-project-setup`.
+Scalone do develop (c5563bf, 2026-10-29). Rollout: `materialize-runtime` i `sync-runtime-hooks --apply` w grant-flow, juz-ide-api-1..4 i marketing-hub; `verify-project-setup` w każdym kompletny. Pozostałe projekty na bloku ddd/core dostaną hooki przy następnej materializacji.
 
 Otwarte: test na transkrypcie z żywym ręcznym implementerem (kryterium 1); czy `Agent` w Workflow odpala `PostToolUse` sesji głównej.
