@@ -105,39 +105,15 @@ Propozycje poza tym zadaniem (wymagają decyzji): hook SubagentStart wstrzykują
 | 3 sonda `conformance` (ORC-140) | zrobione | 15e2802 |
 | 4 `minor_findings` (ORC-141), 6 próg pakietu (ORC-142) | zrobione | 9bc385e |
 | 5 `/analyze` (ANL-049..051) | zrobione | e1a4f86 |
-| Paczka konfiguracji: rejestracja hooka (`blocks/ddd/core.yml`, `templates/settings/nestjs-ddd.json`), `blocks/ddd/{cqrs,layers}.yml`, schemat, fixture materialize, karty | ODŁOŻONA (`git stash`, patrz niżej) | — |
+| Scalenie do develop (880c847), potem paczka konfiguracji: rejestracja hooka, `blocks/ddd`, schemat, fixture, karty | zrobione po reseedzie RAG i materializacji projektów | 3a49a5a |
+| `conformance` w `monorepo-layers` (marketing-hub, grant-flow) po pomiarze długu | zrobione: grant-flow 0 throw / 0 BullMQ, marketing-hub 11 throw w 2 plikach (campaign, evaluation), api-1 33 throw w 15 plikach, wszędzie 0 BullMQ | 2a92c34 |
 
-Dlaczego odłożona: zmiana `blocks/**/*.yml` albo `templates/settings/*.json` uruchamia w pre-commit `audit-projects --gate`, który wymaga zmaterializowanych `runtime.yml` w żywych projektach. Commit pakietu wchodzi razem ze scaleniem: stage → `materialize-runtime` projektów → commit. Reguła numerowana w planie jako ORC-143 (hook) nie ma jeszcze wiersza w tabeli komendy, bo hook jest nieaktywny do rejestracji.
+Po scaleniu wykonano: `reseed-patterns.sh`, `materialize-runtime` (juz-ide-api-1..4, grant-flow, marketing-hub), `sync-runtime-hooks --apply` (hook zakresu test-implementera w `settings.json` tych sześciu projektów), kopia `analysis/TEMPLATE.md` do 12 projektów, `verify-project-setup` 6/6. Zmiany w repozytoriach projektów są niezacommitowane (settings.json, `monorepo-layers-grant-flow.yml`, `TEMPLATE.md`)—commituje właściciel projektu.
 
-## Do zrobienia po scaleniu
+## Do zrobienia po zebraniu danych z przebiegów
 
-Scalenie dopiero po sygnale właściciela, że fala poprawek w api-1 się skończyła. Wtedy:
-- `./scripts/reseed-patterns.sh` w głównym drzewie (zmieniają się karty), potem `audit-projects` → `materialize-runtime` → `verify-project-setup` w juz-ide-api-1, marketing-hub, grant-flow (projekty z własną listą `layers` dopisują `conformance` do `checks:` ręcznie).
-- Zmierzyć bazę `CH-NO-THROW` i `CH-NO-BULLMQ` w marketing-hub i grant-flow (w katalogu `application/commands/`; dotąd policzono tylko `application/` w całości) i zdecydować o wyjątkach w `.claude/conformance.json`.
-- Skorygować progi ORC-142 po pierwszych przebiegach (to ocena, nie pomiar).
+- Skorygować progi ORC-142 po pierwszych przebiegach (to ocena skalibrowana na 440 analizach, nie pomiar na żywo).
+- Zmierzyć siatkę `BEHAVIOR_NET` (ORC-141) na prawdziwych `minor_findings`; rollupy nie niosą ich treści.
 - Rozważyć budżet weryfikatora (TASK-ORCH-VERIFY-BUDGET-001): mediana 3 wywołań z 15 w api-1.
-- Podmienić `engine=` w Claimach na pierwszy hash z rollupów, który zawiera commit reguły.
-
-## Prompt startowy do analizy
-
-W claude-patterns nie ma `.claude/config/runtime.yml`, więc `/analyze` odmówi startu; analizę robi się ręcznie według szablonu artefaktu (wzór: `docs/tasks/analysis/TASK-RAG-002.analysis.md`).
-
-```
-Pracujemy nad TASK-ENGINE-GUARDRAILS-001 w worktree /opt/projects/_claude-patterns-guardrails (gałąź feature/TASK-ENGINE-GUARDRAILS-001, świeża z develop e9864d9).
-Najpierw przeczytaj: docs/tasks/TASK-ENGINE-GUARDRAILS-001.md (cały), pamięć projektu "engine-guardrails-worktree-pending", CLAUDE.md i docs/CONTRIBUTING.md.
-Poprzednia implementacja jest w gałęzi archive/TASK-ENGINE-GUARDRAILS-001-v1 (37 plików, baza z 21.10) — traktuj ją jako specyfikację zachowania, NIE jako diff do scalenia:
-20 plików nakłada się czysto na develop, 13 koliduje (silnik: orchestrate.md, orchestrate-prepare.mjs, orchestrate.template.mjs, analyze/szablon, testy). Numery ORC-118..121 i ANL-042..044 są zajęte;
-nowe: ORC-140..143, ANL-049..051 (sprawdź przed commitem).
-
-KROK 1 — ANALIZA, bez implementacji. Nie edytuj kodu produkcyjnego. Napisz docs/tasks/analysis/TASK-ENGINE-GUARDRAILS-001.analysis.md według templates/task-analysis-template.md
-(status: pending, open_questions[] z `ask` krótkim językiem biznesowym, decisions[] z klasą MECHANICAL/TASTE/USER_CHALLENGE i door_type, ANL-047/048). Uwzględnij:
-(a) które z kroków 2–7 przenieść prawie mechanicznie, a które zaprojektować od nowa na aktualnym silniku (hash drzewa ORC-139, ostrzeżenie .env* ORC-138, klasy decyzji ANL-047/048);
-(b) czy sonda `conformance` ma wejść do tej samej sondy co hash drzewa, żeby nie mnożyć wywołań Haiku;
-(c) wpływ nowych bramek pre-commit (archeologia = 0, wymagane kroki i piny, ratchet kontekstu, Claim przy nowej regule);
-(d) ryzyko dla projektów na żywo (api-1, marketing-hub, grant-flow): hooki i tools/conformance/check.mjs propagują się symlinkami, więc NIC nie trafia do głównego drzewa przed moim sygnałem.
-Odpal panel advisory (architekt, security, reviewer-skeptic) tylko na pytania z realną niepewnością. Zatrzymaj się po zapisaniu artefaktu i zadaj mi pytania z open_questions[].
-
-KROK 2 — dopiero po mojej zgodzie (status: approved): implementacja w tym worktree w logicznych commitach, każdy z pełnym zestawem bramek (w worktree `rag-freshness` ma stan skopiowany z głównego drzewa).
-Po każdej części odpal niezależnego reviewera (ecc:code-reviewer, a dla silnika ecc:silent-failure-hunter) i napraw znaleziska z testem regresyjnym. Nie scalaj do develop bez mojego sygnału; po scaleniu reseed RAG,
-audit-projects → materialize-runtime → verify-project-setup. Nie commituj niczego w repozytoriach projektów.
-```
+- Podmienić `engine=` w Claimach ORC-140..142 i ANL-049..051 na pierwszy hash z rollupów, który zawiera commit reguły.
+- Przyczyna po stronie ręcznych agentów: TASK-AGENT-MANUAL-SPAWN-RULES-001.
