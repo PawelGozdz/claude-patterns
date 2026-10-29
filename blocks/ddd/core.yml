@@ -55,7 +55,7 @@ overlay:
   agents: [stacks/nestjs-ddd/]
   patterns: [domain/]
   rules: [nestjs-ddd/]
-  hooks: [check-delegation, check-patterns-read, check-subagent-pattern-reads, check-approval-before-impl, check-ddd-patterns, check-domain-purity]
+  hooks: [check-delegation, check-patterns-read, check-subagent-pattern-reads, check-test-implementer-scope, check-approval-before-impl, check-ddd-patterns, check-domain-purity]
 
 # Rozbrojenie kolizji z ECC (spike S3) + wymuszenie delegacji — przeniesione
 # z presets/nestjs-ddd.yml (env należy do overlay'u DDD, nie do frameworka)

@@ -14,7 +14,7 @@
 - **CH2** — oba dekoratory obecne: `@Injectable()` i `@CommandHandler(CommandClass)`.
 - **CH3** — WSZYSTKIE zależności przez konstruktor z `@Inject()` (logger, requestContext, redactionService, repozytoria, serwisy).
 - **CH4** — userId WYŁĄCZNIE z `this.requestContext.getUserId()` — NIGDY z pola command (ADR-0021).
-- **CH5** — `executeBusinessLogic()` zwraca `Result<DTO, Error>` — NIGDY nie rzuca wyjątku.
+- **CH5** — `executeBusinessLogic()` zwraca `Result<DTO, Error>` — NIGDY nie rzuca wyjątku. Dotyczy CAŁEGO pliku handlera: także metod prywatnych i helperów wołanych z `executeBusinessLogic` (przeniesienie `throw` do metody pomocniczej nie czyni go legalnym; juz-ide-api-1 ChangePasswordHandler: 12 `throw` w jednej prywatnej metodzie). Uzasadniony wyjątek wymaga komentarza `// THROW-EXCEPTION: <powód>` nad linią albo wpisu w `.claude/conformance.json`; komentarz w kodzie o treści „callback wymaga wyjątków" NIE jest wyjątkiem. Egzekwuje to `tools/conformance` (ratchet względem HEAD).
 - **CH6** — handler to CZYSTA ORKIESTRACJA: załaduj dane → stwórz VO → wywołaj fabrykę agregatu → zapisz → zwróć DTO.
 - **CH7** — cross-context wywołania WYŁĄCZNIE przez `aclRegistry.getGlobalRequired<ILocalInterface>('context-name')` z lokalnym interfejsem ACL.
 - **CH8** — transakcja obsługiwana przez `@Transactional` dziedziczone z `BaseCommandHandler` — auto-commit i auto-rollback.
@@ -28,7 +28,7 @@
 ## MUST NOT
 - **N1** — ❌ `userId` w klasie Command — userId pochodzi z JWT (RequestContext), nie z body (luka bezpieczeństwa, ADR-0021).
 - **N2** — ❌ logika domenowa w handlerze (walidacja wieku, reguły biznesowe) — należy do agregatu/specyfikacji.
-- **N3** — ❌ `throw` w `executeBusinessLogic` — zawsze `Result.fail(error)`.
+- **N3** — ❌ `throw` gdziekolwiek w pliku handlera (w `executeBusinessLogic` ORAZ w metodach prywatnych/helperach, które z niej wołasz) — zawsze `Result.fail(error)`.
 - **N4** — ❌ ręczne zarządzanie transakcją (`beginTransaction`, `commit`, `rollback`) — `@Transactional` obsługuje to automatycznie.
 - **N5** — ❌ bezpośredni import z innego kontekstu (`@contexts/other-context/...`) — wymagane ACL Registry.
 - **N6** — ❌ ręczne `commandBus.register()` ani injekcja `CommandBus` w module — auto-discovery przez `@CommandHandler`.
@@ -37,6 +37,7 @@
 - **N9** — ❌ rezerwacja zasobu zewnętrznego wymagającego `compensate()` na porażkę, wywołana WEWNĄTRZ `prepare()` — brak kanału do jej cofnięcia, gdy TA konkretna rezerwacja zawiedzie (patrz CH12).
 - **N10** — ❌ wołanie `stack.acquire()` na instancji `CompensationStack`, na której `unwind()` już się zakończył — wpis jest przyjęty po cichu i NIGDY skompensowany (jednorazowa zatrzaskująca się instancja). Nowy przepływ = nowy `CompensationStack.create()`.
 - **N11** — ❌ ręcznie napisane pola `tokenReservationId`/`compensationReason` w nowym handlerze zamiast `CompensationStack` — to kształt, który ten mechanizm zastąpił (2 z 10 handlerów miały niekompletne ścieżki zwolnienia przed migracją).
+- **N12** — ❌ `@InjectQueue`, `import … from 'bullmq'` / `'@nestjs/bullmq'` w handlerze komendy lub zapytania — kolejkuj przez port (Symbol + interfejs w `application/`, adapter w module/`infrastructure/`); pełny zestaw reguł: karta `command-handler-queue-port-pattern_summary.md` (QP1–QP6). Wyjątek: `// QUEUE-EXCEPTION: <powód>`.
 
 ## Minimal correct skeleton
 ```ts
@@ -112,7 +113,8 @@ export class XxxHandler extends BaseCommandHandler<
 |---|---|
 | `command.userId` lub `userId` jako pole Command | N1 |
 | walidacja biznesowa (`if age < 16`) w handlerze | N2 |
-| `throw new ...` w `executeBusinessLogic` | N3 |
+| `throw new ...` / `throw error` gdziekolwiek w pliku handlera (też w metodzie prywatnej) | N3 / CH5 |
+| `@InjectQueue(` / `from 'bullmq'` / `from '@nestjs/bullmq'` w handlerze komendy lub zapytania | N12 / QP1 |
 | `beginTransaction()` / `commit()` / `rollback()` ręcznie | N4 |
 | `import { ... } from '@contexts/other-context/...'` | N5 |
 | `commandBus.register(...)` w module | N6 |

@@ -32,6 +32,21 @@ patterns:
     - keywords: [dto, response, odpowiedź, mapper, mapowanie, result.ok]
       include:
         - cross-layer/dto-mapper-pattern.md
+    # Kolejka w handlerze komendy idzie przez port (QP1). Wyzwalacz słowny obejmuje też warstwy, które
+    # DOSTARCZAJĄ adapter portu (infrastructure) — tam implementer inaczej nie zobaczyłby, po co jest Symbol.
+    - keywords: [queue, kolejk, bullmq, enqueue, outbox, sms, "e-mail wysyłk"]
+      include:
+        - application/command-handler-queue-port-pattern.md
+
+# ORC-118 (TS-SEC-D0-BETA-HARDENING-001): implementer i weryfikator warstwy application mają karty handlera
+# komend i portu kolejki ZAWSZE, nie tylko gdy opis taska zawiera słowo „handler"/„queue". Dotąd karta
+# command-handler wchodziła wyłącznie z wyzwalacza słownego i z `pattern_routing` (hooki), a karty portu kolejki nie
+# było w żadnym kanale — implementer dostał `@InjectQueue` do handlera, bo żadna karta tego nie zakazywała.
+layer_contributions:
+  - match: "*:app"
+    patterns:
+      - application/command-handler-pattern.md
+      - application/command-handler-queue-port-pattern.md
 
 overlay:
   patterns: [application/]

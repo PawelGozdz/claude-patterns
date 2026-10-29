@@ -195,7 +195,7 @@
             "checks": {
               "type": "array",
               "items": { "type": "string" },
-              "description": "Skrypty package.json uruchamiane przez bramkę końcową ZAWSZE, niezależnie od tego, które warstwy weszły (sumowane z checks warstw). Bez tego pominięcie warstwy testing gubiło testy regresji (ORC-022, TS-MH-005)."
+              "description": "Skrypty package.json uruchamiane przez bramkę końcową ZAWSZE, niezależnie od tego, które warstwy weszły (sumowane z checks warstw). Bez tego pominięcie warstwy testing gubiło testy regresji (ORC-022, TS-MH-005). Wpis `conformance` to wbudowana kontrola reguł ciała pliku (tools/conformance, ratchet vs HEAD), nie skrypt (ORC-118)."
             }
           }
         }

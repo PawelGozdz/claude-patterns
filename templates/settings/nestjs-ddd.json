@@ -140,6 +140,16 @@
           }
         ],
         "description": "Pattern-grounding gate: block a subagent from finishing if it edited a pattern file (aggregate/handler/repo/…) without reading that pattern in its OWN transcript. Closes the gap PreToolUse can't see. Soften via PATTERN_READS_MODE=warn, disable via off."
+      },
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$HOME/.claude/hooks/check-test-implementer-scope.js\""
+          }
+        ],
+        "description": "Test-implementer write scope: block a test-implementer from finishing if it wrote outside the test scope (spec/test/fixtures/mocks) — Write/Edit AND Bash writes (python/sed/tee/redirect). Production changes are reported as a gap. Soften via TEST_SCOPE_MODE=warn, disable via off; extend the scope in .claude/test-scope.json."
       }
     ]
   }

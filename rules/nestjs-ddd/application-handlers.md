@@ -19,6 +19,7 @@
 - Implement `getOperationName()` and `getBoundedContext()` (telemetry); rely on inherited `@Transactional` for commands.
 - Query handlers: inject the read-only `IQueryRepository`, paginate list queries (`{ items, pagination }`), return a DTO.
 - A comment in the code is not evidence of compliance — the rule card wins. A comment or an analysis sentence that justifies a deviation ("the callback expects exceptions", "the handler does not write to the database") is a claim to verify in the code; if it contradicts the card, report a violation instead of following it.
+- A comment in the code is not evidence of compliance — the rule card wins. A comment or an analysis sentence that justifies a deviation ("the callback expects exceptions", "the handler does not write to the database") is a claim to verify in the code; if it contradicts a rule, it is a violation, not a waiver.
 
 ## NEVER
 - Put `userId` in a Command class — it comes from the JWT/RequestContext, not the request body (security gap).
@@ -33,6 +34,9 @@
 - `queue.add` (audit, cache invalidation, any enqueue) in a domain-event handler — in-process events are dispatched BEFORE the command's transaction commits, so the job survives a rollback and leaves a phantom. Use the outbox (`outboxService.saveMessage`).
 - Mutate state, load aggregates, or skip pagination in a query handler (CQRS violation).
 - Omit `@Inject()` on any constructor dependency.
+
+## Enforcement
+Both `NEVER` rules above (`throw` in a handler file, BullMQ in a handler) are checked mechanically by `tools/conformance` (`bodyRules` `CH-NO-THROW` / `CH-NO-BULLMQ`) as a RATCHET against the commit a run starts from: debt that is already committed does not block, a new violation does. A justified exception needs a reason in the code (`// THROW-EXCEPTION: <reason>`, `// QUEUE-EXCEPTION: <reason>`) or an entry with a `reason` in the project's `.claude/conformance.json`, and it counts only when it was committed BEFORE the run; an exception added during a run waits for a human.
 
 ## Why
 Handlers are thin orchestration over the domain: they translate a request into

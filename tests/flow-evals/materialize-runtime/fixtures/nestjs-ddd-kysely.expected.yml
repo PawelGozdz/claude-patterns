@@ -43,6 +43,10 @@ patterns:
     - keywords: [dto, response, odpowiedź, mapper, mapowanie, result.ok]
       include:
         - cross-layer/dto-mapper-pattern.md
+    # source: ddd/cqrs
+    - keywords: [queue, kolejk, bullmq, enqueue, outbox, sms, e-mail wysyłk]
+      include:
+        - application/command-handler-queue-port-pattern.md
     # source: ddd/events
     - keywords: [transaction, outbox, domain event, integration event]
       include:
@@ -89,7 +93,18 @@ orchestrate: # source: ddd/layers
     # `lint:check`, nie `lint`: w projektach Nest `lint` ma --fix i zmieniałby pliki w sondzie.
     # Brak skryptu w package.json = "skipped" w raporcie (ORC-017), nie błąd.
     - {id: domain, dirs: [domain/], agent: "domain-application-implementer", tags: ["api:domain"], checks: ["typecheck"], role: "Model domenowy: agregaty, encje, VO, zdarzenia i specyfikacje. Zero I/O, zero frameworka."}
-    - {id: application, dirs: [application/], agent: "domain-application-implementer", tags: ["api:app"], checks: ["typecheck"], role: "Przypadki użycia: handlery komend i zapytań orkiestrujące domenę. Bez reguł biznesowych — te należą do domeny."}
+    # `conformance` (ORC-118) = wbudowana kontrola reguł ciała pliku z tools/conformance (throw i BullMQ
+    # w handlerach komend) jako RATCHET względem HEAD: blokuje tylko to, co przebieg dopisał, nie dług
+    # sprzed niego. Prepare rozwija ten wpis do komendy dosłownej; to nie jest skrypt package.json.
+    - {
+        id: application,
+        dirs: [application/],
+        agent: "domain-application-implementer",
+        tags: ["api:app"],
+        checks: ["typecheck", "conformance"],
+        role: "Przypadki użycia: handlery komend i zapytań orkiestrujące domenę. Bez reguł biznesowych — te należą do domeny.",
+        patterns: [application/command-handler-pattern.md, application/command-handler-queue-port-pattern.md] # +ddd/cqrs
+      }
     - {
         id: infrastructure,
         dirs: [infrastructure/],
@@ -108,10 +123,12 @@ orchestrate: # source: ddd/layers
   # lint dawałby fałszywe NO_GO na każdym przebiegu, niezależnie od zmiany taska. Przywrócić po
   # osiągnięciu czystego `lint:check` w KAŻDYM projekcie na tym bloku, nie wcześniej.
   # typecheck zostaje — jest szybki i czysty we wszystkich sprawdzonych projektach.
-  final_gate: {agent: "security-e2e-verifier", on_fail: ESCALATE_AND_HALT, checks: ["typecheck", "test"]}
+  # conformance także tu: gdy analiza pominęła warstwę application albo jest ona w layers_done, bramka i tak
+  # sprawdza CAŁĄ zmianę (ratchet vs HEAD), więc handler ruszony „przy okazji" w innej warstwie nie ucieknie.
+  final_gate: {agent: "security-e2e-verifier", on_fail: ESCALATE_AND_HALT, checks: ["typecheck", "test", "conformance"]}
   exit: STAGE_NOT_COMMIT
 
-hooks: [check-security-considerations, check-context-isolation, check-delegation, check-patterns-read, check-subagent-pattern-reads, check-approval-before-impl, check-ddd-patterns, check-domain-purity, check-human-voice]
+hooks: [check-security-considerations, check-context-isolation, check-delegation, check-patterns-read, check-subagent-pattern-reads, check-test-implementer-scope, check-approval-before-impl, check-ddd-patterns, check-domain-purity, check-human-voice]
 
 env:
   ECC_GATEGUARD: "off" # source: ddd/core
