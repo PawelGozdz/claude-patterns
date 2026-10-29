@@ -80,7 +80,7 @@ orchestrate:
         tags: ["api:domain"], checks: ["typecheck:api", "lint:check:api"],
         role: "Model domenowy w apps/api: agregaty, encje, VO, zdarzenia, specyfikacje. Zero I/O, zero frameworka." }
     - { id: application, dirs: [application/], agent: "domain-application-implementer",
-        tags: ["api:app"], checks: ["typecheck:api", "lint:check:api"],
+        tags: ["api:app"], checks: ["typecheck:api", "lint:check:api", "conformance"],
         role: "Przypadki użycia w apps/api: handlery komend i zapytań orkiestrujące domenę. Bez reguł biznesowych." }
     - { id: infrastructure,
         dirs: [infrastructure/, apps/api/src/app/, apps/api/src/shared/, apps/api/tools/, packages/contracts/, docker-compose.yaml, infra/],
@@ -105,7 +105,7 @@ orchestrate:
   # format:check/validate:br:api/build: realne CI je uruchamia, final_gate.checks musi
   # mieć je też, inaczej naruszenia przechodzą niezauważone przez wiele warstw.
   final_gate: { agent: "security-e2e-verifier", on_fail: ESCALATE_AND_HALT,
-                checks: ["typecheck", "lint:check", "test", "format:check", "validate:br:api", "build"] }
+                checks: ["typecheck", "lint:check", "test", "format:check", "validate:br:api", "build", "conformance"] }
   exit: STAGE_NOT_COMMIT
 
 ralphinho:
