@@ -27,6 +27,16 @@ Never combine expand and contract in the same migration file or the same release
 `src/shared/database/migrations/211_service_offerings_category_expand_contract.ts` and
 `212_job_requests_category_expand_contract.ts` for the pattern already in use in this codebase.
 
+### Wyjątek projektowy: contract razem z expand przed pierwszym zaproszeniem (juz-ide-api, BDR-130)
+
+W projekcie `juz-ide-api` reguła „nigdy w jednym wydaniu" nie obowiązuje dla migracji contract do chwili pierwszego
+zaproszenia do closed bety, jeśli spełnione są wszystkie cztery warunki: (1) migracja contract ma bramkę D0 (blok
+zliczający wiersze łamiące nową regułę i przerywający migrację); (2) przed wydaniem sprawdzono
+`migration_history` i licznik D0 na demo i produkcji; (3) commit, który przestaje zapisywać stary kształt, jest
+przodkiem gałęzi wydania; (4) po wdrożeniu `pg_constraint` zawiera nowe ograniczenie. Wymóg `contractOf` i bramka
+analizatora migracji zostają bez zmian. Od pierwszego zaproszenia expand i contract wychodzą zawsze osobno. Dotyczy
+tylko tego projektu; w innych repozytoriach obowiązuje reguła w pełnym brzmieniu.
+
 ## Marking a migration irreversible
 
 Some migrations cannot be safely undone by their own `down()` — a destructive `DROP COLUMN`

@@ -1610,6 +1610,15 @@ agent schodził na fallback „ostatnie 40 linii" i go parafrazował. Poprawka: 
 zostaje: bez `tsErrors` i bez parsowalnego `tail` czerwień nie jest odraczana. Eval:
 `probe-prompt-requests-verbatim-ts-errors` oraz rozszerzony przypadek ORC-082.
 
+**Uzupełnienie (2026-11-02): diagnostyka rozjazdu.** juz-ide-api-3 TS-GEO-QUICK-JOB-POINT-001
+(`domain:job-location-model`): sonda nie wykonała drugiego polecenia z grepem, `tsErrors` było puste, a
+`tail` bez linii błędów, więc odroczenie nie zadziałało i warstwa dostała BLOCKED_BY_PRIOR. Człowiek
+widział tylko zatrzymanie. `typecheckDeferralMismatch` opisuje powód (brak błędów, brak ścieżki albo
+tylko część błędów ze ścieżką) i zapisuje go w logu oraz `report.warnings`, gdy za warstwą jest
+jeszcze jakaś uruchamiana. Zachowanie odroczenia bez zmian: bez kompletu ścieżek czerwień nadal
+blokuje. Naprawa u źródła (grep wykonywany w tym samym poleceniu co checki, bez drugiego kroku
+modelu) czeka na kolejne wystąpienie z danymi. Eval `typecheck-deferral-mismatch-explains-why-red-is-not-deferred`.
+
 <a id="orc-083"></a>
 
 ### ORC-083 — zgłaszamy odstępstwa maszyny, nie błędy kodu (2026-10-01)
@@ -2081,6 +2090,8 @@ Weryfikator dostaje adnotację „testy odroczone". Ryzyko: poprawność zależy
 (Haiku) odda `grep FAIL` dosłownie; guard liczby plików chroni przed niepełną listą, nie przed
 zmyśloną. Nie sprawdzone na żywym przebiegu. Eval:
 `tests-red-deferred-only-when-all-failing-files-belong-to-later-layers`.
+
+**Uzupełnienie (2026-10-31): diagnostyka rozjazdu.** juz-ide-api-3 TS-GEO-DISTANCE-BUCKETS-001 (`DEV-orc-099-testing-e2e-services`) zgłosiło, że odroczenie nie zadziałało, bo lista `testFailFiles` nie zgadzała się z podsumowaniem vitest. Na przykładowym wyjściu (dwie linie `FAIL` jednego pliku, `Test Files 1 failed`) `testFailExpectedCount` liczy zgodnie, więc nie znaleziono błędu w liczeniu; prawdziwy log przebiegu nie został zachowany. Zamiast zgadywać, silnik przy odmowie odroczenia loguje i wpisuje do `report.warnings` liczby (`testDeferralMismatch`): ile plików dała lista, które, ile podało podsumowanie. Następne wystąpienie przyniesie dane. Eval `test-deferral-mismatch-reports-numbers`.
 
 <a id="orc-100"></a>
 
@@ -2660,6 +2671,8 @@ produktowe oceniamy raz, na całości zmiany, żeby nie płacić za nie w każde
 
 ### ANL-052 — brak pliku zadania jest jawny, nie cichy (2026-10-29)
 
+**Claim:** metric=DEV-anz-gate-input-missing direction=down threshold=0.2 engine=f821af9 process=analyze
+
 **Objaw (grant-flow, TS-PROJ-WRITEOWN-002).** `/analyze` wystartował bez `project-orchestration/tasks/TS-PROJ-WRITEOWN-002*.md`. KANBAN i dwie zatwierdzone analizy wspominały zadanie jako „TO TRZEBA STWORZYĆ"; zakres odtworzono z analiz UI-009 i UI-010, a bramka wejścia nie ostrzegła (`DEV-anz-gate-input-missing`, wariant: brak taska).
 
 **Przyczyna.** `orchestrate-prepare` ostrzega o braku pliku zadania, ale dopiero przy implementacji. Analiza, która ma tylko komendę, nie ma kroku, który kazałby to powiedzieć. Zakres z cudzych analiz jest rozsądnym wyjściem, ale nie powinien wyglądać jak zakres z zadania.
@@ -2672,6 +2685,8 @@ produktowe oceniamy raz, na całości zmiany, żeby nie płacić za nie w każde
 
 ### ANL-053 — zmiana sygnatury przecina warstwy, `dirs` jednostki to uwzględnia (2026-10-29)
 
+**Claim:** metric=DEV-anz-layer-mismatch-application direction=down threshold=0.2 engine=f821af9 process=analyze
+
 **Objaw (2 projekty).** juz-ide-api-4 TS-GEO-ADDRESS-LOOKUP-001 (`DEV-anz-layer-mismatch-application`): zmiana sygnatury portu w `application/interfaces` wymusza jednoczesną zmianę repozytorium (infrastructure) i wołających (application); przy typechecku per warstwa i kolejności domain→application→infrastructure nie da się zachować zielonego typechecku między warstwami bez przesunięcia pliku infrastrukturalnego do jednostki warstwy application. grant-flow TS-PROJ-WRITEOWN-002 (`DEV-anz-layer-mismatch-infrastructure`, ponownie otwarty): kontroler w `infrastructure`, a zmiana sygnatury komend wymaga typechecku w `application`.
 
 **Przyczyna.** ANL-038 mówi o plikach importujących zmieniany plik, ale nie o tym, że zmiana kontraktu czerwieni typecheck wcześniejszej warstwy, dopóki implementacja i wołający z późniejszej warstwy nie zostaną zmienieni razem z nią. ORC-082 odracza cudzą czerwień, ale nie może jej naprawić.
@@ -2680,9 +2695,13 @@ produktowe oceniamy raz, na całości zmiany, żeby nie płacić za nie w każde
 
 **Ograniczenia.** Plik infrastrukturalny w jednostce warstwy application dostaje karty tej warstwy, nie infrastruktury; weryfikację kart infrastruktury robi bramka końcowa. Bez bramki w `prepare`: po stronie skryptu nie wiadomo, które pliki wołają zmienianą sygnaturę.
 
+**Uzupełnienie (2026-10-30): usuwanie pola.** juz-ide-api-3 TS-GEO-DISTANCE-BUCKETS-001 (`DEV-orc-062-testing-guardians`): zadanie usuwało martwe pole `distanceMeters` (D10), ale jednostka `groups` objęła tylko kontroler i schemat. Pole zostało w DTO (`group.dto.ts:112`, application) i w modelu odczytu (`i-neighborhood-group.repository.ts:132`, domain), więc guardian `no-metric-distance` w warstwie `testing` był czerwony i ORC-062 słusznie zatrzymał przebieg (BLOCKED_BY_PRIOR). Autor dopisał jednostki `groups-port` i `groups-dto` i uruchomił je po fakcie. To ta sama klasa co sygnatura: pole jest kontraktem, a pliki, które je niosą, leżą w kilku warstwach. Reguła obejmuje teraz usunięcie i przemianowanie pola DTO, modelu odczytu lub schematu: grep po nazwie, każdy trafiony plik ma właściciela, `domain` i `application` idą przed `infrastructure`. Dwa wcześniejsze rekordy, `orc-062-testing-test-cc` (api-2) i `orc-099-testing-l1-new` (api-4), odrzuciłem jako stan drzewa. Mogły mieć tę samą przyczynę, ale po naprawie nie dało się tego potwierdzić.
+
 <a id="orc-144"></a>
 
 ### ORC-144 — plik z ustalenia bramki końcowej bez właściciela dostaje wyjątek od zakresu (2026-10-29)
+
+**Claim:** metric=DEV-agent_note-poprawki-po-bramce-koncowej-trafi-y-do-warstw-bez direction=down threshold=0.2 engine=f821af9 process=orchestrate
 
 **Objaw (ai-gateway, TS-AIG-104, `final-gate`).** Poprawki po bramce końcowej trafiły do warstw bez praw zapisu do `compose.ts` i `config.ts`; wymagało to ręcznego rozszerzenia jednostek w analizie i trzech przebiegów (`DEV-agent_note-poprawki-po-bramce-koncowej-trafi-y-do-warstw-bez`).
 
@@ -2693,3 +2712,79 @@ produktowe oceniamy raz, na całości zmiany, żeby nie płacić za nie w każde
 **Odrzucone.** Wyjątek dla każdego pliku z ustalenia: ominąłby zakres warstw, które mają właściciela. Rozszerzanie `dirs` po stronie `prepare`: ustalenia bramki powstają po starcie.
 
 **Ograniczenia.** To leczy skutek; przyczyną jest plan bez właściciela composition root i schematu konfiguracji, więc ANL-046 obejmuje je teraz wprost. Wyjątek nie rusza `.env*` (ORC-138). Numer ORC-143 zajmuje hook `check-test-implementer-scope` z planu bramek.
+
+<a id="orc-145"></a>
+
+### ORC-145 — plik testowy w remisie dirs idzie do warstwy testowej (2026-10-31)
+
+**Objaw (juz-ide-api-3, TS-GEO-DISTANCE-BUCKETS-001, `final-gate`).** Runda naprawcza po bramce końcowej skierowała poprawki testów Tablicy do warstwy `infrastructure:profile-api`, która nie ma praw do testów, zamiast do warstwy `testing` (`DEV-agent_note-baza-listy-plikow-bramki-koncowej-head-4a7d63d96`, druga część).
+
+**Przyczyna.** Jednostki `feed` (infrastructure) i `l2-oracle` (testing) mają ten sam wpis `src/app/api/activity-feed/` w `dirs`. ORC-108 rozstrzyga remis tylko dla rangi segmentu (`__tests__/` jako nazwa katalogu); tu dopasowanie jest prefiksowe, więc `ownerLayerOf` zwracało null, a `groupFindingsByLayer` kierowało ustalenie do warstwy zapasowej.
+
+**Zmiana.** `ownerLayersOf` rozstrzyga remis na korzyść warstw `tests: true`, gdy ścieżka jest testem (`__tests__/` albo `*.spec.*`/`*.test.*`). Plik kodu w remisie zostaje bez właściciela, remis bez warstwy `tests: true` też. Eval `owner-test-layer-wins-prefix-tie-for-test-files`.
+
+**Ograniczenia.** Dotyczy też odroczenia ORC-082/099: plik testowy w remisie liczy się teraz jako należący do warstwy testowej, co jest zamierzone (test leży po kodzie). Nie sprawdzone na żywym przebiegu.
+
+<a id="orc-146"></a>
+
+### ORC-146 — „brak zmian" z lukami weryfikatora kończy się GO_WITH_GAPS (2026-10-31)
+
+**Objaw (juz-ide-api-3, `testing:groups-disclosure-tests`).** Warstwa bez zmian w kodzie (guardian 28/28 zielony): GO z `unverified_scope` po trzech próbach dawało `ESCALATE_AND_HALT cause=machine`, obejście ręczne `--overrides skip`.
+
+**Przyczyna.** Ścieżka `verify-noop` wołała `decideVerdict`, ale obsługiwała tylko `go` i `escalate`. `reverify` kończyło się „twierdzenie odrzucone" i kolejnym przebiegiem implementera, a ostatnia próba halt-em, bo ORC-084 (`layerGapsAcceptable`) i ORC-100 (`repeatedGapsAcceptable`) żyją wyłącznie w głównej ścieżce.
+
+**Zmiana.** `noopGapsAcceptable`: GO bez naruszeń z lukami kończy warstwę jako `GO_WITH_GAPS` (ostatnia próba albo ten sam zbiór luk drugi raz). Sondy nie wymagamy, bo warstwa nic nie zmieniła; zatrzymuje czerwień z wcześniejszych warstw (`probeRed`) i każde naruszenie. Luki jadą w raporcie do bramki końcowej. Eval `noop-gaps-accepted-on-last-attempt-or-repeat-but-not-with-violations-or-red`.
+
+**Odrzucone.** Pierwsze `reverify` bez powtórki: jedna runda to za mało, żeby uznać, że weryfikator nic więcej nie domknie (jak w ORC-100).
+
+<a id="orc-147"></a>
+
+### ORC-147 — commit taska w historii: ostrzeżenie, że baza bramki to HEAD (2026-10-31)
+
+**Objaw (juz-ide-api-3).** Wznowienie po commicie człowieka w trakcie taska: baza bramki końcowej = HEAD = pierwszy commit taska, więc jego pliki nie weszły do listy bramki, a czerwone testy Tablicy z tego commitu wyszły dopiero z raportu.
+
+**Przyczyna.** `baseSha` to HEAD w chwili `prepare`. Od niej liczą się licznik commitów agentów (`tree.commits`), baseline konformancji i lista brudnych plików (ORC-132), więc przesunięcie jej na „początek taska" fałszywie oznaczyłoby commity człowieka jako commity implementerów.
+
+**Zmiana.** `prepare` ostrzega, gdy w ostatnich 7 dniach są commity z ID taska w opisie, i podaje polecenie `git diff --name-only <najstarszy>^ HEAD`. Tylko ostrzeżenie. Eval `task-commit-in-history-warns-that-final-gate-base-is-head`.
+
+**Odrzucone.** Automatyczne przesunięcie bazy: patrz wyżej. Heurystyka po opisie commitu może trafić w commit niezwiązany (np. aktualizację KANBAN), dlatego nie zmienia zachowania.
+
+<a id="orc-148"></a>
+
+### ORC-148 — `units[].repair` dociera do warstwy (2026-10-31)
+
+**Objaw (DEV-orc-111-testing-generated-types, juz-ide-api-2 TS-SEC-SP-LOCATION-CONTRACT-001).** Jednostka `testing:generated-types` regenerowała typy, bez nowych bloków testowych. Analiza miała `repair: true`, `prepare` przepuścił pole przez bramkę `units`, a mimo to bramka przyrostu testów (ORC-035) dała fałszywy ESCALATE. `prepare.json` nie miał `layers[].repair`, a `--overrides layers.<id>.repair` kończyło się „nieznany klucz".
+
+**Przyczyna.** ORC-111 dodał pole w bramce analizy i w `deltaGateFails`, ale `expandUnits` budował pod-warstwę ze `...layer` plus wybranych pól jednostki (`role`, `checks`, `scope`) i `repair` pominął. Eval ORC-111 wywoływał `deltaGateFails` z ręcznie ustawionym `repair: true`, więc nie sprawdzał drogi od analizy do szablonu. Zdanie „trafia do pod-warstwy" w sekcji ORC-111 opisywało zamiar, a nie zachowanie.
+
+**Zmiana.** Każda warstwa w wyjściu `prepare` ma `repair` (`false` w bazowych, `u.repair === true` w pod-warstwach z jednostek). Pole istnieje, więc szablon je widzi, a nadpisanie `--overrides layers.<id>.repair` przechodzi walidację kluczy. Eval `units-repair-flag-reaches-the-layer` sprawdza całą drogę: analiza → `prepare.json` → nadpisanie.
+
+**Ryzyko.** Takie samo jak w ORC-111: analiza, która oznaczy `repair` jednostkę dopisującą testy, wyłączy kontrolę przyrostu. Weryfikator warstwy czyta diff, a bramka końcowa uruchamia pełne `checks`.
+
+### ORC-149 — testy tylko jako `pnpm test:{e2e|integration} <pliki>` (2026-10-31)
+
+**Objaw.** W trakcie `/orchestrate` testy szły jako `npm run test`, `npx vitest`, `pnpm test -- <plik>` i gołe `pnpm test:e2e`. Każda z tych form uruchamia cały zestaw pakietu: tysiące testów, testcontainers, wspólny flock repo, w juz-ide-api około godziny. Poprzedni incydent (TS-GEO-DISTANCE-BUCKETS-001, 2017 plików) skończył się regułą w prozie `test-implementer.md`, a sonda silnika dalej robiła `npm run test`.
+
+**Przyczyna.** Dwie osobne luki. Sonda (`buildProbePrompt`) zamieniała każdy check `test*` na `npm run <check>`, więc nie miała jak zawęzić zakresu. Skrypt `test` w juz-ide-api wyklucza testy integration i e2e, więc sonda nigdy nie uruchamiała tego, co napisał `test-implementer`. Druga luka: reguła „tylko z plikami" istniała tylko jako proza, a proza nie wiąże modelu (por. ORC-094).
+
+**Zmiana.** Jedna reguła w `hooks/lib/test-guard.js`, trzy miejsca użycia. (1) Hook `block-unscoped-tests` (PreToolUse/Bash, rejestr globalny) odrzuca każde uruchomienie testów Node poza `pnpm test:e2e|test:integration <jawne pliki>` (aliasy `test:l2`/`test:l3` z marketing-hub i grant-flow): także `npx`, `vitest`/`jest` wprost, `npm`/`yarn`, `--`, katalogi, globy, `xargs`, `bash -c` i `$(...)`. Działa w sesji głównej i u subagentów, bez przełącznika wyłączającego. (2) `tools/scoped-tests/run.mjs` bierze pliki testowe zmiany od SHA startu, dzieli je po sufiksie na integration i e2e i woła skrypt pakietu z listą plików; nic do uruchomienia daje exit 3 (skipped), nigdy pełny zestaw. (3) Szablon rozwija każdy goły check `test*` do tej komendy (`scopedTestsCommand`), a ponowienie padających plików (ORC-103) idzie przez `--files`. Projekt może w `.claude/test-guard.json` dopisać skrypty (`allow`) albo włączyć testy jednostkowe jako `pnpm test <pliki>` (`allowUnit`); w obu przypadkach lista plików pozostaje obowiązkowa.
+
+**Ryzyko.** Domyślnie testy jednostkowe nie są uruchamiane przez agentów ani sondę: raport mówi wprost „POMINIĘTO N plików jednostkowych", a `tests` dostaje `skipped`. Projekt z samymi testami jednostkowymi (biblioteki `ts-library`) musi ustawić `allowUnit: true`. Checki `test:contracts` i `test:consumer` z bloków bibliotecznych zlewają się z jednym zakresem plików zmiany i nie uruchamiają się osobno.
+
+**Uzupełnienie 2026-11-02.** Pierwszy prawdziwy przebieg `tools/scoped-tests` (juz-ide-api-1, `pnpm test:integration <1 plik>`, 15/15, exit 0) i skan wszystkich projektów pokazały trzy poprawki. (1) `classifyTestFile` nie znał sufiksu `*.int.test.ts` (framework-polityczny, uruchamiany przez `pnpm test:l2`), więc narzędzie pomijałoby takie pliki jako jednostkowe; regex obejmuje teraz `integration` i `int`. (2) `allowUnit` włączono tylko w projektach z wyłącznie testami jednostkowymi i skryptem pnpm: platform i framework-polityczny. Nie włączono w auth i nest-kit (w gicie nie mają ani jednego pliku testowego), skill-sety (npm i `node --test`) ani design-system (skrypty `test:*` ze stałymi plikami, bez argumentu pliku). (3) W platform `pnpm test <plik>` z rootu to `turbo test && smoke-dist`, czyli cała suita; guard tego nie odróżnia, więc notka w `.claude/test-guard.json` każe startować z katalogu pakietu, tak jak robi to narzędzie. Poprawiono też skille `tdd-workflow` i `verification-loop` (zamiast `npm run test:coverage` forma dozwolona; pokrycie liczy człowiek) oraz allow-listy w `templates/settings/{nestjs-ddd,nextjs-app,typescript-library,sveltekit}.json`.
+
+<a id="orc-150"></a>
+
+### ORC-150 — hash drzewa nie liczy cudzych plików poza warstwami; sonda podaje powód pustego hasha (2026-11-02)
+
+**Objaw 1 (DEV-orc-139-infrastructure-followups-docs, juz-ide-api-1 TS-SEC-USER-BLOCK-002).** Hash drzewa zmienił się w trakcie weryfikacji `infrastructure:followups-docs` przez edycję `docs/founder/granty/*` w równoległej sesji. Pliki były brudne przed startem, więc silnik uznawał je za cudzą pracę (ORC-090/124), a mimo to unieważniały GO: halt `cause=machine`, obejście `--overrides treeHashExclude` i jedno wznowienie.
+
+**Przyczyna.** Hash (ORC-139) obejmuje całe drzewo robocze poza artefaktami silnika. Pliki z `dirtyAtStart` nie są oceniane ani stage'owane, ale w haszu zostawały, więc werdykt zależał od czegoś, czego weryfikator nie czytał.
+
+**Zmiana.** `treeHashExcludes` dokłada pliki z `a.dirtyAtStart`, których nie obejmuje żadna warstwa (`ownerLayersOf` puste; do 300 ścieżek, ścieżki ze znakami spoza `[\w./@+-]` odpadają jak dotąd). Plik brudny przed startem, który leży w zakresie warstwy, zostaje w haszu, bo implementer może go ruszyć i weryfikator go ocenia. `report.treeHash.excludes` niesie tę samą listę, więc `orchestrate-tree-hash --check` przed `git add` liczy hash identycznie. Evale `tree-hash-binding` 3d (wykluczenie i stabilność hasha przy edycji takiego pliku) i 3e.
+
+**Objaw 2 (DEV-orc-139, ai-os-bot BOT-045).** Sonda hasha zwróciła pusty `tree_hash` w każdym wywołaniu (17 błędów, 0 związanych werdyktów, 9 niezwiązanych), więc wiązanie z kodem nie działało w całym przebiegu. Polecenie sondy uruchomione ręcznie na tym repo, także z wykluczeniami silnika, zwraca poprawny hash, więc przyczyny nie udało się odtworzyć (`orchestrate-tree-hash --check` po przebiegu też działało). Hipotezy bez dowodu: odmowa narzędzia dla podagenta (hook), sandbox.
+
+**Zmiana.** Sonda zwraca też `error` (pierwsze 200 znaków komunikatu albo powód, dla którego nie uruchomiła polecenia); `treeHash` dopisuje go do wpisu w `askErrors`. Następne wystąpienie niesie przyczynę i otworzy rekord z danymi.
+
+**Ryzyko.** Plik brudny przed startem poza warstwami, edytowany w trakcie przez implementera wbrew zakresowi (ORC-042), nie unieważni GO. Takiego pliku i tak nie ocenia weryfikator ani nie stage'uje silnik.

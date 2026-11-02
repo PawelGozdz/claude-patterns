@@ -114,8 +114,9 @@ Improve code quality while keeping tests green:
 
 ### Step 7: Verify Coverage
 ```bash
-npm run test:coverage
-# Verify 80%+ coverage achieved
+# Agents verify by running ONLY the new/changed spec files (hook block-unscoped-tests, ORC-149):
+#   pnpm test:integration <file_1> <file_2> ...    |    pnpm test:e2e <file_1> ...
+# Coverage runs the full suite, so the human runs `pnpm test:cov` and checks 80%+.
 ```
 
 ## Testing Patterns
@@ -295,7 +296,9 @@ jest.mock('@/lib/openai', () => ({
 
 ### Run Coverage Report
 ```bash
-npm run test:coverage
+# Full-suite coverage is run by the human: `pnpm test:cov`.
+# An agent never runs `npm run test:coverage` (the hook blocks it); it runs only the changed spec files:
+#   pnpm test:integration <file_1> <file_2> ...
 ```
 
 ### Coverage Thresholds

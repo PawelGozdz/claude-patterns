@@ -34,13 +34,15 @@ sources:
   - analyze
 rule_ref: ANZ-LAYER-MISMATCH
 first_seen: 2026-10-12
-last_seen: 2026-10-28
-occurrences: 8
+last_seen: 2026-11-02
+occurrences: 11
 projects:
   - ai-gateway
   - framework-polityczny
   - aegis-flow
   - pcu
+  - juz-ide-api-2
+  - marketing-hub
 reopened_at: 2026-10-28
 reopened_from_status: promoted
 ---
@@ -49,6 +51,9 @@ reopened_from_status: promoted
 
 ## Occurrences
 
+- 2026-11-02 framework-polityczny (FP-009) — FP-009 to spike bez kodu (dane w data/seed/ i docs/04); żadna z warstw db/core/worker/web/testing nie ma pracy, wszystkie w layers_skip
+- 2026-11-02 marketing-hub (TS-MH-029) — Panel analyze (runtime.yml) ma sloty backendowe bez when: (backend-technology-expert, ddd-modeling, impl-analysis, pattern-fit); task webowy TS-MH-029 nie dotyka domeny/aplikacji/infrastruktury, 4 sloty pominięte
+- 2026-10-31 juz-ide-api-2 (TS-SEC-SP-LOCATION-OWNER-CHECK-001) — runtime.yml orchestrate.layers nie ma warstwy z dirs dla docs/ ani BUSINESS_RULES.yaml; zadanie wymaga obowiazkowej aktualizacji security-gaps.md i BUSINESS_RULES.yaml w tym samym commicie, wiec jednostke docs-sync trzeba wpisac do warstwy infrastructure z dirs spoza jej wzorca
 - 2026-10-28 aegis-flow (TS-008) — minor_fixes (ANL-039) dotyczące docs/ i project-orchestration/ nie mają warstwy w runtime.yml orchestrate.layers (dirs: config/, engine/, workers/docker/, app/, daemon/, tests/), więc implementer ich nie ruszy (ORC-042); poprawki dokumentów z analizy wymagają ręcznego zastosowania
 - 2026-10-28 pcu (TASK-062) — Sloty sveltekit (tech-analysis, impl-analysis) w analyze.panel nie mają when:, więc wchodzą przy każdym tasku, także backendowym bez frontendu (TASK-062); pominięte ręcznie
 - 2026-10-23 aegis-flow (TS-001) — TS-001 to task wyłącznie dokumentacyjny (docs/, project-orchestration/): żadna warstwa z runtime.yml orchestrate.layers nie obejmuje docs/, więc wszystkie 6 warstw trafia do layers_skip, a /orchestrate nie ma czego wykonać; jednocześnie create_when warstw engine i config trafia na słowa z tekstu taska (audyt, LLM, guardrail), choć praca ich dirs nie dotyka

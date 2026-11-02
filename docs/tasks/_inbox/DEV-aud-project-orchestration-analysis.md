@@ -2,16 +2,22 @@
 id: DEV-aud-project-orchestration-analysis
 status: dismissed
 dismissed_reason: >
-  Nieodtwarzalne 2026-10-28: project-orchestration/analysis/TEMPLATE.md w juz-ide-blog
-  zastąpiony szablonem z templates/task-analysis-template.md, audit-projects bez błędu.
+  Naprawione 2026-10-30: TEMPLATE.md w auth, feature-flags, juz-ide-blog, nest-kit, pcu,
+  personal-blog, platform i vytches-ddd zastąpiony szablonem z
+  templates/task-analysis-template.md (w każdym diff zawierał tylko dodatki centrali:
+  premises/card_conflict z ANL-049..051 i bundle_ack z ORC-142). Przyczyna powtarza się przy
+  każdej zmianie szablonu centrali, bo kopie w projektach nie są odświeżane automatycznie.
+  Nieodtwarzalne 2026-10-28: project-orchestration/analysis/TEMPLATE.md w
+  juz-ide-blog zastąpiony szablonem z templates/task-analysis-template.md,
+  audit-projects bez błędu.
 trigger: setup_drift
 category: config
 sources:
   - audit
 rule_ref: AUD-PROJECT-ORCHESTRATION-ANALYSIS
 first_seen: 2026-10-14
-last_seen: 2026-10-26
-occurrences: 22
+last_seen: 2026-10-30
+occurrences: 23
 projects:
   - juz-ide-blog
   - personal-blog
@@ -34,7 +40,7 @@ projects:
   - pcu
   - platform
   - vytches-ddd
-reopened_at: 2026-10-26
+reopened_at: 2026-10-30
 reopened_from_status: dismissed
 previous_dismissed_reason: >
   Naprawione 2026-10-20: TEMPLATE.md w personal-blog i juz-ide-blog
@@ -50,6 +56,7 @@ previous_dismissed_reason: >
 
 ## Occurrences
 
+- 2026-10-30 auth — project-orchestration/analysis/TEMPLATE.md odbiega od centrali
 - 2026-10-26 juz-ide-blog — project-orchestration/analysis/TEMPLATE.md odbiega od centrali
 - 2026-10-23 vytches-ddd — project-orchestration/analysis/TEMPLATE.md odbiega od centrali
 - 2026-10-23 platform — project-orchestration/analysis/TEMPLATE.md odbiega od centrali

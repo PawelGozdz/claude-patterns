@@ -311,6 +311,9 @@ function resolveLayers(runtime, layersDone, layersSkip, layersScope, units) {
     role: l.role ? String(l.role) : null,
     tags: (l.tags ?? []).map(String),
     tests: l.tests === true,
+    // ORC-111/ORC-148: jednostka naprawcza (units[].repair); pole musi istnieć w wyjściu,
+    // inaczej szablon go nie widzi, a `--overrides layers.<id>.repair` to „nieznany klucz".
+    repair: false,
     optional: l.optional === true,
     createWhen: l.create_when ? String(l.create_when) : null,
     // weryfikator PER WARSTWA (monorepo api+web: inny VETO dla apps/web niż dla domeny);
@@ -352,6 +355,7 @@ function expandUnits(layers, units, done) {
         base: layer.id,
         role: u.role ? String(u.role) : layer.role,
         checks: Array.isArray(u.checks) ? u.checks.map(String) : layer.checks,
+        repair: u.repair === true,
         skip: isDone,
         skipReason: isDone ? 'GO z poprzedniego przebiegu (layers_done)' : null,
         scope: { dirs, reason: String(u.reason ?? u.title ?? `jednostka ${u.id}`) },
@@ -469,7 +473,22 @@ function gitState(projectDir, warnings, taskId) {
     ? st.stdout.split('\n').filter(Boolean).map((l) => l.slice(3).replace(/^.* -> /, '').replace(/^"|"$/g, '')).filter((f) => !/(^|\/)\.claude\/run-state\//.test(f))
     : [];
   const baseSha = head.stdout.trim();
+  taskCommitWarning(git, taskId, baseSha, warnings);
   return { baseSha, dirtyAtStart: dirtyBaseline(projectDir, taskId, baseSha, dirty, warnings) };
+}
+
+// ORC-147: wznowienie po commicie człowieka w trakcie taska. Baza bramki końcowej to HEAD, więc pliki
+// wcześniejszych commitów tego taska nie wchodzą do jej listy, a ich czerwone testy wychodzą dopiero z raportu
+// (juz-ide-api-3 TS-GEO-DISTANCE-BUCKETS-001: baza = pierwszy commit taska). Zmieniać bazy nie wolno:
+// licznik commitów agentów i baseline konformancji liczą od niej. Dlatego tylko ostrzeżenie z gotowym poleceniem.
+function taskCommitWarning(git, taskId, baseSha, warnings) {
+  if (!taskId) return;
+  const log = git('log', '--since=7.days', '--format=%h', '--fixed-strings', `--grep=${taskId}`, 'HEAD');
+  if (log.status !== 0) return;
+  const shas = log.stdout.split('\n').map((s) => s.trim()).filter(Boolean);
+  if (!shas.length) return;
+  const oldest = shas[shas.length - 1];
+  warnings.push(`${shas.length} commit(ów) z ${taskId} w opisie z ostatnich 7 dni (najstarszy ${oldest}): baza bramki końcowej to HEAD ${baseSha.slice(0, 7)}, więc pliki tych commitów NIE wejdą do jej listy zmian. Lista do sprawdzenia ręcznie: git diff --name-only ${oldest}^ HEAD (ORC-147)`);
 }
 
 // Skrypt z wbudowanymi args. Podstawienie przez split/join, NIE String.replace ze stringiem
@@ -625,7 +644,7 @@ function main() {
             const opts = q.options.map(strip);
             if (!opts.includes(ans)) {
               gateFailures.push(`decisions[${id}]: odpowiedź na ${qid} nie jest żadną z options (${opts.map((o) => `„${o.slice(0, 50)}"`).join(' / ')})`);
-            } else if (!/^zatwierdzam\s+(wyjątek|decyzję)\b/i.test(ans)) {
+            } else if (!/^zatwierdzam\s+(wyjątek|decyzję)(?![\p{L}\p{N}_])/iu.test(ans)) {
               gateFailures.push(`decisions[${id}]: ${why}; odpowiedź na ${qid} („${ans.slice(0, 60)}") nie zatwierdza wyjątku (zatwierdzenie zaczyna się od „Zatwierdzam wyjątek" albo „Zatwierdzam decyzję"). ` +
                 'Zmieniasz podejście: popraw `choice` w decyzji i zdejmij flagę (`card_conflict` / `premise_failed`, oraz `holds: false` w `premises`)');
             } else {
@@ -943,6 +962,8 @@ function main() {
     // ORC-140: wbudowane id `conformance` w `checks:` — komendę składa template (zakres warstwy, SHA startu, pliki cudze);
     // prepare podaje tylko ścieżkę do narzędzia, wynikającą z położenia TEGO pliku (projekt nie zna lokalizacji claude-patterns)
     conformance: { tool: join(REPO_ROOT, 'tools', 'conformance', 'check.mjs') },
+    // ORC-149: wbudowana kontrola `test*` w `checks:` → tools/scoped-tests/run.mjs (pnpm test:{integration|e2e} <pliki zmiany>, nigdy cała suita)
+    scopedTests: { tool: join(REPO_ROOT, 'tools', 'scoped-tests', 'run.mjs') },
     dirtyAtStart: git.dirtyAtStart,
     layers,
     patterns,

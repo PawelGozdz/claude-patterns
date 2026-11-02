@@ -1,35 +1,45 @@
 ---
 id: DEV-anz-pattern-mismatch
-status: proposed
+status: promoted
 resolution: >
-  Część aegis-flow naprawiona 2026-10-17: python/testing-pattern.md (fixture event_loop
-  usunięty w pytest-asyncio 1.0, przykłady SQLAlchemy/domain.* oznaczone jako zależne od
-  stosu). Część ai-os-bot (karty DDD/NestJS w patterns.always bloku node) przeniesiona do
-  TASK-ORCH-CARDS-STACK-MISMATCH-001 (wdrożone 2026-10-24 jako ORC-136, commit 11de3f4). Wystąpienie marketing-hub (TS-MH-025, 2026-10-18):
-  rules/nestjs-ddd/error-mapper.md zakładała bramkę `D_` i DomainErrorHandler (łańcuch
-  LocalHero), a marketing-hub kieruje błędy samym IDomainErrorMapper (kody typu
-  VALIDATION_FAILED, bez DomainErrorHandler) — dodane zastrzeżenie „Scope of step (1)”: bez
-  handlera pomijać klauzule D_/canHandle, a rejestrację w mapperze i test guardian zostawić.
-  Wystąpienie aegis-flow TS-004 (2026-10-21): fałszywy alarm. python/ w
-  .claude/knowledge/patterns/ to symlink do patterns/python/ (security-invariants,
-  safe-error-propagation i testing-pattern istnieją, a prepare rozwiązuje je po ścieżce
-  względnej, nie po nazwie pliku); cross-layer/ to osobne, TS-owe wersje. Agent najpewniej
-  szukał bez -L. Dopisane ostrzeżenie w ANL-008 (commands/analyze.md). Otwarta zostaje część
-  juz-ide-api-2 (zod, brakujące wzorce). 2026-10-23 juz-ide-api-4 (TS-MAP-MARKER-PRIVACY-001):
-  brak wzorców punktu ujawnionego z polityką ujawniania, guardiana L1 producentów, projekcji
-  markera fail-closed i wsadowego ACL zwracającego klasę. Zostaje project-specific do czasu
-  drugiego niezależnego adoptera (CLAUDE.md); promocja do wzorca wymaga decyzji właściciela.
-  2026-10-24 aegis-flow (TS-007): blok python ciągnął testing/testing-pyramid-pattern.md
-  (wzorzec TypeScript/NestJS) po słowie test. Usunięte z triggera w blocks/python.yml,
-  runtime.yml aegis-flow zmaterializowany.
+  Część aegis-flow naprawiona 2026-10-17: python/testing-pattern.md (fixture
+  event_loop usunięty w pytest-asyncio 1.0, przykłady SQLAlchemy/domain.*
+  oznaczone jako zależne od stosu). Część ai-os-bot (karty DDD/NestJS w
+  patterns.always bloku node) przeniesiona do TASK-ORCH-CARDS-STACK-MISMATCH-001
+  (wdrożone 2026-10-24 jako ORC-136, commit 11de3f4). Wystąpienie marketing-hub
+  (TS-MH-025, 2026-10-18): rules/nestjs-ddd/error-mapper.md zakładała bramkę
+  `D_` i DomainErrorHandler (łańcuch LocalHero), a marketing-hub kieruje błędy
+  samym IDomainErrorMapper (kody typu VALIDATION_FAILED, bez DomainErrorHandler)
+  — dodane zastrzeżenie „Scope of step (1)”: bez handlera pomijać klauzule
+  D_/canHandle, a rejestrację w mapperze i test guardian zostawić. Wystąpienie
+  aegis-flow TS-004 (2026-10-21): fałszywy alarm. python/ w
+  .claude/knowledge/patterns/ to symlink do patterns/python/
+  (security-invariants, safe-error-propagation i testing-pattern istnieją, a
+  prepare rozwiązuje je po ścieżce względnej, nie po nazwie pliku); cross-layer/
+  to osobne, TS-owe wersje. Agent najpewniej szukał bez -L. Dopisane ostrzeżenie
+  w ANL-008 (commands/analyze.md). Otwarta zostaje część juz-ide-api-2 (zod,
+  brakujące wzorce). 2026-10-23 juz-ide-api-4 (TS-MAP-MARKER-PRIVACY-001): brak
+  wzorców punktu ujawnionego z polityką ujawniania, guardiana L1 producentów,
+  projekcji markera fail-closed i wsadowego ACL zwracającego klasę. Zostaje
+  project-specific do czasu drugiego niezależnego adoptera (CLAUDE.md); promocja
+  do wzorca wymaga decyzji właściciela. 2026-10-24 aegis-flow (TS-007): blok
+  python ciągnął testing/testing-pyramid-pattern.md (wzorzec TypeScript/NestJS)
+  po słowie test. Usunięte z triggera w blocks/python.yml, runtime.yml
+  aegis-flow zmaterializowany.
+  2026-11-01 juz-ide-api-3: karta rules/common/database-migrations.md powoływała się na
+  wyjątek BDR-129, którego w docs/decisions nie było; zmiana karty w indeksie gita
+  (niezacommitowana) wskazuje BDR-130, który istnieje w api-2 i api-3. Rozjazd BDR-128 (dwie
+  różne treści w api-2 i develop) to sprawa numeracji decyzji w projekcie, nie silnika.
+  Wyjątek projektowy w karcie centralnej zostaje decyzją właściciela (CLAUDE.md:
+  project-specific do drugiego adoptera).
 trigger: analyze_note
 category: pattern_card
 sources:
   - analyze
 rule_ref: ANZ-PATTERN-MISMATCH
 first_seen: 2026-10-10
-last_seen: 2026-10-24
-occurrences: 8
+last_seen: 2026-11-01
+occurrences: 9
 projects:
   - aegis-flow
   - ai-os-bot
@@ -37,6 +47,7 @@ projects:
   - juz-ide-api-2
   - framework-polityczny
   - juz-ide-api-4
+  - juz-ide-api-3
 reopened_at: 2026-10-20
 reopened_from_status: promoted
 ---
@@ -45,6 +56,7 @@ reopened_from_status: promoted
 
 ## Occurrences
 
+- 2026-11-01 juz-ide-api-3 (TS-GEO-HOME-POINT-CONTRACT-001) — rules/common/database-migrations.md (claude-patterns) powołuje się na wyjątek BDR-129, którego nie ma w docs/decisions w develop ani api-3 (plik tylko w katalogu api-2); w tej samej chwili BDR-128 ma dwie różne treści w api-2 i develop
 - 2026-10-24 aegis-flow (TS-007) — testing/testing-pyramid-pattern.md (karta _summary) trafiła z triggers bloku python po słowie 'test', ale jest wzorcem TypeScript/NestJS (*.spec.ts, BUSINESS_RULES.md, e2e L3); projekt aegis-flow to Python/pytest
 - 2026-10-23 juz-ide-api-4 (TS-MAP-MARKER-PRIVACY-001) — Brak wzorców w claude-patterns: punkt ujawniony i polityka ujawniania z werdyktem ACL; guardian L1 producentów (jako wzorzec; instancje istnieją w kodzie); projekcja markera fail-closed; wsadowy ACL zwracający klasę zamiast liczby. Wymieniła je analiza TS-MAP-MARKER-PRIVACY-001 (pattern-fit).
 - 2026-10-21 aegis-flow (TS-004) — runtime.yml patterns.always wskazuje python/security-invariants-pattern.md i python/safe-error-propagation-pattern.md, a pliki leżą w .claude/knowledge/patterns/cross-layer/ i opisują NestJS/Zod/Kysely (stos TS), nie Python/FastAPI; trigger 'test' wskazuje python/testing-pattern.md, którego nie ma

@@ -17,6 +17,16 @@
         "hooks": [
           {
             "type": "command",
+            "command": "node \"$HOME/.claude/hooks/block-unscoped-tests.js\""
+          }
+        ],
+        "description": "Deny every Node test run except `pnpm test:e2e|test:integration <explicit files>` (no npx/vitest/jest, no npm run test, no bare pnpm test*, no `--`, no dirs/globs). Applies to the main session and every subagent; full suites are run by the human."
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
             "command": "node \"$HOME/.claude/hooks/block-subagent-commit.js\""
           }
         ],

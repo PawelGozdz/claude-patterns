@@ -791,7 +791,8 @@ const CASES = (c) => [
       const layer = { id: 'web', dirs: ['apps/web/'], checks: ['typecheck:web', 'test:web'] };
       const p = c.buildProbePrompt({ task: { id: 'T' } }, layer);
       if (!p.includes('_chk() {')) return 'brak funkcji _chk w prompcie sondy';
-      if (!p.includes('_chk typecheck:web') || !p.includes('_chk test:web')) return 'checks nie idą przez _chk';
+      // ORC-149: `test*` nie idzie przez `_chk` (npm run = cała suita), tylko przez tools/scoped-tests; typecheck dalej przez `_chk`
+      if (!p.includes('_chk typecheck:web') || p.includes('_chk test:web')) return 'typecheck ma iść przez _chk, a test:web NIE (ORC-149)';
       if (!p.includes('"$sfx" = "$bn"')) return 'brak osłony: sufiks odcinany tylko gdy równa się nazwie katalogu pakietu (lint:check → lint niosłoby --fix)';
       if (p.includes('npm run typecheck:web)')) return 'stare bezpośrednie (cd && npm run <check>) nadal w prompcie';
       return null;
@@ -955,6 +956,74 @@ const CASES = (c) => [
       const note = c.orphanFindingNote(f);
       if (!/ORC-144/.test(note) || !/- src\/compose\.ts/.test(note)) return 'notatka bez listy plików: ' + note;
       if (c.orphanFindingNote([]) !== '') return 'pusta lista = pusta notatka';
+      return null;
+    },
+  },
+  // ── ORC-145: remis o plik testowy przy tym samym wielosegmentowym dirs ───────
+  {
+    name: 'owner-test-layer-wins-prefix-tie-for-test-files',
+    run() {
+      const layers = [
+        { id: 'feed', dirs: ['src/app/api/activity-feed/'] },
+        { id: 'l2-oracle', dirs: ['src/app/api/activity-feed/'], tests: true },
+      ];
+      const spec = c.ownerLayerOf('src/app/api/activity-feed/__tests__/feed.integration.spec.ts', layers);
+      if (!spec || spec.id !== 'l2-oracle') return 'spec w katalogu obu warstw powinien należeć do testowej: ' + JSON.stringify(spec && spec.id);
+      const flat = c.ownerLayerOf('src/app/api/activity-feed/feed.service.spec.ts', layers);
+      if (!flat || flat.id !== 'l2-oracle') return '*.spec.ts bez __tests__ też jest testem: ' + JSON.stringify(flat && flat.id);
+      const code = c.ownerLayerOf('src/app/api/activity-feed/feed.controller.ts', layers);
+      if (code !== null) return 'plik kodu w remisie zostaje bez właściciela: ' + JSON.stringify(code && code.id);
+      const noFlag = c.ownerLayerOf('src/app/api/activity-feed/__tests__/a.spec.ts', [layers[0], { id: 'l2-oracle', dirs: ['src/app/api/activity-feed/'] }]);
+      if (noFlag !== null) return 'bez tests:true remis zostaje: ' + JSON.stringify(noFlag && noFlag.id);
+      const g = c.groupFindingsByLayer(['[BLOKUJĄCE] src/app/api/activity-feed/__tests__/feed.integration.spec.ts:12 — czerwony'], layers, 'feed');
+      if (!g['l2-oracle'] || g.feed) return 'poprawka testu po bramce końcowej powinna iść do warstwy testowej: ' + JSON.stringify(g);
+      return null;
+    },
+  },
+  // ── ORC-146: no-op z lukami weryfikatora nie kończy halt cause=machine ───────
+  {
+    name: 'noop-gaps-accepted-on-last-attempt-or-repeat-but-not-with-violations-or-red',
+    run() {
+      const go = { verdict: 'GO', violations: [] };
+      const esc = { next: 'escalate', cause: 'machine', gaps: ['a.ts', 'b.ts'] };
+      if (!c.noopGapsAcceptable(null, esc, go, null)) return 'ostatnia próba z lukami i GO bez naruszeń powinna być GO_WITH_GAPS';
+      if (c.noopGapsAcceptable(null, esc, { verdict: 'GO', violations: ['x'] }, null)) return 'naruszenia blokują';
+      if (c.noopGapsAcceptable(null, esc, { verdict: 'NO_GO', violations: [] }, null)) return 'NO_GO blokuje';
+      if (c.noopGapsAcceptable(null, esc, go, 'czerwień z wcześniejszej warstwy')) return 'czerwona sonda blokuje';
+      if (c.noopGapsAcceptable(null, { next: 'escalate', gaps: [] }, go, null)) return 'bez luk nie ma czego akceptować';
+      const re = { next: 'reverify', gaps: ['b.ts', 'a.ts'] };
+      if (c.noopGapsAcceptable(null, re, go, null)) return 'pierwsze reverify nie kończy warstwy';
+      if (c.noopGapsAcceptable(['a.ts'], re, go, null)) return 'inny zbiór luk nie jest powtórką';
+      if (!c.noopGapsAcceptable(['a.ts', 'b.ts'], re, go, null)) return 'ten sam zbiór luk drugi raz = koniec (ORC-100)';
+      return null;
+    },
+  },
+  // ── ORC-099 diagnostyka: rozjazd listy plików z podsumowaniem runnera ───────
+  {
+    name: 'test-deferral-mismatch-reports-numbers',
+    run() {
+      const two = ' FAIL  src/a.e2e.spec.ts > S > one\n FAIL  src/a.e2e.spec.ts > S > two\n';
+      if (c.testDeferralMismatch({ tests: 'fail', testFailFiles: two, testFilesFailed: 1 }) !== null) return 'dwie linie jednego pliku = 1 plik, zgodne';
+      const m = c.testDeferralMismatch({ tests: 'fail', testFailFiles: two, testFilesFailed: 3 });
+      if (!m || !/1 plik/.test(m) || !/3/.test(m) || !/src\/a\.e2e\.spec\.ts/.test(m)) return 'brak liczb w opisie rozjazdu: ' + m;
+      if (c.testDeferralMismatch({ tests: 'pass', testFailFiles: two, testFilesFailed: 3 }) !== null) return 'zielone testy nie mają rozjazdu';
+      if (c.testDeferralMismatch({ tests: 'fail', testFailFiles: two }) !== null) return 'bez liczby z podsumowania nie ma czego porównać';
+      return null;
+    },
+  },
+  // ── ORC-082 diagnostyka: sonda nie przekazała błędów tsc ───────────────────
+  {
+    name: 'typecheck-deferral-mismatch-explains-why-red-is-not-deferred',
+    run() {
+      const none = c.typecheckDeferralMismatch({ typecheck: 'fail', tsErrors: '', tail: 'EXIT:2' });
+      if (!none || !/tsErrors/.test(none)) return 'puste tsErrors bez błędów w tail nie dało opisu: ' + none;
+      const err = 'src/a.ts(3,5): error TS2345: x\nsrc/b.ts(1,1): error TS2322: y\n';
+      if (c.typecheckDeferralMismatch({ typecheck: 'fail', tsErrors: err }) !== null) return 'komplet błędów ze ścieżkami nie ma rozjazdu';
+      if (c.typecheckDeferralMismatch({ typecheck: 'fail', tsErrors: '', tail: err }) !== null) return 'błędy w tail (bez tsErrors) to jeszcze nie rozjazd';
+      const part = c.typecheckDeferralMismatch({ typecheck: 'fail', tsErrors: err + 'error TS6053: File not found\n' });
+      if (!part || !/2/.test(part) || !/3/.test(part)) return 'błąd bez ścieżki powinien dać liczby 2 z 3: ' + part;
+      if (c.typecheckDeferralMismatch({ typecheck: 'pass', tsErrors: '' }) !== null) return 'zielony typecheck nie ma rozjazdu';
+      if (c.typecheckDeferralMismatch({ typecheck: 'fail', tests: 'fail', tsErrors: '' }) !== null) return 'czerwone testy obok = nie nasz przypadek';
       return null;
     },
   },
@@ -1679,6 +1748,51 @@ const CASES = (c) => [
     run() {
       const cmd = c.conformanceCommand({ ...ARGS }, { id: 'application', dirs: ['application/'], checks: ['conformance'] });
       if (!/exit 3/.test(cmd) || !/a\.conformance\.tool/.test(cmd)) return 'brak głośnego exit 3: ' + cmd;
+      return null;
+    },
+  },
+
+  // ── ORC-149: testy tylko przez tools/scoped-tests (pnpm test:{integration|e2e} <pliki>), nigdy cała suita ─────────────
+  {
+    name: 'scoped-tests-command-carries-base-sha-and-layer-scope',
+    run() {
+      const args = { ...ARGS, baseSha: 'c'.repeat(40), scopedTests: { tool: '/opt/cp/tools/scoped-tests/run.mjs' } };
+      const cmd = c.scopedTestsCommand(args, { id: 'testing', dirs: ['__tests__/', 'src/$(id)/'], checks: ['test'] });
+      if (!cmd.startsWith('node "/opt/cp/tools/scoped-tests/run.mjs"')) return 'zła baza komendy: ' + cmd;
+      if (!cmd.includes('--base ' + 'c'.repeat(40))) return 'brak --base z SHA startu';
+      if (!cmd.includes("--only '__tests__'") && !cmd.includes("--only '__tests__/'")) return 'brak zakresu warstwy: ' + cmd;
+      if (cmd.includes('$(id)')) return 'ścieżka z podstawieniem powłoki weszła do komendy';
+      return null;
+    },
+  },
+  {
+    name: 'scoped-tests-without-tool-path-is-loud-exit-3-never-full-suite',
+    run() {
+      const cmd = c.scopedTestsCommand({ ...ARGS }, { id: 'testing', dirs: ['__tests__/'], checks: ['test'] });
+      if (!/exit 3/.test(cmd) || !/a\.scopedTests\.tool/.test(cmd)) return 'brak głośnego exit 3: ' + cmd;
+      if (/npm run|pnpm test/.test(cmd)) return 'awaryjna ścieżka nie może uruchamiać suity: ' + cmd;
+      return null;
+    },
+  },
+  {
+    name: 'probe-prompt-never-runs-npm-run-test-and-dedupes-expanded-test-checks',
+    run() {
+      const args = { ...ARGS, baseSha: 'd'.repeat(40), scopedTests: { tool: '/opt/cp/tools/scoped-tests/run.mjs' } };
+      const p = c.buildProbePrompt(args, { id: 'testing', dirs: ['apps/api/__tests__/'], checks: ['typecheck', 'test', 'test:api', 'test:contracts'], tests: true });
+      const bezZakazu = p.replace(/NIGDY nie uruchamiaj testów inaczej[^]*?zablokuje\./, '');
+      if (/npm run test|_chk test/.test(bezZakazu)) return 'sonda nadal woła npm run test (cała suita)';
+      const n = (p.match(/tools\/scoped-tests\/run\.mjs" --base/g) || []).length;
+      if (n !== 1) return 'trzy checki test* powinny dać JEDNĄ komendę scoped-tests, jest ' + n;
+      if (!/Komenda z `tools\/scoped-tests\/run\.mjs` → pole `tests`/.test(p)) return 'brak mapowania komendy na pole tests';
+      if (!/--files <ścieżki z `testFailFiles`>/.test(p)) return 'ponowienie padających plików nie idzie przez narzędzie (--files)';
+      return null;
+    },
+  },
+  {
+    name: 'probe-prompt-keeps-literal-test-commands-untouched',
+    run() {
+      const p = c.buildProbePrompt({ ...ARGS, scopedTests: { tool: '/opt/cp/tools/scoped-tests/run.mjs' } }, { id: 'api', dirs: ['app/'], checks: ['make typecheck'], tests: false });
+      if (p.includes('run.mjs" --base')) return 'komenda dosłowna bez test* nie powinna dostać komendy scoped-tests';
       return null;
     },
   },

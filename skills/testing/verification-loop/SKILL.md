@@ -52,11 +52,12 @@ ruff check . 2>&1 | head -30
 
 ### Phase 4: Test Suite
 ```bash
-# Run tests with coverage
-npm run test -- --coverage 2>&1 | tail -50
-
-# Check coverage threshold
-# Target: 80% minimum
+# Run ONLY the changed/new spec files, never the whole suite (hook block-unscoped-tests, ORC-149):
+#   pnpm test:integration <file_1> <file_2> ...
+#   pnpm test:e2e <file_1> ...
+# Do NOT run `npm run test`, `npx vitest`, bare `pnpm test*`, a directory or a glob.
+# Coverage runs the full suite, so an agent does not run it: the human runs `pnpm test:cov`.
+# Target: 80% minimum (checked by the human)
 ```
 
 Report:

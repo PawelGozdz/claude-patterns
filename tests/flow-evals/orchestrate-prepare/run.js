@@ -481,6 +481,31 @@ CASES.push({
   },
 });
 
+// ORC-148: `units[].repair: true` z analizy musi dojść do warstwy w wyjściu prepare (ORC-111 czytał
+// pole w szablonie, ale expandUnits go nie kopiował — jednostka naprawcza dostawała ESCALATE z ORC-035).
+CASES.push({
+  name: 'units-repair-flag-reaches-the-layer',
+  build: () => {
+    const root = makeProject({
+      taskId: 'TS-FIX-001',
+      analysis: withFm('units:\n  - { id: gen, layer: domain, dirs: [contexts/gen/], repair: true }\n  - { id: other, layer: domain, dirs: [contexts/other/] }'),
+      task: taskFile('Dodaj aggregate.'),
+    });
+    write(root, 'repair.json', JSON.stringify({ layers: { 'domain:other': { repair: true } } }));
+    return root;
+  },
+  check(r, root) {
+    if (r.code !== 0) return `oczekiwano exit 0, było ${r.code} (${r.stderr.trim()})`;
+    const by = Object.fromEntries(r.json.layers.map((l) => [l.id, l]));
+    if (by['domain:gen'].repair !== true) return 'repair:true jednostki nie trafił do warstwy';
+    if (by['domain:other'].repair !== false || by.testing.repair !== false) return 'warstwy bez repair mają mieć repair:false';
+    const ov = run(root, 'TS-FIX-001', ['--overrides', path.join(root, 'repair.json')]);
+    if (ov.code !== 0) return '`--overrides layers.<id>.repair` odrzucone: ' + ov.stderr.trim();
+    if (ov.json.layers.find((l) => l.id === 'domain:other').repair !== true) return 'nadpisanie repair nie zadziałało';
+    return null;
+  },
+});
+
 CASES.push({
   name: 'units-invalid-entry-exit-2',
   build: () => makeProject({
@@ -668,6 +693,26 @@ CASES.push({
     spawnSync('bash', ['-c', 'git add -A && git commit -qm next && echo z > later.md'], { cwd: root });
     const fresh = run(root, 'TS-FIX-001', []);
     if (JSON.stringify(fresh.json.dirtyAtStart) !== '["later.md"]') return 'nowy HEAD nie zaczął liczenia od nowa: ' + JSON.stringify(fresh.json.dirtyAtStart);
+    return null;
+  },
+});
+
+// ORC-147: commit człowieka z ID taska w opisie = ostrzeżenie, że baza bramki końcowej (HEAD) go nie obejmie;
+// baza i lista brudnych plików zostają bez zmian.
+CASES.push({
+  name: 'task-commit-in-history-warns-that-final-gate-base-is-head',
+  build: () => {
+    const root = makeProject({ taskId: 'TS-FIX-001', analysis: analysisFm({}), task: taskFile('Dodaj aggregate.') });
+    spawnSync('bash', ['-c', 'git init -q && git config user.email t@t && git config user.name t && git add -A && git commit -qm init && echo a > a.ts && git add a.ts && git commit -qm "feat(x): pierwsza część (TS-FIX-001)"'], { cwd: root });
+    return root;
+  },
+  check(r, root) {
+    if (r.code !== 0) return `oczekiwano exit 0, było ${r.code}`;
+    const w = r.json.warnings.find((x) => /ORC-147/.test(x));
+    if (!w) return 'brak ostrzeżenia o commicie taska: ' + JSON.stringify(r.json.warnings);
+    if (!/1 commit\(ów\) z TS-FIX-001/.test(w) || !/git diff --name-only [0-9a-f]+\^ HEAD/.test(w)) return 'ostrzeżenie bez liczby i polecenia: ' + w;
+    const head = spawnSync('git', ['-C', root, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).stdout.trim();
+    if (r.json.baseSha !== head) return 'baza musi zostać HEAD: ' + r.json.baseSha;
     return null;
   },
 });

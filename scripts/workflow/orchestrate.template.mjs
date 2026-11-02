@@ -364,6 +364,15 @@ function treeHashExcludes(a) {
   if (a && Array.isArray(a.treeHashExclude)) {
     for (const p of a.treeHashExclude) if (typeof p === 'string' && p) extra.push(p)
   }
+  // ORC-150: plik brudny PRZED startem (cudza praca, ORC-090/124), którego nie obejmuje żadna warstwa, nie wchodzi do
+  // stagingu ani nie jest oceniany, więc jego edycja przez równoległą sesję nie ma unieważniać GO (juz-ide-api-1
+  // TS-SEC-USER-BLOCK-002: `docs/founder/granty/*` → halt cause=machine). Plik w zakresie warstwy zostaje w haszu.
+  if (a && Array.isArray(a.dirtyAtStart) && a.dirtyAtStart.length && Array.isArray(a.layers)) {
+    const owned = a.layers.filter((l) => effectiveDirs(l).length)
+    for (const f of a.dirtyAtStart.slice(0, 300)) {
+      if (typeof f === 'string' && f && !ownerLayersOf(f, owned).length) extra.push(f)
+    }
+  }
   const all = TREE_HASH_EXCLUDES.concat(extra).map((p) => p.replace(/^\.\//, '').replace(/\/+$/, ''))
   return [...new Set(all)].filter((p) => /^[\w./@+-]+$/.test(p) && p.indexOf('..') === -1 && p.charAt(0) !== '/')
 }
@@ -385,7 +394,8 @@ function buildTreeHashPrompt(a) {
   return 'W repo uruchom dokładnie to jedno polecenie:\n' + treeHashCmd(treeHashExcludes(a)) + '\n' +
     'NIC więcej — nie czytaj plików, nie analizuj, nie poprawiaj, nie ponawiaj. Zwróć w `tree_hash` jedyną linię ' +
     'jego wyjścia (40 albo 64 znaki hex), bez zmian. Gdy polecenie zakończy się błędem albo nic nie wypisze, ' +
-    'zwróć pusty napis — nie zgaduj i nie licz hasha inaczej.'
+    'zwróć pusty napis w `tree_hash`, a w `error` pierwsze 200 znaków komunikatu błędu (albo powód, dla którego ' +
+    'polecenia nie uruchomiłeś, np. odmowa narzędzia) — nie zgaduj i nie licz hasha inaczej.'
 }
 
 // Odpowiedź sondy to twierdzenie modelu, więc przechodzi przez walidację kształtu: tylko pełny hash obiektu gita.
@@ -459,6 +469,26 @@ function conformanceCommand(a, layer) {
   return parts.join(' ')
 }
 
+// ORC-149: każdy GOŁY check `test*` (`test`, `test:api`, `test:web`, `test:contracts`…) rozwija się do JEDNEJ komendy
+// tools/scoped-tests/run.mjs, która woła `pnpm test:{integration|e2e} <pliki zmiany>`. Wcześniej sonda robiła `npm run <check>`,
+// czyli CAŁĄ suitę pakietu (tysiące testów, testcontainers, wspólny flock repo) i nigdy nie uruchamiała testów integration/e2e,
+// które napisał test-implementer (skrypt `test` je wyklucza). Hook block-unscoped-tests.js blokuje wszystkie inne formy, więc
+// pozostawienie `npm run test` zepsułoby sondę. Komenda ze spacją (literalna) przechodzi bez zmian. Duplikaty po rozwinięciu
+// (`test` + `test:api`) znikają: zakres jest jeden (pliki zmiany), więc drugi przebieg nic by nie dodał.
+const SCOPED_TESTS_RE = /^test(:[A-Za-z0-9_-]+)*$/
+function isScopedTestsCheck(c) { return SCOPED_TESTS_RE.test(String(c).trim()) }
+function scopedTestsCommand(a, layer) {
+  const tool = a && a.scopedTests && a.scopedTests.tool
+  if (typeof tool !== 'string' || !/^\/[\w./@+-]+$/.test(tool) || tool.indexOf('..') !== -1) {
+    // brak narzędzia = głośne "skipped" (exit 3), nigdy powrót do pełnej suity
+    return 'sh -c \'echo "scoped-tests: prepare nie podał ścieżki do tools/scoped-tests/run.mjs (a.scopedTests.tool)" >&2; exit 3\''
+  }
+  const parts = ['node "' + tool + '"']
+  if (conformanceBaseShaOk(a)) parts.push('--base ' + a.baseSha)
+  for (const d of effectiveDirs(layer || {}).filter(conformancePathOk)) parts.push("--only '" + d + "'")
+  return parts.join(' ')
+}
+
 // Jeden predykat „sonda czerwona" zamiast kopii warunku w każdej funkcji decyzyjnej: dopisanie kolejnego pola sondy nie może
 // zgubić żadnego miejsca (odroczenia ORC-082/099/103 i flaky też muszą widzieć czerwone `conformance`).
 function probeIsRed(probe) {
@@ -485,7 +515,7 @@ function conformanceViolations(probe) {
 // się kilkadziesiąt razy, a każde 16-23 KB wyjścia zostaje w kontekście na resztę przebiegu.
 function buildProbePrompt(a, layer) {
   // ORC-140: wbudowane id `conformance` rozwija się tu do komendy dosłownej (zakres warstwy, SHA startu, pliki cudze)
-  const checks = (layer.checks || []).map((c) => (isConformanceCheck(c) && !/\s/.test(String(c).trim()) ? conformanceCommand(a, layer) : c))
+  const checks = [...new Set((layer.checks || []).map((c) => (isConformanceCheck(c) && !/\s/.test(String(c).trim()) ? conformanceCommand(a, layer) : isScopedTestsCheck(c) ? scopedTestsCommand(a, layer) : c)))]
   // ORC-016 (2026-09-27 uzupełnienie kodem — do tej pory czysta proza): goły `npm run <check>`
   // w monorepo z turbo/nx (`dependsOn: ["^build"]`) buduje WSZYSTKIE zależności upstream, nie
   // tylko pakiet tej warstwy. Silnik Workflow nie ma dostępu do fs (patrz nagłówek pliku), więc
@@ -640,8 +670,9 @@ function buildProbePrompt(a, layer) {
       'gdy podsumowania nie ma — pomiń to pole.' +
       // ORC-103: niestabilne testy (czas, entropia) czerwone pod obciążeniem całego zestawu, zielone osobno
       // (grant-flow TS-PROJ-COMPANY-001: 3 pliki, 53/53 w izolacji) — ręczne obejście `tests=false`.
-      ' Następnie JEDEN raz uruchom ponownie TYLKO te padające pliki, osobno (to samo narzędzie, ' +
-      'same ścieżki z `testFailFiles`, bez reszty zestawu); jeśli wszystkie przechodzą, zwróć ' +
+      ' Następnie JEDEN raz uruchom ponownie TYLKO te padające pliki, osobno (ORC-149: tym samym narzędziem ' +
+      '`node "' + ((a && a.scopedTests && a.scopedTests.tool) || 'tools/scoped-tests/run.mjs') + '" --files <ścieżki z `testFailFiles`>`, ' +
+      'bez reszty zestawu; żadnego `npx`/`vitest`/`pnpm test` wprost); jeśli wszystkie przechodzą, zwróć ' +
       '`testsRerunPassed: true`, w przeciwnym razie `false`. Nie rób tego przy EXIT:0.'
     : ''
   // ORC-094: mapowanie wyników na pola ZAWSZE (nie tylko dla komend dosłownych). marketing-hub
@@ -652,7 +683,10 @@ function buildProbePrompt(a, layer) {
       '`lint`; z `typecheck`, `tsc`, `mypy`, `pyright`, `analyze`, `vet` albo `build` → `typecheck`; z `test` → `tests` ' +
       '(EXIT:0 = pass, niezerowy = fail, brak skryptu = skipped). Pole `typecheck` = fail tylko wtedy, ' +
       'gdy padł typecheck/analyze/build, nigdy z powodu lintu. Komenda z `tools/conformance/check.mjs` → pole `conformance` ' +
-      '(EXIT:0 = pass, 1 lub 2 = fail, 3 = skipped); jej wynik NIGDY nie trafia do `typecheck` ani `lint`.' +
+      '(EXIT:0 = pass, 1 lub 2 = fail, 3 = skipped); jej wynik NIGDY nie trafia do `typecheck` ani `lint`. ' +
+      // ORC-149: testy idą WYŁĄCZNIE tą komendą (pliki zmiany, `pnpm test:{integration|e2e} <pliki>`); pominięte pliki jednostkowe to polityka, nie błąd
+      'Komenda z `tools/scoped-tests/run.mjs` → pole `tests` (EXIT:0 = pass, 1 = fail, 3 = skipped; linie „POMINIĘTO" w jej logu to ' +
+      'polityka, nie błąd). NIGDY nie uruchamiaj testów inaczej (żadnego `npm run test`, `npx`, `vitest`, `pnpm test` bez plików) — hook to zablokuje.' +
       // ORC-120: build (astro build + pagefind, next build) trwa minuty; domyślny timeout Basha (2 min) ucina polecenie,
       // a sonda oddawała wtedy „skipped" zamiast wyniku. „skipped" znaczy brak komendy, nigdy brak czasu.
       '\nPolecenia mogą trwać kilka minut: wywołuj Bash z `timeout: 600000`. Przekroczenie czasu albo brak wyniku to ' +
@@ -1055,6 +1089,23 @@ function repeatedGapsAcceptable(prevGaps, decision, verdict, probe) {
   return probeHasGreenEvidence(probe)
 }
 
+// ORC-146: ścieżka „brak zmian" (verify-noop) nie przechodziła przez ORC-084/100: GO weryfikatora z
+// `unverified_scope` wracało do implementera, a po ostatniej próbie kończyło ESCALATE_AND_HALT cause=machine
+// (juz-ide-api-3 TS-GEO-DISTANCE-BUCKETS-001, testing:groups-disclosure-tests: guardian 28/28 zielony, kod
+// bez zmian, trzy próby i ręczne `--overrides skip`). Warstwa bez żadnej zmiany nie ma czego zepsuć, więc
+// zamiast sondy wystarcza GO bez naruszeń i brak czerwieni z wcześniejszych warstw (`probeRed`). Luki jadą
+// w raporcie. Dwa kształty: ostatnia próba (`escalate`) albo ten sam zbiór luk drugi raz z rzędu (`reverify`).
+function noopGapsAcceptable(prevGaps, decision, verdict, probeRed) {
+  if (!decision || !Array.isArray(decision.gaps) || !decision.gaps.length || probeRed) return false
+  if (!verdict || String(verdict.verdict || '').toUpperCase() !== 'GO') return false
+  if (Array.isArray(verdict.violations) && verdict.violations.length) return false
+  if (decision.next === 'escalate') return true
+  if (decision.next !== 'reverify' || !Array.isArray(prevGaps) || prevGaps.length !== decision.gaps.length) return false
+  const a = prevGaps.map(String).sort()
+  const b = decision.gaps.map(String).sort()
+  return a.every((x, i) => x === b[i])
+}
+
 // „skipped" to brak dowodu, nie zieleń: ślepa sonda (wszystko skipped, np. złe nazwy
 // skryptów — ORC-085) nie może uzasadniać przejścia dalej. Wymagamy co najmniej jednego
 // faktycznego `pass` (typecheck albo testy) i zera `fail`.
@@ -1325,9 +1376,21 @@ function ownerLayersOf(file, layers) {
   // Przy remisie wygrywają warstwy, których zawężenie obejmuje plik; gdy żadna nie obejmuje — jak dawniej.
   if (owners.length > 1) {
     const scoped = owners.filter((l) => layerMatchScore(l, file, true))
-    if (scoped.length) return scoped
+    if (scoped.length) return testFileTieBreak(file, scoped)
   }
-  return owners
+  return testFileTieBreak(file, owners)
+}
+
+// ORC-145: remis o plik testowy między warstwą kodu a warstwą testową, które mają TEN SAM wielosegmentowy
+// `dirs` (juz-ide-api-3 TS-GEO-DISTANCE-BUCKETS-001: `feed` i `l2-oracle` oba z `src/app/api/activity-feed/`).
+// ORC-108 rozstrzyga tylko remis rangi segmentu (`__tests__/` jako nazwa katalogu); tu ranga jest prefiksowa,
+// więc `ownerLayerOf` dawało null, a poprawka testu po bramce końcowej szła do warstwy bez praw do testów.
+// Plik testowy wygrywa z warstwą `tests: true`; bez takiej warstwy w remisie wynik bez zmian.
+const TEST_FILE_PATH = /(?:^|\/)__tests__\/|\.(?:spec|test)\.[cm]?[jt]sx?$/i
+function testFileTieBreak(file, owners) {
+  if (owners.length < 2 || !TEST_FILE_PATH.test(String(file))) return owners
+  const testing = owners.filter((l) => l.tests)
+  return testing.length ? testing : owners
 }
 
 function ownerLayerOf(file, layers) {
@@ -1403,6 +1466,32 @@ function testsRedIsLaterLayers(probe, layer, allLayers) {
     const owners = ownerLayersOf(p, withDirs)
     return owners.length > 0 && owners.every((o) => withDirs.findIndex((l) => l.id === o.id) > myIdx)
   })
+}
+
+// ORC-099, diagnostyka: odroczenie odpada po cichu, gdy lista `testFailFiles` nie zgadza się z podsumowaniem
+// runnera, a człowiek widzi tylko BLOCKED_BY_PRIOR (juz-ide-api-3 TS-GEO-DISTANCE-BUCKETS-001, e2e-services:
+// zgłoszenie bez liczb, nieodtwarzalne na przykładowym wyjściu vitest). Zwraca opis rozjazdu albo null.
+function testDeferralMismatch(probe) {
+  if (!probe || probe.tests !== 'fail' || probe.typecheck === 'fail' || probe.lint === 'fail' || probe.conformance === 'fail') return null
+  if (typeof probe.testFilesFailed !== 'number') return null
+  const listed = testFailExpectedCount(probe.testFailFiles)
+  if (listed === probe.testFilesFailed) return null
+  const paths = testFailPaths(probe.testFailFiles)
+  return 'lista testFailFiles daje ' + listed + ' plik(ów)' + (paths.length ? ' (' + paths.slice(0, 5).join(', ') + ')' : '') +
+    ', podsumowanie runnera ' + probe.testFilesFailed + ' — bez zgodności nie ma odroczenia'
+}
+
+// ORC-082, diagnostyka: odroczenie typechecku odpada po cichu, gdy sonda nie przekazała błędów tsc (drugie polecenie
+// z `grep … /tmp/check-<warstwa>-*.log` nie zostało wykonane, a `tail` nie niesie linii `error TS`) albo część błędów
+// nie ma ścieżki (juz-ide-api-3 TS-GEO-QUICK-JOB-POINT-001: `tsErrors` puste → BLOCKED_BY_PRIOR bez powodu w raporcie).
+// Warunek jak w `typecheckRedIsLaterLayers`. Zwraca opis albo null.
+function typecheckDeferralMismatch(probe) {
+  if (!probe || probe.typecheck !== 'fail' || probe.tests === 'fail' || probe.lint === 'fail' || probe.conformance === 'fail') return null
+  const { total, paths } = typecheckErrorPaths(probe.tsErrors || probe.tail)
+  if (total === 0) return '`tsErrors` puste i `tail` bez linii błędów kompilatora — sonda nie przekazała błędów, więc nie wiadomo, czyje to pliki'
+  if (!paths.length) return total + ' błęd(ów) kompilatora bez rozpoznanej ścieżki pliku'
+  if (paths.length !== total) return total + ' błęd(ów) kompilatora, ścieżka rozpoznana w ' + paths.length + ' — bez pełnej listy nie ma odroczenia'
+  return null
 }
 
 // ORC-103: testy czerwone w całym zestawie, ale zielone po osobnym uruchomieniu padających plików
@@ -1731,7 +1820,7 @@ const FINGERPRINT_SCHEMA = {
 const TREE_HASH_SCHEMA = {
   type: 'object',
   required: ['tree_hash'],
-  properties: { tree_hash: { type: 'string' } },
+  properties: { tree_hash: { type: 'string' }, error: { type: 'string' } },
 }
 
 const DELETE_SCHEMA = {
@@ -1850,7 +1939,10 @@ async function treeHash(label) {
     const h = parseTreeHash(r.tree_hash)
     if (!h) {
       // odpowiedź jest, ale nie ma kształtu hasha (puste = polecenie padło) — ślad w raporcie, nie tylko „brak wyniku”
-      askErrors.push({ label, message: 'tree_hash odrzucony (zły kształt): ' + JSON.stringify(String(r.tree_hash).slice(0, 80)) })
+      // ORC-150: sonda podaje też powód (`error`) — bez niego pusty hash w całym przebiegu (ai-os-bot BOT-045,
+      // 17 wywołań) zostawiał tylko „zły kształt", a przyczyny nie dało się odtworzyć poza przebiegiem.
+      const why = r.error ? ' — powód sondy: ' + JSON.stringify(String(r.error).slice(0, 200)) : ''
+      askErrors.push({ label, message: 'tree_hash odrzucony (zły kształt): ' + JSON.stringify(String(r.tree_hash).slice(0, 80)) + why })
     }
     return h
   } catch (e) {
@@ -1918,6 +2010,7 @@ for (const step of plan) {
   let layerDeleted = []
   let settled = null
   let noopClaim = null
+  let prevNoopGaps = null // ORC-146
   // Wynik ostatniej CZERWONEJ sondy tej warstwy (null po zielonej). Po czerwieni ścieżka
   // no-op jest zamknięta — patrz blockedByPrior().
   let probeRed = null
@@ -2057,6 +2150,13 @@ for (const step of plan) {
         settled = { id: layer.id, status: 'GO', files: [], attempts: attempt, note: 'no-op: ' + noopClaim }
         break
       }
+      if (noopGapsAcceptable(prevNoopGaps, noopDecision, noopVerdict, probeRed)) {
+        settled = { id: layer.id, status: 'GO_WITH_GAPS', files: [], attempts: attempt, gaps: noopDecision.gaps, note: 'no-op: ' + noopClaim }
+        report.gaps.push({ layer: layer.id, items: noopDecision.gaps })
+        log(layer.id + ': brak zmian potwierdzony, luki weryfikatora zostają w raporcie (ORC-146): ' + noopDecision.gaps.join(', '))
+        break
+      }
+      prevNoopGaps = noopDecision.next === 'reverify' ? noopDecision.gaps : null
       if (noopDecision.next === 'escalate') {
         settled = { id: layer.id, status: 'ESCALATE_AND_HALT', reason: noopDecision.reason, cause: noopDecision.cause || 'code' }
         break
@@ -2139,10 +2239,24 @@ for (const step of plan) {
     if (typecheckRedIsLaterLayers(probe, layer, plan.filter((s) => s.run).map((s) => s.layer))) {
       log(layer.id + ': typecheck czerwony wyłącznie w plikach późniejszych warstw — odroczony (ORC-082)')
       probe = Object.assign({}, probe, { typecheck: 'deferred' })
+    } else {
+      // ORC-082: ślad, dlaczego czerwonego typechecku nie odroczono (powód sprzed zmiany: tylko BLOCKED_BY_PRIOR)
+      const tcMismatch = typecheckDeferralMismatch(probe)
+      const hasLaterLayer = plan.slice(plan.findIndex((x) => x.layer.id === layer.id) + 1).some((s) => s.run)
+      if (tcMismatch && hasLaterLayer) {
+        log(layer.id + ': odroczenie typechecku niemożliwe — ' + tcMismatch + ' (ORC-082)')
+        report.warnings = (report.warnings || []).concat(layer.id + ': odroczenie typechecku niemożliwe — ' + tcMismatch)
+      }
     }
     if (testsRedIsLaterLayers(probe, layer, plan.filter((s) => s.run).map((s) => s.layer))) {
       log(layer.id + ': testy czerwone wyłącznie w plikach późniejszych warstw — odroczone (ORC-099)')
       probe = Object.assign({}, probe, { tests: 'deferred' })
+    } else {
+      const mismatch = testDeferralMismatch(probe)
+      if (mismatch) {
+        log(layer.id + ': odroczenie testów niemożliwe — ' + mismatch + ' (ORC-099)')
+        report.warnings = (report.warnings || []).concat(layer.id + ': odroczenie testów niemożliwe — ' + mismatch)
+      }
     }
 
     if (testsFlakyUnderLoad(probe)) {

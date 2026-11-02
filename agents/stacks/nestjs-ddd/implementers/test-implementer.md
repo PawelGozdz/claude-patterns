@@ -320,6 +320,20 @@ actual files yourself rather than expecting them pasted into your prompt.
   `{context}-core.e2e.spec.ts` and `{context}-security.e2e.spec.ts`.
 - **Never mock what you're testing** — mock collaborators/dependencies, not the unit under test.
 - **`safeRun` test helper + L1/L2/L3 examples** → `testing/testing-pyramid-pattern.md`.
+- **The ONLY way to run tests — HARD RULE, enforced by hook `block-unscoped-tests` (ORC-149), no exceptions.**
+  `pnpm test:e2e <file_1> <file_2> …` or `pnpm test:integration <file_1> <file_2> …`
+  (marketing-hub / grant-flow aliases: `test:l3` / `test:l2`) — explicit spec files as positional
+  arguments, no `--`, no directories, no globs, flags only after the files. Everything else is
+  denied by the hook: bare `pnpm test*`, `pnpm test <file>` (L1 unit specs are not run by agents
+  unless the project opts in with `.claude/test-guard.json` `allowUnit: true`), `npm run test*`,
+  `npx vitest`, `pnpm exec vitest`, `vitest`/`jest` directly, `xargs pnpm test:*`, `pnpm run ... -- <file>`
+  (the `--` form drops the filter, see below). The full suite is too expensive (thousands of tests, testcontainers,
+  shared flock): the human runs it themselves when needed. If you cannot name the files
+  (no list, changed files unclear), derive them from `git diff --name-only` /
+  `git ls-files --others --exclude-standard`, or report "no file list" and stop — do not
+  fall back to the whole package. After starting a run, if the summary shows far more
+  files than you passed, abort and report it. Also when you are a verification probe or
+  were spawned by `/orchestrate`: only targeted files.
 - **NEVER run `pnpm test:e2e -- <file...>` or `pnpm test:integration -- <file...>` with a
   literal `--`** — pnpm forwards it straight into the underlying vitest command's argv,
   which silently drops the file filter and runs the ENTIRE suite (e2e: often hundreds of
@@ -360,6 +374,9 @@ rule before you assert anything.
 
 ## Changelog
 
+- 2026-11-02 — reguła „jedyny sposób uruchamiania testów” wpisana wprost do sekcji zasad testów (ORC-149); testy jednostkowe agent uruchamia tylko w projekcie z `allowUnit: true` w `.claude/test-guard.json`
+- 2026-10-31 — HARD RULE egzekwowana hookiem `block-unscoped-tests` (ORC-149): testy tylko `pnpm test:{e2e|integration} <pliki>`; sonda silnika woła `tools/scoped-tests/run.mjs`, nie `npm run test`
+- 2026-10-30 — HARD RULE: żadnego uruchamiania testów bez filtra plików (nigdy gołe `pnpm test*`, `npm run test*`, `npx`/`vitest`); pełny pakiet odpala człowiek (TS-GEO-DISTANCE-BUCKETS-001: sondy `/orchestrate` odpalały 2017 plików)
 - 2026-10-28 — wyniesiono historię (geneza reguł, pomiary) z promptu do docs/decisions/prompt-history/agents.md (TASK-GSTACK-ADOPT-001)
 - 2026-09-08 — KB list: `testing/context-isolation-pattern.md` (removed in K89) → `architecture/fresh-context-pattern.md`
 - 2026-09-07 — `retrieve_code` contract: `source` is repo-relative, `evidence` is proof not content, index from `origin/develop` (TASK-RAG-004 R1 / K79, TASK-KAIZEN-002)

@@ -1016,6 +1016,25 @@ not that nobody looked.
   idempotent and resumable by the `afterOwnerId` cursor; `// RP12-EXCEPTION:` annotation in the
   class docblock.
 
+- `ContentReachAreaBackfillKyselyRepository` (RP12 + RP2, juz-ide `neighborhood-economy` context,
+  `infrastructure/backfill/`, TS-GEO-HOME-POINT-CONTRACT-001, D7/D17 pkt 3,
+  BR-NE-REACHAREA-BACKFILL-001) — the persistence adapter behind the application port
+  `IContentReachAreaBackfillPort`; it rebuilds `target_area` of EXISTING `job_requests` and
+  `local_shares` rows (legacy bounding-box rectangles) as the reach circle around the disclosed home
+  point, which the handler obtains through the geographic-auth ACL (`getDisclosedHomePoints`). It
+  works across the rows of two tables of one context, not on an aggregate: no aggregate is loaded or
+  saved, no domain event is dispatched, there is no mapper, event dispatch or optimistic lock to
+  bypass, so the missing `BaseKyselyRepository` and raw SQL (`ST_GeomFromGeoJSON`) are accepted.
+  The aggregate `version` is deliberately not bumped (it is the event-store counter). Checked before
+  accepting: the caller (`BackfillContentReachAreasHandler`) depends on the port only and is tested
+  against a port double; the port is bound in the lightweight CLI module (`src/app/cli/`,
+  `cli-runner.md`), not in the context module; one definition of the candidate rows is shared by the
+  backfill and the D0 counter; the adapter never reads the exact address of a row; writes go through
+  `TransactionHost.tx` (one batch = one transaction, `FOR NO KEY UPDATE`; a dry run takes no lock);
+  static `ContentReachAreaBackfillError`, no logger in the repository, the handler logs counters
+  only; idempotent and resumable by a cursor; `// RP12-EXCEPTION:` annotation in the class docblock
+  (and `// RP2-EXCEPTION:` above the class if the project's guardian requires it separately).
+
 - `EngagementGroupPostCountsACLImpl` (RP12, juz-ide `engagement` context,
   `infrastructure/acl/engagement-group-post-counts-acl.impl.ts`, TS-GROUPS-REACTION-COUNTS-001,
   BDR-119, BR-ENG-GROUP-POST-COUNTS-001) — ACL read-adapter returning the PUBLIC like counter of

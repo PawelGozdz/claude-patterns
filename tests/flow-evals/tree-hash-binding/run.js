@@ -402,6 +402,35 @@ const CASES = (core, src) => {
       },
     },
 
+    // ORC-150: plik brudny przed startem i poza zakresem warstw wypada z hasha (równoległa sesja nie unieważnia GO);
+    // plik w zakresie warstwy zostaje, bo implementer może go ruszyć.
+    {
+      name: '3d-dirty-at-start-file-outside-layers-is-excluded-from-hash',
+      run() {
+        const layers = [{ id: 'domain', dirs: ['src/domain/'], skip: false, tests: false }];
+        const ex = core.treeHashExcludes({ layers, dirtyAtStart: ['docs/founder/granty/a.md', 'src/domain/x.ts', 'z spacją.md'] });
+        if (!ex.includes('docs/founder/granty/a.md')) return 'cudzy plik poza warstwami nie został wykluczony: ' + ex.join(',');
+        if (ex.includes('src/domain/x.ts')) return 'plik w zakresie warstwy nie może wypaść z hasha';
+        if (ex.some((p) => p.includes(' '))) return 'ścieżka ze spacją przeszła do polecenia powłoki';
+        const dir = makeRepo();
+        try {
+          write(dir, 'docs/founder/granty/a.md', 'v1');
+          const before = hashOf(core, dir, ['docs/founder/granty/a.md']);
+          write(dir, 'docs/founder/granty/a.md', 'v2 — edycja z równoległej sesji');
+          if (hashOf(core, dir, ['docs/founder/granty/a.md']) !== before) return 'edycja wykluczonego pliku zmieniła hash';
+          return null;
+        } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+      },
+    },
+    {
+      name: '3e-tree-hash-probe-reports-its-reason-when-hash-is-empty',
+      run() {
+        if (!/`error`/.test(core.buildTreeHashPrompt({}))) return 'prompt sondy nie prosi o powód (`error`) przy pustym haszu';
+        if (!core.TREE_HASH_SCHEMA.properties.error) return 'TREE_HASH_SCHEMA nie ma pola error';
+        return null;
+      },
+    },
+
     // ── (4) artefakt bez pola hash → ostrzeżenie, nie błąd ─────────────────────────
     {
       name: '4a-artifact-without-hash-field-warns-and-does-not-fail',
