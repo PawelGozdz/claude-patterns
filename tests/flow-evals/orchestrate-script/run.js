@@ -859,6 +859,19 @@ const CASES = (c) => [
     },
   },
 
+  // ── ORC-151: linter wskazany z nazwy ma swoje pole (pcu: `ruff check` oddawało skipped) ───
+  {
+    name: 'probe-maps-named-linters-and-runners-to-their-fields',
+    run() {
+      const layer = { id: 'modules', dirs: ['core/'], checks: ["git ls-files -m -o --exclude-standard -- core | grep '\\.py$' | xargs -r .venv/bin/ruff check"] };
+      const p = c.buildProbePrompt({ task: { id: 'T' } }, layer);
+      if (!/`ruff`[^.]*→ `lint`/.test(p)) return 'mapowanie nie nazywa ruff → lint: ' + p.slice(-700);
+      if (!/`pytest`[^.]*→ `tests`/.test(p)) return 'mapowanie nie nazywa pytest → tests';
+      if (!/nie zamieniaj na `skipped`/.test(p)) return 'brak reguły: wykonana komenda nierozpoznana z nazwy nie jest skipped';
+      return null;
+    },
+  },
+
   // ── ORC-118: komendy dosłowne nie dziedziczą „brak w package.json → skipped" ────────────
   {
     name: 'probe-literal-only-checks-do-not-mention-package-json-skip',

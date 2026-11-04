@@ -65,11 +65,22 @@ const DENY = [
   ['łańcuch z jednym złym', 'pnpm test:e2e src/a.e2e.spec.ts && npx vitest run'],
   ['yarn', 'yarn test'],
   ['turbo', 'turbo run test'],
+  ['pnpm nx test (orkiestrator za menedżerem)', 'pnpm nx test my-pkg'],
+  ['npx nx test', 'npx nx test my-pkg'],
+  ['pnpm exec nx test', 'pnpm exec nx test'],
+  ['pnpm turbo test', 'pnpm turbo test'],
+  ['npm exec nx run-many --target=test', 'npm exec nx run-many --target=test'],
+  ['nx run pakiet:test', 'nx run my-pkg:test'],
+  ['nx run-many -t build,test', 'pnpm nx run-many -t build,test'],
+  ['pnpm dlx nx test', 'pnpm dlx nx test'],
   ['playwright test', 'npx playwright test'],
   ['env i timeout', 'NODE_OPTIONS=--x timeout 600 npm run test:e2e'],
 ];
 const ALLOW = [
   ['e2e z plikami', 'pnpm test:e2e src/a.e2e.spec.ts src/b.e2e.spec.ts'],
+  ['orkiestrator bez celu testowego: nx build', 'pnpm nx build my-pkg'],
+  ['orkiestrator bez celu testowego: nx graph', 'npx nx graph'],
+  ['orkiestrator bez celu testowego: turbo run build', 'pnpm turbo run build'],
   ['integration z plikami i przekierowaniem', 'pnpm test:integration src/a.integration.spec.ts src/b.integration.spec.ts 2>&1 | tail -50'],
   ['kontynuacja linii z \\', 'pnpm test:integration \\\n  src/a.integration.spec.ts \\\n  src/b.integration.spec.ts'],
   ['alias l2/l3 (marketing-hub, grant-flow)', 'pnpm test:l2 src/a.integration.spec.ts'],
@@ -191,6 +202,19 @@ CASES.push({
     write(root, 'apps/api/src/only.spec.ts', 'x');
     const r = tool(root);
     if (r.status !== 3 || !/POMINIĘTO 1 plik/.test(r.stdout)) return 'exit ' + r.status + ': ' + r.stdout;
+    return null;
+  },
+});
+CASES.push({
+  name: 'tool: sufiks .int.test.ts (framework-polityczny) to integration, nie jednostkowy',
+  run() {
+    const root = repoWithChanges();
+    write(root, 'apps/api/src/db/migrations.int.test.ts', 'x');
+    write(root, 'apps/api/src/db/config.test.ts', 'x');
+    const r = tool(root);
+    if (r.status !== 0) return 'exit ' + r.status + ': ' + r.stdout + r.stderr;
+    if (!r.stdout.includes('pnpm test:integration src/db/migrations.int.test.ts')) return 'plik .int.test.ts nie poszedł do test:integration: ' + r.stdout;
+    if (/config\.test\.ts/.test(r.stdout.split('POMINIĘTO')[0])) return 'zwykły .test.ts nie może iść do uruchomienia: ' + r.stdout;
     return null;
   },
 });

@@ -19,7 +19,7 @@ const MANAGERS = new Set(['pnpm', 'npm', 'yarn', 'bun']);
 const WRAPPERS = new Set(['env', 'time', 'nohup', 'command', 'exec', 'sudo', 'nice', 'ionice', 'stdbuf', 'then', 'do', 'else', 'if', 'while', '!']);
 const FILE_TOKEN = /^[^*?\s]+\.[cm]?[jt]sx?$/;
 const TEST_FILE = /\.(spec|test|e2e-spec)\.[cm]?[jt]sx?$/;
-const INTEGRATION_FILE = /\.integration\.(spec|test)\.[cm]?[jt]sx?$/;
+const INTEGRATION_FILE = /\.(integration|int)\.(spec|test)\.[cm]?[jt]sx?$/;
 const E2E_FILE = /\.(e2e\.(spec|test)|e2e-spec)\.[cm]?[jt]sx?$/;
 
 function loadConfig(startDir) {
@@ -146,6 +146,13 @@ function parseManager(manager, toks) {
 
 function isTestScript(s) { return typeof s === 'string' && /^test(:|$)/.test(s); }
 
+// turbo/nx/lerna/rush uruchamiają testy wielu pakietów, więc blokujemy je ZAWSZE, także za `pnpm`/`npx`/`pnpm exec`.
+// Cel testowy może stać jako `test`, `proj:test` (nx run), `--target=test`, `--targets=build,test` albo `-t test,build`.
+const ORCHESTRATORS = new Set(['turbo', 'nx', 'lerna', 'rush']);
+function orchestratorHit(rest) {
+  return rest.some((t) => String(t).replace(/^(-t|--targets?)=/, '').split(',').some((x) => isTestScript(x) || /^[^\s:]+:test(:|$)/.test(x)));
+}
+
 function runnerHit(bin, rest) {
   if (!RUNNER_BINS.has(bin)) return false;
   if (bin === 'playwright') return rest.includes('test');
@@ -201,8 +208,8 @@ function checkSegment(seg, cfg, depth) {
     return isTestRun ? { rule: 'xargs', segment: seg, detail: 'lista plików z xargs/stdin jest niewidoczna dla bramki (pusta lista = cały pakiet)' } : null;
   }
 
-  if (['turbo', 'nx', 'lerna', 'rush'].includes(cmd)) {
-    return rest.some(isTestScript) ? { rule: 'orchestrator', segment: seg, detail: `${cmd} uruchamia testy wielu pakietów` } : null;
+  if (ORCHESTRATORS.has(cmd)) {
+    return orchestratorHit(rest) ? { rule: 'orchestrator', segment: seg, detail: `${cmd} uruchamia testy wielu pakietów` } : null;
   }
 
   if (runnerHit(cmd, rest)) {
@@ -213,12 +220,20 @@ function checkSegment(seg, cfg, depth) {
     let k = 0;
     while (k < rest.length && rest[k].startsWith('-')) k++;
     const bin = rest[k] ? path.basename(rest[k]).replace(/@.*$/, '') : '';
+    if (ORCHESTRATORS.has(bin)) {
+      return orchestratorHit(rest.slice(k + 1)) ? { rule: 'orchestrator', segment: seg, detail: `${cmd} ${bin} uruchamia testy wielu pakietów` } : null;
+    }
     return runnerHit(bin, rest.slice(k + 1)) ? { rule: 'direct-runner', segment: seg, detail: `${cmd} ${bin} omija skrypty projektu` } : null;
   }
 
   if (!MANAGERS.has(cmd)) return null;
   const p = parseManager(cmd, rest);
   if (!p) return null;
+  // `pnpm nx test`, `pnpm exec turbo run test`, `npm exec nx …`: orkiestrator za menedżerem = ta sama reguła co gołe `nx`
+  const orch = p.bin || p.script;
+  if (ORCHESTRATORS.has(orch)) {
+    return orchestratorHit(p.rest) ? { rule: 'orchestrator', segment: seg, detail: `${cmd} ${orch} uruchamia testy wielu pakietów` } : null;
+  }
   if (p.bin) {
     return runnerHit(p.bin, p.rest) ? { rule: 'direct-runner', segment: seg, detail: `${cmd} … ${p.bin} omija skrypty projektu` } : null;
   }

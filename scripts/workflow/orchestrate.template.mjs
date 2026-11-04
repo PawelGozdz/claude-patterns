@@ -682,7 +682,13 @@ function buildProbePrompt(a, layer) {
     ? '\nMapowanie wyników na pola (każdy check do SWOJEGO pola, nie mieszaj): nazwa/komenda z `lint` → ' +
       '`lint`; z `typecheck`, `tsc`, `mypy`, `pyright`, `analyze`, `vet` albo `build` → `typecheck`; z `test` → `tests` ' +
       '(EXIT:0 = pass, niezerowy = fail, brak skryptu = skipped). Pole `typecheck` = fail tylko wtedy, ' +
-      'gdy padł typecheck/analyze/build, nigdy z powodu lintu. Komenda z `tools/conformance/check.mjs` → pole `conformance` ' +
+      'gdy padł typecheck/analyze/build, nigdy z powodu lintu. ' +
+      // ORC-151: mapowanie znało tylko nazwy z „lint”/„tsc”/„mypy”; `ruff check` (pcu) nie pasowało do żadnego pola, więc sonda
+      // oddawała wszystko `skipped` mimo EXIT:0 (pcu TASK-062, DEV-orc-014-modules-parser). Narzędzie ma swoje pole z góry.
+      'Linter wskazany z nazwy (`ruff`, `eslint`, `flake8`, `pylint`, `golangci-lint`, `clippy`, `biome`, `ktlint`, `detekt`) → `lint`; ' +
+      'runner testów (`pytest`, `vitest`, `jest`, `go test`, `cargo test`) → `tests`. Komendy, której nie rozpoznajesz, nie zamieniaj ' +
+      'na `skipped`: komenda, która się wykonała, dostaje pole wg tego, co robi (linter → `lint`, kontrola typów → `typecheck`), ' +
+      'a `skipped` zostaje dla pól, których żaden check nie obejmuje. Komenda z `tools/conformance/check.mjs` → pole `conformance` ' +
       '(EXIT:0 = pass, 1 lub 2 = fail, 3 = skipped); jej wynik NIGDY nie trafia do `typecheck` ani `lint`. ' +
       // ORC-149: testy idą WYŁĄCZNIE tą komendą (pliki zmiany, `pnpm test:{integration|e2e} <pliki>`); pominięte pliki jednostkowe to polityka, nie błąd
       'Komenda z `tools/scoped-tests/run.mjs` → pole `tests` (EXIT:0 = pass, 1 = fail, 3 = skipped; linie „POMINIĘTO" w jej logu to ' +

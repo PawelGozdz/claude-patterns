@@ -33,10 +33,10 @@
       "Read(*)",
       "Glob(*)",
       "Grep(*)",
-      "Bash(npm test *)",
+      "Bash(pnpm test:integration *)",
+      "Bash(pnpm test:e2e *)",
       "Bash(npm run check *)",
-      "Bash(npx svelte-check *)",
-      "Bash(npx vitest *)"
+      "Bash(npx svelte-check *)"
     ],
     "soft_deny": [
       "Bash(rm -rf *)",

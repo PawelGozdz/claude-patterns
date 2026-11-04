@@ -36,8 +36,7 @@
       "Bash(pnpm test *)",
       "Bash(pnpm run lint *)",
       "Bash(pnpm tsc --noEmit *)",
-      "Bash(pnpm nx *)",
-      "Bash(pnpm vitest *)"
+      "Bash(pnpm nx *)"
     ],
     "soft_deny": [
       "Bash(rm -rf *)",

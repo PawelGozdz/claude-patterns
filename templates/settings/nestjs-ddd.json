@@ -33,7 +33,8 @@
       "Read(*)",
       "Glob(*)",
       "Grep(*)",
-      "Bash(pnpm test *)",
+      "Bash(pnpm test:integration *)",
+      "Bash(pnpm test:e2e *)",
       "Bash(pnpm run lint *)",
       "Bash(pnpm tsc --noEmit *)"
     ],

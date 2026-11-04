@@ -49,6 +49,14 @@ Dwie propozycje z raportu (nie wykluczają się wzajemnie):
    permanentnie nie jest w stanie ocenić w pełni (patrz ORC-074 — ai-os-bot ma dokładnie taki
    przypadek, ale tam ORC-074 już ogranicza koszt bez zmiany logiki `maxAttempts`).
 
+## Dopisek 2026-11-03 (z TASK-COST-CONTEXT-001, K5)
+
+Bramka końcowa na Opusie daje NO_GO w 47% kroków po GO od verifiera (lipiec–październik 2026,
+199 kroków po migracji na Opus 5.5). Każde takie NO_GO uruchamia rundę fixera i drugą bramkę,
+czyli ok. 10× koszt kroku verifiera. Przy decyzji (a)/(b) warto sprawdzić w polach
+`blamed`/`unblamed` zdarzeń bramki, ile powodów NO_GO verifier mógłby złapać sam, gdyby dostał
+tę samą checklistę.
+
 ## ✅ Kryterium ukończenia
 
 Decyzja maintainera: (a) podnieść domyślny/zalecany budżet `verify`, (b) zmienić wagę w

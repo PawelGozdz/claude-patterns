@@ -6,9 +6,33 @@
       "cause": "config",
       "n": 1,
       "trigger": "setup_drift"
+    },
+    "DEV-orc-062-application-services-app": {
+      "cause": "plan",
+      "n": 1,
+      "trigger": "blocked_by_prior"
+    },
+    "DEV-orc-062-testing-guardians": {
+      "cause": "plan",
+      "n": 1,
+      "trigger": "blocked_by_prior"
     }
   },
-  "events": 11,
+  "engines": {
+    "a32f593": {
+      "orchestrate": {
+        "costUsd": 20.685902,
+        "died": 0,
+        "ended": {
+          "ok": 2
+        },
+        "started": 2,
+        "steps": 92,
+        "stepsWithoutCost": 0
+      }
+    }
+  },
+  "events": 198,
   "host": "5a164d2d0145",
   "processes": {
     "audit": {
@@ -30,9 +54,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 9,
           "outcomes": {
-            "ok": 1
+            "ok": 9
           },
           "toolCalls": 0
         },
@@ -44,9 +68,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 9,
           "outcomes": {
-            "ok": 1
+            "ok": 9
           },
           "toolCalls": 0
         },
@@ -58,9 +82,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 9,
           "outcomes": {
-            "ok": 1
+            "ok": 9
           },
           "toolCalls": 0
         },
@@ -72,9 +96,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 9,
           "outcomes": {
-            "ok": 1
+            "ok": 9
           },
           "toolCalls": 0
         },
@@ -86,9 +110,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 9,
           "outcomes": {
-            "ok": 1
+            "ok": 9
           },
           "toolCalls": 0
         },
@@ -100,15 +124,15 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 9,
           "outcomes": {
-            "ok": 1
+            "ok": 9
           },
           "toolCalls": 0
         },
         "runtime": {
           "causes": {
-            "config": 1
+            "config": 8
           },
           "costUsd": 0,
           "durationMs": {
@@ -116,9 +140,10 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 9,
           "outcomes": {
-            "failed": 1
+            "failed": 8,
+            "ok": 1
           },
           "toolCalls": 0
         },
@@ -130,9 +155,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 9,
           "outcomes": {
-            "ok": 1
+            "ok": 9
           },
           "toolCalls": 0
         },
@@ -144,9 +169,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 9,
           "outcomes": {
-            "ok": 1
+            "ok": 9
           },
           "toolCalls": 0
         },
@@ -158,23 +183,155 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 9,
           "outcomes": {
-            "ok": 1
+            "ok": 9
           },
           "toolCalls": 0
         }
       },
-      "steps": 10,
-      "stepsWithoutCost": 10,
+      "steps": 90,
+      "stepsWithoutCost": 90,
       "verification": {
         "firstPassGo": 0,
         "units": 0
       }
+    },
+    "hook": {
+      "costUsd": 0,
+      "costUsdRetried": 0,
+      "died": 0,
+      "repairs": {
+        "fixSteps": 0,
+        "fixed": 0,
+        "open": 0
+      },
+      "retried": 0,
+      "roles": {
+        "check-subagent-pattern-reads:pattern-grounding": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 0,
+            "p50": null,
+            "p90": null
+          },
+          "n": 9,
+          "outcomes": {
+            "halted": 9
+          },
+          "toolCalls": 0
+        }
+      },
+      "steps": 9,
+      "stepsWithoutCost": 9,
+      "verification": {
+        "firstPassGo": 0,
+        "units": 0
+      }
+    },
+    "orchestrate": {
+      "costUsd": 20.685902,
+      "costUsdRetried": 5.813764,
+      "died": 0,
+      "repairs": {
+        "fixSteps": 4,
+        "fixed": 4,
+        "open": 0
+      },
+      "retried": 34,
+      "roles": {
+        "implementer": {
+          "causes": {},
+          "costUsd": 15.381081,
+          "durationMs": {
+            "n": 18,
+            "p50": 49576,
+            "p90": 145946
+          },
+          "n": 18,
+          "outcomes": {
+            "ok": 18
+          },
+          "toolCalls": 267
+        },
+        "none": {
+          "causes": {},
+          "costUsd": 0.093985,
+          "durationMs": {
+            "n": 27,
+            "p50": 5288,
+            "p90": 6083
+          },
+          "n": 27,
+          "outcomes": {
+            "ok": 27
+          },
+          "toolCalls": 54
+        },
+        "probe": {
+          "causes": {},
+          "costUsd": 0.302456,
+          "durationMs": {
+            "n": 34,
+            "p50": 12243,
+            "p90": 58897
+          },
+          "n": 34,
+          "outcomes": {
+            "ok": 34
+          },
+          "toolCalls": 91
+        },
+        "verifier": {
+          "causes": {},
+          "costUsd": 4.90838,
+          "durationMs": {
+            "n": 13,
+            "p50": 15644,
+            "p90": 25336
+          },
+          "n": 13,
+          "outcomes": {
+            "go": 13
+          },
+          "toolCalls": 53
+        }
+      },
+      "steps": 92,
+      "stepsWithoutCost": 0,
+      "verification": {
+        "firstPassGo": 9,
+        "units": 9
+      }
     }
   },
   "project": "juz-ide-api-3",
-  "runs": {},
-  "stepsTotal": 10,
+  "runs": {
+    "orchestrate": {
+      "costUsd": 20.685902,
+      "durationMs": {
+        "n": 2,
+        "p50": 168826,
+        "p90": 3055179
+      },
+      "ended": {
+        "ok": 2
+      },
+      "started": 2
+    }
+  },
+  "stepsTotal": 191,
+  "tasks": {
+    "TS-GEO-DISTANCE-BUCKETS-001": {
+      "analyzeRuns": 1,
+      "costToGoUsd": null,
+      "costUsd": 25.812594,
+      "reachedGo": false,
+      "runs": 2,
+      "spanMs": 93699888,
+      "stepsWithoutCost": 0
+    }
+  },
   "v": 1
 }

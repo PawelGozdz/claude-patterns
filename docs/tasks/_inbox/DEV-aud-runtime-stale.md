@@ -1,23 +1,26 @@
 ---
 id: DEV-aud-runtime-stale
-status: dismissed
+status: proposed
 dismissed_reason: >
-  Nieodtwarzalne 2026-11-02: materialize-runtime w juz-ide-api-1..4, verify-project-setup
-  czysty (rozjazd po zmianach bloków w drzewie roboczym claude-patterns).
-  Nieodtwarzalne 2026-10-29: materialize-runtime w juz-ide-api-1..4, grant-flow,
-  marketing-hub i feature-flags (zmiana bloku nestjs, parametr
-  threat_model_when_extra), audit-projects bez nieaktualnych runtime.yml,
-  verify-project-setup czysty. Wcześniej, 2026-10-28: auth i juz-ide-blog.
-  Nieodtwarzalne 2026-10-28: materialize-runtime auth i juz-ide-blog,
-  audit-projects bez błędów, verify-project-setup czysty. Poprzednie
-  rozstrzygnięcie zostaje w historii rekordu.
+  Nieodtwarzalne 2026-11-03: materialize-runtime w juz-ide-api-1..4 i pcu
+  (szablon sondy po ORC-151), verify-project-setup czysty; rozjazd po zmianach w
+  drzewie roboczym claude-patterns (commit 858697c). Nieodtwarzalne 2026-11-02:
+  materialize-runtime w juz-ide-api-1..4, verify-project-setup czysty (rozjazd
+  po zmianach bloków w drzewie roboczym claude-patterns). Nieodtwarzalne
+  2026-10-29: materialize-runtime w juz-ide-api-1..4, grant-flow, marketing-hub
+  i feature-flags (zmiana bloku nestjs, parametr threat_model_when_extra),
+  audit-projects bez nieaktualnych runtime.yml, verify-project-setup czysty.
+  Wcześniej, 2026-10-28: auth i juz-ide-blog. Nieodtwarzalne 2026-10-28:
+  materialize-runtime auth i juz-ide-blog, audit-projects bez błędów,
+  verify-project-setup czysty. Poprzednie rozstrzygnięcie zostaje w historii
+  rekordu.
 trigger: setup_drift
 sources:
   - audit
 rule_ref: AUD-RUNTIME-STALE
 first_seen: 2026-10-10
-last_seen: 2026-11-02
-occurrences: 25
+last_seen: 2026-11-04
+occurrences: 27
 projects:
   - juz-ide-api-4
   - juz-ide-api-2
@@ -41,7 +44,7 @@ projects:
   - platform
   - vytches-ddd
 category: config
-reopened_at: 2026-11-02
+reopened_at: 2026-11-04
 reopened_from_status: dismissed
 previous_dismissed_reason: >
   Nieodtwarzalne 2026-10-19: po materialize-runtime (pcu, my-intelligence,
@@ -60,6 +63,8 @@ previous_dismissed_reason: >
 
 ## Occurrences
 
+- 2026-11-04 juz-ide-api-1 — runtime.yml nieaktualny: zmieniły się wejścia kompozycji (bloki / project.yml / aliasy / taksonomia)
+- 2026-11-03 juz-ide-api-1 — runtime.yml nieaktualny: zmieniły się wejścia kompozycji (bloki / project.yml / aliasy / taksonomia)
 - 2026-11-02 juz-ide-api-1 — runtime.yml nieaktualny: zmieniły się wejścia kompozycji (bloki / project.yml / aliasy / taksonomia)
 - 2026-10-29 juz-ide-api-2 — runtime.yml nieaktualny: zmieniły się wejścia kompozycji (bloki / project.yml / aliasy / taksonomia)
 - 2026-10-26 auth — runtime.yml nieaktualny: zmieniły się wejścia kompozycji (bloki / project.yml / aliasy / taksonomia)

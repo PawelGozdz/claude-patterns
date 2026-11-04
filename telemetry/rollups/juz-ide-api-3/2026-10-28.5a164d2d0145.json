@@ -396,16 +396,5 @@
     }
   },
   "stepsTotal": 240,
-  "tasks": {
-    "TS-GEO-DISTANCE-BUCKETS-001": {
-      "analyzeRuns": 1,
-      "costToGoUsd": null,
-      "costUsd": 5.126692,
-      "reachedGo": false,
-      "runs": 0,
-      "spanMs": 923921,
-      "stepsWithoutCost": 0
-    }
-  },
   "v": 1
 }
