@@ -2,11 +2,11 @@
 id: TASK-ORCH-LINT-BASELINE-001
 title: 'lint:check tymczasowo wyjęty z checks w ddd/layers, flat-service i grant-flow — przywrócić po spłacie długu per-projekt'
 type: bugfix
-status: in-progress
+status: done
 priority: P1
 story_points: 3
 created_date: 2026-09-25
-updated_date: 2026-09-25
+updated_date: 2026-11-07
 assignee: '@unassigned'
 labels: [kaizen, orchestration, lint, tech-debt]
 depends_on: [TASK-ORCH-FALSE-GO-001]
@@ -77,3 +77,49 @@ wystarczy naprawić tylko plików dotkniętych bieżącą zmianą. Do czasu spł
   człowieka na ominięcie `config-protection` albo edycji ręcznej poza tym hookiem).
 - juz-ide-api-1..4, _uls, grant-flow: real backlog (277–2463 błędów) — osobna, świadoma praca,
   nie coś do zrobienia przy okazji tego tasku.
+
+## Stan zamknięcia (2026-11-07)
+
+Zadanie zamknięte po stronie claude-patterns, bez zmiany bloków. Kryterium ukończenia (czysty
+lint w każdym projekcie, potem powrót do `checks`) **nie jest spełnione**: żadnemu projektowi
+na blokach z tego repo nie da się dziś bezpiecznie przywrócić lintu. Stan sprawdzony na develop
+(35603bc) poleceniami tylko do odczytu (eslint bez `--fix`).
+
+| Projekt (blok) | Wynik 2026-11-07 | Wniosek |
+|---|---|---|
+| juz-ide-api-1 (`ddd/layers`) | `pnpm run lint:check` pada z `JavaScript heap out of memory` (exit 134): po 173 s przy domyślnym stercie, po 322 s przy `--max-old-space-size=6144`. Wyniku nie udało się uzyskać | gorzej niż we wrześniu (277 błędów, 4m47s): sonda nie dostałaby żadnego werdyktu. Lint zostaje poza blokiem |
+| juz-ide-api-2..8 (`ddd/layers`) | nieuruchamiane: ten sam commit 8ed4058bf i ten sam `package.json` co api-1 | dziedziczą wniosek z api-1. Od września na bloku przybyły api-5..8 |
+| _uls (`ddd/layers`) | nieuruchamiane (katalogi `_*` są poza skanami) | bez zmian względem audytu: 1167 błędów |
+| grant-flow (lokalny `monorepo-layers-grant-flow`) | `lint:check` (api): 37 błędów i 1180 ostrzeżeń, we wrześniu 2463 błędy i 3622 problemy. `lint:check:web`: exit 0 | dług prawie spłacony, ale nie zerowy: lint nie wraca. Szczegóły w „Odroczone" |
+| marketing-hub (`monorepo-layers`) | `lint:check:api`: 0 błędów, 71 ostrzeżeń, 22 s | czysty. Blok `monorepo-layers` ma już `lint:check:api` w `checks` warstw i `lint:check` w `final_gate` |
+| ai-os-bot (lokalny `bot-verifiers`) | `npm run lint` (`eslint src/`): exit 0; `eslint.config.js` wskazuje `tsconfig.eslint.json` | usterka z audytu naprawiona w repo ai-os-bot; `lint` jest w `checks` i `final_gate` |
+| ai-gateway, iam (lokalne bloki) | bez zmian od września: `lint` w `checks` i `final_gate` | nic do zrobienia |
+| flat-service | żaden projekt nie bierze tego bloku wprost (iam, ai-gateway, ai-os-bot mają własne bloki z `lint`) | lint zostaje wyjęty; nazwa skryptu nadal niepotwierdzona na realnym konsumencie |
+
+Bloków `ddd/layers` i `flat-service` nie zmieniałem. Żadna zmiana zachowania nie jest uzasadniona,
+a sam komentarz bloku trafia do `runtime.yml` dziewięciu projektów (api-1..8, _uls) i wymusiłby
+rematerializację bez skutku dla `/orchestrate`. Komentarz w `ddd/layers` nadal mówi prawdę
+(przywrócić po czystym `lint:check` w każdym projekcie bloku); nieaktualna jest tylko lista
+konsumentów, bo api-5..8 doszły po wrześniu.
+
+## Odroczone (praca w repozytoriach innych projektów)
+
+1. **grant-flow** (najbliżej celu). W `apps/api` zostało 37 błędów: 27× `import/order`, 2×
+   `prefer-const`, 1× `lines-between-class-members`, 1× `no-floating-promises`
+   (`project-write-authz.e2e.spec.ts:123`) oraz 6 błędów parsowania w plikach `apps/api/test/**`
+   spoza `tsconfig.json`, z którego korzysta ESLint (rozwiązanie jak `tsconfig.eslint.json` w
+   ai-os-bot). Trzydzieści z 37 naprawia `--fix`. Gdy `lint:check` da exit 0, przywrócić
+   `lint:check:api` w `checks` warstw i `lint:check` w `final_gate` lokalnego bloku
+   `monorepo-layers-grant-flow.yml`. Pkt 2 i 5 jego nagłówka wspomina jeszcze dług 2463 błędów, co
+   jest nieaktualne.
+2. **juz-ide-api-1..8** (jeden kod, jedna naprawa). Najpierw sprawić, żeby `lint:check` w ogóle się
+   kończył: OOM przy 6 GB sterty wskazuje na zbyt szeroki `parserOptions.project` albo reguły
+   z informacją o typach na całym drzewie (`{src,apps,test}/**/*.ts`). Dopiero potem spłata
+   277+ błędów. Warunek przywrócenia w `blocks/ddd/layers.yml`: czysty `lint:check` w czasie
+   rzędu minut (nie 5+) w każdym projekcie na bloku.
+3. **_uls**: 1167 błędów z audytu wrześniowego, osobna praca.
+
+Gdy pierwszy z projektów 1 lub 2 będzie czysty, przywrócenie po stronie tego repo to jedna edycja
+`blocks/ddd/layers.yml` (`lint:check` do `checks` warstw domain/application/infrastructure i do
+`final_gate.checks`), a potem `audit-projects`, `materialize-runtime` i `verify-project-setup`
+w każdym projekcie bloku. To wymaga nowego zadania, ten plik już nie jest otwarty.
