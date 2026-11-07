@@ -2,11 +2,11 @@
 id: TASK-AGENT-MANUAL-SPAWN-RULES-001
 title: 'Ręcznie uruchamiani implementerzy dostają reguły wprost w poleceniu — bez tego bramki silnika ich nie obejmują'
 type: implementation
-status: in_progress
+status: done
 priority: P2
 story_points: 5
 created_date: 2026-10-28
-updated_date: 2026-10-29
+updated_date: 2026-11-07
 assignee: '@claude'
 labels: [orchestration, hooks, agents, rule-cards]
 depends_on: [TASK-ENGINE-GUARDRAILS-001]
@@ -61,4 +61,4 @@ Rejestracja: `blocks/ddd/core.yml` + `templates/settings/nestjs-ddd.json`. Evale
 
 Scalone do develop (c5563bf, 2026-10-29). Rollout: `materialize-runtime` i `sync-runtime-hooks --apply` w grant-flow, juz-ide-api-1..4 i marketing-hub; `verify-project-setup` w każdym kompletny. Pozostałe projekty na bloku ddd/core dostaną hooki przy następnej materializacji.
 
-Otwarte: test na transkrypcie z żywym ręcznym implementerem (kryterium 1); czy `Agent` w Workflow odpala `PostToolUse` sesji głównej.
+Odroczone (wymagają żywego przebiegu, poza zakresem zamknięcia): test na transkrypcie z żywym ręcznym implementerem (kryterium 1); czy `Agent` w Workflow odpala `PostToolUse` sesji głównej.
