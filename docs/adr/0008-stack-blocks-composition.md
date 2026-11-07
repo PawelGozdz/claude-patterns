@@ -388,8 +388,16 @@ Trzy argumenty za, mimo że dotyczy to dziś jednego projektu:
    materializuje się identycznie. Dopiero potem może skasować skopiowane `layers` i `exit`
    — i od tego momentu zaczyna dostawać zmiany bazy.
 
-**Implementacja: pozycja K113 (planned)** w `docs/tasks/TASK-KAIZEN-002.md`. Ten ADR opisuje
-decyzję, nie stan wdrożony — do czasu K113 `extends` nadal nadpisuje `orchestrate` w całości.
+**Implementacja: K113, wdrożone 2026-11-07** (`applyExtends()` w `scripts/materialize-runtime.mjs`,
+fixture `tests/flow-evals/materialize-runtime/fixtures/extends-orchestrate-partial.*`: blok lokalny
+z samym `inner_loop` dziedziczy `layers`, `final_gate` i `exit` z bazy). Argument 3 był zawężony
+do jednego projektu; sprawdzone na wszystkich pięciu blokach floty, które nadpisują `orchestrate`
+przez `extends` (`iam-verifiers`, `aig-layers`, `bot-verifiers`, `monorepo-layers-grant-flow`,
+`mi-layers`): każdy podaje wszystkie cztery klucze, więc dane w `runtime.yml` wychodzą identyczne
+(różnią się tylko komentarze YAML i hashe). Kategoria `extends-override` w `audit-projects.mjs`
+liczy teraz nakładanie na poziomie kluczy `orchestrate.*` i zostaje OSTRZEŻENIEM: wraca do BŁĘDU
+dopiero, gdy te pięć bloków skasuje skopiowane klucze (poprawki w repozytoriach satelitów, patrz
+`docs/tasks/TASK-KAIZEN-002.md`, K113b).
 
 **Kiedy to wraca na stół.** Gdy pojawi się drugi adopter `flat-service` albo pierwszy projekt
 chcący odjąć pozycję z `overlay.*` — wtedy warto sprawdzić, czy jeden poziom scalania nadal

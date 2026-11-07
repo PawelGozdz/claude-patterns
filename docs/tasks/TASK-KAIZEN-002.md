@@ -2,11 +2,11 @@
 id: TASK-KAIZEN-002
 title: 'Kaizen backlog 2: egzekwowanie zamiast deklaracji, telemetria, korpus wzorców, silnik /orchestrate'
 type: task
-status: in-progress
+status: done
 priority: P1
 story_points: TBD
 created_date: 2026-09-07
-updated_date: 2026-09-08
+updated_date: 2026-11-07
 assignee: unassigned
 labels: [kaizen, hooks, setup, telemetry, rag, patterns, agents, commands, docs, retire]
 source: >
@@ -18,8 +18,12 @@ depends_on: []
 
 # TASK-KAIZEN-002 — kaizen backlog 2
 
-> **▶ STATUS: IN-PROGRESS (2026-09-08) — 63/71 pozycji. Wszystkie 63 pierwotne pozycje zamknięte
-> 2026-09-07; otwarte tylko dopisane K113–K120 (staged, czeka na review + commit).**
+> **▶ STATUS: DONE (2026-11-07) — 65 z 73 pozycji zrobionych, 8 odroczonych z powodem i właścicielem.**
+> Szczegóły i liczby w sekcjach [„Stan zamknięcia”](#stan-zamknięcia-2026-11-07) i
+> [„Odroczone”](#odroczone) na końcu pliku. Zamknięcie nie oznacza, że wszystko jest zrobione:
+> osiem pozycji czeka na własne zadania albo na prace w cudzych repozytoriach.
+>
+> Notatki poniżej pochodzą z 2026-09-08 i są zostawione jako historia sesji.
 >
 > **Weryfikacja 2026-09-08** (dzień po zamknięciu, przed commitem): stan repo niezmieniony
 > (624 pliki w indeksie, 0 niezastage'owanych). Zmiana daty systemowej ujawniła dwa drobne
@@ -472,7 +476,7 @@ Wszystko stage'ować, nie commitować. Commit robi człowiek po review fali.
 
 ## Dopisane w trakcie (2026-09-07)
 
-- [ ] **K113. `extends` merguje `orchestrate` per klucz (ADR 0008 OQ8, K95).** W
+- [x] **K113. `extends` merguje `orchestrate` per klucz (ADR 0008 OQ8, K95).** W
       `scripts/materialize-runtime.mjs`, `applyExtends()`: usuń `'orchestrate'` z pętli nadpisującej
       sekcje w całości i scal po kluczach najwyższego poziomu (`layers`, `inner_loop`, `final_gate`,
       `exit`; jeden poziom, bez wchodzenia w `inner_loop`). Test: baza z `layers`+`inner_loop`+`exit`,
@@ -480,6 +484,15 @@ Wszystko stage'ować, nie commitować. Commit robi człowiek po review fali.
       `iam-verifiers.yml` z pełną sekcją materializuje się identycznie. Po wdrożeniu kategoria
       `extends-override` w `audit-projects.mjs` wraca z WARN do BŁĘDU, a `iam-verifiers.yml` może
       skasować skopiowane `layers`/`exit`.
+      ✅ 2026-11-07 (silnik) — `applyExtends()` scala `orchestrate` per klucz; fixture
+      `tests/flow-evals/materialize-runtime/fixtures/extends-orchestrate-partial.*` (blok z samym
+      `inner_loop` dziedziczy `layers`/`final_gate`/`exit`; test pada na starym kodzie, eval 5/5).
+      Regresja sprawdzona na pięciu blokach floty z `extends` na `orchestrate` (iam, ai-gateway,
+      ai-os-bot, grant-flow, my-intelligence): każdy podaje wszystkie cztery klucze, dane w
+      `runtime.yml` identyczne, różnią się tylko komentarze YAML i hashe. `audit-projects.mjs` liczy
+      nakładanie na poziomie `orchestrate.<klucz>`; ADR 0008 OQ8 oznaczony jako wdrożony.
+      **Reszta wydzielona jako K113b (odroczona):** powrót kategorii do BŁĘDU i skasowanie
+      skopiowanych kluczy w blokach satelitów wymaga zmian w pięciu cudzych repozytoriach.
 - [ ] **K114. Seeding block-aware (F5 z zamkniętego TASK-BLOCKS-001).** `reseed-patterns.sh` nie
       taguje chunków blokami, `retrieve_patterns` nie ma parametru `blocks:`, `knowledge.json` nie
       dostaje `stack_blocks` — problem #5 z ADR 0008 otwarty (projekt na TypeORM może dostać wzorce
@@ -487,9 +500,19 @@ Wszystko stage'ować, nie commitować. Commit robi człowiek po review fali.
       wiszących ścieżek; parametr `blocks:` w `retrieve_patterns` (boost vs filtr — OQ2);
       `setup-project.sh` dopisuje `stack_blocks` do `knowledge.json`. Spot-check: zapytanie
       z projektu TypeORM nie zwraca wzorców Kysely.
-- [ ] **K115. Aliasy profili w `blocks/_aliases.yml` (F6 z TASK-BLOCKS-001).** Brakuje
+      ⏸ 2026-11-07 odroczone — niezrobione (na develop nie ma tagu `blocks` na chunkach ani parametru
+      `blocks:`). Zmiana indeksera i retrievera plus reseed kolekcji, nie robota na 30 minut.
+      Wpis: `docs/tasks/_inbox/DEV-k114.md`.
+- [x] **K115. Aliasy profili w `blocks/_aliases.yml` (F6 z TASK-BLOCKS-001).** Brakuje
       `node-kysely`, `python-ml` (i `nextjs-app`/`sveltekit`, jeśli K88 ich nie dodał). Nic nie jest
       zepsute, brakuje skrótu; rozstrzygnąć razem z K88.
+      ✅ 2026-11-07 — rozstrzygnięte: nie dodajemy. `nextjs-app` dodał K88 (`sveltekit` celowo nie).
+      `node-kysely` i `python-ml` nie mają konsumenta: alias rozwija wyłącznie wpisy `stack_blocks`,
+      a oba projekty z takim `stack_profile` (iam, aegis-flow, my-intelligence) wymieniają bloki
+      jawnie. `python-ml` występuje w kodzie tylko jako nazwa katalogu agentów i profil szablonu w
+      `setup-project.sh`. Każda zmiana `blocks/_aliases.yml` wchodzi do `inputs_hash`, czyli
+      unieważnia `runtime.yml` wszystkich projektów, więc alias bez konsumenta byłby czystym kosztem.
+      Gdy pojawi się projekt z `stack_blocks: [node-kysely]`, dopisać go wtedy.
 
 - [ ] **K116. Wzorzec izolacji bazy w testach (`DatabaseCleaner`).** Odkryte w K89: README opisywał
       `context-isolation-pattern.md` jako „Isolated test databases per bounded context”, a
@@ -498,20 +521,31 @@ Wszystko stage'ować, nie commitować. Commit robi człowiek po review fali.
       w testach. Napisać `testing/database-isolation-pattern.md` z realnego kodu (juz-ide-api),
       podlinkować z golevelup-mock i e2e-hybrid-fixture. Przy okazji: zdublowana numeracja reguł
       w `bullmq-queue-pattern.md` (l. 338/388).
+      ⏸ 2026-11-07 odroczone — niezrobione (`database-isolation-pattern.md` nie istnieje, powtórzona
+      numeracja w `bullmq-queue-pattern.md` nadal jest). Wzorzec z kartą i reseedem, do tego kod z
+      repozytorium juz-ide-api. Wpis: `docs/tasks/_inbox/DEV-k116.md`.
 
 - [ ] **K117. Sync marketingu 1.9.0 → 2.11.1 (breaking).** Upstream przemianował 20/42 skilli
       (katalog + `name:`), `product-marketing-context` → `product-marketing` z inną ścieżką
       wyjścia. Mapa przemianowań w `skills/marketing/UPSTREAM_VERSION`. Zastosować sync razem
       z przepięciem `agents/universal/marketing-strategist.md`, `commands/marketing.md`,
       `patterns/marketing/`, `templates/product-marketing-context.md`.
+      ⏸ 2026-11-07 odroczone — niezrobione (`UPSTREAM_VERSION` nadal 1.9.0 z blokadą). Wpis:
+      `docs/tasks/_inbox/DEV-k117.md`.
 - [ ] **K118. Skille-kopie z ECC z żywymi konsumentami.** `database/{postgres-patterns,
       database-migrations}`, `infrastructure/{docker-patterns,deployment-patterns}` mają
       `origin: ECC` i odpowiedniki w pluginie, ale są linkowane po kategorii z `project.yml`
       w 3–8 satelitach. ADR 0009 nie obejmuje skilli. Decyzja: retire z przepięciem kategorii
       na `ecc:*` albo jawny fork z `UPSTREAM_VERSION` (jak `rules/common` w K87).
+      ⏸ 2026-11-07 odroczone — decyzja właściciela, stan bez zmian (cztery skille z `origin: ECC`,
+      brak `UPSTREAM_VERSION`). Wpis: `docs/tasks/_inbox/DEV-k118.md`.
 - [ ] **K119. `skills/decision-frameworks/regex-vs-llm`: `name` ≠ katalog.** Koliduje nazwą
       z `ecc:regex-vs-llm-structured-text`. Zmiana katalogu zrywa symlinki w satelitach,
       zmiana `name` wymaga deprecation notice. Dziś jawny wyjątek w `validate-skills.js`.
+      ⏸ 2026-11-07 odroczone — stan bez zmian (katalog `regex-vs-llm`, `name:
+      regex-vs-llm-structured-text`). Każde z dwóch rozwiązań wymaga zmiany w satelitach albo
+      deprecation notice, a kolizja z `ecc:regex-vs-llm-structured-text` niczego dziś nie psuje.
+      Właściciel: autor repo; bez osobnego wpisu, bo to jedna decyzja.
 - [ ] **K120. Sprzątanie po retire w satelitach (poza tym repo).** Śledzone `settings.json`
       z wycofanym hookiem: `feature-flags`, `vytches-ddd` (`post-edit-format`), `job-testing-app`
       (`post-edit-console-warn`) → PR w tamtych repach. `Skill(broadcast-standby)` w permissions
@@ -519,20 +553,73 @@ Wszystko stage'ować, nie commitować. Commit robi człowiek po review fali.
       w 6 instancjach po review. `.mcp.json` z martwym `server.py` w 18 satelitach zniknie przy
       następnym `setup-project.sh`. Weryfikacja K76 (nowy rekord w `workflow-steps.jsonl`)
       wymaga jednego realnego przebiegu `Workflow` — hook jest już wpięty.
+      ◐ 2026-11-07 — jedna część zrobiona, reszta odroczona (praca w cudzych repozytoriach i poza
+      repo). Zrobione: weryfikacja K76, `workflow-steps.jsonl` ma rekord z 2026-11-07T14:35Z
+      (`juz-ide-api-2`), `sync-global-hooks --check` zgodne (17/17). Niezrobione, stan sprawdzony
+      tylko do odczytu: `feature-flags` i `vytches-ddd` nadal mają w śledzonym `settings.json`
+      `post-edit-format` (katalogu `job-testing-app` już nie ma w `/opt/projects`);
+      `Skill(broadcast-standby)` nadal jest w `settings.local.json` api-4 i mobile-app;
+      `/opt/projects/.claude-swarm/` istnieje; kopie `.bak-2026-09-07` leżą w `.claude/` instancji;
+      4 satelity nadal mają wpis `claude-patterns` w `.mcp.json`. Właściciel: użytkownik.
+- [ ] **K113b. Domknięcie K113 po stronie satelitów (dopisane 2026-11-07).** W `iam-verifiers.yml`,
+      `aig-layers.yml`, `bot-verifiers.yml`, `monorepo-layers-grant-flow.yml` i `mi-layers.yml`
+      skasować klucze `orchestrate`, których blok nie zmienia (dziś każdy kopiuje wszystkie cztery),
+      zmaterializować i zweryfikować (`audit-projects` → `materialize-runtime` →
+      `verify-project-setup`), po czym przywrócić kategorię `extends-override` w
+      `audit-projects.mjs` z OSTRZEŻENIA do BŁĘDU (komentarz K63a w pliku opisuje powód).
+      ⏸ odroczone — cudze repozytoria; właściciel: użytkownik.
+- [ ] **K121. Regres K50: znów dużo wpisów `unknown` (dopisane 2026-11-07).** Od 2026-11-04 38-63%
+      dziennych wpisów w `agent-usage.jsonl` nie ma nazwy agenta, modelu ani tokenów. Pierwszy krok:
+      zrzucić klucze payloadu dla `unknown`. ⏸ odroczone — wpis: `docs/tasks/_inbox/DEV-k121.md`.
 
 ---
 
-## Kryterium zamknięcia — stan 2026-09-07
+## Kryterium zamknięcia — stan 2026-11-07
 
-- ✅ `node scripts/pre-commit-guards.mjs` zielony: 24 bramki (nowe: audit-projects --gate,
-  count-assets --check-docs, validate-metadata, validate-blocks, evale project-yml,
-  orchestrate-prepare, orchestrate-script, materialize-runtime, setup-project).
-- ✅ `node scripts/audit-projects.mjs --gate` → exit 0, 17/18 bez zastrzeżeń; 2 ostrzeżenia:
-  `iam` `extends` (do K113) i metryki Workflow (hook wpięty, czeka na pierwszy przebieg).
-- ✅ `~/.claude/logs/agent-usage.jsonl`: wpisy z nazwą agenta, modelem i kosztem z transkryptu.
-- ⏳ `~/.claude/metrics/workflow-steps.jsonl`: hook `workflow-metrics-postrun` wpięty przez
-  `sync-global-hooks --apply`; nowy rekord pojawi się po pierwszym realnym `Workflow` (K120).
-- ✅ Martwe słowa poza kontekstem historycznym: 0 trafień w czterech plikach.
+Poprzednia wersja tej sekcji (2026-09-07) opisywała staging bez commita. Teraz, po setkach commitów
+na develop, sprawdzone ponownie:
+
+- ✅ Pre-commit przechodzi na branchu `feature/TASK-KAIZEN-002` (bramek jest dziś ok. 53, nie 24).
+- ⚠️ `node scripts/audit-projects.mjs --gate` → exit 1, 3 błędy: `runtime.yml` nieaktualny w trzech
+  satelitach (zmieniły się wejścia kompozycji). To nie skutek tego zadania: worktree jest na
+  develop, a satelity zmaterializowano z głównego drzewa, które ma niezacommitowane zmiany w
+  blokach. Znika po scaleniu i rematerializacji. Bramka w pre-commit odpala się tylko przy zmianie
+  `blocks/**`, której tu nie ma.
+- ✅ `agent-usage.jsonl` zapisuje nazwę agenta, model i koszt z transkryptu, ale z lukami: patrz K121.
+- ✅ `workflow-steps.jsonl` ma świeży rekord (2026-11-07T14:35Z), `workflow-metrics-postrun` działa.
 - ✅ Lista RETIRE z ADR 0009 wykonana (K96–K99); KEEP z uzasadnieniem w ADR.
 
-Wszystko staged, nic nie commitowane — commit po review człowieka (fala po fali albo całość).
+## Stan zamknięcia (2026-11-07)
+
+Rozliczenie: **73 pozycje, 65 zrobionych, 8 odroczonych.**
+
+- **Zrobione (65):** wszystkie 63 pierwotne (K50–K112, zamknięte 2026-09-07 i od tego czasu na
+  develop), K113 (silnik, patrz niżej) i K115 (decyzja „nie dodajemy aliasów”).
+- **Odroczone (8):** K113b, K114, K116, K117, K118, K119, K120 (część) i K121. K113b i K121 to
+  pozycje dopisane przy tym zamknięciu (K113b wyodrębnione z K113, K121 znalezione przy
+  weryfikacji telemetrii). K120 jest policzone jako odroczone, bo jego wykonalna część
+  (weryfikacja K76) została odhaczona, a reszta leży poza tym repo.
+- **Zmiany w tym zamknięciu:** `applyExtends()` w `scripts/materialize-runtime.mjs` scala
+  `orchestrate` per klucz (K113); eval materializacji ma nowy fixture z blokiem lokalnym i
+  obsługuje katalog `<fixture>.blocks/`; `audit-projects.mjs` liczy nakładanie na poziomie kluczy
+  `orchestrate.*`; ADR 0008 OQ8 oznaczony jako wdrożony; pięć wpisów w `docs/tasks/_inbox/`
+  (K114, K116, K117, K118, K121).
+- **Czego nie zrobiłem:** `CHANGELOG.md`, `docs/DECISIONS-LOG.md` i kilka innych plików są w
+  głównym drzewie zmienione przez inną pracę, więc ich nie dotykałem; wpisy o K113 do
+  `DECISIONS-LOG` i `CHANGELOG` trzeba dopisać po scaleniu.
+
+## Odroczone
+
+| Pozycja | Powód | Właściciel | Gdzie śledzone |
+|---|---|---|---|
+| K113b | zmiany w pięciu cudzych repozytoriach (iam, ai-gateway, ai-os-bot, grant-flow, my-intelligence) | użytkownik | ten plik |
+| K114 | zmiana indeksera i retrievera RAG plus reseed kolekcji | do przydzielenia | `_inbox/DEV-k114.md` |
+| K116 | nowy wzorzec z kodu juz-ide-api, karta, reseed | do przydzielenia | `_inbox/DEV-k116.md` |
+| K117 | breaking sync upstreamu (20 przemianowań) z przepięciem agenta, komendy i wzorców | do przydzielenia | `_inbox/DEV-k117.md` |
+| K118 | decyzja retire czy fork, dotyka satelitów | właściciel repo | `_inbox/DEV-k118.md` |
+| K119 | zmiana nazwy zrywa symlinki albo wymaga deprecation notice | właściciel repo | ten plik |
+| K120 | sprzątanie w cudzych repozytoriach i poza repo | użytkownik | ten plik |
+| K121 | wymaga diagnozy payloadu SubagentStop | do przydzielenia | `_inbox/DEV-k121.md` |
+
+Wpisy w `_inbox/` mają `trigger: agent_note` i `sources: [orchestrate]`, bo skrzynka nie ma
+osobnego źródła dla wpisów ręcznych; przy triage promować do `docs/tasks/TASK-*.md`.

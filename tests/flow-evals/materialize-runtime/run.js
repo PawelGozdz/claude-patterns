@@ -49,6 +49,14 @@ function materialize(projectYmlPath) {
   const cfg = path.join(dir, '.claude', 'config');
   fs.mkdirSync(cfg, { recursive: true });
   fs.copyFileSync(projectYmlPath, path.join(cfg, 'project.yml'));
+  // Bloki lokalne fixture'u (`./nazwa` w stack_blocks) leżą w `<fixture>.blocks/` obok project.yml
+  // i trafiają do `.claude/blocks/` katalogu tymczasowego (K113: extends + orchestrate per klucz).
+  const localBlocks = projectYmlPath.replace(/\.project\.yml$/, '.blocks');
+  if (fs.existsSync(localBlocks)) {
+    const blocksDir = path.join(dir, '.claude', 'blocks');
+    fs.mkdirSync(blocksDir, { recursive: true });
+    for (const f of fs.readdirSync(localBlocks)) fs.copyFileSync(path.join(localBlocks, f), path.join(blocksDir, f));
+  }
 
   const res = spawnSync('node', [MATERIALIZE, dir, REPO], { encoding: 'utf8' });
   if (res.status !== 0) {
