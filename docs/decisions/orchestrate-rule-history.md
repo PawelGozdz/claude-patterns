@@ -2798,3 +2798,69 @@ produktowe oceniamy raz, na całości zmiany, żeby nie płacić za nie w każde
 **Zmiana.** Mapowanie wyników (`literalMapping` w `buildProbePrompt`) wymienia z nazwy linter (`ruff`, `eslint`, `flake8`, `pylint`, `golangci-lint`, `clippy`, `biome`, `ktlint`, `detekt`) → `lint` i runner testów (`pytest`, `vitest`, `jest`, `go test`, `cargo test`) → `tests`. Komenda, której sonda nie rozpoznaje, a która się wykonała, dostaje pole według tego, co robi; `skipped` zostaje dla pól, których żaden check nie obejmuje. Eval `probe-maps-named-linters-and-runners-to-their-fields`. Reguła jest tekstem promptu, więc działanie na żywym przebiegu potwierdzi dopiero kolejny przebieg pcu.
 
 **Ryzyko.** Plik brudny przed startem poza warstwami, edytowany w trakcie przez implementera wbrew zakresowi (ORC-042), nie unieważni GO. Takiego pliku i tak nie ocenia weryfikator ani nie stage'uje silnik.
+
+<a id="anl-054"></a>
+
+### ANL-054 — źródło odpowiedzi i precedens z dokumentów projektu, z cytatem sprawdzanym skryptem (2026-11-07)
+
+**Objaw (juz-ide-api, rozmowa z właścicielem).** Po `/analyze` człowiek dostawał listę otwartych pytań bez podstawy. Część z nich miała odpowiedź w BDR albo KANON, której agent nie szukał, a część wymagała prawdziwej decyzji. Człowiek nie miał jak odróżnić jednych od drugich bez czytania dokumentów.
+
+**Zmiana.** Krok 1.b (tylko gdy blok `decision-registry` wnosi `analyze.resolve`) szuka w dokumentach wg `lookup_order`, indeksu decyzji i `governance.canon` dwóch rzeczy: źródła, które odpowiada wprost (`canon`), i precedensu, czyli analogicznej decyzji (`precedent`). Wynik to `basis` i `evidence: [{kind, source: "plik:linia", quote}]`. `scripts/verify-answer-sources.mjs` sprawdza bez tokenów, że plik istnieje, leży w źródłach projektu, a cytat stoi w tej linii. Jedno wywołanie Explore/haiku obsługuje wszystkie pytania naraz (ANL-019).
+
+**Odrzucone.** Weryfikacja cytatu przez drugiego agenta: kosztuje tokeny, a skrypt robi to dokładniej. Cytat obejmujący kilka linii: wystarczy jedna linia z decyzją, a wiele linii otwiera drogę do „cytatów" sklejonych z kawałków.
+
+**Ograniczenia.** Skrypt dowodzi, że cytat istnieje, nie że wynika z niego rekomendacja. To ocenia człowiek, który widzi cytowany BDR w `rec`. Przesłanki o kodzie nadal sprawdza ANL-049.
+
+<a id="anl-055"></a>
+
+### ANL-055 — pytanie do człowieka: jedna linia pytania, jedna linia rekomendacji z podstawą (2026-11-07)
+
+**Objaw.** ANL-029 i hook `check-human-voice` zabraniały numerów ADR/BDR w `ask`, więc rekomendacja „zgodne z BDR-141" nie mieściła się w żadnym polu, które człowiek czyta.
+
+**Zmiana.** Nowe pole `rec` obok `ask`. `ask` to jedno proste pytanie bez żargonu, `rec` to „Rekomendacja: … (zgodne z BDR-xx / KANON §y)" albo „… (nowy wzorzec, oparty o …)", razem najwyżej 2 zdania. Numer BDR/ADR wolno tylko w `rec`; pliki, klasy i żargon nie wolno nigdzie. „Nowy wzorzec" jest wymagany, gdy nie ma zweryfikowanego precedensu, żeby człowiek patrzył wtedy uważniej. Hook `check-human-voice` eksportuje `TELLS` i `checkRecommendation`, a skrypt używa tych samych funkcji, więc hook i skrypt nie mają dwóch definicji „krótkiego pytania".
+
+**Odrzucone.** Numer BDR w `ask`: psuje test „czy człowiek nieznający kodu odpowie sam" (ANL-030). Osobne pole `basis_text`: trzecia linia dla człowieka łamie limit dwóch zdań.
+
+<a id="anl-056"></a>
+
+### ANL-056 — decyzję podejmuje człowiek, zawsze (2026-11-07)
+
+**Zmiana względem wcześniejszej propozycji z tej samej rozmowy.** Propozycja zakładała ścieżkę, w której pytanie z jednoznacznym kanonem dostaje odpowiedź bez człowieka (`answered_by: auto`, nowa reguła ANL i poluzowanie bramki `orchestrate-prepare`). Właściciel ją odrzucił: odpowiedź zawsze pochodzi od człowieka. Dlatego nie ma pola `answered_by`, nie ma żadnej zmiany w `orchestrate-prepare`, a ANL-034 (`approved` plus `answer: null` to exit 2) zostaje bez zmian.
+
+**Co reguła rozstrzyga.** Rekomendacja jest propozycją. `USER_CHALLENGE`, `one-way` (brak `door_type` znaczy one-way) i `new-pattern` mogą ją mieć, ale nigdy nie idą pod „ok wszystkie". Flagi `premise_failed` i `card_conflict` zostawiają dotychczasowy zamek w `prepare`. Produkt, prawo i `one-way` bez zweryfikowanego źródła nie dostają zgadniętej wartości: w `rec` jest kierunek, nie liczba, a w formacie `file` powstaje plik pytania. Limit `max_questions` i budżet `resolve` kończą się jak ANL-051: reszta pytań idzie do człowieka bez rekomendacji, bez uzupełniania z pamięci.
+
+**Pytanie z jednoznacznym kanonem nie znika z listy.** Idzie do człowieka z rekomendacją i zweryfikowanym cytatem; koszt po stronie człowieka to jedno „ok wszystkie". `MECHANICAL` (ANL-047) działa jak dotąd: reguła, wzorzec, karta albo kod, nie dokument decyzji. Czy pytanie z kanonem ma zniknąć jako decyzja `MECHANICAL`, zostaje do rozstrzygnięcia przez właściciela (ADR 0016, otwarte pytanie 1).
+
+**Nazwy.** Klucz konfiguracji nazywa się `analyze.resolve`, nie `auto_resolve`: nic w nim nie odpowiada za człowieka.
+
+<a id="anl-057"></a>
+
+### ANL-057 — partia najwyżej pięciu pytań i odpowiedź zbiorcza, rozbierana skryptem (2026-11-07)
+
+**Zmiana.** Podsumowanie na końcu analizy pokazuje najwyżej `batch_size` pytań (domyślnie 5) w kolejności: `USER_CHALLENGE` i `one-way`, potem reszta, w grupie wg `blocks_sp` (ile punktów zadań blokuje pytanie; tak liczy widok „Do founder" w juz-ide-api). Człowiek odpowiada „ok wszystkie", „ok poza 3 i 5", „2: nie" albo „ok 4". `verify-answer-sources.mjs --reply` rozbiera odpowiedź na konkretne `answer:` i listę pytań, które zostają. „Ok wszystkie" obejmuje tylko pytania `bulkEligible` (zweryfikowane źródło, `door_type: two-way`, bez `USER_CHALLENGE`, bez flag decyzji); „ok 4" to jawna zgoda i działa także dla `one-way` i nowego wzorca, bo człowiek je wskazał.
+
+**Wznowienie.** Ta sama sesja (odpowiedź na podsumowanie) albo `/analyze <TASK-ID> --resume`: bez panelu, tylko dla artefaktu ze `status: awaiting-human`. Odpowiedzi żyją we frontmatterze, więc ANL-034 i `prepare` nie zmieniają się. `status: approved` ustawia agent tylko na wprost polecenie człowieka („zatwierdzam"); bez niego człowiek ustawia status sam, jak dotąd.
+
+**Odrzucone.** Interpretacja odpowiedzi przez agenta: „ok poza 3 i 5" wypełnione źle to odpowiedzi, których człowiek nie dał. Osobna komenda do odpowiedzi: wprost wykluczona przez właściciela.
+
+<a id="anl-058"></a>
+
+### ANL-058 — utrwalenie decyzji po odpowiedzi, tylko w ścieżkach z configu (2026-11-07)
+
+**Zmiana kontraktu „/analyze nigdy nie implementuje".** Lista zapisów (ANL-001) dostaje punkt 4, ale wąski: dopiero po odpowiedzi człowieka, tylko w ścieżkach z `params.decision-registry` (`resolution_sink`, `questions_dir` lub `open_questions`, `question_task_link`) i tylko tak, jak dopuszcza `resolve-finalize.mjs check-write`: nowe dokumenty decyzji w katalogach ujścia (uchylenie to nowy wpis, istniejącej decyzji nie edytuje się), edycja wyłącznie jawnie nazwanych plików kanonu (`canon_edit`, bez globów), plik pytania, opcjonalnie jedno pole zadania. Wzorzec dla juz-ide-api: decyzja biznesowa to BDR z polem `rozstrzyga: [id-pytania]` plus edycja `docs/KANON.md`, techniczna to ADR, plik pytania znika w tej samej zmianie (BDR-141). `close-questions` kasuje plik pytania dopiero, gdy dokument decyzji z `rozstrzyga` istnieje; bez niego plik zostaje i skrypt kończy się exit 2. Bez commita i bez `git add`.
+
+**Adapter formatu.** `questions_format: file | index | none`. `none` (domyślnie) zachowuje dzisiejszy flow: pytania zostają w artefakcie i nic nie jest utrwalane poza nim. Projekt bez bloku `decision-registry` w ogóle nie widzi tego kroku.
+
+**Odrzucone.** Zapis całego `docs/` albo katalogów z hardcodem: reguła musi czytać config, bo iam, ai-gateway i mobile-app mają inne układy niż juz-ide-api. Zapis do zadania domyślnie: ANL-052 świadomie odmówił `tasks/` w liście zapisów, więc `awaits_question` to opt-in (`question_task_link`).
+
+**Ograniczenia.** `check-write` jest sprawdzany przez prompt, nie przez hook `PreToolUse`: model, który go pominie, nie zostanie zatrzymany. Hook zapisu to kandydat na kolejny krok (ADR 0016, Etap 2). Treść dokumentu decyzji (szablon, numer) pochodzi z projektu; skrypt nie zna szablonu BDR.
+
+<a id="anl-059"></a>
+
+### ANL-059 — koszt kroku i odsetek odrzuconych rekomendacji (2026-11-07)
+
+**Zmiana.** Krok 1.b ma w telemetrii własny `step` o roli `resolve` (istniejące pola: `--tool-calls`, `--cost-usd`), a Explore z `[slot:resolve]`. Odsetek rekomendacji odrzuconych przez człowieka liczy `verify-answer-sources.mjs --stats` i trafia do frontmattera artefaktu jako `resolve_stats` (`rec_total`, `rec_accepted`, `rec_rejected`, `rec_rejected_ratio`, `by_basis`). Wysoki odsetek znaczy złe rekomendacje albo za słabe źródła; `by_basis` pokazuje, czy winny jest `precedent` czy `new-pattern`.
+
+**Dlaczego nie w zdarzeniu v1.** Schemat telemetrii v1 jest zamknięty (`additionalProperties: false`), a nowe pole wymaga zmiany schematu i wpisu w ADR 0012/0015. To osobna decyzja. Do tego czasu miara żyje w artefaktach analizy i da się ją zebrać skryptem.
+
+**Claim.** Brak: miara jest nowa i nie ma jeszcze metryki w `telemetry-report`. Pierwszą linię bazową da się policzyć po kilkunastu analizach z `resolve_stats`.

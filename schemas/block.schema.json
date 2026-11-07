@@ -56,6 +56,11 @@
           },
           "required": { "type": "boolean" },
           "default": {},
+          "enum": {
+            "type": "array",
+            "description": "Allowed values; materialize-runtime.mjs fails on a value outside the list (a typo in questions_format must not silently mean 'none').",
+            "items": { "type": "string" }
+          },
           "doc": { "type": "string" }
         }
       }
@@ -118,6 +123,15 @@
           "type": "string",
           "description": "PAUSE makes approval a hard gate and wins over any other value contributed by another block (materialize-runtime.mjs:413).",
           "enum": ["PAUSE", "CONTINUE"]
+        },
+        "resolve": {
+          "type": "object",
+          "description": "Limits of the 'resolve open questions' step that runs after the panel (ANL-054..059). The human always decides: nothing here lets /analyze answer for them. Exactly one block may define it.",
+          "additionalProperties": false,
+          "properties": {
+            "max_questions": { "description": "How many open questions get a source lookup; the rest go to the human without a recommendation (ANL-051).", "type": ["integer", "string"] },
+            "batch_size": { "description": "How many questions are shown to the human at once.", "type": ["integer", "string"] }
+          }
         },
         "panel": {
           "type": "array",

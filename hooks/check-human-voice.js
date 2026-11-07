@@ -41,6 +41,31 @@ const TELLS = [
   { re: /\b(agregat|aggregate|value object|specification|handler|repozytorium|repository|bounded context)\b/i, what: 'żargon warstw' },
 ];
 
+// Numer ADR/BDR i odwołanie do kanonu wolno tylko w `rec` (podstawa rekomendacji, ANL-055) — w `ask` nadal nie.
+// Reszta tellów obowiązuje w `rec` tak samo: nazwa pliku, ścieżka, klasa i żargon nie należą do człowieka.
+const REC_TELLS = TELLS.filter((t) => t.what !== 'numer ADR/BDR');
+
+const sentenceCount = (text) => String(text).trim().split(/(?<=[.!?…])\s+(?=[A-ZĄĆĘŁŃÓŚŹŻ„"])/).filter(Boolean).length;
+
+/**
+ * Kontrakt pytania do człowieka (ANL-055): linia 1 = `ask`, linia 2 = `rec`, razem najwyżej 2 zdania.
+ * Zwraca listę problemów (pusta = czysto). Czysta funkcja, bez I/O — używa jej też
+ * `scripts/verify-answer-sources.mjs`, żeby hook i skrypt nie mieli dwóch definicji „krótkiego pytania".
+ */
+function checkRecommendation(ask, rec) {
+  const problems = [];
+  const a = String(ask ?? '').trim().replace(/^["']|["']$/g, '').trim();
+  const r = String(rec ?? '').trim().replace(/^["']|["']$/g, '').trim();
+  if (!r) return problems;
+  if (!/^Rekomendacja:\s*\S/.test(r)) problems.push('`rec` zaczyna się od „Rekomendacja:" i podaje rekomendację');
+  if (sentenceCount(a) + sentenceCount(r) > 2) {
+    problems.push(`\`ask\` + \`rec\` to ${sentenceCount(a) + sentenceCount(r)} zdań — limit: 2 łącznie (1 pytanie, 1 rekomendacja z podstawą)`);
+  }
+  const hits = [...new Set(REC_TELLS.filter((t) => t.re.test(r)).map((t) => t.what))];
+  if (hits.length) problems.push(`\`rec\` zawiera ${hits.join(', ')} — podstawą może być tylko numer BDR/ADR albo „KANON §…"`);
+  return problems;
+}
+
 function readStdinSync() {
   try { return fs.readFileSync(0, 'utf8'); } catch { return ''; }
 }
@@ -56,7 +81,11 @@ function extractItems(frontmatter, listKey, humanField) {
   const block = frontmatter.match(new RegExp(`^${listKey}:\\s*$([\\s\\S]*?)(?=^\\S|$(?![\\s\\S]))`, 'm'));
   if (!block) return [];
   const items = [];
-  for (const chunk of block[1].split(/^\s*-\s+/m).slice(1)) {
+  // Elementy listy pytań mają wcięcie pierwszego „- ”; zagnieżdżone listy (`evidence`, `options` blokowo) mają głębsze
+  // wcięcie i NIE są osobnymi pytaniami. Dzielenie po każdym „- ” robiło z wpisu `evidence` pytanie bez `ask`.
+  const first = block[1].match(/^([ \t]*)-\s+/m);
+  if (!first) return [];
+  for (const chunk of block[1].split(new RegExp(`^${first[1]}-\\s+`, 'm')).slice(1)) {
     const id = chunk.match(/\bid:\s*(\S+)/)?.[1] ?? '?';
     const has = new RegExp(`\\b${humanField}:`).test(chunk);
     // Folded (`>-` / `|`) is tried FIRST and the inline separator is `[ \t]+`, not `[ \t]*`.
@@ -128,6 +157,12 @@ function main() {
   }
   inspect(extractItems(frontmatter, 'open_questions', 'ask'), 'open_questions', 'ask', problems);
   inspect(extractItems(frontmatter, 'decisions', 'means'), 'decisions', 'means', problems);
+  // ANL-055: pytanie z rekomendacją. `rec` jest opcjonalne (brak = pytanie bez rekomendacji, jak dotąd).
+  const asks = new Map(extractItems(frontmatter, 'open_questions', 'ask').map((it) => [it.id, it.value]));
+  for (const it of extractItems(frontmatter, 'open_questions', 'rec')) {
+    if (!it.has) continue;
+    for (const msg of checkRecommendation(asks.get(it.id), it.value)) problems.push(`open_questions[${it.id}]: ${msg}`);
+  }
 
   if (!problems.length) process.exit(0);
 
@@ -142,4 +177,6 @@ function main() {
   process.exit(0);
 }
 
-main();
+if (require.main === module) main();
+
+module.exports = { TELLS, REC_TELLS, sentenceCount, checkRecommendation };
