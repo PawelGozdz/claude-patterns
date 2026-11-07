@@ -32,6 +32,27 @@ open_questions:                 # człowiek wypełnia answer; null = blokuje imp
     decision: D2                   # id decyzji z `decisions`, której to pytanie dotyczy (gdy dotyczy)
     options: ["<opcja A> (recommended)", "<opcja B>"]   # JEDNA linia (flow), nie lista blokowa; dokładnie jedna opcja z (recommended)
     answer: null
+    # Pytanie z rekomendacją (ANL-054..057) — pola OPCJONALNE; bez `rec` pytanie wygląda jak dotąd.
+    # Człowiek widzi DWIE linie: `ask` (jedno proste pytanie) i `rec` (rekomendacja + podstawa). Razem ≤ 2 zdania.
+    # Numer BDR/ADR wolno tylko w `rec`; kontekst techniczny zostaje w `q`. Decyduje człowiek: skrypt nigdy nie wypełnia `answer`.
+    # - id: Q3
+    #   ask: "Czy zbanowany użytkownik może publikować treści?"
+    #   rec: "Rekomendacja: nie (zgodne z BDR-141)."          # albo „… (nowy wzorzec, oparty o BDR-120 i BDR-122)."
+    #   basis: precedent                                      # precedent | canon | new-pattern | none (none = bez rec)
+    #   evidence:                                             # sprawdza scripts/verify-answer-sources.mjs: plik, linia, dosłowny cytat
+    #     - { kind: precedent, source: "docs/decisions/BDR-141-x.md:12", quote: "dosłowny cytat z tej linii" }
+    #   q: "kontekst techniczny dla agentów"
+    #   domain: product                                       # tech → ADR, product|legal → BDR (dokąd utrwalić po odpowiedzi, ANL-058)
+    #   class: TASTE
+    #   door_type: two-way                                    # brak = one-way; one-way, USER_CHALLENGE i new-pattern nigdy nie idą „ok wszystkie"
+    #   options: ["Nie (recommended)", "Tak"]
+    #   question_file: null                                   # format file: id pliku pytania w questions_dir (produkt/prawo bez źródła)
+    #   blocks_sp: 3                                          # ile SP blokuje; porządkuje partię
+    #   answer: null
+
+# Po odpowiedziach człowieka /analyze dopisuje (ANL-058/059):
+# resolution_docs: [{ question: Q3, doc: docs/decisions/BDR-142-x.md }]
+# resolve_stats: { rec_total: 4, rec_accepted: 3, rec_rejected: 1, rec_rejected_ratio: 0.25, by_basis: { precedent: { total: 3, rejected: 0 } } }
 
 decisions:                      # propozycje z analizy; człowiek weryfikuje/poprawia
   # `means` = co ta decyzja zmienia dla produktu albo użytkownika, tym samym rejestrem

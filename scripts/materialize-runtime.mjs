@@ -286,6 +286,7 @@ function applyExtends(block, depth = 0) {
       baseAnalyze.set('panel', basePanel);
     }
     if (localAnalyze.get('exit') !== undefined) baseAnalyze.set('exit', localAnalyze.get('exit'));
+    if (localAnalyze.get('resolve', true) !== undefined) baseAnalyze.set('resolve', localAnalyze.get('resolve', true));
     merged.set('analyze', baseAnalyze);
   }
 
@@ -346,6 +347,10 @@ for (const b of blocks) {
       values[param] = type.endsWith('[]') ? [] : null;
       continue;
     }
+    // `enum` w definicji parametru: literówka w wartości (np. questions_format: flie) nie może po cichu
+    // zadziałać jak wartość domyślna — projekt dostałby inny flow, niż zadeklarował.
+    if (Array.isArray(def?.enum) && !def.enum.map(String).includes(String(value)))
+      fail(`blok "${b.name}": parametr "${param}" = ${JSON.stringify(value)} poza słownikiem ${def.enum.join(' | ')}`);
     if (type === 'path' || type === 'path[]') {
       const patterns = (Array.isArray(value) ? value : [value]).map(String);
       // Wzorce (glob / wykluczenie) zapisujemy obok rozwiniętej listy: lista jest migawką z chwili
@@ -378,6 +383,7 @@ const removes = [];          // {path, source} — patterns.remove (K44, TASK-KA
 const triggers = [];         // {keywords, include, source}
 const panel = [];            // {node, source}
 let analyzeExit = null, analyzeExitSrc = null;
+let analyzeResolve = null, analyzeResolveSrc = null;
 let orch = null;             // {node, source}
 const contributions = [];    // {match, patterns?, checks?, source} — wkłady do cudzych warstw
 let ralph = null, reqEcc = null;
@@ -405,6 +411,11 @@ for (const b of blocks) {
     for (const item of an.get('panel', true)?.items ?? []) panel.push({ node: item, source: b.name });
     const ex = an.get('exit');
     if (ex && (ex === 'PAUSE' || !analyzeExit)) { analyzeExit = ex; analyzeExitSrc = b.name; }
+    const rs = an.get('resolve', true);
+    if (rs) {
+      if (analyzeResolve) fail(`analyze.resolve definiują dwa bloki: "${analyzeResolveSrc}" i "${b.name}" — dozwolony jeden`);
+      analyzeResolve = rs; analyzeResolveSrc = b.name;
+    }
   }
 
   const or = b.doc.get('orchestrate', true);
@@ -690,6 +701,7 @@ if (analyzeExit) {
   exitNode.comment = ` source: ${analyzeExitSrc}`;
   analyzeMap.set('exit', exitNode);
 }
+if (analyzeResolve) analyzeMap.set('resolve', analyzeResolve);
 doc.set('analyze', analyzeMap);
 
 // ── wkłady do warstw (layer_contributions) ────────────────────────────────

@@ -7,7 +7,7 @@ description: |
   analizy i kończy wg `analyze.exit` (PAUSE = twarda bramka approval, wnosi ją
   blok ddd/core). NIGDY nie implementuje.
 
-  Usage: /analyze <TASK-ID>
+  Usage: /analyze <TASK-ID> [--resume]
 tools: Task, Read, Write, Edit, Grep, Glob, Bash
 disallowedTools: MultiEdit, NotebookEdit
 ---
@@ -30,9 +30,11 @@ w `docs/decisions/orchestrate-rule-history.md`, sekcja „reguły ANL".
 0.c telemetria: start  → telemetry-emit run-start (best-effort, niżej)
 1.  panel              → sloty z analyze.panel W KOLEJNOŚCI, agenci jako LIŚCIE
 1.a kontrola decyzji   → przesłanki (ANL-049) · karty (ANL-050) · wynik częściowy (ANL-051)
+1.b otwarte pytania    → tylko z `analyze.resolve` (ANL-054..056, niżej)
 2.  artefakt           → project-orchestration/analysis/{TASK-ID}.analysis.md (jedyny Write)
 3.  wyjście            → analyze.exit: PAUSE = STOP i czekaj na człowieka
 3.a telemetria: koniec → telemetry-emit run-end (przed STOP z kroku 3)
+3.b/3.c pytania, odpowiedź, utrwalenie → niżej (ANL-057/058)
 4.  zgłoszenia         → odstępstwa MASZYNY do skrzynki claude-patterns (best-effort, niżej)
 5.  zalążek wpisu      → temat wart wpisu → blog-seed-emit (best-effort, w tle, niżej)
 ```
@@ -49,6 +51,7 @@ slotów, które panel faktycznie uruchomi (po `when:` i sicie ANL-018), w kolejn
 node <claude-patterns>/scripts/telemetry-emit.mjs run-start --process analyze \
   --project {ABSOLUTNA ścieżka korzenia projektu} --task {TASK-ID} --plan "<slot>:panel,<slot>:panel,…"
 ```
+
 
 Stdout to `runId` — wpisz go do frontmattera artefaktu jako `telemetry_run: <runId>` i zachowaj
 na krok 3.a. `--project` MUSI być ścieżką (nie samą nazwą): hooki dopasowują agentów do przebiegu
@@ -117,7 +120,9 @@ Błąd wywołania = jedno zdanie w artefakcie (`## Uwagi`), analiza idzie dalej.
 3. **rejestr threat-modeli** (`docs/security/threat-models/index.md` lub odpowiednik),
    gdy projekt wymaga wiersza per TM.
 
-Nic poza tym — żadnego pliku w `src/`, żadnego taska, żadnego ADR-a.
+4. **Po odpowiedzi człowieka (ANL-058)**: tylko ścieżki z configu (`resolution_sink`, `questions_dir`, `question_task_link`), po `resolve-finalize.mjs check-write`.
+
+Nic poza tym — żadnego pliku w `src/`, żadnego taska (poza polem z pkt 4), żadnego ADR-a.
 
 ## Krok 5 — zalążek wpisu blogowego (best-effort, nie blokuje, ADR 0013)
 
@@ -151,6 +156,10 @@ produktu?" (tak → `personal`, nie → `product`) + `confidence` (`medium` → 
 drugiego bloga). Wynik/błąd skryptu nie zmienia artefaktu ani `--outcome`; kod ≠ 0 = jedno zdanie
 w `## Uwagi`. Wejściem są tylko artefakty przebiegu — nie transkrypt rozmowy.
 
+## Kroki 1.b, 3.b, 3.c (ANL-054..059)
+
+Gdy `runtime.yml` ma `analyze.resolve` i po panelu zostały pytania spoza `MECHANICAL`: przeczytaj `<claude-patterns>/docs/analyze-resolve.md` i wykonaj 1.b, 3.b, 3.c według niego. Bez `analyze.resolve` pomiń.
+
 ## Klasyfikacja decyzji (ANL-047, ANL-048)
 
 Każda decyzja w `decisions[]` i każde pytanie w `open_questions[]` dostaje klasę (`class`) i typ drzwi
@@ -183,7 +192,7 @@ wybranej opcji bez znacznika; przyjęcie rekomendacji hurtem zapisujesz jako tek
 | ANL-001 | cały przebieg | zapisy wyłącznie z listy zamkniętej powyżej; zero implementacji | tylko prompt (hook `check-delegation` zna tylko pliki źródłowe) | — |
 | ANL-002 | dopisanie wiersza do rejestru TM | `Edit` dozwolony wyłącznie do rejestrów z listy; `MultiEdit` zabroniony | frontmatter komendy | [ANL-002](docs/decisions/orchestrate-rule-history.md#anl-002) |
 | ANL-003 | szukanie pliku/symbolu | `Grep`/`Glob` do CELOWANEGO szukania; szerokie przeczesywanie deleguj do Explore | tylko prompt | [ANL-003](docs/decisions/orchestrate-rule-history.md#anl-003) |
-| ANL-004 | użycie `Bash` | wyłącznie deterministyczne i tylko-do-odczytu (indeks decyzji, `git log`/`status`); żadnych zapisów, instalacji ani testów. Wyjątek: `telemetry-emit` i `report-deviation` — zapisują do claude-patterns, nie do projektu; `blog-seed-emit` — zapisuje wyłącznie do `stage/` repo blogów (ADR 0013) | tylko prompt | — |
+| ANL-004 | użycie `Bash` | wyłącznie deterministyczne i tylko-do-odczytu (indeks decyzji, `git log`/`status`); żadnych zapisów, instalacji ani testów. Wyjątek: `telemetry-emit` i `report-deviation` — zapisują do claude-patterns, nie do projektu; `blog-seed-emit` — zapisuje wyłącznie do `stage/` repo blogów (ADR 0013); `verify-answer-sources`, `resolve-finalize` (zakres: ANL-058) | tylko prompt | — |
 | ANL-005 | start | brak `.claude/config/runtime.yml` → STOP; `schema_version ≠ 1` → STOP z poleceniem ponownego setupu | tylko prompt | — |
 | ANL-006 | przed rozpisaniem jednostek pracy | `git status --short` + `git log --oneline -15`, a do tego ślad zadania POZA bieżącą gałęzią: `git branch -a --no-merged develop`, `git log --all --oneline --grep=<TASK-ID>`, `ls .claude/run-state/<TASK-ID>.*`; trafienie = STOP z pytaniem „kontynuować istniejącą gałąź czy zaczynać od nowa", nie cicha analiza od zera; potwierdź grepem na KONKRETNYM pliku, że praca nie jest zrobiona; „już zrobione" → `status: already-done` z dowodem, bez jednostki | tylko prompt (mechaniczny wariant w `orchestrate-prepare.mjs` otwarty) | [ANL-006](docs/decisions/orchestrate-rule-history.md#anl-006) |
 | ANL-007 | panel ma stage `threat-model` | dopasuj `when:` do taska; trafienie + brak pliku TM → uruchom stage i ZAPISZ TM; TM niepokrywający zakresu → ADDENDUM albo blokujące `open_question` | tylko prompt | — |
@@ -209,13 +218,13 @@ wybranej opcji bez znacznika; przyjęcie rekomendacji hurtem zapisujesz jako tek
 | ANL-026 | synteza | `tech-lead` z `model: opus`; gdy środowisko przerywa liście — syntezę robi główny agent i odnotowuje to w artefakcie | tylko prompt | [ANL-026](docs/decisions/orchestrate-rule-history.md#anl-026) |
 | ANL-027 | przed zapisem artefaktu | każdą nazwaną funkcję/klasę/ścieżkę zgrepuj; nie istnieje → jawne „TO TRZEBA STWORZYĆ" | tylko prompt | [ANL-027](docs/decisions/orchestrate-rule-history.md#anl-027) |
 | ANL-028 | artefakt | wg `templates/task-analysis-template.md`: `task`, `status`, `threat_model`, `open_questions[]`, `decisions[]`, `patterns[]`, `rag:`, `stack_blocks:`; opcjonalnie klasyfikacja decyzji (ANL-047/048). Odpowiedzi żyją WYŁĄCZNIE we frontmatter | tylko prompt | — |
-| ANL-029 | `open_questions[]` i `decisions[]` | `ask` i `means` są OBOWIĄZKOWE, rejestrem z `human_voice` (default: polski, biznesowy, do 2 zdań, bez nazw klas, ścieżek i numerów ADR/BDR) | hook `check-human-voice` (gdy zainstalowany) | [ANL-029](docs/decisions/orchestrate-rule-history.md#anl-029) |
+| ANL-029 | `open_questions[]` i `decisions[]` | `ask` i `means` są OBOWIĄZKOWE, rejestrem z `human_voice` (default: polski, biznesowy, do 2 zdań, bez nazw klas, ścieżek i numerów ADR/BDR, ANL-055) | hook `check-human-voice` (gdy zainstalowany) | [ANL-029](docs/decisions/orchestrate-rule-history.md#anl-029) |
 | ANL-030 | pisanie `ask` | test: czy człowiek nieznający kodu odpowie sam? jeśli musi dopytać o nazwę — to jeszcze `q`, nie `ask` | tylko prompt | [ANL-030](docs/decisions/orchestrate-rule-history.md#anl-030) |
 | ANL-031 | pisanie `ask` | nie chowaj konsekwencji wyboru — to jest ta część, dla której człowiek czyta pytanie | tylko prompt | [ANL-031](docs/decisions/orchestrate-rule-history.md#anl-031) |
 | ANL-036 | rozpisane jednostki pracy | dla KAŻDEJ warstwy z `runtime.yml → orchestrate.layers` sprawdź, czy jakakolwiek jednostka dotyka jej `dirs`; warstwę bez pracy wpisz do `layers_skip: [{ id, reason }]` z powodem cytującym decyzję/jednostkę. Task infrastrukturalny bez zmian w domenie i aplikacji → dwa wpisy, nie zero. `decisions[]` mają pole `choice` — nigdy `decision`/`answer` (prepare odrzuca) | skrypt `orchestrate-prepare.mjs` (bramka: nieznana warstwa, brak `reason`, brak `choice`) | [ANL-036](docs/decisions/orchestrate-rule-history.md#anl-036) |
 | ANL-038 | rozpisane jednostki pracy | podział warstwy na obszary → `units: [{ id, layer, dirs, role?, checks?, reason?, repair? }]` (prepare robi z nich pod-warstwy; `repair: true` = jednostka testowa tylko dopasowuje istniejące testy, bez nowych bloków — bramka przyrostu ORC-035 jej nie dotyczy); pliki towarzyszące spoza katalogu zmienianego pliku (setup testów, compose) dopisz do `dirs` jednostki albo `layers_scope`; plików `.env*` (np. `.env.example`) tam NIE wpisuj: reguła deny `Read(./.env.*)` blokuje agentom odczyt i zapis, więc zmianę zapisz jako krok ręczny po przebiegu (ORC-138); plik wspólny, który rozszerza więcej niż jedna jednostka (barrel `index.ts`, rejestr, moduł DI), wpisz do `dirs` KAŻDEJ z nich (remis własności rozstrzyga ORC-112); `dirs` to ścieżki OD KORZENIA repo — sama nazwa pliku (`CLAUDE-LOCAL.md` zamiast `.claude/config/CLAUDE-LOCAL.md`) zakresu nie trafia, prepare ostrzega — test obok pliku z tym samym rdzeniem nazwy wchodzi sam; fałszywe trafienia keywordów → `patterns_exclude: [<ścieżka>]`, nie komentarz; decyzja, która PRZENOSI, przemianowuje albo usuwa eksport pliku, wymaga w `dirs` jednostki także plików, które go importują (poza zakresem agent ich nie ruszy, ORC-042, a przeniesienie wychodzi dopiero w rundzie po bramce końcowej i psuje lint; to samo przy usunięciu lub zawężeniu pola, typu albo reguły — konsumenci i testy, które na tym polegają (loader, emitter, testy sąsiedniej jednostki), też wchodzą do `dirs`, inaczej zostają czerwone do kolejnego przebiegu); skrypt, który decyzja każe uruchomić po zmianie (np. `test:l3`), → `final_checks: [<skrypt>]` (ORC-121) | skrypt `orchestrate-prepare.mjs` (bramka `units`: nieznana warstwa, brak `dirs`, warstwa w skip/scope, duplikat; ostrzeżenie dla `patterns_exclude`, który nic nie wykluczył) | [ANL-038](docs/decisions/orchestrate-rule-history.md#anl-038) |
 | ANL-039 | analiza znajduje drobne rzeczy (literówka w dokumencie, nit, oczywista niespójność), które nie są problemem ani decyzją | wpisz je do `minor_fixes: ["plik — co — poprawka", …]` w artefakcie; `/orchestrate` przekaże je implementerowi warstwy (ORC-091) do mechanicznej naprawy przy okazji; rzeczy wymagające decyzji NIE idą tutaj, tylko do `open_questions`/`decisions` | tylko prompt (prepare czyta pole) | [ORC-091](docs/decisions/orchestrate-rule-history.md#orc-091) |
-| ANL-040 | przekazanie człowiekowi pytań z `open_questions[]` po analizie | pokaż `ask` DOSŁOWNIE, po jednym pytaniu na linię, każde max 2 zdania, forma „tak/nie" albo „A czy B", z rekomendacją i domyślną odpowiedzią (gdy jest `options`: opcja z ` (recommended)`); kolejność: `USER_CHALLENGE` i `one-way` najpierw, każde osobno, potem wszystkie `TASTE` razem (ANL-047); bez własnego komentarza, bez streszczenia analizy, bez nazw plików/klas/ADR; hook `check-human-voice` ostrzega przy `ask` > 2 zdania | hook `check-human-voice` (długość i żargon) + prompt | [ORC-095](docs/decisions/orchestrate-rule-history.md#orc-095) |
+| ANL-040 | przekazanie człowiekowi pytań z `open_questions[]` po analizie | pokaż `ask` DOSŁOWNIE, po jednym pytaniu na linię, każde max 2 zdania, forma „tak/nie" albo „A czy B", z rekomendacją i domyślną odpowiedzią (gdy jest `options`: opcja z ` (recommended)`); kolejność: `USER_CHALLENGE` i `one-way` najpierw, każde osobno, potem wszystkie `TASTE` razem (ANL-047); bez własnego komentarza, bez streszczenia analizy, bez nazw plików/klas/ADR; hook `check-human-voice` ostrzega przy `ask` > 2 zdania; partia i odpowiedź: ANL-057 | hook `check-human-voice` (długość i żargon) + prompt | [ORC-095](docs/decisions/orchestrate-rule-history.md#orc-095) |
 | ANL-041 | start i koniec panelu | `run-start` przed pierwszym agentem (plan = sloty, które wejdą), `telemetry_run` w frontmatterze, `run-end` po zapisie artefaktu; opis KAŻDEGO agenta panelu zaczyna się od `[slot:<id>]` (id = klucz slotu z `--plan`); w opisie nic poufnego poza znacznikiem nie jest zapisywane | tylko prompt; hooki `telemetry-agent-start`/`-stop` (bez znacznika albo bez otwartego przebiegu nic nie robią) | [ADR 0012](docs/adr/0012-metryki-przebiegow-zdarzenia-v1.md) |
 | ANL-037 | rozpisane jednostki pracy | warstwa dotknięta CZĘŚCIOWO (jeden kontekst z ośmiu, jeden plik enumu) NIE idzie do `layers_skip` — idzie do `layers_scope: [{ id, dirs: [<ścieżki od korzenia repo>], reason }]`: warstwa wchodzi, implementer/weryfikator/sonda widzą tylko `dirs`. Skip jest binarny i gubi tę część pracy bez śladu | skrypt `orchestrate-prepare.mjs` (bramka: powód skipu z „wyjątek"/„częściowo"/„N z M"/„tylko dla"; scope bez `dirs`/`reason`; warstwa w obu listach) | [ANL-037](docs/decisions/orchestrate-rule-history.md#anl-037) |
 | ANL-032 | proza w body artefaktu | `## Synteza` i `## Ryzyka / uwagi` przepuść przez skill `humanizer` przed zapisem | tylko prompt | — |
@@ -231,6 +240,12 @@ wybranej opcji bez znacznika; przyjęcie rekomendacji hurtem zapisujesz jako tek
 | ANL-050 | przed zapisem `decisions[]` | porównaj `choice` z regułami MUST/MUST NOT kart wzorców (ID jak CH5, QP1). Sprzeczność → `card_conflict: [<ID>]` i sparowane pytanie (`decision: <id>`, `options`: „Zatwierdzam wyjątek od <ID>: <powód>" / „Zmieniamy podejście: <jak>"; dla ANL-049 „Zatwierdzam decyzję mimo to: <powód>"). Takiej decyzji nie wpisuj jako rozstrzygniętej; `gap` (karta nie rozstrzyga) to twardy stop (tylko prompt) | `orchestrate-prepare.mjs` (odpowiedź = jedna z `options`, „Zatwierdzam wyjątek/decyzję" z ID reguł; exit 2) + prompt | [ANL-050](docs/decisions/orchestrate-rule-history.md#anl-050) |
 | ANL-052 | start analizy: plik `project-orchestration/tasks/<TASK-ID>*.md` nie istnieje (zadanie znane tylko z KANBAN-a albo wcześniejszych analiz) | nie zgaduj zakresu po cichu: pierwsza linia raportu „Brak pliku zadania <TASK-ID>", w artefakcie sekcja „Źródła zakresu" z listą, skąd zakres odtworzono (KANBAN, analizy, polecenie człowieka), a w kroku 3 jedna linia dla człowieka: plik zadania do utworzenia. Sam go nie twórz (lista zapisów jest zamknięta, ANL-001) | tylko prompt (`orchestrate-prepare.mjs` ostrzega o braku taska dopiero przy implementacji) | [ANL-052](docs/decisions/orchestrate-rule-history.md#anl-052) |
 | ANL-053 | jednostka zmienia sygnaturę portu (`application/interfaces`), komendy albo zdarzenia albo usuwa lub przemianowuje pole DTO, modelu odczytu lub schematu | typecheck biegnie per warstwa (domain→application→infrastructure), więc implementacja i wołający w późniejszej warstwie zostawiają czerwień wcześniejszej. Wpisz do `dirs` jednostki, która zmienia sygnaturę, także implementację (adapter, repozytorium) i wszystkich wołających (kontroler, handler) z późniejszych warstw; wołających znajdź grepem po symbolu, nie z pamięci. Dotyczy to też kontrolera w warstwie `infrastructure`, gdy zmiana komend wymaga typechecku w `application`. Przy usuwaniu lub przemianowaniu pola: grep po nazwie pola w `src/` i każdy trafiony plik (DTO, model odczytu w `domain`, polityka, schemat, kontroler) ma właściciela w jednostce; pliki `domain` i `application` idą przed `infrastructure`, a guardian w `testing` (np. zakaz pola w odpowiedziach) jest czerwony, dopóki któryś zostaje bez właściciela | tylko prompt | [ANL-053](docs/decisions/orchestrate-rule-history.md#anl-053) |
+| ANL-054 | krok 1.b | źródło i precedens tylko z dokumentów: `evidence` = `plik:linia` + cytat; brak = `new-pattern`/`none` | `verify-answer-sources` | — |
+| ANL-055 | pytanie z `rec` | `ask` jedno pytanie + `rec` z podstawą, razem ≤ 2 zdania; BDR/ADR tylko w `rec` | hook `check-human-voice`, `verify-answer-sources` | — |
+| ANL-056 | pytanie w 1.b | decyduje człowiek; `one-way`, `USER_CHALLENGE`, `new-pattern` nigdy hurtem; limit → ANL-051 | `verify-answer-sources`, `prepare` | — |
+| ANL-057 | kroki 3.b/3.c | partia ≤ `batch_size`; `answer:` tylko z `reply.answers[]`; `approved` tylko na „zatwierdzam" | `verify-answer-sources --reply`, `prepare` | — |
+| ANL-058 | odpowiedź, format ≠ `none` | zapis tylko w ścieżkach z configu po `check-write`; bez commita | `resolve-finalize` | — |
+| ANL-059 | kroki 1.b, 3.c | `step` roli `resolve`; `resolve_stats` | `verify-answer-sources --stats` | — |
 | ANL-051 | stage `blocking: true` kończy się limitem budżetu albo bez wyniku | wynik częściowy nie jest wynikiem: nie uzupełniaj go własnym ustaleniem. Ponów stage RAZ na brakującą resztę; nadal niepełny → w `open_questions` „Bramka <stage> nie sprawdziła: <lista>" z `answer: null` | prompt; blokuje bramka `answer: null` w prepare | [ANL-051](docs/decisions/orchestrate-rule-history.md#anl-051) |
 | ANL-034 | wyjście | `analyze.exit: PAUSE` → `status: awaiting-human`, wypisz, że dopiero po odpowiedziach i `status: approved` wolno ruszyć z implementacją, i **KONIEC** — nie wołaj orkiestracji, nie implementuj. Bez PAUSE → `status: ready` i rekomendacja następnego kroku | tylko prompt (drugi zamek: `orchestrate-prepare.mjs` exit 2) | — |
 

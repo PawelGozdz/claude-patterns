@@ -31,6 +31,16 @@ Herdr jest już w `settings.json`); sama zmiana `.gitignore` bez `count-assets` 
 
 ---
 
+## 2026-11-07 — `/analyze` rozstrzyga otwarte pytania z dokumentów, decyzja zostaje u człowieka (ADR 0016, Etap 1)
+
+**Zmiana:** krok 1.b i 3.b/3.c w `/analyze` (ANL-054..059): źródło i precedens z cytatem sprawdzanym skryptem, pytanie w dwóch liniach (`ask`, `rec`), partia do 5 pytań z odpowiedzią zbiorczą, utrwalenie decyzji w ścieżkach z configu. Konfiguracja w bloku `decision-registry`, domyślnie wyłączona (`questions_format: none`).
+**Dlaczego:** człowiek dostawał listę pytań bez podstawy i sprawdzał dokumenty sam; część pytań miała odpowiedź w BDR/KANON. Wcześniejsza propozycja z tej samej rozmowy (odpowiedź bez człowieka) została odrzucona przez właściciela: decyzja zawsze jego.
+**Odrzucone:** `answered_by: auto` i luz w `orchestrate-prepare`; nowa komenda; numer BDR w `ask` (hook i ANL-029 go zabraniają, stąd pole `rec`); klucz `auto_resolve` (nazwa sugeruje odpowiadanie za człowieka).
+**Status:** done (Etap 1 scalony do develop lokalnie, rollout szablonów i configu wykonany). Etap 2 (doradcy, batching, szkice ADR, hook zakresu zapisu) zaprojektowany w ADR 0016.
+**Ref:** `docs/adr/0016-rozstrzyganie-otwartych-pytan-w-analyze.md`, `docs/decisions/orchestrate-rule-history.md#anl-054`.
+
+---
+
 ## 2026-10-23 — Fałszywe GO liczone z przypisania bramki do warstw, nie z heurystyki (TASK-OBS-012)
 
 **Zmiana:** pierwszy krok bramki końcowej dostaje `step.blamed` / `step.unblamed` (warstwy wskazane przez

@@ -50,6 +50,40 @@ params:
     default: ["docs/decisions/", "docs/product/", "BUSINESS_RULES.yaml", "src/", "docs/adr/"]
     doc: "kolejność weryfikacji wartości parametru — nagłówek ADR jest OSTATNI, nie pierwszy"
 
+  # ── rozstrzyganie otwartych pytań w /analyze (ANL-054..059, ADR 0016) ──────────
+  # Krok 1.b szuka w dokumentach projektu źródła odpowiedzi i precedensów, żeby człowiek dostał pytanie
+  # z rekomendacją i podstawą. DECYZJĘ PODEJMUJE CZŁOWIEK, zawsze: żaden z tych parametrów nie włącza
+  # odpowiadania za niego. `questions_format` mówi tylko, czy i gdzie po jego odpowiedzi utrwalić decyzję.
+  questions_format:
+    type: string
+    required: false
+    default: none
+    enum: [file, index, none]
+    doc: "adapter systemu pytań: file = jedno pytanie = jeden plik w questions_dir (juz-ide-api, BDR-141); index = wiersz w open_questions; none = pytania zostają w artefakcie, nic nie jest utrwalane"
+  questions_dir:
+    type: path
+    required: false
+    doc: "katalog plików pytań (questions_format: file), np. docs/decisions/questions"
+  resolution_sink:
+    type: object
+    required: false
+    default: {}
+    doc: "dokąd /analyze utrwala decyzję po odpowiedzi człowieka: { tech: <katalog, domyślnie adr_dir>, product: <katalog, domyślnie bdr_dir>, canon_edit: [<pliki kanonu do edycji, jawnie, bez globów>], link_field: <pole dokumentu wskazujące rozstrzygnięte pytanie, domyślnie rozstrzyga> }"
+  question_task_link:
+    type: object
+    required: false
+    doc: "opcjonalnie true albo { dir, field }: pole zadania (domyślnie awaits_question w project-orchestration/tasks), do którego /analyze dopisuje id pytań. Zapis do zadania poza listą ANL-001, więc domyślnie wyłączony"
+  resolve_max_questions:
+    type: number
+    required: false
+    default: 12
+    doc: "ile pytań z jednej analizy objąć wyszukiwaniem źródeł (reszta idzie do człowieka bez rekomendacji, ANL-051)"
+  resolve_batch_size:
+    type: number
+    required: false
+    default: 5
+    doc: "ile pytań pokazać człowiekowi naraz"
+
 analyze:
   panel:
     # Bez `when:` — celowo. Ten etap jest tani (haiku, czyta wygenerowany indeks
@@ -61,6 +95,12 @@ analyze:
         index: ".claude/config/decisions-index.json",
         open_questions: "${open_questions}",
         lookup_order: "${lookup_order}" }
+  # Limity kroku „rozstrzygnij otwarte pytania" (ANL-054..059). To NIE jest slot panelu: krok biegnie po panelu,
+  # na pytaniach, które panel zostawił. Nazwa `resolve`, nie `auto_resolve`: nic tu nie odpowiada za człowieka.
+  resolve:
+    max_questions: "${resolve_max_questions}"
+    batch_size: "${resolve_batch_size}"
 
 budgets:
   decision-gate: { max_tool_calls: 12, on_limit: emit-partial }
+  resolve: { max_tool_calls: 25, on_limit: emit-partial }
