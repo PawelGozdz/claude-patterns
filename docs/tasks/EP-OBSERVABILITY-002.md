@@ -5,7 +5,7 @@ type: epic
 status: todo
 priority: P1
 created_date: 2026-10-22
-updated_date: 2026-10-22
+updated_date: 2026-11-07
 labels: [observability, telemetry, reporting]
 external_ref: 'docs/adr/0015-pomiar-wartosci-zamiast-samooceny.md'
 member_tasks: [TASK-OBS-012, TASK-OBS-013, TASK-OBS-014, TASK-OBS-015, TASK-OBS-016, TASK-OBS-017]
@@ -51,12 +51,12 @@ części nie dotykają `hooks/` i mogą iść od razu.
 | `outcome.human`: hook commit + revert w audycie | ⏳ po odmrożeniu hooków | TASK-OBS-015 |
 | `process: tool`: emiter Skill/Agent + plan w każdej komendzie | ⏳ po odmrożeniu hooków | TASK-OBS-016 |
 | `claim` w regułach i skrzynce, raport tygodniowy, status `resolved` | ✅ | TASK-OBS-017 |
-| Blokady hooków w metrykach | ⏳ zostaje w EP-001 | TASK-OBS-011 |
+| Blokady hooków w metrykach | ✅ zamknięte w EP-001 | TASK-OBS-011 |
 
 ## Kolejność
 
 TASK-OBS-012 → TASK-OBS-013 → TASK-OBS-014 → TASK-OBS-017, równolegle po odmrożeniu hooków:
-TASK-OBS-011 → TASK-OBS-015 → TASK-OBS-016. Uzasadnienie: OBS-012 i OBS-014 dają odpowiedzi z danych, które
+TASK-OBS-015 → TASK-OBS-016 (TASK-OBS-011 jest już zrobiony). Uzasadnienie: OBS-012 i OBS-014 dają odpowiedzi z danych, które
 już leżą na dysku (24 tys. zdarzeń), bez czekania na nowe emitery; OBS-015 jest najcenniejszy, ale wymaga
 hooka i kilku tygodni zbierania, zanim cokolwiek pokaże.
 
