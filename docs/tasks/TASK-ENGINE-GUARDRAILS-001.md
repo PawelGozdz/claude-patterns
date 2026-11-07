@@ -2,11 +2,11 @@
 id: TASK-ENGINE-GUARDRAILS-001
 title: 'Silnik przepuścił wzorce-naruszenia w juz-ide-api-1 TS-SEC-D0-BETA-HARDENING-001 — bramki mechaniczne zamiast samego weryfikatora-LLM'
 type: implementation
-status: in-progress
+status: done
 priority: P1
 story_points: 8
 created_date: 2026-10-21
-updated_date: 2026-10-28
+updated_date: 2026-11-07
 assignee: '@claude'
 labels: [orchestration, conformance, verifier, analyze, hooks]
 depends_on: []
@@ -110,7 +110,7 @@ Propozycje poza tym zadaniem (wymagają decyzji): hook SubagentStart wstrzykują
 
 Po scaleniu wykonano: `reseed-patterns.sh`, `materialize-runtime` (juz-ide-api-1..4, grant-flow, marketing-hub), `sync-runtime-hooks --apply` (hook zakresu test-implementera w `settings.json` tych sześciu projektów), kopia `analysis/TEMPLATE.md` do 12 projektów, `verify-project-setup` 6/6. Zmiany w repozytoriach projektów są niezacommitowane (settings.json, `monorepo-layers-grant-flow.yml`, `TEMPLATE.md`)—commituje właściciel projektu.
 
-## Do zrobienia po zebraniu danych z przebiegów
+## Odroczone — wymagają danych z przebiegów (poza zakresem zamknięcia)
 
 - Skorygować progi ORC-142 po pierwszych przebiegach (to ocena skalibrowana na 440 analizach, nie pomiar na żywo).
 - Zmierzyć siatkę `BEHAVIOR_NET` (ORC-141) na prawdziwych `minor_findings`; rollupy nie niosą ich treści.
