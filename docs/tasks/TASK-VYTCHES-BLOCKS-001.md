@@ -1,11 +1,11 @@
 ---
 id: TASK-VYTCHES-BLOCKS-001
 title: Setup vytches-ddd na kompozycji bloków (ADR 0008) — runtime.yml + triage agentów
-status: in-progress
+status: done
 priority: high
 created: 2026-08-10
 created_date: 2026-08-10
-updated_date: 2026-09-07
+updated_date: 2026-11-07
 owner: unassigned
 repos: [vytches-ddd, claude-patterns]
 ---
@@ -16,7 +16,13 @@ Zadanie przygotowane 2026-08-10 w sesji, która zrobiła to samo dla
 `juz-ide-mobile-app`. Rozpisane tak, żeby dało się je wykonać **bez odtwarzania
 researchu** — wszystkie ustalenia poniżej są zweryfikowane w kodzie, nie zgadywane.
 
-> **▶ Stan na 2026-09-07 (przegląd w ramach K75 / `TASK-KAIZEN-002`).** Większość jest
+> **▶ Stan na 2026-11-07: zadanie zamknięte po stronie claude-patterns — patrz „Stan zamknięcia”
+> i „Odroczone” na końcu pliku.** Poniższy blok to zapis przeglądu z 2026-09-07 (K75 /
+> `TASK-KAIZEN-002`), zostawiony jako historia. Jego wniosek („otwarte tylko F2”) jest już nieaktualny:
+> triage F2 wykonano w vytches-ddd inną drogą niż tabela w F2, ale zostały dwie nowe luki
+> (brakujące symlinki agentów, nieodświeżony hash `runtime.yml`).
+>
+> **Stan na 2026-09-07 (przegląd w ramach K75 / `TASK-KAIZEN-002`).** Większość jest
 > zrobiona — task zostaje otwarty **wyłącznie dla F2 (triage 12 agentów lokalnych)**.
 >
 > | kryterium ukończenia | stan | dowód |
@@ -352,13 +358,125 @@ w Qdrancie, oraz naprawa bramek-widm z korekty 3.
 
 ## Kryteria ukończenia
 
-- [ ] `.claude/config/runtime.yml` istnieje, zmaterializowany bez ostrzeżeń
-- [ ] Każdy agent wymieniony w `runtime.yml` jest osiągalny w `.claude/agents/`
-- [ ] Hooki z `runtime.yml` faktycznie wpięte w `.claude/settings.json`
-- [ ] Triage 12 agentów wykonany; zero duplikatów lokalny↔współdzielony
-- [ ] 5 wzorców zgodnych z konwencją ✅/❌ + karty `_summary.md`
-- [ ] `reseed-patterns.sh` wykonany, `retrieve_patterns` zwraca nowe wzorce
-- [ ] Zmiany **staged, NIE commitowane** — review i commit robi człowiek
+Stan 2026-11-07 (szczegóły i dowody w „Stan zamknięcia”):
+
+- [x] `.claude/config/runtime.yml` istnieje, zmaterializowany bez ostrzeżeń — zawartość zgodna z
+  blokami; sam hash w nagłówku jest nieaktualny (odroczone D1)
+- [ ] Każdy agent wymieniony w `runtime.yml` jest osiągalny w `.claude/agents/` — **brakuje dwóch**:
+  `library-api-guardian` i `library-quality-verifier` (odroczone D1)
+- [x] Hooki z `runtime.yml` faktycznie wpięte w `.claude/settings.json`
+- [x] Triage 12 agentów wykonany; zero duplikatów lokalny↔współdzielony — wykonany inaczej niż
+  w tabeli F2 (blok lokalny `vytches-agents`, bez awansów do claude-patterns)
+- [x] 5 wzorców zgodnych z konwencją ✅/❌ + karty `_summary.md`
+- [x] `reseed-patterns.sh` wykonany — potwierdzone liczeniem punktów w Qdrancie i
+  `rag-freshness.mjs`; wywołania `retrieve_patterns` nie powtórzyłem (brak endpointu HTTP, tylko MCP)
+- [x] ~~Zmiany staged, NIE commitowane~~ — zastąpione: zmiany po stronie claude-patterns są na
+  osobnym branchu, review i scalenie robi człowiek
+
+## Stan zamknięcia (2026-11-07)
+
+Status `done` dotyczy zakresu claude-patterns. Wszystko, co zostało, leży w `vytches-ddd` albo
+w żywej infrastrukturze (Qdrant, reseed) i jest rozpisane niżej w „Odroczone” z komendami.
+
+**Sprawdzone na develop (352dc8c), odczyt bez zapisu w innych repo:**
+
+- Bloki z F1 są w `blocks/`: `ts-library`, `library-layers`, `nx-monorepo`, plus istniejący
+  `approval-gate`. Alias `typescript-library` rozwija się do trzech bloków
+  (`blocks/_aliases.yml`). `validate-blocks`: 28 bloków zgodnych ze schematem.
+- `patterns/typescript-library/`: 5 wzorców + 5 kart `_summary.md`. Każdy wzorzec ma `**Layer**`,
+  `**Status**`, 5 znaczników ✅ i 4–5 znaczników ❌. Dopiski o `nx release`, `publint`,
+  `arethetypeswrong`, subpath exports, `peerDependencies` i testowaniu spakowanego artefaktu
+  (`npm pack`/Verdaccio) są w plikach.
+- RAG: `rag-freshness.mjs` mówi „aktualny (254 plików)”. W `patterns_global` (Qdrant `:6401`)
+  każdy z 5 wzorców ma 5 punktów, karty mają 4–5 punktów. Dane tylko do odczytu, bez reseedu.
+- `validate-agents`: 60 plików, 0 ostrzeżeń. `validate-prompt-structure`: OK (archeologia=0).
+- `vytches-ddd` (branch `main`, 78497f4f):
+  - `project.yml`: `stack_blocks: [typescript-library, approval-gate, ./vytches-agents]`.
+  - `runtime.yml`: 5 bloków, panel i warstwy zgodne z `blocks/`. Rematerializacja na kopii w
+    katalogu tymczasowym daje identyczną treść; różnią się tylko `materialized_at` i `source_hash`
+    (`a083e19896b2` → `4a3fbf6cccae`). `source_hash` obejmuje treść wszystkich bloków, aliasy, parametry i taksonomię, więc
+  zmieniła go edycja czegoś, co do `vytches-ddd` nie trafia (np. inny blok albo alias);
+  efektu na tym projekcie nie ma, ale `--check` zgłasza rozjazd.
+  - `settings.json` wpina `check-approval-before-impl` i `check-human-voice`.
+  - Triage F2 zrobiony blokiem lokalnym `.claude/blocks/vytches-agents.yml`: do panelu wpięto
+    `performance-optimizer` i `ddd-patterns-expert`, siedmiu pozostałych pominięto z uzasadnieniem
+    w komentarzu bloku. W `.claude/agents/` zostało 9 plików lokalnych, żaden nie dubluje
+    współdzielonego. Awansów do `agents/stacks/typescript-library/` nie było, zgodnie z
+    Korektą 2.
+  - `.claude/config/knowledge.json` ma `collection: code_vytches_ddd`.
+  - `verify-project-setup.mjs`: 15 sprawdzeń OK, **2 braki** (agenci `library-api-guardian`,
+    `library-quality-verifier` nie mają definicji ani w `.claude/agents/`, ani w
+    `~/.claude/agents/`).
+
+**Co wyszło poza planem:**
+
+1. Usunięcie lokalnych kopii obu agentów `library-*` nie zostało uzupełnione symlinkami, więc slot
+   `api-surface-analysis` i `final_gate` w `vytches-ddd` wskazują agentów, których sesja nie widzi.
+   Potwierdzają to dwa wpisy w `_inbox/` (`DEV-anz-agent-missing` z 2026-11-04 i
+   `DEV-agent_note-agent-type-library-quality-verifier-runtime-yml-f` z 2026-11-06): przebieg
+   VF-043 obszedł to przez `general-purpose` i `verifiers.finalGate`.
+2. Korekta 3 nadal obowiązuje. `package.json` w `vytches-ddd` ma te same komendy bez `--ci`,
+   `test:consumer` celuje w nieistniejące `examples/playground`, a `test:bundle` woła brakujący
+   `scripts/analyze-bundles.js`. Zmieniło się jedno: `validate:api` obejmuje teraz 5 pakietów
+   (doszedł `nestjs`), nie 4.
+3. Kolekcji `code_vytches_ddd` nie ma w Qdrancie (jest 12 kolekcji: m.in. `patterns_global`,
+   `library_reference_global`, `code_juz_ide_api`). Plik `knowledge.json` wskazuje na kolekcję,
+   której nikt nie zaindeksował.
+4. Żaden z 9 lokalnych agentów nie ma `disallowedTools`, a wszystkie odwołują się do narzędzi
+   `mcp__zen__*`, których nie ma w żadnym projekcie. W `ddd-compliance-guardian.md` metadane
+   nadal są wklejone w treść (zapis `mcp**zen**`), `library-expert` ma `permissionMode: dontAsk`.
+
+**Decyzje w F5 (rozważyć, nie przesądzone):**
+
+- Hook wykrywający dryf publicznego API: **nie budujemy.** Dwa powody: api-extractor działa
+  dla 5 z 19 pakietów, więc hook raportowałby „brak dryfu” tam, gdzie nikt go nie mierzy, a
+  warstwa `api-surface` razem z `library-quality-verifier` w `final_gate` już zmusza do
+  świadomej akceptacji zmiany. Wracamy do pomysłu po naprawie bramek z Korekty 3 (odroczone D4).
+- Wzorzec „testuj opublikowany artefakt”: **zrobione** jako sekcja w `library-testing-pattern.md`,
+  osobny wzorzec byłby duplikatem.
+- Czy `nestjs` wymaga osobnego traktowania: **nie.** Pakiet jest jednym z 19 w tym samym grafie
+  i podlega tym samym regułom granic z `package-boundary-pattern.md`; ma też własną konfigurację
+  api-extractor w `validate:api`, więc osobny blok nic by nie dodał.
+
+**Zmiany w tym zamknięciu (claude-patterns):** ten plik oraz `last_verified` w
+`patterns/typescript-library/METADATA.yml`. Nic poza tym nie było do zrobienia bez dotykania
+cudzych plików albo infrastruktury.
+
+**Walidatory (branch `feature/TASK-VYTCHES-BLOCKS-001`):** `validate-tasks` 51 plików, 0 błędów
+(2 ostrzeżenia o cudzych zadaniach `in-progress`; ostrzeżenie o tym zadaniu zniknęło);
+`validate-blocks` 28 zgodnych; `validate-metadata` 17 kategorii, 122 wzorce, bez zastrzeżeń;
+`count-assets --check-docs` zgodne; `rag-freshness` aktualny (254 plików).
+
+## Odroczone
+
+| ID | Co | Powód | Właściciel |
+|---|---|---|---|
+| D1 | Dwa brakujące agenci + odświeżenie hasha `runtime.yml` w `vytches-ddd` | wymaga zapisu w cudzym repo | właściciel `vytches-ddd` |
+| D2 | Naprawa lub wycofanie lokalnych agentów (zen, `disallowedTools`, `ddd-compliance-guardian`, `library-expert`) | zmiany w `vytches-ddd/.claude/agents/` | właściciel `vytches-ddd` |
+| D3 | Zaindeksowanie `code_vytches_ddd` w Qdrancie | zapis do żywej infrastruktury, decyzja o zakresie (czy testy i `enterprise`) | właściciel `vytches-ddd` |
+| D4 | Naprawa dziewięciu skryptów-widm z Korekty 3 i wpięcie reseedu w `release:*` | zmiany w kodzie i skryptach `vytches-ddd` | właściciel `vytches-ddd` |
+| D5 | Poprawka sformułowania w `patterns/README.md` (linia „Stack-specific patterns for `stack_profile: typescript-library`”) | plik leży w drzewie indeksowanym przez RAG, więc zmiana wymaga reseedu, którego nie wolno tu uruchamiać; do zrobienia razem z następnym reseedem | claude-patterns |
+| D6 | Wpis o zamknięciu w `CHANGELOG.md` i `docs/DECISIONS-LOG.md` | oba pliki mają cudze niezacommitowane zmiany w głównym drzewie | claude-patterns, po scaleniu |
+
+**D1, komendy (z `/opt/projects/claude-patterns`):**
+
+```bash
+# symlinki agentów (nazwy są w .gitignore vytches-ddd, więc nie zabrudzą gita)
+ln -s /opt/projects/claude-patterns/agents/stacks/typescript-library/library-api-guardian.md     /opt/projects/vytches-ddd/.claude/agents/library-api-guardian.md
+ln -s /opt/projects/claude-patterns/agents/stacks/typescript-library/library-quality-verifier.md /opt/projects/vytches-ddd/.claude/agents/library-quality-verifier.md
+# albo cały setup, który robi to samo dla overlay.agents: ./scripts/setup-project.sh /opt/projects/vytches-ddd
+node scripts/materialize-runtime.mjs /opt/projects/vytches-ddd
+node scripts/materialize-runtime.mjs /opt/projects/vytches-ddd --check   # oczekiwane: aktualny
+node scripts/verify-project-setup.mjs /opt/projects/vytches-ddd          # oczekiwane: 0 braków
+```
+
+**D3, komenda:** `cd /opt/projects/claude-patterns/mcp-server/knowledge-retriever && node dist/indexer.js --collection code_vytches_ddd --dir /opt/projects/vytches-ddd/packages`
+(najpierw ustalić zakres: samo `packages/*/src` czy też testy i `enterprise`; nazwę kolekcji
+bierze się z `knowledge.json`, nie z nazwy katalogu).
+
+**D4, kolejność:** najpierw poprawić `--ci` w `scripts/quality-gates/*.js` i usunąć albo naprawić
+`test:consumer`, `test:bundle`, `test:package`, `test:exports`; dopiero potem dopisać je do
+`checks` w `blocks/library-layers.yml` (dziś blok woła wyłącznie działające skrypty).
 
 ## Uwagi wykonawcze
 
