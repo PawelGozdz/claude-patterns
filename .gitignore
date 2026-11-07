@@ -71,3 +71,8 @@ screenshots/
 telemetry/events/
 # Stan otwartych przebiegów i agentów dla hooków telemetrii (ADR 0012, krok 3) — per maszyna, tymczasowy.
 telemetry/sessions/
+
+# Managed by external tools (installed into hooks/ through the ~/.claude/hooks symlink).
+# Reinstalling the integration overwrites them, so they do not belong in the repo.
+# count-assets.mjs skips them by their "managed by <tool>" header.
+hooks/herdr-agent-state.sh

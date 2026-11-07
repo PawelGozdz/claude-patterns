@@ -1,27 +1,32 @@
 ---
 id: DEV-orc-098-final-gate
-status: promoted
+status: proposed
 resolution: >
-  Naprawione w części jako ORC-106 (2026-10-17): ta sama przyczyna co DEV-orc-103-testing (lista
-  padających plików niezgodna z podsumowaniem runnera blokowała finalGapsAcceptable).
-  NIEZWERYFIKOWANE: wątek marketing-hub (sonda ślepa na --prefix apps/api/tools, pretest
-  przebudowuje contracts równolegle) nie został odtworzony; wróci jako nowe wystąpienie.
+  Naprawione w części jako ORC-106 (2026-10-17): ta sama przyczyna co
+  DEV-orc-103-testing (lista padających plików niezgodna z podsumowaniem runnera
+  blokowała finalGapsAcceptable). NIEZWERYFIKOWANE: wątek marketing-hub (sonda
+  ślepa na --prefix apps/api/tools, pretest przebudowuje contracts równolegle)
+  nie został odtworzony; wróci jako nowe wystąpienie.
 trigger: no_go
 category: verifier
 sources:
   - orchestrate
 rule_ref: ORC-098
 first_seen: 2026-10-10
-last_seen: 2026-10-12
-occurrences: 2
+last_seen: 2026-11-06
+occurrences: 3
 projects:
   - marketing-hub
   - grant-flow
+  - vytches-ddd
+reopened_at: 2026-11-06
+reopened_from_status: promoted
 ---
 
 # DEV-orc-098-final-gate
 
 ## Occurrences
 
+- 2026-11-06 vytches-ddd (VF-043-eslint-plugin-ddd-agent-feedback-lane) run `wf_bc1f5799-b1e` warstwa `final-gate` — final gate NO_GO machine: probe blind (tests/lint/typecheck skipped; .claude/test-guard.json missing so scoped-tests skipped 26 files; .eslintrc.json rejected by ESLint 9) so unverified_scope could not be lowered to GO-with-gaps
 - 2026-10-12 grant-flow (TS-UI-006) run `wf_f4a4221d-7a0` warstwa `final-gate` — Bramka końcowa NO_GO machine z samego unverified_scope (checks.tests=fail z flaky testu DoS security-vulnerability-tests.spec.ts, zero własnych naruszeń); finalGapsAcceptable nie przepuścił, bo sonda testów czerwona — ten sam brak co testsRerunPassed/testFailPaths
 - 2026-10-10 marketing-hub (TS-MH-007) run `wf_95e444a9-329` warstwa `final-gate` — Bramka końcowa NO_GO cause=machine: sonda czerwona, ręczne powtórki zielone; sonda ślepa na --prefix apps/api/tools (pretest przebudowuje contracts równolegle)

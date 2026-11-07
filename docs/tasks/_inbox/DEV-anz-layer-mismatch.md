@@ -34,8 +34,8 @@ sources:
   - analyze
 rule_ref: ANZ-LAYER-MISMATCH
 first_seen: 2026-10-12
-last_seen: 2026-11-02
-occurrences: 11
+last_seen: 2026-11-07
+occurrences: 16
 projects:
   - ai-gateway
   - framework-polityczny
@@ -43,6 +43,8 @@ projects:
   - pcu
   - juz-ide-api-2
   - marketing-hub
+  - juz-ide-api-1
+  - juz-ide-api-4
 reopened_at: 2026-10-28
 reopened_from_status: promoted
 ---
@@ -51,6 +53,11 @@ reopened_from_status: promoted
 
 ## Occurrences
 
+- 2026-11-07 juz-ide-api-1 (TS-DEPS-002) — TS-DEPS-002 (bump zależności i rejestr supresji, pliki w korzeniu repo): wszystkie 4 warstwy orchestrate.layers bez pracy, a sloty panelu tech-analysis, ddd-modeling, impl-analysis, pattern-fit nie mają when: i nie mają czego oceniać; analiza uruchomiła tylko decision-gate i tech-analysis-specialist
+- 2026-11-07 juz-ide-api-4 (TS-INFRA-E2E-001) — Panel analyze ma sloty bez when: (ddd-modeling, impl-analysis, pattern-fit), ktore nie maja przedmiotu analizy dla zadania recznego bez zmian w repo (zakres_plikow pusty, wszystkie 4 warstwy w layers_skip). Pominieto je swiadomie i odnotowano w Uwagi; brak mechanizmu sita dla taskow bez kodu (ANL-018 dotyczy tylko type refactor|bugfix|chore).
+- 2026-11-05 ai-gateway (TS-AIG-123) — Kompozycja aig-layers nie ma warstwy na dokumenty/runbooki; drugi task z rzędu (TS-AIG-122, 123) całkowicie w layers_skip
+- 2026-11-05 juz-ide-api-1 (TS-DOCS-QUESTIONS-GAPS-FILES-001) — Panel analyze (blok ddd/core) ma sloty bez when: ddd-modeling, impl-analysis, pattern-fit, tech-analysis-specialist; task dokumentacyjno-narzedziowy (scripts/ i docs/) nie ma agregatow ani handlerow, wiec pominieto je bez wartosci dodanej. Warstwy orchestrate (domain/application/infrastructure/testing) tez nie pasuja.
+- 2026-11-04 ai-gateway (TS-AIG-122) — Zadanie decyzyjne/dokumentowe (aneks ADR, karty KANBAN, TM): kompozycja aig-layers ma tylko warstwy implementation i testing z dirs src/, więc obie idą do layers_skip, a praca dokumentowa nie ma warstwy ani weryfikatora; to samo w TS-AIG-118
 - 2026-11-02 framework-polityczny (FP-009) — FP-009 to spike bez kodu (dane w data/seed/ i docs/04); żadna z warstw db/core/worker/web/testing nie ma pracy, wszystkie w layers_skip
 - 2026-11-02 marketing-hub (TS-MH-029) — Panel analyze (runtime.yml) ma sloty backendowe bez when: (backend-technology-expert, ddd-modeling, impl-analysis, pattern-fit); task webowy TS-MH-029 nie dotyka domeny/aplikacji/infrastruktury, 4 sloty pominięte
 - 2026-10-31 juz-ide-api-2 (TS-SEC-SP-LOCATION-OWNER-CHECK-001) — runtime.yml orchestrate.layers nie ma warstwy z dirs dla docs/ ani BUSINESS_RULES.yaml; zadanie wymaga obowiazkowej aktualizacji security-gaps.md i BUSINESS_RULES.yaml w tym samym commicie, wiec jednostke docs-sync trzeba wpisac do warstwy infrastructure z dirs spoza jej wzorca

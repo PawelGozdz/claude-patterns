@@ -63,7 +63,11 @@ Interactive — confirms before modifying any task files.
      `# Reprioritized {date}: P{old} → P{new} — {reason}`
    - CUT items: move to `project-orchestration/_archive/` with `status: cut`
    - ADD items: create new task files at the suggested priority
-   - Regenerate `project-orchestration/KANBAN.md`
+   - Regenerate `project-orchestration/KANBAN.md`. **Generated-KANBAN projects** (the project
+     has `.claude/config/doc-graph.yml`): do NOT write KANBAN.md. Apply the `priority:` change in
+     the task frontmatter, apply order changes by moving the task ID inside
+     `project-orchestration/kolejka/<line>.yml`, then run `pnpm docs:views`; a manual edit of the
+     generated KANBAN.md is lost on the next generation (silent loss of the decision).
    - Close with: "Applied {N} priority changes. KANBAN.md updated.
      → Run `/pm-status` to verify the new state."
 

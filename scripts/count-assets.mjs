@@ -41,8 +41,17 @@ const isPatternMd = (n) => isMd(n) && !n.endsWith('_summary.md');
 const commandsCount = readdirSync(join(REPO, 'commands')).filter((f) => isMd(f)).length;
 
 // hooks/ — .js i .sh, płaskie (lib/ to kod dzielony, nie osobne hooki)
-const hooksJs = readdirSync(join(REPO, 'hooks')).filter((f) => f.endsWith('.js')).length;
-const hooksSh = readdirSync(join(REPO, 'hooks')).filter((f) => f.endsWith('.sh')).length;
+// Pliki zarządzane przez zewnętrzne narzędzia (np. integracja Herdr, `herdr-agent-state.sh`) trafiają
+// do tego katalogu przez symlink ~/.claude/hooks, ale nie należą do repo: są w .gitignore, więc na
+// czystym klonie i w CI ich nie ma. Liczone z dysku dałyby inny wynik na każdej maszynie.
+// Rozpoznajemy je po nagłówku "managed by <narzędzie>" w pierwszych liniach pliku.
+const isExternallyManaged = (f) => {
+  const head = readFileSync(join(REPO, 'hooks', f), 'utf8').split('\n', 8).join('\n');
+  return /^#\s*managed by (?!claude-patterns\b)\S+/im.test(head);
+};
+const hookFiles = readdirSync(join(REPO, 'hooks')).filter((f) => statSync(join(REPO, 'hooks', f)).isFile() && !isExternallyManaged(f));
+const hooksJs = hookFiles.filter((f) => f.endsWith('.js')).length;
+const hooksSh = hookFiles.filter((f) => f.endsWith('.sh')).length;
 const hooksCount = hooksJs + hooksSh;
 
 // agents/ — universal (płaskie) + stacks (rekurencyjnie, per-stack breakdown)

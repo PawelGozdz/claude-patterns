@@ -15,6 +15,22 @@
 
 ---
 
+## 2026-11-07 — Pliki hooków zarządzane przez zewnętrzne narzędzia (Herdr) poza repo
+
+**Zmiana:** `hooks/herdr-agent-state.sh` (integracja Herdr dla Claude'a, v11) trafia do `.gitignore`, a
+`scripts/count-assets.mjs` pomija w `hooks.total` pliki z nagłówkiem `managed by <narzędzie>`.
+**Dlaczego:** `~/.claude/hooks` jest symlinkiem do `hooks/` tego repo, więc `herdr integration install claude`
+zapisał tam plik, a ścieżka jest wpisana w `~/.claude/settings.json`. Plik nadpisuje się przy każdej
+reinstalacji, działa tylko z Herdr i `python3`, a repo ma być uniwersalne. Liczenie z dysku dawało 52 na tej
+maszynie i 51 na czystym klonie, więc `version-sync` i pre-commit odrzucały commit zależnie od miejsca.
+Przegląd skryptu (2026-11-07): bezpieczny, kończy się kodem 0 bez `HERDR_ENV`/gniazda/`python3`, timeout gniazda 0,5 s.
+**Odrzucone:** commit pliku (stale brudny diff po każdej aktualizacji Herdr); przeniesienie poza repo (ścieżka
+w `settings.json` wskazuje symlink); rejestracja w `hooks.json` (zarejestrowane są tylko bramki repo, a wpis
+Herdr jest już w `settings.json`); sama zmiana `.gitignore` bez `count-assets` (licznik zależałby od maszyny).
+**Status:** done
+
+---
+
 ## 2026-10-23 — Fałszywe GO liczone z przypisania bramki do warstw, nie z heurystyki (TASK-OBS-012)
 
 **Zmiana:** pierwszy krok bramki końcowej dostaje `step.blamed` / `step.unblamed` (warstwy wskazane przez

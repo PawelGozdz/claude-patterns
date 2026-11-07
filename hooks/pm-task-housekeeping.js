@@ -7,7 +7,9 @@
  * Fires after Write/Edit/MultiEdit. If the modified task file in
  * `project-orchestration/tasks/` has frontmatter `status: done`, the hook:
  *   1. Moves the file to `project-orchestration/completed-tasks/`
- *   2. Appends a "Recently completed" entry to KANBAN.md (if it exists)
+ *   2. Appends a "Recently completed" entry to KANBAN.md (if it exists); in projects with
+ *      `.claude/config/doc-graph.yml` (generated KANBAN.md) it removes the task from
+ *      `project-orchestration/kolejka/*.yml` instead and leaves KANBAN.md alone
  *   3. Logs the action to stderr (visible to Claude as informational)
  *
  * Disable via env var: PM_HOUSEKEEPING_MODE=off (logs warning only).
@@ -33,6 +35,35 @@ const AUTO_MOVE = (process.env.PM_HOUSEKEEPING_MODE || '').toLowerCase() !== 'of
 // ujednolicone cichcem (K40, TASK-KAIZEN-001).
 function parseFrontmatter(content) {
   return parseFrontmatterShared(content, { parseArrays: false });
+}
+
+/**
+ * Projekt z `.claude/config/doc-graph.yml` (np. juz-ide-api, TS-DOCS-QUESTIONS-GAPS-FILES-001)
+ * generuje KANBAN.md z frontmatterów zadań i plików `kolejka/*.yml` (`pnpm docs:views`).
+ * Taki KANBAN.md nie jest commitowany i nie wolno do niego dopisywać: zapis przepadłby przy
+ * następnej generacji. W tym trybie hook nie dotyka KANBAN.md, tylko usuwa zamknięte zadanie
+ * z plików kolejek (tak samo mechanicznie jak wcześniej dopisywał wpis).
+ */
+function usesGeneratedKanban(pmRoot) {
+  return fs.existsSync(path.join(pmRoot, '..', '.claude', 'config', 'doc-graph.yml'));
+}
+
+function removeFromQueues(pmRoot, taskId) {
+  const queueDir = path.join(pmRoot, 'kolejka');
+  if (!fs.existsSync(queueDir)) return 0;
+  const itemLine = new RegExp(`^\\s*-\\s*${taskId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*$`);
+  let removed = 0;
+  for (const name of fs.readdirSync(queueDir)) {
+    if (!name.endsWith('.yml')) continue;
+    const file = path.join(queueDir, name);
+    const lines = fs.readFileSync(file, 'utf8').split('\n');
+    const kept = lines.filter((line) => !itemLine.test(line));
+    if (kept.length !== lines.length) {
+      fs.writeFileSync(file, kept.join('\n'), 'utf8');
+      removed += lines.length - kept.length;
+    }
+  }
+  return removed;
 }
 
 function ensureKanbanEntry(projectRoot, taskId, frontmatter) {
@@ -149,8 +180,16 @@ async function main() {
 
     fs.renameSync(filePath, targetPath);
 
-    const kanbanUpdated = ensureKanbanEntry(pmRoot, taskId, fm);
-    const kanbanNote = kanbanUpdated ? ', KANBAN.md updated' : '';
+    let kanbanNote;
+    if (usesGeneratedKanban(pmRoot)) {
+      const removed = removeFromQueues(pmRoot, taskId);
+      kanbanNote = removed > 0
+        ? `, usunięto z kolejka/*.yml (KANBAN.md jest generowany: pnpm docs:views)`
+        : ', KANBAN.md jest generowany (pnpm docs:views), bez zapisu';
+    } else {
+      const kanbanUpdated = ensureKanbanEntry(pmRoot, taskId, fm);
+      kanbanNote = kanbanUpdated ? ', KANBAN.md updated' : '';
+    }
 
     console.error(
       `[pm-housekeeping] ✓ ${taskId} → completed-tasks/${kanbanNote}`

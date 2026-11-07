@@ -1,6 +1,6 @@
 ---
 id: DEV-anz-pattern-mismatch
-status: promoted
+status: proposed
 resolution: >
   Część aegis-flow naprawiona 2026-10-17: python/testing-pattern.md (fixture
   event_loop usunięty w pytest-asyncio 1.0, przykłady SQLAlchemy/domain.*
@@ -25,21 +25,21 @@ resolution: >
   do wzorca wymaga decyzji właściciela. 2026-10-24 aegis-flow (TS-007): blok
   python ciągnął testing/testing-pyramid-pattern.md (wzorzec TypeScript/NestJS)
   po słowie test. Usunięte z triggera w blocks/python.yml, runtime.yml
-  aegis-flow zmaterializowany.
-  2026-11-01 juz-ide-api-3: karta rules/common/database-migrations.md powoływała się na
-  wyjątek BDR-129, którego w docs/decisions nie było; zmiana karty w indeksie gita
-  (niezacommitowana) wskazuje BDR-130, który istnieje w api-2 i api-3. Rozjazd BDR-128 (dwie
-  różne treści w api-2 i develop) to sprawa numeracji decyzji w projekcie, nie silnika.
-  Wyjątek projektowy w karcie centralnej zostaje decyzją właściciela (CLAUDE.md:
-  project-specific do drugiego adoptera).
+  aegis-flow zmaterializowany. 2026-11-01 juz-ide-api-3: karta
+  rules/common/database-migrations.md powoływała się na wyjątek BDR-129, którego
+  w docs/decisions nie było; zmiana karty w indeksie gita (niezacommitowana)
+  wskazuje BDR-130, który istnieje w api-2 i api-3. Rozjazd BDR-128 (dwie różne
+  treści w api-2 i develop) to sprawa numeracji decyzji w projekcie, nie
+  silnika. Wyjątek projektowy w karcie centralnej zostaje decyzją właściciela
+  (CLAUDE.md: project-specific do drugiego adoptera).
 trigger: analyze_note
 category: pattern_card
 sources:
   - analyze
 rule_ref: ANZ-PATTERN-MISMATCH
 first_seen: 2026-10-10
-last_seen: 2026-11-01
-occurrences: 9
+last_seen: 2026-11-07
+occurrences: 10
 projects:
   - aegis-flow
   - ai-os-bot
@@ -48,7 +48,8 @@ projects:
   - framework-polityczny
   - juz-ide-api-4
   - juz-ide-api-3
-reopened_at: 2026-10-20
+  - juz-ide-api-6
+reopened_at: 2026-11-07
 reopened_from_status: promoted
 ---
 
@@ -56,6 +57,7 @@ reopened_from_status: promoted
 
 ## Occurrences
 
+- 2026-11-07 juz-ide-api-6 (TS-MOD-REPORT-INTAKE-001-engagement-report-to-moderation-queue) — trigger keywords wzorca command-handler-queue-port-pattern.md trafia słowem 'kolejk' (kolejka moderacji, nie BullMQ); wyłączone przez patterns_exclude w artefakcie
 - 2026-11-01 juz-ide-api-3 (TS-GEO-HOME-POINT-CONTRACT-001) — rules/common/database-migrations.md (claude-patterns) powołuje się na wyjątek BDR-129, którego nie ma w docs/decisions w develop ani api-3 (plik tylko w katalogu api-2); w tej samej chwili BDR-128 ma dwie różne treści w api-2 i develop
 - 2026-10-24 aegis-flow (TS-007) — testing/testing-pyramid-pattern.md (karta _summary) trafiła z triggers bloku python po słowie 'test', ale jest wzorcem TypeScript/NestJS (*.spec.ts, BUSINESS_RULES.md, e2e L3); projekt aegis-flow to Python/pytest
 - 2026-10-23 juz-ide-api-4 (TS-MAP-MARKER-PRIVACY-001) — Brak wzorców w claude-patterns: punkt ujawniony i polityka ujawniania z werdyktem ACL; guardian L1 producentów (jako wzorzec; instancje istnieją w kodzie); projekcja markera fail-closed; wsadowy ACL zwracający klasę zamiast liczby. Wymieniła je analiza TS-MAP-MARKER-PRIVACY-001 (pattern-fit).
