@@ -1,0 +1,6 @@
+# Blok lokalny fixture'u K113: zmienia tylko agenta weryfikującego pętli wewnętrznej.
+name: ./partial-verifier
+extends: flat-service
+
+orchestrate:
+  inner_loop: { verify: "local-verifier", max_attempts: 2, on_max: ESCALATE_AND_HALT }

@@ -290,7 +290,18 @@ function applyExtends(block, depth = 0) {
     merged.set('analyze', baseAnalyze);
   }
 
-  for (const key of ['orchestrate', 'env', 'budgets', 'params', 'requires_ecc', 'ralphinho']) {
+  // `orchestrate` scala się PER KLUCZ najwyższego poziomu (layers, inner_loop, final_gate, exit):
+  // klucz nieobecny w bloku lokalnym dziedziczy z bazy, obecny nadpisuje w całości. Jeden poziom —
+  // wnętrza `inner_loop` nie scalamy (ADR 0008 OQ8, K113). Do 2026-11-07 sekcja wygrywała w całości,
+  // więc blok zmieniający jednego agenta weryfikującego musiał kopiować `layers` i `exit` z bazy.
+  const localOrch = local.get('orchestrate', true);
+  if (localOrch) {
+    const baseOrch = merged.get('orchestrate', true);
+    if (!YAML.isMap(localOrch) || !YAML.isMap(baseOrch)) merged.set('orchestrate', localOrch);
+    else for (const item of localOrch.items) baseOrch.set(item.key, item.value);
+  }
+
+  for (const key of ['env', 'budgets', 'params', 'requires_ecc', 'ralphinho']) {
     const v = local.get(key, true);
     if (v) merged.set(key, v);
   }

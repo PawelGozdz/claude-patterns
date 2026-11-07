@@ -164,7 +164,7 @@ for (const name of projects) {
     existsSync(join(P, 'docs/security')));
   cut('templates', composed || existsSync(join(P, 'docs/security')));
 
-  // 4. Blok lokalny z `extends:` NADPISUJE sekcje w całości (nie merguje) — jeśli
+  // 4. Blok lokalny z `extends:` NADPISUJE sekcje (dla `orchestrate`: klucze) w całości — jeśli
   //    nadpisuje sekcję, którą blok bazowy TEŻ ma (np. `orchestrate`), przyszłe zmiany
   //    bazy nigdy nie dotrą do forka bez ręcznej synchronizacji, i nic tego nie
   //    sygnalizuje (K44, TASK-KAIZEN-001 — odkryte na iam-verifiers.yml kopiującym całą
@@ -187,13 +187,17 @@ for (const name of projects) {
       // `patterns`/`overlay`/`hooks` są sumowane, a `analyze.panel` scalany per stage —
       // do 2026-10-10 ostrzeżenie obejmowało i je, więc każdy blok lokalny dokładający
       // jeden trigger albo stage dostawał fałszywe „przyszłe zmiany bazy nie dotrą".
-      const REPLACED = new Set(['orchestrate', 'env', 'budgets', 'params', 'requires_ecc', 'ralphinho']);
+      // `orchestrate` scala się per klucz (layers, inner_loop, final_gate, exit — K113, 2026-11-07),
+      // więc nakładanie liczymy na tym poziomie: blok podający tylko `inner_loop` nie dostaje ostrzeżenia.
+      const REPLACED = new Set(['env', 'budgets', 'params', 'requires_ecc', 'ralphinho']);
       const overlap = Object.keys(doc).filter((k) => REPLACED.has(k) && baseDoc && k in baseDoc);
+      if (doc.orchestrate && typeof doc.orchestrate === 'object' && baseDoc?.orchestrate && typeof baseDoc.orchestrate === 'object')
+        for (const k of Object.keys(doc.orchestrate)) if (k in baseDoc.orchestrate) overlap.push(`orchestrate.${k}`);
       if (overlap.length) {
         issues.push([
           `.claude/blocks/${f} ma extends: ${baseName} i nadpisuje sekcj${overlap.length > 1 ? 'e' : 'ę'} ` +
           `[${overlap.join(', ')}] obecn${overlap.length > 1 ? 'e' : 'ą'} też w blocks/${baseName}.yml — ` +
-          `przyszłe zmiany bazy NIE trafiają tu automatycznie (extends nadpisuje sekcję w całości, nie merguje)`,
+          `przyszłe zmiany bazy NIE trafiają tu automatycznie (extends nadpisuje wskazany klucz w całości)`,
           `porównaj ręcznie: diff blocks/${baseName}.yml .claude/blocks/${f}`,
           // OSTRZEŻENIE, nie BŁĄD (K63a, 2026-09-07). Znalezisko jest z konstrukcji
           // niedomykalne: check nie śledzi hashy bloku bazowego, więc świeżo zsynchronizowany

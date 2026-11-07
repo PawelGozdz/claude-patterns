@@ -1,0 +1,10 @@
+# Fixture K113 (TASK-KAIZEN-002): blok lokalny z `extends: flat-service` podaje WYŁĄCZNIE
+# `orchestrate.inner_loop`. Po scaleniu per klucz runtime.yml ma `layers`, `final_gate` i `exit`
+# z bazy (flat-service) oraz `inner_loop` z bloku lokalnego. Przed K113 sekcja wygrywała w całości
+# i runtime.yml nie miał warstw. Blok lokalny leży w `extends-orchestrate-partial.blocks/`.
+project:
+  name: eval-extends-orchestrate-partial
+  description: "Fixture ewaluacyjny — extends merguje orchestrate per klucz"
+  stack_blocks: [node, ./partial-verifier]
+  stack_profile: node-ts-claude-api
+  language: typescript
