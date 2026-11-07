@@ -4,7 +4,7 @@
 category: typescript-library
 version: "1.0.1"
 maturity: production
-last_verified: 2026-03-31
+last_verified: 2026-11-07
 stack: "TypeScript 5.x, Nx, Vitest, pnpm"
 source_projects: "vytches-ddd"
 patterns_count: 5
