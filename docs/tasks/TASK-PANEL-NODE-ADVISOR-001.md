@@ -2,11 +2,11 @@
 id: TASK-PANEL-NODE-ADVISOR-001
 title: '`backend-technology-expert` jest doradcą jednego projektu, a siedzi w bloku `node`: uniwersalny doradca zależny od kontekstu stacku'
 type: refactor
-status: in-progress
+status: done
 priority: P2
 story_points: 3
 created_date: 2026-10-17
-updated_date: 2026-10-17
+updated_date: 2026-11-07
 assignee: '@unassigned'
 labels: [agents, blocks, analyze, kaizen]
 related: [TASK-DDD-PANEL-SPLIT-001, TASK-ORCH-PATTERN-GAPS-001]
@@ -206,7 +206,9 @@ Znaleziska poza zakresem zadania (zgłosić osobno):
 
 - [x] `backend-technology-expert` nie zawiera nazw NestJS, BullMQ, Redis, PostGIS,
       `@vytches/ddd`, „Polish market" (poza komentarzem o incydencie w `blocks/nestjs.yml`
-      i wpisem w Changelogu agenta).
+      i wpisem w Changelogu agenta). Jedyny wyjątek to słowo kluczowe „Redis vs" na liście
+      `AUTO-INVOKE KEYWORDS`: steruje wywołaniem agenta, nie jest rekomendacją, a punkt 5
+      bramki każe tę listę zachować (sprawdzone 2026-11-07).
 - [x] Raport zaczyna się sekcją „Założenia" z faktami ustalonymi z projektu lub `NIEZNANE`.
 - [x] `validate-agents`, `validate-blocks`, `audit-projects` bez nowych ostrzeżeń.
       (2026-10-17: walidatory przechodzą — 60 agentów, 28 bloków. `audit-projects`: 2 błędy to
@@ -225,3 +227,35 @@ Znaleziska poza zakresem zadania (zgłosić osobno):
       kierunkowy, nie statystyczny.)
 - [x] Decyzja o `tech-analysis` w `nextjs`+`node` zapisana (komentarz w bloku lub `drop`).
 - [x] Wpisy w `_inbox` zaktualizowane, `CHANGELOG.md` uzupełniony.
+
+## Stan zamknięcia (2026-11-07)
+
+Wszystkie zmiany w komponentach weszły na `develop` wcześniej: agent, komentarz w
+`blocks/nextjs.yml`, `templates/gitignore-claude.template`, wpisy w `_inbox` i w `CHANGELOG.md`
+(sekcja `[Unreleased]`). To zamknięcie nie zmienia żadnego komponentu, więc nie podbija
+`METADATA.yml` i nie dopisuje nic do Changelogu.
+
+Ponowna weryfikacja na `develop` (4e5e041), tylko odczyt:
+- `validate-agents`: 60 agentów, 0 ostrzeżeń. `validate-blocks`: 28 bloków zgodnych ze schematem.
+- `audit-projects`: 3 błędy i 6 ostrzeżeń, żaden nie dotyczy agenta ani bloków `node`/`nextjs`.
+- Flow-evals: `materialize-runtime` 4/4, `audit-projects` 23/23, `project-yml` 24/24,
+  `context-budget` 38/38, `prompt-structure` 120/120.
+- `materialize-runtime --check` (tryb tylko do odczytu) w 12 projektach z agentem: `inputs_hash`
+  bloków zgadza się z zapisanym w `runtime.yml` w 9 z nich. Rozjazd mają juz-ide-api-1, -3 i -4
+  (zmaterializowane przed późniejszymi zmianami bloków). Treść agenta nie wchodzi do hasha,
+  więc ten rozjazd nie pochodzi z tego zadania.
+
+### Odroczone
+
+- **Opcje (a)/(b) dla `ANZ-STAGE-SKIPPED`** (Ustalenia 1): zmiana `commands/analyze.md` albo
+  `materialize-runtime` działa globalnie i wymaga osobnej zgody oraz bramki diffu `runtime.yml`.
+  Zakres tego zadania ich wprost nie obejmuje.
+- **`framework-polityczny/.claude/blocks/fp-node.yml`**: `drop` dla `backend-technology-expert`
+  już usunięty. `drop: true` dla `threat-model` zostaje, bo repo należy do innego projektu,
+  a usunięcie wymaga decyzji jego właściciela.
+- **Trzy znaleziska spoza zakresu** (ADR-0006 we framework-polityczny, `when` etapu `threat-model`
+  w marketing-hub, odesłanie wzorca `transactional-outbox` do `bullmq-queue-pattern.md`):
+  wymagają pracy w cudzych repozytoriach albo osobnego zadania.
+- **Porównanie A/B na NestJS** jest kierunkowe (jedna próbka na wersję), nie statystyczne.
+- **Rematerializacja `runtime.yml`** w juz-ide-api-1, -3 i -4: krok dla właściciela projektów,
+  niezwiązany z treścią agenta.
