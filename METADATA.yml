@@ -1,8 +1,8 @@
 # Global Claude Patterns Repository - Metadata
 
-version: "3.9.0"
+version: "3.10.0"
 created: "2026-02-05"
-last_updated: "2026-10-28"  # v3.9: techniki z gstack (kernel dowodowy, hash drzewa, ratchety kontekstu i archeologii, telemetria review-panel)
+last_updated: "2026-11-08"  # v3.10: rozstrzyganie pytań w /analyze (ADR 0016/0017), bramki ORC-139..155, tryb ręczny /orchestrate; v3.9: techniki z gstack (kernel dowodowy, hash drzewa, ratchety kontekstu i archeologii, telemetria review-panel)
 author: "Juz-Ide Team"
 source_project: "LocalHero v3"
 license: "MIT"

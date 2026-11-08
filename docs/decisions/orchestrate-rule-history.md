@@ -1521,6 +1521,8 @@ do dwóch zdań, w formie „tak/nie" albo „A czy B", z rekomendacją i domyś
 **Uwaga o claimie.** Cel reguły to mniej pomyłek i mniej dopytywania po stronie człowieka, czego żadna metryka z `telemetry-report` nie mierzy; `gateNoGo` jest najbliższym
 pośrednikiem (trafniejsze odpowiedzi → mniej NO_GO bramki końcowej). Reguła jest starsza niż pierwszy hash silnika widoczny w rollupach (od 2026-10-10), więc okno „przed/po” miesza wiele innych zmian; werdykt jest orientacyjny, a metryka bywa tylko pośrednikiem.
 
+**Zmiana 2026-11-07 ([ADR 0017](../adr/0017-auto-przyjecie-pytan-ze-zrodlem-i-krotki-raport.md), C).** ANL-040 przestała opisywać tylko pytania i stała się jedynym obowiązującym formatem wiadomości dla człowieka po analizie, także gdy kilka analiz biegnie naraz. **Objaw:** siedem równoległych analiz w juz-ide-api, każda raportowała po swojemu, po 30–50 linii meta-procesu („Co sprawdziłem", „Czego nie sprawdziłem", „Odstępstwa od procesu", „Warto wiedzieć", „Co ustalił panel", „Jeszcze ręcznie po przebiegu"), narracją przy każdym wywołaniu, wypisanym diffem artefaktu z syntezą i tabelą STRIDE/DREAD, trzecią linią „Opcje:" i znacznikami podstawy; człowiek dwa razy dopytał „co to zmienia w aplikacji?". **Zmiana:** w czacie tylko linia `<TASK-ID>: <jedno zdanie biznesowe>`, linia „Przyjęte automatycznie: N" (gdy N > 0), pytania jako `ask` i `rec` oraz jedna linia instrukcji; meta-proces trafia do `## Przebieg` artefaktu. Zakazane też pytania spoza ask/rec („Mam jeszcze zaktualizować…?", „Chcesz, żebym przygotował…?"): agent robi albo pomija. Pełna treść: `docs/analyze-resolve.md`, krok 3.b.
+
 <a id="anl-038"></a>
 ### ANL-038 — jednostki, pliki towarzyszące i fałszywe trafienia wzorców mają swoje pola (2026-09-24)
 
@@ -2665,7 +2667,11 @@ produktowe oceniamy raz, na całości zmiany, żeby nie płacić za nie w każde
 
 **Objaw.** Stage `decision-gate` (haiku, budżet 12 wywołań, `on_limit: emit-partial`) wyczerpał budżet, a synteza poszła dalej na tym, co dostała, uzupełniona przez głównego agenta. To wniosek z transkryptu sesji analizy; nie sprawdzano, które decyzje bramka pominęła.
 
-**Zmiana.** Wynik częściowy ze stage'a `blocking: true`: jedno ponowienie na brakującą resztę, a gdy nadal niepełny, pozycja w `open_questions` z `answer: null` („Bramka X nie sprawdziła: …"), co blokuje `prepare` do potwierdzenia przez człowieka. Budżet `decision-gate` zostaje bez zmian. Bez zmian w skrypcie: blokuje istniejąca bramka `answer: null`.
+**Zmiana.** Wynik częściowy ze stage'a `blocking: true`: jedno ponowienie na brakującą resztę, a gdy nadal niepełny, pozycja w `open_questions` z `answer: null` („Bramka X nie sprawdziła: …"), co blokuje `prepare` do potwierdzenia przez człowieka. Budżet `decision-gate` zostaje bez zmian. (Od 2026-11-08 zmienione, niżej.) Bez zmian w skrypcie: blokuje istniejąca bramka `answer: null`.
+
+**Zmiana 2026-11-08 ([ADR 0017](../adr/0017-auto-przyjecie-pytan-ze-zrodlem-i-krotki-raport.md), poprawka).** Luka przeglądu nie jest już pytaniem: test ADR 0017 na trzech analizach pokazał pytanie „kontrola nie przeczytała trzech plików, czy powtórzyć?" oddane człowiekowi. Skill doczytuje sam (jedno celowane doczytanie), a gdy się nie da, wpisuje lukę do `## Przebieg`; `verify-answer-sources` odrzuca pytanie bez `decision:`/`rec` i pytanie o proces analizy (exit 2). Pozycja „Bramka X nie sprawdziła" w `open_questions` z powyższej zmiany nie obowiązuje. Ta sama poprawka dopisuje do ANL-034 zakaz edycji kodu, `package.json`, lockfile, plików zadań i luk po zatwierdzeniu analizy (implementacja to `/orchestrate`) i do ANL-040 linię instrukcji liczoną przez skrypt (`instruction`).
+
+**Zmiana 2026-11-08 ([ADR 0017](../adr/0017-auto-przyjecie-pytan-ze-zrodlem-i-krotki-raport.md), poprawka 2).** **Objaw:** bramka decyzji wracała niepełna („na limicie budżetu", „nie przeczytała 3 plików", „wynik częściowy") w analizach juz-ide-api-3, -4 i -8, w -8 także po ponowieniu; skill doczytywał jednym ponowieniem, ale to powtarzało się przy każdej analizie i kosztowało tokeny. **Przyczyna:** parametr istnieje (`budgets.decision-gate` w bloku `decision-registry`, domyślnie `max_tool_calls: 12`), a juz-ide ma 72 wpisy `needs_scope_check`, których cytowanie `scope` wymaga odczytów; 12 wywołań haiku nie starcza na to nawet raz. **Zmiana:** (a) domyślny budżet `decision-gate` = 30 (blok `decision-registry`; `runtime.yml` projektu jest kopią z materializacji, więc projekt dostaje go po `materialize-runtime.mjs`, do tego czasu zostaje 12), (b) ANL-017: wpisy `needs_scope_check` zawężone do pasujących do tagów taska (`index-decisions.mjs --tags`, wpisy bez tagów zostają), a gdy zostaje >15, bramka idzie w DWÓCH sekwencyjnych wywołaniach z pełnym budżetem każde zamiast jednego z limitem. Reszta ANL-051 (jedno ponowienie, luka do `## Przebieg`) bez zmian. **Ryzyko:** zawężenie po tagach pomija wpis, którego tagi nie pasują do taska, choć dotyczy parametru; dlatego wpisy bez tagów zostają, a zawężenie to wypis ze skryptu, nie ocena modelu. Skuteczność wymaga kilku analiz po rematerializacji.
 
 <a id="anl-052"></a>
 
@@ -2833,6 +2839,8 @@ produktowe oceniamy raz, na całości zmiany, żeby nie płacić za nie w każde
 
 **Nazwy.** Klucz konfiguracji nazywa się `analyze.resolve`, nie `auto_resolve`: nic w nim nie odpowiada za człowieka.
 
+**Zmiana 2026-11-07 ([ADR 0017](../adr/0017-auto-przyjecie-pytan-ze-zrodlem-i-krotki-raport.md), ANL-060).** Wąski wyjątek od „decyduje człowiek": pytanie `canon`/`precedent` ze zweryfikowanym cytatem, dwudrzwiowe i techniczne dostaje `answered_by: auto`. Zdanie „`answered_by: auto` nie istnieje" i „bez zmiany w `orchestrate-prepare`" przestały być prawdą: `prepare` sprawdza teraz, że `answered_by: auto` stoi na pytaniu spełniającym warunki. `one-way`, `USER_CHALLENGE`, produkt/prawo i `basis: none` nadal nigdy automatycznie; `new-pattern` nigdy automatycznie, ale idzie hurtem („ok"), gdy jest dwudrzwiowy i techniczny (ANL-057). Nazwa klucza `analyze.resolve` zostaje; flaga to `analyze.resolve.auto_accept`.
+
 <a id="anl-057"></a>
 
 ### ANL-057 — partia najwyżej pięciu pytań i odpowiedź zbiorcza, rozbierana skryptem (2026-11-07)
@@ -2842,6 +2850,8 @@ produktowe oceniamy raz, na całości zmiany, żeby nie płacić za nie w każde
 **Wznowienie.** Ta sama sesja (odpowiedź na podsumowanie) albo `/analyze <TASK-ID> --resume`: bez panelu, tylko dla artefaktu ze `status: awaiting-human`. Odpowiedzi żyją we frontmatterze, więc ANL-034 i `prepare` nie zmieniają się. `status: approved` ustawia agent tylko na wprost polecenie człowieka („zatwierdzam"); bez niego człowiek ustawia status sam, jak dotąd.
 
 **Odrzucone.** Interpretacja odpowiedzi przez agenta: „ok poza 3 i 5" wypełnione źle to odpowiedzi, których człowiek nie dał. Osobna komenda do odpowiedzi: wprost wykluczona przez właściciela.
+
+**Zmiana 2026-11-07 ([ADR 0017](../adr/0017-auto-przyjecie-pytan-ze-zrodlem-i-krotki-raport.md), B i C).** **Objaw:** w trzech sesjach, które odpowiedziały w całości, człowiek przyjął 100% rekomendacji (6/6, 3/3, 2/2), głównie `new-pattern`, a parser nie pozwalał ich zatwierdzić zbiorczo; osobne „zatwierdzam" ustawiało status bez zapisania odpowiedzi, więc jeden agent potrzebował czterech wiadomości; dziewięć pytań przy `batch_size: 5` to dwie rundy. **Zmiana:** (a) `bulkEligible` obejmuje też `new-pattern`, o ile pytanie jest dwudrzwiowe, nie jest `USER_CHALLENGE`, nie ma flag decyzji i ma `domain: tech`; (b) parser rozpoznaje „ok", „ok wszystkie", „przyjmuję rekomendacje", „biorę rekomendacje", „tak, zatwierdzam rekomendacje" (diakrytyki i interpunkcja bez znaczenia); (c) „zatwierdzam" = przyjęcie `bulkEligible` plus `status: approved` w jednym kroku, a przy pytaniu `one-way`/`USER_CHALLENGE` bez odpowiedzi `hold` z numerami i `approve.granted: false`; „ok" bez „poza" zatwierdza tak samo, gdy nic nie zostaje otwarte; (d) `batch_size` domyślnie 10. **Ryzyko:** „ok" jako zatwierdzenie to krótsza droga do `approved`; łagodzą je `blockedBy` (pytania `one-way`/`USER_CHALLENGE` i niepokazane zawsze blokują) i to, że raport pokazuje człowiekowi tylko pytania wymagające decyzji.
 
 <a id="anl-058"></a>
 
@@ -2864,3 +2874,107 @@ produktowe oceniamy raz, na całości zmiany, żeby nie płacić za nie w każde
 **Dlaczego nie w zdarzeniu v1.** Schemat telemetrii v1 jest zamknięty (`additionalProperties: false`), a nowe pole wymaga zmiany schematu i wpisu w ADR 0012/0015. To osobna decyzja. Do tego czasu miara żyje w artefaktach analizy i da się ją zebrać skryptem.
 
 **Claim.** Brak: miara jest nowa i nie ma jeszcze metryki w `telemetry-report`. Pierwszą linię bazową da się policzyć po kilkunastu analizach z `resolve_stats`.
+
+<a id="anl-060"></a>
+
+### ANL-060 — pytanie ze zweryfikowanym źródłem, dwudrzwiowe i techniczne przyjmuje się samo, z możliwością cofnięcia (2026-11-07)
+
+**Objaw (juz-ide-api, siedem równoległych analiz).** Z 26 sklasyfikowanych pytań 11 skill mógł rozstrzygnąć sam (dwudrzwiowe, z precedensem albo kanonem, bez skutku bezpieczeństwa), 2 były graniczne, 13 naprawdę wymagało człowieka. Człowiek przyjmował rekomendacje hurtem, a mimo to zostało około 32 pojedynczych decyzji i około 25 potwierdzeń do dania. ANL-056 z ADR 0016 („decyduje człowiek, `answered_by: auto` nie istnieje") kazała mu je wszystkie przeczytać.
+
+**Zmiana.** Pytanie z `basis: canon`/`precedent` i zweryfikowanym cytatem (exit 0), `door_type: two-way`, `class` inną niż `USER_CHALLENGE`, `domain: tech`, bez flag decyzji (`premise_failed`/`card_conflict`) i bez słów-kluczy retencja/RODO/prawo/bezpieczeństwo w `ask`/`rec`/`q` dostaje `answer` = opcja `(recommended)` i `answered_by: auto` (flaga `analyze.resolve.auto_accept`, parametr bloku `resolve_auto_accept`, domyślnie `true`, `false` = stare zachowanie). Człowiek widzi jedną linię „Przyjęte automatycznie: N (cofnij: 1–N, lista w artefakcie)" i cofa „cofnij 2": `answer: null`, `auto_reverted: true`, pytanie wraca do listy i nigdy więcej nie jest przyjmowane samo. Utrwalenie decyzji (ANL-058) dopiero po jego odpowiedzi. ANL-034 bez zmian.
+
+**Egzekucja.** `verify-answer-sources.mjs`: `autoEligible`/`autoReasons` per pytanie, `auto.pending` (do zapisania) i `auto.accepted` (numeracja „cofnij"); `answered_by: auto` poza warunkami albo z `answer` ≠ `(recommended)` to exit 2. `orchestrate-prepare.mjs`: ta sama kontrola przy starcie `/orchestrate` (exit 2); cytatu nie weryfikuje drugi raz, bo utrwalenie decyzji w KANON przesuwa numery linii. `--stats`: `auto_total`, `auto_reverted`, `auto_reverted_ratio`; odpowiedzi auto nie wchodzą do `rec_*`.
+
+**Ryzyko.** Rubber-stamp i autoakceptacja. Łagodzenie: tylko zweryfikowany cytat (skrypt), `two-way`, `tech`, słowa-klucze, „cofnij", `resolve_stats` (wysoki `auto_reverted_ratio` = zaostrzyć warunki), `prepare` jako drugi zamek. Lista słów-kluczy jest zachowawcza, nie kompletna: pole `domain` nadal ustala autor analizy.
+
+**Odrzucone.** Auto dla `new-pattern` (brak źródła, człowiek ma na to patrzeć), dla produktu i prawa (źródło potwierdza kierunek, nie zgodę właściciela), ponowna weryfikacja cytatu w `prepare` (linie się przesuwają), osobna komenda cofania.
+
+**Claim.** Brak: miara (`auto_reverted_ratio`) jest nowa i żyje w `resolve_stats` artefaktów; pierwszą linię bazową da się policzyć po kilkunastu analizach.
+
+<a id="anl-061"></a>
+
+### ANL-061 — frontmatter artefaktu sprawdza skrypt na końcu `/analyze`, niezależnie od `analyze.resolve` (2026-11-08)
+
+**Objaw (juz-ide-api-3).** Analiza miała we frontmatterze `rag: skipped (indeks RAG nie był potrzebny: zakres to 3 znane pliki…)`. Nieocytowany `: ` w wartości to błąd YAML („Nested mappings are not allowed in compact mappings"), a `orchestrate-prepare` (exit 2) zauważył go dopiero na `/orchestrate`, czyli po całym cyklu analiza → zatwierdzenie. ANL-010 i ANL-028 były tylko promptem; `verify-answer-sources` parsuje frontmatter, ale startuje tylko przy `analyze.resolve`, a test `broken-frontmatter-yaml-exit-2` pokrywał błąd z odwrotnym apostrofem. Drugi wariant jest cichy: ` #` w zwykłej wartości zaczyna komentarz YAML i ucina `rag:` (`skipped (powód #1: …)` → `skipped (powód`), bez żadnego błędu.
+
+**Zmiana.** (1) `scripts/verify-answer-sources.mjs <artefakt> --check-frontmatter` (kod w `scripts/lib/frontmatter-check.mjs`): sam parsuje frontmatter, nie czyta `runtime.yml` i nie zależy od `analyze.resolve`. Exit 2 z numerem linii w pliku, cytatem linii i poprawką; sprawdza też ` #` w zwykłej wartości `rag:`/`stack_blocks:` oraz obecność `task`, `status`, `rag` (ANL-010). Bez flagi skrypt działa jak dotąd, więc stare artefakty bez `rag:` przechodzą wszystkie dotychczasowe ścieżki. (2) `/analyze` wywołuje go zawsze po zapisie artefaktu (krok 2.a), przed pokazaniem czegokolwiek człowiekowi. (3) Szablon `templates/task-analysis-template.md` ma pola `rag:` i `stack_blocks:` z komentarzem o cudzysłowie; ANL-010 dostał formę `rag: "skipped (powód)"`.
+
+**Co się NIE zmieniło.** `orchestrate-prepare.mjs` i `parseFrontmatter` bez zmian (prepare nadal odrzuca błędny YAML, teraz tylko jako drugi zamek). Pole `rag`/`stack_blocks` nie jest wymagane przez prepare.
+
+**Ryzyko.** Wymóg `rag:` w nowym kroku może zatrzymać analizę, którą prepare by przepuścił; model poprawia jedną linię i powtarza krok. Wykrywanie ` #` obejmuje tylko `rag` i `stack_blocks` (miejsca, gdzie model pisze zdania); inne pola nie są sprawdzane pod tym kątem.
+
+**Claim.** Brak: miara to `orchestrate-prepare` exit 2 z powodu frontmattera po zatwierdzonej analizie (dziś w telemetrii bez osobnej metryki); pierwsza linia bazowa po kilkunastu analizach.
+
+<a id="anl-062"></a>
+
+### ANL-062 — pliki chronione hookiem `config-protection` nie wchodzą do zakresu agenta (2026-11-08)
+
+**Objaw (juz-ide-api-3, wcześniej grant-flow TS-UI-010).** Hook ECC `pre:config-protection` odrzucił Edit na `.eslintrc.json` w trakcie `/orchestrate`; poprawka mechaniczna została niewykonana, a plik leżał w `dirs` jednostki. Praktyka repo (wpis `DEV-agent_note-hook-pre-config-protection-…`, status `dismissed`): hooka agent nie obchodzi, zmianę robi człowiek po przebiegu.
+
+**Lista z hooka** (ECC 2.0.0, `scripts/hooks/config-protection.js`, `PROTECTED_FILES`): `.eslintrc`, `.eslintrc.{js,cjs,json,yml,yaml}`, `eslint.config.{js,mjs,cjs,ts,mts,cts}`, `.prettierrc`, `.prettierrc.{js,cjs,json,yml,yaml}`, `prettier.config.{js,cjs,mjs}`, `biome.json`, `biome.jsonc`, `.ruff.toml`, `ruff.toml`, `.shellcheckrc`, `.stylelintrc`, `.stylelintrc.{json,yml}`, `.markdownlint.{json,yaml}`, `.markdownlintrc`. `tsconfig*` hook NIE chroni (`pyproject.toml` też nie), więc go nie wpisano. Blokada dotyczy modyfikacji istniejącego pliku; utworzenie nowego hook przepuszcza.
+
+**Zmiana.** `/analyze` nie wpisuje takiego pliku do `dirs`, `layers_scope` ani `minor_fixes`; zmianę zapisuje w sekcji `## Kroki ręczne po przebiegu` artefaktu (jak `.env*`, ANL-038/ORC-138). `orchestrate-prepare.mjs` (`warnBareMissingDirs`, `CONFIG_PROTECTED`) ostrzega o takim wpisie w `dirs` jednostki lub `layers_scope`. Tylko ostrzeżenie, bo projekt bez tego hooka mógłby plik edytować. Eval `units-config-protected-file-in-dirs-warns`. Strona `/orchestrate`: ORC-154.
+
+**Claim.** Brak: wzorzec `DEV-agent_note` z kategorią `config` nie ma jeszcze osobnej sygnatury; zliczać po kilkunastu przebiegach.
+
+<a id="anl-063"></a>
+
+### ANL-063 — `/analyze` dopisuje do pliku zadania sekcję `## 🔒 Security Pre-Analysis` (2026-11-08)
+
+**Objaw (juz-ide-api-8).** Analiza zauważyła, że hook `check-security-considerations` blokuje `status: in-progress` bez sekcji `## 🔒 Security Pre-Analysis` w pliku zadania (dla zadań istotnych dla bezpieczeństwa), a lista zapisów `/analyze` jej nie obejmowała, więc sekcję zostawiano człowiekowi albo przepadała.
+
+**Sprawdzenie.** Hook akceptuje `## 🔒 Security Pre-Analysis` (nowa) albo `## Security Considerations` (stara) i uznaje sekcję za wypełnioną, gdy ma odniesienie do `TM-<ID>.md` albo wypełnioną tabelę/pola; placeholdery (TODO, TBD, N/A…) bez tych znaczników to `placeholder`. Komenda `/threat-model` ma tę sekcję w swojej liście zapisów (krok 7b skilla `threat-model`); `/analyze` odpala ten sam stage, ale lista ANL-001 jej nie miała.
+
+**Zmiana.** Nowy punkt 5 listy zapisów `/analyze`: wyłącznie sekcja `## 🔒 Security Pre-Analysis` w pliku zadania, gdy stage `threat-model` zapisał TM, a sekcji brak albo jest pusta/placeholderem. Treść z modelu zagrożeń wg skilla (link do TM, podsumowanie, PII, podstawa prawna, DPIA); frontmatter i `status` zadania nietknięte; brak pliku zadania nadal ANL-052 (analiza go nie tworzy). Zamek: prompt; drugim jest sam hook.
+
+**Ryzyko.** Pierwszy zapis `/analyze` w pliku zadania poza polem z ANL-058 (`awaits_question`). Zawężony do jednej sekcji i do przypadku z TM.
+
+**Claim.** Brak: miara to liczba analiz kończących się komunikatem o brakującej sekcji; bez osobnej metryki.
+
+<a id="orc-152"></a>
+
+### ORC-152 — bramka końcowa: termin werdyktu w pierwszym przebiegu, zakres tylko z listy zmian (2026-11-08)
+
+**Objaw (juz-ide-api-1, juz-ide-api-7).** Bramka końcowa kończyła na „stopped at its 60-turn limit (partial result)" przy małym diffie (~12 plików). Budżet skryptu dla 12 plików to 15 + 2 = 17 wywołań (`scaledBudget`), a agent zużył 60 tur, więc nie trzymał się limitu z promptu. Ponowienie ORC-087 miało „werdykt po ~70% budżetu", pierwszy przebieg tylko „TWARDY LIMIT".
+
+**Przyczyny (z lektury, bez transkryptu, więc część to hipoteza).** (1) Pierwszy przebieg nie miał terminu werdyktu. (2) Definicja `security-e2e-verifier` w „domyślnym przepływie" znała tylko sekcję `## Security Considerations`; zadania projektu mają `## 🔒 Security Pre-Analysis`, więc „brak sekcji" mógł odpalić skill `threat-model` (generowanie TM w bramce to dziesiątki wywołań). Tę ścieżkę potwierdza treść definicji, nie transkrypt. (3) Fazy 1–8 i listy OWASP/B2G zachęcają do przeglądu całego repo (auth, CORS, helmet, specyfikacje E2E), choć bramka dostaje listę zmian.
+
+**Zmiana.** `buildFinalGatePrompt`: „Werdykt NAJPÓŹNIEJ po 70% limitu, potem tylko wynik; niesprawdzone pliki do `unverified_scope`", „czytaj WYŁĄCZNIE pliki z listy zmian i ich testy; bez Glob/Grep po całym repo, bez generowania threat-modelu i bez wołania skilli". Definicja agenta zna obie nazwy sekcji; w `/orchestrate` brak sekcji to wpis w `unverified_scope`, nie skill; discovery tylko z listy zmian i `dirs`; usunięty przykład kosztów 2-phase (dotyczył tylko wywołań z `Task`). Eval `final-gate-first-pass-verdict-by-70-percent-and-scoped-reads`. Chunkowanie diffów >~40 plików: opis w `docs/orchestrate-manual-mode.md` (zalecenie, bez logiki w silniku; `DEV-agent_note-final-gate-o-62-plikach…`).
+
+**Czego nie zrobiono.** Nie zmieniono `maxTurns` (60, ORC-092) ani `scaledBudget`. Nie sprawdzono transkryptów bramek; skuteczność potwierdzi kolejny przebieg z diffem ~12 plików.
+
+**Claim.** Brak: najbliższa miara to `gateNoGo` z przyczyną `machine` (limit tur) w `telemetry-report`; werdykt orientacyjny.
+
+<a id="orc-153"></a>
+
+### ORC-153 — tryb ręczny `/orchestrate`, gdy Workflow jest niedostępny (2026-11-08)
+
+**Objaw (kilka instancji juz-ide-api).** Krok 3 kończy się dialogiem „Run a dynamic workflow?" (skrypt ~300 KB, jedyna opcja „No"); zatwierdzenie jest niedostępne bez trybu workflow włączonego przez człowieka. Komenda tego nie opisywała, więc operator odrzucał dialog i kazał agentowi robić pętlę ręcznie przez `Agent`. Taka pętla traci sondy, ORC-098 (sonda bramki końcowej), ORC-139 (`report.treeHash.sealed`) i budżety ORC-091/092, a agent improwizuje werdykty (wynik częściowy bywał traktowany jak GO).
+
+**Zmiana.** Dokument `docs/orchestrate-manual-mode.md` (kiedy, jak, obowiązkowo, co tracisz) i jedna linia w komendzie po kroku 3. Obowiązkowo: sekwencja warstwa po warstwie, bramka końcowa z werdyktem po 70% limitu, wynik częściowy albo brak werdyktu = `NO_GO` `cause: machine`, nigdy `GO`, `final_gate.checks` uruchamiane samodzielnie, hash drzewa i kontrola konformancji przed `git add`, zakaz commitów, `report-deviation` raz na przebieg, lista utraconych gwarancji na początku raportu. Zero zmian w silniku i skryptach.
+
+**Ryzyko.** Tryb ręczny to zbiór instrukcji dla modelu, bez egzekucji skryptem (poza `orchestrate-tree-hash` i `conformance`); stąd lista utraconych gwarancji i zasada „częściowy = NO_GO".
+
+**Claim.** Brak: tryb nie ma telemetrii; miarą jest liczba zgłoszeń `ORC-153` w skrzynce.
+
+<a id="orc-154"></a>
+
+### ORC-154 — zablokowana edycja przez hook to wpis „otwarte", nie obejście (2026-11-08)
+
+**Objaw (juz-ide-api-3).** Hook `config-protection` zablokował edycję `.eslintrc.json` w trakcie przebiegu; do tej pory zależało od agenta, czy zgłosi to, czy spróbuje obejść (Bash, `ignores`, wyłączenie reguły).
+
+**Zmiana.** `NO_REVERT` (wspólny dla promptów implementera, weryfikatora i bramki) dostał zdanie: zablokowana edycja przez hook → NIE obchodź (bez Bash/sed/Write, `ignores`, wyłączania reguł), pomiń zmianę i opisz w `deviation_note` jako `[config]`. Koordynator (krok 5) wpisuje to do raportu jako otwarte („Kroki ręczne po przebiegu") i woła `report-deviation --trigger agent_note --category config`. Strona analizy: ANL-062 (plik nie wchodzi do zakresu, `prepare` ostrzega). Evale: `final-gate-first-pass-verdict-by-70-percent-and-scoped-reads` (zdanie w prompcie), `units-config-protected-file-in-dirs-warns`.
+
+**Claim.** Brak: metryką byłby wzorzec `DEV-agent_note` z kategorią `config`; bez osobnej sygnatury.
+
+<a id="orc-155"></a>
+
+### ORC-155 — blokada środowiska w testach L2/L3 to jeden komunikat, nie pętla; testy tylko z listą plików (2026-11-08)
+
+**Objaw (osiem instancji juz-ide-api).** Testy L2/L3 padały wszędzie na `failed to bind host port ...: address already in use` (testcontainers/Ryuk). Przyczyna po stronie maszyny: proces VS Code Server wyciekł ~28 tys. połączeń do portu 9229 i zjadł zakres portów efemerycznych 32768-60999. `/orchestrate` nie odróżniał tego od awarii kodu: zwracał „GO z luką L2” bez przyczyny albo ponawiał do 9 razy.
+
+**Zmiana (tylko prompt).** `test-implementer` rozpoznaje błąd uruchomienia kontenerów przed pierwszym testem jako `ENV_BLOCKED`: najwyżej jedna powtórka, potem jeden komunikat z linią błędu i wskazówką diagnostyczną, wynik jako luka (`unverified_scope`). `docs/orchestrate-manual-mode.md` (sekcja „Testy”) utrwala decyzję właściciela: każdy orchestrator uruchamia testy we własnym zakresie, wyłącznie z jawną listą plików zmiany (bez `--`, katalogów i globów), pełne zestawy odpala tylko człowiek.
+
+**Czego nie zrobiono.** Silnik (`orchestrate.template.mjs`) nie rozpoznaje jeszcze wzorca w wyniku sondy ani w raporcie agenta: zadanie `TASK-ORC-ENV-BLOCK-001`. Zamek jest więc miękki (prompt).
+
+**Claim.** Brak: miara to liczba przebiegów z `ENV_BLOCKED` w raporcie i brak przebiegów z więcej niż jedną powtórką.

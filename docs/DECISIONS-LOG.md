@@ -31,6 +31,18 @@ Herdr jest już w `settings.json`); sama zmiana `.gitignore` bez `count-assets` 
 
 ---
 
+## 2026-11-07 — `/analyze`: auto-przyjęcie pytań ze zweryfikowanym źródłem, jedno potwierdzenie, krótki raport (ADR 0017)
+
+**Zmiana:** ANL-060 (pytanie `canon`/`precedent` ze zweryfikowanym cytatem, `two-way`, `tech` dostaje `answered_by: auto`, człowiek cofa „cofnij N", flaga `analyze.resolve.auto_accept`), `bulkEligible` także dla `new-pattern` w tech, parser „ok"/„przyjmuję rekomendacje"/„zatwierdzam" (przyjęcie plus zatwierdzenie w jednym kroku), `batch_size` 10, raport w czacie z linią `TASK-ID` i bez meta-procesu (ANL-040; meta-proces w `## Przebieg`).
+**Dlaczego:** siedem analiz w juz-ide-api: człowiek przyjął 100% rekomendacji w sesjach, które odpowiedziały w całości (6/6, 3/3, 2/2), 11 z 26 pytań mógł rozstrzygnąć skill, a raport miał 30–50 linii meta-procesu. @founder zatwierdził wariant A+B+C.
+**Odrzucone:** auto dla `new-pattern`, produktu i prawa; ponowna weryfikacja cytatu w `prepare` (linie się przesuwają po utrwaleniu decyzji).
+**Status:** done w drzewie roboczym `develop` (niezacommitowane); projekty z `analyze.resolve` muszą ponownie zmaterializować `runtime.yml`.
+**Ref:** `docs/adr/0017-auto-przyjecie-pytan-ze-zrodlem-i-krotki-raport.md`, `docs/decisions/orchestrate-rule-history.md#anl-060`.
+**Poprawka 2026-11-08** (sekcja w tym samym ADR, bez nowego): luka przeglądu nigdy nie jest pytaniem (ANL-051, `verify-answer-sources` odrzuca pytania procesowe), linia instrukcji liczona przez skrypt i zgodna z parserem (ANL-040), po zatwierdzeniu agent zmienia tylko artefakt (ANL-034).
+**Poprawka 2026-11-08 (2)** (ta sama sekcja ADR, bez nowego): sześć powtarzających się problemów z ośmiu instancji juz-ide-api. (1) `verify-answer-sources --check-frontmatter` zawsze na końcu `/analyze` (ANL-061; `rag:` w cudzysłowie, ANL-010). (2) Bramka końcowa: werdykt po 70% limitu w pierwszym przebiegu, zakres z listy zmian, agent zna obie nazwy sekcji security (ORC-152). (3) Tryb ręczny `/orchestrate` przy niedostępnym Workflow: `docs/orchestrate-manual-mode.md` (ORC-153). (4) Budżet `decision-gate` 12 → 30 i zawężenie wpisów do tagów taska, przy >15 dwa wywołania (ANL-017/051). (5) Pliki chronione hookiem `config-protection` poza zakresem agenta, zablokowana edycja = wpis „otwarte" (ANL-062, ORC-154). (6) `/analyze` dopisuje sekcję `## 🔒 Security Pre-Analysis` do zadania (ANL-063). Wstecznie zgodne; projekty rematerializują `runtime.yml` po nowy budżet.
+
+---
+
 ## 2026-11-07 — `/analyze` rozstrzyga otwarte pytania z dokumentów, decyzja zostaje u człowieka (ADR 0016, Etap 1)
 
 **Zmiana:** krok 1.b i 3.b/3.c w `/analyze` (ANL-054..059): źródło i precedens z cytatem sprawdzanym skryptem, pytanie w dwóch liniach (`ask`, `rec`), partia do 5 pytań z odpowiedzią zbiorczą, utrwalenie decyzji w ścieżkach z configu. Konfiguracja w bloku `decision-registry`, domyślnie wyłączona (`questions_format: none`).
