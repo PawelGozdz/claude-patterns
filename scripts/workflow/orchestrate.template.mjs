@@ -163,7 +163,10 @@ const NO_REVERT =
   // STAGE_NOT_COMMIT; prompt nigdzie tego nie zakazywał (tylko cofanie).
   '\nZAKAZ COMMITOWANIA: `git commit`, `git commit --amend`, `git push`, `git tag` i `git rebase` ' +
   'są zakazane — przebieg kończy się „staged, not committed", commit robi człowiek. Zmiany ' +
-  'zostają w drzewie roboczym; `git add` jest zbędny (robi go orchestrator po bramce końcowej).'
+  'zostają w drzewie roboczym; `git add` jest zbędny (robi go orchestrator po bramce końcowej).' +
+  // ORC-154: hook config-protection (ECC) blokuje edycję istniejącej konfiguracji lintu; obejście to osłabianie bramki.
+  '\nZABLOKOWANA EDYCJA przez hook (np. `config-protection` na `.eslintrc*`, `eslint.config.*`, `.prettierrc*`): NIE obchodź ' +
+  '(bez Bash/sed/Write, bez `ignores`, bez wyłączania reguł) — pomiń zmianę i opisz ją w `deviation_note` jako `[config]`.'
 
 // ORC-124: pliki brudne PRZED startem przebiegu to cudza, niezatwierdzona praca (ai-os-bot BOT-041:
 // src/core/llm/models.ts właściciela został uznany za zmianę implementera, weryfikator dał NO_GO z
@@ -906,7 +909,10 @@ function buildFinalGatePrompt(a, checks, changedFiles, treeSource, knownGaps, pr
     'WYJŚCIE (limit długości): `rationale` najwyżej 5 zdań; każde naruszenie i ustalenie to JEDNA ' +
     'linia `plik:linia — reguła — poprawka`. Nie przepisuj kodu, nie streszczaj diffu, nie powtarzaj ' +
     'listy plików ani kart reguł, nie opisuj tego, co jest w porządku.\n' +
-    'TWARDY LIMIT: ' + calls + ' wywołań narzędzi. Gdy budżet się kończy — wydaj werdykt ' +
+    'TWARDY LIMIT: ' + calls + ' wywołań narzędzi. Werdykt NAJPÓŹNIEJ po ' + Math.floor(calls * 0.7) +
+    ' wywołaniach (70% limitu), potem tylko wynik; niesprawdzone pliki do `unverified_scope` — werdykt ' +
+    'częściowy jest wynikiem, jego brak nie (ORC-152). Czytaj WYŁĄCZNIE pliki z listy zmian i ich testy; bez Glob/Grep ' +
+    'po całym repo, bez generowania threat-modelu i bez wołania skilli. Gdy budżet się kończy — wydaj werdykt ' +
     'natychmiast na podstawie zebranych dowodów.' + NO_REVERT
 }
 

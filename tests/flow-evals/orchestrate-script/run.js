@@ -772,6 +772,21 @@ const CASES = (c) => [
     },
   },
   {
+    // ORC-152: pierwszy przebieg bramki końcowej ma ten sam termin co ponowienie ORC-087 (werdykt po 70% limitu) i zakres tylko z listy zmian.
+    name: 'final-gate-first-pass-verdict-by-70-percent-and-scoped-reads',
+    run() {
+      const p = c.buildFinalGatePrompt(ARGS, [], ['a.ts'], 'tree', [], null);
+      const m = /TWARDY LIMIT: (\d+) wywołań[\s\S]*?NAJPÓŹNIEJ po (\d+) wywołaniach \(70% limitu\)/.exec(p);
+      if (!m) return 'pierwszy przebieg bramki nie ma terminu werdyktu po 70% limitu';
+      if (Number(m[2]) !== Math.floor(Number(m[1]) * 0.7)) return 'termin to nie 70% limitu: ' + m[2] + ' z ' + m[1];
+      if (!/potem tylko wynik/.test(p) || !/unverified_scope/.test(p)) return 'brak „potem tylko wynik” i oddania reszty do unverified_scope';
+      if (!/WYŁĄCZNIE pliki z listy zmian/.test(p) || !/bez Glob\/Grep po całym repo/.test(p)) return 'brak zakazu przeczesywania repo (zakres tylko z listy zmian)';
+      if (!/bez generowania threat-modelu/.test(p)) return 'brak zakazu generowania threat-modelu w bramce';
+      if (!/ZABLOKOWANA EDYCJA przez hook/.test(p) || !/`\[config\]`/.test(p) || !/NIE obchodź/.test(p)) return 'ORC-154: brak zakazu obchodzenia hooka config-protection i znacznika [config]';
+      return null;
+    },
+  },
+  {
     name: 'final-gate-absorbs-known-layer-gaps',
     run() {
       const known = [{ layer: 'web', items: ['apps/web/src/AuthGate.tsx'] }];

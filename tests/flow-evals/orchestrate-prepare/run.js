@@ -553,6 +553,24 @@ CASES.push({
   },
 });
 
+// ORC-154 / ANL-062: konfiguracja chroniona hookiem config-protection w `dirs` = ostrzeżenie (nie błąd); tsconfig i zwykłe pliki nie.
+CASES.push({
+  name: 'units-config-protected-file-in-dirs-warns',
+  build: () => makeProject({
+    taskId: 'TS-FIX-001',
+    analysis: withFm('units:\n  - { id: wiring, layer: domain, dirs: [apps/web/.eslintrc.json, eslint.config.mjs, .prettierrc, tsconfig.json, contexts/nowy-plik.ts] }'),
+    task: taskFile('Dodaj aggregate.'),
+  }),
+  check(r) {
+    if (r.code !== 0) return `oczekiwano exit 0, było ${r.code} (${r.stderr.trim()})`;
+    const hits = r.json.warnings.filter((w) => /config-protection/.test(w));
+    if (hits.length !== 3) return `oczekiwano 3 ostrzeżeń (.eslintrc.json, eslint.config.mjs, .prettierrc), było ${hits.length}`;
+    if (!/units\[wiring\].*"apps\/web\/\.eslintrc\.json"/.test(hits[0]) || !/ANL-062/.test(hits[0])) return 'ostrzeżenie bez jednostki, ścieżki albo ANL-062';
+    if (r.json.warnings.some((w) => /tsconfig\.json/.test(w) && /config-protection/.test(w))) return 'tsconfig nie jest chroniony hookiem';
+    return null;
+  },
+});
+
 CASES.push({
   name: 'patterns-exclude-drops-false-trigger-hit',
   build: () => makeProject({
@@ -941,6 +959,64 @@ CASES.push({
     return null;
   },
 });
+
+// ANL-060 (ADR 0017): `answered_by: auto` przechodzi bramkę tylko na pytaniu, które spełnia warunki auto-akceptacji;
+// cytatu prepare nie weryfikuje po raz drugi (numery linii przesuwa utrwalenie decyzji), sprawdza kształt evidence.
+const RUNTIME_AUTO = (autoAccept) => RUNTIME_DDD.replace('analyze:\n  exit: PAUSE',
+  `params:\n  decision-registry:\n    adr_dir: docs/adr\n    bdr_dir: docs/decisions\n    questions_format: none\n\nanalyze:\n  exit: PAUSE\n  resolve: { max_questions: 12, batch_size: 10, auto_accept: ${autoAccept} }`);
+function autoAnalysis(over = '') {
+  return `---
+task: TS-FIX-001
+status: approved
+open_questions:
+  - id: Q1
+    ask: "Czy zostajemy przy obecnym wzorcu?"
+    rec: "Rekomendacja: tak (zgodne z ADR-0007)."
+    basis: precedent
+    evidence:
+      - { kind: precedent, source: "docs/adr/0007-x.md:3", quote: "wzorzec obowiązuje w całym projekcie" }
+    q: "kontekst"
+    domain: tech
+    class: TASTE
+    door_type: two-way
+    options: ["Tak (recommended)", "Nie"]
+    answer: "Tak"
+    answered_by: auto
+${over}
+decisions:
+  - id: D1
+    topic: "temat"
+    choice: "wybór"
+    means: "znaczenie"
+    rationale: "uzasadnienie"
+
+patterns:
+  - domain/fixture-nocard-pattern.md
+---
+
+# Analiza
+`;
+}
+const autoCase = (name, runtime, analysis, check) => CASES.push({
+  name, build: () => makeProject({ taskId: 'TS-FIX-001', runtime, analysis, task: taskFile('Cokolwiek.') }), check,
+});
+autoCase('auto-answer-eligible-passes', RUNTIME_AUTO(true), autoAnalysis(), (r) => (r.code === 0 ? null : `uprawnione auto-przyjęcie powinno przejść: exit ${r.code} (${r.stderr.trim().slice(0, 200)})`));
+autoCase('auto-answer-not-two-way-stops', RUNTIME_AUTO(true), autoAnalysis('').replace('door_type: two-way', 'door_type: one-way'), (r) =>
+  (r.code === 2 && /answered_by: auto bez uprawnień \(ANL-060\).*one-way/.test(r.stderr) ? null : `one-way z auto powinno zatrzymać: exit ${r.code} ${r.stderr.slice(0, 200)}`));
+autoCase('auto-answer-product-domain-stops', RUNTIME_AUTO(true), autoAnalysis('').replace('domain: tech', 'domain: product'), (r) =>
+  (r.code === 2 && /domena inna niż tech/.test(r.stderr) ? null : `produkt z auto powinien zatrzymać: exit ${r.code} ${r.stderr.slice(0, 200)}`));
+autoCase('auto-answer-without-evidence-stops', RUNTIME_AUTO(true), autoAnalysis('').replace(/    evidence:\n      - \{[^\n]*\}\n/, ''), (r) =>
+  (r.code === 2 && /źródło niezweryfikowane/.test(r.stderr) ? null : `auto bez evidence powinno zatrzymać: exit ${r.code} ${r.stderr.slice(0, 200)}`));
+autoCase('auto-answer-not-the-recommended-option-stops', RUNTIME_AUTO(true), autoAnalysis('').replace('answer: "Tak"', 'answer: "Nie"'), (r) =>
+  (r.code === 2 && /answer = opcja \(recommended\)/.test(r.stderr) ? null : `auto z inną odpowiedzią powinno zatrzymać: exit ${r.code} ${r.stderr.slice(0, 200)}`));
+autoCase('auto-answer-disabled-by-flag-stops', RUNTIME_AUTO(false), autoAnalysis(), (r) =>
+  (r.code === 2 && /auto_accept wyłączone/.test(r.stderr) ? null : `auto przy auto_accept: false powinno zatrzymać: exit ${r.code} ${r.stderr.slice(0, 200)}`));
+autoCase('auto-answer-without-decision-registry-stops', RUNTIME_DDD, autoAnalysis(), (r) =>
+  (r.code === 2 && /auto_accept wyłączone/.test(r.stderr) ? null : `auto w projekcie bez decision-registry powinno zatrzymać: exit ${r.code} ${r.stderr.slice(0, 200)}`));
+autoCase('auto-answer-unknown-answered-by-stops', RUNTIME_AUTO(true), autoAnalysis('').replace('answered_by: auto', 'answered_by: bot'), (r) =>
+  (r.code === 2 && /poza słownikiem auto\|human/.test(r.stderr) ? null : `nieznane answered_by powinno zatrzymać: exit ${r.code} ${r.stderr.slice(0, 200)}`));
+autoCase('human-answer-marker-passes', RUNTIME_DDD, autoAnalysis('').replace('answered_by: auto', 'answered_by: human'), (r) =>
+  (r.code === 0 ? null : `answered_by: human to zwykła odpowiedź: exit ${r.code} ${r.stderr.slice(0, 200)}`));
 
 // ── bieg ─────────────────────────────────────────────────────────────────────────
 let failed = 0;

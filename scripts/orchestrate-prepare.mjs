@@ -61,6 +61,8 @@ import { createRequire } from 'node:module';
 import { createHash } from 'node:crypto';
 import { engineVersion } from './lib/engine-version.mjs';
 import { buildCanon } from './lib/canon-inject.mjs';
+import { autoEligibility, recommendedOption } from './lib/answer-evidence.mjs';
+import { loadResolveConfig } from './lib/resolve-config.mjs';
 
 const require_ = createRequire(import.meta.url);
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -600,6 +602,25 @@ function main() {
     if (unanswered.length) {
       gateFailures.push(`open_questions bez odpowiedzi: ${unanswered.join(', ')}`);
     }
+    // ANL-060: `answered_by: auto` to jedyna odpowiedź bez słów człowieka i tylko dla pytania, które spełnia warunki
+    // auto-akceptacji (zweryfikowane canon/precedent, two-way, tech, bez USER_CHALLENGE i flag decyzji, auto_accept włączone).
+    // Cytatu nie weryfikujemy tu po raz drugi: numery linii przesuwa utrwalenie decyzji w KANON, a cytat sprawdził
+    // `verify-answer-sources.mjs` (exit 0) w chwili przyjęcia. Sprawdzamy kształt: ≥1 wpis evidence ze źródłem i cytatem.
+    if (Array.isArray(oq)) {
+      const stripRec = (x) => String(x ?? '').replace(/\s*\(recommended\)\s*$/i, '').trim();
+      const decs = Array.isArray(analysisDoc.fm?.decisions) ? analysisDoc.fm.decisions.filter(Boolean) : [];
+      let resolveCfg = null;
+      for (const q of oq) {
+        if (!q || q.answered_by === undefined || q.answered_by === null || q.answered_by === 'human') continue;
+        const qid = String(q.id ?? '?');
+        if (q.answered_by !== 'auto') { gateFailures.push(`open_questions[${qid}]: answered_by "${q.answered_by}" poza słownikiem auto|human`); continue; }
+        resolveCfg ??= loadResolveConfig(args.project);
+        const shaped = Array.isArray(q.evidence) && q.evidence.length > 0 && q.evidence.every((e) => e && String(e.source ?? '').trim() && String(e.quote ?? '').trim());
+        const elig = autoEligibility(q, { cfg: resolveCfg, decisions: decs, verified: shaped });
+        if (!elig.eligible) gateFailures.push(`open_questions[${qid}]: answered_by: auto bez uprawnień (ANL-060): ${elig.reasons.join('; ')} — odpowiedź zapisuje człowiek`);
+        else if (stripRec(q.answer) !== recommendedOption(q)) gateFailures.push(`open_questions[${qid}]: answered_by: auto wymaga answer = opcja (recommended)`);
+      }
+    }
     // decisions[] — prompty czytają `choice`. Artefakt z polem `decision`/`answer`/`option`
     // przechodził bramkę, a D1–D7 docierały do implementerów PUSTE (juz-ide-api-2, 2026-09-14):
     // zatwierdzona decyzja, której nikt nie stosuje, jest gorsza niż brak decyzji.
@@ -667,6 +688,8 @@ function main() {
     // to pomyłka (ai-gateway TS-AIG-102: `CLAUDE-LOCAL.md` leży w `.claude/config/`), a zakres
     // z nietrafioną ścieżką nie obejmuje pliku bez żadnego śladu. Nowe pliki w istniejących
     // katalogach są normalne, więc ostrzegamy tylko w tym jednym, pewnym przypadku.
+    // Lista z hooka `config-protection` (ECC 2.0.0, scripts/hooks/config-protection.js, PROTECTED_FILES); tsconfig* hook NIE chroni.
+    const CONFIG_PROTECTED = /^(\.eslintrc(\.(js|cjs|json|ya?ml))?|eslint\.config\.(js|mjs|cjs|ts|mts|cts)|\.prettierrc(\.(js|cjs|json|ya?ml))?|prettier\.config\.(js|cjs|mjs)|biome\.jsonc?|\.?ruff\.toml|\.shellcheckrc|\.stylelintrc(\.(json|ya?ml))?|\.markdownlint(\.json|\.ya?ml|rc)?)$/;
     const warnBareMissingDirs = (tag, dirs) => {
       for (const d of dirs) {
         if (typeof d !== 'string') continue;
@@ -676,6 +699,12 @@ function main() {
         // (ai-gateway TS-AIG-104, `.env.example` w `wiring`, 3 próby).
         if (/(^|\/)\.env(\.[^/]*)?$/.test(p)) {
           warnings.push(`${tag}: \`dirs\` zawiera "${p}" — plik .env* jest poza zasięgiem agentów (deny Read(./.env.*)); usuń go z zakresu i zapisz zmianę jako krok ręczny po przebiegu`);
+          continue;
+        }
+        // ORC-154/ANL-062: hook ECC `config-protection` blokuje EDYCJĘ istniejącej konfiguracji lintu/formatera;
+        // wpis w `dirs` skończyłby się zablokowanym Edit w trakcie przebiegu. Tylko ostrzeżenie (tworzenie nowego pliku hook przepuszcza).
+        if (CONFIG_PROTECTED.test(p.split('/').pop())) {
+          warnings.push(`${tag}: \`dirs\` zawiera "${p}" — hook config-protection blokuje edycję istniejącej konfiguracji lintu/formatera; usuń go z zakresu i zapisz zmianę jako krok ręczny po przebiegu (ANL-062)`);
           continue;
         }
         if (!p || p.includes('/') || existsSync(join(args.project, p))) continue;

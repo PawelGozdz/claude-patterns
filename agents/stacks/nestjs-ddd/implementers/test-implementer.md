@@ -343,6 +343,13 @@ actual files yourself rather than expecting them pasted into your prompt.
   session/agent in that repo (see also "HARD RULE: anything that emits SQL is L2" above).
   Applies regardless of how you were invoked — a fresh/bare invocation without this file's
   context is not an excuse to improvise pnpm flags on these two scripts.
+- **Environment block is not a code failure (ORC-155).** If an L2/L3 run dies in testcontainers/Ryuk setup with
+  `failed to bind host port ... address already in use`, `Could not find a working container runtime strategy`, or
+  `Cannot connect to the Docker daemon` BEFORE any spec body ran, that is the machine, not the code. Do NOT retry in a
+  loop, do NOT pick another port, do NOT report a failing test. Run the same command **once more at most**, then
+  stop with ONE message: `ENV_BLOCKED: <the error line> - L2/L3 not verified; human must free the resource (check
+  `ss -tan | wc -l` and the PID holding connections)`. Return it as an open gap
+  (`unverified_scope`), never as GO for that layer.
 
 ---
 
@@ -374,6 +381,7 @@ rule before you assert anything.
 
 ## Changelog
 
+- 2026-11-08 — blokada środowiska testcontainers (`address already in use`, brak Dockera) przed pierwszym testem to `ENV_BLOCKED`: jedna powtórka, jeden komunikat, luka w `unverified_scope` zamiast pętli prób (ORC-155; osiem instancji juz-ide-api, wyciek portów efemerycznych)
 - 2026-11-02 — reguła „jedyny sposób uruchamiania testów” wpisana wprost do sekcji zasad testów (ORC-149); testy jednostkowe agent uruchamia tylko w projekcie z `allowUnit: true` w `.claude/test-guard.json`
 - 2026-10-31 — HARD RULE egzekwowana hookiem `block-unscoped-tests` (ORC-149): testy tylko `pnpm test:{e2e|integration} <pliki>`; sonda silnika woła `tools/scoped-tests/run.mjs`, nie `npm run test`
 - 2026-10-30 — HARD RULE: żadnego uruchamiania testów bez filtra plików (nigdy gołe `pnpm test*`, `npm run test*`, `npx`/`vitest`); pełny pakiet odpala człowiek (TS-GEO-DISTANCE-BUCKETS-001: sondy `/orchestrate` odpalały 2017 plików)

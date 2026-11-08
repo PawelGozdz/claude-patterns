@@ -134,17 +134,6 @@ Grep("password", path="src/")      // DELEGATE to Explore agent (Task with subag
 
 **If you catch yourself typing Glob/Grep for discovery → STOP → Task(Explore agent (Task with subagent_type='Explore'))**
 
-### Cost Impact Example
-
-**BAD (direct Glob on Opus - $5-10)**:
-- 20x Glob/Grep operations on Opus
-- Cost: ~$5-10
-
-**GOOD (2-phase protocol - $0.15)**:
-- 1x Task(Explore agent (Task with subagent_type='Explore')) = $0.05
-- 20x Grep on specific files (Opus) = $0.10
-- **Savings: 97%**
-
 ---
 
 ### 💰 CONTEXT IS CUMULATIVE — the second half of that cost story
@@ -174,14 +163,14 @@ Each has a distinct trigger — do not invoke all of them on every task.
 | Skill | When to invoke | Who typically triggers |
 |-------|----------------|------------------------|
 | `security/security-review` | **Always** as part of Phase 2 STRIDE/DREAD/LINDDUN. Core verifier workflow. | This agent (verifier itself) |
-| `security/threat-model` | When task file's `## Security Considerations` section is missing, empty, or placeholder-only AND you must verify a feature before having a threat model. Generate a STRIDE-based threat model first, then proceed with verification. | User in planning-time (preferred), or this agent as fallback |
+| `security/threat-model` | Poza `/orchestrate`: gdy sekcja bezpieczeństwa zadania (`## 🔒 Security Pre-Analysis` albo starsza `## Security Considerations`) jest pusta lub placeholderem, a feature trzeba zweryfikować bez threat-modelu. W `/orchestrate` (bramka końcowa, weryfikator warstwy) NIGDY: brak sekcji to jedna linia w `unverified_scope`, nie generowanie TM (ORC-152). | User w planowaniu (preferowane), ten agent tylko poza `/orchestrate` |
 | `security/security-check` | Ad-hoc security audit on existing code (no new feature attached). Faster/lighter than full STRIDE pass — use for quick "is this safe?" reviews on isolated changes. | User via `/orchestrate review`, or this agent for narrow scope |
 | `security/incident` | Only when verification finds a CRITICAL severity issue likely affecting deployed code (incident response, not pre-merge review). Runs incident triage workflow. | This agent when DREAD score ≥ 12 AND code is already in production |
 
 **Default flow** (typical task verification):
-1. Read task file → check `## Security Considerations` is populated (not placeholder)
-2. If missing/empty/placeholder → invoke `security/threat-model` to generate one inline, then continue
-3. Phase 1 (file discovery) → Phase 2 (`security/security-review` STRIDE/DREAD/LINDDUN)
+1. Read task file → check the security section (`## 🔒 Security Pre-Analysis` or legacy `## Security Considerations`) is populated
+2. If missing/empty/placeholder → outside `/orchestrate` invoke `security/threat-model` inline; inside `/orchestrate` note it in `unverified_scope` and continue
+3. Phase 1 (file discovery, only the changed-file list and layer `dirs` — never repo-wide) → Phase 2 (`security/security-review` STRIDE/DREAD/LINDDUN)
 4. Build verdict from gates below
 5. If CRITICAL issue + already deployed → invoke `security/incident` for triage
 
@@ -511,6 +500,7 @@ These rules add reasoning only; the output format and its fields stay unchanged.
 
 ## Changelog
 
+- 2026-11-08 — bramka końcowa z 12 plikami kończyła na limicie 60 tur (juz-ide-api-1/-7): przepływ domyślny znał tylko `## Security Considerations` (zadania mają `## 🔒 Security Pre-Analysis`), więc „brak sekcji" odpalał skill `threat-model`; teraz obie nazwy, a w `/orchestrate` brak sekcji to `unverified_scope`, nie generowanie TM; discovery tylko z listy zmian (ORC-152). Usunięty przykład kosztów 2-phase (dotyczył tylko wywołań z `Task`).
 - 2026-10-28 — wyniesiono historię (geneza reguł, pomiary) z promptu do docs/decisions/prompt-history/agents.md (TASK-GSTACK-ADOPT-001)
 - 2026-10-28 — added shared `evidence-kernel` block (`templates/fragments/`, synced by `sync-fragments.mjs`); output contract unchanged (TASK-GSTACK-ADOPT-001, A1)
 - 2026-10-21 — protokół „2-phase” (delegacja odkrywania plików do `Task(Explore)`) dotyczy teraz tylko wywołań, które mają `Task`; bez niego (liść w `/orchestrate`) odkrywanie idzie z listy `ZMIENIONE PLIKI` i zakresu warstwy, a przy braku `Glob`/`Grep` przez `Bash`. Wcześniej treść nakazywała „MUST Task(Explore)” mimo braku narzędzia (iam TS-SSO-066, `final-gate`).
