@@ -3,6 +3,7 @@
 **Status**: accepted (2026-11-07). Etap 1 zaimplementowany w gałęzi `feature/TASK-ANALYZE-RESOLVE-001`, niescalony i bez rollout-u do projektów. Etap 2 tylko zaprojektowany.
 **Zmienia**: kontrakt „`/analyze` nigdy nie implementuje" (ANL-001): wąski wyjątek po odpowiedzi człowieka (ANL-058).
 **Nie zmienia**: ANL-034 (`approved` plus `answer: null` to exit 2), `orchestrate-prepare.mjs`, zamka `premise_failed`/`card_conflict` (ANL-049/050).
+**Zmienione przez**: [ADR 0017](0017-auto-przyjecie-pytan-ze-zrodlem-i-krotki-raport.md) — wąski wyjątek `answered_by: auto` (ANL-060), `batch_size` 10, „ok" także dla nowego wzorca w tech, krótki raport (ANL-040).
 **Context source**: rozmowa właściciela z sesją orkiestratora juz-ide-api-1, 2026-11-07. Reguły: [ANL-054..059](../decisions/orchestrate-rule-history.md#anl-054).
 
 ---

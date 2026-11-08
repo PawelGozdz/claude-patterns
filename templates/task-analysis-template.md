@@ -7,6 +7,10 @@ telemetry_run: null             # runId z `telemetry-emit run-start` (ANL-041); 
 status: awaiting-human          # draft | awaiting-human | approved  ← BRAMKA MASZYNOWA
 # /orchestrate ODMÓWI startu dopóki status != approved LUB jakiekolwiek answer == null.
 
+rag: "skipped (powód)"          # ANL-010: lista zapytań z liczbą trafień albo `"skipped (powód)"`. Wartość z `: ` albo ` #` MUSI
+                                # być w cudzysłowie lub bloku `>-` (inaczej YAML się nie parsuje; sprawdza verify-answer-sources --check-frontmatter)
+stack_blocks: [ddd/core]        # ANL-028: bloki z runtime.yml; ta sama zasada cytowania
+
 threat_model: null              # link do docs/security/threat-models/TM-{TASK-ID}.md (lub null jeśli nie-security)
 # Security (STRIDE/DREAD/LINDDUN) NIE tutaj — żyje w threat-models/. Tu tylko link + krótkie "Ryzyka".
 
@@ -34,7 +38,7 @@ open_questions:                 # człowiek wypełnia answer; null = blokuje imp
     answer: null
     # Pytanie z rekomendacją (ANL-054..057) — pola OPCJONALNE; bez `rec` pytanie wygląda jak dotąd.
     # Człowiek widzi DWIE linie: `ask` (jedno proste pytanie) i `rec` (rekomendacja + podstawa). Razem ≤ 2 zdania.
-    # Numer BDR/ADR wolno tylko w `rec`; kontekst techniczny zostaje w `q`. Decyduje człowiek: skrypt nigdy nie wypełnia `answer`.
+    # Numer BDR/ADR wolno tylko w `rec`; kontekst techniczny zostaje w `q`. Decyduje człowiek; jedyny wyjątek to `answered_by: auto` (ANL-060, niżej).
     # - id: Q3
     #   ask: "Czy zbanowany użytkownik może publikować treści?"
     #   rec: "Rekomendacja: nie (zgodne z BDR-141)."          # albo „… (nowy wzorzec, oparty o BDR-120 i BDR-122)."
@@ -49,10 +53,12 @@ open_questions:                 # człowiek wypełnia answer; null = blokuje imp
     #   question_file: null                                   # format file: id pliku pytania w questions_dir (produkt/prawo bez źródła)
     #   blocks_sp: 3                                          # ile SP blokuje; porządkuje partię
     #   answer: null
+    #   answered_by: auto                                     # ANL-060: tylko canon/precedent ze zweryfikowanym cytatem, two-way, tech; wtedy answer = opcja (recommended)
+    #   auto_reverted: true                                   # człowiek cofnął automatyczną odpowiedź („cofnij N"): answer: null, answered_by usunięte, nigdy już auto
 
-# Po odpowiedziach człowieka /analyze dopisuje (ANL-058/059):
+# Po odpowiedziach człowieka /analyze dopisuje (ANL-058/059/060):
 # resolution_docs: [{ question: Q3, doc: docs/decisions/BDR-142-x.md }]
-# resolve_stats: { rec_total: 4, rec_accepted: 3, rec_rejected: 1, rec_rejected_ratio: 0.25, by_basis: { precedent: { total: 3, rejected: 0 } } }
+# resolve_stats: { rec_total: 4, rec_accepted: 3, rec_rejected: 1, rec_rejected_ratio: 0.25, by_basis: { precedent: { total: 3, rejected: 0 } }, auto_total: 2, auto_reverted: 0, auto_reverted_ratio: 0 }
 
 decisions:                      # propozycje z analizy; człowiek weryfikuje/poprawia
   # `means` = co ta decyzja zmienia dla produktu albo użytkownika, tym samym rejestrem
@@ -121,6 +127,11 @@ layers_scope: []                # warstwy dotknięte CZĘŚCIOWO — wchodzą, a
 - **D1**: ...
 
 ## Ryzyka / uwagi
+- ...
+
+## Przebieg
+<!-- Meta-proces trafia TU, nie do czatu (ANL-040): co sprawdzono, czego nie, odstępstwa od procesu, panel, telemetria,
+     lista pytań przyjętych automatycznie (ask → odpowiedź, ANL-060). Człowiek czyta to tylko, gdy chce. -->
 - ...
 
 ---

@@ -13,6 +13,13 @@
  *   • close-questions kasuje plik pytania dopiero, gdy istnieje dokument z `rozstrzyga`
  *   • materializacja: `questions_format` poza słownikiem wywala się, domyślnie `none`
  *
+ *   • ADR 0017 (ANL-060): auto-przyjęcie tylko dla canon/precedent ze źródłem + two-way + tech; one-way, USER_CHALLENGE, produkt,
+ *     new-pattern, słowa-klucze RODO/bezpieczeństwo, flagi decyzji i `auto_accept: false` nigdy; „cofnij N"; `answered_by: auto`
+ *     bez uprawnień = exit 2; parser „ok"/„przyjmuję rekomendacje"/„zatwierdzam" z `approve.granted` i `hold`
+ *
+ *   • ADR 0017, poprawka 2026-11-08: luka przeglądu i pytanie o proces = exit 2; znacznik podstawy w `rec` = exit 2; `instruction`
+ *     zgodna z parserem („ok” tylko gdy wszystko bulkEligible); reguły ANL-034/040/051 w komendzie
+ *
  * Uruchom: node tests/flow-evals/analyze-resolve/run.js
  */
 const fs = require('fs');
@@ -36,7 +43,7 @@ function write(dir, rel, content) {
   fs.mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true });
   fs.writeFileSync(path.join(dir, rel), content);
 }
-function project({ format = 'file', registry = true, extraFiles = {}, sink = { canon_edit: ['docs/KANON.md'] } } = {}) {
+function project({ format = 'file', registry = true, extraFiles = {}, sink = { canon_edit: ['docs/KANON.md'] }, resolve = { max_questions: 12, batch_size: 5, auto_accept: true } } = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ar-eval-'));
   roots.push(dir);
   const rt = registry
@@ -49,7 +56,7 @@ function project({ format = 'file', registry = true, extraFiles = {}, sink = { c
             questions_format: format, questions_dir: 'docs/decisions/questions', resolution_sink: sink,
           },
         },
-        analyze: { resolve: { max_questions: 12, batch_size: 5 } },
+        analyze: { resolve },
       }
     : { schema_version: 1, params: {} };
   write(dir, '.claude/config/runtime.yml', YAML.stringify(rt));
@@ -216,6 +223,143 @@ test('miara jakości: odsetek rekomendacji odrzuconych przez człowieka', () => 
   eq(s.rec_total, 4); eq(s.rec_rejected, 1); eq(s.rec_rejected_ratio, 0.25); eq(s.by_basis.precedent.rejected, 1);
 });
 
+// ── ADR 0017: auto-przyjęcie, cofnięcie, jedno potwierdzenie ────────────────
+// pytanie, które SPEŁNIA warunki auto: canon/precedent ze zweryfikowanym cytatem, two-way, tech, bez słów-kluczy
+const aq = (over = {}) => q({ domain: 'tech', question_file: undefined, ...over });
+const item = (r, id) => r.json.questions.find((x) => x.id === id);
+
+test('auto: canon/precedent ze źródłem + two-way + tech → autoEligible, w auto.pending, poza partią człowieka', () => {
+  const dir = project(); artifact(dir, [aq({ id: 'Q1' }), aq({ id: 'Q2', basis: 'canon', evidence: [{ kind: 'answer', source: 'docs/decisions/BDR-141-x.md:12', quote: QUOTE }], rec: 'Rekomendacja: nie (zgodne z BDR-141).' })]);
+  const r = verify(dir);
+  eq(r.code, 0); eq(item(r, 'Q1').autoEligible, true); eq(item(r, 'Q2').autoEligible, true);
+  eq(r.json.auto.pending.map((p) => p.id).join(), 'Q1,Q2'); eq(r.json.auto.pending[0].answer, 'Nie', 'answer = opcja (recommended) bez znacznika');
+  eq(r.json.batch.length, 0, 'człowiek nie dostaje pytań, które przyjęto samo');
+});
+test('auto: one-way, USER_CHALLENGE, produkt, prawo, new-pattern i basis none NIGDY automatycznie', () => {
+  const np = { basis: 'new-pattern', evidence: [], rec: 'Rekomendacja: nie (nowy wzorzec, oparty o ostrożność).' };
+  const dir = project();
+  artifact(dir, [aq({ id: 'A', door_type: 'one-way' }), aq({ id: 'B', class: 'USER_CHALLENGE' }), aq({ id: 'C', domain: 'product' }), aq({ id: 'D', domain: 'legal', question_file: '2026-11-07-d' }),
+    aq({ id: 'E', ...np }), aq({ id: 'F', rec: undefined, basis: 'none', evidence: [], options: undefined }), aq({ id: 'G', door_type: undefined })]);
+  const r = verify(dir);
+  for (const id of 'ABCDEFG') eq(item(r, id).autoEligible, false, `pytanie ${id}`);
+  eq(r.json.auto.pending.length, 0);
+  has(item(r, 'A').autoReasons.join(), 'one-way'); has(item(r, 'B').autoReasons.join(), 'USER_CHALLENGE'); has(item(r, 'C').autoReasons.join(), 'domena inna niż tech');
+});
+test('auto: słowa-klucze retencja/RODO/bezpieczeństwo w pytaniu blokują auto (pytanie idzie do człowieka)', () => {
+  const dir = project();
+  artifact(dir, [aq({ id: 'Q1', ask: 'Czy przechowywać dane po zamknięciu konta bez ograniczenia retencji?' }), aq({ id: 'Q2', q: 'dotyczy uwierzytelniania' }), aq({ id: 'Q3', rec: 'Rekomendacja: nie (zgodne z BDR-141, RODO).' })]);
+  const r = verify(dir);
+  for (const id of ['Q1', 'Q2', 'Q3']) { eq(item(r, id).autoEligible, false, id); has(item(r, id).autoReasons.join(), 'retencja/RODO'); }
+  eq(r.json.batch.length, 3);
+});
+test('auto: decyzja z premise_failed/card_conflict i flaga auto_accept: false blokują auto', () => {
+  const dir = project();
+  artifact(dir, [aq({ id: 'Q1', decision: 'D1' }), aq({ id: 'Q2', decision: 'D2' }), aq({ id: 'Q3' })], [{ id: 'D1', choice: 'x', premise_failed: true }, { id: 'D2', choice: 'y', card_conflict: ['CH5'] }, { id: 'D3', choice: 'z' }]);
+  const r = verify(dir);
+  eq(item(r, 'Q1').autoEligible, false); eq(item(r, 'Q2').autoEligible, false); eq(item(r, 'Q3').autoEligible, true);
+  const off = project({ resolve: { max_questions: 12, batch_size: 5, auto_accept: false } }); artifact(off, [aq({ id: 'Q1' })]);
+  const r2 = verify(off);
+  eq(r2.json.auto.enabled, false); eq(r2.json.auto.pending.length, 0, 'auto_accept: false = zachowanie sprzed zmiany'); eq(r2.json.batch.length, 1, 'pytanie idzie do człowieka');
+  const stale = project({ resolve: { max_questions: 12, batch_size: 5 } }); artifact(stale, [aq({ id: 'Q1' })]);
+  eq(verify(stale).json.auto.enabled, false, 'brak klucza w starym runtime.yml = wyłączone');
+});
+test('auto: answered_by: auto bez uprawnień, z inną odpowiedzią niż (recommended) albo spoza słownika → exit 2', () => {
+  const dir = project();
+  artifact(dir, [aq({ id: 'Q1', answered_by: 'auto', answer: 'Nie' })]); eq(verify(dir).code, 0, 'uprawnione');
+  artifact(dir, [aq({ id: 'Q1', answered_by: 'auto', answer: 'Nie', door_type: 'one-way' })]);
+  let r = verify(dir); eq(r.code, 2); has(problems(r), 'answered_by: auto bez uprawnień'); has(problems(r), 'one-way');
+  artifact(dir, [aq({ id: 'Q1', answered_by: 'auto', answer: 'Nie', domain: 'product', question_file: undefined })]);
+  r = verify(dir); eq(r.code, 2); has(problems(r), 'domena inna niż tech');
+  artifact(dir, [aq({ id: 'Q1', answered_by: 'auto', answer: 'Tak' })]);
+  r = verify(dir); eq(r.code, 2); has(problems(r), 'answer = opcja (recommended)');
+  artifact(dir, [aq({ id: 'Q1', answered_by: 'bot', answer: 'Nie' })]);
+  r = verify(dir); eq(r.code, 2); has(problems(r), 'poza słownikiem auto|human');
+  const off = project({ resolve: { max_questions: 12, batch_size: 5, auto_accept: false } }); artifact(off, [aq({ id: 'Q1', answered_by: 'auto', answer: 'Nie' })]);
+  r = verify(off); eq(r.code, 2); has(problems(r), 'auto_accept wyłączone');
+});
+test('cofnij: „cofnij 2” → reverted; nieistniejący numer i „cofnij” bez numeru → unparsed; „cofnij wszystkie”', () => {
+  const dir = project();
+  artifact(dir, [aq({ id: 'Q1', answered_by: 'auto', answer: 'Nie' }), q({ id: 'Q2', answer: 'Nie' }), aq({ id: 'Q3', answered_by: 'auto', answer: 'Nie' }), q({ id: 'Q4', door_type: 'one-way' })]);
+  const base = verify(dir);
+  eq(base.json.auto.accepted.map((a) => `${a.no}:${a.id}`).join(), '1:Q1,2:Q3', 'numeracja tylko automatycznie przyjętych, w kolejności artefaktu');
+  eq(verify(dir, ['--reply', 'cofnij 2']).json.reply.reverted.map((x) => x.id).join(), 'Q3');
+  const bad = verify(dir, ['--reply', 'cofnij 7; cofnij']).json.reply; eq(bad.reverted.length, 0); eq(bad.unparsed.length, 2);
+  eq(verify(dir, ['--reply', 'cofnij wszystkie']).json.reply.reverted.length, 2);
+  eq(verify(dir, ['--reply', 'Cofnij 1, 2.']).json.reply.reverted.length, 2, 'interpunkcja i wielkość liter bez znaczenia');
+});
+test('cofnięte pytanie (auto_reverted) wraca do partii człowieka i nie jest już autoEligible; „zatwierdzam” nie przejdzie z cofnięciem', () => {
+  const dir = project();
+  artifact(dir, [aq({ id: 'Q1', answer: null, auto_reverted: true })]);
+  const r = verify(dir);
+  eq(item(r, 'Q1').autoEligible, false); has(item(r, 'Q1').autoReasons.join(), 'cofnął'); eq(r.json.batch.length, 1); eq(r.json.auto.pending.length, 0);
+  artifact(dir, [aq({ id: 'Q1', answered_by: 'auto', answer: 'Nie' })]);
+  const rep = verify(dir, ['--reply', 'cofnij 1; zatwierdzam']).json.reply;
+  eq(rep.reverted.length, 1); eq(rep.approve.requested, true); eq(rep.approve.granted, false, 'cofnięte wraca do listy — nie zatwierdzamy'); has(JSON.stringify(rep.approve.blockedBy), 'cofnięte');
+});
+test('resolve_stats: auto_total, auto_reverted; odpowiedzi auto nie liczą się do rec_*', () => {
+  const dir = project();
+  artifact(dir, [aq({ id: 'Q1', answered_by: 'auto', answer: 'Nie' }), aq({ id: 'Q2', answered_by: 'auto', answer: 'Nie' }), aq({ id: 'Q3', auto_reverted: true, answer: 'Tak' }), q({ id: 'Q4', answer: 'Nie' })]);
+  const s = verify(dir, ['--stats']).json.stats;
+  eq(s.auto_total, 3); eq(s.auto_reverted, 1); eq(s.auto_reverted_ratio, 0.33); eq(s.rec_total, 2, 'Q3 (odpowiedź człowieka po cofnięciu) i Q4'); eq(s.rec_rejected, 1);
+});
+test('bulkEligible: new-pattern w tech tak (dwudrzwiowy), w produkcie/prawie, one-way i USER_CHALLENGE nie', () => {
+  const np = { basis: 'new-pattern', evidence: [], rec: 'Rekomendacja: nie (nowy wzorzec, oparty o ostrożność).' };
+  const dir = project();
+  artifact(dir, [q({ id: 'T', domain: 'tech', question_file: undefined, ...np }), q({ id: 'P', domain: 'product', ...np, question_file: 'x' }), q({ id: 'O', domain: 'tech', question_file: undefined, door_type: 'one-way', ...np }),
+    q({ id: 'U', domain: 'tech', question_file: undefined, class: 'USER_CHALLENGE', ...np })]);
+  const r = verify(dir);
+  eq(item(r, 'T').bulkEligible, true, 'new-pattern tech'); eq(item(r, 'P').bulkEligible, false); eq(item(r, 'O').bulkEligible, false); eq(item(r, 'U').bulkEligible, false);
+  eq(item(r, 'T').autoEligible, false, 'new-pattern nigdy auto, tylko hurtem');
+});
+test('parser: „ok”, „przyjmuję rekomendacje”, „Tak, zatwierdzam rekomendacje!”, „biorę rekomendacje” = ok wszystkie', () => {
+  const dir = project();
+  artifact(dir, [q({ id: 'Q1' }), q({ id: 'Q2' })]);
+  for (const text of ['ok', 'OK.', 'ok wszystkie', 'przyjmuję rekomendacje', 'przyjmuje rekomendacje', 'Tak, zatwierdzam rekomendacje!', 'biorę rekomendacje', 'akceptuję wszystkie rekomendacje', 'zgoda']) {
+    const rep = verify(dir, ['--reply', text]).json.reply;
+    eq(rep.answers.map((a) => a.answer).join(), 'Nie,Nie', `„${text}”`); eq(rep.unparsed.length, 0, `„${text}” unparsed`); eq(rep.approve.granted, true, `„${text}” zatwierdza, gdy nic nie zostaje`);
+  }
+  for (const text of ['przyjmuję', 'biorę', 'tak', 'hmm ok może']) eq(verify(dir, ['--reply', text]).json.reply.answers.length, 0, `„${text}” to nie zgoda zbiorcza`);
+});
+test('parser: „ok” przy pytaniu one-way przyjmuje resztę, ale hold z numerem i bez zatwierdzenia; „ok poza 2” nie zatwierdza', () => {
+  const dir = project();
+  // wyświetlenie: one-way Q2 = 1, Q1 = 2, Q3 = 3
+  artifact(dir, [q({ id: 'Q1' }), q({ id: 'Q2', door_type: 'one-way' }), q({ id: 'Q3' })]);
+  const rep = verify(dir, ['--reply', 'ok']).json.reply;
+  eq(rep.answers.map((a) => a.id).sort().join(), 'Q1,Q3'); eq(rep.hold.map((h) => `${h.no}:${h.id}`).join(), '1:Q2');
+  eq(rep.approve.requested, true); eq(rep.approve.granted, false); eq(rep.approve.blockedBy[0].no, 1);
+  const poza = verify(dir, ['--reply', 'ok poza 3']).json.reply;
+  eq(poza.approve.requested, false, 'z „poza” człowiek chce jeszcze spojrzeć'); eq(poza.approve.granted, false);
+  const full = verify(dir, ['--reply', 'ok; 1: tak']).json.reply;
+  eq(full.answers.find((a) => a.id === 'Q2').answer, 'Tak'); eq(full.approve.granted, true, 'wszystko odpowiedziane po „ok” + jawna odpowiedź na one-way');
+});
+test('parser: „zatwierdzam” = przyjęcie bulkEligible + approve; z one-way/USER_CHALLENGE bez odpowiedzi → hold z numerami, bez approve', () => {
+  const dir = project();
+  artifact(dir, [q({ id: 'Q1' }), q({ id: 'Q2' })]);
+  const ok = verify(dir, ['--reply', 'zatwierdzam']).json.reply;
+  eq(ok.answers.map((a) => a.answer).join(), 'Nie,Nie'); eq(ok.approve.granted, true); eq(ok.hold.length, 0);
+  eq(verify(dir, ['--reply', 'zatwierdzam wszystko']).json.reply.approve.granted, true);
+  artifact(dir, [q({ id: 'Q1' }), q({ id: 'Q2', door_type: 'one-way' }), q({ id: 'Q3', class: 'USER_CHALLENGE' })]);
+  const hold = verify(dir, ['--reply', 'zatwierdzam']).json.reply;
+  eq(hold.answers.map((a) => a.id).join(), 'Q1', 'bulkEligible przyjęte, reszta nie'); eq(hold.approve.granted, false, 'status nie jest zmieniany');
+  eq(hold.approve.blockedBy.map((b) => b.no).sort().join(), '1,2', 'numery pytań z hold'); eq(hold.hold.map((h) => h.id).sort().join(), 'Q2,Q3');
+  const after = verify(dir, ['--reply', 'zatwierdzam; 1: nie; 2: nie']).json.reply;
+  eq(after.approve.granted, true, 'jawne odpowiedzi na one-way odblokowują zatwierdzenie w tej samej wiadomości');
+});
+test('parser: „zatwierdzam” nie przejdzie z pytaniami poza partią; przy braku otwartych pytań przechodzi', () => {
+  const dir = project({ resolve: { max_questions: 12, batch_size: 2, auto_accept: true } });
+  artifact(dir, [q({ id: 'Q1' }), q({ id: 'Q2' }), q({ id: 'Q3' })]);
+  const rep = verify(dir, ['--reply', 'zatwierdzam']).json.reply;
+  eq(rep.approve.granted, false); has(JSON.stringify(rep.approve.blockedBy), 'poza tą partią');
+  artifact(dir, [q({ id: 'Q1', answer: 'Nie' })]);
+  const none = verify(dir, ['--reply', 'zatwierdzam']).json;
+  eq(none.batch.length, 0); eq(none.reply.approve.granted, true, 'wszystko odpowiedziane, człowiek mówi „zatwierdzam” — to wystarcza');
+});
+test('batch_size: domyślnie 10 (brak klucza w runtime.yml), 12 pytań = partia 10 + remaining 2', () => {
+  const dir = project({ resolve: { max_questions: 12 } });
+  artifact(dir, Array.from({ length: 12 }, (_, i) => q({ id: `Q${i + 1}` })));
+  const r = verify(dir); eq(r.json.batch.length, 10); eq(r.json.remaining, 2); eq(r.json.limits.batchSize, 10);
+});
+
 // ── fallback: none / projekt bez bloku ─────────────────────────────────────
 test('questions_format: none — pytania weryfikowane jak zawsze, ale poza artefaktem nie wolno zapisać niczego', () => {
   const dir = project({ format: 'none' }); artifact(dir, [q({ domain: undefined })]);
@@ -301,6 +445,135 @@ test('produkt/prawo bez źródła w formacie file wymaga pliku pytania, a nigdy 
   eq(verify(dir).code, 0);
 });
 
+// ── ADR 0017, poprawka 2026-11-08 ───────────────────────────────────────────
+// 1. luka przeglądu nigdy nie jest pytaniem; 2. linia instrukcji zgodna z parserem; 3. po „ok" agent zmienia tylko artefakt
+const procQ = (over = {}) => ({ id: 'Q9', ask: 'Kontrola decyzji nie przeczytała trzech plików, czy powtórzyć przegląd?', q: 'Bramka decision-gate skończyła budżet', answer: null, ...over });
+test('luka przeglądu: pytanie procesowe bez decision i rec → exit 2 (nie trafia do człowieka)', () => {
+  const dir = project(); artifact(dir, [procQ()]);
+  const r = verify(dir); eq(r.code, 2, 'exit'); has(problems(r, 'Q9'), 'luka przeglądu idzie do `## Przebieg`');
+});
+test('luka przeglądu: pytanie o proces odpada nawet z decision i rec', () => {
+  const dir = project();
+  artifact(dir, [procQ({ decision: 'D1', rec: 'Rekomendacja: tak (nowy wzorzec, oparty o ostrożność).', basis: 'new-pattern', domain: 'tech', class: 'TASTE', door_type: 'two-way', options: ['Tak (recommended)', 'Nie'] })], [{ id: 'D1', choice: 'x' }]);
+  const r = verify(dir); eq(r.code, 2, 'exit'); has(problems(r, 'Q9'), 'proces analizy');
+});
+test('luka przeglądu: zwykłe pytania o domenę ze słowami „doczytać”, „kontrola decyzji”, „bramka” i „poprawny” nie są pytaniami procesowymi ani wrażliwymi', () => {
+  const dir = project();
+  const mk = (id, ask) => ({ id, ask, q: 'kontekst', decision: 'D1', basis: 'none', domain: 'tech', class: 'TASTE', door_type: 'two-way', answer: null });
+  artifact(dir, [mk('Q1', 'Czy doczytać historię zamówień z archiwum przy otwarciu widoku?'), mk('Q2', 'Czy kontrola decyzji płatności ma być synchroniczna?'),
+    mk('Q3', 'Czy przebieg analizy raportu ma być cache-owany?'), mk('Q4', 'Czy bramka płatności nie sprawdzi duplikatów?')], [{ id: 'D1', choice: 'x' }]);
+  const r = verify(dir); eq(r.code, 0, r.err);
+  for (const id of ['Q1', 'Q2', 'Q3', 'Q4']) eq(problems(r, id), '', id);
+});
+test('auto: „poprawnego” i „poprawnie” nie są słowem „prawny” (SENSITIVE_RE ma granicę słowa)', () => {
+  const dir = project(); artifact(dir, [aq({ id: 'Q1', ask: 'Czy użyć poprawnego formatu daty ISO w API?', rec: 'Rekomendacja: tak (zgodne z BDR-141).', options: ['Tak (recommended)', 'Nie'] })]);
+  eq(item(verify(dir), 'Q1').autoEligible, true);
+});
+test('luka przeglądu: zwykłe pytanie TASTE z decision, bez rec (basis none) nadal przechodzi', () => {
+  const dir = project();
+  artifact(dir, [{ id: 'Q8', ask: 'Czy nazwać funkcję po polsku?', q: 'brak podstaw do preferencji', decision: 'D1', basis: 'none', domain: 'tech', class: 'TASTE', door_type: 'two-way', answer: null }], [{ id: 'D1', choice: 'x' }]);
+  eq(verify(dir).code, 0);
+});
+test('rec: znacznik podstawy (canon/precedent/basis) → exit 2, „zgodne z BDR” i „nowy wzorzec” przechodzą', () => {
+  const dir = project(); artifact(dir, [q({ rec: 'Rekomendacja: nie (zgodne z BDR-141, precedent).' })]);
+  const r = verify(dir); eq(r.code, 2); has(problems(r), 'znacznik podstawy');
+  artifact(dir, [q({ rec: 'Rekomendacja: nie (canon).' })]); eq(verify(dir).code, 2, 'canon w nawiasie');
+  artifact(dir, [q()]); eq(verify(dir).code, 0);
+});
+test('instruction: wszystko bulkEligible → „ok”, a „ok” naprawdę zatwierdza', () => {
+  const dir = project(); artifact(dir, [q(), q({ id: 'Q2' })]);
+  const r = verify(dir, ['--reply', 'ok']);
+  eq(r.json.instruction, 'ok'); eq(r.json.reply.approve.granted, true, 'ok zatwierdza');
+});
+test('instruction: zostają one-way → „ok 2,3 · 1: odpowiedź”, a samo „ok” NIE zatwierdza', () => {
+  const dir = project(); artifact(dir, [q(), q({ id: 'Q2' }), q({ id: 'Q3', door_type: 'one-way' })]);
+  const r = verify(dir);
+  eq(r.json.instruction, 'ok 2,3 · 1: odpowiedź'); eq(r.json.batch[0].id, 'Q3', 'one-way pierwszy');
+  const bare = verify(dir, ['--reply', 'ok']);
+  eq(bare.json.reply.approve.granted, false, 'samo ok nie zatwierdza'); eq(bare.json.reply.hold[0].id, 'Q3');
+  const follow = verify(dir, ['--reply', 'ok 2,3; 1: Tak']);
+  eq(follow.json.reply.answers.length, 3, 'linia instrukcji daje komplet odpowiedzi'); eq(follow.json.reply.hold.length, 0);
+});
+test('instruction: wszystkie pytania wymagają odpowiedzi → „1: odpowiedź · 2: odpowiedź”; reszta partii → ogon', () => {
+  const dir = project(); artifact(dir, [q({ door_type: 'one-way' }), q({ id: 'Q2', class: 'USER_CHALLENGE' })]);
+  eq(verify(dir).json.instruction, '1: odpowiedź · 2: odpowiedź');
+  const small = project({ resolve: { max_questions: 12, batch_size: 1, auto_accept: true } }); artifact(small, [q(), q({ id: 'Q2' })]);
+  eq(verify(small).json.instruction, 'ok · Zostało 1 pytań, pokażę je po tych');
+  const none = project(); artifact(none, []);
+  eq(verify(none).json.instruction, null, 'brak pytań = brak linii instrukcji');
+});
+test('reguły w komendzie: ANL-051 (luka nie jest pytaniem), ANL-034 (po „ok” tylko artefakt), ANL-040 (linia „0”, synteza)', () => {
+  const cmd = fs.readFileSync(path.join(REPO, 'commands', 'analyze.md'), 'utf8');
+  const row = (id) => cmd.split('\n').find((l) => l.startsWith(`| ${id} |`)) ?? '';
+  has(row('ANL-051'), 'NIGDY NIE JEST PYTANIEM'); has(row('ANL-051'), '`## Przebieg`');
+  eq(/open_questions` „Bramka/.test(row('ANL-051')), false, 'stare „Bramka X nie sprawdziła” jako pytanie usunięte');
+  for (const w of ['WYŁĄCZNIE artefakt analizy', 'package.json', 'lockfile', 'plików zadań', '`status: done`', 'nie commitujesz', 'nie mergujesz', '/orchestrate']) has(row('ANL-034'), w);
+  has(row('ANL-040'), 'tylko gdy N>0'); has(row('ANL-040'), 'akapitu syntezy'); has(row('ANL-040'), '`instruction`'); has(row('ANL-040'), 'znaczników podstawy');
+  eq(/ok = przyjmij rekomendacje i zatwierdź/.test(cmd), false, 'stała linia „ok = zatwierdź” usunięta z komendy');
+  const doc = fs.readFileSync(path.join(REPO, 'docs', 'analyze-resolve.md'), 'utf8');
+  eq(/ok = przyjmij rekomendacje i zatwierdź/.test(doc), false, 'i z procedury');
+  has(doc, 'Luka przeglądu nie jest pytaniem'); has(doc, 'przy zerze brak linii'); has(doc, 'Po zatwierdzeniu (ANL-034)');
+});
+
+// ── ADR 0017, poprawka 2026-11-08 (2): twardy test frontmattera (ANL-061), zakres plików (ANL-062), sekcja Security (ANL-063) ──
+// Surowy frontmatter pisany ręcznie: model wpisuje `rag:` jako zdanie, a YAML go nie parsuje (`: ` w wartości) albo ucina (` #`).
+function rawArtifact(fm) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ar-fm-'));
+  roots.push(dir);
+  write(dir, ARTIFACT, `---\n${fm}\n---\n\n# Analiza\n`);
+  return dir; // celowo bez .claude/config/runtime.yml: kontrola ma działać bez analyze.resolve
+}
+const checkFm = (dir) => run(VERIFY, [path.join(dir, ARTIFACT), '--check-frontmatter']);
+const BASE_FM = 'task: T-1\nstatus: awaiting-human\nstack_blocks: [ddd/core]';
+test('frontmatter: `rag:` z nieocytowanym „: " w wartości → exit 2, numer linii i podpowiedź o cudzysłowie (bez runtime.yml)', () => {
+  const dir = rawArtifact(`${BASE_FM}\nrag: skipped (indeks RAG nie był potrzebny: zakres to 3 znane pliki)`);
+  const r = checkFm(dir);
+  eq(r.code, 2, 'exit'); eq(r.json.frontmatter.ok, false);
+  has(r.err, 'linia 5', 'numer linii w pliku (rag to 4. linia frontmattera, +1 za ---)'); has(r.err, 'rag: skipped'); has(r.err, 'cudzysłów');
+});
+test('frontmatter: `#` w wartości `rag:` (YAML ucina ją po cichu) → exit 2', () => {
+  const dir = rawArtifact(`${BASE_FM}\nrag: skipped (powód #1 brak indeksu)`);
+  const r = checkFm(dir);
+  eq(r.code, 2, 'exit'); has(r.err, '`#` w wartości rag'); has(r.err, 'cudzysłów');
+});
+test('frontmatter: `#` w wartości `stack_blocks:` → exit 2; wartość w cudzysłowie albo bloku `>-` przechodzi', () => {
+  eq(checkFm(rawArtifact('task: T-1\nstatus: x\nrag: "skipped (ok)"\nstack_blocks: ddd/core # nowy')).code, 2, 'stack_blocks z #');
+  const quoted = checkFm(rawArtifact(`${BASE_FM}\nrag: "skipped (indeks RAG nie był potrzebny: zakres to 3 pliki, ANL #4)"`));
+  eq(quoted.code, 0, quoted.err); eq(quoted.json.frontmatter.ok, true);
+  const block = checkFm(rawArtifact(`${BASE_FM}\nrag: >-\n  skipped (powód: zakres to 3 pliki, #4)`));
+  eq(block.code, 0, block.err);
+});
+test('frontmatter: brak `rag:` (ANL-010) i brak frontmattera → exit 2; lista zapytań przechodzi', () => {
+  const noRag = checkFm(rawArtifact(BASE_FM)); eq(noRag.code, 2); has(noRag.err, 'brak pola `rag`'); has(noRag.err, 'ANL-010');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ar-fm-')); roots.push(dir); write(dir, ARTIFACT, '# bez frontmattera\n');
+  eq(checkFm(dir).code, 2, 'brak frontmattera');
+  eq(checkFm(rawArtifact(`${BASE_FM}\nrag:\n  - "q1: 3 trafienia"\n  - "q2: 0 trafień"`)).code, 0, 'lista zapytań');
+});
+test('frontmatter: szablon artefaktu przechodzi kontrolę, a bez flagi stary artefakt bez `rag:` działa jak dotąd (wstecznie zgodnie)', () => {
+  const tpl = run(VERIFY, [path.join(REPO, 'templates', 'task-analysis-template.md'), '--check-frontmatter']);
+  eq(tpl.code, 0, tpl.err);
+  const dir = project(); artifact(dir, [q()]); // fixture bez `rag:` — jak artefakty sprzed ANL-061
+  eq(verify(dir).code, 0, 'verify bez --check-frontmatter nie wymaga rag');
+  eq(checkFm(dir).code, 2, 'ta sama analiza z flagą: brak rag jest błędem');
+});
+test('reguły w komendzie: ANL-061 (kontrola frontmattera zawsze), ANL-010 (cudzysłów), ANL-062 (pliki chronione hookiem), ANL-063 (sekcja Security), ANL-017 (zawężenie bramki)', () => {
+  const cmd = fs.readFileSync(path.join(REPO, 'commands', 'analyze.md'), 'utf8');
+  const row = (id) => cmd.split('\n').find((l) => l.startsWith(`| ${id} |`)) ?? '';
+  has(row('ANL-061'), '--check-frontmatter'); has(row('ANL-061'), 'także bez `analyze.resolve`'); has(row('ANL-061'), 'exit 2');
+  has(cmd, '2.a frontmatter'); has(row('ANL-010'), 'W CUDZYSŁOWIE'); has(row('ANL-010'), '--check-frontmatter');
+  for (const w of ['config-protection', '.eslintrc*', 'eslint.config.*', '.prettierrc*', 'biome.json*', 'ruff.toml', 'Kroki ręczne po przebiegu', 'nie obchodzisz']) has(row('ANL-062'), w);
+  eq(/tsconfig/.test(row('ANL-062')), false, 'tsconfig nie jest chroniony hookiem — nie wpisujemy go');
+  for (const w of ['Security Pre-Analysis', 'WYŁĄCZNIE tę sekcję', '`status` zadania nietknięte', 'check-security-considerations']) has(row('ANL-063'), w);
+  has(cmd, '5. **Sekcja `## 🔒 Security Pre-Analysis`'); has(cmd, 'poza pkt 4 i 5');
+  has(row('ANL-017'), '--tags'); has(row('ANL-017'), 'DWA sekwencyjne wywołania'); has(row('ANL-017'), '>15');
+});
+test('budżet bramki decyzji: decision-gate ma ≥ 25 wywołań (przy 12 haiku kończył „na limicie" w większości analiz)', () => {
+  const blk = YAML.parse(fs.readFileSync(path.join(REPO, 'blocks', 'decision-registry.yml'), 'utf8'));
+  const n = blk.budgets['decision-gate'].max_tool_calls;
+  if (!(n >= 25)) throw new Error(`decision-gate max_tool_calls = ${n}, oczekiwano >= 25`);
+  eq(blk.budgets['decision-gate'].on_limit, 'emit-partial');
+});
+
 // ── materializacja bloku ───────────────────────────────────────────────────
 function materialize(blockParams) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ar-mat-'));
@@ -312,18 +585,26 @@ function materialize(blockParams) {
   const rtPath = path.join(dir, '.claude/config/runtime.yml');
   return { code: r.status, err: `${r.stderr}${r.stdout}`, runtime: fs.existsSync(rtPath) ? YAML.parse(fs.readFileSync(rtPath, 'utf8')) : null };
 }
-test('materializacja: domyślnie questions_format none, limity w analyze.resolve jako liczby', () => {
+test('materializacja: domyślnie questions_format none, limity w analyze.resolve jako liczby, auto_accept true', () => {
   const m = materialize({});
   eq(m.code, 0, m.err); eq(m.runtime.params['decision-registry'].questions_format, 'none');
-  eq(m.runtime.analyze.resolve.max_questions, 12); eq(m.runtime.analyze.resolve.batch_size, 5);
+  eq(m.runtime.analyze.resolve.max_questions, 12); eq(m.runtime.analyze.resolve.batch_size, 10); eq(m.runtime.analyze.resolve.auto_accept, true, 'auto_accept domyślnie true w bloku');
   eq(m.runtime.budgets.resolve.max_tool_calls, 25);
 });
 test('materializacja: questions_format: file + resolution_sink trafiają do runtime.yml, a literówka kończy się błędem', () => {
   const ok = materialize({ questions_format: 'file', questions_dir: 'docs/decisions/questions', resolution_sink: { canon_edit: ['docs/KANON.md'] }, resolve_batch_size: 3 });
   eq(ok.code, 0, ok.err); eq(ok.runtime.params['decision-registry'].questions_format, 'file');
   eq(ok.runtime.params['decision-registry'].resolution_sink.canon_edit[0], 'docs/KANON.md'); eq(ok.runtime.analyze.resolve.batch_size, 3);
+  const off = materialize({ resolve_auto_accept: false });
+  eq(off.code, 0, off.err); eq(off.runtime.analyze.resolve.auto_accept, false, 'auto_accept: false z block_params trafia do runtime.yml');
   const bad = materialize({ questions_format: 'flie' });
   eq(bad.code === 0, false, 'literówka nie może przejść'); has(bad.err, 'poza słownikiem');
+});
+
+test('licznik odpowiedzi: `answer: null` i pusty string nie są odpowiedziami, auto liczone osobno (nie wystarcza grep po „answer:")', () => {
+  const dir = project(); artifact(dir, [aq({ id: 'Q1', answer: 'Nie', answered_by: 'auto' }), aq({ id: 'Q2', answer: 'Tak' }), aq({ id: 'Q3', answer: null }), aq({ id: 'Q4', answer: '' })]);
+  const r = verify(dir);
+  eq(r.json.answers.total, 4); eq(r.json.answers.answered, 2); eq(r.json.answers.open, 2); eq(r.json.answers.auto, 1);
 });
 
 let failed = 0;

@@ -11,7 +11,8 @@
  *   open_questions     plik indeksu pytań (format index) — istniejący parametr bloku
  *   resolution_sink    { tech, product, canon_edit[], link_field } — dokąd trafia decyzja
  *   question_task_link true | { dir, field } — opcjonalnie: pole zadania z listą id pytań (domyślnie awaits_question)
- * Limity: `analyze.resolve` { max_questions, batch_size }.
+ * Limity: `analyze.resolve` { max_questions, batch_size, auto_accept }. `auto_accept` (ANL-060): brak klucza = wyłączone
+ * (runtime.yml sprzed zmiany nie włącza go po cichu); blok `decision-registry` wpisuje domyślnie `true`.
  */
 
 import { existsSync, readFileSync } from 'node:fs';
@@ -21,7 +22,7 @@ import { resolveGlobParams } from './param-drift.mjs';
 const YAML = (await import('yaml')).default;
 
 export const FORMATS = ['file', 'index', 'none'];
-export const DEFAULT_LIMITS = { maxQuestions: 12, batchSize: 5 };
+export const DEFAULT_LIMITS = { maxQuestions: 12, batchSize: 10 };
 
 const dirOf = (p) => (p ? String(p).replace(/\/+$/, '') : null);
 const list = (v) => (Array.isArray(v) ? v.map(String) : v ? [String(v)] : []);
@@ -30,7 +31,7 @@ const list = (v) => (Array.isArray(v) ? v.map(String) : v ? [String(v)] : []);
  * @returns {{ active: boolean, format: 'file'|'index'|'none', warnings: string[], projectDir: string,
  *   questionsDir: string|null, indexFile: string|null, adrDir: string|null, bdrDir: string|null,
  *   sink: { tech: string|null, product: string|null, canonEdit: string[], linkField: string },
- *   taskLink: { dir: string, field: string }|null, lookupRoots: string[], limits: {maxQuestions:number, batchSize:number} }}
+ *   taskLink: { dir: string, field: string }|null, lookupRoots: string[], limits: {maxQuestions:number, batchSize:number}, autoAccept: boolean }}
  *   `active: false` = projekt bez bloku decision-registry: krok rozstrzygania jest pomijany, flow bez zmian.
  */
 export function loadResolveConfig(projectDir) {
@@ -39,7 +40,7 @@ export function loadResolveConfig(projectDir) {
   const empty = {
     active: false, format: 'none', warnings, projectDir, questionsDir: null, indexFile: null, adrDir: null, bdrDir: null,
     sink: { tech: null, product: null, canonEdit: [], linkField: 'rozstrzyga' }, taskLink: null, lookupRoots: [],
-    limits: { ...DEFAULT_LIMITS },
+    limits: { ...DEFAULT_LIMITS }, autoAccept: false,
   };
   if (!existsSync(rtPath)) return empty;
   const rt = YAML.parse(readFileSync(rtPath, 'utf8')) ?? {};
@@ -94,5 +95,11 @@ export function loadResolveConfig(projectDir) {
     batchSize: Number.isInteger(lim.batch_size) && lim.batch_size > 0 ? lim.batch_size : DEFAULT_LIMITS.batchSize,
   };
 
-  return { active: true, format, warnings, projectDir, questionsDir, indexFile, adrDir, bdrDir, sink, taskLink, lookupRoots: [...roots], limits };
+  const autoRaw = lim.auto_accept;
+  const autoAccept = autoRaw === true || String(autoRaw).toLowerCase() === 'true';
+  if (autoRaw !== undefined && autoRaw !== null && typeof autoRaw !== 'boolean' && !['true', 'false'].includes(String(autoRaw).toLowerCase())) {
+    warnings.push(`analyze.resolve.auto_accept "${autoRaw}" nie jest true/false — traktuję jak false`);
+  }
+
+  return { active: true, format, warnings, projectDir, questionsDir, indexFile, adrDir, bdrDir, sink, taskLink, lookupRoots: [...roots], limits, autoAccept };
 }

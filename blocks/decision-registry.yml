@@ -52,8 +52,9 @@ params:
 
   # ── rozstrzyganie otwartych pytań w /analyze (ANL-054..059, ADR 0016) ──────────
   # Krok 1.b szuka w dokumentach projektu źródła odpowiedzi i precedensów, żeby człowiek dostał pytanie
-  # z rekomendacją i podstawą. DECYZJĘ PODEJMUJE CZŁOWIEK, zawsze: żaden z tych parametrów nie włącza
-  # odpowiadania za niego. `questions_format` mówi tylko, czy i gdzie po jego odpowiedzi utrwalić decyzję.
+  # z rekomendacją i podstawą. Decyzję podejmuje człowiek; jedyny wyjątek to `resolve_auto_accept` (ADR 0017, ANL-060):
+  # pytanie z zweryfikowanym cytatem, dwudrzwiowe i techniczne przyjmuje się samo, a człowiek może to cofnąć.
+  # `questions_format` mówi, czy i gdzie po odpowiedzi utrwalić decyzję.
   questions_format:
     type: string
     required: false
@@ -81,8 +82,13 @@ params:
   resolve_batch_size:
     type: number
     required: false
-    default: 5
-    doc: "ile pytań pokazać człowiekowi naraz"
+    default: 10
+    doc: "ile pytań pokazać człowiekowi naraz (10: dziewięć pytań to jedna runda, nie dwie; ADR 0017)"
+  resolve_auto_accept:
+    type: boolean
+    required: false
+    default: true
+    doc: "true = pytanie z basis canon/precedent ze zweryfikowanym cytatem, door_type two-way, domain tech, bez USER_CHALLENGE i flag decyzji dostaje answer = opcja (recommended) i answered_by: auto; człowiek widzi jedną linię i może cofnąć (odpowiedź „cofnij N”). false = zachowanie sprzed ADR 0017: żadna odpowiedź bez słów człowieka (ANL-060)"
 
 analyze:
   panel:
@@ -95,12 +101,15 @@ analyze:
         index: ".claude/config/decisions-index.json",
         open_questions: "${open_questions}",
         lookup_order: "${lookup_order}" }
-  # Limity kroku „rozstrzygnij otwarte pytania" (ANL-054..059). To NIE jest slot panelu: krok biegnie po panelu,
-  # na pytaniach, które panel zostawił. Nazwa `resolve`, nie `auto_resolve`: nic tu nie odpowiada za człowieka.
+  # Limity kroku „rozstrzygnij otwarte pytania" (ANL-054..060). To NIE jest slot panelu: krok biegnie po panelu,
+  # na pytaniach, które panel zostawił. Nazwa `resolve`, nie `auto_resolve`: odpowiedź bez człowieka dotyczy tylko `auto_accept`.
   resolve:
     max_questions: "${resolve_max_questions}"
     batch_size: "${resolve_batch_size}"
+    auto_accept: "${resolve_auto_accept}"
 
 budgets:
-  decision-gate: { max_tool_calls: 12, on_limit: emit-partial }
+  # 12 wywołań haiku nie starczało na `needs_scope_check` (juz-ide: 72 wpisy), więc bramka wracała „na limicie budżetu"
+  # w większości analiz i kosztowała ponowienie (ANL-051). 30 = zapas na dwa sekwencyjne wywołania po 15 (ANL-017).
+  decision-gate: { max_tool_calls: 30, on_limit: emit-partial }
   resolve: { max_tool_calls: 25, on_limit: emit-partial }
