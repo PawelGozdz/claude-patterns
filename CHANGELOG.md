@@ -10,6 +10,12 @@ and none of it is instruction — it is history.
 
 ## [Unreleased]
 
+### Added
+- Blok `file-check` i hook `run-file-check` (feedback po każdym zapisie pliku): projekt podaje w `block_params.file-check` jednoplikową kontrolę (`command` z `{FILE}`, `globs`, `exclude`, `timeout_s`), a hook odpala ją po `Write`/`Edit`/`MultiEdit` pasującego pliku i oddaje błąd agentowi jako `additionalContext` w tej samej turze, zamiast po całej warstwie `/orchestrate`. Sukces jest cichy, hook zawsze kończy się kodem 0, komenda idzie przez `execFile` bez powłoki. Test: `scripts/ci/test-run-file-check.mjs`. Zweryfikowany end-to-end na juz-ide-api-develop z `pnpm lint:ddd:file` (0,4–0,6 s na plik). `verify-project-setup` nie traktuje już wzorców glob w parametrach jako brakujących plików.
+
+### Fixed
+- `tasks-digest.mjs` czyta taski projektu z `cwd` albo z `--project <dir>` (`project-orchestration/tasks`, w drugiej kolejności `docs/tasks`), a nie z miejsca, w którym leży sam skrypt. Brak katalogu tasków kończy się błędem z exit 2 zamiast danymi z innego repo. Skille `pulse`, `reprioritize` i `task-health` wołają go z `--project .` (TASK-PULSE-DIGEST-PROJECT-PATH-001; w satelicie juz-ide-api-2 digest opisywał wcześniej 56 tasków claude-patterns zamiast 201 własnych).
+
 ## [3.10.0] — 2026-11-08
 
 ### Added

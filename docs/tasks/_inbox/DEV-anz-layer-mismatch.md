@@ -34,8 +34,8 @@ sources:
   - analyze
 rule_ref: ANZ-LAYER-MISMATCH
 first_seen: 2026-10-12
-last_seen: 2026-11-07
-occurrences: 16
+last_seen: 2026-11-08
+occurrences: 26
 projects:
   - ai-gateway
   - framework-polityczny
@@ -45,6 +45,10 @@ projects:
   - marketing-hub
   - juz-ide-api-1
   - juz-ide-api-4
+  - juz-ide-mobile-app-3
+  - juz-ide-mobile-app-2
+  - juz-ide-api-8
+  - juz-ide-mobile-app-1
 reopened_at: 2026-10-28
 reopened_from_status: promoted
 ---
@@ -53,6 +57,16 @@ reopened_from_status: promoted
 
 ## Occurrences
 
+- 2026-11-08 juz-ide-mobile-app-1 (STATE-CACHE-HONOR-NO-STORE-001) — slot ui-analysis (flutter-ui-verifier) nie ma when: i wchodzi do panelu przy zadaniach czysto sieciowych bez UI
+- 2026-11-08 juz-ide-api-8 (TS-INFRA-IMAGE-HARDENING-002) — Task infrastrukturalny bez pracy w domenie i aplikacji: sloty ddd-modeling i pattern-fit (bez when:) weszły do panelu bez materiału
+- 2026-11-08 juz-ide-api-2 (TS-INFRA-MIGRATION-ORDER-GUARD-001) — Zadanie 3 SP (guardian testowy migracji) dostaje stały panel 9 slotów; ddd-modeling i tech-analysis-specialist nie mają pracy (zero domeny, brak decyzji technologicznej), a slotów bez when: nie da się pominąć regułą
+- 2026-11-08 juz-ide-mobile-app-2 (TRUSTLEVEL-SOURCE-AUDIT-001) — runtime.yml orchestrate.layers ma dirs [domain/, data/, presentation/]; pliki lib/core/ui/ i lib/core/design/components/ (martwy klaster TrustBadge) nie leżą w żadnej warstwie, niejasne czy prepare przyjmie je w units[].dirs
+- 2026-11-08 juz-ide-mobile-app-3 (TD-ROUTER-TESTS-RED-001) — Task testowy (2 pliki w test/): warstwy domain/application/data bez pracy; final_gate w runtime.yml uruchamia pelny flutter test, co zadanie zakazuje
+- 2026-11-08 ai-gateway (TS-AIG-125) — TS-AIG-125 (inwentarz, dokumenty i kroki reczne w konsolach): kompozycja runtime.yml ma tylko warstwy implementation i testing na src/ i test/, brak warstwy na dokumenty; obie w layers_skip
+- 2026-11-07 ai-gateway (TS-AIG-125) — Task dokumentowy (inwentarz LLM serwisów, wynik to aneks ADR, karta i kroki ręczne w konsolach): obie warstwy z runtime.yml (implementation, testing) trafiły do layers_skip, kompozycja nie ma warstwy na dokumenty; ta sama obserwacja w TS-AIG-122
+- 2026-11-07 juz-ide-api-4 (TS-INFRA-E2E-001) — Task type: task bez zmian w repo (TS-INFRA-E2E-001, zakres_plikow puste): sloty panelu bez when: (ddd-modeling, impl-analysis, pattern-fit) nie mają pracy, a sito ANL-018 obejmuje tylko refactor|bugfix|chore. Pominięte ręcznie. Slot strategy-fit/data-classification: when: trafia po fragmentach wyrazów (nowa, data, token, AI).
+- 2026-11-07 juz-ide-api-1 (TS-DEPS-002) — Task TS-DEPS-002 (bump zależności + rejestr supresji, bez kodu domenowego): sloty ddd-modeling, impl-analysis i pattern-fit nie mają when: i nie mają czego oceniać; pominięte ręcznie. Brak sita dla tasków czysto zależnościowych bez pola type.
+- 2026-11-07 juz-ide-api-4 (TS-INFRA-E2E-001) — Task bez zmian w repo (zakres_plikow puste, ręczna walidacja infra): sloty panelu bez when: (ddd-modeling, impl-analysis, pattern-fit) i wszystkie 4 warstwy orchestrate nie mają pracy; analyze.panel nie ma sita dla taska czysto operacyjnego (ANL-018 dotyczy tylko refactor|bugfix|chore).
 - 2026-11-07 juz-ide-api-1 (TS-DEPS-002) — TS-DEPS-002 (bump zależności i rejestr supresji, pliki w korzeniu repo): wszystkie 4 warstwy orchestrate.layers bez pracy, a sloty panelu tech-analysis, ddd-modeling, impl-analysis, pattern-fit nie mają when: i nie mają czego oceniać; analiza uruchomiła tylko decision-gate i tech-analysis-specialist
 - 2026-11-07 juz-ide-api-4 (TS-INFRA-E2E-001) — Panel analyze ma sloty bez when: (ddd-modeling, impl-analysis, pattern-fit), ktore nie maja przedmiotu analizy dla zadania recznego bez zmian w repo (zakres_plikow pusty, wszystkie 4 warstwy w layers_skip). Pominieto je swiadomie i odnotowano w Uwagi; brak mechanizmu sita dla taskow bez kodu (ANL-018 dotyczy tylko type refactor|bugfix|chore).
 - 2026-11-05 ai-gateway (TS-AIG-123) — Kompozycja aig-layers nie ma warstwy na dokumenty/runbooki; drugi task z rzędu (TS-AIG-122, 123) całkowicie w layers_skip

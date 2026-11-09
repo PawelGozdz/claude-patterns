@@ -70,7 +70,7 @@ shared briefing, so they don't need to re-Glob/grep the same data.
      it is not committed, and anything written to it is lost on the next generation. Run
      `pnpm docs:views` if a refresh is needed; propose status changes as frontmatter edits and
      order/priority changes as edits to the queue files. Skip the bullets below for such projects.
-   - Run `node /opt/projects/claude-patterns/scripts/tasks-digest.mjs --json` for
+   - Run `node /opt/projects/claude-patterns/scripts/tasks-digest.mjs --json --project .` for
      id/status/priority/age per task instead of reading every file in
      `project-orchestration/tasks/` in full — the digest is exactly the fields KANBAN.md
      needs (K30, TASK-KAIZEN-001). Open a specific task file only when its status/labels

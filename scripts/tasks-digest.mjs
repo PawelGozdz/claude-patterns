@@ -9,16 +9,52 @@
 // (np. task zablokowany i trzeba zrozumieć dlaczego).
 //
 // Użycie:
-//   node scripts/tasks-digest.mjs          — tabela tekstowa
-//   node scripts/tasks-digest.mjs --json   — JSON (użycie maszynowe)
+//   node scripts/tasks-digest.mjs                       — tabela tekstowa, projekt = cwd
+//   node scripts/tasks-digest.mjs --json                — JSON (użycie maszynowe)
+//   node scripts/tasks-digest.mjs --project <dir>       — digest innego projektu niż cwd
+//
+// Katalog tasków projektu: `<dir>/project-orchestration/tasks`, a gdy go nie ma — `<dir>/docs/tasks`.
+// Brak obu = błąd (exit 2), nigdy pusty wynik ani dane z innego repo (TASK-PULSE-DIGEST-PROJECT-PATH-001:
+// dotąd ścieżka wynikała z położenia SKRYPTU, więc w satelicie digest po cichu opisywał claude-patterns).
 
-import { readdirSync, readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { join, relative, resolve } from 'node:path';
 
-const REPO = join(dirname(fileURLToPath(import.meta.url)), '..');
-const TASKS_DIR = join(REPO, 'docs/tasks');
-const JSON_OUT = process.argv.includes('--json');
+const TASK_DIR_CANDIDATES = ['project-orchestration/tasks', 'docs/tasks'];
+
+function parseArgs(argv) {
+  const out = { project: process.cwd(), json: false };
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i];
+    if (a === '--json') out.json = true;
+    else if (a === '--project') {
+      const val = argv[++i];
+      if (!val || val.startsWith('--')) fail('--project wymaga ścieżki do katalogu projektu');
+      out.project = val;
+    }
+  }
+  return out;
+}
+
+function fail(message) {
+  console.error(`tasks-digest: ${message}`);
+  process.exit(2);
+}
+
+function resolveTasksDir(project) {
+  const root = resolve(project);
+  if (!existsSync(root) || !statSync(root).isDirectory()) fail(`katalog projektu nie istnieje: ${root}`);
+  for (const candidate of TASK_DIR_CANDIDATES) {
+    const dir = join(root, candidate);
+    if (existsSync(dir) && statSync(dir).isDirectory()) return { root, dir };
+  }
+  return fail(`brak katalogu tasków w ${root} (szukano: ${TASK_DIR_CANDIDATES.join(', ')})`);
+}
+
+const args = parseArgs(process.argv.slice(2));
+const { root: PROJECT_ROOT, dir: TASKS_DIR } = resolveTasksDir(args.project);
+const TASKS_LABEL = relative(PROJECT_ROOT, TASKS_DIR);
+const JSON_OUT = args.json;
 
 // Parser liniowy, nie pełny YAML — pola frontmattera tasków są płaskie (jak w
 // verify-project-setup.mjs / validate-agents.js). Wystarcza `klucz: wartość` na jednej linii;
@@ -77,7 +113,7 @@ tasks.sort((a, b) => rank(a) - rank(b) || String(a.age).localeCompare(String(b.a
 const active = tasks.filter((t) => rank(t) < 3);
 const suppressed = tasks.filter((t) => rank(t) === 3);
 
-console.log(`Taski w docs/tasks/: ${tasks.length} (${active.length} aktywnych, ${suppressed.length} zamkniętych/odłożonych)\n`);
+console.log(`Taski w ${TASKS_LABEL}/: ${tasks.length} (${active.length} aktywnych, ${suppressed.length} zamkniętych/odłożonych)\n`);
 
 const idW = Math.max(...tasks.map((t) => t.id.length), 2);
 const statusW = Math.max(...tasks.map((t) => t.status.length), 6);

@@ -13,8 +13,8 @@ sources:
   - analyze
 rule_ref: ANZ-AGENT-MISSING
 first_seen: 2026-10-14
-last_seen: 2026-11-07
-occurrences: 8
+last_seen: 2026-11-08
+occurrences: 10
 projects:
   - ai-os-bot
   - aegis-flow
@@ -23,12 +23,15 @@ projects:
   - juz-ide-api-4
   - vytches-ddd
   - juz-ide-api-7
+  - juz-ide-api-8
 ---
 
 # DEV-anz-agent-missing
 
 ## Occurrences
 
+- 2026-11-08 juz-ide-api-1 (TS-AUTH-DEACTIVATION-MAIL-OUTBOX-001) — slot tech-analysis-specialist (backend-technology-expert, tylko Read/WebFetch/WebSearch) nie zwrócił wyniku w ciągu całego przebiegu, gdy pozostałe 5 liści i bramka zwróciły w ~2 min
+- 2026-11-07 juz-ide-api-8 (TS-INFRA-TRUST-PROXY-RAW-XFF-001) — slot threat-model (agent '/threat-model'): wywołanie Skill zwróciło tylko opis komendy z poleceniem ponownego wywołania skilla (pętla), bez wyniku; TM napisano ręcznie wg skills/security/threat-model/SKILL.md
 - 2026-11-07 juz-ide-api-7 (TS-ARCH-OUTBOX-ERASE-FIELDS-001) — decision-gate (state-reader/haiku, budget 12 wywołań, bez Bash) dwukrotnie zwrócił wynik częściowy na decisions-index.json 240 KB; blokująca bramka nie domknęła kontroli (BDR-093, ADR-0123/0124, scope, open-questions)
 - 2026-11-04 vytches-ddd (VF-043) — slot api-surface-analysis: agent library-api-guardian (i library-quality-verifier) istnieje w agents/stacks/typescript-library/, ale nie jest podlinkowany do ~/.claude/agents/ ani dostepny dla narzedzia Agent; uruchomiono przez general-purpose z definicja roli
 - 2026-10-31 juz-ide-api-4 (TS-GEO-RESIDENCE-SWITCH-AUDIT-001) — slot decision-gate (state-reader haiku, budget 12) dwukrotnie zwrócił wynik częściowy przy zadaniu wymagającym przeglądu ~10 BDR + ADR + open-questions; budżet nie wystarcza na korpus decyzji

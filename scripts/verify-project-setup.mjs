@@ -145,7 +145,8 @@ for (const [block, params] of Object.entries(rt.params ?? {}))
     for (const v of (Array.isArray(val) ? val : [val]))
       // `@scope/pakiet` to nazwa npm, nie ścieżka w repo — runtime.yml nie niesie typów
       // parametrów, więc rozstrzygamy po kształcie wartości.
-      if (typeof v === 'string' && v.includes('/') && !v.startsWith('.') && !v.startsWith('@')) {
+      // Wzorzec glob (`src/**/*.ts` w file-check.globs) to nie plik: istnienie sprawdzają tylko wartości dosłowne.
+      if (typeof v === 'string' && v.includes('/') && !v.startsWith('.') && !v.startsWith('@') && !/[*?{}[\]]/.test(v)) {
         const file = v.split('#')[0];
         if (!existsSync(join(projectDir, file))) bad.push(`param ${block}.${key}: brak pliku ${file}`);
       }

@@ -48,7 +48,7 @@ This split saves ~60% tokens vs. running tech-lead over raw task files (no need 
 
 ### Phase 1 — Extract structured task data
 
-First run `node /opt/projects/claude-patterns/scripts/tasks-digest.mjs --json` — it already
+First run `node /opt/projects/claude-patterns/scripts/tasks-digest.mjs --json --project .` — it already
 gives id/status/priority/age per task deterministically, for free, without an agent turn
 (K30, TASK-KAIZEN-001). Pass that output into the prompt below instead of having the agent
 re-derive those fields by reading every file; the agent still needs to open the actual files

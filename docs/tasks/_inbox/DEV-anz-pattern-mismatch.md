@@ -38,8 +38,8 @@ sources:
   - analyze
 rule_ref: ANZ-PATTERN-MISMATCH
 first_seen: 2026-10-10
-last_seen: 2026-11-07
-occurrences: 10
+last_seen: 2026-11-08
+occurrences: 16
 projects:
   - aegis-flow
   - ai-os-bot
@@ -49,6 +49,10 @@ projects:
   - juz-ide-api-4
   - juz-ide-api-3
   - juz-ide-api-6
+  - juz-ide-api-1
+  - juz-ide-mobile-app-1
+  - juz-ide-api-5
+  - juz-ide-api-8
 reopened_at: 2026-11-07
 reopened_from_status: promoted
 ---
@@ -57,6 +61,12 @@ reopened_from_status: promoted
 
 ## Occurrences
 
+- 2026-11-08 juz-ide-api-8 (TS-INFRA-IMAGE-HARDENING-002) — Biblioteka wzorców nie ma karty o bramce obrazu w CI, skanerze obrazów, Renovate ani wyjątkach z datą wygaśnięcia (.claude/knowledge/patterns/, 0 trafień po słowach image/trivy/renovate/docker)
+- 2026-11-08 juz-ide-api-5 (TS-GROUPS-PENDING-EDIT-FENCING-001) — Przykład kodu w moderated-edit-buffer-pattern.md sekcja 5 (L225-233) stawia idempotent-same PRZED stale/unknown, a implementacje referencyjne (local-share.aggregate.ts L1924-1967, Event BR) stawiają je PO sprawdzeniu rewizji; karta MEB5-MEB9 nie ustala kolejności, więc przykład wprowadza w błąd.
+- 2026-11-08 juz-ide-api-5 (TS-GROUPS-PENDING-EDIT-FENCING-001) — Wzorzec domain/moderated-edit-buffer-pattern.md nie ma triggera w runtime.yml (patterns.triggers) ani w pattern-routing.local.json, więc ANL-008 go nie dobiera, choć zadania fencingu (grupy, wydarzenia, udostępnienia) opierają się na nim; dobrany ręcznie w analizie.
+- 2026-11-08 juz-ide-mobile-app-1 (MOBILE-API-ALIGN-002) — retrieve_patterns dla zapytania o nullable DTO mapper zwrocil wylacznie karty nestjs-ddd (nietrafne dla projektu Flutter)
+- 2026-11-08 juz-ide-api-1 (TS-GDPR-AUDIT-LOG-PII-001) — karta application/audit-handler-pattern nie ma reguły o polu email w eventData ani o guardianach L1 skanujących handlery audytu; N2 wymienia tylko piiData.email/phone, BaseAuditHandler przepisuje email bez kontroli (base-audit.handler.ts:147-151,195)
+- 2026-11-07 juz-ide-api-3 (TS-ARCH-OUTBOX-GUARDIAN-001) — integration-event-pattern.md Pattern 2 (l.277-292) i bullmq-queue-pattern_summary.md BQ1-BQ6 opisują queue.add w handlerze zdarzenia jako normę, wbrew OB1/N1 i application-handlers.md NEVER; przykład Pattern 2 (engagement/.../moderate-comment.handler.ts) nie istnieje
 - 2026-11-07 juz-ide-api-6 (TS-MOD-REPORT-INTAKE-001-engagement-report-to-moderation-queue) — trigger keywords wzorca command-handler-queue-port-pattern.md trafia słowem 'kolejk' (kolejka moderacji, nie BullMQ); wyłączone przez patterns_exclude w artefakcie
 - 2026-11-01 juz-ide-api-3 (TS-GEO-HOME-POINT-CONTRACT-001) — rules/common/database-migrations.md (claude-patterns) powołuje się na wyjątek BDR-129, którego nie ma w docs/decisions w develop ani api-3 (plik tylko w katalogu api-2); w tej samej chwili BDR-128 ma dwie różne treści w api-2 i develop
 - 2026-10-24 aegis-flow (TS-007) — testing/testing-pyramid-pattern.md (karta _summary) trafiła z triggers bloku python po słowie 'test', ale jest wzorcem TypeScript/NestJS (*.spec.ts, BUSINESS_RULES.md, e2e L3); projekt aegis-flow to Python/pytest

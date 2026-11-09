@@ -1,0 +1,58 @@
+# Blok: file-check — natychmiastowy feedback z jednoplikowej kontroli projektu.
+#
+# Po co: /orchestrate odpala `checks` raz na warstwę, więc implementer dowiaduje się o naruszeniu
+# reguł dopiero po całej warstwie (weryfikator, potem runda naprawcza). Projekty mają tymczasem
+# szybkie kontrole jednego pliku (juz-ide-api: `pnpm lint:ddd:file`, ~0,6 s; we Flutterze
+# `dart analyze <plik>`; w Pythonie `ruff check <plik>`). Hook run-file-check odpala ją po każdym
+# zapisie pasującego pliku i oddaje wynik agentowi jako additionalContext, w tej samej turze.
+#
+# To feedback, nie bramka: hook zawsze kończy się kodem 0 (reguła repo dla hooków), a sukces jest
+# cichy. Twardy werdykt nadal daje sonda `checks` warstwy i bramka końcowa.
+#
+# Decyduje kod wyjścia komendy: kontrola, która kończy się kodem 0 mimo ostrzeżeń (ESLint ze
+# `warn`), nie wywoła wiadomości; ostrzeżenia trafiają do agenta dopiero razem z błędem. Gdy
+# ostrzeżenie ma być zgłaszane samo, dodaj do komendy `--max-warnings 0`.
+# Zweryfikowane 2026-11-08 na juz-ide-api-develop: agent testowy dostał wiadomość po zapisie
+# pliku z naruszeniem reguły, a po poprawce i przy plikach spoza `globs` hook milczał.
+#
+# MECHANIZM JEST GENERYCZNY, TREŚĆ PROJEKTOWA. Blok nie wie, jaką komendę uruchomić — projekt podaje ją
+# w project.yml → block_params.file-check. Bez `command` i `globs` materializacja to powie (required).
+#
+# Przykład (juz-ide-api):
+#   stack_blocks: [..., file-check]
+#   block_params:
+#     file-check:
+#       command: ["pnpm", "lint:ddd:file", "{FILE}"]
+#       globs: ["src/**/*.ts", "test/**/*.ts"]
+#       timeout_s: 30
+name: file-check
+axis: process
+requires: []
+
+params:
+  command:
+    type: "string[]"
+    required: true
+    doc: "komenda jako lista argumentów (bez powłoki); `{FILE}` = bezwzględna ścieżka zapisanego pliku, a bez znacznika ścieżka trafia na koniec"
+  globs:
+    type: "string[]"
+    required: true
+    doc: "wzorce względem korzenia projektu, które plik musi spełnić (`*` w obrębie katalogu, `**` przez katalogi), np. src/**/*.ts"
+  exclude:
+    type: "string[]"
+    required: false
+    default: []
+    doc: "wzorce wyłączeń, mają pierwszeństwo przed `globs`, np. **/*.generated.ts"
+  timeout_s:
+    type: number
+    required: false
+    default: 30
+    doc: "twardy limit czasu komendy; po przekroczeniu hook milczy"
+  max_output_lines:
+    type: number
+    required: false
+    default: 40
+    doc: "ile linii wyniku trafia do kontekstu agenta; reszta jest ucięta z adnotacją"
+
+overlay:
+  hooks: [run-file-check]

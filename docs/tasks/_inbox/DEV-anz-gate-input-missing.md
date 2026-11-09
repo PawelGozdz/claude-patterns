@@ -28,18 +28,17 @@ resolution: >
   glob docs/decisions/*) odświeżona materialize-runtime 2026-10-24. 2026-10-24
   aegis-flow (TS-007): to samo co 2026-10-23 TS-001, brak knowledge.collection w
   runtime.yml; czeka na decyzję, które katalogi projektu w Pythonie
-  zaindeksować.
-  2026-10-28 grant-flow (TS-PROJ-WRITEOWN-002): brak pliku taska. ANL-052 (2026-10-29): raport
-  zaczyna się od linii „Brak pliku zadania", artefakt ma sekcję „Źródła zakresu"; reguła tylko
-  w prompcie.
+  zaindeksować. 2026-10-28 grant-flow (TS-PROJ-WRITEOWN-002): brak pliku taska.
+  ANL-052 (2026-10-29): raport zaczyna się od linii „Brak pliku zadania",
+  artefakt ma sekcję „Źródła zakresu"; reguła tylko w prompcie.
 trigger: analyze_gate
 category: config
 sources:
   - analyze
 rule_ref: ANZ-GATE-INPUT-MISSING
 first_seen: 2026-10-17
-last_seen: 2026-10-28
-occurrences: 9
+last_seen: 2026-11-08
+occurrences: 14
 projects:
   - juz-ide-api-2
   - aegis-flow
@@ -47,6 +46,8 @@ projects:
   - iam
   - my-intelligence
   - grant-flow
+  - juz-ide-mobile-app-2
+  - juz-ide-mobile-app-1
 reopened_at: 2026-10-20
 reopened_from_status: promoted
 ---
@@ -55,6 +56,11 @@ reopened_from_status: promoted
 
 ## Occurrences
 
+- 2026-11-08 juz-ide-mobile-app-2 (STATE-SESSION-RESET-DASHBOARD-001) — knowledge.json wskazuje kolekcję code_juz_ide_mobile_app_2, której nie ma w indeksie knowledge-retriever (dostępne m.in. code_juz_ide_mobile_app); runtime.yml bez knowledge.collection; RAG pominięty
+- 2026-11-08 juz-ide-api-2 (TS-INFRA-MIGRATION-ORDER-GUARD-001) — Pole instruction z verify-answer-sources zwraca 'ok 2,3,4 · 1: odpowiedź' z separatorem '·', którego własny parser --reply nie rozumie (całość trafia do unparsed, wszystkie pytania w hold); działa separator ';'. Dodatkowo runtime.yml analyze.resolve.resolution_sink nie ma klucza tech, więc odpowiedzi domain: tech nie mają ścieżki utrwalenia (ANL-058)
+- 2026-11-08 juz-ide-mobile-app-1 (STATE-CACHE-HONOR-NO-STORE-001) — knowledge.json wskazuje kolekcję code_juz_ide_mobile_app_1, której nie ma w Qdrant (istnieje code_juz_ide_mobile_app); runtime.yml nie ma knowledge.collection. retrieve_code zwraca błąd, RAG pominięty.
+- 2026-11-08 juz-ide-mobile-app-1 (MOBILE-API-ALIGN-002) — knowledge.json wskazuje kolekcje code_juz_ide_mobile_app_1, ktora nie istnieje na serwerze retrieve_code (istnieje code_juz_ide_mobile_app, indeks z 2026-09-07)
+- 2026-11-08 juz-ide-mobile-app-2 (TRUSTLEVEL-SOURCE-AUDIT-001) — runtime.yml/knowledge.json wskazuje kolekcję RAG code_juz_ide_mobile_app_2, której nie ma w indeksie (istnieje code_juz_ide_mobile_app); retrieve_code zwraca błąd, analiza poszła na celowanym grepie
 - 2026-10-28 grant-flow (TS-PROJ-WRITEOWN-002) — /analyze TS-PROJ-WRITEOWN-002 wystartował bez pliku project-orchestration/tasks/TS-PROJ-WRITEOWN-002*.md (KANBAN i dwie zatwierdzone analizy tylko go wspominają jako 'TO TRZEBA STWORZYĆ'); zakres odtworzono z analiz UI-009/UI-010, bramka wejścia nie ostrzega o braku taska
 - 2026-10-25 my-intelligence (TS-071) — knowledge.json wskazuje kolekcję code_my_intelligence, której nie ma w indeksie retrieve_code (dostępne: code_ai_gateway, code_grant_flow, ... bez my-intelligence); runtime.yml nie ma sekcji knowledge
 - 2026-10-24 aegis-flow (TS-007) — runtime.yml bez sekcji knowledge.collection: ANL-009/ANL-010 wymagają kolekcji RAG, więc analiza zapisała rag: skipped; mcp knowledge-retriever dostępny w sesji

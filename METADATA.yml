@@ -277,7 +277,7 @@ skills:
     jurisdictions_supported: ["PL", "EU general", "US", "UK", "FR (limited)"]
 
 hooks:
-  total: 51  # 48 .js + 3 .sh, płasko w hooks/ (lib/ to kod dzielony, nie osobne hooki); 53→42 po K98/K99 (ADR 0009); +2 telemetry-agent-start/-stop (ADR 0012); +1 workflow-metrics-stop (OBS-007); +1 check-test-implementer-scope (TASK-ENGINE-GUARDRAILS-001); +2 inject-implementer-rule-cards, remind-verifier-after-manual-implementer (TASK-AGENT-MANUAL-SPAWN-RULES-001); +1 block-unscoped-tests (ORC-149)
+  total: 52  # 49 .js + 3 .sh, płasko w hooks/ (lib/ to kod dzielony, nie osobne hooki); 53→42 po K98/K99 (ADR 0009); +2 telemetry-agent-start/-stop (ADR 0012); +1 workflow-metrics-stop (OBS-007); +1 check-test-implementer-scope (TASK-ENGINE-GUARDRAILS-001); +2 inject-implementer-rule-cards, remind-verifier-after-manual-implementer (TASK-AGENT-MANUAL-SPAWN-RULES-001); +1 block-unscoped-tests (ORC-149)
 
 templates:
   stack_presets: 10

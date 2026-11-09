@@ -19,8 +19,8 @@ sources:
   - audit
 rule_ref: AUD-RUNTIME-STALE
 first_seen: 2026-10-10
-last_seen: 2026-11-04
-occurrences: 27
+last_seen: 2026-11-09
+occurrences: 33
 projects:
   - juz-ide-api-4
   - juz-ide-api-2
@@ -43,6 +43,12 @@ projects:
   - personal-blog
   - platform
   - vytches-ddd
+  - juz-ide-api-5
+  - juz-ide-api-6
+  - juz-ide-api-7
+  - juz-ide-api-8
+  - juz-ide-api-develop
+  - juz-ide-api-test
 category: config
 reopened_at: 2026-11-04
 reopened_from_status: dismissed
@@ -63,6 +69,12 @@ previous_dismissed_reason: >
 
 ## Occurrences
 
+- 2026-11-09 juz-ide-api-test — runtime.yml nieaktualny: zmieniły się wejścia kompozycji (bloki / project.yml / aliasy / taksonomia)
+- 2026-11-09 juz-ide-api-develop — runtime.yml nieaktualny: zmieniły się wejścia kompozycji (bloki / project.yml / aliasy / taksonomia)
+- 2026-11-09 juz-ide-api-8 — runtime.yml nieaktualny: zmieniły się wejścia kompozycji (bloki / project.yml / aliasy / taksonomia)
+- 2026-11-09 juz-ide-api-7 — runtime.yml nieaktualny: zmieniły się wejścia kompozycji (bloki / project.yml / aliasy / taksonomia)
+- 2026-11-09 juz-ide-api-6 — runtime.yml nieaktualny: zmieniły się wejścia kompozycji (bloki / project.yml / aliasy / taksonomia)
+- 2026-11-09 juz-ide-api-5 — runtime.yml nieaktualny: zmieniły się wejścia kompozycji (bloki / project.yml / aliasy / taksonomia)
 - 2026-11-04 juz-ide-api-1 — runtime.yml nieaktualny: zmieniły się wejścia kompozycji (bloki / project.yml / aliasy / taksonomia)
 - 2026-11-03 juz-ide-api-1 — runtime.yml nieaktualny: zmieniły się wejścia kompozycji (bloki / project.yml / aliasy / taksonomia)
 - 2026-11-02 juz-ide-api-1 — runtime.yml nieaktualny: zmieniły się wejścia kompozycji (bloki / project.yml / aliasy / taksonomia)

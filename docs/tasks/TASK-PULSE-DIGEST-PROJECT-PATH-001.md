@@ -2,12 +2,12 @@
 id: TASK-PULSE-DIGEST-PROJECT-PATH-001
 title: '`tasks-digest.mjs` ma na sztywno wpisaną ścieżkę do WŁASNEGO `docs/tasks/` — nie da się go użyć z satelity'
 type: task
-status: planned
+status: done
 priority: P2
 story_points: 1
 created_date: 2026-09-17
-updated_date: 2026-09-17
-assignee: '@unassigned'
+updated_date: 2026-11-08
+assignee: '@claude'
 labels: [kaizen, hooks, orchestration, pulse]
 depends_on: []
 related: [TASK-KAIZEN-002]
@@ -68,15 +68,16 @@ samemu, skrypt nie zgłosił żadnego ostrzeżenia).
 
 ## ✅ Kryteria akceptacji
 
-- [ ] `tasks-digest.mjs` przyjmuje `--project <dir>` (wzorem `orchestrate-prepare.mjs`), domyślnie
+- [x] `tasks-digest.mjs` przyjmuje `--project <dir>` (wzorem `orchestrate-prepare.mjs`), domyślnie
       `process.cwd()` — NIE lokalizacja samego skryptu.
-- [ ] Gdy `<dir>/project-orchestration/tasks` nie istnieje (ani `<dir>/docs/tasks` jako fallback
+- [x] Gdy `<dir>/project-orchestration/tasks` nie istnieje (ani `<dir>/docs/tasks` jako fallback
       dla repo bez symlinka), skrypt kończy się czytelnym błędem na `stderr` + exit code ≠ 0,
       zamiast cicho zwracać dane z innego katalogu albo pustą tablicę.
-- [ ] `skills/orchestration/pulse/SKILL.md` (i `task-health`/`reprioritize`, jeśli wołają ten sam
+- [x] `skills/orchestration/pulse/SKILL.md` (i `task-health`/`reprioritize`, jeśli wołają ten sam
       skrypt) zaktualizowane, żeby jawnie przekazywały `--project .` albo równoważnik.
-- [ ] Test/weryfikacja ręczna: odpalenie z satelickiego projektu (np. `juz-ide-api-2`) zwraca
-      TYLKO jego własne taski, nie taski `claude-patterns`.
+- [x] Test/weryfikacja ręczna: odpalenie z satelickiego projektu (np. `juz-ide-api-2`) zwraca
+      TYLKO jego własne taski, nie taski `claude-patterns`. Sprawdzone 2026-11-08: 201 rekordów, wszystkie `TS-*`,
+      zarówno z `cwd`, jak i przez `--project`; brak katalogu tasków i brak katalogu projektu kończą się exit 2.
 
 ## 🧪 Testy
 
