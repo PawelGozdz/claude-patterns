@@ -480,6 +480,18 @@ function conformanceCommand(a, layer) {
 // (`test` + `test:api`) znikają: zakres jest jeden (pliki zmiany), więc drugi przebieg nic by nie dodał.
 const SCOPED_TESTS_RE = /^test(:[A-Za-z0-9_-]+)*$/
 function isScopedTestsCheck(c) { return SCOPED_TESTS_RE.test(String(c).trim()) }
+
+// TASK-OBS-018: tryb cienia. Wpis `shadow:<skrypt>` (bez spacji) w `checks:` uruchamia skrypt package.json jak zwykły check,
+// ale jego wynik trafia do OSOBNEGO pola `shadowLint` i do telemetrii (`step.checks`), nigdy do `lint`/`typecheck`/`tests`.
+// Służy porównaniu kontroli deterministycznej z werdyktem weryfikatora tej samej warstwy i próby, bez wpływu na przebieg.
+// Prefiks zostaje widoczny w wyjściu komendy (`SHADOW EXIT:<kod>`), bo sama nazwa skryptu (`lint:ddd`) zawiera „lint”
+// i sonda zmapowałaby ją na blokujące pole `lint`.
+const SHADOW_PREFIX = 'shadow:'
+function isShadowCheck(c) {
+  const s = String(c).trim()
+  return s.startsWith(SHADOW_PREFIX) && s.length > SHADOW_PREFIX.length && !/\s/.test(s)
+}
+function shadowScript(c) { return String(c).trim().slice(SHADOW_PREFIX.length) }
 function scopedTestsCommand(a, layer) {
   const tool = a && a.scopedTests && a.scopedTests.tool
   if (typeof tool !== 'string' || !/^\/[\w./@+-]+$/.test(tool) || tool.indexOf('..') !== -1) {
@@ -553,7 +565,8 @@ function buildProbePrompt(a, layer) {
   const isLiteralCheck = (c) => /\s/.test(String(c).trim())
   const hasLiteral = checks.some(isLiteralCheck)
   const allLiteral = hasLiteral && checks.every(isLiteralCheck)
-  const cmds = checks.map((c) => isLiteralCheck(c) ? String(c).trim() : (firstDir ? '_chk ' + c : 'npm run ' + c))
+  const scriptOf = (c) => (isShadowCheck(c) ? shadowScript(c) : c)
+  const cmds = checks.map((c) => isLiteralCheck(c) ? String(c).trim() : (firstDir ? '_chk ' + scriptOf(c) : 'npm run ' + scriptOf(c)))
   const scoped = effectiveDirs(layer).join(' ')
   // Pathspecy monorepo: `layer.dirs` to nazwy typu "__tests__/"/"domain/", nigdy katalogi
   // TOP-LEVEL repo (prawdziwa ścieżka to src/contexts/<ctx>/domain/...). Literalny pathspec
@@ -590,7 +603,7 @@ function buildProbePrompt(a, layer) {
     // więc `tsErrors` było puste i odroczenie ORC-082 nie miało czego sparsować.
     // ORC-106: logi /tmp/check-<warstwa>-N.log z poprzednich przebiegów zostawały w /tmp, a grepy po
     // `-*.log` (tsErrors, testFailFiles) zbierały je razem z bieżącymi (18 ścieżek vs 1 plik w podsumowaniu).
-    ? rootAnchor + 'rm -f /tmp/check-' + layer.id + '-*.log\n' + pkgLookup + cmds.map((c, i) => c + ' > /tmp/check-' + layer.id + '-' + (i + 1) + '.log 2>&1; echo "EXIT:$?"').join('\n') +
+    ? rootAnchor + 'rm -f /tmp/check-' + layer.id + '-*.log\n' + pkgLookup + cmds.map((c, i) => c + ' > /tmp/check-' + layer.id + '-' + (i + 1) + '.log 2>&1; echo "' + (isShadowCheck(checks[i]) ? 'SHADOW ' : '') + 'EXIT:$?"').join('\n') +
       (firstDir
         ? '\nGdy $PKGROOT wyjdzie jako "." (brak package.json na ścieżce do zakresu warstwy) — ' +
           'checks poleciały na PEŁNYM repo; zaznacz to WPROST w swojej odpowiedzi (ORC-016: ' +
@@ -708,7 +721,12 @@ function buildProbePrompt(a, layer) {
     ? ' Przy EXIT innym niż 0 dla komendy conformance zwróć w `conformanceReport` zawartość jej logu DOSŁOWNIE ' +
       '(bez streszczania i parafraz): `head -120 /tmp/check-' + layer.id + '-' + (confIdx + 1) + '.log`.'
     : ''
-  return 'Uruchom dokładnie to i NIC więcej:\n' + run + literalMapping + conformanceInstruction +
+  const shadowInstruction = checks.some(isShadowCheck)
+    ? '\nKontrola w trybie cienia: komenda, po której wyjściu stoi `SHADOW EXIT:<kod>`, to wpis `shadow:<skrypt>`. Jej wynik wpisz ' +
+      'WYŁĄCZNIE do `shadowLint` (EXIT:0 = pass, niezerowy = fail, brak skryptu = skipped), choćby nazwa skryptu zawierała „lint" ' +
+      'albo „test". NIGDY nie trafia do `lint`, `typecheck` ani `tests` i nie jest powodem do `fail` w żadnym z nich: to pomiar, nie bramka.'
+    : ''
+  return 'Uruchom dokładnie to i NIC więcej:\n' + run + literalMapping + conformanceInstruction + shadowInstruction +
     '\nPrzy EXIT:0 NIE otwieraj pliku logu wcale.' + tailInstruction + verbatimInstruction + crashInstruction + tsErrorsInstruction + testFailInstruction +
     delta +
     '\nNIC nie czytaj, nie analizuj, nie poprawiaj, nie komentuj kodu.' +
@@ -804,7 +822,7 @@ function buildVerifierPrompt(a, layer, probe, changedFiles, mode, noopClaim, pri
   return existing + scopeBlock(layer, a) + '\n\n' + facts + files + removed + dirtyBlock(a, 'verifier') +
     renderCards(cardsFor(a, baseId(layer))) +
     '\nOceń zgodność zmiany z regułami powyżej. Zwróć werdykt GO albo NO_GO i listę naruszeń ' +
-    '(plik, linia, reguła, co poprawić).\n' + scopeReminder + (a.autoFixMinor !== false ? MINOR_REMINDER : '') + CARD_PRECEDENCE +
+    '(plik, linia, reguła, co poprawić).\n' + scopeReminder + (a.autoFixMinor !== false ? MINOR_REMINDER : '') + CARD_PRECEDENCE + FINDINGS_FIELD +
     'CZYTAJ TYLKO zmienione pliki z listy (Read z offset/limit, gdy plik > 300 linii); plik spoza ' +
     'listy otwieraj wyłącznie, gdy zmieniony plik go importuje i bez niego nie da się ocenić ' +
     'reguły. Nie grepuj po całym drzewie „dla kontekstu" — każdy wynik zostaje w Twoim kontekście ' +
@@ -903,7 +921,7 @@ function buildFinalGatePrompt(a, checks, changedFiles, treeSource, knownGaps, pr
     source + dirty + decisions + gapsBlock + renderCanon(a.canon) +
     renderCards(a.patterns || [], 'wszystkie wzorce tego przebiegu') +
     '\nZwróć werdykt GO albo NO_GO i listę naruszeń.\n' +
-    (a.autoFixMinor !== false ? MINOR_REMINDER : '') + CARD_PRECEDENCE +
+    (a.autoFixMinor !== false ? MINOR_REMINDER : '') + CARD_PRECEDENCE + FINDINGS_FIELD +
     // ORC-097: bramka oddawała średnio 27 tys. tokenów wyjścia na werdykt (najwięcej ze wszystkich
     // kroków). Pełne rozumowanie zostaje po stronie agenta; w wyjściu tylko to, co czytają inni.
     'WYJŚCIE (limit długości): `rationale` najwyżej 5 zdań; każde naruszenie i ustalenie to JEDNA ' +
@@ -920,6 +938,15 @@ function buildFinalGatePrompt(a, checks, changedFiles, treeSource, knownGaps, pr
 // ORC-141: „drobne" = WYŁĄCZNIE rzeczy, które nie zmieniają tego, co kod robi. Wcześniej definicją było „do kilku linii, bez zmiany
 // zachowania", czyli ocena tego samego modelu, który się pomylił; wpis „zrób throw…" wykonywał potem implementer jako poprawkę
 // mechaniczną, bez weryfikacji (ORC-091/117).
+// TASK-OBS-018: ustalenia werdyktu także jako identyfikatory reguł (kolektor czyta `findings` z journala).
+// Instrukcja leży w prompcie przebiegu, a nie w definicjach agentów — nie zwiększa kontekstu stałego i obejmuje
+// też lokalne kopie weryfikatorów w projektach. Wolny tekst zostaje w `violations` (z niego korzysta decideVerdict).
+const FINDINGS_FIELD =
+  'POLE `findings` (obok `violations`, nie zamiast): jeden wpis `{ruleId, line}` na każde naruszenie. `ruleId` to ' +
+  'identyfikator reguły z karty (np. `A1`) albo nazwa znanej pułapki z Twojej pamięci; ustalenie bez znanego ' +
+  'identyfikatora dostaje `ruleId: "new"`. Brak naruszeń = `findings: []`. `rules_checked` = liczba reguł, które ' +
+  'faktycznie sprawdziłeś.\n'
+
 const MINOR_REMINDER =
   'POLE `minor_findings`: wyłącznie rzeczy, które NIE zmieniają tego, co kod robi — komentarze i dokumentacja, treść ' +
   'komunikatów logu, formatowanie, nieużywane importy i zmienne, nazwy lokalne. Wpisz je TUTAJ, nie do `violations`, i nie ' +
@@ -1814,6 +1841,9 @@ const CHECKS_SCHEMA = {
     // ORC-140: wbudowana kontrola reguł ciała pliku (tools/conformance, ratchet) — własne pole, nie `lint`/`typecheck` (ORC-094)
     conformance: { type: 'string', enum: ['pass', 'fail', 'skipped'] },
     conformanceReport: { type: 'string' },
+    // TASK-OBS-018: kontrola w trybie cienia (`shadow:<skrypt>` w `checks:`) — własne pole, nigdy `lint`/`typecheck`/`tests`,
+    // a `probeIsRed` go nie liczy, więc czerwony wynik nie cofa warstwy do implementera.
+    shadowLint: { type: 'string', enum: ['pass', 'fail', 'skipped'] },
     newTestBlocks: { type: 'number' },
     tail: { type: 'string' },
     tsErrors: { type: 'string' },
@@ -1912,6 +1942,13 @@ const VERDICT_SCHEMA = {
     // ORC-091: drobne ustalenia (ostrzeżenia, nity, łatwe mechaniczne poprawki) — NIE blokują
     // werdyktu; orchestrator każe je naprawić implementerowi zamiast czekać na ręczne zlecenie.
     minor_findings: { type: 'array', items: { type: 'string' } },
+    // TASK-OBS-018: te same ustalenia co `violations`, ale jako identyfikatory reguł — dla telemetrii (kolektor
+    // czyta je z journala). Nie wpływają na werdykt: decideVerdict() i bramka końcowa patrzą wyłącznie na `violations`.
+    findings: {
+      type: 'array',
+      items: { type: 'object', properties: { ruleId: { type: 'string' }, line: { type: 'integer' } }, required: ['ruleId'] },
+    },
+    rules_checked: { type: 'integer' },
   },
 }
 

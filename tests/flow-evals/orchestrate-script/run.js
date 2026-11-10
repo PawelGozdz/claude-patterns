@@ -161,6 +161,67 @@ const CASES = (c) => [
     },
   },
 
+  {
+    name: 'verdict-prompts-ask-for-structured-findings-and-schema-allows-them',
+    run() {
+      // TASK-OBS-018: oba prompty werdyktu proszą o `findings` (ruleId/line), a schemat je dopuszcza, ale ich nie wymaga.
+      const v = c.buildVerifierPrompt(ARGS, L.infrastructure, null, ['src/infrastructure/a.ts'], 'implement');
+      const g = c.buildFinalGatePrompt(ARGS, [], ['a.ts'], 'tree', [], null);
+      for (const [name, p] of [['weryfikator', v], ['bramka', g]]) {
+        if (!/POLE `findings`/.test(p) || !/ruleId: "new"/.test(p) || !/rules_checked/.test(p)) return `prompt ${name} bez instrukcji findings`;
+        if (!/obok `violations`, nie zamiast/.test(p)) return `prompt ${name} nie mówi, że findings nie zastępuje violations`;
+      }
+      const props = c.VERDICT_SCHEMA.properties;
+      if (!props.findings || props.findings.type !== 'array' || !props.findings.items.required.includes('ruleId')) return 'schemat bez findings';
+      if (!props.rules_checked || props.rules_checked.type !== 'integer') return 'schemat bez rules_checked';
+      if (JSON.stringify(c.VERDICT_SCHEMA.required) !== JSON.stringify(['verdict'])) return 'findings nie może być wymagane';
+      return null;
+    },
+  },
+  {
+    name: 'findings-do-not-change-the-verdict-decision',
+    run() {
+      // findings to dane dla telemetrii; decideVerdict patrzy wyłącznie na violations i unverified_scope.
+      const f = [{ ruleId: 'a1', line: 3 }];
+      const bases = [['GO', { verdict: 'GO' }], ['NO_GO', { verdict: 'NO_GO', violations: ['x'] }],
+        ['GO z unverified_scope', { verdict: 'GO', unverified_scope: ['a.spec.ts'] }]];
+      for (const [label, base] of bases) {
+        for (const [att, max] of [[1, 3], [3, 3]]) {
+          const without = JSON.stringify(c.decideVerdict(base, att, max));
+          const withF = JSON.stringify(c.decideVerdict({ ...base, findings: f, rules_checked: 7 }, att, max));
+          if (without !== withF) return `findings zmieniły decyzję dla ${label} (próba ${att}/${max})`;
+        }
+      }
+      if (c.decideVerdict({ verdict: 'GO', findings: f }, 1, 3).next !== 'go') return 'GO z findings przestało być GO';
+      return null;
+    },
+  },
+
+  {
+    name: 'shadow-check-runs-as-script-but-reports-only-to-shadow-field',
+    run() {
+      // TASK-OBS-018: `shadow:<skrypt>` w checks → skrypt biegnie jak zwykły check, wynik tylko do `shadowLint`.
+      if (!c.isShadowCheck('shadow:lint:ddd')) return 'shadow:lint:ddd nierozpoznane';
+      for (const bad of ['shadow:', 'shadow:a b', 'lint:ddd', 'Shadow:x', 'xshadow:lint', '']) {
+        if (c.isShadowCheck(bad)) return `„${bad}" rozpoznane jako check cienia`;
+      }
+      const withShadow = c.buildProbePrompt(ARGS, { ...L.infrastructure, checks: ['typecheck', 'shadow:lint:ddd'] });
+      if (/(?:_chk|npm run) shadow:/.test(withShadow)) return 'prefiks shadow: trafił do komendy skryptu';
+      if (!/(?:_chk|npm run) lint:ddd > \/tmp\/check-infrastructure-2\.log/.test(withShadow)) return 'skrypt cienia nie biegnie jak zwykły check z własnym logiem';
+      if ((withShadow.match(/echo "SHADOW EXIT:\$\?"/g) || []).length !== 1 || (withShadow.match(/echo "EXIT:\$\?"/g) || []).length !== 1) return 'znacznik SHADOW tylko przy checku cienia';
+      if (!/WYŁĄCZNIE do `shadowLint`/.test(withShadow) || !/NIGDY nie trafia do `lint`, `typecheck` ani `tests`/.test(withShadow)) return 'brak instrukcji mapowania na shadowLint';
+      const plain = c.buildProbePrompt(ARGS, { ...L.infrastructure, checks: ['typecheck', 'lint:check'] });
+      if (/SHADOW|shadowLint/.test(plain)) return 'prompt bez checku cienia zmienił się';
+      // Wynik cienia nie jest czerwienią sondy: nie cofa warstwy do implementera.
+      if (c.probeIsRed({ typecheck: 'pass', tests: 'pass', lint: 'pass', shadowLint: 'fail' })) return 'czerwony shadowLint liczy się jako czerwona sonda';
+      if (!c.probeIsRed({ typecheck: 'fail', tests: 'pass', shadowLint: 'pass' })) return 'czerwony typecheck przestał być czerwienią';
+      const sl = c.CHECKS_SCHEMA.properties.shadowLint;
+      if (!sl || JSON.stringify(sl.enum) !== JSON.stringify(['pass', 'fail', 'skipped'])) return 'CHECKS_SCHEMA bez shadowLint';
+      if (c.CHECKS_SCHEMA.required.includes('shadowLint')) return 'shadowLint nie może być wymagane';
+      return null;
+    },
+  },
+
   // ── decyzja GO / FIX / ESCALATE / cicha śmierć ────────────────────────────────
   {
     name: 'verdict-go-fix-escalate-silent',
