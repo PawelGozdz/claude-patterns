@@ -415,15 +415,148 @@ const tests = [
       return null;
     },
   },
+  {
+    name: 'rule-ids-normalize-and-signature',
+    run(t, L, R) {
+      // TASK-OBS-018: identyfikatory reguł z werdyktów — jedno miejsce normalizacji i odcisk ustaleń.
+      const id = R.normalizeRuleId;
+      const cases = {
+        A1: 'a1', feedback_Foo_bar: 'foo-bar', 'feedback_baseCommandHandler_silentfail.md': 'basecommandhandler-silentfail',
+        'ANL-021': 'anl-021', new: 'new', project_rate_limit_failopen: 'rate-limit-failopen',
+      };
+      for (const [raw, want] of Object.entries(cases)) if (id(raw) !== want) return `normalizeRuleId(${raw}) = ${id(raw)}, oczekiwano ${want}`;
+      for (const bad of ['brak obsługi błędu w handlerze', '', '   ', undefined, null, 42, 'a'.repeat(65), '-zly']) {
+        if (id(bad) !== null) return `normalizeRuleId(${JSON.stringify(bad)}) nie dało null`;
+      }
+      if (R.normalizeRuleHits(undefined) !== null || R.normalizeRuleHits('x') !== null) return 'brak tablicy findings musi dać null (nie raportował)';
+      if (JSON.stringify(R.normalizeRuleHits([])) !== '[]') return 'pusta tablica musi zostać [] (raportował, zero ustaleń)';
+      // Niepasujący wpis nie znika (liczba ustaleń ma być prawdziwa), tylko staje się `new` — bez wolnego tekstu.
+      const hits = R.normalizeRuleHits(['A1', { ruleId: 'x-y', line: 3 }, { ruleId: 'Free text!', line: 0 }, 42, null, { ruleId: 'a1', line: 7.5 }]);
+      const want = [{ ruleId: 'a1' }, { ruleId: 'x-y', line: 3 }, { ruleId: 'new' }, { ruleId: 'new' }, { ruleId: 'new' }, { ruleId: 'a1' }];
+      if (JSON.stringify(hits) !== JSON.stringify(want)) return 'normalizeRuleHits: ' + JSON.stringify(hits);
+      if (R.normalizeRuleHits(Array.from({ length: 80 }, () => 'a1')).length !== R.MAX_RULE_HITS) return 'brak limitu liczby ustaleń';
+      if (R.normalizeRulesChecked(7) !== 7 || R.normalizeRulesChecked(-1) !== null || R.normalizeRulesChecked('7') !== null) return 'normalizeRulesChecked';
+      // Odcisk: kolejność i duplikaty bez znaczenia, `new` pomijane, brak znanych identyfikatorów = brak odcisku.
+      const sig = R.ruleSignature;
+      const h = (...ids) => ids.map((ruleId) => ({ ruleId }));
+      if (sig(h('a1', 'b2')) !== sig(h('b2', 'a1', 'a1'))) return 'odcisk zależy od kolejności lub duplikatów';
+      if (sig(h('a1', 'b2')) === sig(h('a1', 'b3'))) return 'różne zbiory dały ten sam odcisk';
+      if (sig(h('a1', 'new', 'new')) !== sig(h('a1'))) return '`new` nie jest pomijane w odcisku';
+      if (sig([]) !== null || sig(h('new', 'new')) !== null || sig(undefined) !== null) return 'brak znanych identyfikatorów musi dać null';
+      if (!/^[0-9a-f]{12}$/.test(sig(h('a1')))) return 'odcisk to nie 12 znaków hex';
+      return null;
+    },
+  },
+  {
+    name: 'rule-hits-only-in-verifier-and-gate-steps',
+    run(t) {
+      const mk = (step) => t.buildEvent({ kind: 'step.end', process: 'orchestrate', project: 'demo', runId: 'wf_rh', outcome: 'no_go', step });
+      const good = {
+        'verifier z ustaleniami': { id: 'domain:u:verifier#1', role: 'verifier', ruleHits: [{ ruleId: 'a1', line: 12 }, { ruleId: 'new' }], rulesChecked: 7 },
+        'gate z pustą listą': { id: 'final:final:gate#1', role: 'gate', ruleHits: [] },
+        'verifier bez pól (stare zdarzenie)': { id: 'domain:u:verifier#1', role: 'verifier' },
+        'implementer bez pól': { id: 'domain:u:implementer#1', role: 'implementer' },
+      };
+      for (const [name, step] of Object.entries(good)) {
+        const e = t.validateEvent(mk(step));
+        if (e.length) return `„${name}" odrzucone: ${e.join('; ')}`;
+      }
+      const bad = {
+        'ruleHits w implementerze': { id: 'x', role: 'implementer', ruleHits: [] },
+        'rulesChecked w sondzie': { id: 'x', role: 'probe', rulesChecked: 3 },
+        'ruleHits bez roli': { id: 'x', ruleHits: [] },
+        'ruleHits z rolą null': { id: 'x', role: null, ruleHits: [] },
+        'ruleId wielkimi literami': { id: 'x', role: 'verifier', ruleHits: [{ ruleId: 'A1' }] },
+        'ruleId z wolnym tekstem': { id: 'x', role: 'verifier', ruleHits: [{ ruleId: 'brak obsługi błędu' }] },
+        'ścieżka pliku w ustaleniu (etap 2)': { id: 'x', role: 'verifier', ruleHits: [{ ruleId: 'a1', file: 'src/a.ts' }] },
+        'line = 0': { id: 'x', role: 'verifier', ruleHits: [{ ruleId: 'a1', line: 0 }] },
+        'ponad 50 ustaleń': { id: 'x', role: 'verifier', ruleHits: Array.from({ length: 51 }, () => ({ ruleId: 'a1' })) },
+        'rulesChecked ujemne': { id: 'x', role: 'verifier', rulesChecked: -1 },
+      };
+      for (const [name, step] of Object.entries(bad)) if (!t.validateEvent(mk(step)).length) return `„${name}" przeszło walidację`;
+      // review-panel liczy findings jako liczbę i nie przyjmuje ruleHits.
+      const rp = t.buildEvent({ kind: 'step.end', process: 'review-panel', project: 'demo', runId: 'rp-1', outcome: 'ok', step: { id: 'eagle', role: 'eagle', findings: 1, ruleHits: [] } });
+      if (!t.validateEvent(rp).length) return 'ruleHits w review-panel przeszło walidację';
+      return null;
+    },
+  },
+  {
+    name: 'legacy-converter-carries-rule-hits-for-verdict-steps-only',
+    run(t, L) {
+      const at = (s) => `2026-11-10T10:00:${String(s).padStart(2, '0')}.000Z`;
+      const step = (agentId, label, outcome, s, extra = {}) => ({ type: 'step', runId: 'wf_rh-1', agentId, label, outcome, ts: at(s),
+        workflowName: 'orchestrate', agentType: 'x-agent', model: 'claude-sonnet-5-5', attempt: 1, toolCalls: 3, durationMs: 1000,
+        inputTokens: 1, outputTokens: 2, cacheReadTokens: 3, cacheWriteTokens: 4, costUsd: 0.1, ...extra });
+      const hits = [{ ruleId: 'a1', line: 4 }, { ruleId: 'Wolny tekst!' }];
+      const steps = [
+        step('i1', 'domain:rules-impl', 'ok', 1, { ruleHits: hits }), // implementer: pole ignorowane
+        step('v1', 'domain:rules-verify', 'NO-GO', 2, { ruleHits: hits, rulesChecked: 9 }),
+        step('v2', 'domain:rules-verify', 'GO', 3, { ruleHits: [] }),
+        step('v3', 'domain:rules-verify', 'GO', 4), // weryfikator, który nie raportował strukturalnie
+        step('p1', 'final-checks', 'ok', 5, { agentType: null, ruleHits: hits }), // sonda: pole ignorowane
+        step('g1', 'final-gate', 'NO-GO', 6, { ruleHits: [{ ruleId: 'onfailed-requires-onworkerevent' }], rulesChecked: 3 }),
+      ];
+      const evs = L.legacyRunToEvents({ steps, run: null, project: 'demo' }).filter((e) => e.kind === 'step.end');
+      const bad = evs.map((f) => t.validateEvent(t.buildEvent(f))).find((e) => e.length);
+      if (bad) return 'zdarzenie niezgodne ze schematem: ' + bad.join('; ');
+      const by = Object.fromEntries(evs.map((e, i) => [steps[i].agentId, e]));
+      if ('ruleHits' in by.i1.step || 'ruleHits' in by.p1.step) return 'implementer lub sonda dostały ruleHits';
+      const want = JSON.stringify([{ ruleId: 'a1', line: 4 }, { ruleId: 'new' }]);
+      if (JSON.stringify(by.v1.step.ruleHits) !== want || by.v1.step.rulesChecked !== 9) return 'weryfikator: ' + JSON.stringify(by.v1.step);
+      if (!Array.isArray(by.v2.step.ruleHits) || by.v2.step.ruleHits.length !== 0) return 'pusta lista ustaleń zgubiona';
+      if ('ruleHits' in by.v3.step || 'rulesChecked' in by.v3.step) return 'brak raportu zamienił się w pole';
+      if (by.g1.step.role !== 'gate' || by.g1.step.ruleHits[0].ruleId !== 'onfailed-requires-onworkerevent' || by.g1.step.rulesChecked !== 3) return 'bramka: ' + JSON.stringify(by.g1.step);
+      return null;
+    },
+  },
+  {
+    name: 'probe-checks-only-in-probe-steps-and-pair-with-verifier-by-unit-and-attempt',
+    run(t, L) {
+      // TASK-OBS-018: wynik sondy w zdarzeniu (inaczej `ok` jest nieodróżnialne od zielonego) i parowanie z werdyktem.
+      const mk = (step) => t.buildEvent({ kind: 'step.end', process: 'orchestrate', project: 'demo', runId: 'wf_pc', outcome: 'ok', step });
+      const checks = { typecheck: 'pass', tests: 'pass', lint: 'fail', conformance: 'skipped', shadowLint: 'fail' };
+      const e = t.validateEvent(mk({ id: 'domain:u:probe#1', role: 'probe', checks }));
+      if (e.length) return 'poprawny checks w sondzie odrzucony: ' + e.join('; ');
+      const bad = {
+        'checks w weryfikatorze': { id: 'x', role: 'verifier', checks },
+        'checks bez roli': { id: 'x', checks },
+        'wartość spoza pass|fail|skipped': { id: 'x', role: 'probe', checks: { lint: 'green' } },
+        'nieznane pole kontroli': { id: 'x', role: 'probe', checks: { coverage: 'pass' } },
+      };
+      for (const [name, step] of Object.entries(bad)) if (!t.validateEvent(mk(step)).length) return `„${name}" przeszło walidację`;
+      // Parowanie z konwertera: ten sam group + unit + attempt (id różni się tylko rolą).
+      const at = (s) => `2026-11-10T11:00:${String(s).padStart(2, '0')}.000Z`;
+      const rec = (agentId, label, outcome, s, extra = {}) => ({ type: 'step', runId: 'wf_pc-1', agentId, label, outcome, ts: at(s),
+        workflowName: 'orchestrate', agentType: 'x-agent', model: 'claude-sonnet-5-5', attempt: 1, toolCalls: 1, durationMs: 1,
+        inputTokens: 1, outputTokens: 1, cacheReadTokens: 1, cacheWriteTokens: 1, costUsd: 0.1, ...extra });
+      const steps = [
+        rec('i1', 'domain:rules-impl', 'ok', 1),
+        rec('p1', 'domain:rules-checks-1', 'ok', 2, { agentType: 'x-probe', checks, ruleHits: [{ ruleId: 'a1' }] }),
+        rec('v1', 'domain:rules-verify', 'NO-GO', 3, { ruleHits: [{ ruleId: 'a1', line: 4 }] }),
+      ];
+      const evs = L.legacyRunToEvents({ steps, run: null, project: 'demo' }).filter((x) => x.kind === 'step.end');
+      const bad2 = evs.map((f) => t.validateEvent(t.buildEvent(f))).find((x) => x.length);
+      if (bad2) return 'zdarzenie niezgodne ze schematem: ' + bad2.join('; ');
+      const probe = evs.find((x) => x.step.role === 'probe'); const ver = evs.find((x) => x.step.role === 'verifier');
+      if (JSON.stringify(probe.step.checks) !== JSON.stringify(checks)) return 'sonda: ' + JSON.stringify(probe.step);
+      if ('ruleHits' in probe.step) return 'sonda dostała ruleHits';
+      if ('checks' in ver.step || 'checks' in evs.find((x) => x.step.role === 'implementer').step) return 'checks poza sondą';
+      if (probe.step.id.replace(':probe#', ':verifier#') !== ver.step.id) return `sonda i weryfikator nie parują się po id: ${probe.step.id} / ${ver.step.id}`;
+      if (probe.step.attempt !== ver.step.attempt) return 'inna próba sondy i weryfikatora';
+      if (!(probe.step.checks.lint === 'fail' && ver.step.ruleHits[0].ruleId === 'a1')) return 'nie da się odtworzyć pary: czerwona sonda + flagowana reguła';
+      return null;
+    },
+  },
 ];
 
 (async () => {
   const t = await import(LIB);
   const L = await import(path.join(REPO, 'scripts', 'lib', 'telemetry-legacy.mjs'));
+  const R = await import(path.join(REPO, 'scripts', 'lib', 'telemetry-rules.mjs'));
   let failed = 0;
   for (const test of tests) {
     let err;
-    try { err = test.run(t, L); } catch (e) { err = 'wyjątek: ' + (e && e.stack || e); }
+    try { err = test.run(t, L, R); } catch (e) { err = 'wyjątek: ' + (e && e.stack || e); }
     console.log(`  ${err ? '❌' : '✅'} ${test.name}${err ? ' — ' + err : ''}`);
     if (err) failed++;
   }

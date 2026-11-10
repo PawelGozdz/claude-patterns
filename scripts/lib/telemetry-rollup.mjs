@@ -155,6 +155,7 @@ export function buildRollups(events) {
   }
 
   tallyVerdicts(events, get);
+  tallyRules(events, get);
   for (const [key, tasks] of buildTaskBlocks(events)) {
     const r = rollups.get(key);
     if (r) r.tasks = tasks;
@@ -175,6 +176,19 @@ function tallyVerdicts(events, get) {
     add(((rb.agents ||= {})[ev.step.agent || 'unknown'] ||= {}), counts);
   }
   for (const { ev, counts } of gates) add((processBlock(get(ev), ev.process).finalGate ||= {}), counts);
+}
+
+// Ustalenia werdyktów jako identyfikatory reguł (TASK-OBS-018): liczniki per rola i agent. Blok `rules`
+// powstaje leniwie — dni bez kroków z `ruleHits` zostają bajt w bajt takie same. `reports` liczy kroki,
+// które raportowały strukturalnie (także z zerem ustaleń), więc pokrycie = reports / n roli.
+function tallyRules(events, get) {
+  for (const ev of events) {
+    if (ev.kind !== 'step.end' || !ev.step || !Array.isArray(ev.step.ruleHits)) continue;
+    const rb = roleBlock(processBlock(get(ev), ev.process), ev.step.role || 'unknown');
+    const agent = ((rb.rules ||= {})[ev.step.agent || 'unknown'] ||= { reports: 0, hits: {} });
+    agent.reports++;
+    for (const h of ev.step.ruleHits) bump(agent.hits, h.ruleId);
+  }
 }
 
 function finalize(r) {

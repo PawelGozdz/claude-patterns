@@ -181,6 +181,43 @@ async function main() {
     JSON.stringify(parseLabel('git-status:U1')) === JSON.stringify({ role: 'git-status', unit: 'U1' }),
     JSON.stringify(parseLabel('git-status:U1')));
 
+  // ── E5: ustalenia werdyktu jako identyfikatory reguł (TASK-OBS-018) ───────────
+  process.stdout.write('\nE5 ruleHits z journala werdyktu\n');
+  {
+    const os = require('os');
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'eval-wm-rules-'));
+    const agent = (agentId, label, agentType) => ({ type: 'workflow_agent', agentId, label, agentType, model: 'claude-sonnet-5-5',
+      attempt: 1, startedAt: 1786745782230, toolCalls: 4, durationMs: 1000, tokens: 10 });
+    const wf = { runId: 'wf_rules-1', timestamp: '2026-11-10T10:00:00.000Z', workflowName: 'orchestrate', taskId: 't1', logs: [],
+      workflowProgress: [
+        agent('v1', 'domain:u-verify', 'code-quality-verifier'), agent('v2', 'domain:u-verify', 'code-quality-verifier'),
+        agent('v3', 'app:u-verify', 'code-quality-verifier'), agent('i1', 'domain:u-impl', 'domain-application-implementer'),
+        agent('p1', 'domain:u-checks-1', 'x-probe'),
+      ] };
+    const journal = [
+      { type: 'started', agentId: 'v1' },
+      { type: 'result', agentId: 'v1', result: { verdict: 'NO_GO', violations: ['x'], findings: [{ ruleId: 'A1', line: 5 }, 'Wolny tekst z błędem', { ruleId: 'cr7', line: 0 }], rules_checked: 8 } },
+      { type: 'started', agentId: 'v2' }, { type: 'result', agentId: 'v2', result: { verdict: 'GO', findings: [], rules_checked: 5 } },
+      { type: 'started', agentId: 'v3' }, { type: 'result', agentId: 'v3', result: { verdict: 'GO' } },
+      { type: 'started', agentId: 'i1' }, { type: 'result', agentId: 'i1', result: { summary: 'ok', findings: [{ ruleId: 'A1' }] } },
+      { type: 'started', agentId: 'p1' },
+      { type: 'result', agentId: 'p1', result: { typecheck: 'pass', tests: 'pass', lint: 'fail', shadowLint: 'fail', tail: 'x', bogus: 'pass' } },
+    ];
+    fs.writeFileSync(path.join(dir, 'journal.jsonl'), journal.map((e) => JSON.stringify(e)).join('\n') + '\n');
+    const out = collectRun({ wf, runDir: dir, prices, project: '-opt-projects-demo', sessionId: 's1', runtimeYmlHash: null });
+    const by = Object.fromEntries(((out && out.steps) || []).map((s) => [s.agentId, s]));
+    check('v1: ruleHits znormalizowane, wolny tekst → new',
+      JSON.stringify(by.v1?.ruleHits) === JSON.stringify([{ ruleId: 'a1', line: 5 }, { ruleId: 'new' }, { ruleId: 'cr7' }]), JSON.stringify(by.v1?.ruleHits));
+    check('v1: rulesChecked = 8, werdykt nadal z result.verdict', by.v1?.rulesChecked === 8 && by.v1?.outcome === 'NO_GO', `${by.v1?.rulesChecked}/${by.v1?.outcome}`);
+    check('v2: pusta lista zostaje [] (raportował, zero ustaleń)', Array.isArray(by.v2?.ruleHits) && by.v2.ruleHits.length === 0 && by.v2.rulesChecked === 5);
+    check('v3: brak findings w wyniku → brak pola', by.v3 && !('ruleHits' in by.v3) && !('rulesChecked' in by.v3));
+    check('i1: kolektor zapisuje pole także dla implementera (rolę odfiltrowuje konwerter)', Array.isArray(by.i1?.ruleHits));
+    check('p1: wynik sondy per kontrola (tylko znane pola i wartości)',
+      JSON.stringify(by.p1?.checks) === JSON.stringify({ typecheck: 'pass', tests: 'pass', lint: 'fail', shadowLint: 'fail' }), JSON.stringify(by.p1?.checks));
+    check('werdykty nie dostają checks', !('checks' in (by.v1 || {})) && !('checks' in (by.v3 || {})));
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+
   process.stdout.write(`\n${failed ? `❌ ${failed} FAILED` : '✅ all passed'}\n`);
   process.exit(failed ? 1 : 0);
 }

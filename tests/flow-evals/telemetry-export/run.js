@@ -201,6 +201,28 @@ const tests = [
         || (guards.includes('tests/flow-evals/telemetry-export/run.js') ? null : 'eval nie jest w pre-commit-guards');
     },
   },
+  {
+    name: 'rule-hits-leave-only-as-counters-with-safe-keys',
+    run({ ex }) {
+      // TASK-OBS-018: identyfikatory reguł wychodzą jako liczniki z kluczami z SAFE_KEY; zły klucz (agenta lub reguły)
+      // odpada i trafia do `dropped`, a skan wycieków pozostaje czysty.
+      const base = rollup();
+      const role = { ...base.processes.orchestrate.roles.verifier, rules: {
+        'code-quality-verifier': { reports: 3, hits: { a1: 4, new: 2, 'onfailed-requires-onworkerevent': 1, 'Zły Klucz': 5 }, file: 'src/a.ts' },
+        'Zły Agent': { reports: 1, hits: { a1: 1 } },
+      } };
+      const ctx = { dropped: [] };
+      const rec = ex.projectRollup(rollup({ processes: { orchestrate: { ...base.processes.orchestrate, roles: { verifier: role } } } }), ctx);
+      const err = eq(rec.processes.orchestrate.roles.verifier.rules,
+        { 'code-quality-verifier': { reports: 3, hits: { a1: 4, new: 2, 'onfailed-requires-onworkerevent': 1 } } }, 'rules');
+      if (err) return err;
+      if (!ctx.dropped.some((d) => d.endsWith('hits.Zły Klucz')) || !ctx.dropped.some((d) => d.endsWith('rules.Zły Agent'))) return 'zły klucz nie trafił do dropped: ' + JSON.stringify(ctx.dropped);
+      if (JSON.stringify(rec).includes('src/a.ts')) return 'ścieżka pliku wyciekła do paczki';
+      const leaks = ex.findLeaks(rec);
+      if (leaks.length) return 'findLeaks: ' + JSON.stringify(leaks);
+      return null;
+    },
+  },
 ];
 
 (async () => {

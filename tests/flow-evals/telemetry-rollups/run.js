@@ -406,6 +406,40 @@ const tests = [
       return null;
     },
   },
+  {
+    name: 'rule-hits-count-per-role-and-agent-and-block-stays-lazy',
+    run(T) {
+      // TASK-OBS-018: ustalenia werdyktów jako identyfikatory reguł. Liczniki per rola i agent, `reports` liczy kroki
+      // z polem (także z zerem ustaleń), a dni bez `ruleHits` zostają bajt w bajt takie same (blok `rules` leniwy).
+      const D = '2026-03-05';
+      const rid = 'wf_rule-run';
+      const vs = (ts, id, role, agent, outcome, hits) => ev({ kind: 'step.end', process: 'orchestrate', ts, outcome, runId: rid,
+        step: { id, role, agent, ...(hits ? { ruleHits: hits } : {}) } });
+      const evs = [
+        ev({ kind: 'run.start', process: 'orchestrate', ts: `${D}T10:00:00.000Z`, runId: rid }),
+        vs(`${D}T10:01:00.000Z`, 'domain:u:verifier#1', 'verifier', 'cqv', 'no_go', [{ ruleId: 'a1', line: 3 }, { ruleId: 'a1' }, { ruleId: 'new' }]),
+        vs(`${D}T10:02:00.000Z`, 'domain:u:verifier#2', 'verifier', 'cqv', 'go', []),
+        vs(`${D}T10:03:00.000Z`, 'app:u:verifier#1', 'verifier', 'other-verifier', 'go', [{ ruleId: 'b2' }]),
+        vs(`${D}T10:04:00.000Z`, 'domain:u:verifier#3', 'verifier', 'cqv', 'go', null), // nie raportował strukturalnie
+        vs(`${D}T10:05:00.000Z`, 'final:final:gate#1', 'gate', 'sec-gate', 'no_go', [{ ruleId: 'onfailed-requires-onworkerevent' }]),
+      ];
+      const r = [...T.buildRollups(evs).values()][0];
+      const roles = r.processes.orchestrate.roles;
+      const cqv = roles.verifier.rules && roles.verifier.rules.cqv;
+      if (!cqv || cqv.reports !== 2 || cqv.hits.a1 !== 2 || cqv.hits.new !== 1) return 'liczniki cqv: ' + JSON.stringify(cqv);
+      if (JSON.stringify(roles.verifier.rules['other-verifier']) !== JSON.stringify({ reports: 1, hits: { b2: 1 } })) return 'other-verifier: ' + JSON.stringify(roles.verifier.rules['other-verifier']);
+      if (JSON.stringify(roles.gate.rules['sec-gate']) !== JSON.stringify({ reports: 1, hits: { 'onfailed-requires-onworkerevent': 1 } })) return 'bramka: ' + JSON.stringify(roles.gate.rules);
+      if (roles.verifier.n !== 4) return `n weryfikatora = ${roles.verifier.n} (4 kroki, w tym jeden bez raportu), oczekiwano 4`;
+      // Leniwość: te same zdarzenia bez ruleHits → brak bloku, reszta rollupu identyczna.
+      const stripped = evs.map((e) => (e.step && e.step.ruleHits ? { ...e, step: Object.fromEntries(Object.entries(e.step).filter(([k]) => k !== 'ruleHits')) } : e));
+      const plain = [...T.buildRollups(stripped).values()][0];
+      if (JSON.stringify(plain).includes('"rules"')) return 'blok rules powstał bez ruleHits';
+      const without = JSON.parse(JSON.stringify(r));
+      for (const rb of Object.values(without.processes.orchestrate.roles)) delete rb.rules;
+      if (JSON.stringify(without) !== JSON.stringify(plain)) return 'poza blokiem rules rollup różni się od wersji bez ruleHits';
+      return null;
+    },
+  },
 ];
 
 (async () => {

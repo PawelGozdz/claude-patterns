@@ -16,6 +16,7 @@
 import path from 'node:path';
 import { normalizeOutcome, deterministicId } from './telemetry-events.mjs';
 import { firstFinalGates } from './final-gate-blame.mjs';
+import { normalizeRuleHits, normalizeRulesChecked, normalizeProbeChecks } from './telemetry-rules.mjs';
 import { resolveProjectSlug } from '../workflow-metrics-lib.mjs';
 
 // Slug '-opt-projects-juz-ide-api-1' → 'juz-ide-api-1'. Najpierw prawdziwy katalog (slug jest
@@ -149,12 +150,21 @@ export function legacyRunToEvents({ steps = [], run = null, project }) {
 
     const outcome = normalizeOutcome(s.outcome);
     const cause = causeOf(outcome, p.role, String(s.label || ''));
+    // TASK-OBS-018: ustalenia z identyfikatorami reguł niosą wyłącznie kroki werdyktu (verifier, gate). Sondy
+    // `final-checks` mają role gate, ale bez findings w wyniku, więc pole dla nich nie powstaje.
+    const verdictStep = p.role === 'verifier' || p.role === 'gate';
+    const ruleHits = verdictStep ? normalizeRuleHits(s.ruleHits) : null;
+    const rulesChecked = verdictStep ? normalizeRulesChecked(s.rulesChecked) : null;
+    const checks = p.role === 'probe' ? normalizeProbeChecks(s.checks) : null;
     events.push({
       id: deterministicId(`${runId}::${s.agentId || `${s.label}#${i}`}`),
       ts, kind: 'step.end', ...base,
       step: {
         id: stepId, group: p.group, role: p.role, agent: s.agentType ?? null,
         model: s.model ?? null, attempt: attempt ?? null, fixes,
+        ...(ruleHits ? { ruleHits } : {}),
+        ...(rulesChecked !== null ? { rulesChecked } : {}),
+        ...(checks ? { checks } : {}),
       },
       outcome,
       ...(cause ? { cause } : {}),

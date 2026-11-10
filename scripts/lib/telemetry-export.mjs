@@ -61,6 +61,10 @@ function mapOf(src, at, ctx, build) {
 const VERDICT_FIELDS = ['goJudged', 'falseGo', 'noGoJudged', 'falseNoGo'];
 const GATE_FIELDS = ['judged', 'noGo', 'noGoAttributed', 'blamedUnits', 'unattributed', 'blamedUnmatched'];
 
+// Identyfikatory reguł z ustaleń (TASK-OBS-018): `reports` + mapa ruleId → liczba. Klucze (agent, ruleId)
+// przechodzą przez SAFE_KEY; `ruleId` jest znormalizowany do tego formatu już u źródła (telemetry-rules.mjs).
+const ruleBlock = (src, at, ctx) => ({ ...counters(src, ['reports']), hits: countMap(src.hits, `${at}.hits`, ctx) });
+
 const roleBlock = (src, at, ctx) => ({
   ...counters(src, ['n', 'costUsd', 'toolCalls', 'findings']),
   durationMs: stats(src.durationMs),
@@ -68,6 +72,7 @@ const roleBlock = (src, at, ctx) => ({
   causes: countMap(src.causes, `${at}.causes`, ctx),
   ...(src.verdicts ? { verdicts: counters(src.verdicts, VERDICT_FIELDS) } : {}),
   ...(src.agents ? { agents: mapOf(src.agents, `${at}.agents`, ctx, (a) => counters(a, VERDICT_FIELDS)) } : {}),
+  ...(src.rules ? { rules: mapOf(src.rules, `${at}.rules`, ctx, ruleBlock) } : {}),
 });
 
 const processBlock = (src, at, ctx) => ({

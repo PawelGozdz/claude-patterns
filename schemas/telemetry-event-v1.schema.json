@@ -41,6 +41,16 @@
       "description": "step.findings istnieje wyłącznie w zdarzeniach review-panel — inne procesy nie mają jak przemycić licznika.",
       "if": { "required": ["step"], "properties": { "step": { "required": ["findings"] } } },
       "then": { "properties": { "process": { "const": "review-panel" } } }
+    },
+    {
+      "description": "step.ruleHits i step.rulesChecked (TASK-OBS-018) istnieją wyłącznie w krokach verifier i gate: tylko tam werdykt niesie ustalenia z identyfikatorami reguł.",
+      "if": { "required": ["step"], "properties": { "step": { "anyOf": [{ "required": ["ruleHits"] }, { "required": ["rulesChecked"] }] } } },
+      "then": { "properties": { "step": { "required": ["role"], "properties": { "role": { "enum": ["verifier", "gate"] } } } } }
+    },
+    {
+      "description": "step.checks (TASK-OBS-018) istnieje wyłącznie w krokach roli probe.",
+      "if": { "required": ["step"], "properties": { "step": { "required": ["checks"] } } },
+      "then": { "properties": { "step": { "required": ["role"], "properties": { "role": { "const": "probe" } } } } }
     }
   ],
   "properties": {
@@ -94,6 +104,37 @@
           "description": "Tylko process=review-panel, outcome=ok (ADR 0012, aneks TASK-GSTACK-ADOPT-001): liczba findingów zgłoszonych przez reviewera w jednym przebiegu panelu. Sama liczba — bez treści, ścieżek i autorów findingów.",
           "type": "integer",
           "minimum": 0
+        },
+        "ruleHits": {
+          "description": "Tylko role verifier i gate (TASK-OBS-018): ustalenia werdyktu jako identyfikatory reguł. `ruleId` to karta reguł, nazwa wpisu pamięci bramki albo `new` (ustalenie bez znanego identyfikatora). Bez ścieżek i bez tekstu. Pole obecne (nawet puste) = agent raportował ustalenia strukturalnie; brak pola = nie raportował.",
+          "type": "array",
+          "maxItems": 50,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["ruleId"],
+            "properties": {
+              "ruleId": { "type": "string", "pattern": "^[a-z0-9][a-z0-9_.:-]{0,63}$" },
+              "line": { "type": "integer", "minimum": 1 }
+            }
+          }
+        },
+        "rulesChecked": {
+          "description": "Tylko role verifier i gate (TASK-OBS-018): liczba reguł, które agent faktycznie sprawdził w tym werdykcie.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "checks": {
+          "description": "Tylko rola probe (TASK-OBS-018): wynik sondy per kontrola (pass|fail|skipped). `shadowLint` to kontrola w trybie cienia — nie blokuje warstwy i służy porównaniu z werdyktem weryfikatora tej samej warstwy i próby (to samo step.group + unit + attempt).",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "typecheck": { "enum": ["pass", "fail", "skipped"] },
+            "tests": { "enum": ["pass", "fail", "skipped"] },
+            "lint": { "enum": ["pass", "fail", "skipped"] },
+            "conformance": { "enum": ["pass", "fail", "skipped"] },
+            "shadowLint": { "enum": ["pass", "fail", "skipped"] }
+          }
         }
       }
     },

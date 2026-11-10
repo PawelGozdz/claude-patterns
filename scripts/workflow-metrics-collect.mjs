@@ -36,6 +36,7 @@ import {
 import { appendEventsDedup } from './lib/telemetry-events.mjs';
 import { legacyRunToEvents, projectFromSlug } from './lib/telemetry-legacy.mjs';
 import { blameFromResult } from './lib/final-gate-blame.mjs';
+import { normalizeRuleHits, normalizeRulesChecked, normalizeProbeChecks } from './lib/telemetry-rules.mjs';
 
 const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
 export const DEFAULT_PRICES_PATH = path.join(__dirname, 'workflow-metrics-prices.default.json');
@@ -102,6 +103,15 @@ export function collectRun({ wfPath, wf: wfParsed, runDir, fallbackAgentsDir, pr
       outcome = 'unknown';
     }
 
+    // TASK-OBS-018: ustalenia werdyktu jako identyfikatory reguł (VERDICT_SCHEMA.findings / rules_checked).
+    // Normalizacja tu, żeby surowy workflow-steps.jsonl nie niósł wolnego tekstu; rolę sprawdza dopiero konwerter.
+    const verdictResult = resultByAgent.get(a.agentId);
+    const verdictObj = verdictResult && typeof verdictResult === 'object' ? verdictResult : null;
+    const ruleHits = verdictObj ? normalizeRuleHits(verdictObj.findings) : null;
+    const rulesChecked = verdictObj ? normalizeRulesChecked(verdictObj.rules_checked) : null;
+    // Wynik sondy (CHECKS_SCHEMA): pass|fail|skipped per kontrola; bez tego sonda jest w zdarzeniu nieodróżnialna od zielonej.
+    const checks = verdictObj ? normalizeProbeChecks(verdictObj) : null;
+
     const partial = !a.cached && !usage;
     const costUsd = a.cached ? 0 : estimateCostUsd(usage, a.model, prices);
 
@@ -126,6 +136,9 @@ export function collectRun({ wfPath, wf: wfParsed, runDir, fallbackAgentsDir, pr
       toolCalls: a.toolCalls ?? null,
       durationMs: a.durationMs ?? null,
       outcome, reason,
+      ...(ruleHits ? { ruleHits } : {}),
+      ...(rulesChecked !== null ? { rulesChecked } : {}),
+      ...(checks ? { checks } : {}),
       resumedFrom: wf.resumeFromRunId ?? null,
       costUsd,
       runtimeYmlHash: runtimeYmlHash ?? null,
