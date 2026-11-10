@@ -234,6 +234,8 @@ const tests = [
         if (!t.CAUSES.includes(c)) return `${trig} → ${c} spoza listy cause`;
       }
       if (t.defaultCategory('setup_drift') !== 'config' || t.defaultCategory('no_go') !== 'verifier') return 'mapowanie triggerów zmienione';
+      // wyłącznik pętli NO-GO (ORC-157): oba triggery mapują na `verifier`, nie na domyślne `other`
+      if (t.defaultCategory('repeat_no_go') !== 'verifier' || t.defaultCategory('repeat_no_go_blocked') !== 'verifier') return 'trigger wyłącznika pętli nie mapuje na verifier';
       const src = fs.readFileSync(REPORT, 'utf8');
       if (!/category: args\.category \|\| defaultCategory\(args\.trigger, args\.rule\)/.test(src)) return 'nowy rekord skrzynki bez pola category';
       if (!/fm\.category = fm\.category \|\|/.test(src)) return 'istniejąca kategoria (np. z triage) bywa nadpisywana';

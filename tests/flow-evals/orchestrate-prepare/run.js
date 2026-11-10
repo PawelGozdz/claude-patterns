@@ -143,8 +143,15 @@ ${body}
 `;
 }
 
+// Telemetria zawsze w katalogu tymczasowym: prepare czyta zdarzenia (wyłącznik pętli, ORC-157) i potrafi je
+// zapisać, więc bez izolacji eval czytałby prawdziwe dane maszyny, a przypadek „zablokowałbym" je zaśmiecał.
+const EMPTY_TEL = fs.mkdtempSync(path.join(os.tmpdir(), 'orch-prep-tel-empty-'));
+let CURRENT_TEL = EMPTY_TEL;
+
 function run(root, taskId, extra = []) {
-  const r = spawnSync('node', [SCRIPT, taskId, '--project', root, '--json', ...extra], { encoding: 'utf8' });
+  const r = spawnSync('node', [SCRIPT, taskId, '--project', root, '--json', ...extra], {
+    encoding: 'utf8', env: { ...process.env, CLAUDE_TELEMETRY_DIR: CURRENT_TEL },
+  });
   let json = null;
   try { json = JSON.parse(r.stdout); } catch { /* wyjście nie-JSON przy błędach — celowo */ }
   return { code: r.status, json, stderr: r.stderr, stdout: r.stdout };
@@ -1018,21 +1025,153 @@ autoCase('auto-answer-unknown-answered-by-stops', RUNTIME_AUTO(true), autoAnalys
 autoCase('human-answer-marker-passes', RUNTIME_DDD, autoAnalysis('').replace('answered_by: auto', 'answered_by: human'), (r) =>
   (r.code === 0 ? null : `answered_by: human to zwykła odpowiedź: exit ${r.code} ${r.stderr.slice(0, 200)}`));
 
+// ── wyłącznik pętli NO-GO (ORC-157): zdarzenia syntetyczne ──────────────────────────
+// Na dzień pisania żadne prawdziwe zdarzenie nie ma `step.ruleHits` (TASK-OBS-018 dopiero zaczyna zbierać dane),
+// więc kryterium sprawdzamy na zdarzeniach zbudowanych tu, w kształcie zapisu kolektora.
+let evSeq = 0;
+function gateRun({ runId, ts, taskRef = 'TS-FIX-001', outcome = 'no_go', hits, stepId = 'final:final:gate#1', group = 'final', extra = [] }) {
+  const base = { v: 1, host: 'h', project: 'fixture', process: 'orchestrate', runId, taskRef };
+  const step = { id: stepId, group, role: 'gate', agent: 'security-e2e-verifier', attempt: 1, ...(hits ? { ruleHits: hits } : {}) };
+  const t = (n) => ts.replace(/:\d\d\./, `:${String(10 + n).padStart(2, '0')}.`);
+  return [
+    { ...base, id: `e${++evSeq}`, ts, kind: 'run.start' },
+    { ...base, id: `e${++evSeq}`, ts: t(1), kind: 'step.end', step, outcome },
+    ...extra.map((x, i) => ({ ...base, id: `e${++evSeq}`, ts: t(2 + i), kind: 'step.end', step: x.step, outcome: x.outcome })),
+    { ...base, id: `e${++evSeq}`, ts: t(30), kind: 'run.end', outcome },
+  ];
+}
+const H = (...ids) => ids.map((ruleId) => ({ ruleId }));
+const T = (day) => `2026-11-${String(day).padStart(2, '0')}T10:00:00.000Z`;
+
+function loopCase(name, { events, args = [], taskId = 'TS-FIX-001', check }) {
+  CASES.push({
+    name: `loop-${name}`, events, args,
+    build: () => makeProject({ taskId: 'TS-FIX-001', analysis: analysisFm({}), task: taskFile('Cokolwiek.') }),
+    check,
+  });
+}
+const readDeviations = (tel) => fs.readdirSync(tel).filter((f) => f.endsWith('.jsonl'))
+  .flatMap((f) => fs.readFileSync(path.join(tel, f), 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l)))
+  .filter((e) => e.kind === 'deviation');
+const loopWarning = (r) => (r.json ? r.json.warnings.find((w) => /wyłącznik pętli/.test(w)) : undefined);
+const twice = (a, b, rest = {}) => [...gateRun({ runId: 'r1', ts: T(1), hits: a, ...rest }), ...gateRun({ runId: 'r2', ts: T(2), hits: b, ...rest })];
+
+loopCase('same-fingerprint-twice-warns-and-records', {
+  events: twice(H('onfailed-requires-onworkerevent', 'a1'), H('a1', 'onfailed-requires-onworkerevent')),
+  check(r, root, tel) {
+    if (r.code !== 0) return `tryb ostrzegawczy nie może zatrzymać: exit ${r.code} ${r.stderr.slice(0, 200)}`;
+    const w = loopWarning(r);
+    if (!w || !/zablokowałbym/.test(w)) return `brak ostrzeżenia „zablokowałbym": ${JSON.stringify(r.json && r.json.warnings).slice(0, 200)}`;
+    if (!/a1, onfailed-requires-onworkerevent/.test(w)) return `ostrzeżenie nie podaje wspólnych ruleId: ${w.slice(0, 200)}`;
+    const dev = readDeviations(tel);
+    if (dev.length !== 1) return `oczekiwano 1 zdarzenia deviation, jest ${dev.length}`;
+    const d = dev[0];
+    if (d.trigger !== 'repeat_no_go' || d.cause !== 'verifier' || d.taskRef !== 'TS-FIX-001' || !/^repeat-no-go\.[0-9a-f]{12}$/.test(d.signature)) return `zły kształt zdarzenia: ${JSON.stringify(d)}`;
+    run(root, 'TS-FIX-001');
+    return readDeviations(tel).length === 1 ? null : 'powtórny prepare tej samej pary zdublował zdarzenie';
+  },
+});
+loopCase('block-flag-stops-with-exit-5', {
+  events: twice(H('a1', 'b2'), H('b2', 'a1')), args: ['--block-repeat'],
+  check(r, root, tel) {
+    if (r.code !== 5) return `oczekiwano exit 5, było ${r.code} (${r.stderr.slice(0, 200)})`;
+    if (!/a1, b2/.test(r.stderr) || !/--allow-repeat/.test(r.stderr)) return `komunikat bez ruleId albo wyjścia: ${r.stderr.slice(0, 300)}`;
+    const dev = readDeviations(tel);
+    return dev.length === 1 && dev[0].trigger === 'repeat_no_go_blocked' ? null : `zdarzenie blokady: ${JSON.stringify(dev)}`;
+  },
+});
+loopCase('allow-repeat-overrides-block', {
+  events: twice(H('a1'), H('a1')), args: ['--block-repeat', '--allow-repeat'],
+  check(r) {
+    if (r.code !== 0) return `--allow-repeat powinno przepuścić: exit ${r.code} ${r.stderr.slice(0, 200)}`;
+    const w = loopWarning(r);
+    return w && /pominięty \(--allow-repeat\)/.test(w) ? null : `brak uwagi o pominiętej blokadzie: ${w}`;
+  },
+});
+loopCase('different-fingerprints-pass', {
+  events: twice(H('a1'), H('b2')), args: ['--block-repeat'],
+  check(r, root, tel) {
+    if (r.code !== 0 || loopWarning(r)) return `różne odciski nie mogą zatrzymywać ani ostrzegać: exit ${r.code} ${loopWarning(r)}`;
+    return readDeviations(tel).length === 0 ? null : 'zapisano deviation mimo różnych odcisków';
+  },
+});
+loopCase('null-fingerprint-never-stops', {
+  // same `new` (nieznane ustalenia), puste ruleHits i brak raportu: żaden nie daje odcisku
+  events: [...gateRun({ runId: 'r1', ts: T(1), hits: H('new', 'new') }), ...gateRun({ runId: 'r2', ts: T(2), hits: H('new', 'new') })],
+  args: ['--block-repeat'],
+  check(r, root, tel) {
+    if (r.code !== 0 || loopWarning(r)) return `odcisk null nie może zatrzymywać: exit ${r.code} ${loopWarning(r)}`;
+    return readDeviations(tel).length === 0 ? null : 'zapisano deviation przy odcisku null';
+  },
+});
+loopCase('no-report-never-stops', {
+  events: twice(undefined, undefined), args: ['--block-repeat'],
+  check: (r) => (r.code === 0 && !loopWarning(r) ? null : `brak raportu ustaleń nie może zatrzymywać: exit ${r.code} ${loopWarning(r)}`),
+});
+loopCase('other-task-ref-ignored', {
+  events: [...gateRun({ runId: 'r1', ts: T(1), taskRef: 'TS-OTHER-001', hits: H('a1') }), ...gateRun({ runId: 'r2', ts: T(2), taskRef: 'TS-OTHER-001', hits: H('a1') })],
+  args: ['--block-repeat'],
+  check: (r) => (r.code === 0 && !loopWarning(r) ? null : `cudze zdarzenia taskRef: exit ${r.code} ${loopWarning(r)}`),
+});
+loopCase('task-ref-compared-case-insensitively', {
+  events: twice(H('a1'), H('a1'), { taskRef: 'ts-fix-001' }), args: ['--block-repeat'],
+  check: (r) => (r.code === 5 ? null : `taskRef małymi literami powinien pasować: exit ${r.code}`),
+});
+loopCase('only-the-last-two-runs-count', {
+  // NO-GO(a1), NO-GO(a1), GO: ostatnie dwa = NO-GO, GO, więc brak powtórki
+  events: [...gateRun({ runId: 'r1', ts: T(1), hits: H('a1') }), ...gateRun({ runId: 'r2', ts: T(2), hits: H('a1') }), ...gateRun({ runId: 'r3', ts: T(3), outcome: 'go', hits: H() })],
+  args: ['--block-repeat'],
+  check: (r) => (r.code === 0 && !loopWarning(r) ? null : `GO w ostatnim runie powinno zdjąć blokadę: exit ${r.code} ${loopWarning(r)}`),
+});
+loopCase('older-repeat-does-not-count-after-a-different-no-go', {
+  // a1, a1, b2: ostatnie dwa mają różne odciski
+  events: [...gateRun({ runId: 'r1', ts: T(1), hits: H('a1') }), ...gateRun({ runId: 'r2', ts: T(2), hits: H('a1') }), ...gateRun({ runId: 'r3', ts: T(3), hits: H('b2') })],
+  args: ['--block-repeat'],
+  check: (r) => (r.code === 0 && !loopWarning(r) ? null : `ostatnia para ma różne odciski: exit ${r.code} ${loopWarning(r)}`),
+});
+loopCase('last-gate-in-run-decides-and-fix-gates-do-not', {
+  // r2: bramka #1 NO-GO(a1), potem bramka #2 NO-GO(a1) i bramka poprawki final-fix (GO), która nie rozstrzyga
+  events: [
+    ...gateRun({ runId: 'r1', ts: T(1), hits: H('a1') }),
+    ...gateRun({ runId: 'r2', ts: T(2), hits: H('a1'), extra: [{ step: { id: 'final-fix-fp-infrastructure:gate-fix', group: 'final-fix-fp-infrastructure', role: 'gate' }, outcome: 'go' }] }),
+  ],
+  args: ['--block-repeat'],
+  check: (r) => (r.code === 5 ? null : `bramka poprawki (final-fix) nie może zdejmować NO-GO: exit ${r.code}`),
+});
+loopCase('legacy-final-gate-id-counts', {
+  events: twice(H('a1'), H('a1'), { stepId: 'final-gate-r2', group: null }), args: ['--block-repeat'],
+  check: (r) => (r.code === 5 ? null : `starsze id final-gate-r2 powinno liczyć się jako bramka końcowa: exit ${r.code}`),
+});
+loopCase('only-one-earlier-run-passes', {
+  events: gateRun({ runId: 'r1', ts: T(1), hits: H('a1') }), args: ['--block-repeat'],
+  check: (r) => (r.code === 0 && !loopWarning(r) ? null : `jeden wcześniejszy run: exit ${r.code} ${loopWarning(r)}`),
+});
+
 // ── bieg ─────────────────────────────────────────────────────────────────────────
 let failed = 0;
 for (const c of CASES) {
   let root;
+  let tel = null;
   try {
     root = c.build();
-    const err = c.check(run(root, 'TS-FIX-001'), root);
+    if (c.events) {
+      tel = fs.mkdtempSync(path.join(os.tmpdir(), 'orch-prep-tel-'));
+      // pliki miesięczne jak w produkcji: zdarzenia z jednego miesiąca w jednym pliku
+      fs.writeFileSync(path.join(tel, '2026-11.jsonl'), c.events.map((e) => JSON.stringify(e)).join('\n') + '\n');
+      CURRENT_TEL = tel;
+    }
+    const err = c.check(run(root, 'TS-FIX-001', c.args || []), root, tel);
     if (err) { failed++; process.stdout.write(`  ❌ ${c.name} — ${err}\n`); }
     else process.stdout.write(`  ✅ ${c.name}\n`);
   } catch (e) {
     failed++;
     process.stdout.write(`  ❌ ${c.name} — wyjątek: ${e.message}\n`);
   } finally {
+    CURRENT_TEL = EMPTY_TEL;
+    if (tel) fs.rmSync(tel, { recursive: true, force: true });
     if (root) fs.rmSync(root, { recursive: true, force: true });
   }
 }
+fs.rmSync(EMPTY_TEL, { recursive: true, force: true });
 process.stdout.write(`\n${CASES.length - failed}/${CASES.length} passed\n`);
 process.exit(failed ? 1 : 0);

@@ -15,6 +15,30 @@
 
 ---
 
+## 2026-11-10 — Pamięć bramki: klasyfikacja wpisów do katalogu pułapek (TASK-ORC-GATE-COST-001, E4 krok 1)
+
+**Zmiana:** brak zmian w kodzie; klasyfikacja 57 unikalnych wpisów pamięci `security-e2e-verifier` w pliku zadania: A 6 / B 39 / C 12.
+**Dlaczego:** zadanie zakładało 55 wpisów identycznych w 8 instancjach i wstępny podział 12 / 35 / 8. Po przeczytaniu: pamięć rozjechała się
+w api-3, 5, 6, 7 (2 wpisy jednoinstancyjne, 6 lokalnie poprawionych), mechanicznych reguł jest o połowę mniej, bo większość wymaga kontekstu spoza
+jednego pliku, a „runbook po komunikacie błędu" ma sens dla 3 wpisów, nie dla 8 (reszta dotyczy samej pracy bramki).
+**Odrzucone:** kopiowanie z api-1 jako źródła katalogu (pominęłoby nowsze wpisy z innych instancji).
+**Status:** done (krok 1); karty i reguły A czekają na decyzję o właścicielu katalogu.
+
+---
+
+## 2026-11-10 — Wyłącznik pętli NO-GO bramki: najpierw ostrzeżenie, blokada za flagą (TASK-ORC-GATE-COST-001, E1)
+
+**Zmiana:** `orchestrate-prepare.mjs` porównuje odciski ustaleń dwóch ostatnich runów taska; ten sam odcisk w obu NO-GO bramki
+końcowej daje ostrzeżenie i zdarzenie `deviation` `repeat_no_go`. `--block-repeat` zatrzymuje start (exit 5), `--allow-repeat` to wyjście.
+**Dlaczego:** runy `no_go` kosztowały $1276, a `TS-REP-NEIGHBOR-SIGNALS-001` zrobił 7 NO-GO z rzędu. Blokady nie włączamy z
+góry: żadne z 196 NO-GO bramki końcowej w dotychczasowych zdarzeniach nie ma odcisku (`ruleHits` zaczęły być zbierane dopiero z
+ORC-156), więc nie wiemy, ile zatrzymań byłoby fałszywych. Próg z zadania: 0 fałszywych na próbie ≥ 20.
+**Odrzucone:** kryterium „drzewo bez zmian od ostatniego NO-GO" (ORC-139 nie cache'uje bramki, a hasha drzewa nie ma w zdarzeniach);
+blokada domyślna od razu; osobny wpis w skrzynce `_inbox` (każde zatrzymanie to jedno zdarzenie, wpis w repo tylko mnożyłby triage).
+**Status:** experimental (tryb ostrzegawczy).
+
+---
+
 ## 2026-11-10 — Telemetria werdyktów: identyfikatory reguł, wynik sondy, tryb cienia (TASK-OBS-018)
 
 **Zmiana:** zdarzenie kroku niesie `ruleHits` i `rulesChecked` (verifier, gate) oraz `checks` (probe); wpis `shadow:<skrypt>`

@@ -4,9 +4,13 @@
 //
 // Użycie:
 //   node scripts/orchestrate-prepare.mjs <TASK-ID> [--project <dir>] [--json]
-//        [--overrides <plik.json>] [--emit-script <ścieżka.mjs>]
+//        [--overrides <plik.json>] [--emit-script <ścieżka.mjs>] [--block-repeat] [--allow-repeat]
 //
-//   --overrides    nadpisania wyjścia z pliku (zamiast ręcznej edycji kopii szablonu):
+//   --block-repeat wyłącznik pętli NO-GO (TASK-ORC-GATE-COST-001 E1, ORC-157): dwa ostatnie runy tego taska
+//                  skończone NO-GO bramki z tym samym odciskiem ustaleń = exit 5. Bez flagi to samo kryterium
+//                  daje tylko ostrzeżenie i zdarzenie `deviation` („zablokowałbym"); domyślnie nic nie blokuje.
+//   --allow-repeat świadome wyjście z blokady (poprawiono wejście, ustalenie ma inną przyczynę).
+//   --overrides   nadpisania wyjścia z pliku (zamiast ręcznej edycji kopii szablonu):
 //                  obiekty scalane głęboko, tablice zastępowane; `layers` jako mapa
 //                  { "<id>": { …pola… } }. Nieznany klucz = exit 1 (literówka nie może
 //                  przejść po cichu). `{"dirtyAtStart": []}` (ORC-130) = drzewo niesie pracę
@@ -51,7 +55,7 @@
 // bo pełny wzorzec w prompcie implementera to 20-36 KB przeliczane w każdej turze.
 //
 // WYJŚCIE (exit code): 0 = gotowe, 1 = błąd użycia, 2 = bramka analizy, 3 = brak/zły config,
-// 4 = wyemitowany skrypt nie przeszedł workflow-lint.
+// 4 = wyemitowany skrypt nie przeszedł workflow-lint, 5 = wyłącznik pętli NO-GO (tylko z --block-repeat).
 
 import { readFileSync, writeFileSync, existsSync, readdirSync, statSync, mkdirSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
@@ -63,6 +67,7 @@ import { engineVersion } from './lib/engine-version.mjs';
 import { buildCanon } from './lib/canon-inject.mjs';
 import { autoEligibility, recommendedOption } from './lib/answer-evidence.mjs';
 import { loadResolveConfig } from './lib/resolve-config.mjs';
+import { checkLoop } from './lib/orchestrate-loop-guard.mjs';
 
 const require_ = createRequire(import.meta.url);
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -72,7 +77,7 @@ const YAML = require_(join(REPO_ROOT, 'node_modules', 'yaml'));
 // satelita nie musi niczego symlinkować ani znać lokalizacji claude-patterns.
 const WORKFLOW_SCRIPT = join(REPO_ROOT, 'scripts', 'workflow', 'orchestrate.template.mjs');
 
-const EXIT = { OK: 0, USAGE: 1, GATE: 2, CONFIG: 3, LINT: 4 };
+const EXIT = { OK: 0, USAGE: 1, GATE: 2, CONFIG: 3, LINT: 4, REPEAT: 5 };
 
 function die(code, msg) {
   process.stderr.write(`✘ orchestrate-prepare: ${msg}\n`);
@@ -81,10 +86,12 @@ function die(code, msg) {
 
 // ── argumenty ────────────────────────────────────────────────────────────────────
 function parseArgs(argv) {
-  const out = { taskId: null, project: process.cwd(), json: false, overrides: null, emitScript: null };
+  const out = { taskId: null, project: process.cwd(), json: false, overrides: null, emitScript: null, blockRepeat: false, allowRepeat: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--json') out.json = true;
+    else if (a === '--block-repeat') out.blockRepeat = true;
+    else if (a === '--allow-repeat') out.allowRepeat = true;
     else if (a === '--project') out.project = argv[++i] ?? '';
     else if (a.startsWith('--project=')) out.project = a.slice('--project='.length);
     else if (a === '--overrides') out.overrides = argv[++i] ?? '';
@@ -801,6 +808,18 @@ function main() {
     for (const f of gateFailures) process.stderr.write(`  • ${f}\n`);
     process.stderr.write(`\n  Napraw: uzupełnij odpowiedzi we frontmatter i ustaw status: approved w ${analysisPath ? relative(args.project, analysisPath) : 'artefakcie analizy'}.\n`);
     process.exit(EXIT.GATE);
+  }
+
+  // ORC-157: wyłącznik pętli. Po bramce analizy (nieważna analiza zatrzymuje wcześniej i taniej), przed pracą
+  // nad wzorcami. Domyślnie tylko ostrzega; blokuje wyłącznie `--block-repeat` bez `--allow-repeat`.
+  {
+    const loop = checkLoop({ taskId: args.taskId, projectDir: args.project, block: args.blockRepeat, allow: args.allowRepeat });
+    if (loop.blocked) {
+      process.stderr.write(`✘ orchestrate-prepare: ${loop.message}\n`);
+      process.stderr.write('\n  Napraw wejście i uruchom ponownie; jeśli to świadoma powtórka: dopisz --allow-repeat.\n');
+      process.exit(EXIT.REPEAT);
+    }
+    warnings.push(...loop.warnings);
   }
 
   // 3. plik taska
