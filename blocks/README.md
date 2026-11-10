@@ -60,6 +60,8 @@ orchestrate:                 # sloty /orchestrate
   layers:
     # checks: skrypty repo odpalane przez verify tej warstwy PRZED czytaniem kodu;
     #         werdykt z kodu wyjścia, brak skryptu = pominięty + zaraportowany.
+    #         wpis `shadow:<skrypt>` (bez spacji) to kontrola w trybie cienia (ORC-156): biegnie jak zwykły check, ale
+    #         wynik idzie do `shadowLint` i telemetrii (`step.checks`), nie do `lint`, i nie cofa warstwy do implementera.
     # optional + create_when: warstwa warunkowa. create_when to REGEX (bez rozróżniania wielkości liter),
     # liczony przez orchestrate-prepare po haystacku: wartości frontmattera + treść taska i analizy. Alternatywy
     # przez "|"; zdanie prozą nie trafia nigdy (prepare ostrzega, ORC-113).

@@ -1212,6 +1212,9 @@ przypisanie jest wnioskiem z danych, nie z logu wywołań. Zmiana frontmattera n
 prompt dalej kazałby podać `opus`. Teraz bez `model:` w slocie wywołanie nie niesie modelu, więc działa
 wybór z frontmattera; Opus wymuszają tylko slot z `model: opus` (`strategy-fit`) i synteza (ANL-026).
 
+**Claim.** Brak: system claimów nie ma metryki kosztu (`firstPass`, `falseGo`, `gateNoGo`, `retryCost`, `died`). Miarą jest udział
+kroków `analyze` na Opusie dla agentów z frontmatterem `sonnet` (rollup po `step.model`), do porównania po tygodniu od regeneracji `runtime.yml`.
+
 <a id="anl-026"></a>
 
 ### ANL-026 — syntezę robi `tech-lead` z modelem opus
@@ -2991,3 +2994,15 @@ produktowe oceniamy raz, na całości zmiany, żeby nie płacić za nie w każde
 **Czego nie zrobiono.** Silnik (`orchestrate.template.mjs`) nie rozpoznaje jeszcze wzorca w wyniku sondy ani w raporcie agenta: zadanie `TASK-ORC-ENV-BLOCK-001`. Zamek jest więc miękki (prompt).
 
 **Claim.** Brak: miara to liczba przebiegów z `ENV_BLOCKED` w raporcie i brak przebiegów z więcej niż jedną powtórką.
+
+<a id="orc-156"></a>
+
+### ORC-156 — ustalenia werdyktu jako identyfikatory reguł, wynik sondy w zdarzeniu i tryb cienia dla checków (2026-11-10)
+
+**Objaw.** Zdarzenie `step.end` weryfikatora i bramki nie niosło, które reguły uznano za złamane (`signature` puste we wszystkich 89 NO-GO bramki), a wynik sondy był w zdarzeniu `ok` bez względu na to, czy `typecheck` albo `lint` były czerwone. Nie dało się policzyć, czy kolejne runy odbijają się od tego samego ustalenia, ani porównać kontroli deterministycznej z werdyktem LLM (prośba juz-ide-api, TS-TOOLING-003).
+
+**Zmiana.** (1) `VERDICT_SCHEMA` ma opcjonalne `findings: [{ruleId, line?}]` i `rules_checked`; prompt weryfikatora warstwy i bramki końcowej prosi o nie (`FINDINGS_FIELD`), a `decideVerdict` ich nie czyta. (2) Kolektor przepisuje je do rekordu kroku, konwerter do `step.ruleHits` i `step.rulesChecked` (tylko role `verifier` i `gate`); `ruleId` normalizuje `telemetry-rules.mjs`, wolny tekst zamienia się na `new`. (3) Wynik sondy trafia do `step.checks` (rola `probe`). (4) Wpis `shadow:<skrypt>` w `checks:` uruchamia skrypt jak zwykły check, ale wynik idzie do `shadowLint` i telemetrii; `probeIsRed` go nie liczy, więc czerwony check cienia nie cofa warstwy. Prefiks zostaje widoczny w wyjściu komendy (`SHADOW EXIT:<kod>`), bo nazwa skryptu (`lint:ddd`) zawiera „lint" i sonda zmapowałaby ją na blokujące pole `lint`. Odcisk ustaleń liczy `ruleSignature` w czasie odczytu (bez `new`), nie jest zapisywany w zdarzeniu.
+
+**Czego nie zrobiono.** Ścieżka pliku w zdarzeniu (etap 2, wymaga aneksu do ADR 0012 i potwierdzenia juz-ide-api) oraz `ruleId` z wyjścia lintu: oba w `TASK-OBS-019`. Tryb cienia raportuje wyłącznie kod wyjścia, bo format wyjścia lintu projektu nie jest znany.
+
+**Claim.** Brak: to zapis danych, nie zmiana zachowania. Miarą wdrożenia jest udział kroków werdyktu z `ruleHits` (`rules.<agent>.reports` do `n` roli w rollupie).

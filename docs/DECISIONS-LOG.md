@@ -15,6 +15,20 @@
 
 ---
 
+## 2026-11-10 — Telemetria werdyktów: identyfikatory reguł, wynik sondy, tryb cienia (TASK-OBS-018)
+
+**Zmiana:** zdarzenie kroku niesie `ruleHits` i `rulesChecked` (verifier, gate) oraz `checks` (probe); wpis `shadow:<skrypt>`
+w `checks:` to kontrola w trybie cienia; helper `telemetry-rules.mjs`; leniwy blok `rules` w rollupie i w eksporcie.
+**Dlaczego:** bramka końcowa kosztuje $892 (21%) i odrzuca 47% pierwszych przebiegów, ale `signature` było puste we wszystkich
+89 NO-GO, więc nie dało się odróżnić powtórki tego samego ustalenia od nowego (TASK-ORC-GATE-COST-001). Surowy
+`workflow-steps.jsonl` (1607 kroków weryfikatora i 330 NO-GO od lipca) zgadza się ze zdarzeniami od października co do sztuki;
+różnica to historia, której zdarzenia nie mają (lipiec, sierpień, część września). NO-GO weryfikatora warstwy: ok. 34%
+(lip–sie), 25% (wrz), 5,8% (paź), 1,3% (lis), więc to nie on jest dziś głównym kosztem.
+**Odrzucone:** odcisk w top-level `signature` (to id odchylenia `DEV-*`); instrukcja o `findings` w definicjach sześciu
+agentów (rosłby stały kontekst i nie objęłaby lokalnych kopii, jest w prompcie przebiegu); parsowanie wyjścia lintu w
+trybie cienia (format wyjścia projektu nieznany, byłoby zgadywaniem); ścieżki plików w zdarzeniach (etap 2, TASK-OBS-019).
+**Status:** done (etap 1).
+
 ## 2026-11-09 — Koszt tokenów panelu `/analyze`: model i `when:` na slotach, bramki bez zmian
 
 **Zmiana:** (1) ANL-021: bez `model:` w slocie obowiązuje frontmatter agenta, nie „ocena → opus".

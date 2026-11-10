@@ -211,6 +211,22 @@ Na serwer jadą agregaty dzienne, nie surowe zdarzenia. `scripts/telemetry-expor
 - **Nie ma jeszcze wysyłki.** Skrypt tylko buduje paczkę. Adres serwera, uwierzytelnienie i harmonogram
   to osobna decyzja; nazwa projektu (`project`) jedzie jawnie — anonimizacja to decyzja po stronie zespołu.
 
+### Aneks: identyfikatory reguł i wynik sondy w kroku (TASK-OBS-018, 2026-11-10)
+
+Zmiana addytywna schematu v1 (`v` zostaje 1, tryb jak `blamed`), tylko w bloku `step`:
+
+- `ruleHits: [{ ruleId, line? }]` i `rulesChecked` — wyłącznie role `verifier` i `gate`. `ruleId` to karta reguł, nazwa wpisu
+  pamięci bramki albo `new`; format = `SAFE_KEY`, więc klucze przechodzą przez rollup i eksport. Tekst ustalenia ani ścieżka
+  pliku nie wchodzą do zdarzenia (§3 bez zmian); wartość niepasująca do formatu staje się `new`. Pole obecne, także puste,
+  znaczy „raportował strukturalnie"; brak pola znaczy „nie raportował".
+- `checks: { typecheck, tests, lint, conformance, shadowLint }` (`pass|fail|skipped`) — wyłącznie rola `probe`.
+- Odcisk ustaleń nie jest polem zdarzenia: top-level `signature` to id odchylenia `DEV-*`. `ruleSignature`
+  (`scripts/lib/telemetry-rules.mjs`) liczy go przy odczycie, z pominięciem `new`, bo dwa różne nieznane ustalenia nie mogą
+  dawać tego samego odcisku.
+- Rollup: blok `rules` per rola i agent (`reports`, `hits`), tworzony leniwie; eksport przez białą listę.
+- Ścieżka pliku (`file`, tylko w lokalnych surowych zdarzeniach, nigdy w rollupie i eksporcie) to etap 2 i wymaga osobnej
+  decyzji z aneksem: `TASK-OBS-019`.
+
 ## Kolejność wdrożenia
 
 1. **(2026-10-10)** Schemat v1, `scripts/lib/telemetry-events.mjs`, `scripts/telemetry-emit.mjs`,
