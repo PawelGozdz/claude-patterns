@@ -8,7 +8,7 @@ created_date: 2026-10-22
 updated_date: 2026-11-07
 labels: [observability, telemetry, reporting]
 external_ref: 'docs/adr/0015-pomiar-wartosci-zamiast-samooceny.md'
-member_tasks: [TASK-OBS-012, TASK-OBS-013, TASK-OBS-014, TASK-OBS-015, TASK-OBS-016, TASK-OBS-017]
+member_tasks: [TASK-OBS-012, TASK-OBS-013, TASK-OBS-014, TASK-OBS-015, TASK-OBS-016, TASK-OBS-017, TASK-OBS-018]
 depends_on: [EP-OBSERVABILITY-001]
 ---
 
