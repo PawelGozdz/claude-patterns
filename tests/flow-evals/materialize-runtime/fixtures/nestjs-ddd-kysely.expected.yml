@@ -72,13 +72,13 @@ analyze:
     # source: nestjs
     - {stage: tech-analysis, agent: "ecc:architect"}
     # source: nestjs
-    - {stage: tech-analysis-specialist, agent: "backend-technology-expert"}
+    - {stage: tech-analysis-specialist, agent: "backend-technology-expert", model: sonnet, when: "wydajno|performance|latenc|opóźnien|throughput|n\\+1|\\bcache|cachow|kolejk|\\bqueue|bullmq|redis|asynchron|\\basync|synchroniczn|event[-_ ]loop|backpressure|batch|strumie|\\bstream|\\bworker|współbieżn|concurren|paginac|indeks|rate[-_ ]limit|timeout|wybór technologi|dobór bibliotek|nowa zależno|trade-?off"}
     # source: ddd/core
-    - {stage: ddd-modeling, agent: "ddd-application-expert"}
+    - {stage: ddd-modeling, agent: "ddd-application-expert", model: sonnet, when: "agregat|aggregate|\\bencj|\\bentity|value[-_ ]object|\\bvo\\b|domen|domain|komend|command|zapyt|\\bquery|zdarze|\\bevent|handler|\\bport\\b|polityk|policy|invarian|inwarian|saga|bounded|kontekst|context|use[-_ ]?case|przypadek użycia|uprawnie|permission|\\brol[aei]\\b|reguł\\w* biznes|business[-_ ]rule|state[-_ ]machine|maszyn\\w* stan|cykl życia|lifecycle"}
     # source: ddd/core
-    - {stage: impl-analysis, agent: "infrastructure-implementer", advisory: true}
+    - {stage: impl-analysis, agent: "infrastructure-implementer", advisory: true, when: "infrastruktur|infrastructure|repozytor|repository|adapter|kysely|migrac|migration|\\bsql\\b|schemat|schema|tabel|table|kolejk|\\bqueue|bullmq|redis|\\bhttp|klient|client|integrac|integration|webhook|\\bcron|konfigur|config|\\benv\\b|docker|storage|\\bs3\\b|\\bmail|smtp|cache|outbox|projekcj|read[-_ ]?model|zewnętrzn|external"}
     # source: ddd/core
-    - {stage: pattern-fit, agent: "code-quality-verifier", advisory: true}
+    - {stage: pattern-fit, agent: "code-quality-verifier", advisory: true, when: "nowy|nowa|nowe|\\bnew\\b|dodaj|\\badd\\b|wprowadź|introduce|zaimplementuj|implement|agregat|aggregate|moduł|module|abstrakcj|wzorzec|pattern|refaktor|refactor|wydziel|extract"}
   exit: PAUSE # source: ddd/core
 
 orchestrate: # source: ddd/layers
@@ -180,7 +180,7 @@ taxonomy: # rdzeń blocks/_taxonomy.yml + .claude/taxonomy.yml projektu
     events: [domain, integration, outbox, queue]
     geo: [radius, teryt, polygon, discovery]
     observability: [audit, logging]
-    platform: [channel, gpu, nestjs, nextjs, python, react, svelte]
+    platform: [channel, cli-runner, gpu, nestjs, nextjs, python, react, svelte]
     process: [review]
     security: [identity, rate-limit, validation]
     tests: [contract, e2e, fixtures, integration, load, seeding, unit]
