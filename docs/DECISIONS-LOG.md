@@ -15,6 +15,20 @@
 
 ---
 
+## 2026-11-10 — Reguły klasy A z pamięci bramki w `tools/conformance` (TASK-ORC-GATE-COST-001, E4 krok 2)
+
+**Zmiana:** cztery reguły ciała pliku (`BQ-ONFAILED-DECORATOR`, `BQ-SAFERUN-COMMANDBUS`, `AUDIT-EVENTDATA-CANONICAL`,
+`BUILD-NO-IMPORT-OUTSIDE-SRC`) i moduł detektorów `body-detectors.mjs`; domyślnie w `rules.json`, ratchet jak `CH-NO-THROW`.
+**Dlaczego:** bramka końcowa łapała je ręcznie za ok. $5 za wywołanie, a wystarcza analiza jednego pliku. Na kodzie juz-ide-api-1
+trzy reguły dają 0 trafień, a `AUDIT-EVENTDATA-CANONICAL` 13 prawdziwych (powód znika z wpisów audytu USER_SUSPENDED, USER_DELETED i
+innych), więc reguła od razu znalazła dług, którego nikt nie widział.
+**Odrzucone:** reguły `duplikat describe handlera` i `ślady usuniętej trasy` jako detektory tego modułu (wymagają porównania wielu
+plików, silnik analizuje jeden; osobny check międzyplikowy); tryb `warn` dla reguł (ratchet już oszczędza stary dług, a nowe
+naruszenia mają blokować); zawężanie klucza `eventData` do przypadków bez pola typowanego (zbyt mocne sprzężenie z `BaseAuditHandler`).
+**Status:** experimental (reguły domyślne, wdrożenie w instancjach przez symlink; lista `keys` z rodziny juz-ide-api).
+
+---
+
 ## 2026-11-10 — Pamięć bramki: klasyfikacja wpisów do katalogu pułapek (TASK-ORC-GATE-COST-001, E4 krok 1)
 
 **Zmiana:** brak zmian w kodzie; klasyfikacja 57 unikalnych wpisów pamięci `security-e2e-verifier` w pliku zadania: A 6 / B 39 / C 12.

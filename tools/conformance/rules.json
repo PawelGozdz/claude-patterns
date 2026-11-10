@@ -32,6 +32,53 @@
       "message": "BullMQ import or @InjectQueue in a command/query handler",
       "card": "command-handler-queue-port QP1/N1",
       "hint": "enqueue through a port (Symbol + interface in application, adapter in the module/infrastructure); exception: `// QUEUE-EXCEPTION: <reason>`"
+    },
+    {
+      "id": "BQ-ONFAILED-DECORATOR",
+      "match": "\\.processor\\.ts$",
+      "detect": "method-decorator",
+      "method": "onFailed",
+      "decorator": "OnWorkerEvent",
+      "decoratorArg": "failed",
+      "requireExtends": true,
+      "exceptionMarker": "WORKER-EVENT-EXCEPTION",
+      "message": "onFailed() override without @OnWorkerEvent('failed'): @nestjs/bullmq never wires it to the Worker (dead hook)",
+      "card": "gate memory: onfailed-requires-onworkerevent",
+      "hint": "add @OnWorkerEvent('failed') to the override. Note: adding it also revives BaseQueueProcessor.moveToDeadLetterQueue(), which logs the whole job.data — check PII redaction; exception: `// WORKER-EVENT-EXCEPTION: <reason>`"
+    },
+    {
+      "id": "BQ-SAFERUN-COMMANDBUS",
+      "match": "(^|/)event-handlers/[^/]*integration[^/]*\\.handler\\.ts$",
+      "detect": "wrapped-call-without-throw",
+      "wrapper": "safeRun",
+      "callee": "(^|\\.)commandBus\\.execute$",
+      "exceptionMarker": "SAFERUN-EXCEPTION",
+      "message": "safeRun(() => commandBus.execute(...)) without throw: BaseCommandHandler returns Result.fail, so the failure is swallowed and the BullMQ job succeeds without retry",
+      "card": "gate memory: baseCommandHandler-silentfail-with-saferun",
+      "hint": "const result = await this.commandBus.execute(cmd); if (result.isFailure) throw result.error; exception: `// SAFERUN-EXCEPTION: <reason>`"
+    },
+    {
+      "id": "AUDIT-EVENTDATA-CANONICAL",
+      "match": "\\.handler\\.ts$",
+      "detect": "object-key-in-call-arg",
+      "call": "createAuditEntry",
+      "argIndex": 1,
+      "property": "eventData",
+      "keys": ["email", "method", "provider", "reason", "performedBy", "actorId", "actorType", "onBehalfOfUserId", "onBehalfReason", "retainData", "ipAddress", "userAgent", "roleId", "permissionId", "expiresAt", "organizationId", "organizationName", "memberRole", "previousRole", "newRole", "verificationLevel", "previousVerificationLevel", "address", "coordinates", "feedbackId", "deletedBy", "geoIntelligence"],
+      "exceptionMarker": "AUDIT-EVENTDATA-EXCEPTION",
+      "message": "eventData key collides with a canonical BaseAuditHandler field: the canonical value is written after the spread and wins, so yours is lost",
+      "card": "gate memory: audit-eventdata-canonical-collision",
+      "hint": "pass the value in the typed `data` field when one exists, or use a non-colliding key (denialReason, not reason); the key list mirrors BaseAuditHandler.createAuditEntry (juz-ide-api family) — a project with another base overrides `keys` in .claude/conformance.json; exception: `// AUDIT-EVENTDATA-EXCEPTION: <reason>`"
+    },
+    {
+      "id": "BUILD-NO-IMPORT-OUTSIDE-SRC",
+      "match": "(^|/)src/.+\\.ts$",
+      "detect": "import-outside-root",
+      "root": "src",
+      "exceptionMarker": "OUTSIDE-SRC-EXCEPTION",
+      "message": "relative import leaves src/: without rootDir tsc moves the build output to dist/src/ (tsc --noEmit and tests stay green)",
+      "card": "gate memory: out-of-src-import-shifts-build-root",
+      "hint": "keep the imported file under src/ (or read it at runtime instead of importing); exception: `// OUTSIDE-SRC-EXCEPTION: <reason>` and set rootDir in tsconfig.build.json"
     }
   ]
 }
