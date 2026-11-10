@@ -10,7 +10,7 @@ updated_date: 2026-11-10
 assignee: '@unassigned'
 labels: [orchestrate, gate, cost, telemetry]
 depends_on: [TASK-OBS-018]
-related: [TASK-OBS-018, TASK-ORC-FINAL-GATE-CHUNKS-001, TASK-COST-CONTEXT-001]
+related: [TASK-OBS-018, TASK-OBS-019, TASK-ORC-FINAL-GATE-CHUNKS-001, TASK-COST-CONTEXT-001]
 source: 'analiza telemetrii i transkryptów juz-ide-api, 2026-11-09/10 (docs/DECISIONS-LOG.md, wpis 2026-11-09)'
 ---
 
@@ -38,6 +38,34 @@ przenieść powtarzalne błędy z drogiej bramki do tanich kontroli przed nią. 
 - Bramka zostaje na Opusie z `effort: max` (decyzja 2026-11-09): ok. 1,8 tys. tokenów wyjścia na wywołanie, koszt to liczba
   tur i czytany kontekst, a nie głębokość myślenia.
 
+## Stan po TASK-OBS-018 (zamknięte 2026-11-10, w `develop`)
+
+Dane i narzędzia, na których stoją etapy poniżej:
+
+- `step.ruleHits` (`[{ruleId, line?}]`) i `step.rulesChecked` w zdarzeniach `step.end` ról `verifier` i `gate`; `step.checks`
+  (wynik sondy per kontrola, w tym `shadowLint`) w roli `probe`. Prompty weryfikatora i bramki proszą o `findings`
+  (`FINDINGS_FIELD`), schemat jest celowo luźny. Opis: ORC-156 w `docs/decisions/orchestrate-rule-history.md`, aneks w ADR 0012.
+- `scripts/lib/telemetry-rules.mjs`: `ruleSignature(ruleHits)` (odcisk: posortowane unikalne `ruleId` bez `new`, 12 znaków hex,
+  `null` gdy brak znanych identyfikatorów), `normalizeRuleHits`, `normalizeRuleId`. Odcisk **nie jest polem zdarzenia**: liczy się
+  go przy odczycie.
+- Rollup ma blok `rules` per rola i agent (`reports`, `hits`): `reports` do `n` roli to pokrycie raportowaniem, a udział
+  `hits.new` to miara luk katalogu pułapek (E4).
+- **Dane pojawią się dopiero po nowych przebiegach.** Zdarzenia sprzed merge'a nie mają `ruleHits`, więc E1 w trybie
+  ostrzegawczym nie ma na czym działać, dopóki instancje nie wykonają `/orchestrate` na nowym prompcie i nie ruszy kolektor.
+  Historia zdarzeń zaczyna się w połowie września (lipiec i sierpień są tylko w surowym `~/.claude/metrics/workflow-steps.jsonl`,
+  bez `findings`).
+- **ORC-139 nie odcina powtórnej bramki** (sprawdzone 2026-11-10): wiązanie z hashem drzewa (`treeBinding` w
+  `orchestrate.template.mjs`, `scripts/orchestrate-tree-hash.mjs`) chroni *świeżość werdyktu GO* przy stagingu, a nie cache'uje
+  bramki ani nie wykrywa jej powtórzenia na tym samym drzewie. Hasha drzewa nie ma w zdarzeniach (jest w raporcie przebiegu,
+  `report.treeHash`). Wniosek: E1 zaczyna od odcisku ustaleń; kryterium „drzewo bez zmian od ostatniego NO-GO" wymagałoby
+  zapisania hasha bramki (zmiana schematu), więc to opcja na później, nie część E1.
+- Punkty zaczepienia dla E1: `scripts/orchestrate-prepare.mjs` (ma `warnings` i `die(EXIT.*)`; zna `taskId`), odczyt zdarzeń
+  przez `eventsDir()`/`readEvents()` z `scripts/lib/telemetry-events.mjs` (zdarzenia wszystkich instancji tej maszyny leżą w
+  jednym katalogu, `taskRef` jest pisany wielkimi literami z nazwy workflow), `deviation` przez `scripts/report-deviation.mjs`
+  (trigger trzeba zmapować w `defaultCategory`).
+- **`TASK-OBS-019` jest niezależne i niczego tu nie blokuje.** Gdy powstanie (czeka na format lintu i potwierdzenie z juz-ide-api),
+  doda `file` w lokalnych zdarzeniach i `shadowLintHits`; E1 może wtedy dopasowywać po miejscu, ale zostaje na poziomie `ruleId`.
+
 ## Zakres (cztery niezależne etapy)
 
 ### E1. Wyłącznik pętli
@@ -46,8 +74,9 @@ przenieść powtarzalne błędy z drogiej bramki do tanich kontroli przed nią. 
 Gdy dwa ostatnie runy skończyły się NO-GO bramki z tym samym `ruleSignature` (z `TASK-OBS-018`), start jest odmowny, a
 komunikat podaje wspólne `ruleId` i co trzeba zmienić (specyfikacja, `analysis.md`, decyzja). Wyjście: jawny
 `--allow-repeat`. Najpierw tryb ostrzegawczy: log „zablokowałbym" bez blokady.
-Do sprawdzenia przed implementacją: jak ORC-139 (wiązanie werdyktu z hashem drzewa, outcome `cached`) zachowuje się, gdy
-drzewo jest identyczne; jeśli już tu jest odcięcie, E1 ogranicza się do przypadku zmienionego drzewa i tych samych ustaleń.
+Sprawdzone 2026-11-10: ORC-139 nie odcina powtórnej bramki na identycznym drzewie (patrz „Stan po TASK-OBS-018"), więc kryterium
+E1 to wyłącznie odcisk ustaleń (`ruleSignature` z `ruleHits` bramki); odcisk `null` (same `new` albo brak raportu) nigdy nie
+zatrzymuje runu. Porównujemy dwa ostatnie runy tego `taskRef`, nie pojedyncze próby w runie.
 **Pomiar:** w trybie ostrzegawczym policzyć, ile runów zostałoby zatrzymanych i czy następny run bez zmian dał inny wynik.
 Blokadę włączać dopiero, gdy fałszywych zatrzymań jest 0 na próbie ≥ 20.
 
