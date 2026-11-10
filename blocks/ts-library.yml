@@ -67,7 +67,9 @@ env:
 analyze:
   panel:
     - { stage: tech-analysis, agent: "ecc:architect" }
-    - { stage: tech-analysis-specialist, agent: "backend-technology-expert" }
+    # `when:` + `model: sonnet` — to samo uzasadnienie i ten sam regex co w nestjs.yml; zmieniaj razem.
+    - { stage: tech-analysis-specialist, agent: "backend-technology-expert", model: sonnet,
+        when: "wydajno|performance|latenc|opóźnien|throughput|n\\+1|\\bcache|cachow|kolejk|\\bqueue|bullmq|redis|asynchron|\\basync|synchroniczn|event[-_ ]loop|backpressure|batch|strumie|\\bstream|\\bworker|współbieżn|concurren|paginac|indeks|rate[-_ ]limit|timeout|wybór technologi|dobór bibliotek|nowa zależno|trade-?off" }
     # api-guardian jest ADVISORY (bez Bash, bez VETO) — jego miejsce jest w analizie, nie
     # w bramce. Odpowiada na pytanie, na które nie odpowie żaden skrypt: czy projektowana
     # zmiana powierzchni API jest uzasadniona i czy da się jej uniknąć.

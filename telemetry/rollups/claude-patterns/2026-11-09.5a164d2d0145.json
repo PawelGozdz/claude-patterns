@@ -3,6 +3,18 @@
   "day": "2026-11-09",
   "deviations": {},
   "engines": {
+    "15c102e": {
+      "audit": {
+        "costUsd": 0,
+        "died": 0,
+        "ended": {
+          "failed": 1
+        },
+        "started": 1,
+        "steps": 4,
+        "stepsWithoutCost": 4
+      }
+    },
     "756a9d0": {
       "audit": {
         "costUsd": 0,
@@ -16,7 +28,7 @@
       }
     }
   },
-  "events": 6,
+  "events": 14,
   "host": "5a164d2d0145",
   "processes": {
     "audit": {
@@ -38,22 +50,25 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 2,
           "outcomes": {
-            "ok": 1
+            "ok": 2
           },
           "toolCalls": 0
         },
         "rag-freshness": {
-          "causes": {},
+          "causes": {
+            "config": 1
+          },
           "costUsd": 0,
           "durationMs": {
             "n": 0,
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 2,
           "outcomes": {
+            "failed": 1,
             "ok": 1
           },
           "toolCalls": 0
@@ -66,15 +81,15 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 2,
           "outcomes": {
-            "ok": 1
+            "ok": 2
           },
           "toolCalls": 0
         },
         "telemetry-freshness": {
           "causes": {
-            "config": 1
+            "config": 2
           },
           "costUsd": 0,
           "durationMs": {
@@ -82,15 +97,48 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 2,
           "outcomes": {
-            "failed": 1
+            "failed": 2
           },
           "toolCalls": 0
         }
       },
-      "steps": 4,
-      "stepsWithoutCost": 4,
+      "steps": 8,
+      "stepsWithoutCost": 8,
+      "verification": {
+        "firstPassGo": 0,
+        "units": 0
+      }
+    },
+    "hook": {
+      "costUsd": 0,
+      "costUsdRetried": 0,
+      "died": 0,
+      "repairs": {
+        "fixSteps": 0,
+        "fixed": 0,
+        "open": 0
+      },
+      "retried": 0,
+      "roles": {
+        "block-root-grep:root-grep": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 0,
+            "p50": null,
+            "p90": null
+          },
+          "n": 2,
+          "outcomes": {
+            "halted": 2
+          },
+          "toolCalls": 0
+        }
+      },
+      "steps": 2,
+      "stepsWithoutCost": 2,
       "verification": {
         "firstPassGo": 0,
         "units": 0
@@ -102,16 +150,16 @@
     "audit": {
       "costUsd": 0,
       "durationMs": {
-        "n": 1,
-        "p50": 6190,
+        "n": 2,
+        "p50": 4968,
         "p90": 6190
       },
       "ended": {
-        "failed": 1
+        "failed": 2
       },
-      "started": 1
+      "started": 2
     }
   },
-  "stepsTotal": 4,
+  "stepsTotal": 10,
   "v": 1
 }

@@ -7,8 +7,8 @@ sources:
   - orchestrate
 rule_ref: ORC-153
 first_seen: 2026-11-08
-last_seen: 2026-11-08
-occurrences: 12
+last_seen: 2026-11-09
+occurrences: 19
 projects:
   - juz-ide-api-2
   - juz-ide-api-6
@@ -23,6 +23,13 @@ projects:
 
 ## Occurrences
 
+- 2026-11-09 juz-ide-api-5 (TS-MOD-HANDLER-OUTBOX-SWALLOW-001) run `manual-20261109` — Workflow niedostępny, tryb ręczny
+- 2026-11-09 juz-ide-api-7 (TS-GEO-LOCATION-INVENTORY-JSONB-001) — Workflow niedostępny (dialog odrzucony), tryb ręczny
+- 2026-11-09 juz-ide-api-8 (TS-INFRA-CLI-RUNNER-001) — Workflow niedostępny (dialog odrzucony przez człowieka), tryb ręczny wg orchestrate-manual-mode.md
+- 2026-11-09 juz-ide-api-3 (TS-AUTH-CRON-REPO-001) — Workflow niedostępny (odrzucony dialog), tryb ręczny na polecenie człowieka
+- 2026-11-09 juz-ide-api-2 (TS-API-CACHE-CONTROL-SELECTED-GETS-001) — Workflow niedostępny (odrzucony dialog), tryb ręczny na polecenie człowieka
+- 2026-11-09 juz-ide-api-6 (TS-ARCH-OUTBOX-ERASE-REMAINING-IDS-001) — Workflow niedostępny (dialog odrzucony), tryb ręczny
+- 2026-11-09 juz-ide-api-1 (TS-GROUPS-BANNED-MEMBER-WRITE-001) — Workflow niedostępny (dialog odrzucony przez użytkownika), tryb ręczny
 - 2026-11-08 juz-ide-api-8 (TS-INFRA-IMAGE-HARDENING-002) — Workflow niedostępny (dialog odrzucony), tryb ręczny
 - 2026-11-08 juz-ide-api-5 (TS-GROUPS-PENDING-EDIT-FENCING-001) — Workflow niedostępny (dialog odrzucony), tryb ręczny
 - 2026-11-08 juz-ide-api-2 (TS-INFRA-MIGRATION-ORDER-GUARD-001) — Workflow niedostępny (dialog odrzucony przez operatora), tryb ręczny

@@ -32,7 +32,7 @@ file organization, error handling) and `rules/typescript/`.
 | [acl-registry.md](./acl-registry.md) | Cross-context only via ACL Registry or events; no cross-BC imports. | `patterns/architecture/acl-registry-pattern.md` |
 | [application-handlers.md](./application-handlers.md) | Command/query handlers: orchestration only, `@Inject()`, auto-discovery, userId from context. | `patterns/application/command-handler-pattern.md`, `query-handler-pattern.md` |
 | [geo-spatial-query.md](./geo-spatial-query.md) | PostGIS: predicate class dictates cast + index; catalogue before EXPLAIN; spatial predicate is access control. | `patterns/infrastructure/geo-spatial-query-pattern.md` |
-| [cli-runner.md](./cli-runner.md) | Jednorazowy job bez HTTP/crona: nazwany runner w lekkim module CLI (nie `AppModule`), port zbindowany tam, nie w module kontekstu; dry-run/CONFIRM; wyzwalacz ustalony w analizie. | — (karta wzorca do napisania, zob. TS-INFRA-CLI-RUNNER-001 w juz-ide-api) |
+| [cli-runner.md](./cli-runner.md) | Jednorazowy job bez HTTP/crona: osobny program na job w lekkim module CLI (nie `AppModule`), port zbindowany tam, nie w module kontekstu; błąd = kod ≠ 0; DRY_RUN/CONFIRM sprawdzane w procesie (distroless); wyzwalacz ustalony w analizie. Punkty `[cel]` czekają na spike nest-commander. | `patterns/infrastructure/cli-runner-pattern.md` (experimental, project-specific: juz-ide-api; ADR-0133) |
 | [error-mapper.md](./error-mapper.md) | New `D_` error class ⇒ mapper entry same PR; `switch(errorCode)` covers every real code; guardian coverage test mandatory. | `patterns/cross-layer/domain-errors-pattern.md` (Anti-Pattern 5), `error-handler-chain-pattern.md` |
 
 ## Related patterns not (yet) given a dedicated rule file

@@ -8,7 +8,7 @@
       "trigger": "setup_drift"
     }
   },
-  "events": 11,
+  "events": 21,
   "host": "5a164d2d0145",
   "processes": {
     "audit": {
@@ -30,9 +30,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 2,
           "outcomes": {
-            "ok": 1
+            "ok": 2
           },
           "toolCalls": 0
         },
@@ -44,9 +44,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 2,
           "outcomes": {
-            "ok": 1
+            "ok": 2
           },
           "toolCalls": 0
         },
@@ -58,9 +58,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 2,
           "outcomes": {
-            "ok": 1
+            "ok": 2
           },
           "toolCalls": 0
         },
@@ -72,9 +72,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 2,
           "outcomes": {
-            "ok": 1
+            "ok": 2
           },
           "toolCalls": 0
         },
@@ -86,9 +86,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 2,
           "outcomes": {
-            "ok": 1
+            "ok": 2
           },
           "toolCalls": 0
         },
@@ -100,22 +100,25 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 2,
           "outcomes": {
-            "ok": 1
+            "ok": 2
           },
           "toolCalls": 0
         },
         "runtime": {
-          "causes": {},
+          "causes": {
+            "config": 1
+          },
           "costUsd": 0,
           "durationMs": {
             "n": 0,
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 2,
           "outcomes": {
+            "failed": 1,
             "ok": 1
           },
           "toolCalls": 0
@@ -128,15 +131,15 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 2,
           "outcomes": {
-            "ok": 1
+            "ok": 2
           },
           "toolCalls": 0
         },
         "templates": {
           "causes": {
-            "config": 1
+            "config": 2
           },
           "costUsd": 0,
           "durationMs": {
@@ -144,9 +147,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 2,
           "outcomes": {
-            "failed": 1
+            "failed": 2
           },
           "toolCalls": 0
         },
@@ -158,15 +161,15 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 2,
           "outcomes": {
-            "ok": 1
+            "ok": 2
           },
           "toolCalls": 0
         }
       },
-      "steps": 10,
-      "stepsWithoutCost": 10,
+      "steps": 20,
+      "stepsWithoutCost": 20,
       "verification": {
         "firstPassGo": 0,
         "units": 0
@@ -175,6 +178,6 @@
   },
   "project": "nest-kit",
   "runs": {},
-  "stepsTotal": 10,
+  "stepsTotal": 20,
   "v": 1
 }

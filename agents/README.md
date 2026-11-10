@@ -66,7 +66,7 @@ See `patterns/orchestration/project-management-system.md` for full docs.
 
 | Agent | Purpose | Model | Writes Code |
 |-------|---------|-------|-------------|
-| **backend-technology-expert** | Sync vs async, performance, tech stack decisions | Opus | No |
+| **backend-technology-expert** | Sync vs async, performance, tech stack decisions | Sonnet | No |
 
 `security-privacy-architect` was retired 2026-09-07 (K97, ADR 0009) — generic OWASP/GDPR
 advisory now goes to `ecc:security-reviewer`. The VETO verifiers (`security-e2e-verifier`,

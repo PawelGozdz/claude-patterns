@@ -1,6 +1,7 @@
 ---
 id: DEV-agent_note-luka-bezposredni-odczyt-nie-moze-byc-zamknieta-wg
-status: proposed
+status: dismissed
+dismissed_reason: "2026-11-09: sprzeczność D7/D9 to decyzja analizy TS-INFRA-TRUST-PROXY-RAW-XFF-001 w juz-ide-api-8 (zawężono zamiast usunąć) — poprawka po stronie projektu, nie silnika; pojedyncze wystąpienie, brak wzorca"
 trigger: agent_note
 category: scope
 sources:

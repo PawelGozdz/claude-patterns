@@ -6,7 +6,7 @@ This knowledge base contains production-enforced patterns for DDD/CQRS projects.
 
 **Version**: 3.14
 **Last Updated**: 2026-09-27
-**Status**: PRODUCTION (61 core patterns + 56 stack-specific + 1 marketing + 2 finance + 2 legal = 122 total)
+**Status**: PRODUCTION (62 core patterns + 56 stack-specific + 1 marketing + 2 finance + 2 legal = 123 total)
 
 **⚠ project-specific** marker = derived from ONE project's codebase, not yet validated in a second
 one. Marked in the pattern's own `**Scope**:` line (see `CLAUDE.md` → "Adding a New Pattern"). These
@@ -21,7 +21,7 @@ to opt in. Promote to plain "Production" once a second project adopts the same s
 patterns/
 ├── domain/              # Domain Layer (core business logic) - 8 patterns
 ├── application/         # Application Layer (CQRS handlers) - 6 patterns
-├── infrastructure/      # Infrastructure Layer (persistence, API) - 10 patterns
+├── infrastructure/      # Infrastructure Layer (persistence, API) - 11 patterns
 ├── architecture/        # Cross-cutting architecture patterns - 13 patterns
 ├── testing/            # Testing patterns - 10 patterns
 ├── cross-layer/        # Used everywhere (errors, logging, error handlers, registry guards) - 13 patterns
@@ -98,7 +98,7 @@ CQRS command and query handlers, application services for complex workflows.
 
 ---
 
-### Infrastructure Layer (10 patterns)
+### Infrastructure Layer (11 patterns)
 
 Persistence, API, and technical implementation patterns.
 
@@ -114,6 +114,7 @@ Persistence, API, and technical implementation patterns.
 | **[rate-limit-guard-pattern.md](infrastructure/rate-limit-guard-pattern.md)** | ~160 | Production | @RateLimit per endpoint, per-context `*.rate-limits.ts`, blockDuration on auth endpoints | infrastructure-testing-implementer, security-e2e-verifier |
 | **[external-adapter-pattern.md](infrastructure/external-adapter-pattern.md)** | ~230 | ⚠ project-specific (grant-flow) | Logging placeholder adapter: realny port, zero I/O, fail-fast w onModuleInit, rozdzielone klasy błędów | infrastructure-testing-implementer |
 | **[geo-spatial-query-pattern.md](infrastructure/geo-spatial-query-pattern.md)** | ~500 | production | PostGIS: 4 predicate classes (metric/topological/containment/KNN), cast shape = index shape, catalogue-before-EXPLAIN verification, spatial predicate as access control, snap-at-write privacy, canonical typed builder (juz-ide reference impl) | infrastructure-testing-implementer, geo-postgres-specialist |
+| **[cli-runner-pattern.md](infrastructure/cli-runner-pattern.md)** | ~230 | ⚠ project-specific (juz-ide-api) · experimental | One-off operational job: one entrypoint per job, `CliCoreModule.forJob`, `runCliJob` (exit code ≠ 0 on failure), CONFIRM/DRY_RUN checked in the process (distroless), AppModule guardian, image smoke. Target design (ADR-0133), spike pending | infrastructure-testing-implementer |
 
 **Infrastructure Layer Key Principles**:
 - Spatial queries: classify the predicate (metric/topological/KNN) BEFORE writing it; cast shape must match index shape; verify against `pg_indexes` before `EXPLAIN` (small tables cannot distinguish correct from broken)

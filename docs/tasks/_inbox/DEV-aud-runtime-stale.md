@@ -19,8 +19,8 @@ sources:
   - audit
 rule_ref: AUD-RUNTIME-STALE
 first_seen: 2026-10-10
-last_seen: 2026-11-09
-occurrences: 33
+last_seen: 2026-11-10
+occurrences: 34
 projects:
   - juz-ide-api-4
   - juz-ide-api-2
@@ -49,6 +49,7 @@ projects:
   - juz-ide-api-8
   - juz-ide-api-develop
   - juz-ide-api-test
+  - juz-ide-mobile-app-3
 category: config
 reopened_at: 2026-11-04
 reopened_from_status: dismissed
@@ -69,6 +70,7 @@ previous_dismissed_reason: >
 
 ## Occurrences
 
+- 2026-11-10 juz-ide-mobile-app-3 — runtime.yml nieaktualny: zmieniły się wejścia kompozycji (bloki / project.yml / aliasy / taksonomia)
 - 2026-11-09 juz-ide-api-test — runtime.yml nieaktualny: zmieniły się wejścia kompozycji (bloki / project.yml / aliasy / taksonomia)
 - 2026-11-09 juz-ide-api-develop — runtime.yml nieaktualny: zmieniły się wejścia kompozycji (bloki / project.yml / aliasy / taksonomia)
 - 2026-11-09 juz-ide-api-8 — runtime.yml nieaktualny: zmieniły się wejścia kompozycji (bloki / project.yml / aliasy / taksonomia)

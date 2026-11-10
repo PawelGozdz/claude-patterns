@@ -66,9 +66,15 @@ env:
 
 analyze:
   panel:
-    - { stage: ddd-modeling, agent: "ddd-application-expert" }
-    - { stage: impl-analysis, agent: "infrastructure-implementer", advisory: true }
-    - { stage: pattern-fit, agent: "code-quality-verifier", advisory: true }
+    # `when:` (2026-11-09): bez niego trzy sloty szły przy każdym zadaniu, także przy zmianie, która nie dotyka
+    # modelu domeny, infrastruktury ani nowego kształtu kodu. Sito jest szerokie celowo (ANL-020: brak trafienia
+    # przy widocznym ryzyku = trafienie); wycina zadania typu docs/chore/test-only, nie „zwykłe” zadania domenowe.
+    - { stage: ddd-modeling, agent: "ddd-application-expert", model: sonnet,
+        when: "agregat|aggregate|\\bencj|\\bentity|value[-_ ]object|\\bvo\\b|domen|domain|komend|command|zapyt|\\bquery|zdarze|\\bevent|handler|\\bport\\b|polityk|policy|invarian|inwarian|saga|bounded|kontekst|context|use[-_ ]?case|przypadek użycia|uprawnie|permission|\\brol[aei]\\b|reguł\\w* biznes|business[-_ ]rule|state[-_ ]machine|maszyn\\w* stan|cykl życia|lifecycle" }
+    - { stage: impl-analysis, agent: "infrastructure-implementer", advisory: true,
+        when: "infrastruktur|infrastructure|repozytor|repository|adapter|kysely|migrac|migration|\\bsql\\b|schemat|schema|tabel|table|kolejk|\\bqueue|bullmq|redis|\\bhttp|klient|client|integrac|integration|webhook|\\bcron|konfigur|config|\\benv\\b|docker|storage|\\bs3\\b|\\bmail|smtp|cache|outbox|projekcj|read[-_ ]?model|zewnętrzn|external" }
+    - { stage: pattern-fit, agent: "code-quality-verifier", advisory: true,
+        when: "nowy|nowa|nowe|\\bnew\\b|dodaj|\\badd\\b|wprowadź|introduce|zaimplementuj|implement|agregat|aggregate|moduł|module|abstrakcj|wzorzec|pattern|refaktor|refactor|wydziel|extract" }
   exit: PAUSE
 
 # Warstwy implementacji, pętla verify i bramka końcowa: `blocks/ddd/layers.yml`

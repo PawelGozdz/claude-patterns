@@ -15,6 +15,26 @@
 
 ---
 
+## 2026-11-09 — Koszt tokenów panelu `/analyze`: model i `when:` na slotach, bramki bez zmian
+
+**Zmiana:** (1) ANL-021: bez `model:` w slocie obowiązuje frontmatter agenta, nie „ocena → opus".
+(2) `backend-technology-expert`: `model: opus`→`sonnet` (wcześniej, w tej samej sesji), `effort: max`→`high`;
+slot `tech-analysis-specialist` w `nestjs`, `node`, `ts-library` dostał `model: sonnet` i `when:`
+(wydajność, kolejki, cache, sync/async, wybór technologii). (3) `ddd/core`: `when:` na `ddd-modeling`,
+`impl-analysis`, `pattern-fit`, `model: sonnet` na `ddd-modeling`. (4) Kolumna modelu w `templates/stacks/*.md`.
+**Dlaczego:** pomiar transkryptów juz-ide-api (8 instancji, 7 dni, powtórzony tu z poprawionym filtrem
+czasu): Opus 5,19 mln tokenów wyjścia, z tego 4,59 mln to `security-e2e-verifier` (2,45) i
+`backend-technology-expert` (2,14). Doradca szedł w każdym zadaniu, na Opusie z `effort: max`, ~7,5 tys. tokenów
+wyjścia na wywołanie. Sesje główne to ~60% cache read, czego żaden plik agenta nie dotyka.
+**Odrzucone:** `security-e2e-verifier` `max`→`high` i zejście z Opusa — bramka VETO, jedno wywołanie oddaje średnio
+1,8 tys. tokenów wyjścia, więc koszt to liczba tur i ponownie czytany kontekst, a nie głębokość myślenia;
+zysk z `high` byłby mały, ryzyko przeoczonego błędu bezpieczeństwa nie. `effort: medium` dla implementerów
+i `maxTurns` dla `reviewer-*`: brak pomiaru, zmiana na ślepo. `ui-reviewer` opus→sonnet: brak danych o zużyciu.
+`model: local` w schemacie bloków: tier `haiku` zostaje abstrakcją, mapowanie na lokalny model należy do
+środowiska (zmienna/brama), nie do pliku agenta.
+**Status:** experimental — po tygodniu powtórzyć pomiar i porównać Opus oraz liczbę wywołań
+`backend-technology-expert`; cofnięcie `when:` to jedna linia w bloku.
+
 ## 2026-11-07 — Pliki hooków zarządzane przez zewnętrzne narzędzia (Herdr) poza repo
 
 **Zmiana:** `hooks/herdr-agent-state.sh` (integracja Herdr dla Claude'a, v11) trafia do `.gitignore`, a

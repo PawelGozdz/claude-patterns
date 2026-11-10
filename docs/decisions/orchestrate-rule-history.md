@@ -1199,6 +1199,19 @@ pusty parametr usuwa klucze ze slotu. `always_for` omija też sito ANL-018 — j
 Ustalenia + otwarte pytania, kilkanaście linii — NIGDY pełny surowy output (anty-pattern
 kwadratowego wzrostu; incydent 2026-07-04, ta sama klasa co WL6).
 
+<a id="anl-021"></a>
+
+### ANL-021 — bez `model:` w slocie obowiązuje frontmatter agenta, nie „ocena → opus"
+
+Stara wersja kazała wywołać agenta panelu na Opusie, gdy slot robił „ocenę", niezależnie od jego
+frontmattera. W juz-ide-api (7 dni do 2026-11-09) Opus poszedł do `backend-technology-expert`
+(284 wywołania, 2,14 mln tokenów wyjścia), `ecc:architect` (311, 0,32 mln) i do
+`ddd-application-expert` (22 wywołania), którego frontmatter mówi `sonnet`. Ten ostatni przypadek
+wskazuje na regułę, bo nic innego nie podawało mu Opusa; reguła jest „tylko prompt", więc
+przypisanie jest wnioskiem z danych, nie z logu wywołań. Zmiana frontmattera na `sonnet` nie wystarczyłaby:
+prompt dalej kazałby podać `opus`. Teraz bez `model:` w slocie wywołanie nie niesie modelu, więc działa
+wybór z frontmattera; Opus wymuszają tylko slot z `model: opus` (`strategy-fit`) i synteza (ANL-026).
+
 <a id="anl-026"></a>
 
 ### ANL-026 — syntezę robi `tech-lead` z modelem opus

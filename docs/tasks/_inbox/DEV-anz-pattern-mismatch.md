@@ -38,8 +38,8 @@ sources:
   - analyze
 rule_ref: ANZ-PATTERN-MISMATCH
 first_seen: 2026-10-10
-last_seen: 2026-11-08
-occurrences: 16
+last_seen: 2026-11-09
+occurrences: 17
 projects:
   - aegis-flow
   - ai-os-bot
@@ -53,6 +53,7 @@ projects:
   - juz-ide-mobile-app-1
   - juz-ide-api-5
   - juz-ide-api-8
+  - juz-ide-mobile-app
 reopened_at: 2026-11-07
 reopened_from_status: promoted
 ---
@@ -61,6 +62,7 @@ reopened_from_status: promoted
 
 ## Occurrences
 
+- 2026-11-09 juz-ide-mobile-app (STATE-MUTATION-REFRESH-JOBS-SHARES-SERVICES-001) — flutter/riverpod-state-pattern.md pokazuje StateNotifier/StateNotifierProvider, a projekt jest na Riverpod 3 (Notifier + SessionScopedNotifier); karta nieaktualna dla stosu
 - 2026-11-08 juz-ide-api-8 (TS-INFRA-IMAGE-HARDENING-002) — Biblioteka wzorców nie ma karty o bramce obrazu w CI, skanerze obrazów, Renovate ani wyjątkach z datą wygaśnięcia (.claude/knowledge/patterns/, 0 trafień po słowach image/trivy/renovate/docker)
 - 2026-11-08 juz-ide-api-5 (TS-GROUPS-PENDING-EDIT-FENCING-001) — Przykład kodu w moderated-edit-buffer-pattern.md sekcja 5 (L225-233) stawia idempotent-same PRZED stale/unknown, a implementacje referencyjne (local-share.aggregate.ts L1924-1967, Event BR) stawiają je PO sprawdzeniu rewizji; karta MEB5-MEB9 nie ustala kolejności, więc przykład wprowadza w błąd.
 - 2026-11-08 juz-ide-api-5 (TS-GROUPS-PENDING-EDIT-FENCING-001) — Wzorzec domain/moderated-edit-buffer-pattern.md nie ma triggera w runtime.yml (patterns.triggers) ani w pattern-routing.local.json, więc ANL-008 go nie dobiera, choć zadania fencingu (grupy, wydarzenia, udostępnienia) opierają się na nim; dobrany ręcznie w analizie.

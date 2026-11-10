@@ -1,6 +1,7 @@
 ---
 id: DEV-orc-154-infrastructure-ip-config-cf
-status: proposed
+status: dismissed
+dismissed_reason: "2026-11-09: ORC-154 zadziałał zgodnie z założeniem (krok ręczny trafił do raportu jako otwarte); do wykonania przez operatora juz-ide-api-8: sprawdzić TRUSTED_PROXY_ACCEPT_CF_CONNECTING_IP w .env* i Azure. Brak defektu silnika"
 trigger: agent_note
 category: config
 sources:

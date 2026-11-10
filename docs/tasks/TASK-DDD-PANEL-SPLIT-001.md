@@ -38,8 +38,10 @@ do artefaktu `{TASK-ID}.analysis.md`), nie gotowy plan do ślepego wykonania —
 >   `infrastructure-implementer` i `code-quality-verifier` — pełne, kilkusetliniowe prompty
 >   implementera i verifiera z VETO, użyte w trybie doradczym. Dokładnie ten martwy ciężar,
 >   który task opisuje.
-> - **`tech-analysis-specialist` nadal jest bezwarunkowy** — slot w trzech blokach frameworka
->   nie ma `when:`, więc `backend-technology-expert` (Opus + max) odpala się w każdym zadaniu.
+> - ~~**`tech-analysis-specialist` nadal jest bezwarunkowy**~~ — **zrobione 2026-11-09**: slot w `nestjs`,
+>   `node`, `ts-library` ma `when:` i `model: sonnet`, agent `sonnet` + `effort: high`
+>   (patrz `docs/DECISIONS-LOG.md`). `ddd-modeling`, `impl-analysis`, `pattern-fit` też dostały `when:`;
+>   rozbicie na wąskich doradców i równoległość zostają jak wyżej.
 > - **Panel nadal jest sekwencyjny.** `commands/analyze.md:182` mówi wprost: „Iteruj
 >   `analyze.panel` W KOLEJNOŚCI", a każdy slot dostaje streszczenie poprzednich. Równoległość
 >   grupy `advisory: true` wymaga zmiany w silniku, nie w bloku — i to jest teraz osobna

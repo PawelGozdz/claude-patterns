@@ -6,11 +6,175 @@
       "cause": "config",
       "n": 1,
       "trigger": "setup_drift"
+    },
+    "DEV-orc-153": {
+      "cause": "infra",
+      "n": 1,
+      "trigger": "agent_note"
     }
   },
-  "events": 11,
+  "engines": {
+    "15c102e": {
+      "analyze": {
+        "costUsd": 4.683101,
+        "died": 7,
+        "ended": {
+          "ok": 1
+        },
+        "started": 1,
+        "steps": 8,
+        "stepsWithoutCost": 1
+      }
+    }
+  },
+  "events": 42,
   "host": "5a164d2d0145",
   "processes": {
+    "analyze": {
+      "costUsd": 4.683101,
+      "costUsdRetried": 0,
+      "died": 7,
+      "repairs": {
+        "fixSteps": 0,
+        "fixed": 0,
+        "open": 0
+      },
+      "retried": 0,
+      "roles": {
+        "data-classification": {
+          "causes": {
+            "silent": 1
+          },
+          "costUsd": 0.473649,
+          "durationMs": {
+            "n": 1,
+            "p50": 21105,
+            "p90": 21105
+          },
+          "n": 1,
+          "outcomes": {
+            "died": 1
+          },
+          "toolCalls": 11
+        },
+        "ddd-modeling": {
+          "causes": {
+            "silent": 1
+          },
+          "costUsd": 0.518251,
+          "durationMs": {
+            "n": 1,
+            "p50": 47161,
+            "p90": 47161
+          },
+          "n": 1,
+          "outcomes": {
+            "died": 1
+          },
+          "toolCalls": 10
+        },
+        "decision-gate": {
+          "causes": {
+            "silent": 1
+          },
+          "costUsd": 0.01617,
+          "durationMs": {
+            "n": 1,
+            "p50": 47387,
+            "p90": 47387
+          },
+          "n": 1,
+          "outcomes": {
+            "died": 1
+          },
+          "toolCalls": 16
+        },
+        "impl-analysis": {
+          "causes": {
+            "silent": 1
+          },
+          "costUsd": 0.657669,
+          "durationMs": {
+            "n": 1,
+            "p50": 53042,
+            "p90": 53042
+          },
+          "n": 1,
+          "outcomes": {
+            "died": 1
+          },
+          "toolCalls": 16
+        },
+        "none": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 0,
+            "p50": null,
+            "p90": null
+          },
+          "n": 1,
+          "outcomes": {
+            "skipped": 1
+          },
+          "toolCalls": 0
+        },
+        "pattern-fit": {
+          "causes": {
+            "silent": 1
+          },
+          "costUsd": 0.319076,
+          "durationMs": {
+            "n": 1,
+            "p50": 17475,
+            "p90": 17475
+          },
+          "n": 1,
+          "outcomes": {
+            "died": 1
+          },
+          "toolCalls": 3
+        },
+        "tech-analysis": {
+          "causes": {
+            "silent": 1
+          },
+          "costUsd": 0.944571,
+          "durationMs": {
+            "n": 1,
+            "p50": 76986,
+            "p90": 76986
+          },
+          "n": 1,
+          "outcomes": {
+            "died": 1
+          },
+          "toolCalls": 14
+        },
+        "tech-analysis-specialist": {
+          "causes": {
+            "silent": 1
+          },
+          "costUsd": 1.753715,
+          "durationMs": {
+            "n": 1,
+            "p50": 343375,
+            "p90": 343375
+          },
+          "n": 1,
+          "outcomes": {
+            "died": 1
+          },
+          "toolCalls": 13
+        }
+      },
+      "steps": 8,
+      "stepsWithoutCost": 1,
+      "verification": {
+        "firstPassGo": 0,
+        "units": 0
+      }
+    },
     "audit": {
       "costUsd": 0,
       "costUsdRetried": 0,
@@ -30,9 +194,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 2,
           "outcomes": {
-            "ok": 1
+            "ok": 2
           },
           "toolCalls": 0
         },
@@ -44,9 +208,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 2,
           "outcomes": {
-            "ok": 1
+            "ok": 2
           },
           "toolCalls": 0
         },
@@ -58,9 +222,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 2,
           "outcomes": {
-            "ok": 1
+            "ok": 2
           },
           "toolCalls": 0
         },
@@ -72,9 +236,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 2,
           "outcomes": {
-            "ok": 1
+            "ok": 2
           },
           "toolCalls": 0
         },
@@ -86,9 +250,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 2,
           "outcomes": {
-            "ok": 1
+            "ok": 2
           },
           "toolCalls": 0
         },
@@ -100,15 +264,15 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 2,
           "outcomes": {
-            "ok": 1
+            "ok": 2
           },
           "toolCalls": 0
         },
         "runtime": {
           "causes": {
-            "config": 1
+            "config": 2
           },
           "costUsd": 0,
           "durationMs": {
@@ -116,9 +280,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 2,
           "outcomes": {
-            "failed": 1
+            "failed": 2
           },
           "toolCalls": 0
         },
@@ -130,9 +294,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 2,
           "outcomes": {
-            "ok": 1
+            "ok": 2
           },
           "toolCalls": 0
         },
@@ -144,9 +308,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 2,
           "outcomes": {
-            "ok": 1
+            "ok": 2
           },
           "toolCalls": 0
         },
@@ -158,15 +322,62 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 2,
           "outcomes": {
-            "ok": 1
+            "ok": 2
           },
           "toolCalls": 0
         }
       },
-      "steps": 10,
-      "stepsWithoutCost": 10,
+      "steps": 20,
+      "stepsWithoutCost": 20,
+      "verification": {
+        "firstPassGo": 0,
+        "units": 0
+      }
+    },
+    "hook": {
+      "costUsd": 0,
+      "costUsdRetried": 0,
+      "died": 0,
+      "repairs": {
+        "fixSteps": 0,
+        "fixed": 0,
+        "open": 0
+      },
+      "retried": 0,
+      "roles": {
+        "block-unscoped-tests:not-a-file": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 0,
+            "p50": null,
+            "p90": null
+          },
+          "n": 7,
+          "outcomes": {
+            "halted": 7
+          },
+          "toolCalls": 0
+        },
+        "check-subagent-pattern-reads:pattern-grounding": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 0,
+            "p50": null,
+            "p90": null
+          },
+          "n": 1,
+          "outcomes": {
+            "halted": 1
+          },
+          "toolCalls": 0
+        }
+      },
+      "steps": 8,
+      "stepsWithoutCost": 8,
       "verification": {
         "firstPassGo": 0,
         "units": 0
@@ -174,7 +385,39 @@
     }
   },
   "project": "juz-ide-api-2",
-  "runs": {},
-  "stepsTotal": 10,
+  "runs": {
+    "analyze": {
+      "costUsd": 0,
+      "durationMs": {
+        "n": 1,
+        "p50": 817583,
+        "p90": 817583
+      },
+      "ended": {
+        "ok": 1
+      },
+      "started": 1
+    }
+  },
+  "seeds": {
+    "personal": {
+      "emitted": 1
+    },
+    "unknown": {
+      "checked": 1
+    }
+  },
+  "stepsTotal": 36,
+  "tasks": {
+    "TS-API-CACHE-CONTROL-SELECTED-GETS-001": {
+      "analyzeRuns": 1,
+      "costToGoUsd": null,
+      "costUsd": 4.683101,
+      "reachedGo": false,
+      "runs": 0,
+      "spanMs": 817684,
+      "stepsWithoutCost": 1
+    }
+  },
   "v": 1
 }

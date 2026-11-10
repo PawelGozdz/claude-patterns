@@ -4,7 +4,7 @@
 
 | Role | Agent | Model |
 |------|-------|-------|
-| Advisory | backend-technology-expert | Opus |
+| Advisory | backend-technology-expert | Sonnet |
 | Advisory | `ecc:security-reviewer` (ECC) | — |
 
 **Stack agents** (auto-linked via `setup-project.sh`):

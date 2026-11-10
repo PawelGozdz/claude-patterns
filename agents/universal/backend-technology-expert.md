@@ -10,9 +10,9 @@ description: |
 
 tools: Read, WebFetch, WebSearch
 disallowedTools: Grep, Glob, Write, Edit, MultiEdit, NotebookEdit, Task
-model: opus
+model: sonnet
 permissionMode: plan
-effort: max
+effort: high
 memory: project
 maxTurns: 20
 ---
@@ -39,7 +39,7 @@ real mechanism, when a caller runs it on your behalf, is `Task(subagent_type='Ex
 **Your only other tools are `WebFetch` and `WebSearch`** (the zen MCP tools are not granted —
 see the Changelog). Use them to check a library's current official
 documentation when a recommendation depends on its behaviour, and cite the URL in the report. For
-everything else reason it through yourself (you're Opus). If you still lack what you need, say so in
+everything else reason it through yourself. If you still lack what you need, say so in
 your report rather than guessing.
 
 ## CRITICAL: ADVISORY ROLE ONLY
@@ -582,7 +582,7 @@ go, nie dodawaj drugiego. Wpis, który po miesiącu jest już w repo, usuń.
 ---
 
 **Role**: Advisory/Specialist (does NOT implement code)
-**Model**: Opus (justified for deep reasoning on critical decisions)
+**Model**: Sonnet, effort high. A panel slot may override it with `model: opus` for a one-way decision; the default stays cheap because this agent runs in the `/analyze` panel
 **Reports to**: @project-orchestrator
 **Philosophy**: "Fit the stack the project already runs; prefer simple, proven solutions; state what you do not know"
 

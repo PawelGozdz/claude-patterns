@@ -18,7 +18,7 @@
       "trigger": "setup_drift"
     }
   },
-  "events": 12,
+  "events": 21,
   "host": "5a164d2d0145",
   "processes": {
     "audit": {
@@ -40,9 +40,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 2,
           "outcomes": {
-            "ok": 1
+            "ok": 2
           },
           "toolCalls": 0
         },
@@ -54,9 +54,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 2,
           "outcomes": {
-            "ok": 1
+            "ok": 2
           },
           "toolCalls": 0
         },
@@ -68,9 +68,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 2,
           "outcomes": {
-            "ok": 1
+            "ok": 2
           },
           "toolCalls": 0
         },
@@ -82,15 +82,15 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 2,
           "outcomes": {
-            "ok": 1
+            "ok": 2
           },
           "toolCalls": 0
         },
         "manifest": {
           "causes": {
-            "config": 1
+            "config": 2
           },
           "costUsd": 0,
           "durationMs": {
@@ -98,15 +98,15 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 2,
           "outcomes": {
-            "failed": 1
+            "failed": 2
           },
           "toolCalls": 0
         },
         "runtime": {
           "causes": {
-            "config": 1
+            "config": 2
           },
           "costUsd": 0,
           "durationMs": {
@@ -114,9 +114,9 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 2,
           "outcomes": {
-            "failed": 1
+            "failed": 2
           },
           "toolCalls": 0
         },
@@ -128,15 +128,15 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 2,
           "outcomes": {
-            "ok": 1
+            "ok": 2
           },
           "toolCalls": 0
         },
         "templates": {
           "causes": {
-            "config": 1
+            "config": 2
           },
           "costUsd": 0,
           "durationMs": {
@@ -144,15 +144,15 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 2,
           "outcomes": {
-            "failed": 1
+            "failed": 2
           },
           "toolCalls": 0
         },
         "verify-setup": {
           "causes": {
-            "config": 1
+            "config": 2
           },
           "costUsd": 0,
           "durationMs": {
@@ -160,15 +160,15 @@
             "p50": null,
             "p90": null
           },
-          "n": 1,
+          "n": 2,
           "outcomes": {
-            "failed": 1
+            "failed": 2
           },
           "toolCalls": 0
         }
       },
-      "steps": 9,
-      "stepsWithoutCost": 9,
+      "steps": 18,
+      "stepsWithoutCost": 18,
       "verification": {
         "firstPassGo": 0,
         "units": 0
@@ -177,6 +177,6 @@
   },
   "project": "marketing-hub-ds-0.10",
   "runs": {},
-  "stepsTotal": 9,
+  "stepsTotal": 18,
   "v": 1
 }
