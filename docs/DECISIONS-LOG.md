@@ -15,6 +15,19 @@
 
 ---
 
+## 2026-11-10 — Wyłącznik pętli NO-GO bramki: najpierw ostrzeżenie, blokada za flagą (TASK-ORC-GATE-COST-001, E1)
+
+**Zmiana:** `orchestrate-prepare.mjs` porównuje odciski ustaleń dwóch ostatnich runów taska; ten sam odcisk w obu NO-GO bramki
+końcowej daje ostrzeżenie i zdarzenie `deviation` `repeat_no_go`. `--block-repeat` zatrzymuje start (exit 5), `--allow-repeat` to wyjście.
+**Dlaczego:** runy `no_go` kosztowały $1276, a `TS-REP-NEIGHBOR-SIGNALS-001` zrobił 7 NO-GO z rzędu. Blokady nie włączamy z
+góry: żadne z 196 NO-GO bramki końcowej w dotychczasowych zdarzeniach nie ma odcisku (`ruleHits` zaczęły być zbierane dopiero z
+ORC-156), więc nie wiemy, ile zatrzymań byłoby fałszywych. Próg z zadania: 0 fałszywych na próbie ≥ 20.
+**Odrzucone:** kryterium „drzewo bez zmian od ostatniego NO-GO" (ORC-139 nie cache'uje bramki, a hasha drzewa nie ma w zdarzeniach);
+blokada domyślna od razu; osobny wpis w skrzynce `_inbox` (każde zatrzymanie to jedno zdarzenie, wpis w repo tylko mnożyłby triage).
+**Status:** experimental (tryb ostrzegawczy).
+
+---
+
 ## 2026-11-10 — Telemetria werdyktów: identyfikatory reguł, wynik sondy, tryb cienia (TASK-OBS-018)
 
 **Zmiana:** zdarzenie kroku niesie `ruleHits` i `rulesChecked` (verifier, gate) oraz `checks` (probe); wpis `shadow:<skrypt>`

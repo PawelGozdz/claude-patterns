@@ -59,6 +59,9 @@ const OUTCOME_ALIASES = {
 const TRIGGER_CATEGORY = {
   setup_drift: 'config', analyze_gate: 'config', workflow_lint: 'config',
   no_go: 'verifier',
+  // Wyłącznik pętli (orchestrate-loop-guard.mjs, TASK-ORC-GATE-COST-001 E1): ten sam odcisk ustaleń w dwóch
+  // ostatnich NO-GO bramki; przyczyną jest werdykt bramki, nie konfiguracja.
+  repeat_no_go: 'verifier', repeat_no_go_blocked: 'verifier',
   halt: 'other', blocked_by_prior: 'other', agent_note: 'other', analyze_note: 'other',
 };
 

@@ -2,7 +2,7 @@
 id: TASK-ORC-GATE-COST-001
 title: 'Bramka końcowa: wyłącznik pętli NO-GO, powtórna bramka na delcie, eksperyment z diffem w prompcie i pilotaż katalogu pułapek'
 type: feature
-status: todo
+status: in-progress
 priority: P2
 story_points: 8
 created_date: 2026-11-10
@@ -114,8 +114,8 @@ uzasadniają zmiany), rozgrzewka agentów i rozmiar kontekstu startowego (`TASK-
 
 ## Kryteria akceptacji
 
-- [ ] E1: tryb ostrzegawczy zapisuje w telemetrii zdarzenie „zablokowałbym" z `ruleId`; blokada włączana osobną flagą;
-      `--allow-repeat` działa; test w `orchestrate-script`.
+- [x] E1 (tryb ostrzegawczy): zdarzenie „zablokowałbym" z odciskiem (`ruleId` przez złączenie, patrz Wynik); blokada włączana osobną
+      flagą; `--allow-repeat` działa; test w evalu `orchestrate-prepare`. Włączenie blokady czeka na dane (≥ 20 zatrzymań, 0 fałszywych).
 - [ ] E2: prompt kolejnej bramki zawiera poprzednie ustalenia i diff od ostatniej bramki; pierwszy przebieg bramki bez zmian;
       wynik A/B opisany w sekcji Wynik.
 - [ ] E3: wynik eksperymentu (cztery metryki z bazą) opisany w sekcji Wynik; wdrożenie tylko przy braku spadku NO-GO.
@@ -124,5 +124,41 @@ uzasadniają zmiany), rozgrzewka agentów i rozmiar kontekstu startowego (`TASK-
 - [ ] Konwencja repo: `count-assets.mjs --check-docs`, walidatory CI, `CHANGELOG.md`, `METADATA.yml`.
 
 ## Wynik
+
+### E1. Wyłącznik pętli (tryb ostrzegawczy), 2026-11-10, ORC-157
+
+**Zrobione.**
+- `scripts/lib/orchestrate-loop-guard.mjs`: `assessRepeat` (czysta ocena na liście zdarzeń), `loadTaskEvents` (od najnowszego pliku
+  miesięcznego, staje po dwóch runach), `recordRepeat` (zdarzenie `deviation`, deterministyczne `id`), `checkLoop` (wejście dla prepare,
+  nie rzuca). O runie rozstrzyga ostatnia bramka końcowa (`final:final:gate#N`, starsze `final-gate-r2`); bramki `final-fix-*` nie.
+- `orchestrate-prepare.mjs`: po bramce analizy wywołuje `checkLoop`; flagi `--block-repeat` (exit 5) i `--allow-repeat`. Bez flag tylko
+  ostrzeżenie w `warnings[]` i zdarzenie `repeat_no_go` (`cause: verifier`, mapowanie w `defaultCategory`).
+- `scripts/loop-guard-replay.mjs`: pomiar na historii (zatrzymania słuszne i fałszywe, pokrycie odciskiem).
+- Testy: 13 przypadków w `tests/flow-evals/orchestrate-prepare/run.js` (ten sam odcisk ×2 → ostrzeżenie i jedno zdarzenie, bez dubla
+  przy powtórce; blokada exit 5; `--allow-repeat`; różne odciski; odcisk `null` z samych `new`; brak raportu; inny `taskRef`; wielkość liter;
+  tylko dwa ostatnie runy ×2; bramka poprawki `final-fix`; stare id `final-gate-r2`; jeden wcześniejszy run) i asercja `defaultCategory` w
+  `telemetry-events`. Sprawdzone mutacjami (bez wykluczenia `final-fix`, bez porównania odcisków, `--allow-repeat` ignorowane: każda
+  zaczerwienia właściwe przypadki). Eval prepare od teraz izoluje telemetrię (`CLAUDE_TELEMETRY_DIR` w katalogu tymczasowym).
+
+**Dane.** Po merge'u OBS-018 w `telemetry/events/*.jsonl` jest **0** zdarzeń z `step.ruleHits` (5 plików, 56 tys. zdarzeń). Z 196 NO-GO
+bramki końcowej żadne nie ma odcisku, więc E1 napisano i przetestowano na zdarzeniach syntetycznych.
+
+**Pomiar** (`node scripts/loop-guard-replay.mjs`, 270 tasków, 296 startów od trzeciego runu): zablokowałbym **0**, słusznie 0, fałszywie 0.
+Próba za mała na jakąkolwiek decyzję (próg: ≥ 20 zatrzymań i 0 fałszywych). Skrypt sprawdzony na zdarzeniach syntetycznych (jedno
+zatrzymanie słuszne, jedno fałszywe: następny run dał GO).
+
+**Odstępstwa od opisu zadania.**
+- Test jest w evalu `orchestrate-prepare`, nie w `orchestrate-script`: logika siedzi w prepare, nie w szablonie Workflow.
+- Zdarzenie „zablokowałbym" niesie odcisk w `signature` (`repeat-no-go.<12 hex>`), a nie listę `ruleId`: schemat `deviation` jej nie ma, a
+  `ruleHits` wolno trzymać tylko w krokach `verifier`/`gate` (inaczej rollup liczyłby je podwójnie). `ruleId` odzyskuje się złączeniem po
+  odcisku; lista `ruleId` jest w ostrzeżeniu prepare.
+- Dopasowanie po `taskRef` obejmuje wszystkie instancje maszyny (zdarzenia leżą w jednym katalogu), zgodnie z opisem E1. Jeśli pomiar
+  pokaże fałszywe zatrzymania przy przenoszeniu taska między instancjami, zawęzić do `project`.
+- Worktree `_claude-patterns-gate-cost` nie istniał; praca w głównym drzewie, gdzie branch był już wyciągnięty.
+
+**Co dalej dla E1.** Włączenie blokady wymaga danych: po nowych przebiegach (z `FINDINGS_FIELD`) uruchomić `loop-guard-replay.mjs` i
+zdecydować po ≥ 20 zatrzymaniach. Domyślne `--block-repeat` to osobna reguła (ORC-158+).
+
+### E2–E4
 
 (do uzupełnienia po wykonaniu)
