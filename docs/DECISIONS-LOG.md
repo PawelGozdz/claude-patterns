@@ -15,6 +15,17 @@
 
 ---
 
+## 2026-11-10 — Pamięć bramki: klasyfikacja wpisów do katalogu pułapek (TASK-ORC-GATE-COST-001, E4 krok 1)
+
+**Zmiana:** brak zmian w kodzie; klasyfikacja 57 unikalnych wpisów pamięci `security-e2e-verifier` w pliku zadania: A 6 / B 39 / C 12.
+**Dlaczego:** zadanie zakładało 55 wpisów identycznych w 8 instancjach i wstępny podział 12 / 35 / 8. Po przeczytaniu: pamięć rozjechała się
+w api-3, 5, 6, 7 (2 wpisy jednoinstancyjne, 6 lokalnie poprawionych), mechanicznych reguł jest o połowę mniej, bo większość wymaga kontekstu spoza
+jednego pliku, a „runbook po komunikacie błędu" ma sens dla 3 wpisów, nie dla 8 (reszta dotyczy samej pracy bramki).
+**Odrzucone:** kopiowanie z api-1 jako źródła katalogu (pominęłoby nowsze wpisy z innych instancji).
+**Status:** done (krok 1); karty i reguły A czekają na decyzję o właścicielu katalogu.
+
+---
+
 ## 2026-11-10 — Wyłącznik pętli NO-GO bramki: najpierw ostrzeżenie, blokada za flagą (TASK-ORC-GATE-COST-001, E1)
 
 **Zmiana:** `orchestrate-prepare.mjs` porównuje odciski ustaleń dwóch ostatnich runów taska; ten sam odcisk w obu NO-GO bramki

@@ -159,6 +159,115 @@ zatrzymanie słuszne, jedno fałszywe: następny run dał GO).
 **Co dalej dla E1.** Włączenie blokady wymaga danych: po nowych przebiegach (z `FINDINGS_FIELD`) uruchomić `loop-guard-replay.mjs` i
 zdecydować po ≥ 20 zatrzymaniach. Domyślne `--block-repeat` to osobna reguła (ORC-158+).
 
-### E2–E4
+### E4, krok 1: klasyfikacja wpisów pamięci bramki (2026-11-10, tylko odczyt)
+
+Źródło: `juz-ide-api-1/.claude/agent-memory/security-e2e-verifier/` (nic nie zmieniane). Wpisy przeczytane w całości przez agenta
+klasyfikującego, wyrywkowo sprawdzone (audit_eventdata, l2_for_raw_sql_repos, run_full_context_suite, dto_rename: klasyfikacja się
+potwierdziła).
+
+**Pamięć nie jest identyczna w 8 instancjach**, wbrew opisowi zadania. Zgodne są api-1, 2, 4, 8, develop i test; api-3, 5, 6 i 7 się
+rozjechały: dwa wpisy istnieją tylko w jednej instancji (`erasure-claim-vs-author-columns` w api-3, `global-key-allowlist-hits-all-producers`
+w api-7, oba klasa B) i sześć wpisów ma lokalne poprawki (1–5 linii: route_removal, split_release i anonymization_relink w api-5/6,
+decision_mandated_guard_test w api-7, stack_carries_message w api-3, duplicated_gate_predicate w api-6). Unikalnych wpisów jest **57**.
+Przed przeniesieniem treści trzeba je scalić, nie kopiować z api-1.
+
+**Wynik: A 6 / B 39 / C 12** (55 wpisów z api-1 plus 2 jednoinstancyjne; indeks sugerował 12 / 35 / 8). Mniej A, niż myślał indeks: większość
+„mechanicznych" reguł wymaga kontekstu spoza jednego pliku (kto wywołuje, co jest w module, co w migracji).
+
+| # | wpis | kl. | uwaga |
+|---|---|---|---|
+| 1 | anonymization_relink_via_side_store | B | cross-layer, anonimizacja: audyt/outbox z userId re-linkuje wiersze |
+| 2 | audit_eventdata_canonical_collision | A | klucz kanoniczny (`reason`, `actorId`...) w `eventData` literału przekazanego do `createAuditEntry`; FP niskie |
+| 3 | backfill_skip_keeps_stale_gate_column | B | infrastructure, migracje/backfill |
+| 4 | baseCommandHandler_silentfail_with_saferun | A | `safeRun(() => *.commandBus.execute())` w `*integration*.handler.ts`; FP niskie |
+| 5 | check_claude_settings_in_final_gate | C | `git status` vs lista bramki; tylko bramka |
+| 6 | column_meaning_flip_legacy_rows | B | infrastructure, geo punkt P |
+| 7 | companion_geometry_left_exact | B | infrastructure, geo punkt P |
+| 8 | decision_mandated_guard_test_absent | B | testing; granica z C (procedura grepu po bramce) |
+| 9 | dev_db_ctype_c_lower_ascii_only | C | dev DB `lc_ctype=C`: `lower()`/ILIKE tylko ASCII; implementer i bramka |
+| 10 | displaced_point_feeds_boundary_guardrail | B | application, geo punkt P |
+| 11 | docs_decisions_unowned_by_code_layers | B | docs; też A: `@BusinessRule` bez wpisu w BUSINESS_RULES.yaml |
+| 12 | dto_rename_breaks_app_api_layer | B | presentation: kontrolery/mappery/OpenAPI poza `layers_scope`; frontmatter bez `description` |
+| 13 | duplicated_gate_predicate_drift | B | infrastructure, bramki fail-closed |
+| 14 | error_metadata_leak_two_layers | C | kryterium oceny wagi; guardian już istnieje; tylko bramka |
+| 15 | fail_closed_gate_spec_setup_kind | B | application; też A: `@Inject(Klasa)` bez providera (FP średnie) |
+| 16 | failclosed_field_never_populated | B | cross-layer: martwa funkcja przy zielonych testach |
+| 17 | founder_q_answers_carry_conditions | C | `answer:`/`minor_fixes:` spoza promptu warstwy; tylko bramka, dopóki prompt ich nie przekazuje |
+| 18 | geo_acl_error_message_carries_coordinates | B | application, PII w logach |
+| 19 | guard_one_moderation_path_and_remediation_dead_end | B | cross-layer, authz/moderacja |
+| 20 | ignored_field_becomes_filter | B | testing, fixtury e2e/L2 |
+| 21 | l2_for_raw_sql_repos | C | bramka nie odpala L2 (reguła usera); część o typach kolumn jest też dla implementera/test-implementera |
+| 22 | legacy_duplicate_handler_spec | A | `describe('<Klasa>')` w ≥2 specach; FP średnie (unit + L2 bywa legalne) |
+| 23 | multilayer_hardfail_pattern | B | infrastructure, sekrety (Zod superRefine + check w callsite) |
+| 24 | new_path_into_guarded_state_skips_shared_gate | B | domain, przejścia stanu (resume/unsuspend → ACTIVE) |
+| 25 | no_head_when_proving_absence | C | `ls\|head` jako dowód braku; tylko bramka |
+| 26 | onfailed_requires_onworkerevent | A | `onFailed` w `BaseQueueProcessor` bez `@OnWorkerEvent('failed')`; FP niskie |
+| 27 | optin_refactor_drops_implicit_consumers | B | cross-layer |
+| 28 | out_of_src_import_shifts_build_root | A | import względny wychodzący poza `src/` (poza specami); FP niskie |
+| 29 | p_linkage_defeats_identity_masking | B | infrastructure, geo punkt P |
+| 30 | readonly_load_promoted_to_write | B | application, authz/spójność ID |
+| 31 | revived_dead_path_meets_new_state | C | metoda przeglądu rundy ≥2; granica z B (niepewne) |
+| 32 | round2_fix_claim_check_unstaged_delta | C | tylko bramka |
+| 33 | route_removal_leaves_test_tooling_refs | A | ścieżki w `authorization-matrix.yaml` i `test/load` bez trasy; FP średnie (prefiks `/api`, parametry) |
+| 34 | run_full_context_suite_not_scoped | C | hook `block-unscoped-tests` już to egzekwuje; frontmatter zepsuty |
+| 35 | shared_integration_handler_multi_trigger | B | application, workery |
+| 36 | shared_point_store_caller_chosen_address | B | application, geo punkt P |
+| 37 | sibling_handler_read_before_authz | B | application, authz |
+| 38 | signal_policy_halflife_is_retention | B | infrastructure, retencja |
+| 39 | silent_security_guards | B | domain; napięcie z #16/#46 (zakres: niezmiennik detekcji vs sygnał błędu) |
+| 40 | source_scan_guardian_comments | B | testing, guardiany |
+| 41 | split_release_not_null_write_gap | B | infrastructure, migracje |
+| 42 | stack_carries_message_sink_side | B | infrastructure, PII w sinkach |
+| 43 | stale_scratchpad_gate_logs | C | tylko bramka |
+| 44 | tier1_audit_substituted_by_log | B | application, audyt Tier 1 |
+| 45 | two_release_backfill_in_one_tree | B | infrastructure, migracje |
+| 46 | two_sided_mechanism_verify_other_side | B | cross-layer |
+| 47 | tx_boundary_claims_in_docs | B | docs, granice transakcji |
+| 48 | unmapped_error_falls_to_422_fallback | B | presentation, mapowanie błędów |
+| 49 | workflow_no_grep_tool | C | „No such tool" dla Grep/Glob w workflow; bramka i implementer w workflow |
+| 50 | write_time_safety_drops_read_snap | B | infrastructure, geo punkt P (legacy, cache) |
+| 51 | project_insufficient_tokens_maps_422 | B | presentation; scalić z #48 |
+| 52 | project_map_markers_cache_and_preview_filter_gap | B | infrastructure; stan z TS-MAP-CLUSTER-SCALE-001, zweryfikować w kodzie |
+| 53 | project_rate_limit_failopen_default | B | presentation |
+| 54 | project_security_posture_doc | C | fakt kontekstowy z 2026-06-26, prawdopodobnie nieaktualny |
+| 55 | reference_redaction_service_gap | B | infrastructure, PII w logach; nazwa pliku „gap", treść to korekta (`name: redaction-service-three-layers-corrected`) |
+| 56 | erasure_claim_vs_author_columns (tylko api-3) | B | docs/infrastructure, RODO: kolumny autora (`created_by`, `published_by`) poza heurystyką `*_user_id` |
+| 57 | global_key_allowlist_hits_all_producers (tylko api-7) | B | application, outbox: klucz w globalnej allowliście trafia w każdego producenta |
+
+**Reguły A do `tools/conformance`** (6, kolejność wg zysku i niskiego ryzyka FP): #26 `onFailed` bez dekoratora, #4 `safeRun`+`commandBus.execute`
+w handlerach integracyjnych, #2 klucz kanoniczny w `eventData`, #28 import spoza `src/`, #22 duplikat `describe` handlera (FP średnie),
+#33 ślady usuniętej trasy (FP średnie). Każda wymaga testu dodatnio i ujemnie; dwie ostatnie najpierw w trybie `warn`.
+
+**Plan kart B** (39 wpisów, 13 kart po ≤ 400 słów; wpisy #48 i #51 scalone): geo punkt P (źródło/kolumny, konsumenci), bramki fail-closed
+(rejestracja i setup specs, duplikaty predykatów i opt-in), PII w logach i sinkach, RODO (anonimizacja, audyt Tier 1, retencja, kolumny autora),
+migracje i backfill, authz (kolejność odczytu, ID, moderacja), HTTP (błędy, DTO, rate limit), agregaty (niezmienniki), sekrety i workery,
+testy (guardiany, fixtury, artefakty decyzji), docs (artefakty decyzji, transakcje).
+
+**Limit tokenów** (szacunek słowa × 1,5, NIE zmierzony na gotowych kartach): karty dla implementera per warstwa wraz z kartami cross-layer
+(#1, #16, #19, #27, #46): domain ok. 0,9 tys., application ok. 1,7 tys., infrastructure ok. 2,3 tys., testing ok. 1,0 tys.; presentation ok.
+0,5 tys. i docs ok. 0,3 tys. bez cross-layer. Wszystko mieści się w ok. 3 tys., ale infrastructure jest najbliżej limitu i po dodaniu #56/#57
+oraz po scaleniu wariantów z api-3/5/6/7 będzie na granicy. Wymaga pomiaru na prawdziwych kartach przed wdrożeniem.
+
+**Runbook C** (12; z nich tylko dla bramki: #5, #14, #17, #21 (część), #25, #31, #32, #43, #54): dla implementera zostają realnie trzy
+(#9 dev DB ASCII, #34 niescopowane testy, #49 brak Grep/Glob w workflow). Dla bramki nie ma sensu budować hooka po komunikacie błędu;
+wystarczy, że zostaną w jej pamięci. Z E4 wypada więc „C jako runbook uruchamiany hookiem" poza trzema wpisami.
+
+**Dublowanie** do scalenia przy tworzeniu kart: #48+#51 (mapowanie błędów 422); #11, #17, #8 (artefakt wymagany decyzją nie powstał, trzy
+warianty); #18, #42, #55, #14 (wyciek message/PII, cztery kanały); #16 i #46 (producent albo druga strona nigdy nie powstaje).
+**Sprzeczności i napięcia:** #14 uznaje zielonego guardiana za dowód pokrycia mapperów, #42 pokazuje sink, którego guardian call-site nie
+chroni (zakres: tylko mappery); #39 zaleca ciche `Result.empty()`, a #16, #46, #4 uznają cichą utratę sygnału za błąd (rozstrzyga zakres:
+niezmiennik detekcji w agregacie vs sygnał błędu). Dev DB: #9 wskazuje kontener `local-hero-db-4`, #21 i #20 `local-hero-db-1` (port 5431),
+więc runbook musi wskazać kanoniczny.
+
+**Higiena wpisów.** Zepsute frontmattery: `description: undefined` (#2), pusty `description` (#12), `description` wieloliniowe urwane do
+`odpala user` (#34). Martwy link `[[verify-writer-before-live-verdict]]` w #35 (nie ma go wśród wpisów). Nazwa pliku #55 mówi „gap", treść to korekta.
+Weryfikacji w kodzie przed zamianą na kartę wymagają #52 i #54 (mogą być nieaktualne).
+
+**Wniosek dla reszty E4.** (1) Reguły A (6) to małe, niezależne, przetestowalne kawałki: można je robić od razu. (2) Karty B potrzebują decyzji, kto
+jest właścicielem katalogu (jedno źródło w claude-patterns zamiast ośmiu kopii), inaczej pamięci dalej będą się rozjeżdżać; pierwszy pilotaż
+sensownie zacząć od jednej grupy (np. geo punkt P, 7 wpisów, lub bramki fail-closed). (3) Pomiar E4 (udział `ruleId = new`, NO-GO pierwszej
+bramki, baza 47% n=130) wymaga ok. 100 nowych przebiegów, więc potrwa tygodnie.
+
+### E2, E3
 
 (do uzupełnienia po wykonaniu)
