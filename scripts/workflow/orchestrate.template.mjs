@@ -1944,11 +1944,11 @@ const VERDICT_SCHEMA = {
     minor_findings: { type: 'array', items: { type: 'string' } },
     // TASK-OBS-018: te same ustalenia co `violations`, ale jako identyfikatory reguł — dla telemetrii (kolektor
     // czyta je z journala). Nie wpływają na werdykt: decideVerdict() i bramka końcowa patrzą wyłącznie na `violations`.
-    findings: {
-      type: 'array',
-      items: { type: 'object', properties: { ruleId: { type: 'string' }, line: { type: 'integer' } }, required: ['ruleId'] },
-    },
-    rules_checked: { type: 'integer' },
+    // Kształt jest CELOWO luźny (`items` bez typu, `rules_checked` bez typu): wpis `["A1"]` albo `"7"` zamiast liczby nie
+    // może kosztować werdyktu (brak poprawnego StructuredOutput = silent-death, a bramka to ~$5). Normalizuje je telemetria
+    // (scripts/lib/telemetry-rules.mjs): zły wpis staje się `new`, zła liczba znika. Oczekiwany kształt opisuje FINDINGS_FIELD.
+    findings: { type: 'array', items: {} },
+    rules_checked: {},
   },
 }
 

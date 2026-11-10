@@ -172,8 +172,11 @@ const CASES = (c) => [
         if (!/obok `violations`, nie zamiast/.test(p)) return `prompt ${name} nie mówi, że findings nie zastępuje violations`;
       }
       const props = c.VERDICT_SCHEMA.properties;
-      if (!props.findings || props.findings.type !== 'array' || !props.findings.items.required.includes('ruleId')) return 'schemat bez findings';
-      if (!props.rules_checked || props.rules_checked.type !== 'integer') return 'schemat bez rules_checked';
+      if (!props.findings || props.findings.type !== 'array') return 'schemat bez findings';
+      if (!props.rules_checked) return 'schemat bez rules_checked';
+      // Schemat luźny celowo: sztywny kształt mógłby odrzucić StructuredOutput (silent-death, bramka ~$5) przez `["A1"]` albo "7".
+      const loose = !props.findings.items.type && !props.findings.items.required && !props.rules_checked.type;
+      if (!loose) return 'findings/rules_checked mają sztywny typ: zły kształt wpisu mógłby kosztować werdykt';
       if (JSON.stringify(c.VERDICT_SCHEMA.required) !== JSON.stringify(['verdict'])) return 'findings nie może być wymagane';
       return null;
     },
