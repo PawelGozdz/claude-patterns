@@ -106,7 +106,7 @@
           "minimum": 0
         },
         "ruleHits": {
-          "description": "Tylko role verifier i gate (TASK-OBS-018): ustalenia werdyktu jako identyfikatory reguł. `ruleId` to karta reguł, nazwa wpisu pamięci bramki albo `new` (ustalenie bez znanego identyfikatora). Bez ścieżek i bez tekstu. Pole obecne (nawet puste) = agent raportował ustalenia strukturalnie; brak pola = nie raportował.",
+          "description": "Tylko role verifier i gate (TASK-OBS-018): ustalenia werdyktu jako identyfikatory reguł. `ruleId` to karta reguł, nazwa wpisu pamięci bramki albo `new` (ustalenie bez znanego identyfikatora). Bez tekstu ustalenia. Ścieżka `file` (TASK-OBS-019) wyłącznie w lokalnych surowych zdarzeniach: rollup i eksport jej nie niosą. Pole obecne (nawet puste) = agent raportował ustalenia strukturalnie; brak pola = nie raportował.",
           "type": "array",
           "maxItems": 50,
           "items": {
@@ -115,7 +115,13 @@
             "required": ["ruleId"],
             "properties": {
               "ruleId": { "type": "string", "pattern": "^[a-z0-9][a-z0-9_.:-]{0,63}$" },
-              "line": { "type": "integer", "minimum": 1 }
+              "line": { "type": "integer", "minimum": 1 },
+              "file": {
+                "description": "Ścieżka względna od korzenia repo: bez `/` na początku, bez segmentu `..`, bez `\\` i znaków sterujących, do 200 znaków (TASK-OBS-019). Tylko lokalne surowe zdarzenia.",
+                "type": "string",
+                "maxLength": 200,
+                "pattern": "^(?!/)(?!(.*/)?\\.\\.(/|$))[^\\\\\\u0000-\\u001f]+$"
+              }
             }
           }
         },

@@ -440,6 +440,30 @@ const tests = [
       return null;
     },
   },
+  {
+    name: 'rule-hit-file-never-reaches-the-rollup',
+    run(T) {
+      // TASK-OBS-019: `file` żyje tylko w lokalnych surowych zdarzeniach. Rollup (w gicie, wspólny) liczy wyłącznie `ruleId`,
+      // więc te same zdarzenia ze ścieżkami i bez nich muszą dać identyczny rollup, bez śladu ścieżki.
+      const D = '2026-03-06';
+      const rid = 'wf_file-run';
+      const vs = (ts, id, role, agent, hits) => ev({ kind: 'step.end', process: 'orchestrate', ts, outcome: 'no_go', runId: rid, step: { id, role, agent, ruleHits: hits } });
+      const withFile = [
+        ev({ kind: 'run.start', process: 'orchestrate', ts: `${D}T10:00:00.000Z`, runId: rid }),
+        vs(`${D}T10:01:00.000Z`, 'domain:u:verifier#1', 'verifier', 'cqv', [{ ruleId: 'a1', line: 3, file: 'src/contexts/secret-project/x.ts' }, { ruleId: 'new', file: 'src/y.ts' }]),
+        vs(`${D}T10:02:00.000Z`, 'final:final:gate#1', 'gate', 'sec-gate', [{ ruleId: 'onfailed-requires-onworkerevent', file: 'src/queues/z.processor.ts' }]),
+      ];
+      const noFile = withFile.map((e) => (e.step && e.step.ruleHits
+        ? { ...e, step: { ...e.step, ruleHits: e.step.ruleHits.map(({ file, ...rest }) => rest) } } : e));
+      const a = [...T.buildRollups(withFile).values()][0];
+      const b = [...T.buildRollups(noFile).values()][0];
+      const json = JSON.stringify(a);
+      if (/secret-project|\.processor\.ts|src\/y\.ts/.test(json) || json.includes('"file"')) return 'ścieżka pliku trafiła do rollupu: ' + json.slice(0, 200);
+      if (json !== JSON.stringify(b)) return 'rollup ze ścieżkami różni się od rollupu bez nich';
+      if (a.processes.orchestrate.roles.verifier.rules.cqv.hits.a1 !== 1) return 'liczniki ruleId nie działają przy file';
+      return null;
+    },
+  },
 ];
 
 (async () => {

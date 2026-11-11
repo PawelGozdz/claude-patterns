@@ -456,6 +456,7 @@ const tests = [
       const good = {
         'verifier z ustaleniami': { id: 'domain:u:verifier#1', role: 'verifier', ruleHits: [{ ruleId: 'a1', line: 12 }, { ruleId: 'new' }], rulesChecked: 7 },
         'gate z pustą listą': { id: 'final:final:gate#1', role: 'gate', ruleHits: [] },
+        'verifier ze ścieżką pliku (lokalne zdarzenie, TASK-OBS-019)': { id: 'domain:u:verifier#1', role: 'verifier', ruleHits: [{ ruleId: 'a1', line: 12, file: 'src/contexts/auth/application/commands/x/handler.ts' }, { ruleId: 'new', file: 'apps/api/src/(auth)/[id]/page.ts' }] },
         'verifier bez pól (stare zdarzenie)': { id: 'domain:u:verifier#1', role: 'verifier' },
         'implementer bez pól': { id: 'domain:u:implementer#1', role: 'implementer' },
       };
@@ -470,7 +471,16 @@ const tests = [
         'ruleHits z rolą null': { id: 'x', role: null, ruleHits: [] },
         'ruleId wielkimi literami': { id: 'x', role: 'verifier', ruleHits: [{ ruleId: 'A1' }] },
         'ruleId z wolnym tekstem': { id: 'x', role: 'verifier', ruleHits: [{ ruleId: 'brak obsługi błędu' }] },
-        'ścieżka pliku w ustaleniu (etap 2)': { id: 'x', role: 'verifier', ruleHits: [{ ruleId: 'a1', file: 'src/a.ts' }] },
+        'file bezwzględny': { id: 'x', role: 'verifier', ruleHits: [{ ruleId: 'a1', file: '/etc/passwd' }] },
+        'file z .. na początku': { id: 'x', role: 'verifier', ruleHits: [{ ruleId: 'a1', file: '../secret.ts' }] },
+        'file z .. w środku': { id: 'x', role: 'verifier', ruleHits: [{ ruleId: 'a1', file: 'src/../../secret.ts' }] },
+        'file z .. na końcu': { id: 'x', role: 'verifier', ruleHits: [{ ruleId: 'a1', file: 'src/..' }] },
+        'file z backslashem': { id: 'x', role: 'verifier', ruleHits: [{ ruleId: 'a1', file: 'src\\a.ts' }] },
+        'file pusty': { id: 'x', role: 'verifier', ruleHits: [{ ruleId: 'a1', file: '' }] },
+        'file ze znakiem sterującym': { id: 'x', role: 'verifier', ruleHits: [{ ruleId: 'a1', file: 'src/a\u0000.ts' }] },
+        'file dłuższy niż 200 znaków': { id: 'x', role: 'verifier', ruleHits: [{ ruleId: 'a1', file: 'src/' + 'a'.repeat(197) }] },
+        'file nie jest napisem': { id: 'x', role: 'verifier', ruleHits: [{ ruleId: 'a1', file: 42 }] },
+        'pole spoza schematu w ustaleniu': { id: 'x', role: 'verifier', ruleHits: [{ ruleId: 'a1', text: 'treść ustalenia' }] },
         'line = 0': { id: 'x', role: 'verifier', ruleHits: [{ ruleId: 'a1', line: 0 }] },
         'ponad 50 ustaleń': { id: 'x', role: 'verifier', ruleHits: Array.from({ length: 51 }, () => ({ ruleId: 'a1' })) },
         'rulesChecked ujemne': { id: 'x', role: 'verifier', rulesChecked: -1 },
@@ -480,6 +490,35 @@ const tests = [
       const rp = t.buildEvent({ kind: 'step.end', process: 'review-panel', project: 'demo', runId: 'rp-1', outcome: 'ok', step: { id: 'eagle', role: 'eagle', findings: 1, ruleHits: [] } });
       if (!t.validateEvent(rp).length) return 'ruleHits w review-panel przeszło walidację';
       return null;
+    },
+  },
+  {
+    name: 'rule-hits-file-keeps-relative-posix-paths-only',
+    run(t, L) {
+      // TASK-OBS-019: `file` przechodzi normalizację w konwerterze. Poprawna względna ścieżka zostaje (`./` obcięte),
+      // niepewna (bezwzględna, `..`, backslash, nie napis, za długa) znika, a samo ustalenie zostaje: liczba ma być prawdziwa.
+      const step = { type: 'step', runId: 'wf_rh-file', agentId: 'v1', label: 'domain:rules-verify', outcome: 'NO-GO', ts: '2026-11-11T10:00:01.000Z',
+        workflowName: 'orchestrate', agentType: 'x-agent', model: 'claude-sonnet-5-5', attempt: 1, toolCalls: 1, durationMs: 1,
+        inputTokens: 1, outputTokens: 1, cacheReadTokens: 1, cacheWriteTokens: 1, costUsd: 0.1,
+        ruleHits: [
+          { ruleId: 'a1', line: 4, file: 'src/a/b.ts' },
+          { ruleId: 'a2', file: './src/c.ts' },
+          { ruleId: 'a3', file: '/etc/passwd' },
+          { ruleId: 'a4', file: '../x.ts' },
+          { ruleId: 'a5', file: 'src\\a.ts' },
+          { ruleId: 'a6', file: 42 },
+          { ruleId: 'a7', file: 'src/' + 'a'.repeat(200) },
+          { ruleId: 'a8', file: '  src/d.ts  ' },
+        ] };
+      const [ev] = L.legacyRunToEvents({ steps: [step], run: null, project: 'demo' }).filter((e) => e.kind === 'step.end');
+      const err = t.validateEvent(t.buildEvent(ev));
+      if (err.length) return 'zdarzenie niezgodne ze schematem: ' + err.join('; ');
+      const got = JSON.stringify(ev.step.ruleHits);
+      const want = JSON.stringify([
+        { ruleId: 'a1', line: 4, file: 'src/a/b.ts' }, { ruleId: 'a2', file: 'src/c.ts' }, { ruleId: 'a3' }, { ruleId: 'a4' },
+        { ruleId: 'a5' }, { ruleId: 'a6' }, { ruleId: 'a7' }, { ruleId: 'a8', file: 'src/d.ts' },
+      ]);
+      return got === want ? null : `ruleHits:\n  ${got}\noczekiwano\n  ${want}`;
     },
   },
   {

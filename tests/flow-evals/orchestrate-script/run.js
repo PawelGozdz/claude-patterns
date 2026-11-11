@@ -170,6 +170,8 @@ const CASES = (c) => [
       for (const [name, p] of [['weryfikator', v], ['bramka', g]]) {
         if (!/POLE `findings`/.test(p) || !/ruleId: "new"/.test(p) || !/rules_checked/.test(p)) return `prompt ${name} bez instrukcji findings`;
         if (!/obok `violations`, nie zamiast/.test(p)) return `prompt ${name} nie mówi, że findings nie zastępuje violations`;
+        // TASK-OBS-019: wpis niesie też `file` (ścieżka względem korzenia repo, bez `..`), potrzebny do zestawienia z lintem
+        if (!/\{ruleId, line, file\}/.test(p) || !/bez `\.\.`/.test(p)) return `prompt ${name} nie prosi o file w findings`;
       }
       const props = c.VERDICT_SCHEMA.properties;
       if (!props.findings || props.findings.type !== 'array') return 'schemat bez findings';

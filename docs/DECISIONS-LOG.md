@@ -15,6 +15,20 @@
 
 ---
 
+## 2026-11-11 — Ścieżka pliku w `ruleHits`, tylko lokalnie; bez parsera lintu w sondzie (TASK-OBS-019)
+
+**Zmiana:** `step.ruleHits[].file` w lokalnych surowych zdarzeniach (prompt, normalizacja, schemat v1, aneks do ADR 0012); zakres B
+(parser wyjścia lintu w sondzie) wypadł.
+**Dlaczego:** właściciel juz-ide-api (orkiestrator-2, api-develop) potwierdził, że porównanie lintu z weryfikatorem wymaga `plik:linia`,
+a ich hook `file-check` już zapisuje dziennik cienia `lint-ddd-shadow.jsonl` z `file`, `ruleId`, `line`. Parser w sondzie
+duplikowałby to i byłby zawodny (sonda parafrazuje cytaty, ORC-137). Brakującym ogniwem było tylko miejsce po stronie weryfikatora.
+**Odrzucone:** parser lintu w sondzie; `file` w rollupie albo eksporcie (§3 ADR 0012: ścieżki zostają na maszynie); własne
+mapowanie reguł lintu na reguły weryfikatora (należy do właściciela lintu, TS-TOOLING-006); zestawianie po stronie claude-patterns
+(ich plan łączy dziennik z weryfikatorem po instancji, czasie i `taskRef`).
+**Status:** done (zakres A); zestawienie i mapowanie reguł po stronie juz-ide-api, zamrożone do końca okna wstrzymania (BDR-134).
+
+---
+
 ## 2026-11-10 — Reguły klasy A z pamięci bramki w `tools/conformance` (TASK-ORC-GATE-COST-001, E4 krok 2)
 
 **Zmiana:** cztery reguły ciała pliku (`BQ-ONFAILED-DECORATOR`, `BQ-SAFERUN-COMMANDBUS`, `AUDIT-EVENTDATA-CANONICAL`,

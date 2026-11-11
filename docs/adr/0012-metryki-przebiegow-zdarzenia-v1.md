@@ -225,7 +225,21 @@ Zmiana addytywna schematu v1 (`v` zostaje 1, tryb jak `blamed`), tylko w bloku `
   dawać tego samego odcisku.
 - Rollup: blok `rules` per rola i agent (`reports`, `hits`), tworzony leniwie; eksport przez białą listę.
 - Ścieżka pliku (`file`, tylko w lokalnych surowych zdarzeniach, nigdy w rollupie i eksporcie) to etap 2 i wymaga osobnej
-  decyzji z aneksem: `TASK-OBS-019`.
+  decyzji z aneksem: `TASK-OBS-019` (poniżej).
+
+### Aneks: ścieżka pliku w lokalnych zdarzeniach (TASK-OBS-019, 2026-11-11)
+
+Wyjątek od §3 („zdarzenie nie zawiera ścieżek plików"), ograniczony do jednego pola i jednego miejsca:
+
+- `step.ruleHits[].file` (opcjonalne), wyłącznie role `verifier` i `gate`, wyłącznie surowe zdarzenia w `telemetry/events/`
+  (`.gitignore`, per maszyna). Format: ścieżka względna od korzenia repo, z `/`, bez `/` na początku, bez segmentu `..`, bez `\` i
+  znaków sterujących, do 200 znaków. Wartość niepasująca nie psuje zdarzenia: `normalizeRuleFile` pomija pole, ustalenie zostaje.
+- **Nie wychodzi poza maszynę.** `projectRollup` i eksport przepuszczają tylko `ruleId` (liczniki), więc rollup w gicie i paczka dla
+  serwera są takie same z `file` i bez niego; pilnują tego testy (`rule-hit-file-never-reaches-the-rollup`, skan `findLeaks`).
+- Po co: zestawienie `ruleId × plik:linia` weryfikatora z dziennikiem cienia lintu (`~/.claude/metrics/lint-ddd-shadow.jsonl` w
+  juz-ide-api, wiersze `findings[{file, ruleId, line, severity}]`), bo ręczna klasyfikacja trafień jako prawdziwe lub fałszywe wymaga
+  miejsca (potwierdzone przez właściciela juz-ide-api, TS-TOOLING-006). Odcisk ustaleń (`ruleSignature`) nadal liczy samo `ruleId`.
+- Prywatność: ścieżki projektu pozostają na maszynie, na której powstały; nie ma ich w niczym, co trafia do repo ani na serwer.
 
 ## Kolejność wdrożenia
 
