@@ -349,6 +349,23 @@ tekst rundy 2 jest bajt w bajt taki jak dotąd (test), a pierwsza bramka nie zmi
    ocenić ręcznie. Włączenie domyślne dopiero przy zgodności ≥ 95% i zerze ustaleń poza deltą ocenionych jako realne.
 4. Uwaga: baza nie zawiera jeszcze kosztu per etykieta rundy 2 w nowych przebiegach; na dziś są tylko liczby historyczne z 2026-11-09/10.
 
-### E3
+### E3: tryb diffu bramki (2026-11-11, ORC-161), opcja do eksperymentu na jednej instancji
 
-(do uzupełnienia po wykonaniu)
+**Zrobione.** Opcja `gateDiff` (domyślnie `false`, `--overrides {"gateDiff":true}`): przy niepustej liście zmian prompt bramki dostaje blok z
+instrukcją: jedno wywołanie `git diff -U25 <baza przebiegu>` (powyżej ok. 60 000 znaków dociągnąć po katalogach), nowe pliki nieśledzone czytać
+w całości, `Read` tylko na kontekst poza diffem, zakres oceny bez zmian. Ślad: `report.finalGateDiff`. Bez opcji prompt bajt w bajt taki jak dotąd (test).
+`workflow-lint`: jawny wyjątek `// WL6-EXEMPT: <powód>` (4 testy dwukierunkowe). Testy: `orchestrate-script` (137), `orchestrate-prepare` (84), `workflow-lint` (24).
+
+**Odstępstwa.**
+- Diff pobiera **bramka własnym wywołaniem**, nie jest wklejany do promptu: workflow nie ma dostępu do plików, a sonda przepisująca diff parafrazuje (ORC-137).
+- WL6 zablokował pierwszą wersję (ostrzeżenie w kanonicznym skrypcie). Zamiast przeredagować polecenie dodałam jawny wyjątek z powodem; wyjątek czyta
+  oryginał, bo `stripComments` wymazuje komentarze przed regułami.
+- Koordynacja z `TASK-ORC-FINAL-GATE-CHUNKS-001` ogranicza się do instrukcji o dociąganiu po katalogach przy dużym diffie.
+
+**Ryzyko do zmierzenia.** Diff w kontekście jest przeliczany w każdej turze, a większość zmian implementacji to pliki NOWE, których diff nie pokazuje:
+oszczędność jest hipotezą. Gdy NO-GO pierwszej bramki spada, to utrata jakości, nie oszczędność.
+
+**Protokół eksperymentu (do uruchomienia, nie uruchomiony).** Jedna instancja (np. api-develop lub api-1), co drugi przebieg z `gateDiff`, ramię w
+raporcie (`finalGateDiff`). Cztery metryki z bazą: mediana wywołań narzędzi bramki (baza 43), koszt kroku `final:final:gate#1` (baza $5,29), odsetek
+NO-GO pierwszej bramki (baza 47%, n=130), odsetek `unverified_scope`. Żadna nie może się pogorszyć; próba ok. 30 przebiegów na ramię. Tryb nie jest
+widoczny w zdarzeniach telemetrii (etykieta bez zmian), więc przypisanie ramion trzeba zapisywać po `runId`.

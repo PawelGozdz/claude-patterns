@@ -1002,6 +1002,9 @@ function main() {
     // ORC-160 (TASK-ORC-GATE-COST-001 E2): true (przez --overrides) = runda 2 bramki końcowej po naprawie dostaje deltę
     // (pliki zmienione przez naprawę + poprzednie ustalenia) zamiast czytać całość od nowa. Domyślnie false: eksperyment A/B.
     gateDelta: false,
+    // ORC-161 (TASK-ORC-GATE-COST-001 E3): true (przez --overrides) = bramka końcowa pobiera diff jednym wywołaniem
+    // `git diff` zamiast czytać pliki z listy po kolei. Domyślnie false: eksperyment na jednej instancji.
+    gateDiff: false,
     // ORC-139: false (przez --overrides) wyłącza wiązanie werdyktów z hashem drzewa; `treeHashExclude` dokłada
     // ścieżki (względem korzenia repo) pomijane w haszu obok wbudowanych artefaktów silnika.
     treeBinding: true,

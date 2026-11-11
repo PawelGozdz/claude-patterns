@@ -3047,4 +3047,17 @@ produktowe oceniamy raz, na całości zmiany, żeby nie płacić za nie w każde
 
 **Czego nie zrobiono.** Diff w prompcie (to E3: workflow nie ma dostępu do plików, diff musiałaby dostarczyć sonda, a wtedy rośnie prompt). Delta to lista plików z naprawy, nie ich diff. Etykieta kroku (`final-gate-r2`) bez zmian, bo kolektor klasyfikuje kroki regexami; tryb nie jest więc widoczny w zdarzeniach telemetrii, tylko w raporcie przebiegu. Nie mierzono jeszcze oszczędności ani zgodności werdyktów: wymaga eksperymentu na prawdziwych przebiegach.
 
-**Claim.** Opcja wyłączona: brak zmiany zachowania. Po włączeniu w eksperymencie: koszt rundy 2 poniżej $2,5 (dziś $4,31) przy zgodności werdyktu z pełną rundą ≥ 95%; każde ustalenie, które pełna runda znalazłaby poza deltą, wypisane i ocenione ręcznie przed włączeniem domyślnym (osobna reguła, ORC-161+).
+**Claim.** Opcja wyłączona: brak zmiany zachowania. Po włączeniu w eksperymencie: koszt rundy 2 poniżej $2,5 (dziś $4,31) przy zgodności werdyktu z pełną rundą ≥ 95%; każde ustalenie, które pełna runda znalazłaby poza deltą, wypisane i ocenione ręcznie przed włączeniem domyślnym (osobna reguła, ORC-162+).
+
+### ORC-161 — tryb diffu bramki końcowej: opcja do eksperymentu na jednej instancji i jawny wyjątek WL6 (2026-11-11)
+
+**Objaw.** Bramka końcowa czyta pliki z listy zmian po kolei: mediana 43 wywołań narzędzi przy limicie 60, $5,29 za krok, 21% kosztu przebiegów. Hipoteza E3: diff podany z góry skróci to czytanie.
+
+**Zmiana.** Opcja `gateDiff` (`orchestrate-prepare.mjs`, domyślnie `false`, `--overrides {"gateDiff":true}`). Po włączeniu (i przy niepustej liście zmian) prompt bramki dostaje blok `gateDiffBlock`: zacząć od JEDNEGO wywołania `git diff -U25 <baza przebiegu>` (powyżej ok. 60 000 znaków dociągnąć resztę po katalogach), nowe pliki nieśledzone czytać w całości (w diffie ich nie ma), `Read` tylko na kontekst poza diffem, zakres oceny bez zmian. Diff pobiera **sama bramka własnym wywołaniem**: workflow nie ma dostępu do plików, a sonda przepisująca tekst parafrazuje (ORC-137). Ślad trybu: `report.finalGateDiff`. Bez opcji prompt jest bajt w bajt taki jak dotąd (test: blok jest jedyną różnicą).
+Lint WL6 ostrzega przed `git diff` bez `--stat/--name-only/--numstat` (incydent 2026-07-04: 3191-liniowy diff wklejony do promptu implementera zjadł budżet tury, 2× pusty wynik). Nie obchodziłam tego przeredagowaniem polecenia: dodałam **jawny wyjątek** `// WL6-EXEMPT: <powód>` (komentarz nad miejscem użycia, do trzech linii; marker bez powodu nie jest wyjątkiem), czytany z oryginału, bo `stripComments` wymazuje komentarze przed regułami. Testy dwukierunkowe w `workflow-lint` (z powodem przechodzi; bez powodu, za daleko i bez markera ostrzega).
+
+**Czego nie zrobiono.** Żadnego pomiaru: eksperyment wymaga prawdziwych przebiegów na jednej instancji. Koordynacja z `TASK-ORC-FINAL-GATE-CHUNKS-001` (diff powyżej ok. 40 plików) ogranicza się na razie do instrukcji o dociąganiu po katalogach. Etykieta kroku bez zmian (tryb widoczny tylko w raporcie przebiegu).
+
+**Ryzyko do zmierzenia, nie do założenia.** Diff w kontekście jest przeliczany w każdej kolejnej turze (cache read), a większość zmian implementacji to pliki NOWE, których diff nie pokazuje, więc oszczędność jest hipotezą, nie faktem. Gdy NO-GO pierwszej bramki spada, to utrata jakości, nie oszczędność (kryterium z zadania).
+
+**Claim.** Opcja wyłączona: brak zmiany zachowania. W eksperymencie: mediana wywołań narzędzi poniżej 43 i koszt kroku poniżej $5,29 przy niezmienionym odsetku NO-GO pierwszej bramki (baza 47%, n=130) i odsetku `unverified_scope`; wdrożenie domyślne tylko przy braku pogorszenia obu (osobna reguła, ORC-162+).

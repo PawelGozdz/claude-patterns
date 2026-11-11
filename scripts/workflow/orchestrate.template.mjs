@@ -869,6 +869,20 @@ function renderCanon(canon) {
 // raportów warstw: warstwa zakończona no-op oddaje `files: []`, więc bramka nie widziała
 // infrastruktury, migracji ani kontraktów (TS-MH-005 — weryfikator sam zajrzał do HEAD).
 // Karty: wszystkie wzorce przebiegu — bramka oceniała całość zmiany bez reguł.
+// TASK-ORC-GATE-COST-001 E3 (opcja `gateDiff`, domyślnie wyłączona): bramka czytała pliki z listy po kolei (mediana 43 wywołań
+// przy limicie 60, $5,29 za krok). Workflow nie ma dostępu do plików, a sonda przepisująca diff parafrazuje (ORC-137), więc diff
+// pobiera sama bramka, JEDNYM wywołaniem; `Read` zostaje na kontekst poza diffem. Nowe pliki (nieśledzone) w diffie ich nie ma.
+const GATE_DIFF_CHUNK = 60000
+function gateDiffBlock(base) {
+  const b = base || 'HEAD'
+  // WL6-EXEMPT: E3, diff pobiera bramka własnym wywołaniem (opcja gateDiff, domyślnie wyłączona), nie jest wklejany do cudzego promptu
+  return 'TRYB DIFFU (eksperyment): zamiast czytać pliki z listy po kolei, zacznij od JEDNEGO wywołania `git diff -U25 ' + b + '` ' +
+    '(zmiany w plikach śledzonych). Gdy wynik przekracza ok. ' + GATE_DIFF_CHUNK + ' znaków, dociągnij resztę kolejnymi wywołaniami ' +
+    'po katalogach (`git diff -U25 ' + b + ' -- <katalog>`). Pliki NOWE (nieśledzone) nie występują w diffie: te z listy zmian, których ' +
+    'diff nie pokazał, przeczytaj w całości. Oceniaj z diffu; `Read` używaj tylko do kontekstu poza nim (sygnatury wywoływanych funkcji, ' +
+    'konsumenci zmienionych kontraktów, testy) i nie czytaj od początku do końca plików, które diff już pokazuje. Zakres oceny bez zmian: lista zmian wyżej.\n'
+}
+
 function buildFinalGatePrompt(a, checks, changedFiles, treeSource, knownGaps, probe, deletedFiles) {
   const calls = scaledBudget(a, 'final-gate', (changedFiles || []).length)
   // ORC-084: luki, które warstwy już zapisały jako GO_WITH_GAPS — bramka nie wymusza za nie NO_GO
@@ -918,7 +932,7 @@ function buildFinalGatePrompt(a, checks, changedFiles, treeSource, knownGaps, pr
     (changedFiles.length ? 'Pliki objęte zmianą (z drzewa, względem bazy przebiegu):\n  ' + changedFiles.join('\n  ') + '\n' : '') +
     // ORC-135: usunięte celowo krokiem mechanicznym — bramka nie szuka ich na dysku
     ((deletedFiles || []).length ? 'Pliki USUNIĘTE celowo (`git rm`, nie ma ich na dysku — nie zgłaszaj braku):\n  ' + deletedFiles.join('\n  ') + '\n' : '') +
-    source + dirty + decisions + gapsBlock + renderCanon(a.canon) +
+    source + (a.gateDiff === true && changedFiles.length ? gateDiffBlock(a.baseSha) : '') + dirty + decisions + gapsBlock + renderCanon(a.canon) +
     renderCards(a.patterns || [], 'wszystkie wzorce tego przebiegu') +
     '\nZwróć werdykt GO albo NO_GO i listę naruszeń.\n' +
     (a.autoFixMinor !== false ? MINOR_REMINDER : '') + CARD_PRECEDENCE + FINDINGS_FIELD +
@@ -2597,6 +2611,7 @@ if (!finalAgent) {
     { label: 'final-gate', agentType: finalAgent, maxTurns: scaledBudget(a, 'final-gate', finalFiles.length), schema: VERDICT_SCHEMA },
     modelFor('final', a),
   )
+  if (a.gateDiff === true) report.finalGateDiff = true // E3: tryb widoczny w raporcie przebiegu (etykieta kroku bez zmian)
   // ORC-091: runda naprawcza po bramce końcowej. Ustalenia [BLOKUJĄCE] (violations z cause=code) i
   // [DROBNE] (minor_findings) idą do implementera warstwy, która jest ich właścicielem (po
   // ścieżkach; reszta do ostatniej warstwy produkcyjnej), po każdej naprawie biegnie sonda warstwy.

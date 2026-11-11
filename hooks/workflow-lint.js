@@ -22,6 +22,9 @@
  *                przebieg (juz-ide-api-1, 2026-07-04): pełny diff Domain (~3191 linii)
  *                wklejony w całości do promptu implementera Application zjadł budżet tury,
  *                2× pusty wynik z rzędu. Wstrzykuj tylko listę plików, niech agent Read sam.
+ *                Wyjątki: diff przepuszczony przez licznik (K93) i jawny `// WL6-EXEMPT: <powód>` nad miejscem
+ *                użycia (do trzech linii; TASK-ORC-GATE-COST-001 E3, agent sam pobiera diff). Marker bez powodu
+ *                nie jest wyjątkiem.
  *   WL7 (WARN)   tsc/typecheck wygląda na punkt listy WEWNĄTRZ prompta implementera (proza,
  *                nieegzekwowalne), nie osobny dedykowany krok PRZED verify (juz-ide-api-2,
  *                2026-07-08, TS-PRICING-RADIUS-TIER-002): "tsc --noEmit bez nowych błędów" było
@@ -286,6 +289,7 @@ function lint(src) {
   // Od tego miejsca reguły widzą źródło BEZ komentarzy (pozycje i numery linii bez zmian) —
   // komentarz to nie kod i nie ma prawa triggerować reguły (incydent 2026-09-01: WL2 na
   // „zero parallel()" w nagłówku sekwencyjnego skryptu). WL9 wyżej parsował oryginał.
+  const rawLines = src.split('\n'); // oryginał z komentarzami: potrzebny wyjątkom jawnym (WL6-EXEMPT), które żyją w komentarzu
   src = stripComments(src);
 
   const isVerifyish = (t) => /verif|final[_\s-]?gate|security[-_]e2e/i.test(t);
@@ -414,9 +418,15 @@ function lint(src) {
   // bramkę, której WYMAGA WL15 — dwie reguły nie mogą żądać rzeczy wzajemnie sprzecznych.
   // Zawężenie jest wąskie celowo: `| grep` BEZ `-c` nadal alarmuje, bo wypisuje treść linii.
   const COUNTS_ONLY = /\|\s*(grep\s+(-[A-Za-z]*c[A-Za-z]*\s|--count)|wc\s+-l)/;
+  // Wyjątek jawny (TASK-ORC-GATE-COST-001 E3, 2026-11-11): komentarz `// WL6-EXEMPT: <powód>` w tej samej linii albo w trzech
+  // liniach nad nią. Dla świadomego eksperymentu, w którym AGENT sam pobiera diff własnym wywołaniem (nie wklejamy go do cudzego
+  // promptu jak w incydencie 2026-07-04). Marker BEZ powodu nie jest wyjątkiem: nieudokumentowany wyjątek jest nie do odróżnienia
+  // od nieznajomości reguły.
+  // Komentarze są już wymazane z `src` (stripComments), więc marker czytamy z oryginału (`rawLines`, te same numery linii).
+  const wl6Exempt = (n) => rawLines.slice(Math.max(0, n - 4), n).some((l) => /WL6-EXEMPT:\s*\S/.test(l));
   for (const s of snippetsOf(src, 'git diff')) {
     const line = s.text.slice(0, s.text.indexOf('\n') !== -1 ? s.text.indexOf('\n') : 120);
-    if (!/--stat|--name-only|--numstat/.test(line) && !COUNTS_ONLY.test(line)) {
+    if (!/--stat|--name-only|--numstat/.test(line) && !COUNTS_ONLY.test(line) && !wl6Exempt(s.line)) {
       findings.push({ id: 'WL6', level: 'WARN', line: s.line, msg: 'git diff bez --stat/--name-only/--numstat — pełny tekst diffa ląduje w kontekście i jest przeliczany w KAŻDEJ kolejnej turze agenta. Dotyczy obu wariantów: diffa wstrzykniętego do promptu (incydent 2026-07-04: ~3191 linii, 2× pusty wynik) i diffa, który agent zrobi sam na Twoje polecenie (wf_23029d51-3a2: `git diff -- spatial-column.types.ts` = 21 KB, ten sam diff guardiana 3× po 14,5 KB). Proś o --stat, a treść niech czyta Read na konkretnym pliku' });
     }
   }

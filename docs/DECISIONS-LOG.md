@@ -15,6 +15,19 @@
 
 ---
 
+## 2026-11-11 — Tryb diffu bramki końcowej jako opcja i jawny wyjątek WL6 (TASK-ORC-GATE-COST-001, E3)
+
+**Zmiana:** opcja `gateDiff` (domyślnie wyłączona): bramka pobiera diff jednym wywołaniem `git diff -U25 <baza>` zamiast czytać pliki po
+kolei; `workflow-lint` dostał jawny wyjątek `// WL6-EXEMPT: <powód>`.
+**Dlaczego:** bramka to 21% kosztu (mediana 43 wywołań, $5,29 za krok); hipoteza, że diff skróci czytanie, wymaga eksperymentu. WL6 chroni
+przed incydentem 2026-07-04 (diff wklejony do promptu implementera); tu diff pobiera sama bramka, więc potrzebny jest wyjątek, a nie obejście.
+**Odrzucone:** zapis `git diff` w innej formie, żeby przejść WL6 (obejście, nie wyjątek); diff przekazywany przez sondę (parafrazuje, ORC-137,
+i rośnie prompt); wyłączenie WL6; włączenie domyślne przed pomiarem (większość zmian to nowe pliki, których diff nie pokazuje, a diff w kontekście
+jest przeliczany w każdej turze; oszczędność to hipoteza).
+**Status:** experimental (opcja wyłączona, pomiar na jednej instancji nie wykonany).
+
+---
+
 ## 2026-11-11 — Runda 2 bramki końcowej na delcie jako opcja do eksperymentu (TASK-ORC-GATE-COST-001, E2)
 
 **Zmiana:** opcja `gateDelta` (domyślnie wyłączona): druga bramka po naprawie dostaje listę plików z naprawy i poprzednie ustalenia
