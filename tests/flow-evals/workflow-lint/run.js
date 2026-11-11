@@ -356,6 +356,9 @@ const CASES = [
   { name: 'wl17-canonical-without-blocked-by-prior-errors', src: CANONICAL_NO_BLOCKED_BY_PRIOR, expectErrors: ['WL17'], expectWarns: [] },
   { name: 'wl17-noop-after-red-guarded-passes', src: NOOP_AFTER_RED_GUARDED, expectErrors: ['WL3'], expectWarns: [] },
   { name: 'wl18-canonical-gate-blind-to-new-files-warns', src: CANONICAL_GATE_BLIND_TO_NEW_FILES, expectErrors: [], expectWarns: ['WL18'] },
+  // WL19: linia > 4000 znaków = okno zatwierdzenia ją obetnie i odrzuci skrypt. Dodaje tylko WL19 do błędów kanonicznego skryptu.
+  { name: 'wl19-long-line-errors', src: CANONICAL + '\nconst padLong = "' + 'x'.repeat(4500) + '"\n', expectErrors: ['WL19'], expectWarns: [] },
+  { name: 'wl19-chunked-literal-passes', src: CANONICAL + '\nconst padOk = ("' + 'x'.repeat(1200) + '" +\n"' + 'x'.repeat(1200) + '")\n', expectErrors: [], expectWarns: [] },
 ];
 
 let failed = 0;

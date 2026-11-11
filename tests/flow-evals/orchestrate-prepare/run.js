@@ -675,6 +675,8 @@ CASES.push({
     if (e.code !== 0) return 'emisja nie powiodła się: ' + e.stderr.trim().slice(0, 300);
     const src = fs.readFileSync(target, 'utf8');
     if (src.length > 200000) return `skrypt ${src.length} znaków > limit okna 200000`;
+    const longest = Math.max(...src.split('\n').map((l) => l.length));
+    if (longest > 4000) return `linia ${longest} znaków > 4000: okno obetnie ją i odrzuci skrypt (ORC-165)`;
     if (e.json.scriptChars !== src.length) return `scriptChars ${e.json.scriptChars} ≠ ${src.length}`;
     if (JSON.stringify(e.json.offloaded) !== '["patterns"]') return 'oczekiwano wyniesienia samych kart: ' + JSON.stringify(e.json.offloaded);
     if (src.includes('reguła numer')) return 'treść karty została w skrypcie mimo wyniesienia';
@@ -713,6 +715,47 @@ CASES.push({
     if (e.code !== 6) return `oczekiwano exit 6 (SIZE), było ${e.code}: ${e.stderr.trim().slice(0, 200)}`;
     if (!/limit okna zatwierdzenia/.test(e.stderr)) return 'komunikat bez przyczyny: ' + e.stderr.slice(0, 200);
     if (fs.existsSync(target)) return 'powstał skrypt, którego okno nie pokaże';
+    return null;
+  },
+});
+
+// ORC-165: okno zatwierdzenia obcina każdą linię > 4096 znaków („… [+N graphemes]") i wtedy odrzuca CAŁY skrypt, choć ma < 200 000 znaków
+// (incydent 2026-11-11: TS-OBS-ERRORS-001, 179 638 znaków, args w jednej linii 69 838). Karta wbudowana (mieści się w limicie) musi iść łańcuchem krótkich linii.
+const MID_CARD = '# Karta: średnia\n\n## Reguły\n' + '- reguła numer %N% — zawsze stosuj kamel-case w nazwach, „cudzysłów” i zażółć gęślą jaźń.\n'.repeat(500);
+
+CASES.push({
+  name: 'emit-script-inline-card-has-no-line-over-4000-and-script-still-runs',
+  build: () => {
+    const root = makeProject({ taskId: 'TS-FIX-001', analysis: analysisFm({}), task: taskFile('Dodaj aggregate.') });
+    write(root, '.claude/knowledge/patterns/cross-layer/conventions-pattern_summary.md', MID_CARD);
+    return root;
+  },
+  async check(r, root) {
+    const target = path.join(root, 'out', 'wf.mjs');
+    const e = run(root, 'TS-FIX-001', ['--emit-script', target]);
+    if (e.code !== 0) return 'emisja nie powiodła się: ' + e.stderr.trim().slice(0, 300);
+    if (JSON.stringify(e.json.offloaded) !== '[]') return 'karta ~40 tys. zn. powinna zostać wbudowana, wyniesiono: ' + JSON.stringify(e.json.offloaded);
+    const src = fs.readFileSync(target, 'utf8');
+    const longest = Math.max(...src.split('\n').map((l) => l.length));
+    if (longest > 4000) return `najdłuższa linia ${longest} znaków > 4000 (okno obetnie ją i odrzuci skrypt)`;
+    if (!src.includes('reguła numer %N%')) return 'treść karty zgubiona przy zawijaniu';
+    // Skrypt ma się wykonać z atrapą agenta i widzieć kartę dosłownie w prompcie implementera (round-trip literału).
+    const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
+    const prompts = [];
+    const agent = async (prompt, opts = {}) => {
+      prompts.push(prompt);
+      const p = (opts.schema && opts.schema.properties) || {};
+      if ('changed_files' in p) return { changed_files: ['src/a.ts'], summary: 'ok' };
+      if ('verdict' in p) return { verdict: 'GO', violations: [], rationale: 'r' };
+      if ('typecheck' in p) return { typecheck: 'pass', tests: 'pass', lint: 'pass' };
+      if ('fingerprint' in p) return { fingerprint: 'fp' };
+      if ('files' in p) return { files: ['src/a.ts'], commits: 0 };
+      if ('removed' in p) return { removed: [] };
+      return {};
+    };
+    const report = await new AsyncFunction('agent', 'log', 'args', 'phase', src.replace(/^export const meta/m, 'const meta'))(agent, () => {}, undefined, () => {});
+    if (!report || report.taskId !== 'TS-FIX-001') return 'skrypt wykonany z atrapą nie zwrócił raportu zadania: ' + JSON.stringify(report).slice(0, 120);
+    if (!prompts.some((p) => p.includes('- reguła numer %N% — zawsze stosuj kamel-case w nazwach, „cudzysłów” i zażółć gęślą jaźń.\n'.repeat(500)))) return 'prompt agenta nie niesie karty dosłownie (round-trip literału zepsuty)';
     return null;
   },
 });
@@ -1239,6 +1282,7 @@ loopCase('only-one-earlier-run-passes', {
 
 // ── bieg ─────────────────────────────────────────────────────────────────────────
 let failed = 0;
+(async () => {
 for (const c of CASES) {
   let root;
   let tel = null;
@@ -1250,7 +1294,7 @@ for (const c of CASES) {
       fs.writeFileSync(path.join(tel, '2026-11.jsonl'), c.events.map((e) => JSON.stringify(e)).join('\n') + '\n');
       CURRENT_TEL = tel;
     }
-    const err = c.check(run(root, 'TS-FIX-001', c.args || []), root, tel);
+    const err = await c.check(run(root, 'TS-FIX-001', c.args || []), root, tel);
     if (err) { failed++; process.stdout.write(`  ❌ ${c.name} — ${err}\n`); }
     else process.stdout.write(`  ✅ ${c.name}\n`);
   } catch (e) {
@@ -1265,3 +1309,4 @@ for (const c of CASES) {
 fs.rmSync(EMPTY_TEL, { recursive: true, force: true });
 process.stdout.write(`\n${CASES.length - failed}/${CASES.length} passed\n`);
 process.exit(failed ? 1 : 0);
+})();

@@ -68,8 +68,9 @@ import { buildCanon } from './lib/canon-inject.mjs';
 import { autoEligibility, recommendedOption } from './lib/answer-evidence.mjs';
 import { loadResolveConfig } from './lib/resolve-config.mjs';
 import { checkLoop } from './lib/orchestrate-loop-guard.mjs';
-import { minifyScript, APPROVAL_LIMIT, APPROVAL_MARGIN } from './lib/script-minify.mjs';
+import { minifyScript, APPROVAL_LIMIT, APPROVAL_MARGIN, APPROVAL_LINE_LIMIT } from './lib/script-minify.mjs';
 import { applyOffload, OFFLOAD_STEPS } from './lib/script-offload.mjs';
+import { jsLiteral, longestLine } from './lib/script-literal.mjs';
 import { scopeCardsToLayers } from './lib/card-scope.mjs';
 
 const require_ = createRequire(import.meta.url);
@@ -527,9 +528,13 @@ function buildTelemetryPlan(out) {
 // minifikacja (komentarze i wcięcia, AST ten sam) → karty reguł do plików → treść kanonu do czytania
 // z pliku. Każdy stopień dopiero, gdy poprzedni nie wystarczył; nic nie mieści się = exit 6, nie skrypt,
 // którego nikt nie zatwierdzi.
-function buildEmitted(src, out) {
-  const json = JSON.stringify(out).replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029');
-  return src.split(ARGS_LINE).join(`const a = ${json}`);
+const ARGS_PLACEHOLDER = '__ORC_ARGS__';
+
+const PLACEHOLDER_RE = new RegExp(`const a = ${ARGS_PLACEHOLDER};?`);
+
+function buildEmitted(templateWithPlaceholder, out) {
+  const lit = jsLiteral(out);
+  return templateWithPlaceholder.replace(PLACEHOLDER_RE, () => `const a = ${lit};`);
 }
 
 function emitScript(out, target) {
@@ -539,22 +544,29 @@ function emitScript(out, target) {
   const budget = APPROVAL_LIMIT - APPROVAL_MARGIN;
   const bundleDir = join(dirname(target), `${basename(target).replace(/\.workflow\.mjs$|\.mjs$/, '')}.context`);
   const notes = [];
+  // Minifikujemy sam SZABLON (komentarze, wcięcia); args wchodzą po minifikacji własnym emiterem krótkich linii,
+  // bo printer TypeScript zostawiłby obiekt z jednej linii w jednej linii.
+  const withPh = src.split(ARGS_LINE).join(`const a = ${ARGS_PLACEHOLDER}`);
+  const min = minifyScript(withPh);
+  if (min.text === null) notes.push(`minifikacja skryptu niedostępna: ${min.reason}`);
+  const template = min.text ?? withPh;
   let emitted = null;
   let final = out;
   let offloaded = [];
   const attempts = [[], ...OFFLOAD_STEPS.map((_, i) => OFFLOAD_STEPS.slice(0, i + 1))];
   for (const steps of attempts) {
     final = applyOffload(out, steps, bundleDir);
-    const full = buildEmitted(src, final);
-    const min = minifyScript(full);
-    if (min.text === null && !notes.length) notes.push(`minifikacja skryptu niedostępna: ${min.reason}`);
-    const candidate = min.text ?? full;
+    const candidate = buildEmitted(template, final);
     if (candidate.length <= budget) { emitted = candidate; offloaded = steps; break; }
   }
   if (emitted === null) {
     const sizes = Object.entries(final).map(([k, v]) => [k, JSON.stringify(v ?? null).length]).sort((x, y) => y[1] - x[1]).slice(0, 4);
     die(EXIT.SIZE, `skrypt przekracza limit okna zatwierdzenia (${APPROVAL_LIMIT} znaków) mimo minifikacji i wyniesienia kart/kanonu; największe pola args: ` +
       `${sizes.map(([k, n]) => `${k}=${n}`).join(', ')}. ${notes.join('; ')}`.trim());
+  }
+  const longest = longestLine(emitted);
+  if (longest > APPROVAL_LINE_LIMIT) {
+    die(EXIT.SIZE, `wyemitowany skrypt ma linię ${longest} znaków (limit okna ${APPROVAL_LINE_LIMIT}): okno obetnie ją i odrzuci skrypt („approval is unavailable"). To błąd emitera, nie danych.`);
   }
   const { lint } = require_(join(REPO_ROOT, 'hooks', 'workflow-lint.js'));
   const findings = lint(emitted);

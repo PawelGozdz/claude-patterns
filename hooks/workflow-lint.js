@@ -105,6 +105,7 @@
  *                `git diff --cached -U0 | grep -cE '^\+\s*(it|test|describe)\('`.
  *   WL17 (ERROR) ścieżka no-op osiągalna po CZERWONEJ sondzie bez BLOCKED_BY_PRIOR —
  *                odziedziczona czerwień kończyła się GO (marketing-hub TS-MH-005, 4/4 warstwy).
+ *   WL19 (ERROR) linia dłuższa niż 4000 znaków — okno zatwierdzenia ją obcina i odrzuca skrypt (ORC-165)
  *   WL18 (WARN)  lista zmienionych plików bez nieśledzonych (git diff --name-only / status
  *                --short) — nowe pliki niewidoczne, fałszywy ESCALATE (TS-AIG-015, TS-MH-003).
  *   WL16 (WARN)  ślepy retry implementera po cichej śmierci bez diff-sondy — cichy zgon
@@ -245,6 +246,13 @@ function agentHelperNames(src) {
 
 function lint(src) {
   const findings = [];
+  // WL19: okno „Run a dynamic workflow?" (Claude Code 2.1.322) sanityzuje skrypt i obcina KAŻDĄ linię dłuższą niż 4096
+  // znaków znacznikiem „… [+N graphemes]"; skrypt z takim znacznikiem uznaje za już obcięty i pisze „cannot be shown in
+  // full — approval is unavailable" (jedyna opcja „No"), choć całość ma mniej niż 200 000 znaków. Próg z zapasem.
+  const MAX_LINE = 4000;
+  src.split('\n').forEach((l, i) => {
+    if (l.length > MAX_LINE) findings.push({ id: 'WL19', level: 'ERROR', line: i + 1, msg: `linia ${i + 1} ma ${l.length} znaków (limit ${MAX_LINE}) — okno zatwierdzenia obetnie ją i odrzuci cały skrypt („approval is unavailable"). Zawijaj długie literały (łańcuch `+` w kilku liniach), nie wklejaj JSON-a w jednej linii (incydent 2026-11-11, TS-OBS-ERRORS-001: args w jednej linii 69 838 znaków)` });
+  });
   // Wszystkie miejsca wywołania agenta: bezpośrednie i przez owijkę.
   const callSites = (source) => {
     const out = snippetsOf(source, 'agent(');
