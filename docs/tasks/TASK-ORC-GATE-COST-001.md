@@ -354,6 +354,13 @@ tekst rundy 2 jest bajt w bajt taki jak dotąd (test), a pierwsza bramka nie zmi
    ocenić ręcznie. Włączenie domyślne dopiero przy zgodności ≥ 95% i zerze ustaleń poza deltą ocenionych jako realne.
 4. Uwaga: baza nie zawiera jeszcze kosztu per etykieta rundy 2 w nowych przebiegach; na dziś są tylko liczby historyczne z 2026-11-09/10.
 
+**Test całego przepływu (2026-11-11, po E2 i E3).** Dotąd opcje `gateDelta` i `gateDiff` miały testy tylko na tekście promptu i na wyciętych
+funkcjach; miejsce wywołania w rundzie 2 nie było nigdy wykonane, a błąd tam marnowałby cały drogi przebieg. Eval `orchestrate-flow` (6 przypadków,
+w pre-commit) uruchamia CAŁY szablon z atrapą agenta i wymusza NO-GO bramki → naprawa → runda 2. Potwierdza: delta dostaje pliki z naprawy i `ruleId` z
+rundy 1; prompt pierwszej bramki jest identyczny z opcją i bez niej; `gateDiff` działa w rundzie 1 niezależnie od delty; po GO w rundzie 1 nie ma śladu
+delty. Trzy mutacje miejsca wywołania zaczerwieniają właściwe przypadki. To dowód, że opcje się wykonują, nie że oszczędzają: pomiar kosztu nadal wymaga
+prawdziwych przebiegów.
+
 ### E3: tryb diffu bramki (2026-11-11, ORC-161), opcja do eksperymentu na jednej instancji
 
 **Zrobione.** Opcja `gateDiff` (domyślnie `false`, `--overrides {"gateDiff":true}`): przy niepustej liście zmian prompt bramki dostaje blok z

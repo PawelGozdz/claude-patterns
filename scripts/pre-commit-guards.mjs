@@ -73,6 +73,7 @@ runCheck('eval: watcher', 'node', ['tests/flow-evals/watcher/run.js']);
 runCheck('eval: workflow-lint', 'node', ['tests/flow-evals/workflow-lint/run.js']);
 runCheck('eval: orchestrate-prepare', 'node', ['tests/flow-evals/orchestrate-prepare/run.js']);
 runCheck('eval: orchestrate-script', 'node', ['tests/flow-evals/orchestrate-script/run.js']);
+runCheck('eval: orchestrate-flow', 'node', ['tests/flow-evals/orchestrate-flow/run.js']);
 runCheck('eval: conformance', 'node', ['tests/flow-evals/conformance/run.js']);
 runCheck('eval: analyze-resolve', 'node', ['tests/flow-evals/analyze-resolve/run.js']);
 runCheck('eval: test-implementer-scope', 'node', ['tests/flow-evals/test-implementer-scope/run.js']);
