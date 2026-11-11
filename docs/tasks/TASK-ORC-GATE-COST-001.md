@@ -309,6 +309,11 @@ statyczna; nie uruchamiano testów ani bazy, więc nie sprawdzono, czy któryś 
   ścieżka od `.` jest liczona od korzenia projektu, karta to `<temat>-pattern_summary.md` obok wzorca; wzór produkcyjny to iam (runtime.yml,
   linie 18–19). Dziś `juz-ide-api/.claude/knowledge/patterns-local/` ma tylko `README.md`, a `runtime.yml` niczego stamtąd nie wskazuje.
 
+**Aktualizacja 2026-11-11 (później tego samego dnia):** właściciel scalił lokalne wpisy z api-3/5/6/7 do wersji kanonicznej (juz-ide-api,
+commit `a19e8c28b`: dwa nowe wpisy i sześć uzupełnień; api-1 i api-develop są już na nim). Kanoniczny katalog ma **57 wpisów**, dokładnie tyle,
+ile sklasyfikowano w kroku 1 (#56 i #57 to te dwa nowe), więc klasyfikacja A 6 / B 39 / C 12 zostaje bez zmian, a rozjazdy z listy powyżej
+są już nieaktualne. Treść sześciu uzupełnionych wpisów nie była czytana po scaleniu; przy pisaniu kart z ich grup brać wersję z `develop`.
+
 **Zmiana podziału w stosunku do kroku 1.** Zakładałam, że ogólne karty (migracje, BullMQ, błędy 422, PII w logach) pójdą do claude-patterns.
 Wg reguły repo (wzorzec z dowodami z jednego projektu = `project-specific` do czasu drugiego adoptera) **wszystkie 39 kart B zostaje
 w juz-ide-api (`patterns-local`)**; claude-patterns dostarcza format, pilotaż i pomiar. Do `patterns/` trafią po drugim adopterze.
