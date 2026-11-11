@@ -296,6 +296,37 @@ statyczna; nie uruchamiano testów ani bazy, więc nie sprawdzono, czy któryś 
 - Możliwy fałszywy alarm: handler podaje ten sam powód także w polu typowanym (kolizja wtedy nieszkodliwa). Nieobsługiwane: `eventData`
   zbudowane w helperze.
 
+### E4, krok 3: ustalenia z właścicielem juz-ide-api i pilotaż karty B (2026-11-11)
+
+**Odpowiedzi orkiestratora-2 (api-develop)** na pytania o E4:
+- **Reguły międzyplikowe (#22 duplikat `describe`, #33 ślady usuniętej trasy) mają żyć w juz-ide-api**, nie w claude-patterns: dotyczą
+  formatów plików tamtego repo, a `tools/lint-ddd` to ESLint per plik, więc nie pasuje. Forma (strażnik L1 jak `*.guardian.spec.ts` albo skrypt)
+  to decyzja właściciela; zadania na to jeszcze nie ma i w oknie wstrzymania (BDR-134) mieściłoby się w klasie b. Z zakresu tego zadania wypadają.
+- **Pamięć bramki: kanoniczna jest wersja commitowana w `juz-ide-api-develop`** (56 plików). Rozjazdy w api-3/5/6/7 (3, 3, 2, 3 pliki) są
+  niezacommitowane, a skrypt synchronizacji robi ff-only, więc same się nie scalą; co z nich wejdzie do wersji kanonicznej, rozstrzyga właściciel.
+  Do kart brać `develop`; rozjazdy czytać przez `git -C /opt/projects/juz-ide-api-N diff .claude/agent-memory/security-e2e-verifier`.
+- **Resolver czyta `patterns-local`** (sprawdzone w kodzie: `orchestrate-prepare.mjs` `resolvePatternFile`, `hooks/inject-implementer-rule-cards.js`):
+  ścieżka od `.` jest liczona od korzenia projektu, karta to `<temat>-pattern_summary.md` obok wzorca; wzór produkcyjny to iam (runtime.yml,
+  linie 18–19). Dziś `juz-ide-api/.claude/knowledge/patterns-local/` ma tylko `README.md`, a `runtime.yml` niczego stamtąd nie wskazuje.
+
+**Zmiana podziału w stosunku do kroku 1.** Zakładałam, że ogólne karty (migracje, BullMQ, błędy 422, PII w logach) pójdą do claude-patterns.
+Wg reguły repo (wzorzec z dowodami z jednego projektu = `project-specific` do czasu drugiego adoptera) **wszystkie 39 kart B zostaje
+w juz-ide-api (`patterns-local`)**; claude-patterns dostarcza format, pilotaż i pomiar. Do `patterns/` trafią po drugim adopterze.
+
+**Pilotaż: `TASK-ORC-GATE-COST-001-cards/`** (szkic do przejęcia, nie pliki działające tutaj): karta `migration-release-safety-pattern_summary.md`
+(MG1–MG7, N1–N3; z wpisów #3, #41, #45), pełny wzorzec obok i README z instrukcją wpięcia po stronie juz-ide-api (wzór iam). Nie ruszałam
+repo juz-ide-api.
+
+**Pomiar rozmiaru: karta ma 448 słów, 3308 znaków, ok. 945 tokenów** (znaki/3,5; istniejące karty `mapper` 5719 B, `cli-runner` 6044 B). To
+**ok. 1,8× więcej, niż oszacowałam w kroku 1** (250 słów dla tej grupy), więc tamte sumy per warstwa były zaniżone. Przy takiej proporcji
+warstwa infrastructure (ok. 13 wpisów własnych + cross-layer) przekroczy limit ok. 3 tys. tokenów na start implementera, jeśli wszystkie jej
+karty wejdą naraz. Wniosek: karty ładować warunkowo (`patterns.triggers` po słowach kluczowych zadania), nie przez `patterns.always`, i mierzyć
+rozmiar każdej przed dopisaniem; limit dotyczy sumy kart faktycznie wstrzykniętych do danego implementera, nie wszystkich kart warstwy.
+
+**Dane E1 po merge OBS-018/019.** W prawdziwych zdarzeniach są pierwsze 3 wpisy z `ruleHits` (2026-11-10, juz-ide-api-develop: weryfikator ×2
+i bramka, wszystkie GO, puste listy), czyli prompt działa i agenci raportują strukturalnie. NO-GO bramki z odciskiem: nadal 0, więc
+`loop-guard-replay` dalej daje 0 zatrzymań (próg decyzji o blokadzie: ≥ 20 zatrzymań i 0 fałszywych).
+
 ### E2, E3
 
 (do uzupełnienia po wykonaniu)
