@@ -3073,3 +3073,17 @@ Lint WL6 ostrzega przed `git diff` bez `--stat/--name-only/--numstat` (incydent 
 **Ryzyko do zmierzenia.** ORC-044 wklejał karty, żeby zamknąć ścieżkę eksploracji. W trybie pliku agent robi jeden dodatkowy Read, a treść w kontekście jest ta sama. Do sprawdzenia na pierwszym prawdziwym przebiegu: czy implementer rzeczywiście czyta plik kart jako pierwszy krok (kolejność wywołań w transkrypcie) i czy odsetek `gap:` w raportach się nie zmienia.
 
 **Claim.** Skrypt każdego przebiegu mieści się w oknie albo prepare kończy się exit 6 z przyczyną. Przy kartach wbudowanych (małe przebiegi) prompty są bajt w bajt takie jak przed zmianą (eval `orchestrate-flow`: minifikowany skrypt = te same prompty i raport co szablon).
+
+### ORC-163 — karty reguł per warstwa po tagach zamiast wszystkie dla wszystkich (2026-11-11)
+
+**Objaw.** TS-OBS-LOG-LINE-001 (api-3): 20 kart, 91 tys. znaków (~25 tys. tokenów), i każdy implementer, weryfikator i naprawa dostawał komplet. Karty siedzą w kontekście przez wszystkie tury agenta, więc płaci się za nie cache-read tyle razy, ile tur. Implementer testów dostawał karty repozytoriów, implementer infrastruktury karty handlerów, a przy pominiętej domenie wszyscy dostawali karty agregatów.
+
+**Przyczyna.** `cardsFor` oddawał warstwie karty `layer:<id>` plus WSZYSTKO, co weszło globalnie, a karty z triggerów słów kluczowych są globalne. Tagi kart (`**Tags**: "api:app"`) i warstw (`tags:` w runtime.yml) już opisywały adresata, ale nic ich nie czytało przy rozdziale kart.
+
+**Zmiana.** `scripts/lib/card-scope.mjs`: karta `always`/trigger dostaje `forLayers` (id warstw bazowych). Tag karty pasuje do tagu warstwy, gdy są równe albo jeden jest przedrostkiem drugiego po `:`. Pasuje do uruchamianych warstw → tylko do nich. Pasuje wyłącznie do warstw pominiętych → `[]` (nikt oprócz bramki). Bez dopasowania, z tagiem `any:*`, bez tagów, z analizy albo z warstwy → wszystkie, bez zmian. Warstwa bez `tags` dostaje wszystko. `cardsFor` w szablonie filtruje po `forLayers`; bramka końcowa używa `a.patterns` i dostaje komplet. Na danych z api-3: karty na warstwę 91 → 49 tys. (application), 40 tys. (infrastructure), 15 tys. (testing) znaków.
+
+**Czego nie ruszono.** Triggerów słów kluczowych (`handler`, `command`, `schema` łapią niemal każdy task) ani treści kart. Zawężenie czyni fałszywe trafienia tańszymi, ale ich nie usuwa. Treść kanonu w bramce i decyzje taska bez zmian.
+
+**Ryzyko do zmierzenia.** Weryfikator warstwy sprawdza teraz tylko karty swojej warstwy; reguła przekrojowa z tagiem bez dopasowania nadal idzie do wszystkich, ale karta z błędnym tagiem może zniknąć z warstwy, która jej potrzebuje. Miara: odsetek `gap:` w raportach implementerów i NO-GO bramki z ruleId karty, której warstwa nie dostała (bramka widzi komplet, więc taki przypadek wyjdzie dopiero tam).
+
+**Claim.** Tokeny kart w promptach implementera i weryfikatora spadają o ok. 45–80% zależnie od warstwy przy niezmienionej bramce końcowej. Test: `orchestrate-flow` (`card-scope-…`, `cards-for-layer-…`).
