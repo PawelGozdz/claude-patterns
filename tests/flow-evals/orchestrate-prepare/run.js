@@ -658,6 +658,65 @@ CASES.push({
   },
 });
 
+// Limit okna „Run a dynamic workflow?" to 200 000 znaków skryptu (Claude Code 2.1.322): dłuższy skrypt
+// = „approval is unavailable" i zejście do trybu ręcznego. Karty reguł idą do plików, gdy się nie mieszczą.
+const BIG_CARD = '# Karta: duża\n\n## Reguły\n' + '- reguła numer %N% — zawsze stosuj kamel-case w nazwach.\n'.repeat(3000);
+
+CASES.push({
+  name: 'emit-script-fits-approval-window-by-moving-cards-to-files',
+  build: () => {
+    const root = makeProject({ taskId: 'TS-FIX-001', analysis: analysisFm({}), task: taskFile('Dodaj aggregate.') });
+    write(root, '.claude/knowledge/patterns/cross-layer/conventions-pattern_summary.md', BIG_CARD);
+    return root;
+  },
+  check(r, root) {
+    const target = path.join(root, 'out', 'TS-FIX-001.workflow.mjs');
+    const e = run(root, 'TS-FIX-001', ['--emit-script', target]);
+    if (e.code !== 0) return 'emisja nie powiodła się: ' + e.stderr.trim().slice(0, 300);
+    const src = fs.readFileSync(target, 'utf8');
+    if (src.length > 200000) return `skrypt ${src.length} znaków > limit okna 200000`;
+    if (e.json.scriptChars !== src.length) return `scriptChars ${e.json.scriptChars} ≠ ${src.length}`;
+    if (JSON.stringify(e.json.offloaded) !== '["patterns"]') return 'oczekiwano wyniesienia samych kart: ' + JSON.stringify(e.json.offloaded);
+    if (src.includes('reguła numer')) return 'treść karty została w skrypcie mimo wyniesienia';
+    const all = path.join(root, 'out', 'TS-FIX-001.context', 'cards-__all.md');
+    if (!fs.existsSync(all) || !fs.readFileSync(all, 'utf8').includes('reguła numer')) return 'brak pliku z kartami albo bez treści: ' + all;
+    if (!/cardBundles[\s\S]{0,300}cards-__all\.md/.test(src)) return 'args bez cardBundles';
+    if (!e.json.warnings.some((w) => /wyniesiono patterns/.test(w))) return 'brak ostrzeżenia o wyniesieniu kart';
+    return null;
+  },
+});
+
+CASES.push({
+  name: 'emit-script-small-task-keeps-cards-inline',
+  build: () => makeProject({ taskId: 'TS-FIX-001', analysis: analysisFm({}), task: taskFile('Dodaj aggregate.') }),
+  check(r, root) {
+    const target = path.join(root, 'out', 'wf.mjs');
+    const e = run(root, 'TS-FIX-001', ['--emit-script', target]);
+    if (e.code !== 0) return 'emisja nie powiodła się: ' + e.stderr.trim().slice(0, 300);
+    if (JSON.stringify(e.json.offloaded) !== '[]') return 'mały przebieg wyniósł karty: ' + JSON.stringify(e.json.offloaded);
+    if (!fs.readFileSync(target, 'utf8').includes('nazwy w camelCase')) return 'karta nie jest wbudowana w skrypt';
+    if (fs.existsSync(path.join(root, 'out', 'wf.context'))) return 'powstał katalog z kartami bez potrzeby';
+    return null;
+  },
+});
+
+CASES.push({
+  name: 'emit-script-refuses-when-nothing-fits-approval-window',
+  build: () => makeProject({
+    taskId: 'TS-FIX-001',
+    analysis: analysisFm({}).replace('choice: "wybór"', 'choice: "' + 'długa decyzja '.repeat(20000) + '"'),
+    task: taskFile('Dodaj aggregate.'),
+  }),
+  check(r, root) {
+    const target = path.join(root, 'out', 'wf.mjs');
+    const e = run(root, 'TS-FIX-001', ['--emit-script', target]);
+    if (e.code !== 6) return `oczekiwano exit 6 (SIZE), było ${e.code}: ${e.stderr.trim().slice(0, 200)}`;
+    if (!/limit okna zatwierdzenia/.test(e.stderr)) return 'komunikat bez przyczyny: ' + e.stderr.slice(0, 200);
+    if (fs.existsSync(target)) return 'powstał skrypt, którego okno nie pokaże';
+    return null;
+  },
+});
+
 CASES.push({
   name: 'git-base-and-dirty-at-start-recorded',
   build: () => {

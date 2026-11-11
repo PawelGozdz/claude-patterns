@@ -116,20 +116,40 @@ function baseId(layer) {
   return layer.base || layer.id
 }
 
-function renderCards(cards, heading) {
+// Stopka kart wspólna dla trybu wbudowanego i trybu pliku (treść kart nie zmienia reguł poza nimi).
+const CARDS_FOOTER =
+  'NIE czytaj pełnych wzorców i nie szukaj ich w repo ani ' +
+  'w innych projektach. Gdy brakuje Ci PRZYKŁADU istniejącej implementacji (sygnatura ' +
+  'helpera, użycie biblioteki, referencyjny handler), zadaj JEDNO celowane zapytanie ' +
+  'retrievalu kodu (max 2 na cały Twój przebieg, zero gdy karta wystarcza). Gdy karta ' +
+  'nie rozstrzyga Twojego przypadku — napisz w raporcie `gap: <czego brakuje>` ' +
+  'i zaimplementuj najbliższy wariant zgodny z kartą. Luka w karcie to nasz błąd, ' +
+  'nie Twój powód do eksploracji.\n'
+
+// Plik z kartami dla warstwy bazowej (`a.cardBundles[<baseId>]`) albo dla całego przebiegu
+// (`a.cardBundles.__all`). Wypełnia go `orchestrate-prepare` TYLKO wtedy, gdy wbudowanie treści kart
+// w skrypt przekroczyłoby limit okna zatwierdzenia (scripts/lib/script-offload.mjs); wtedy
+// `patterns[].content` jest puste, a prompt wysyła agenta po komplet kart jednym Readem.
+function cardBundle(a, key) {
+  return (a.cardBundles && a.cardBundles[key]) || null
+}
+
+function renderCards(cards, heading, bundleFile) {
   if (!cards.length) return ''
+  const title = heading || 'obowiązujące dla tej warstwy'
+  if (bundleFile && cards.some((p) => typeof p.content !== 'string')) {
+    return '\n=== KARTY REGUŁ — ' + title + ' ===\n' +
+      'Karty (' + cards.length + ') leżą w jednym pliku: ' + bundleFile + '\n' +
+      cards.map((p) => '- ' + p.path + (p.card ? ' (karta reguł)' : ' (PEŁNY wzorzec — karty brak)')).join('\n') + '\n' +
+      'PIERWSZY RUCH, przed czymkolwiek innym: jedno wywołanie Read na ten plik, w całości ' +
+      '(bez offset/limit). To są Twoje reguły; bez nich nie zaczynaj pracy.\n' +
+      '=== koniec kart ===\n\nMasz komplet reguł w tym pliku. ' + CARDS_FOOTER
+  }
   const body = cards.map((p) =>
     '--- ' + p.path + (p.card ? ' (karta reguł)' : ' (PEŁNY wzorzec — karty brak)') + ' ---\n' + p.content,
   ).join('\n')
-  return '\n=== KARTY REGUŁ — ' + (heading || 'obowiązujące dla tej warstwy') + ' ===\n' + body +
-    '\n=== koniec kart ===\n\n' +
-    'Masz komplet reguł POWYŻEJ. NIE czytaj pełnych wzorców i nie szukaj ich w repo ani ' +
-    'w innych projektach. Gdy brakuje Ci PRZYKŁADU istniejącej implementacji (sygnatura ' +
-    'helpera, użycie biblioteki, referencyjny handler), zadaj JEDNO celowane zapytanie ' +
-    'retrievalu kodu (max 2 na cały Twój przebieg, zero gdy karta wystarcza). Gdy karta ' +
-    'nie rozstrzyga Twojego przypadku — napisz w raporcie `gap: <czego brakuje>` ' +
-    'i zaimplementuj najbliższy wariant zgodny z kartą. Luka w karcie to nasz błąd, ' +
-    'nie Twój powód do eksploracji.\n'
+  return '\n=== KARTY REGUŁ — ' + title + ' ===\n' + body +
+    '\n=== koniec kart ===\n\nMasz komplet reguł POWYŻEJ. ' + CARDS_FOOTER
 }
 
 // Koszt implementera to w ~90% cache-read, czyli kontekst rosnący z każdą turą (metryki
@@ -300,7 +320,7 @@ function buildImplPrompt(a, layer, attempt, violations, silentDeaths, probeRed) 
     'Silnik odrzuci ścieżkę spoza zakresu warstwy, bezwzględną, z `..`, ze spacją albo metaznakiem powłoki.'
   // Przy poprawce (violations) nie powtarzamy bloku SZUKANIE — implementer ma listę
   // plik/linia/reguła, nie ma czego lokalizować; blok tylko dokładałby kontekstu.
-  return spec + decisions + '\n\n' + scopeBlock(layer, a) + '\n' + renderCards(cardsFor(a, baseId(layer))) +
+  return spec + decisions + '\n\n' + scopeBlock(layer, a) + '\n' + renderCards(cardsFor(a, baseId(layer)), undefined, cardBundle(a, baseId(layer))) +
     (violations ? '' : SEARCH_BUDGET) + soft + silent + (probeRed ? RED_PROBE_RULE : '') + fix + minorFromAnalysis + noop + del +
     dirtyBlock(a, 'implementer') + NO_REVERT
 }
@@ -820,7 +840,7 @@ function buildVerifierPrompt(a, layer, probe, changedFiles, mode, noopClaim, pri
     'katalogu. Zdanie prozą zamiast ścieżki nie da się mechanicznie rozpoznać jako „poza ' +
     'zakresem" po drugiej stronie.\n'
   return existing + scopeBlock(layer, a) + '\n\n' + facts + files + removed + dirtyBlock(a, 'verifier') +
-    renderCards(cardsFor(a, baseId(layer))) +
+    renderCards(cardsFor(a, baseId(layer)), undefined, cardBundle(a, baseId(layer))) +
     '\nOceń zgodność zmiany z regułami powyżej. Zwróć werdykt GO albo NO_GO i listę naruszeń ' +
     '(plik, linia, reguła, co poprawić).\n' + scopeReminder + (a.autoFixMinor !== false ? MINOR_REMINDER : '') + CARD_PRECEDENCE + FINDINGS_FIELD +
     'CZYTAJ TYLKO zmienione pliki z listy (Read z offset/limit, gdy plik > 300 linii); plik spoza ' +
@@ -933,7 +953,7 @@ function buildFinalGatePrompt(a, checks, changedFiles, treeSource, knownGaps, pr
     // ORC-135: usunięte celowo krokiem mechanicznym — bramka nie szuka ich na dysku
     ((deletedFiles || []).length ? 'Pliki USUNIĘTE celowo (`git rm`, nie ma ich na dysku — nie zgłaszaj braku):\n  ' + deletedFiles.join('\n  ') + '\n' : '') +
     source + (a.gateDiff === true && changedFiles.length ? gateDiffBlock(a.baseSha) : '') + dirty + decisions + gapsBlock + renderCanon(a.canon) +
-    renderCards(a.patterns || [], 'wszystkie wzorce tego przebiegu') +
+    renderCards(a.patterns || [], 'wszystkie wzorce tego przebiegu', cardBundle(a, '__all')) +
     '\nZwróć werdykt GO albo NO_GO i listę naruszeń.\n' +
     (a.autoFixMinor !== false ? MINOR_REMINDER : '') + CARD_PRECEDENCE + FINDINGS_FIELD +
     // ORC-097: bramka oddawała średnio 27 tys. tokenów wyjścia na werdykt (najwięcej ze wszystkich

@@ -39,7 +39,7 @@ const ARGS = {
 };
 
 // round1: 'NO_GO' (domyślnie) albo 'GO'. Zwraca { report, calls, unknown }.
-async function runFlow(extra = {}, { round1 = 'NO_GO' } = {}) {
+async function runFlow(extra = {}, { round1 = 'NO_GO', template = TEMPLATE } = {}) {
   const calls = [];
   const unknown = [];
   let fingerprints = 0;
@@ -61,7 +61,7 @@ async function runFlow(extra = {}, { round1 = 'NO_GO' } = {}) {
     unknown.push(label + ' ' + JSON.stringify(Object.keys(props)));
     return {};
   };
-  const fn = new AsyncFunction('agent', 'log', 'args', 'phase', TEMPLATE);
+  const fn = new AsyncFunction('agent', 'log', 'args', 'phase', template);
   const report = await fn(agent, () => {}, Object.assign({}, ARGS, extra), () => {});
   return { report, calls, unknown };
 }
@@ -136,6 +136,50 @@ const CASES = [
       if (promptOf(r, 'final-gate-r2')) return 'runda 2 po GO w rundzie 1';
       if ('finalGateDelta' in r.report) return 'ślad delty bez rundy 2';
       return r.report.finalGate.verdict === 'GO' ? null : 'werdykt końcowy nie GO';
+    },
+  },
+  {
+    name: 'minified-emitted-script-behaves-identically-to-template',
+    async run() {
+      // Skrypt wysyłany do okna zatwierdzenia jest minifikowany (komentarze i wcięcia, limit 200 000 znaków).
+      // Dowód równoważności: te same wywołania agentów (etykieta + prompt + schemat) i ten sam raport.
+      const { minifyScript } = await import(path.join(REPO, 'scripts', 'lib', 'script-minify.mjs'));
+      const src = fs.readFileSync(path.join(REPO, 'scripts', 'workflow', 'orchestrate.template.mjs'), 'utf8');
+      const min = minifyScript(src);
+      if (min.text === null) return 'minifikacja niedostępna: ' + min.reason;
+      if (min.text.length > src.length * 0.7) return `minifikacja za słaba: ${src.length} → ${min.text.length}`;
+      const extra = { patterns: [{ path: 'p/a_summary.md', origin: 'always', card: true, content: '## Reguły\n  - wcięcie $& zostaje\n\n\n  - po pustych liniach' }] };
+      const base = await runFlow(extra);
+      const small = await runFlow(extra, { template: min.text.replace(/^export const meta/m, 'const meta') });
+      const sig = (r) => JSON.stringify(r.calls.map((c) => [c.label, c.prompt]));
+      if (sig(base) !== sig(small)) return 'prompty po minifikacji różnią się od szablonu';
+      if (JSON.stringify(base.report) !== JSON.stringify(small.report)) return 'raport po minifikacji różni się od szablonu';
+      return null;
+    },
+  },
+  {
+    name: 'offloaded-cards-send-agents-to-the-bundle-file-and-inline-stays-unchanged',
+    async run() {
+      const body = 'TREŚĆ-KARTY-NIE-MA-PRAWA-WEJŚĆ-DO-PROMPTU';
+      const inline = { patterns: [{ path: 'p/a_summary.md', origin: 'always', card: true, content: body }] };
+      const off = {
+        patterns: [{ path: 'p/a_summary.md', origin: 'always', card: true }],
+        cardBundles: { infrastructure: '/ctx/cards-infrastructure.md', __all: '/ctx/cards-__all.md' },
+      };
+      const a = await runFlow(inline);
+      const b = await runFlow(off);
+      if (b.unknown.length) return `atrapa nie zna schematu kroku: ${b.unknown.join('; ')}`;
+      if (!a.calls.some((c) => c.prompt.includes(body))) return 'tryb wbudowany przestał wklejać treść karty';
+      const impl = b.calls.find((c) => c.label === 'infrastructure-impl');
+      const ver = b.calls.find((c) => c.label === 'infrastructure-verify');
+      const gate = promptOf(b, 'final-gate');
+      for (const [n, pr, f] of [['implementer', impl && impl.prompt, 'cards-infrastructure.md'], ['weryfikator', ver && ver.prompt, 'cards-infrastructure.md'], ['bramka', gate, 'cards-__all.md']]) {
+        if (!pr) return `brak promptu: ${n}`;
+        if (!pr.includes('/ctx/' + f)) return `${n}: prompt bez ścieżki pliku kart ${f}`;
+        if (!/jedno wywołanie Read na ten plik/.test(pr)) return `${n}: prompt bez polecenia Read pliku kart`;
+        if (pr.includes(body)) return `${n}: treść karty weszła do promptu mimo wyniesienia`;
+      }
+      return b.report.finalGate && b.report.finalGate.verdict === 'GO' ? null : 'przepływ z wyniesionymi kartami nie kończy się GO';
     },
   },
 ];

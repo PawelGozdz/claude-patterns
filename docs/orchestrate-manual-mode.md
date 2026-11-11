@@ -6,7 +6,7 @@ Reguły: ORC-152 (termin werdyktu bramki), ORC-153 (ten tryb). Uzasadnienie i ob
 ## Kiedy
 
 Krok 3 komendy (`Workflow({ scriptPath })`) kończy się dialogiem „Run a dynamic workflow?" z jedyną opcją „No",
-a człowiek nie ma włączonego trybu workflow (skrypt ma ~300 KB, zatwierdzenie jest niedostępne). Dialog odrzucony,
+a człowiek nie ma włączonego trybu workflow. Rozmiar skryptu przestał być przyczyną od ORC-162 (prepare trzyma skrypt poniżej 200 000 znaków albo kończy się exit 6); jeśli dialog mimo to mówi „cannot be shown in full", sprawdź `scriptChars` w wyjściu prepare i wersję Claude Code. Dialog odrzucony,
 Workflow niedostępny albo człowiek każe iść ręcznie = ten tryb. To awaria środowiska, nie powód do pytania o zgodę
 ani do zmiany kompozycji. Kroki 1 i 2 (znacznik, `orchestrate-prepare.mjs`) wykonujesz normalnie; bramki wejścia
 (exit 2/3/4) nadal obowiązują.

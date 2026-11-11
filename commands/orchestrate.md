@@ -30,6 +30,7 @@ nie gdy chcesz ją WYKONAĆ.
                            --emit-script <scratchpad sesji, POZA repo>/{TASK-ID}.workflow.mjs [--overrides <plik.json>]
                          zero LLM: bramki wejścia + warstwy (+ units) + karty reguł + checks + budżety
    (poza repo, bo `eslint .` w korzeniu linitowałby skrypt: top-level `return` = „Parsing error", ORC-114)
+   skrypt ≤ 200 000 zn. (okno zatwierdzenia, ORC-162); exit 6 = nie mieści się → STOP, raport
 3. silnik              → Workflow({ scriptPath: <scriptPath z kroku 2> })   // args wbudowane
                          (bez --emit-script: Workflow({ scriptPath, args: <JSON z kroku 2> }))
                          kanoniczny skrypt: scripts/workflow/orchestrate.template.mjs
