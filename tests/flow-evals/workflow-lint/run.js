@@ -314,8 +314,26 @@ if (impl.no_changes_reason && probe.typecheck === 'fail') { log('BLOCKED_BY_PRIO
 log('ESCALATE')
 `;
 
+// WL6-EXEMPT (TASK-ORC-GATE-COST-001 E3, 2026-11-11): jawny wyjątek dla eksperymentu, w którym AGENT sam pobiera diff. Dwukierunkowo:
+// marker Z powodem w komentarzu nad (do trzech linii) wycisza regułę; marker bez powodu, za daleko albo brak markera zostawiają ostrzeżenie.
+const wl6Script = (comment, pad = '') => `
+export const meta = { name: 'gate-diff', description: 'x', phases: [] }
+const base = 'HEAD'
+${comment}${pad}const prompt = 'zacznij od JEDNEGO wywołania \`git diff -U25 HEAD\` i oceniaj z diffu'
+const v = await agent(prompt, { label: 'diff-reader', agentType: 'x-reader', maxTurns: 40 })
+if (!v) { log('ESCALATE'); return { escalated: true } }
+`;
+const WL6_EXEMPT_WITH_REASON = wl6Script('// WL6-EXEMPT: diff pobiera sama bramka, nie jest wklejany do cudzego promptu\n');
+const WL6_EXEMPT_WITHOUT_REASON = wl6Script('// WL6-EXEMPT:\n');
+const WL6_EXEMPT_TOO_FAR = wl6Script('// WL6-EXEMPT: powód\n', '\n\n\n\n');
+const WL6_NO_MARKER = wl6Script('');
+
 const CASES = [
   { name: 'canonical-orchestrate-script-passes-clean', src: CANONICAL, expectErrors: [], expectWarns: [] },
+  { name: 'wl6-diff-with-exempt-marker-and-reason-passes', src: WL6_EXEMPT_WITH_REASON, expectErrors: [], expectWarns: [] },
+  { name: 'wl6-exempt-marker-without-reason-still-warns', src: WL6_EXEMPT_WITHOUT_REASON, expectErrors: [], expectWarns: ['WL6'] },
+  { name: 'wl6-exempt-marker-too-far-above-still-warns', src: WL6_EXEMPT_TOO_FAR, expectErrors: [], expectWarns: ['WL6'] },
+  { name: 'wl6-full-diff-without-marker-warns', src: WL6_NO_MARKER, expectErrors: [], expectWarns: ['WL6'] },
   { name: 'wl6-diff-piped-to-counter-passes', src: WL6_DIFF_PIPED_TO_COUNTER, expectErrors: [], expectWarns: [] },
   { name: 'wl6-diff-piped-to-grep-without-count-warns', src: WL6_DIFF_PIPED_TO_GREP_WITHOUT_COUNT, expectErrors: [], expectWarns: ['WL6'] },
   { name: 'good-script-passes', src: GOOD, expectErrors: [], expectWarns: [] },

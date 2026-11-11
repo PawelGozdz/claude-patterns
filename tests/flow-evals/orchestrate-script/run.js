@@ -1324,6 +1324,33 @@ const CASES = (c) => [
       return null;
     },
   },
+  // TASK-ORC-GATE-COST-001 E3 (ORC-161): tryb diffu bramki jest opcją; bez niej prompt jest bajt w bajt taki jak dotąd
+  {
+    name: 'final-gate-diff-mode-is-opt-in-and-default-prompt-is-unchanged',
+    run() {
+      const args = (extra) => Object.assign({}, ARGS, { baseSha: 'abc1234' }, extra);
+      const files = ['src/a.ts', 'src/b.ts'];
+      const base = c.buildFinalGatePrompt(args({}), [], files, 'tree', [], null);
+      if (/TRYB DIFFU/.test(base)) return 'domyślny prompt bramki ma tryb diffu';
+      if (c.buildFinalGatePrompt(args({ gateDiff: false }), [], files, 'tree', [], null) !== base) return 'gateDiff:false zmienił prompt';
+      const on = c.buildFinalGatePrompt(args({ gateDiff: true }), [], files, 'tree', [], null);
+      if (!/TRYB DIFFU/.test(on)) return 'gateDiff:true nie dodał trybu diffu';
+      if (!/JEDNEGO wywołania `git diff -U25 abc1234`/.test(on)) return 'prompt bez polecenia diffu z bazą przebiegu';
+      if (!/Pliki NOWE \(nieśledzone\)/.test(on)) return 'prompt nie mówi, że nowych plików nie ma w diffie';
+      if (!/`Read` używaj tylko do kontekstu poza nim/.test(on)) return 'prompt nie ogranicza Read do kontekstu poza diffem';
+      if (!/Zakres oceny bez zmian/.test(on)) return 'prompt nie mówi, że zakres oceny się nie zmienia';
+      // pierwszy fragment prompta (lista plików, limity) bez zmian: tryb tylko DODAJE blok
+      const stripped = on.replace(/TRYB DIFFU[^\n]*\n/, '');
+      if (stripped !== base) return 'tryb diffu zmienił coś poza dodanym blokiem';
+      // brak zmienionych plików: nie ma czego diffować
+      if (/TRYB DIFFU/.test(c.buildFinalGatePrompt(args({ gateDiff: true }), [], [], 'tree', [], null))) return 'tryb diffu przy pustej liście zmian';
+      // kontrola WL6: wyjątek ma powód i stoi nad miejscem użycia
+      const src = fs.readFileSync(path.join(REPO, 'scripts', 'workflow', 'orchestrate.template.mjs'), 'utf8');
+      if (!/WL6-EXEMPT: E3, diff pobiera bramka/.test(src)) return 'brak jawnego wyjątku WL6 z powodem w szablonie';
+      if (!/a\.gateDiff === true/.test(src)) return 'szablon nie czyta opcji gateDiff';
+      return null;
+    },
+  },
   // ORC-120: `build` w checks.finalGate liczy się jak typecheck (sonda mapuje go na to pole); sonda dostaje wskazówkę o timeoucie
   {
     name: 'final-probe-build-check-maps-to-typecheck-and-probe-warns-about-timeout',
