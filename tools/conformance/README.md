@@ -5,7 +5,14 @@ Deterministyczny audyt spójności wzorców (AST TypeScript, bez embeddingów i 
 ## Reguły ciała pliku i ratchet
 Oprócz kształtu klasy (`extends`, dekorator) narzędzie sprawdza reguły o CIELE pliku (`bodyRules` w `rules.json`):
 `CH-NO-THROW` (zakaz `throw` w całym pliku handlera komendy/zapytania, także w metodach prywatnych) i
-`CH-NO-BULLMQ` (zakaz importu `bullmq`/`@nestjs/bullmq` i `@InjectQueue` w handlerze). Zakres to WYŁĄCZNIE
+`CH-NO-BULLMQ` (zakaz importu `bullmq`/`@nestjs/bullmq` i `@InjectQueue` w handlerze). Od ORC-158 dochodzą cztery reguły z pamięci
+bramki końcowej (detektory w `body-detectors.mjs`): `BQ-ONFAILED-DECORATOR` (`onFailed()` w klasie z `extends` bez
+`@OnWorkerEvent('failed')`), `BQ-SAFERUN-COMMANDBUS` (`safeRun(() => commandBus.execute())` bez `throw` w callbacku, w
+`event-handlers/*integration*.handler.ts`), `AUDIT-EVENTDATA-CANONICAL` (klucz kanoniczny `BaseAuditHandler` w literale `eventData`
+przekazanym do `createAuditEntry`; lista `keys` jest z rodziny juz-ide-api, inny projekt nadpisuje ją w `.claude/conformance.json`) i
+`BUILD-NO-IMPORT-OUTSIDE-SRC` (import względny wychodzący poza `src/` pakietu). Każda ma marker wyjątku z powodem
+(`WORKER-EVENT-EXCEPTION`, `SAFERUN-EXCEPTION`, `AUDIT-EVENTDATA-EXCEPTION`, `OUTSIDE-SRC-EXCEPTION`). Granica: analiza jednego pliku, więc
+`eventData` zbudowane w helperze nie jest widoczne. Zakres reguł `CH-*` to WYŁĄCZNIE
 `application/commands|queries/**/handler.ts`; event handlery i procesory BullMQ są poza zakresem (rethrow dla retry jest legalny).
 
 ```bash

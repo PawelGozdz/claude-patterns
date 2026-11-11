@@ -10,6 +10,7 @@
 // ratchet siedzą w baseline.mjs, żeby ten plik dało się testować bez repozytorium.
 import ts from "typescript";
 import { createHash } from "node:crypto";
+import { DETECTORS } from "./body-detectors.mjs";
 
 const norm = (s) => s.replace(/\s+/g, " ").trim();
 const short = (s, n = 110) => (s.length > n ? s.slice(0, n - 1) + "…" : s);
@@ -92,6 +93,9 @@ export function analyzeBody(relPath, source, rules) {
 
   const visit = (n) => {
     for (const rule of active) {
+      // detektory z body-detectors.mjs (dekorator metody, opakowane wywołanie, klucz w literale, import poza korzeniem)
+      const detector = DETECTORS[rule.detect];
+      if (detector) for (const hit of detector(n, rule, { sf, relPath }) ?? []) record(rule, hit.node, hit.text);
       if (rule.detect === "throw" && ts.isThrowStatement(n)) record(rule, n, n.getText(sf));
       if (rule.detect === "import") {
         const modules = rule.modules ?? [];

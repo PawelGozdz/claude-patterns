@@ -529,6 +529,77 @@ const CASES = [
   },
 ];
 
+// ── reguły klasy A z pamięci bramki (TASK-ORC-GATE-COST-001, E4) ─────────────────────────────────
+// Każda reguła: dodatnio (łapie), ujemnie (legalny kształt przechodzi), wyjątek z powodem, dług w baseline.
+// `base` = treść w commicie bazowym (null = plik nowy), `now` = drzewo robocze.
+function bodyCase(name, file, { base = null, now, expectNew = 0, expectExcepted = 0 }) {
+  CASES.push({
+    name,
+    run() {
+      const d = mkRepo(base === null ? { 'README.md': 'x\n' } : { [file]: base });
+      put(d, file, now);
+      const r = probe(d);
+      const c = counts(r);
+      if (c.new !== expectNew) return `new=${c.new}, oczekiwano ${expectNew}\n${r.out.slice(0, 500)}`;
+      if (c.excepted !== expectExcepted) return `excepted=${c.excepted}, oczekiwano ${expectExcepted}`;
+      if (expectNew === 0 && r.status !== 0) return `exit ${r.status}, oczekiwano 0`;
+      if (expectNew > 0 && r.status !== 1) return `exit ${r.status}, oczekiwano 1`;
+      return null;
+    },
+  });
+}
+
+const PROC = 'src/contexts/x/infrastructure/queues/audit.processor.ts';
+const OVR = (dec) => `import { OnWorkerEvent } from '@nestjs/bullmq';\nexport class P extends BaseQueueProcessor {\n  ${dec}\n  override async onFailed(job: unknown) { return job; }\n}\n`;
+bodyCase('onfailed-override-without-decorator-is-flagged', PROC, { now: OVR(''), expectNew: 1 });
+bodyCase('onfailed-with-failed-decorator-is-clean', PROC, { now: OVR("@OnWorkerEvent('failed')") });
+bodyCase('onfailed-with-other-event-decorator-is-flagged', PROC, { now: OVR("@OnWorkerEvent('completed')"), expectNew: 1 });
+bodyCase('onfailed-in-base-class-without-extends-is-clean', PROC, { now: 'export class BaseQueueProcessor {\n  async onFailed(job: unknown) { return job; }\n}\n' });
+bodyCase('onfailed-decorator-removed-since-baseline-is-new', PROC, { base: OVR("@OnWorkerEvent('failed')"), now: OVR(''), expectNew: 1 });
+bodyCase('onfailed-old-debt-stays-baseline', PROC, { base: OVR(''), now: OVR('') + '// dopisek\n' });
+// Wyjątek liczy się, gdy jest już w baseline (dopisany w przebiegu = `exception-new`, wymaga zgody człowieka przez commit).
+const WAIVED_PROC = "export class P extends BaseQueueProcessor {\n  // WORKER-EVENT-EXCEPTION: hook podpina klasa bazowa przez mixin\n  override async onFailed(job: unknown) { return job; }\n}\n";
+bodyCase('onfailed-waiver-with-reason', PROC, { base: WAIVED_PROC, now: WAIVED_PROC + '// dopisek\n', expectExcepted: 1 });
+bodyCase('non-processor-file-with-onfailed-is-out-of-scope', 'src/contexts/x/infrastructure/queues/audit.service.ts', { now: OVR('') });
+
+const INT = 'src/contexts/x/application/event-handlers/token-integration.handler.ts';
+const SR = (body) => `export class H {\n  async handle(c: any) {\n    ${body}\n  }\n}\n`;
+bodyCase('saferun-around-commandbus-execute-is-flagged', INT, { now: SR('const [e, r] = await safeRun(() => this.commandBus.execute(c));'), expectNew: 1 });
+bodyCase('saferun-block-body-without-throw-is-flagged', INT, { now: SR('await safeRun(async () => { const r = await this.commandBus.execute(c); return r; });'), expectNew: 1 });
+bodyCase('saferun-with-throw-on-failure-is-clean', INT, { now: SR('await safeRun(async () => { const r = await this.commandBus.execute(c); if (r.isFailure) throw r.error; return r; });') });
+bodyCase('saferun-around-other-call-is-clean', INT, { now: SR('await safeRun(() => this.service.run(c));') });
+bodyCase('commandbus-execute-outside-saferun-is-clean', INT, { now: SR('const r = await this.commandBus.execute(c); if (r.isFailure) throw r.error;') });
+bodyCase('saferun-in-handler-without-integration-in-name-is-out-of-scope', 'src/contexts/x/application/event-handlers/user.handler.ts', { now: SR('await safeRun(() => this.commandBus.execute(c));') });
+const WAIVED_SR = SR('// SAFERUN-EXCEPTION: wynik sprawdza wołający\n    await safeRun(() => this.commandBus.execute(c));');
+bodyCase('saferun-waiver-with-reason', INT, { base: WAIVED_SR, now: WAIVED_SR + '// dopisek\n', expectExcepted: 1 });
+bodyCase('saferun-old-debt-stays-baseline', INT, { base: SR('await safeRun(() => this.commandBus.execute(c));'), now: SR('await safeRun(() => this.commandBus.execute(c));') + '// dopisek\n' });
+
+const AUD = 'src/contexts/x/application/event-handlers/audit.handler.ts';
+const AE = (props) => `export class A extends BaseAuditHandler {\n  async h(e: any) {\n    await this.createAuditEntry('X', {\n      userId: e.id,\n      eventData: {\n${props}\n      },\n    });\n  }\n}\n`;
+bodyCase('audit-eventdata-canonical-key-is-flagged', AUD, { now: AE("        reason: e.reason,\n        actorId: e.actor,\n        until: e.until,"), expectNew: 2 });
+bodyCase('audit-eventdata-shorthand-canonical-key-is-flagged', AUD, { now: AE('        reason,'), expectNew: 1 });
+bodyCase('audit-eventdata-noncolliding-keys-are-clean', AUD, { now: AE('        denialReason: e.reason,\n        operatorId: e.op,') });
+bodyCase('audit-eventdata-built-by-helper-is-not-seen', AUD, { now: "export class A {\n  async h(e: any) {\n    await this.createAuditEntry('X', { userId: 1, eventData: this.build(e) });\n  }\n}\n" });
+bodyCase('audit-canonical-key-outside-eventdata-is-clean', AUD, { now: "export class A {\n  async h(e: any) {\n    await this.createAuditEntry('X', { userId: 1, suspensionReason: e.reason, eventData: { until: 1 } });\n  }\n}\n" });
+bodyCase('audit-eventdata-in-other-call-is-clean', AUD, { now: "export class A {\n  async h(e: any) {\n    await this.other('X', { eventData: { reason: 1 } });\n  }\n}\n" });
+const WAIVED_AE = AE("        // AUDIT-EVENTDATA-EXCEPTION: reason niesie też suspensionReason\n        reason: e.reason,");
+bodyCase('audit-eventdata-waiver-with-reason', AUD, { base: WAIVED_AE, now: WAIVED_AE + '// dopisek\n', expectExcepted: 1 });
+bodyCase('audit-eventdata-old-debt-stays-baseline', AUD, { base: AE('        reason: e.reason,'), now: AE('        reason: e.reason,') + '// dopisek\n' });
+
+bodyCase('import-outside-src-is-flagged', 'src/main.ts', { now: "import pkg from '../package.json';\nexport const v = pkg;\n", expectNew: 1 });
+bodyCase('import-inside-src-is-clean', 'src/a/b.ts', { now: "import { x } from './c';\nimport { y } from '../shared/z';\nexport { x, y };\n" });
+bodyCase('import-two-levels-out-of-src-is-flagged', 'src/a/b.ts', { now: "import pkg from '../../package.json';\nexport const v = pkg;\n", expectNew: 1 });
+bodyCase('require-and-reexport-outside-src-are-flagged', 'src/a/b.ts', { now: "export * from '../../shared';\nexport const r = require('../../x.json');\nexport const d = () => import('../../../y');\n", expectNew: 3 });
+// korzeniem jest `src/` pakietu (apps/api/src), nie korzeń repo: `../shared/z` zostaje w środku, `../../shared/z` wychodzi
+bodyCase('monorepo-src-root-is-the-package-src', 'apps/api/src/a/b.ts', { now: "import { y } from '../shared/z';\nimport pkg from '../../../package.json';\nexport { y, pkg };\n", expectNew: 1 });
+bodyCase('monorepo-sibling-dir-of-src-is-outside', 'apps/api/src/a/b.ts', { now: "import { y } from '../../shared/z';\nexport { y };\n", expectNew: 1 });
+bodyCase('bare-package-specifier-is-clean', 'src/a/b.ts', { now: "import { Injectable } from '@nestjs/common';\nimport fs from 'node:fs';\nexport { Injectable, fs };\n" });
+bodyCase('file-outside-src-is-out-of-scope', 'scripts/tool.ts', { now: "import pkg from '../package.json';\nexport const v = pkg;\n" });
+bodyCase('spec-file-outside-src-import-is-ignored', 'src/a/b.spec.ts', { now: "import { h } from '../../test/helper';\nexport { h };\n" });
+const WAIVED_OUT = "// OUTSIDE-SRC-EXCEPTION: rootDir ustawiony w tsconfig.build.json\nimport pkg from '../package.json';\nexport const v = pkg;\n";
+bodyCase('outside-src-waiver-with-reason', 'src/main.ts', { base: WAIVED_OUT, now: WAIVED_OUT + '// dopisek\n', expectExcepted: 1 });
+bodyCase('outside-src-old-debt-stays-baseline', 'src/main.ts', { base: "import pkg from '../package.json';\nexport const v = pkg;\n", now: "import pkg from '../package.json';\nexport const v = pkg;\n// dopisek\n" });
+
 let failed = 0;
 for (const t of CASES) {
   let err;

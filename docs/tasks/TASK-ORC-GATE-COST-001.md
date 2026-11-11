@@ -157,7 +157,7 @@ zatrzymanie słuszne, jedno fałszywe: następny run dał GO).
 - Worktree `_claude-patterns-gate-cost` nie istniał; praca w głównym drzewie, gdzie branch był już wyciągnięty.
 
 **Co dalej dla E1.** Włączenie blokady wymaga danych: po nowych przebiegach (z `FINDINGS_FIELD`) uruchomić `loop-guard-replay.mjs` i
-zdecydować po ≥ 20 zatrzymaniach. Domyślne `--block-repeat` to osobna reguła (ORC-158+).
+zdecydować po ≥ 20 zatrzymaniach. Domyślne `--block-repeat` to osobna reguła (ORC-159+).
 
 ### E4, krok 1: klasyfikacja wpisów pamięci bramki (2026-11-10, tylko odczyt)
 
@@ -267,6 +267,28 @@ Weryfikacji w kodzie przed zamianą na kartę wymagają #52 i #54 (mogą być ni
 jest właścicielem katalogu (jedno źródło w claude-patterns zamiast ośmiu kopii), inaczej pamięci dalej będą się rozjeżdżać; pierwszy pilotaż
 sensownie zacząć od jednej grupy (np. geo punkt P, 7 wpisów, lub bramki fail-closed). (3) Pomiar E4 (udział `ruleId = new`, NO-GO pierwszej
 bramki, baza 47% n=130) wymaga ok. 100 nowych przebiegów, więc potrwa tygodnie.
+
+### E4, krok 2: reguły klasy A w `tools/conformance` (2026-11-10, ORC-158)
+
+**Zrobione (4 z 6).** `body-detectors.mjs` (cztery detektory AST wpięte w `analyzeBody`) i reguły domyślne w `rules.json`:
+`BQ-ONFAILED-DECORATOR` (#26), `BQ-SAFERUN-COMMANDBUS` (#4), `AUDIT-EVENTDATA-CANONICAL` (#2), `BUILD-NO-IMPORT-OUTSIDE-SRC` (#28). Każda
+z markerem wyjątku z powodem, w ratchecie jak `CH-NO-THROW` (stary dług nie blokuje). 36 przypadków w evalu `conformance` (dodatnio,
+ujemnie, wyjątek, dług w baseline, monorepo); cztery mutacje detektorów zaczerwieniają właściwe przypadki.
+
+**Pomiar na prawdziwym kodzie** (`--dir src` w juz-ide-api-1, tylko odczyt): `BQ-ONFAILED-DECORATOR` 0, `BQ-SAFERUN-COMMANDBUS` 0,
+`BUILD-NO-IMPORT-OUTSIDE-SRC` 0, **`AUDIT-EVENTDATA-CANONICAL` 13**. Dwa sprawdzone (reputation `USER_SUSPENDED`, auth `USER_DELETED`) są
+prawdziwe: `eventData.reason` bez `suspensionReason`/`removalReason`/`deactivationReason` w `data`, więc kanoniczne `reason` (`undefined`)
+nadpisuje powód i znika z wpisu audytu. To realny dług w juz-ide-api (wpisy Tier-1 bez powodu), do decyzji tam; ratchet zostawia go w baseline.
+Trzy reguły z zerem trafień nie dowodzą, że działają; działanie dowodzą testy. Pozostałych 11 trafień nie sprawdziłam jednostkowo.
+
+**Odstępstwa.**
+- #22 (duplikat `describe` handlera) i #33 (ślady usuniętej trasy) NIE weszły: oba wymagają porównania wielu plików, a silnik reguł ciała
+  analizuje jeden. Plan z klasyfikacji („dwie ostatnie najpierw w trybie `warn`") odpada razem z założeniem: to osobny check międzyplikowy.
+- Reguły są domyślne w `rules.json`, więc instancje dostają je przez symlink. Lista `keys` w `AUDIT-EVENTDATA-CANONICAL` odwzorowuje
+  `BaseAuditHandler` z juz-ide-api; w innym projekcie reguła jest nieszkodliwa (brak `createAuditEntry`), a inną bazę da się wskazać w
+  `.claude/conformance.json`.
+- Możliwy fałszywy alarm: handler podaje ten sam powód także w polu typowanym (kolizja wtedy nieszkodliwa). Nieobsługiwane: `eventData`
+  zbudowane w helperze.
 
 ### E2, E3
 
