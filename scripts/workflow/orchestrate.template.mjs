@@ -942,7 +942,8 @@ function buildFinalGatePrompt(a, checks, changedFiles, treeSource, knownGaps, pr
 // Instrukcja leży w prompcie przebiegu, a nie w definicjach agentów — nie zwiększa kontekstu stałego i obejmuje
 // też lokalne kopie weryfikatorów w projektach. Wolny tekst zostaje w `violations` (z niego korzysta decideVerdict).
 const FINDINGS_FIELD =
-  'POLE `findings` (obok `violations`, nie zamiast): jeden wpis `{ruleId, line}` na każde naruszenie. `ruleId` to ' +
+  'POLE `findings` (obok `violations`, nie zamiast): jeden wpis `{ruleId, line, file}` na każde naruszenie (`file` = ' +
+  'ścieżka względem korzenia repo, bez `..`). `ruleId` to ' +
   'identyfikator reguły z karty (np. `A1`) albo nazwa znanej pułapki z Twojej pamięci; ustalenie bez znanego ' +
   'identyfikatora dostaje `ruleId: "new"`. Brak naruszeń = `findings: []`. `rules_checked` = liczba reguł, które ' +
   'faktycznie sprawdziłeś.\n'

@@ -24,8 +24,26 @@ export function normalizeRuleId(raw) {
   return SAFE_RULE_ID.test(id) ? id : null;
 }
 
+export const MAX_FILE_LENGTH = 200;
+
 /**
- * Surowe `findings` z werdyktu → lista `{ruleId, line?}` zgodna ze schematem zdarzeń.
+ * Ścieżka pliku z ustalenia (TASK-OBS-019): względna, z ukośnikami, bez `..`, bez znaków sterujących i bez `\`.
+ * Zwraca null, gdy wartość nie spełnia warunków: ustalenie zostaje (bez `file`), bo liczba ustaleń ma być prawdziwa,
+ * a niepewna ścieżka nie może trafić do zdarzenia. `file` żyje wyłącznie w lokalnych surowych zdarzeniach (ADR 0012, aneks
+ * TASK-OBS-019); rollup i eksport nigdy go nie niosą.
+ */
+export function normalizeRuleFile(raw) {
+  if (typeof raw !== 'string') return null;
+  const file = raw.trim().replace(/^\.\//, '');
+  if (!file || file.length > MAX_FILE_LENGTH || file.startsWith('/')) return null;
+  // eslint-disable-next-line no-control-regex
+  if (/[\\\u0000-\u001f]/.test(file)) return null;
+  if (file.split('/').some((segment) => segment === '..')) return null;
+  return file;
+}
+
+/**
+ * Surowe `findings` z werdyktu → lista `{ruleId, line?, file?}` zgodna ze schematem zdarzeń.
  * Zwraca null, gdy pole nie jest tablicą (= weryfikator nie raportował); `[]` znaczy „raportował, zero ustaleń".
  * Wpis jako string traktowany jest jak `{ruleId: string}`; wpis, którego nie da się odczytać, nie znika
  * (liczba ustaleń ma być prawdziwa), tylko staje się `new`. Bez deduplikacji: pięć naruszeń tej samej
@@ -39,7 +57,8 @@ export function normalizeRuleHits(raw) {
     const obj = item && typeof item === 'object' && !Array.isArray(item) ? item : {};
     const ruleId = normalizeRuleId(obj.ruleId) || UNKNOWN_RULE;
     const line = Number.isInteger(obj.line) && obj.line >= 1 ? obj.line : null;
-    out.push(line ? { ruleId, line } : { ruleId });
+    const file = normalizeRuleFile(obj.file);
+    out.push({ ruleId, ...(line ? { line } : {}), ...(file ? { file } : {}) });
     if (out.length >= MAX_RULE_HITS) break;
   }
   return out;

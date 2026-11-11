@@ -3028,3 +3028,13 @@ produktowe oceniamy raz, na całości zmiany, żeby nie płacić za nie w każde
 **Czego nie zrobiono.** Dwie z sześciu reguł klasy A (duplikat `describe` handlera w dwóch plikach specyfikacji; ślady usuniętej trasy w `authorization-matrix.yaml` i `test/load`) wymagają porównania wielu plików, a silnik reguł ciała analizuje jeden. Wchodzą jako osobny, międzyplikowy check, nie jako detektory tego modułu.
 
 **Claim.** Cztery wzorce przestają trafiać do bramki jako ustalenia. Miarą jest udział `ruleId` `onfailed-requires-onworkerevent`, `basecommandhandler-silentfail-with-saferun`, `audit-eventdata-canonical-collision` i `out-of-src-import-shifts-build-root` w `ruleHits` bramki końcowej (ORC-156): po wdrożeniu w nowych przebiegach oczekiwane 0, a każde trafienie to luka reguły albo wyjątek bez markera.
+
+### ORC-159 — ścieżka pliku w ustaleniach werdyktu, tylko w lokalnych zdarzeniach (2026-11-11)
+
+**Objaw.** `ruleHits` niosło `ruleId` i `line`, ale nie plik, więc nie dało się zestawić ustaleń weryfikatora z lintem na poziomie miejsca (`plik:linia`). Właściciel juz-ide-api potwierdził, że klasyfikacja trafień jako prawdziwe lub fałszywe tego wymaga (TS-TOOLING-006); samo `ruleId` per warstwa wystarcza tylko do liczenia pokrycia reguł.
+
+**Zmiana.** `FINDINGS_FIELD` (prompt weryfikatora warstwy i bramki końcowej) prosi o `{ruleId, line, file}`, gdzie `file` to ścieżka względem korzenia repo bez `..`. `normalizeRuleHits` przepuszcza `file` przez `normalizeRuleFile` (względna, z `/`, bez `..`, bez `\` i znaków sterujących, do 200 znaków; niepasująca jest pomijana, ustalenie zostaje). Schemat zdarzenia v1 ma opcjonalne `step.ruleHits[].file`; aneks do ADR 0012 opisuje wyjątek od §3. Rollup i eksport nie niosą `file` (liczą tylko `ruleId`), co pilnują testy. `decideVerdict` i `ruleSignature` nie czytają `file`.
+
+**Czego nie zrobiono.** Parser wyjścia lintu w sondzie (zakres B w TASK-OBS-019): odpada, bo juz-ide-api ma własny dziennik cienia `lint-ddd-shadow.jsonl` z `file`, `ruleId`, `line`, pisany przez hook `file-check`. Mapowanie `ruleId` lintu na `ruleId` weryfikatora (karty reguł, wpisy pamięci bramki) nie istnieje; buduje je właściciel juz-ide-api w TS-TOOLING-006 (zamrożone do końca okna wstrzymania, BDR-134). Nie potwierdzono, że hook `file-check` odpala się po zapisach implementerów `/orchestrate`.
+
+**Claim.** Brak: to zapis danych, nie zmiana zachowania (prompt prosi o jedno pole więcej, `decideVerdict` go nie czyta). Miarą jest udział `ruleHits` z `file` w NO-GO bramki i weryfikatora w lokalnych zdarzeniach po nowych przebiegach.
