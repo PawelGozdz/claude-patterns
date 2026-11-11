@@ -279,7 +279,13 @@ ujemnie, wyjątek, dług w baseline, monorepo); cztery mutacje detektorów zacze
 `BUILD-NO-IMPORT-OUTSIDE-SRC` 0, **`AUDIT-EVENTDATA-CANONICAL` 13**. Dwa sprawdzone (reputation `USER_SUSPENDED`, auth `USER_DELETED`) są
 prawdziwe: `eventData.reason` bez `suspensionReason`/`removalReason`/`deactivationReason` w `data`, więc kanoniczne `reason` (`undefined`)
 nadpisuje powód i znika z wpisu audytu. To realny dług w juz-ide-api (wpisy Tier-1 bez powodu), do decyzji tam; ratchet zostawia go w baseline.
-Trzy reguły z zerem trafień nie dowodzą, że działają; działanie dowodzą testy. Pozostałych 11 trafień nie sprawdziłam jednostkowo.
+Trzy reguły z zerem trafień nie dowodzą, że działają; działanie dowodzą testy. Pozostałe 11 sprawdzone 2026-11-11 programowo (AST: czy to samo
+pole jest też podane w polu typowanym `data`, z którego `BaseAuditHandler` wypełnia klucz kanoniczny): **13 z 13 prawdziwych, 0 fałszywych**.
+W żadnym wywołaniu nie ma `suspensionReason`/`removalReason`/`deactivationReason`/`actorType`/`expiresAt`/`verificationLevel`, więc wartość
+z `eventData` jest nadpisana przez `undefined`. Dotyczy: `reason` (USER_DELETED, LOCAL_LAYER_SCOPING_DENIED, GROUP_ARCHIVED, GROUP_MEMBER_LEFT,
+GROUP_LEADER_TRANSFERRED, DEVICE_KEY_REVOKED, RISK_FLAG_RAISED, USER_SUSPENDED, USER_UNSUSPENDED), `expiresAt` (SESSION_CREATED), `actorType`
+(BEHAVIOR_SIGNAL_RECORDED), `previousVerificationLevel` i `verificationLevel` (SIGNAL_POLICY_MIN_VERIFICATION_LEVEL_CHANGED). To analiza
+statyczna; nie uruchamiano testów ani bazy, więc nie sprawdzono, czy któryś test lub konsument audytu polega na dzisiejszym zachowaniu.
 
 **Odstępstwa.**
 - #22 (duplikat `describe` handlera) i #33 (ślady usuniętej trasy) NIE weszły: oba wymagają porównania wielu plików, a silnik reguł ciała
