@@ -1297,6 +1297,33 @@ const CASES = (c) => [
       return null;
     },
   },
+  // TASK-ORC-GATE-COST-001 E2 (ORC-160): runda 2 w trybie delty sprawdza poprawione pozycje i pliki z naprawy; bez opcji tekst się nie zmienia
+  {
+    name: 'final-round-2-delta-mode-is-opt-in-and-default-text-is-unchanged',
+    run() {
+      const items = ['a.ts: błąd', 'b.ts: drugi'];
+      const skipped = ['testing: KANBAN.md leży poza dirs warstwy'];
+      const base = c.finalRoundExtra(items, skipped);
+      if (c.finalRoundExtra(items, skipped, null) !== base || c.finalRoundExtra(items, skipped, undefined) !== base) return 'brak delty zmienił tekst rundy 2';
+      if (c.finalRoundExtra(items, skipped, { files: [] }) !== base) return 'pusta lista plików delty zmieniła tekst (powinien wrócić pełny przegląd)';
+      if (!/Zweryfikuj poprawki i całość/.test(base) || /TRYB DELTY/.test(base)) return 'domyślna runda 2 nie czyta całości';
+      const d = c.finalRoundExtra(items, skipped, { files: ['src/a.ts', 'src/b.ts'], ruleIds: ['a1', 'onfailed-requires-onworkerevent'] });
+      if (!/TRYB DELTY/.test(d) || !/- src\/a\.ts\n- src\/b\.ts/.test(d)) return 'delta bez listy plików z naprawy';
+      if (/Zweryfikuj poprawki i całość/.test(d)) return 'delta nadal każe czytać całość';
+      if (!/NIE wpisuj ich do `unverified_scope`/.test(d)) return 'delta nie chroni przed wymuszonym NO_GO z unverified_scope (ORC-123) dla plików poza deltą';
+      if (!/reguły z rundy 1: a1, onfailed-requires-onworkerevent/.test(d)) return 'delta bez identyfikatorów reguł z rundy 1';
+      if (!/POMINĄŁ/.test(d) || !/1\. a\.ts: błąd/.test(d)) return 'delta zgubiła poprzednie ustalenia albo opis pominiętych pozycji';
+      if (!/konsumentów i importerów/.test(d)) return 'delta nie każe sprawdzić konsumentów zmienionych kontraktów';
+      // identyfikatory reguł z findings: napis albo { ruleId }, bez `new`, unikalne; zły kształt nie wywala
+      const ids = c.findingRuleIds(['A1', { ruleId: 'b2' }, 'new', { ruleId: 'b2' }, 42, null, {}]);
+      if (JSON.stringify(ids) !== JSON.stringify(['A1', 'b2'])) return `findingRuleIds: ${JSON.stringify(ids)}`;
+      if (c.findingRuleIds(undefined).length || c.findingRuleIds('x').length) return 'findingRuleIds bez tablicy powinno dać []';
+      // opcja jest naprawdę użyta przez szablon, a lista plików pochodzi z naprawy
+      const src = fs.readFileSync(path.join(REPO, 'scripts', 'workflow', 'orchestrate.template.mjs'), 'utf8');
+      if (!/a\.gateDelta === true/.test(src) || !/changedFiles: fixedFiles/.test(src)) return 'szablon nie wiąże opcji gateDelta z plikami naprawy';
+      return null;
+    },
+  },
   // ORC-120: `build` w checks.finalGate liczy się jak typecheck (sonda mapuje go na to pole); sonda dostaje wskazówkę o timeoucie
   {
     name: 'final-probe-build-check-maps-to-typecheck-and-probe-warns-about-timeout',

@@ -999,6 +999,9 @@ function main() {
     canon: buildCanon({ projectDir: args.project, runtime, taskFm: taskDoc?.fm, analysisFm: analysisDoc?.fm, warnings }),
     // ORC-091: false (przez --overrides) wyłącza automatyczne naprawianie drobnych ustaleń.
     autoFixMinor: true,
+    // ORC-160 (TASK-ORC-GATE-COST-001 E2): true (przez --overrides) = runda 2 bramki końcowej po naprawie dostaje deltę
+    // (pliki zmienione przez naprawę + poprzednie ustalenia) zamiast czytać całość od nowa. Domyślnie false: eksperyment A/B.
+    gateDelta: false,
     // ORC-139: false (przez --overrides) wyłącza wiązanie werdyktów z hashem drzewa; `treeHashExclude` dokłada
     // ścieżki (względem korzenia repo) pomijane w haszu obok wbudowanych artefaktów silnika.
     treeBinding: true,

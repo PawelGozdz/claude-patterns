@@ -1025,6 +1025,23 @@ autoCase('auto-answer-unknown-answered-by-stops', RUNTIME_AUTO(true), autoAnalys
 autoCase('human-answer-marker-passes', RUNTIME_DDD, autoAnalysis('').replace('answered_by: auto', 'answered_by: human'), (r) =>
   (r.code === 0 ? null : `answered_by: human to zwykła odpowiedź: exit ${r.code} ${r.stderr.slice(0, 200)}`));
 
+// ── delta rundy 2 bramki końcowej (ORC-160, TASK-ORC-GATE-COST-001 E2): opcja jest, domyślnie wyłączona ──────────
+CASES.push({
+  name: 'gate-delta-option-is-off-by-default-and-switchable-by-overrides',
+  build: () => makeProject({ taskId: 'TS-FIX-001', analysis: analysisFm({}), task: taskFile('Cokolwiek.') }),
+  check(r, root) {
+    if (r.code !== 0) return `exit ${r.code} (${r.stderr.trim().slice(0, 160)})`;
+    if (r.json.gateDelta !== false) return `domyślnie gateDelta powinno być false, jest ${JSON.stringify(r.json.gateDelta)}`;
+    const ov = path.join(root, 'ov-gate-delta.json');
+    fs.writeFileSync(ov, JSON.stringify({ gateDelta: true }));
+    const on = run(root, 'TS-FIX-001', ['--overrides', ov]);
+    if (on.code !== 0 || on.json.gateDelta !== true) return `--overrides {"gateDelta":true} nie włączyło opcji: exit ${on.code} ${on.stderr.slice(0, 160)}`;
+    fs.writeFileSync(ov, JSON.stringify({ gateDeltaa: true }));
+    const typo = run(root, 'TS-FIX-001', ['--overrides', ov]);
+    return typo.code === 1 && /nieznany klucz/.test(typo.stderr) ? null : `literówka w kluczu powinna dać exit 1: exit ${typo.code}`;
+  },
+});
+
 // ── wyłącznik pętli NO-GO (ORC-157): zdarzenia syntetyczne ──────────────────────────
 // Na dzień pisania żadne prawdziwe zdarzenie nie ma `step.ruleHits` (TASK-OBS-018 dopiero zaczyna zbierać dane),
 // więc kryterium sprawdzamy na zdarzeniach zbudowanych tu, w kształcie zapisu kolektora.

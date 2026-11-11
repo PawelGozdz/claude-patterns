@@ -296,6 +296,28 @@ statyczna; nie uruchamiano testów ani bazy, więc nie sprawdzono, czy któryś 
 - Możliwy fałszywy alarm: handler podaje ten sam powód także w polu typowanym (kolizja wtedy nieszkodliwa). Nieobsługiwane: `eventData`
   zbudowane w helperze.
 
-### E2, E3
+### E2: runda 2 bramki na delcie (2026-11-11, ORC-160), opcja do eksperymentu
+
+**Zrobione.** Opcja `gateDelta` (domyślnie `false`, `--overrides {"gateDelta":true}`). Po naprawie ustaleń `finalRoundExtra` dostaje deltę:
+pliki zmienione przez naprawę (`report.finalFix.changedFiles` z `changed_files` implementerów), reguły z `findings` rundy 1 i poprzednie ustalenia;
+prompt każe sprawdzić poprawione pozycje, pliki z naprawy i konsumentów zmienionych kontraktów, pozostałych plików nie czytać i nie
+wpisywać ich do `unverified_scope` (ORC-123: inaczej GO z lukami zamieniłoby się w NO_GO). Ślad w raporcie: `report.finalGateDelta`. Bez opcji
+tekst rundy 2 jest bajt w bajt taki jak dotąd (test), a pierwsza bramka nie zmieniła się wcale. Testy: `orchestrate-script` (136), `orchestrate-prepare` (83).
+
+**Odstępstwa od opisu zadania.**
+- „Diff od ostatniej bramki" zastąpiła **lista plików z naprawy**: workflow nie ma dostępu do plików, diff musiałaby przynieść sonda (rośnie
+  prompt), a to jest E3. Bramka widzi, co zmieniono, i czyta te pliki sama.
+- Tryb **nie jest widoczny w zdarzeniach telemetrii** (etykieta `final-gate-r2` bez zmian, bo kolektor klasyfikuje kroki regexami po etykiecie);
+  jest w raporcie przebiegu (`finalGateDelta`).
+
+**Protokół eksperymentu (do uruchomienia, nie uruchomiony).**
+1. Włączać `gateDelta` w co drugim przebiegu, w którym po rundzie 1 będzie naprawa i runda 2; zapisywać `runId` obu ramion (tryb jest w raporcie).
+2. Koszt: porównać `m.costUsd` kroków `final-gate-r2` ramienia B z ramieniem A i z bazą $4,31 (cel < $2,5).
+3. Zgodność werdyktu nie da się policzyć na dwóch różnych przebiegach (nie ma pary na tym samym drzewie). Na próbie ok. 20 rund 2 w
+   ramieniu B uruchomić dodatkowo pełną bramkę na tym samym drzewie i porównać werdykt i ustalenia; każde ustalenie poza deltą wypisać i
+   ocenić ręcznie. Włączenie domyślne dopiero przy zgodności ≥ 95% i zerze ustaleń poza deltą ocenionych jako realne.
+4. Uwaga: baza nie zawiera jeszcze kosztu per etykieta rundy 2 w nowych przebiegach; na dziś są tylko liczby historyczne z 2026-11-09/10.
+
+### E3
 
 (do uzupełnienia po wykonaniu)

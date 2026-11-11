@@ -1662,14 +1662,38 @@ function orphanFindingNote(files) {
 // ORC-121: prompt rundy 2 bramki końcowej. Dotąd twierdził, że implementer poprawił WSZYSTKIE ustalenia,
 // choć pozycje spoza zakresu jego warstwy pomijał (marketing-hub TS-MH-022: poprawki w KANBAN i TM §8 leżały
 // poza dirs każdej jednostki, a runda 2 dostała je jako „poprawione"). `skipped` = deviation_note implementerów.
-function finalRoundExtra(items, skipped) {
+// E2: identyfikatory reguł z `findings` werdyktu rundy 1 (wpis to napis albo { ruleId }); bez `new`, unikalne, najwyżej 12.
+function findingRuleIds(findings) {
+  if (!Array.isArray(findings)) return []
+  const ids = []
+  for (const f of findings) {
+    const id = typeof f === 'string' ? f : f && typeof f.ruleId === 'string' ? f.ruleId : null
+    if (id && id !== 'new' && ids.indexOf(id) === -1) ids.push(id)
+  }
+  return ids.slice(0, 12)
+}
+
+// TASK-ORC-GATE-COST-001 E2: `delta` = { files, ruleIds? } (opcja `gateDelta`, domyślnie wyłączona). Runda 2 nie czyta wtedy całej zmiany
+// od nowa (druga bramka kosztuje ok. $4,31, niewiele mniej niż pierwsza $5,37), tylko sprawdza poprawione pozycje, pliki zmienione przez
+// naprawę i ich konsumentów. Bez `delta` (albo z pustą listą plików) tekst jest bajt w bajt taki jak dotąd.
+function finalRoundExtra(items, skipped, delta) {
   const notes = (skipped || []).filter(Boolean)
+  const deltaFiles = delta && Array.isArray(delta.files) ? delta.files.filter(Boolean) : []
+  const ruleIds = delta && Array.isArray(delta.ruleIds) ? delta.ruleIds.filter(Boolean) : []
+  const tail = deltaFiles.length
+    ? '\nTRYB DELTY (runda 2): runda 1 przejrzała całość zmiany, więc pliki spoza listy poniżej są już ocenione: NIE czytaj ich ponownie ' +
+      'i NIE wpisuj ich do `unverified_scope`. Sprawdź: (1) czy KAŻDA pozycja z listy wyżej jest naprawdę poprawiona w kodzie' +
+      (ruleIds.length ? ' (reguły z rundy 1: ' + ruleIds.join(', ') + ')' : '') +
+      '; (2) w całości pliki zmienione przez poprawki:\n' + deltaFiles.map((f) => '- ' + f).join('\n') +
+      '\n(3) konsumentów i importerów tego, co poprawki zmieniły (sygnatury, nazwy, kontrakty), także spoza listy. ' +
+      'Zgłoś tylko to, co nadal zachodzi albo powstało przy poprawce.'
+    : '\nZweryfikuj poprawki i całość. Poprawione pozycje NIE są już naruszeniami; zgłoś tylko to, co nadal zachodzi albo powstało przy poprawce.'
   return '\n\nRUNDA 2 (po naprawie): poprzednia runda zgłosiła ustalenia, które implementer próbował poprawić:\n' +
     items.map((x, i) => (i + 1) + '. ' + x).join('\n') +
     (notes.length
       ? '\nIMPLEMENTER POMINĄŁ część pozycji jako spoza zakresu swojej warstwy (jego opis poniżej) — te pozycje NIE są poprawione, sprawdź je w kodzie i zgłoś, jeśli nadal zachodzą:\n' + notes.map((n) => '- ' + n).join('\n')
       : '') +
-    '\nZweryfikuj poprawki i całość. Poprawione pozycje NIE są już naruszeniami; zgłoś tylko to, co nadal zachodzi albo powstało przy poprawce.'
+    tail
 }
 
 // ORC-095 (docs/decisions/orchestrate-rule-history.md#orc-095): JEDNA gotowa linia statusu dla
@@ -2599,6 +2623,7 @@ if (!finalAgent) {
       }
     }
     let fpBefore = await fingerprint('final-fix-fp-0')
+    const fixedFiles = [] // E2: pliki zmienione przez naprawę = delta dla rundy 2 bramki (opcja gateDelta)
     for (const id of Object.keys(groups)) {
       const layer = implLayers.find((l) => l.id === id)
       if (!layer) continue
@@ -2632,6 +2657,7 @@ if (!finalAgent) {
       for (const f of fixed.changed_files || []) {
         if (allChangedFiles.indexOf(f) === -1) allChangedFiles.push(f)
         if (finalFiles.indexOf(f) === -1) finalFiles.push(f)
+        if (fixedFiles.indexOf(f) === -1) fixedFiles.push(f)
       }
       const prOpts =Object.assign({ label: layer.id + '-final-fix-checks', maxTurns: DEFAULTS.probeTurns, schema: CHECKS_SCHEMA }, modelFor('probe'))
       const pr = await ask(buildProbePrompt(a, layer), prOpts)
@@ -2641,7 +2667,7 @@ if (!finalAgent) {
         report.warnings = (report.warnings || []).concat(layer.id + ': sonda czerwona po naprawie ustaleń bramki końcowej (typecheck: ' + pr.typecheck + ', testy: ' + pr.tests + (pr.lint != null ? ', lint: ' + pr.lint : '') + ')')
       }
     }
-    report.finalFix = { blocking: blocking.length, minor: minor.length, layers: Object.keys(groups), noop, skipped }
+    report.finalFix = { blocking: blocking.length, minor: minor.length, layers: Object.keys(groups), noop, skipped, changedFiles: fixedFiles }
     return ok
   }
 
@@ -2806,7 +2832,13 @@ if (!finalAgent) {
     const repaired = await repairFinalFindings(blockingFinal, minorFinal)
     if (repaired && blockingFinal.length) {
       report.finalGateRound1 = report.finalGate
-      roundExtra = finalRoundExtra(blockingFinal.concat(minorFinal), report.finalFix && report.finalFix.skipped)
+      // E2: delta tylko za opcją `gateDelta: true` (--overrides); domyślnie runda 2 czyta całość jak dotąd
+      const gateDelta = a.gateDelta === true && report.finalFix
+        ? { files: report.finalFix.changedFiles || [], ruleIds: findingRuleIds(report.finalGateRound1 && report.finalGateRound1.findings) }
+        : null
+      roundExtra = finalRoundExtra(blockingFinal.concat(minorFinal), report.finalFix && report.finalFix.skipped, gateDelta)
+      // ślad trybu w raporcie przebiegu: bez niego runy A (pełna runda 2) i B (delta) nie dają się odróżnić przy analizie kosztu
+      if (gateDelta && gateDelta.files.length) report.finalGateDelta = { files: gateDelta.files.length, ruleIds: gateDelta.ruleIds }
       continue
     }
     // ORC-123: werdykt „NO_GO wymuszone samymi lukami" zapadł na sondzie SPRZED naprawy. Naprawa, która
