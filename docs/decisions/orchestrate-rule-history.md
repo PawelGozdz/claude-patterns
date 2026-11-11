@@ -3099,3 +3099,17 @@ Lint WL6 ostrzega przed `git diff` bez `--stat/--name-only/--numstat` (incydent 
 **Ryzyko do zmierzenia.** Próbka mała (25 werdyktów, głównie juz-ide-api-1; 32 z 80 cytowań z niejednoznacznym ID). Pomiar po prawdziwych przebiegach: odsetek pętli naprawczych po NO_GO weryfikatora z regułą karty spoza zakresu implementera.
 
 **Claim.** Weryfikator warstwy nie traci blokujących cytowań na archiwum (0/80). Test: `orchestrate-flow` (`implementer-cards-are-scoped-but-verifier-and-gate-get-everything`).
+
+### ORC-165 — okno zatwierdzenia odrzuca skrypt z linią dłuższą niż 4096 znaków, nie tylko dłuższy niż 200 000 (2026-11-11)
+
+**Objaw.** Po ORC-162 instancje nadal dostawały „script of 179,638 characters cannot be shown in full — approval is unavailable" (api-3, TS-OBS-ERRORS-001), choć skrypt był poniżej 200 000 znaków. ORC-162 zakładał, że jedynym warunkiem jest długość.
+
+**Przyczyna.** Okno ma drugi test (kod dialogu, Claude Code 2.1.322; ten sam w 2.1.319 i 2.1.321): skrypt jest sanityzowany, a sanityzator obcina KAŻDĄ linię dłuższą niż 4096 znaków znacznikiem `… [+N graphemes]`. Gdy sanityzowany tekst zawiera taki znacznik (`/\u2026 \[\+\d+ graphemes\]/`), skrypt uchodzi za już obcięty i zatwierdzenie jest niedostępne, z tym samym komunikatem co przy przekroczeniu długości. W skrypcie z api-3 była jedna taka linia: `const a = {…}` z args w 69 838 znakach. Zrobiłem ją sam w ORC-162: kompaktowy JSON, a printer TypeScript zostawia obiekt z jednej linii w jednej linii. Sprzed ORC-162 args szły w JSON-ie z wcięciem, ale każda karta reguł i decyzja jako jeden string dawała linie po kilka–kilkanaście tysięcy znaków, więc ten warunek łamały też wcześniejsze skrypty.
+
+**Zmiana.** (1) `scripts/lib/script-literal.mjs`: args wbudowywane jako literał JS bez linii dłuższych niż ~2,5 tys. znaków (długi string = łańcuch kawałków po 1200 punktów kodowych w osobnych liniach). (2) `emitScript` minifikuje sam szablon z placeholderem, a args wstawia po minifikacji; po emisji sprawdza najdłuższą linię (limit 4000) i przy przekroczeniu kończy exit 6, nie zapisując skryptu. (3) `workflow-lint` WL19 (ERROR): linia > 4000 znaków. Sprawdza też skrypty pisane ręcznie, bo hook lintuje każde wywołanie Workflow.
+
+**Dowód.** Test `emit-script-inline-card-has-no-line-over-4000-and-script-still-runs`: karta ~40 tys. znaków wbudowana, najdłuższa linia ≤ 4000, skrypt wykonany z atrapą agenta niesie kartę w prompcie dosłownie (round-trip literału). Przeliczenie na danych z api-3: 193 tys. znaków, najdłuższa linia 1255, lint bez błędów.
+
+**Czego nie wiem.** Nie otworzyłem prawdziwego okna: wniosek o drugim teście pochodzi z czytania kodu dialogu w binarce (`Og`/`ZU`: `nYe.test(yc(skrypt))`, `Zr` obcina linie > `OGt = 4096`). Potwierdzenie to pierwszy przebieg po tej zmianie.
+
+**Claim.** Skrypt wyemitowany przez `orchestrate-prepare --emit-script` mieści się w limicie długości i w limicie długości linii albo prepare kończy się exit 6 z przyczyną.

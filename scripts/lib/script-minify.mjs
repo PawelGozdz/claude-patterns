@@ -22,6 +22,8 @@ const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 // Limit okna zatwierdzenia w znakach (Claude Code 2.1.322). Margines na narzut dialogu.
 export const APPROVAL_LIMIT = 200000;
 export const APPROVAL_MARGIN = 1000;
+// Okno obcina KAŻDĄ linię dłuższą niż 4096 znaków znacznikiem „… [+N graphemes]" i odrzuca skrypt (zob. WL19). Z zapasem.
+export const APPROVAL_LINE_LIMIT = 4000;
 
 function loadTs() {
   const req = createRequire(import.meta.url);
