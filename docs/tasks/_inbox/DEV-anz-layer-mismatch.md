@@ -34,8 +34,8 @@ sources:
   - analyze
 rule_ref: ANZ-LAYER-MISMATCH
 first_seen: 2026-10-12
-last_seen: 2026-11-08
-occurrences: 26
+last_seen: 2026-11-10
+occurrences: 27
 projects:
   - ai-gateway
   - framework-polityczny
@@ -49,6 +49,7 @@ projects:
   - juz-ide-mobile-app-2
   - juz-ide-api-8
   - juz-ide-mobile-app-1
+  - juz-ide-api
 reopened_at: 2026-10-28
 reopened_from_status: promoted
 ---
@@ -57,6 +58,7 @@ reopened_from_status: promoted
 
 ## Occurrences
 
+- 2026-11-10 juz-ide-api (TS-TOOLING-005) — Task narzędziowy (tools/lint-ddd, .husky) nie dotyka żadnej warstwy z orchestrate.layers (dirs: domain/, application/, infrastructure/, __tests__/); wszystkie wymagają layers_skip albo jednostki z dirs spoza katalogów warstwy
 - 2026-11-08 juz-ide-mobile-app-1 (STATE-CACHE-HONOR-NO-STORE-001) — slot ui-analysis (flutter-ui-verifier) nie ma when: i wchodzi do panelu przy zadaniach czysto sieciowych bez UI
 - 2026-11-08 juz-ide-api-8 (TS-INFRA-IMAGE-HARDENING-002) — Task infrastrukturalny bez pracy w domenie i aplikacji: sloty ddd-modeling i pattern-fit (bez when:) weszły do panelu bez materiału
 - 2026-11-08 juz-ide-api-2 (TS-INFRA-MIGRATION-ORDER-GUARD-001) — Zadanie 3 SP (guardian testowy migracji) dostaje stały panel 9 slotów; ddd-modeling i tech-analysis-specialist nie mają pracy (zero domeny, brak decyzji technologicznej), a slotów bez when: nie da się pominąć regułą

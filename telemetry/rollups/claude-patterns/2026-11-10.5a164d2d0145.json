@@ -9,6 +9,18 @@
     }
   },
   "engines": {
+    "06c3c6d": {
+      "pre-commit": {
+        "costUsd": 0,
+        "died": 0,
+        "ended": {
+          "ok": 1
+        },
+        "started": 1,
+        "steps": 52,
+        "stepsWithoutCost": 52
+      }
+    },
     "15c102e": {
       "audit": {
         "costUsd": 0,
@@ -20,9 +32,82 @@
         "steps": 4,
         "stepsWithoutCost": 4
       }
+    },
+    "724747d": {
+      "pre-commit": {
+        "costUsd": 0,
+        "died": 0,
+        "ended": {
+          "ok": 1
+        },
+        "started": 1,
+        "steps": 52,
+        "stepsWithoutCost": 52
+      }
+    },
+    "8efc45d": {
+      "pre-commit": {
+        "costUsd": 0,
+        "died": 0,
+        "ended": {
+          "ok": 1
+        },
+        "started": 1,
+        "steps": 52,
+        "stepsWithoutCost": 52
+      }
+    },
+    "917a038": {
+      "pre-commit": {
+        "costUsd": 0,
+        "died": 0,
+        "ended": {
+          "ok": 1
+        },
+        "started": 1,
+        "steps": 52,
+        "stepsWithoutCost": 52
+      }
+    },
+    "9b989a9": {
+      "pre-commit": {
+        "costUsd": 0,
+        "died": 0,
+        "ended": {
+          "failed": 2,
+          "ok": 1
+        },
+        "started": 3,
+        "steps": 156,
+        "stepsWithoutCost": 156
+      }
+    },
+    "c75915f": {
+      "pre-commit": {
+        "costUsd": 0,
+        "died": 0,
+        "ended": {
+          "ok": 1
+        },
+        "started": 1,
+        "steps": 52,
+        "stepsWithoutCost": 52
+      }
+    },
+    "f3fb836": {
+      "pre-commit": {
+        "costUsd": 0,
+        "died": 0,
+        "ended": {
+          "ok": 1
+        },
+        "started": 1,
+        "steps": 52,
+        "stepsWithoutCost": 52
+      }
     }
   },
-  "events": 7,
+  "events": 493,
   "host": "5a164d2d0145",
   "processes": {
     "audit": {
@@ -103,6 +188,762 @@
         "firstPassGo": 0,
         "units": 0
       }
+    },
+    "pre-commit": {
+      "costUsd": 0,
+      "costUsdRetried": 0,
+      "died": 0,
+      "repairs": {
+        "fixSteps": 0,
+        "fixed": 0,
+        "open": 0
+      },
+      "retried": 0,
+      "roles": {
+        "agent-changelog-discipline": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 9,
+            "p50": 2,
+            "p90": 3
+          },
+          "n": 9,
+          "outcomes": {
+            "ok": 9
+          },
+          "toolCalls": 0
+        },
+        "context-bill-check": {
+          "causes": {
+            "config": 2
+          },
+          "costUsd": 0,
+          "durationMs": {
+            "n": 9,
+            "p50": 64,
+            "p90": 76
+          },
+          "n": 9,
+          "outcomes": {
+            "failed": 2,
+            "ok": 7
+          },
+          "toolCalls": 0
+        },
+        "count-assets-check": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 9,
+            "p50": 26,
+            "p90": 29
+          },
+          "n": 9,
+          "outcomes": {
+            "ok": 9
+          },
+          "toolCalls": 0
+        },
+        "count-assets-check-docs": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 9,
+            "p50": 25,
+            "p90": 33
+          },
+          "n": 9,
+          "outcomes": {
+            "ok": 9
+          },
+          "toolCalls": 0
+        },
+        "eval-analyze-resolve": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 9,
+            "p50": 5299,
+            "p90": 5933
+          },
+          "n": 9,
+          "outcomes": {
+            "ok": 9
+          },
+          "toolCalls": 0
+        },
+        "eval-audit-projects": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 9,
+            "p50": 1455,
+            "p90": 1726
+          },
+          "n": 9,
+          "outcomes": {
+            "ok": 9
+          },
+          "toolCalls": 0
+        },
+        "eval-conformance": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 9,
+            "p50": 8587,
+            "p90": 14112
+          },
+          "n": 9,
+          "outcomes": {
+            "ok": 9
+          },
+          "toolCalls": 0
+        },
+        "eval-context-budget": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 9,
+            "p50": 1290,
+            "p90": 1515
+          },
+          "n": 9,
+          "outcomes": {
+            "ok": 9
+          },
+          "toolCalls": 0
+        },
+        "eval-eval-policy": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 9,
+            "p50": 19,
+            "p90": 24
+          },
+          "n": 9,
+          "outcomes": {
+            "ok": 9
+          },
+          "toolCalls": 0
+        },
+        "eval-flow-top": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 9,
+            "p50": 33,
+            "p90": 38
+          },
+          "n": 9,
+          "outcomes": {
+            "ok": 9
+          },
+          "toolCalls": 0
+        },
+        "eval-fragments": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 9,
+            "p50": 1013,
+            "p90": 1078
+          },
+          "n": 9,
+          "outcomes": {
+            "ok": 9
+          },
+          "toolCalls": 0
+        },
+        "eval-hook-telemetry": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 9,
+            "p50": 636,
+            "p90": 694
+          },
+          "n": 9,
+          "outcomes": {
+            "ok": 9
+          },
+          "toolCalls": 0
+        },
+        "eval-hooks": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 9,
+            "p50": 1658,
+            "p90": 2102
+          },
+          "n": 9,
+          "outcomes": {
+            "ok": 9
+          },
+          "toolCalls": 0
+        },
+        "eval-judge-controls": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 9,
+            "p50": 27,
+            "p90": 33
+          },
+          "n": 9,
+          "outcomes": {
+            "ok": 9
+          },
+          "toolCalls": 0
+        },
+        "eval-manual-spawn-rules": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 9,
+            "p50": 440,
+            "p90": 544
+          },
+          "n": 9,
+          "outcomes": {
+            "ok": 9
+          },
+          "toolCalls": 0
+        },
+        "eval-materialize-runtime": {
+          "causes": {
+            "test": 2
+          },
+          "costUsd": 0,
+          "durationMs": {
+            "n": 9,
+            "p50": 405,
+            "p90": 535
+          },
+          "n": 9,
+          "outcomes": {
+            "failed": 2,
+            "ok": 7
+          },
+          "toolCalls": 0
+        },
+        "eval-orchestrate-prepare": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 9,
+            "p50": 3542,
+            "p90": 5164
+          },
+          "n": 9,
+          "outcomes": {
+            "ok": 9
+          },
+          "toolCalls": 0
+        },
+        "eval-orchestrate-script": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 9,
+            "p50": 102,
+            "p90": 152
+          },
+          "n": 9,
+          "outcomes": {
+            "ok": 9
+          },
+          "toolCalls": 0
+        },
+        "eval-osv-scan": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 9,
+            "p50": 117,
+            "p90": 181
+          },
+          "n": 9,
+          "outcomes": {
+            "ok": 9
+          },
+          "toolCalls": 0
+        },
+        "eval-pre-commit-telemetry": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 9,
+            "p50": 52,
+            "p90": 57
+          },
+          "n": 9,
+          "outcomes": {
+            "ok": 9
+          },
+          "toolCalls": 0
+        },
+        "eval-project-yml": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 9,
+            "p50": 1317,
+            "p90": 1472
+          },
+          "n": 9,
+          "outcomes": {
+            "ok": 9
+          },
+          "toolCalls": 0
+        },
+        "eval-prompt-structure": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 9,
+            "p50": 5210,
+            "p90": 6935
+          },
+          "n": 9,
+          "outcomes": {
+            "ok": 9
+          },
+          "toolCalls": 0
+        },
+        "eval-reporting-hygiene": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 9,
+            "p50": 37,
+            "p90": 43
+          },
+          "n": 9,
+          "outcomes": {
+            "ok": 9
+          },
+          "toolCalls": 0
+        },
+        "eval-reviewer-stats": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 9,
+            "p50": 2464,
+            "p90": 2901
+          },
+          "n": 9,
+          "outcomes": {
+            "ok": 9
+          },
+          "toolCalls": 0
+        },
+        "eval-setup-project": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 9,
+            "p50": 2923,
+            "p90": 3689
+          },
+          "n": 9,
+          "outcomes": {
+            "ok": 9
+          },
+          "toolCalls": 0
+        },
+        "eval-telemetry-events": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 9,
+            "p50": 184,
+            "p90": 254
+          },
+          "n": 9,
+          "outcomes": {
+            "ok": 9
+          },
+          "toolCalls": 0
+        },
+        "eval-telemetry-export": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 9,
+            "p50": 143,
+            "p90": 310
+          },
+          "n": 9,
+          "outcomes": {
+            "ok": 9
+          },
+          "toolCalls": 0
+        },
+        "eval-telemetry-gate-blame": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 9,
+            "p50": 29,
+            "p90": 37
+          },
+          "n": 9,
+          "outcomes": {
+            "ok": 9
+          },
+          "toolCalls": 0
+        },
+        "eval-telemetry-report": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 9,
+            "p50": 1019,
+            "p90": 1153
+          },
+          "n": 9,
+          "outcomes": {
+            "ok": 9
+          },
+          "toolCalls": 0
+        },
+        "eval-telemetry-rollups": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 9,
+            "p50": 465,
+            "p90": 559
+          },
+          "n": 9,
+          "outcomes": {
+            "ok": 9
+          },
+          "toolCalls": 0
+        },
+        "eval-telemetry-sessions": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 9,
+            "p50": 1200,
+            "p90": 1448
+          },
+          "n": 9,
+          "outcomes": {
+            "ok": 9
+          },
+          "toolCalls": 0
+        },
+        "eval-test-implementer-scope": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 9,
+            "p50": 713,
+            "p90": 941
+          },
+          "n": 9,
+          "outcomes": {
+            "ok": 9
+          },
+          "toolCalls": 0
+        },
+        "eval-tree-hash-binding": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 9,
+            "p50": 671,
+            "p90": 760
+          },
+          "n": 9,
+          "outcomes": {
+            "ok": 9
+          },
+          "toolCalls": 0
+        },
+        "eval-version-sync": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 9,
+            "p50": 163,
+            "p90": 308
+          },
+          "n": 9,
+          "outcomes": {
+            "ok": 9
+          },
+          "toolCalls": 0
+        },
+        "eval-watcher": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 9,
+            "p50": 32,
+            "p90": 39
+          },
+          "n": 9,
+          "outcomes": {
+            "ok": 9
+          },
+          "toolCalls": 0
+        },
+        "eval-workflow-lint": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 9,
+            "p50": 81,
+            "p90": 105
+          },
+          "n": 9,
+          "outcomes": {
+            "ok": 9
+          },
+          "toolCalls": 0
+        },
+        "eval-workflow-metrics": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 9,
+            "p50": 47,
+            "p90": 55
+          },
+          "n": 9,
+          "outcomes": {
+            "ok": 9
+          },
+          "toolCalls": 0
+        },
+        "generate-pattern-routing-check": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 9,
+            "p50": 61,
+            "p90": 72
+          },
+          "n": 9,
+          "outcomes": {
+            "ok": 9
+          },
+          "toolCalls": 0
+        },
+        "lint-patterns-strict": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 9,
+            "p50": 73,
+            "p90": 575
+          },
+          "n": 9,
+          "outcomes": {
+            "ok": 9
+          },
+          "toolCalls": 0
+        },
+        "rag-freshness": {
+          "causes": {
+            "config": 2
+          },
+          "costUsd": 0,
+          "durationMs": {
+            "n": 9,
+            "p50": 31,
+            "p90": 110
+          },
+          "n": 9,
+          "outcomes": {
+            "failed": 2,
+            "ok": 7
+          },
+          "toolCalls": 0
+        },
+        "reviewer-stats-check-config": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 9,
+            "p50": 46,
+            "p90": 153
+          },
+          "n": 9,
+          "outcomes": {
+            "ok": 9
+          },
+          "toolCalls": 0
+        },
+        "sync-fragments-check": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 9,
+            "p50": 41,
+            "p90": 44
+          },
+          "n": 9,
+          "outcomes": {
+            "ok": 9
+          },
+          "toolCalls": 0
+        },
+        "validate-agents": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 9,
+            "p50": 46,
+            "p90": 50
+          },
+          "n": 9,
+          "outcomes": {
+            "ok": 9
+          },
+          "toolCalls": 0
+        },
+        "validate-blocks": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 9,
+            "p50": 56,
+            "p90": 66
+          },
+          "n": 9,
+          "outcomes": {
+            "ok": 9
+          },
+          "toolCalls": 0
+        },
+        "validate-business-rules": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 9,
+            "p50": 26,
+            "p90": 40
+          },
+          "n": 9,
+          "outcomes": {
+            "ok": 9
+          },
+          "toolCalls": 0
+        },
+        "validate-commands": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 9,
+            "p50": 47,
+            "p90": 58
+          },
+          "n": 9,
+          "outcomes": {
+            "ok": 9
+          },
+          "toolCalls": 0
+        },
+        "validate-hooks": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 9,
+            "p50": 19,
+            "p90": 25
+          },
+          "n": 9,
+          "outcomes": {
+            "ok": 9
+          },
+          "toolCalls": 0
+        },
+        "validate-metadata": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 9,
+            "p50": 44,
+            "p90": 76
+          },
+          "n": 9,
+          "outcomes": {
+            "ok": 9
+          },
+          "toolCalls": 0
+        },
+        "validate-prompt-structure": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 9,
+            "p50": 114,
+            "p90": 125
+          },
+          "n": 9,
+          "outcomes": {
+            "ok": 9
+          },
+          "toolCalls": 0
+        },
+        "validate-rules": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 9,
+            "p50": 16,
+            "p90": 17
+          },
+          "n": 9,
+          "outcomes": {
+            "ok": 9
+          },
+          "toolCalls": 0
+        },
+        "validate-skills": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 9,
+            "p50": 61,
+            "p90": 66
+          },
+          "n": 9,
+          "outcomes": {
+            "ok": 9
+          },
+          "toolCalls": 0
+        },
+        "validate-tasks": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 9,
+            "p50": 21,
+            "p90": 25
+          },
+          "n": 9,
+          "outcomes": {
+            "ok": 9
+          },
+          "toolCalls": 0
+        }
+      },
+      "steps": 468,
+      "stepsWithoutCost": 468,
+      "verification": {
+        "firstPassGo": 0,
+        "units": 0
+      }
     }
   },
   "project": "claude-patterns",
@@ -118,8 +959,21 @@
         "failed": 1
       },
       "started": 1
+    },
+    "pre-commit": {
+      "costUsd": 0,
+      "durationMs": {
+        "n": 9,
+        "p50": 41928,
+        "p90": 51806
+      },
+      "ended": {
+        "failed": 2,
+        "ok": 7
+      },
+      "started": 9
     }
   },
-  "stepsTotal": 4,
+  "stepsTotal": 472,
   "v": 1
 }

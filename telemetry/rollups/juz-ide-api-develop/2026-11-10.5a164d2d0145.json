@@ -8,9 +8,82 @@
       "trigger": "setup_drift"
     }
   },
-  "events": 11,
+  "engines": {
+    "06c3c6d": {
+      "orchestrate": {
+        "costUsd": 5.025833,
+        "died": 0,
+        "ended": {
+          "ok": 1
+        },
+        "started": 1,
+        "steps": 22,
+        "stepsWithoutCost": 0
+      }
+    },
+    "8efc45d": {
+      "analyze": {
+        "costUsd": 0.791348,
+        "died": 0,
+        "ended": {
+          "ok": 1
+        },
+        "started": 1,
+        "steps": 2,
+        "stepsWithoutCost": 0
+      }
+    }
+  },
+  "events": 66,
   "host": "5a164d2d0145",
   "processes": {
+    "analyze": {
+      "costUsd": 0.791348,
+      "costUsdRetried": 0,
+      "died": 0,
+      "repairs": {
+        "fixSteps": 0,
+        "fixed": 0,
+        "open": 0
+      },
+      "retried": 0,
+      "roles": {
+        "decision-gate": {
+          "causes": {},
+          "costUsd": 0.015967,
+          "durationMs": {
+            "n": 1,
+            "p50": 45721,
+            "p90": 45721
+          },
+          "n": 1,
+          "outcomes": {
+            "ok": 1
+          },
+          "toolCalls": 25
+        },
+        "tech-analysis": {
+          "causes": {},
+          "costUsd": 0.775381,
+          "durationMs": {
+            "n": 1,
+            "p50": 35160,
+            "p90": 35160
+          },
+          "n": 1,
+          "outcomes": {
+            "ok": 1
+          },
+          "toolCalls": 24
+        }
+      },
+      "steps": 2,
+      "stepsWithoutCost": 0,
+      "verification": {
+        "firstPassGo": 0,
+        "units": 0
+      }
+    },
     "audit": {
       "costUsd": 0,
       "costUsdRetried": 0,
@@ -171,10 +244,267 @@
         "firstPassGo": 0,
         "units": 0
       }
+    },
+    "hook": {
+      "costUsd": 0,
+      "costUsdRetried": 0,
+      "died": 0,
+      "repairs": {
+        "fixSteps": 0,
+        "fixed": 0,
+        "open": 0
+      },
+      "retried": 0,
+      "roles": {
+        "block-root-grep:root-grep": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 0,
+            "p50": null,
+            "p90": null
+          },
+          "n": 1,
+          "outcomes": {
+            "halted": 1
+          },
+          "toolCalls": 0
+        },
+        "block-unscoped-tests:script": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 0,
+            "p50": null,
+            "p90": null
+          },
+          "n": 2,
+          "outcomes": {
+            "halted": 2
+          },
+          "toolCalls": 0
+        },
+        "check-delegation:pattern-file": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 0,
+            "p50": null,
+            "p90": null
+          },
+          "n": 10,
+          "outcomes": {
+            "halted": 10
+          },
+          "toolCalls": 0
+        },
+        "check-patterns-read:patterns-read": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 0,
+            "p50": null,
+            "p90": null
+          },
+          "n": 5,
+          "outcomes": {
+            "halted": 5
+          },
+          "toolCalls": 0
+        },
+        "check-subagent-pattern-reads:pattern-grounding": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 0,
+            "p50": null,
+            "p90": null
+          },
+          "n": 5,
+          "outcomes": {
+            "halted": 5
+          },
+          "toolCalls": 0
+        }
+      },
+      "steps": 23,
+      "stepsWithoutCost": 23,
+      "verification": {
+        "firstPassGo": 0,
+        "units": 0
+      }
+    },
+    "orchestrate": {
+      "costUsd": 5.025833,
+      "costUsdRetried": 0.606145,
+      "died": 0,
+      "finalGate": {
+        "judged": 1
+      },
+      "repairs": {
+        "fixSteps": 1,
+        "fixed": 1,
+        "open": 0
+      },
+      "retried": 6,
+      "roles": {
+        "fixer": {
+          "causes": {},
+          "costUsd": 0.577533,
+          "durationMs": {
+            "n": 3,
+            "p50": 7020,
+            "p90": 38756
+          },
+          "n": 3,
+          "outcomes": {
+            "ok": 3
+          },
+          "toolCalls": 15
+        },
+        "gate": {
+          "causes": {},
+          "costUsd": 2.153741,
+          "durationMs": {
+            "n": 1,
+            "p50": 662891,
+            "p90": 662891
+          },
+          "n": 1,
+          "outcomes": {
+            "go": 1
+          },
+          "rules": {
+            "security-e2e-verifier": {
+              "hits": {},
+              "reports": 1
+            }
+          },
+          "toolCalls": 9
+        },
+        "implementer": {
+          "causes": {},
+          "costUsd": 1.54183,
+          "durationMs": {
+            "n": 2,
+            "p50": 19070,
+            "p90": 150684
+          },
+          "n": 2,
+          "outcomes": {
+            "ok": 2
+          },
+          "toolCalls": 21
+        },
+        "none": {
+          "causes": {},
+          "costUsd": 0.030939,
+          "durationMs": {
+            "n": 7,
+            "p50": 5595,
+            "p90": 7893
+          },
+          "n": 7,
+          "outcomes": {
+            "ok": 7
+          },
+          "toolCalls": 14
+        },
+        "probe": {
+          "causes": {},
+          "costUsd": 0.045066,
+          "durationMs": {
+            "n": 7,
+            "p50": 6794,
+            "p90": 9112
+          },
+          "n": 7,
+          "outcomes": {
+            "ok": 7
+          },
+          "toolCalls": 13
+        },
+        "verifier": {
+          "agents": {
+            "code-quality-verifier": {
+              "goJudged": 1
+            }
+          },
+          "causes": {},
+          "costUsd": 0.676724,
+          "durationMs": {
+            "n": 2,
+            "p50": 17767,
+            "p90": 19120
+          },
+          "n": 2,
+          "outcomes": {
+            "go": 2
+          },
+          "rules": {
+            "code-quality-verifier": {
+              "hits": {},
+              "reports": 2
+            }
+          },
+          "toolCalls": 8,
+          "verdicts": {
+            "goJudged": 1
+          }
+        }
+      },
+      "steps": 22,
+      "stepsWithoutCost": 0,
+      "verification": {
+        "firstPassGo": 1,
+        "units": 1
+      }
     }
   },
   "project": "juz-ide-api-develop",
-  "runs": {},
-  "stepsTotal": 10,
+  "runs": {
+    "analyze": {
+      "costUsd": 0,
+      "durationMs": {
+        "n": 1,
+        "p50": 377950,
+        "p90": 377950
+      },
+      "ended": {
+        "ok": 1
+      },
+      "started": 1
+    },
+    "orchestrate": {
+      "costUsd": 5.025833,
+      "durationMs": {
+        "n": 1,
+        "p50": 1011860,
+        "p90": 1011860
+      },
+      "ended": {
+        "ok": 1
+      },
+      "started": 1
+    }
+  },
+  "seeds": {
+    "unknown": {
+      "checked": 2,
+      "skipped:no_topic": 2
+    }
+  },
+  "stepsTotal": 57,
+  "tasks": {
+    "TS-TOOLING-005": {
+      "analyzeRuns": 1,
+      "costToGoUsd": 5.217241,
+      "costUsd": 5.817181,
+      "reachedGo": true,
+      "runs": 1,
+      "spanMs": 1602687,
+      "stepsWithoutCost": 0
+    }
+  },
   "v": 1
 }
