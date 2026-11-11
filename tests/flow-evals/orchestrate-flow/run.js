@@ -164,7 +164,7 @@ const CASES = [
       const inline = { patterns: [{ path: 'p/a_summary.md', origin: 'always', card: true, content: body }] };
       const off = {
         patterns: [{ path: 'p/a_summary.md', origin: 'always', card: true }],
-        cardBundles: { infrastructure: '/ctx/cards-infrastructure.md', __all: '/ctx/cards-__all.md' },
+        cardBundles: { infrastructure: '/ctx/cards-infrastructure.md', 'verify:infrastructure': '/ctx/cards-verify-infrastructure.md', __all: '/ctx/cards-__all.md' },
       };
       const a = await runFlow(inline);
       const b = await runFlow(off);
@@ -173,7 +173,7 @@ const CASES = [
       const impl = b.calls.find((c) => c.label === 'infrastructure-impl');
       const ver = b.calls.find((c) => c.label === 'infrastructure-verify');
       const gate = promptOf(b, 'final-gate');
-      for (const [n, pr, f] of [['implementer', impl && impl.prompt, 'cards-infrastructure.md'], ['weryfikator', ver && ver.prompt, 'cards-infrastructure.md'], ['bramka', gate, 'cards-__all.md']]) {
+      for (const [n, pr, f] of [['implementer', impl && impl.prompt, 'cards-infrastructure.md'], ['weryfikator', ver && ver.prompt, 'cards-verify-infrastructure.md'], ['bramka', gate, 'cards-__all.md']]) {
         if (!pr) return `brak promptu: ${n}`;
         if (!pr.includes('/ctx/' + f)) return `${n}: prompt bez ścieżki pliku kart ${f}`;
         if (!/jedno wywołanie Read na ten plik/.test(pr)) return `${n}: prompt bez polecenia Read pliku kart`;
@@ -214,7 +214,7 @@ const CASES = [
     },
   },
   {
-    name: 'cards-for-layer-respects-for-layers-and-gate-gets-everything',
+    name: 'implementer-cards-are-scoped-but-verifier-and-gate-get-everything',
     async run() {
       const mk = (name, forLayers) => ({ path: 'p/' + name + '_summary.md', origin: 'trigger', card: true, content: 'TREŚĆ-' + name, ...(forLayers ? { forLayers } : {}) });
       const patterns = [mk('APP', ['application']), mk('INFRA', ['infrastructure']), mk('NOBODY', []), mk('ALL')];
@@ -222,10 +222,10 @@ const CASES = [
       const impl = promptOf(r, 'infrastructure-impl');
       const ver = promptOf(r, 'infrastructure-verify');
       const gate = promptOf(r, 'final-gate');
-      for (const [n, pr] of [['implementer', impl], ['weryfikator', ver]]) {
-        if (!pr.includes('TREŚĆ-INFRA') || !pr.includes('TREŚĆ-ALL')) return `${n}: brak karty własnej albo ogólnej`;
-        if (pr.includes('TREŚĆ-APP') || pr.includes('TREŚĆ-NOBODY')) return `${n}: dostał kartę cudzej warstwy albo karty bez adresata`;
-      }
+      if (!impl.includes('TREŚĆ-INFRA') || !impl.includes('TREŚĆ-ALL')) return 'implementer: brak karty własnej albo ogólnej';
+      if (impl.includes('TREŚĆ-APP') || impl.includes('TREŚĆ-NOBODY')) return 'implementer: dostał kartę cudzej warstwy albo karty bez adresata';
+      // ORC-164: weryfikator warstwy nie podlega zawężeniu (archiwum: 36% NO_GO cytowało regułę z karty, której zawężenie by nie dało)
+      for (const k of ['APP', 'INFRA', 'NOBODY', 'ALL']) if (!ver.includes('TREŚĆ-' + k)) return 'weryfikator nie dostał karty ' + k + ' (powinien dostać komplet planu)';
       return ['APP', 'INFRA', 'NOBODY', 'ALL'].every((k) => gate.includes('TREŚĆ-' + k)) ? null : 'bramka końcowa nie dostała kompletu kart';
     },
   },

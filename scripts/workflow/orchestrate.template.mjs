@@ -114,6 +114,16 @@ function cardsFor(a, layerId) {
   return own.concat(rest)
 }
 
+// Weryfikator warstwy dostaje karty BEZ zawężenia `forLayers` (ORC-164): na archiwum werdyktów 9 z 25 NO_GO weryfikatorów
+// warstw miało blokujące naruszenie reguły z karty, której zawężenie po tagach by tej warstwie nie dało (zob.
+// TASK-ORC-CONTEXT-CURATION-001). Implementer i naprawa zostają przy zawężeniu: jego brak karty wyłapie weryfikator w pętli warstwy.
+function cardsForVerifier(a, layerId) {
+  const all = a.patterns || []
+  const own = all.filter((p) => p.origin === 'layer:' + layerId)
+  const rest = all.filter((p) => p.origin !== 'layer:' + layerId && !String(p.origin || '').startsWith('layer:'))
+  return own.concat(rest)
+}
+
 function baseId(layer) {
   return layer.base || layer.id
 }
@@ -842,7 +852,7 @@ function buildVerifierPrompt(a, layer, probe, changedFiles, mode, noopClaim, pri
     'katalogu. Zdanie prozą zamiast ścieżki nie da się mechanicznie rozpoznać jako „poza ' +
     'zakresem" po drugiej stronie.\n'
   return existing + scopeBlock(layer, a) + '\n\n' + facts + files + removed + dirtyBlock(a, 'verifier') +
-    renderCards(cardsFor(a, baseId(layer)), undefined, cardBundle(a, baseId(layer))) +
+    renderCards(cardsForVerifier(a, baseId(layer)), undefined, cardBundle(a, 'verify:' + baseId(layer))) +
     '\nOceń zgodność zmiany z regułami powyżej. Zwróć werdykt GO albo NO_GO i listę naruszeń ' +
     '(plik, linia, reguła, co poprawić).\n' + scopeReminder + (a.autoFixMinor !== false ? MINOR_REMINDER : '') + CARD_PRECEDENCE + FINDINGS_FIELD +
     'CZYTAJ TYLKO zmienione pliki z listy (Read z offset/limit, gdy plik > 300 linii); plik spoza ' +

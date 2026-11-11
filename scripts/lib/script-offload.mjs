@@ -13,7 +13,7 @@
 
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { cardsFor, baseId } from '../workflow/orchestrate-core.mjs';
+import { cardsFor, cardsForVerifier, baseId } from '../workflow/orchestrate-core.mjs';
 
 export const OFFLOAD_STEPS = ['patterns', 'canon-refs'];
 
@@ -27,14 +27,17 @@ function bundleText(cards) {
 export function offloadPatterns(out, dir) {
   mkdirSync(dir, { recursive: true });
   const bundles = {};
-  const write = (key, cards) => {
+  const write = (key, cards, mapKey = key) => {
     if (!cards.length) return;
     const file = join(dir, `cards-${key}.md`);
     writeFileSync(file, bundleText(cards));
-    bundles[key] = file;
+    bundles[mapKey] = file;
   };
   const keys = [...new Set((out.layers ?? []).map((l) => baseId(l)))];
-  for (const key of keys) write(key, cardsFor(out, key));
+  for (const key of keys) {
+    write(key, cardsFor(out, key));
+    write(`verify-${key}`, cardsForVerifier(out, key), `verify:${key}`);
+  }
   write('__all', out.patterns ?? []);
   return {
     ...out,
