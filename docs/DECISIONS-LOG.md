@@ -15,6 +15,18 @@
 
 ---
 
+## 2026-11-11 — Runda 2 bramki końcowej na delcie jako opcja do eksperymentu (TASK-ORC-GATE-COST-001, E2)
+
+**Zmiana:** opcja `gateDelta` (domyślnie wyłączona): druga bramka po naprawie dostaje listę plików z naprawy i poprzednie ustalenia
+zamiast „zweryfikuj całość".
+**Dlaczego:** druga bramka to 45 kroków, $194, średnio $4,31 (pierwsza $5,37), a sprawdza głównie poprawki. Opcja daje eksperyment
+A/B bez zmiany domyślnego zachowania; nie włączam jej z góry, bo osłabia bramkę, a oszczędności ani zgodności werdyktów jeszcze nie mierzono.
+**Odrzucone:** diff w prompcie rundy 2 (to E3; workflow nie ma dostępu do plików, diff dostarczałaby sonda); zmiana etykiety kroku dla
+rozróżnienia trybu w telemetrii (kolektor klasyfikuje kroki regexami po etykiecie); włączenie domyślne przed pomiarem.
+**Status:** experimental (opcja wyłączona).
+
+---
+
 ## 2026-11-11 — Ścieżka pliku w `ruleHits`, tylko lokalnie; bez parsera lintu w sondzie (TASK-OBS-019)
 
 **Zmiana:** `step.ruleHits[].file` w lokalnych surowych zdarzeniach (prompt, normalizacja, schemat v1, aneks do ADR 0012); zakres B
