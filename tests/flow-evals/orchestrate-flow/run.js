@@ -182,6 +182,53 @@ const CASES = [
       return b.report.finalGate && b.report.finalGate.verdict === 'GO' ? null : 'przepływ z wyniesionymi kartami nie kończy się GO';
     },
   },
+  {
+    name: 'card-scope-assigns-cards-to-layers-by-tags-conservatively',
+    async run() {
+      const { scopeCardsToLayers } = await import(path.join(REPO, 'scripts', 'lib', 'card-scope.mjs'));
+      const card = (path_, tags, origin = 'trigger') => ({ path: path_, origin, content: '# K\n\n**Tags**: ' + tags.map((t) => '"' + t + '"').join(', ') + '\n' });
+      const layers = [
+        { id: 'domain', tags: ['api:domain'], skip: true },
+        { id: 'application', tags: ['api:app'] },
+        { id: 'infrastructure:x', base: 'infrastructure', tags: ['api:data-access'] },
+        { id: 'infrastructure:y', base: 'infrastructure', tags: ['api:data-access'] },
+      ];
+      const running = layers.filter((l) => !l.skip);
+      const r = Object.fromEntries(scopeCardsToLayers([
+        card('app', ['api:app']), card('sub', ['api:app:cross-context']), card('two', ['api:app', 'api:data-access']),
+        card('dom', ['api:domain:aggregate']), card('cross', ['api:security']), card('any', ['api:domain', 'any:process']),
+        { path: 'notags', origin: 'always', content: '# K\nbez tagów' }, card('fromAnalysis', ['api:app'], 'analysis'),
+        card('fromLayer', ['api:app'], 'layer:infrastructure'),
+      ], running, layers).map((p) => [p.path, p.forLayers]));
+      const eq = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+      if (!eq(r.app, ['application'])) return 'karta api:app nie poszła tylko do application: ' + JSON.stringify(r.app);
+      if (!eq(r.sub, ['application'])) return 'tag z przyrostkiem (api:app:cross-context) nie pasuje do api:app';
+      if (!eq(r.two, ['application', 'infrastructure'])) return 'karta z dwoma tagami: ' + JSON.stringify(r.two) + ' (warstwa bazowa raz, mimo dwóch jednostek)';
+      if (!eq(r.dom, [])) return 'karta tylko pominiętej warstwy powinna mieć forLayers: [] (nikt oprócz bramki): ' + JSON.stringify(r.dom);
+      if (r.cross !== undefined) return 'karta przekrojowa (bez dopasowania do planu) powinna iść do wszystkich';
+      if (r.any !== undefined) return 'karta z any:* powinna iść do wszystkich';
+      if (r.notags !== undefined) return 'karta bez tagów powinna iść do wszystkich';
+      if (r.fromAnalysis !== undefined || r.fromLayer !== undefined) return 'karty z analizy i z warstwy nie podlegają zawężeniu';
+      const withUntagged = scopeCardsToLayers([card('app', ['api:app'])], [{ id: 'application', tags: ['api:app'] }, { id: 'misc', tags: [] }]);
+      return eq(withUntagged[0].forLayers, ['application', 'misc']) ? null : 'warstwa bez tagów powinna dostawać wszystko: ' + JSON.stringify(withUntagged[0].forLayers);
+    },
+  },
+  {
+    name: 'cards-for-layer-respects-for-layers-and-gate-gets-everything',
+    async run() {
+      const mk = (name, forLayers) => ({ path: 'p/' + name + '_summary.md', origin: 'trigger', card: true, content: 'TREŚĆ-' + name, ...(forLayers ? { forLayers } : {}) });
+      const patterns = [mk('APP', ['application']), mk('INFRA', ['infrastructure']), mk('NOBODY', []), mk('ALL')];
+      const r = await runFlow({ patterns });
+      const impl = promptOf(r, 'infrastructure-impl');
+      const ver = promptOf(r, 'infrastructure-verify');
+      const gate = promptOf(r, 'final-gate');
+      for (const [n, pr] of [['implementer', impl], ['weryfikator', ver]]) {
+        if (!pr.includes('TREŚĆ-INFRA') || !pr.includes('TREŚĆ-ALL')) return `${n}: brak karty własnej albo ogólnej`;
+        if (pr.includes('TREŚĆ-APP') || pr.includes('TREŚĆ-NOBODY')) return `${n}: dostał kartę cudzej warstwy albo karty bez adresata`;
+      }
+      return ['APP', 'INFRA', 'NOBODY', 'ALL'].every((k) => gate.includes('TREŚĆ-' + k)) ? null : 'bramka końcowa nie dostała kompletu kart';
+    },
+  },
 ];
 
 (async () => {

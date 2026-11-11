@@ -108,7 +108,9 @@ function layerPlan(a, createWhenHits) {
 function cardsFor(a, layerId) {
   const all = a.patterns || []
   const own = all.filter((p) => p.origin === 'layer:' + layerId)
-  const rest = all.filter((p) => p.origin !== 'layer:' + layerId && !String(p.origin || '').startsWith('layer:'))
+  // `forLayers` (ORC-163, wypełnia prepare po tagach) zawęża kartę do wymienionych warstw bazowych; brak pola = wszystkie.
+  const rest = all.filter((p) => p.origin !== 'layer:' + layerId && !String(p.origin || '').startsWith('layer:') &&
+    (!Array.isArray(p.forLayers) || p.forLayers.includes(layerId)))
   return own.concat(rest)
 }
 

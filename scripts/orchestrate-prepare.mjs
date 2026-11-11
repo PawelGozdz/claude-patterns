@@ -70,6 +70,7 @@ import { loadResolveConfig } from './lib/resolve-config.mjs';
 import { checkLoop } from './lib/orchestrate-loop-guard.mjs';
 import { minifyScript, APPROVAL_LIMIT, APPROVAL_MARGIN } from './lib/script-minify.mjs';
 import { applyOffload, OFFLOAD_STEPS } from './lib/script-offload.mjs';
+import { scopeCardsToLayers } from './lib/card-scope.mjs';
 
 const require_ = createRequire(import.meta.url);
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -963,6 +964,18 @@ function main() {
     for (let i = patterns.length - 1; i >= 0; i--) if (drop.has(patterns[i].path)) patterns.splice(i, 1);
     warnings.push(`wzorce pominięte: tagi poza przestrzeniami uruchamianych warstw (${[...runningNs].join(', ')}): ${[...drop].join(', ')} — jeśli któryś jest potrzebny, dopisz go do patterns[] analizy`);
   }
+
+  // ORC-163: karta z triggera/always trafia tylko do warstw o pasujących tagach (przekrojowe zostają dla wszystkich).
+  const runningLayers = layers.filter((l) => !l.skip && (!l.optional || createWhenHits[l.id]));
+  const scopedPatterns = scopeCardsToLayers(patterns, runningLayers, layers);
+  const scopedCount = scopedPatterns.filter((p) => Array.isArray(p.forLayers)).length;
+  if (scopedCount) {
+    const baseIds = [...new Set(runningLayers.map((l) => l.base || l.id))];
+    const sizeFor = (id) => scopedPatterns.filter((p) => !String(p.origin).startsWith('layer:') ? (!p.forLayers || p.forLayers.includes(id)) : p.origin === `layer:${id}`).reduce((n, p) => n + String(p.content ?? '').length, 0);
+    const total = scopedPatterns.reduce((n, p) => n + String(p.content ?? '').length, 0);
+    warnings.push(`karty zawężone do warstw po tagach (ORC-163): ${scopedCount}/${patterns.length} kart ma adresata; znaki kart per warstwa: ${baseIds.map((id) => `${id}=${sizeFor(id)}`).join(', ')} (komplet dla bramki: ${total})`);
+  }
+  patterns.splice(0, patterns.length, ...scopedPatterns);
 
   for (const p of exclude) {
     if (!excludedHit.has(p)) warnings.push(`patterns_exclude: "${p}" nie był w doborze — literówka albo wzorzec już nie trafia`);
