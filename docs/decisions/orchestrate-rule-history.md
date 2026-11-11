@@ -3087,3 +3087,15 @@ Lint WL6 ostrzega przed `git diff` bez `--stat/--name-only/--numstat` (incydent 
 **Ryzyko do zmierzenia.** Weryfikator warstwy sprawdza teraz tylko karty swojej warstwy; reguła przekrojowa z tagiem bez dopasowania nadal idzie do wszystkich, ale karta z błędnym tagiem może zniknąć z warstwy, która jej potrzebuje. Miara: odsetek `gap:` w raportach implementerów i NO-GO bramki z ruleId karty, której warstwa nie dostała (bramka widzi komplet, więc taki przypadek wyjdzie dopiero tam).
 
 **Claim.** Tokeny kart w promptach implementera i weryfikatora spadają o ok. 45–80% zależnie od warstwy przy niezmienionej bramce końcowej. Test: `orchestrate-flow` (`card-scope-…`, `cards-for-layer-…`).
+
+### ORC-164 — weryfikator warstwy dostaje karty bez zawężenia po tagach (2026-11-11)
+
+**Objaw.** ORC-163 zawęził karty po tagach także dla weryfikatora warstwy. Powtórka na archiwum werdyktów (`scripts/card-citation-replay.mjs`, 823 werdykty warstw, 25 NO_GO z cytowaną regułą karty): w **9 z 25 (36%)** co najmniej jedno blokujące naruszenie dotyczyło karty, której zawężenie nie dałoby tej warstwie (12 z 80 blokujących cytowań, 15%). Pary: infrastruktura ← `acl-registry`, `domain-errors`, `testing-pyramid`; aplikacja ← `geo-spatial-query`.
+
+**Zmiana.** `cardsForVerifier` w szablonie (komplet kart planu, bez `forLayers`) dla promptu weryfikatora; implementer i naprawa zostają z `cardsFor` (zawężone). W trybie pliku `script-offload` pisze osobne pliki `cards-verify-<warstwa>.md`. Bramka bez zmian (komplet).
+
+**Dlaczego nie P7.** Polityka „tagi + katalogi cross-layer/architecture/testing" schodzi do 4 utraconych z 80 przy kartach 63/60/39 tys. znaków (zamiast 91), ale zostawia 3 z 25 werdyktów z luką, a oszczędność dotyczy tylko weryfikatora (14% kosztu, z czego karty są częścią). Utrata wyłapana dopiero w bramce kosztuje ok. 6× więcej niż w weryfikatorze warstwy (mediana $2,39 wobec $0,40). Dla implementera zawężenie zostaje: brak karty wyłapie weryfikator w pętli; NO_GO weryfikatora warstw to 3,9% (32 z 823), więc oczekiwany dodatkowy cykl naprawy to ok. 1% werdyktów × ok. $0,7, wobec ok. $0,06 oszczędności na kroku implementera.
+
+**Ryzyko do zmierzenia.** Próbka mała (25 werdyktów, głównie juz-ide-api-1; 32 z 80 cytowań z niejednoznacznym ID). Pomiar po prawdziwych przebiegach: odsetek pętli naprawczych po NO_GO weryfikatora z regułą karty spoza zakresu implementera.
+
+**Claim.** Weryfikator warstwy nie traci blokujących cytowań na archiwum (0/80). Test: `orchestrate-flow` (`implementer-cards-are-scoped-but-verifier-and-gate-get-everything`).

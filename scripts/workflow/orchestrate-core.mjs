@@ -57,6 +57,7 @@ export const {
   budgetFor,
   layerPlan,
   cardsFor,
+  cardsForVerifier,
   baseId,
   renderCards,
   scopeBlock,

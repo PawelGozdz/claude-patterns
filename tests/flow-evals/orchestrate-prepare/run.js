@@ -680,7 +680,7 @@ CASES.push({
     if (src.includes('reguła numer')) return 'treść karty została w skrypcie mimo wyniesienia';
     const all = path.join(root, 'out', 'TS-FIX-001.context', 'cards-__all.md');
     if (!fs.existsSync(all) || !fs.readFileSync(all, 'utf8').includes('reguła numer')) return 'brak pliku z kartami albo bez treści: ' + all;
-    if (!/cardBundles[\s\S]{0,300}cards-__all\.md/.test(src)) return 'args bez cardBundles';
+    if (!src.includes('cardBundles') || !src.includes('cards-__all.md') || !src.includes('cards-verify-')) return 'args bez cardBundles (implementer, weryfikator, bramka)';
     if (!e.json.warnings.some((w) => /wyniesiono patterns/.test(w))) return 'brak ostrzeżenia o wyniesieniu kart';
     return null;
   },
