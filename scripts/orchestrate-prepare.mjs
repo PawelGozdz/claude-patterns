@@ -68,6 +68,8 @@ import { buildCanon } from './lib/canon-inject.mjs';
 import { autoEligibility, recommendedOption } from './lib/answer-evidence.mjs';
 import { loadResolveConfig } from './lib/resolve-config.mjs';
 import { checkLoop } from './lib/orchestrate-loop-guard.mjs';
+import { minifyScript, APPROVAL_LIMIT, APPROVAL_MARGIN } from './lib/script-minify.mjs';
+import { applyOffload, OFFLOAD_STEPS } from './lib/script-offload.mjs';
 
 const require_ = createRequire(import.meta.url);
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -77,7 +79,7 @@ const YAML = require_(join(REPO_ROOT, 'node_modules', 'yaml'));
 // satelita nie musi niczego symlinkować ani znać lokalizacji claude-patterns.
 const WORKFLOW_SCRIPT = join(REPO_ROOT, 'scripts', 'workflow', 'orchestrate.template.mjs');
 
-const EXIT = { OK: 0, USAGE: 1, GATE: 2, CONFIG: 3, LINT: 4, REPEAT: 5 };
+const EXIT = { OK: 0, USAGE: 1, GATE: 2, CONFIG: 3, LINT: 4, REPEAT: 5, SIZE: 6 };
 
 function die(code, msg) {
   process.stderr.write(`✘ orchestrate-prepare: ${msg}\n`);
@@ -519,12 +521,40 @@ function buildTelemetryPlan(out) {
   return plan;
 }
 
+// Skrypt musi się zmieścić w oknie „Run a dynamic workflow?" (limit 200 000 znaków, Claude Code 2.1.322;
+// dłuższy = „approval is unavailable" i /orchestrate schodzi do trybu ręcznego, ORC-153). Drabina:
+// minifikacja (komentarze i wcięcia, AST ten sam) → karty reguł do plików → treść kanonu do czytania
+// z pliku. Każdy stopień dopiero, gdy poprzedni nie wystarczył; nic nie mieści się = exit 6, nie skrypt,
+// którego nikt nie zatwierdzi.
+function buildEmitted(src, out) {
+  const json = JSON.stringify(out).replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029');
+  return src.split(ARGS_LINE).join(`const a = ${json}`);
+}
+
 function emitScript(out, target) {
   const src = readFileSync(WORKFLOW_SCRIPT, 'utf8');
   const hits = src.split(ARGS_LINE).length - 1;
   if (hits !== 1) die(EXIT.CONFIG, `szablon ${WORKFLOW_SCRIPT}: oczekiwana dokładnie jedna linia "${ARGS_LINE}", jest ${hits}`);
-  const json = JSON.stringify(out, null, 1).replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029');
-  const emitted = src.split(ARGS_LINE).join(`const a = ${json}`);
+  const budget = APPROVAL_LIMIT - APPROVAL_MARGIN;
+  const bundleDir = join(dirname(target), `${basename(target).replace(/\.workflow\.mjs$|\.mjs$/, '')}.context`);
+  const notes = [];
+  let emitted = null;
+  let final = out;
+  let offloaded = [];
+  const attempts = [[], ...OFFLOAD_STEPS.map((_, i) => OFFLOAD_STEPS.slice(0, i + 1))];
+  for (const steps of attempts) {
+    final = applyOffload(out, steps, bundleDir);
+    const full = buildEmitted(src, final);
+    const min = minifyScript(full);
+    if (min.text === null && !notes.length) notes.push(`minifikacja skryptu niedostępna: ${min.reason}`);
+    const candidate = min.text ?? full;
+    if (candidate.length <= budget) { emitted = candidate; offloaded = steps; break; }
+  }
+  if (emitted === null) {
+    const sizes = Object.entries(final).map(([k, v]) => [k, JSON.stringify(v ?? null).length]).sort((x, y) => y[1] - x[1]).slice(0, 4);
+    die(EXIT.SIZE, `skrypt przekracza limit okna zatwierdzenia (${APPROVAL_LIMIT} znaków) mimo minifikacji i wyniesienia kart/kanonu; największe pola args: ` +
+      `${sizes.map(([k, n]) => `${k}=${n}`).join(', ')}. ${notes.join('; ')}`.trim());
+  }
   const { lint } = require_(join(REPO_ROOT, 'hooks', 'workflow-lint.js'));
   const findings = lint(emitted);
   const errors = findings.filter((x) => x.level === 'ERROR');
@@ -535,7 +565,12 @@ function emitScript(out, target) {
   }
   mkdirSync(dirname(target), { recursive: true });
   writeFileSync(target, emitted);
-  return findings.filter((x) => x.level !== 'ERROR').map((x) => `workflow-lint [${x.id}] w wyemitowanym skrypcie: ${x.msg.slice(0, 200)}`);
+  out.scriptChars = emitted.length;
+  out.offloaded = offloaded;
+  const sizeNote = offloaded.length
+    ? [`skrypt ${emitted.length} znaków (limit okna ${APPROVAL_LIMIT}): wyniesiono ${offloaded.join(' + ')} do ${bundleDir} — agent czyta karty jednym Readem zamiast dostać je w prompcie`]
+    : [];
+  return [...sizeNote, ...notes, ...findings.filter((x) => x.level !== 'ERROR').map((x) => `workflow-lint [${x.id}] w wyemitowanym skrypcie: ${x.msg.slice(0, 200)}`)];
 }
 
 // Powód pominięcia warstwy, który mówi „częściowo" — to zawężenie zapisane w złym polu.
