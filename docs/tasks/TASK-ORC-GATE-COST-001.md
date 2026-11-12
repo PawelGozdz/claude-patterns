@@ -354,6 +354,8 @@ tekst rundy 2 jest bajt w bajt taki jak dotąd (test), a pierwsza bramka nie zmi
    ocenić ręcznie. Włączenie domyślne dopiero przy zgodności ≥ 95% i zerze ustaleń poza deltą ocenionych jako realne.
 4. Uwaga: baza nie zawiera jeszcze kosztu per etykieta rundy 2 w nowych przebiegach; na dziś są tylko liczby historyczne z 2026-11-09/10.
 
+**Pomiar uruchomiony (2026-11-12, ORC-166).** `gateDelta` włączony dla `juz-ide-api-8` przez `config/orchestrate-experiments.json` (wyłączenie: usunięcie wpisu). Ramię A = pozostałe instancje (api-1, api-3, api-4). Baza z pierwszych 5 przebiegów dynamicznych po ORC-165: bramka 45% kosztu, `final-gate-r2` $3,24–5,98 (api-1 ×2, api-3, api-8; api-8 r2 $4,59 bez delty). Do porównania: `costUsd` kroków `final-gate-r2` z api-8 po włączeniu, minimum 3–4 przebiegi z rundą 2; tryb widać w `report.finalGateDelta`. Zgodność werdyktu z pełną bramką (krok 3) nadal do zrobienia.
+
 **Test całego przepływu (2026-11-11, po E2 i E3).** Dotąd opcje `gateDelta` i `gateDiff` miały testy tylko na tekście promptu i na wyciętych
 funkcjach; miejsce wywołania w rundzie 2 nie było nigdy wykonane, a błąd tam marnowałby cały drogi przebieg. Eval `orchestrate-flow` (6 przypadków,
 w pre-commit) uruchamia CAŁY szablon z atrapą agenta i wymusza NO-GO bramki → naprawa → runda 2. Potwierdza: delta dostaje pliki z naprawy i `ruleId` z
