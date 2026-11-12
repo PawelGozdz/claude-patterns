@@ -14,11 +14,12 @@ sources:
   - orchestrate
 rule_ref: ORC-139
 first_seen: 2026-11-01
-last_seen: 2026-11-09
-occurrences: 2
+last_seen: 2026-11-12
+occurrences: 3
 projects:
   - ai-os-bot
   - juz-ide-api-7
+  - juz-ide-api-4
 reopened_at: 2026-11-09
 reopened_from_status: dismissed
 ---
@@ -27,5 +28,6 @@ reopened_from_status: dismissed
 
 ## Occurrences
 
+- 2026-11-12 juz-ide-api-4 (TS-GDPR-NOTIFICATION-LOG-PERSON-IDS-001) run `wf_f50e8461-8be` — sonda hasha drzewa bez wyniku w 9 z 9 werdyktów: powłoka sondy startowała poza repo git (katalog scratchpad jako cwd), więc wiązanie werdyktów z drzewem nie zadziałało
 - 2026-11-09 juz-ide-api-7 (TS-GEO-LOCATION-INVENTORY-JSONB-001) — hook stop:format-typecheck (ecc) formatuje pliki po końcu tury agenta i unieważnia hash drzewa po weryfikacji (3 razy w jednym przebiegu: warstwy 1,2,3)
 - 2026-11-01 ai-os-bot (BOT-045) run `wf_617071c6-9ef` — Sonda hasha drzewa zwróciła pusty tree_hash ("") w KAŻDYM wywołaniu (17 askErrors, 0 bound / 9 unbound): wiązanie werdyktu z kodem niedostępne w całym przebiegu

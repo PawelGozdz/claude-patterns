@@ -6,11 +6,145 @@
       "cause": "config",
       "n": 1,
       "trigger": "setup_drift"
+    },
+    "DEV-orc-153": {
+      "cause": "infra",
+      "n": 1,
+      "trigger": "agent_note"
     }
   },
-  "events": 11,
+  "engines": {
+    "205b8c0": {
+      "analyze": {
+        "costUsd": 2.805065,
+        "died": 6,
+        "ended": {
+          "ok": 1
+        },
+        "started": 1,
+        "steps": 6,
+        "stepsWithoutCost": 0
+      }
+    }
+  },
+  "events": 34,
   "host": "5a164d2d0145",
   "processes": {
+    "analyze": {
+      "costUsd": 2.805065,
+      "costUsdRetried": 0,
+      "died": 6,
+      "repairs": {
+        "fixSteps": 0,
+        "fixed": 0,
+        "open": 0
+      },
+      "retried": 0,
+      "roles": {
+        "ddd-modeling": {
+          "causes": {
+            "silent": 1
+          },
+          "costUsd": 0.489331,
+          "durationMs": {
+            "n": 1,
+            "p50": 35796,
+            "p90": 35796
+          },
+          "n": 1,
+          "outcomes": {
+            "died": 1
+          },
+          "toolCalls": 12
+        },
+        "decision-gate": {
+          "causes": {
+            "silent": 1
+          },
+          "costUsd": 0.018836,
+          "durationMs": {
+            "n": 1,
+            "p50": 45404,
+            "p90": 45404
+          },
+          "n": 1,
+          "outcomes": {
+            "died": 1
+          },
+          "toolCalls": 16
+        },
+        "impl-analysis": {
+          "causes": {
+            "silent": 1
+          },
+          "costUsd": 0.588825,
+          "durationMs": {
+            "n": 1,
+            "p50": 71962,
+            "p90": 71962
+          },
+          "n": 1,
+          "outcomes": {
+            "died": 1
+          },
+          "toolCalls": 11
+        },
+        "pattern-fit": {
+          "causes": {
+            "silent": 1
+          },
+          "costUsd": 0.465529,
+          "durationMs": {
+            "n": 1,
+            "p50": 42130,
+            "p90": 42130
+          },
+          "n": 1,
+          "outcomes": {
+            "died": 1
+          },
+          "toolCalls": 12
+        },
+        "tech-analysis": {
+          "causes": {
+            "silent": 1
+          },
+          "costUsd": 0.842939,
+          "durationMs": {
+            "n": 1,
+            "p50": 53970,
+            "p90": 53970
+          },
+          "n": 1,
+          "outcomes": {
+            "died": 1
+          },
+          "toolCalls": 16
+        },
+        "tech-analysis-specialist": {
+          "causes": {
+            "silent": 1
+          },
+          "costUsd": 0.399605,
+          "durationMs": {
+            "n": 1,
+            "p50": 33577,
+            "p90": 33577
+          },
+          "n": 1,
+          "outcomes": {
+            "died": 1
+          },
+          "toolCalls": 11
+        }
+      },
+      "steps": 6,
+      "stepsWithoutCost": 0,
+      "verification": {
+        "firstPassGo": 0,
+        "units": 0
+      }
+    },
     "audit": {
       "costUsd": 0,
       "costUsdRetried": 0,
@@ -171,10 +305,129 @@
         "firstPassGo": 0,
         "units": 0
       }
+    },
+    "hook": {
+      "costUsd": 0,
+      "costUsdRetried": 0,
+      "died": 0,
+      "repairs": {
+        "fixSteps": 0,
+        "fixed": 0,
+        "open": 0
+      },
+      "retried": 0,
+      "roles": {
+        "block-root-grep:root-grep": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 0,
+            "p50": null,
+            "p90": null
+          },
+          "n": 1,
+          "outcomes": {
+            "halted": 1
+          },
+          "toolCalls": 0
+        },
+        "block-unscoped-tests:no-files": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 0,
+            "p50": null,
+            "p90": null
+          },
+          "n": 1,
+          "outcomes": {
+            "halted": 1
+          },
+          "toolCalls": 0
+        },
+        "block-unscoped-tests:not-a-file": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 0,
+            "p50": null,
+            "p90": null
+          },
+          "n": 2,
+          "outcomes": {
+            "halted": 2
+          },
+          "toolCalls": 0
+        },
+        "check-security-considerations:task-pre-analysis": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 0,
+            "p50": null,
+            "p90": null
+          },
+          "n": 3,
+          "outcomes": {
+            "halted": 3
+          },
+          "toolCalls": 0
+        },
+        "check-subagent-pattern-reads:pattern-grounding": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 0,
+            "p50": null,
+            "p90": null
+          },
+          "n": 5,
+          "outcomes": {
+            "halted": 5
+          },
+          "toolCalls": 0
+        }
+      },
+      "steps": 12,
+      "stepsWithoutCost": 12,
+      "verification": {
+        "firstPassGo": 0,
+        "units": 0
+      }
     }
   },
   "project": "juz-ide-api-7",
-  "runs": {},
-  "stepsTotal": 10,
+  "runs": {
+    "analyze": {
+      "costUsd": 0,
+      "durationMs": {
+        "n": 1,
+        "p50": 395994,
+        "p90": 395994
+      },
+      "ended": {
+        "ok": 1
+      },
+      "started": 1
+    }
+  },
+  "seeds": {
+    "unknown": {
+      "checked": 1,
+      "skipped:no_topic": 1
+    }
+  },
+  "stepsTotal": 28,
+  "tasks": {
+    "TS-AUTH-ANONYMIZATION-CRON-RESULT-COUNT-001": {
+      "analyzeRuns": 1,
+      "costToGoUsd": null,
+      "costUsd": 2.805065,
+      "reachedGo": false,
+      "runs": 0,
+      "spanMs": 396092,
+      "stepsWithoutCost": 0
+    }
+  },
   "v": 1
 }

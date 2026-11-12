@@ -148,9 +148,12 @@ ${body}
 const EMPTY_TEL = fs.mkdtempSync(path.join(os.tmpdir(), 'orch-prep-tel-empty-'));
 let CURRENT_TEL = EMPTY_TEL;
 
-function run(root, taskId, extra = []) {
+// ORC-166: domyślnie wskazujemy NIEISTNIEJĄCY plik eksperymentów, żeby prawdziwa konfiguracja z config/ nie wpływała na testy.
+const NO_EXPERIMENTS = path.join(os.tmpdir(), 'orch-prep-no-experiments.json');
+
+function run(root, taskId, extra = [], env = {}) {
   const r = spawnSync('node', [SCRIPT, taskId, '--project', root, '--json', ...extra], {
-    encoding: 'utf8', env: { ...process.env, CLAUDE_TELEMETRY_DIR: CURRENT_TEL },
+    encoding: 'utf8', env: { ...process.env, CLAUDE_TELEMETRY_DIR: CURRENT_TEL, ORC_EXPERIMENTS_FILE: NO_EXPERIMENTS, ...env },
   });
   let json = null;
   try { json = JSON.parse(r.stdout); } catch { /* wyjście nie-JSON przy błędach — celowo */ }
@@ -1280,6 +1283,70 @@ loopCase('only-one-earlier-run-passes', {
   check: (r) => (r.code === 0 && !loopWarning(r) ? null : `jeden wcześniejszy run: exit ${r.code} ${loopWarning(r)}`),
 });
 
+// ── ORC-166: eksperymenty per projekt z pliku w claude-patterns ─────────────────────
+function expFile(content) {
+  const f = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'orch-prep-exp-')), 'experiments.json');
+  fs.writeFileSync(f, JSON.stringify(content));
+  return f;
+}
+const expProject = () => makeProject({ taskId: 'TS-FIX-001', analysis: analysisFm({}), task: taskFile('Dodaj aggregate.') });
+
+CASES.push({
+  name: 'experiments-file-enables-gate-delta-for-matching-project',
+  build: expProject,
+  env: (root) => ({ ORC_EXPERIMENTS_FILE: expFile({ [path.basename(root)]: { gateDelta: true } }) }),
+  check(r) {
+    if (r.code !== 0) return `exit ${r.code}: ${r.stderr.trim().slice(0, 200)}`;
+    if (r.json.gateDelta !== true) return 'gateDelta powinno być true, jest ' + r.json.gateDelta;
+    if (r.json.gateDiff !== false) return 'gateDiff nie powinno się zmienić';
+    if (!r.json.experiments || r.json.experiments.gateDelta !== true) return 'brak śladu out.experiments';
+    if (!r.json.warnings.some((w) => w.includes('eksperyment włączony'))) return 'brak ostrzeżenia o włączonym eksperymencie';
+    return null;
+  },
+});
+
+CASES.push({
+  name: 'experiments-file-entry-for-other-project-changes-nothing',
+  build: expProject,
+  env: () => ({ ORC_EXPERIMENTS_FILE: expFile({ 'inny-projekt': { gateDelta: true } }) }),
+  check(r) {
+    if (r.code !== 0) return `exit ${r.code}`;
+    if (r.json.gateDelta !== false || 'experiments' in r.json) return 'wpis cudzego projektu nie może wpływać na ten';
+    if (r.json.warnings.some((w) => w.includes('eksperyment'))) return 'niepotrzebne ostrzeżenie o eksperymencie';
+    return null;
+  },
+});
+
+CASES.push({
+  name: 'explicit-overrides-win-over-experiments-file',
+  build: expProject,
+  env: (root) => ({ ORC_EXPERIMENTS_FILE: expFile({ [path.basename(root)]: { gateDelta: true } }) }),
+  args: () => {
+    const f = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'orch-prep-ov-')), 'ov.json');
+    fs.writeFileSync(f, JSON.stringify({ gateDelta: false }));
+    return ['--overrides', f];
+  },
+  check(r) {
+    if (r.code !== 0) return `exit ${r.code}: ${r.stderr.trim().slice(0, 200)}`;
+    if (r.json.gateDelta !== false) return '--overrides {"gateDelta":false} musi wyłączyć eksperyment z pliku, jest ' + r.json.gateDelta;
+    return null;
+  },
+});
+
+CASES.push({
+  name: 'experiments-file-bad-entries-warn-but-do-not-block',
+  build: expProject,
+  env: (root) => ({ ORC_EXPERIMENTS_FILE: expFile({ [path.basename(root)]: { gateDelta: 'tak', gateDelat: true, gateDiff: true } }) }),
+  check(r) {
+    if (r.code !== 0) return `literówka w pliku eksperymentów nie może blokować przebiegu, exit ${r.code}`;
+    if (r.json.gateDelta !== false) return 'wartość nie-boolowska nie może włączyć opcji';
+    if (r.json.gateDiff !== true) return 'poprawny wpis obok błędnych powinien zadziałać';
+    const w = r.json.warnings.join('\n');
+    if (!w.includes('gateDelat') || !w.includes('`gateDelta` musi być true/false')) return 'brak ostrzeżeń o błędnych wpisach: ' + w.slice(0, 300);
+    return null;
+  },
+});
+
 // ── bieg ─────────────────────────────────────────────────────────────────────────
 let failed = 0;
 (async () => {
@@ -1294,7 +1361,9 @@ for (const c of CASES) {
       fs.writeFileSync(path.join(tel, '2026-11.jsonl'), c.events.map((e) => JSON.stringify(e)).join('\n') + '\n');
       CURRENT_TEL = tel;
     }
-    const err = await c.check(run(root, 'TS-FIX-001', c.args || []), root, tel);
+    const cArgs = typeof c.args === 'function' ? c.args(root) : (c.args || []);
+    const cEnv = typeof c.env === 'function' ? c.env(root) : (c.env || {});
+    const err = await c.check(run(root, 'TS-FIX-001', cArgs, cEnv), root, tel);
     if (err) { failed++; process.stdout.write(`  ❌ ${c.name} — ${err}\n`); }
     else process.stdout.write(`  ✅ ${c.name}\n`);
   } catch (e) {

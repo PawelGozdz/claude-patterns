@@ -201,6 +201,8 @@ function formatCost(meta) {
 // Detect context window size from model id/name. Opus 4.7 has a 1M variant
 // surfaced as `claude-opus-4-7[1m]` or `(1M context)` in display names.
 function detectContextWindow(meta) {
+  const size = meta?.context_window?.context_window_size;
+  if (typeof size === 'number' && size > 0) return size;
   const id = (meta?.model?.id || meta?.model_id || '').toLowerCase();
   const display = (meta?.model?.display_name || meta?.model || '').toLowerCase();
   if (id.includes('[1m]') || display.includes('1m')) return 1_000_000;
@@ -246,7 +248,12 @@ function findLastAssistantUsage(tail) {
 }
 
 function formatContext(meta) {
-  // 1) Honor explicit fields if the harness ever provides them (forward-compat)
+  // 0) Harness-provided percentage (statusline docs: context_window.used_percentage,
+  //    input + cache tokens only, null early in the session) — authoritative, no transcript I/O.
+  const pct0 = meta?.context_window?.used_percentage;
+  if (typeof pct0 === 'number' && pct0 > 0) return `${Math.round(pct0)}%`;
+
+  // 1) Legacy explicit fields (forward-compat)
   let used = meta?.context?.used_tokens ?? meta?.context_used;
   let total = meta?.context?.total_tokens ?? meta?.context_max;
 

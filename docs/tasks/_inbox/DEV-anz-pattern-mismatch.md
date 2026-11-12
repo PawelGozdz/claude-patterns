@@ -38,8 +38,8 @@ sources:
   - analyze
 rule_ref: ANZ-PATTERN-MISMATCH
 first_seen: 2026-10-10
-last_seen: 2026-11-10
-occurrences: 18
+last_seen: 2026-11-12
+occurrences: 21
 projects:
   - aegis-flow
   - ai-os-bot
@@ -63,6 +63,9 @@ reopened_from_status: promoted
 
 ## Occurrences
 
+- 2026-11-12 juz-ide-api-8 (TS-TOOLING-USERID-GUARD-001) — Karty wzorców sprzeczne w sprawie userId w Command/Query: dual-identity-pattern_summary.md DI2/DI7 (userId jako parametr konstruktora ustawiany przez kontroler) vs command-handler-pattern_summary.md CH4/N1 i dual-identity N6 (zakaz); szkielet QH8 w query-handler-pattern_summary.md (requestingUserId) łamie N6. Strażnik zgodny z CH4 flaguje to, co DI2 nakazuje.
+- 2026-11-11 juz-ide-api-5 (TS-GDPR-ERASURE-RETRY-ALERT-001) — Dobór wzorców dla taska o alercie z procesora kolejki: słowa kolejka/queue kierują do command-handler-queue-port-pattern.md, który wyłącza procesory i serwisy; architecture/bullmq-queue-pattern.md (karta procesorów, BQ1-BQ12) nie ma w triggers runtime.yml; brak karty alertu operacyjnego. Slot threat-model: when: nie zawiera haseł RODO/anonimiz/Art. 17, trafienia były fałszywe (token-economy, blokady).
+- 2026-11-11 juz-ide-api-6 (TS-OBS-LOG-PII-001) — logger-pattern_summary.md N4 twierdzi, że LOGGER_SERVICE redaguje automatycznie przez REDACTION_SERVICE; w juz-ide-api EnhancedLoggerService i LoggerService nie wołają RedactionService (redakcja tylko przez pino redact.paths, jeden poziom). Karta nie ma też reguły o jednym punkcie redakcji; SI5/N5 w security-invariants_summary.md nie wymieniają współrzędnych, JWT, kodu OTP ani query; safe-error-propagation_summary.md nie rozstrzyga logowania error.message po stronie serwera.
 - 2026-11-10 juz-ide-api (TS-TOOLING-005) — patterns.always (conventions, security-invariants, safe-error-propagation, logger, domain-errors) to wzorce NestJS/DDD; dla taska w tools/*.mjs bez kodu w src/ nie mają zastosowania
 - 2026-11-09 juz-ide-mobile-app (STATE-MUTATION-REFRESH-JOBS-SHARES-SERVICES-001) — flutter/riverpod-state-pattern.md pokazuje StateNotifier/StateNotifierProvider, a projekt jest na Riverpod 3 (Notifier + SessionScopedNotifier); karta nieaktualna dla stosu
 - 2026-11-08 juz-ide-api-8 (TS-INFRA-IMAGE-HARDENING-002) — Biblioteka wzorców nie ma karty o bramce obrazu w CI, skanerze obrazów, Renovate ani wyjątkach z datą wygaśnięcia (.claude/knowledge/patterns/, 0 trafień po słowach image/trivy/renovate/docker)

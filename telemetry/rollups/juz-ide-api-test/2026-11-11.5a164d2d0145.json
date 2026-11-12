@@ -8,7 +8,7 @@
       "trigger": "setup_drift"
     }
   },
-  "events": 11,
+  "events": 20,
   "host": "5a164d2d0145",
   "processes": {
     "audit": {
@@ -171,10 +171,71 @@
         "firstPassGo": 0,
         "units": 0
       }
+    },
+    "hook": {
+      "costUsd": 0,
+      "costUsdRetried": 0,
+      "died": 0,
+      "repairs": {
+        "fixSteps": 0,
+        "fixed": 0,
+        "open": 0
+      },
+      "retried": 0,
+      "roles": {
+        "block-unscoped-tests:direct-runner": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 0,
+            "p50": null,
+            "p90": null
+          },
+          "n": 2,
+          "outcomes": {
+            "halted": 2
+          },
+          "toolCalls": 0
+        },
+        "block-unscoped-tests:not-a-file": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 0,
+            "p50": null,
+            "p90": null
+          },
+          "n": 4,
+          "outcomes": {
+            "halted": 4
+          },
+          "toolCalls": 0
+        },
+        "check-subagent-pattern-reads:pattern-grounding": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 0,
+            "p50": null,
+            "p90": null
+          },
+          "n": 3,
+          "outcomes": {
+            "halted": 3
+          },
+          "toolCalls": 0
+        }
+      },
+      "steps": 9,
+      "stepsWithoutCost": 9,
+      "verification": {
+        "firstPassGo": 0,
+        "units": 0
+      }
     }
   },
   "project": "juz-ide-api-test",
   "runs": {},
-  "stepsTotal": 10,
+  "stepsTotal": 19,
   "v": 1
 }

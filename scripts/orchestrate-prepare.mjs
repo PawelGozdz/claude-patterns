@@ -72,6 +72,7 @@ import { minifyScript, APPROVAL_LIMIT, APPROVAL_MARGIN, APPROVAL_LINE_LIMIT } fr
 import { applyOffload, OFFLOAD_STEPS } from './lib/script-offload.mjs';
 import { jsLiteral, longestLine } from './lib/script-literal.mjs';
 import { scopeCardsToLayers } from './lib/card-scope.mjs';
+import { loadExperiments } from './lib/experiments.mjs';
 
 const require_ = createRequire(import.meta.url);
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -1115,6 +1116,15 @@ function main() {
   };
   warnings.push(...agentTurnCapWarnings(args.project, out));
 
+  // ORC-166: eksperymenty włączane per projekt z claude-patterns (config/orchestrate-experiments.json), przed
+  // `--overrides`, więc jawne nadpisanie z wywołania wygrywa. Pusty wynik = nic się nie zmienia.
+  const exp = loadExperiments(args.project);
+  out.warnings.push(...exp.warnings);
+  if (Object.keys(exp.options).length) {
+    out = applyOverrides(out, exp.options);
+    out.experiments = exp.options;
+    out.warnings.push(`eksperyment włączony dla tego projektu (config/orchestrate-experiments.json): ${JSON.stringify(exp.options)} — wyłączenie: usuń wpis albo --overrides z wartością false`);
+  }
   if (args.overrides) {
     let ov;
     try { ov = JSON.parse(readFileSync(args.overrides, 'utf8')); } catch (e) { die(EXIT.USAGE, `--overrides: nie da się wczytać ${args.overrides}: ${e.message}`); }

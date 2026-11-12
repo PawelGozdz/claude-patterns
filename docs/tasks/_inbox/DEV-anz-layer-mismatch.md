@@ -34,8 +34,8 @@ sources:
   - analyze
 rule_ref: ANZ-LAYER-MISMATCH
 first_seen: 2026-10-12
-last_seen: 2026-11-10
-occurrences: 27
+last_seen: 2026-11-11
+occurrences: 29
 projects:
   - ai-gateway
   - framework-polityczny
@@ -50,6 +50,7 @@ projects:
   - juz-ide-api-8
   - juz-ide-mobile-app-1
   - juz-ide-api
+  - juz-ide-api-develop
 reopened_at: 2026-10-28
 reopened_from_status: promoted
 ---
@@ -58,6 +59,8 @@ reopened_from_status: promoted
 
 ## Occurrences
 
+- 2026-11-11 juz-ide-api-2 (TS-INFRA-CI-HOOKS-FIX-001) — runtime.yml orchestrate.layers (domain/, application/, infrastructure/, __tests__/) nie ma warstwy na CI, hooki git i dokumenty; zadanie CI/hooków wymagało layers_scope na infrastructure z plikami spoza katalogów warstwy, a sloty ddd-modeling i pattern-fit (bez when:) weszły bez pracy
+- 2026-11-11 juz-ide-api-develop (TS-OBS-METRICS-001) — Task infrastrukturalny (metryki): sloty ddd-modeling i pattern-fit (bez when:) weszły bez pracy domenowej, wszystkie 4 warstwy w layers_skip bo task to analiza + podział. Dodatkowo when: slotu strategy-fit nie ma słów obserwowaln/monitoring/telemetri/backend/SaaS, wszedł tylko przez trafienie po fragmencie wyrazu (dane).
 - 2026-11-10 juz-ide-api (TS-TOOLING-005) — Task narzędziowy (tools/lint-ddd, .husky) nie dotyka żadnej warstwy z orchestrate.layers (dirs: domain/, application/, infrastructure/, __tests__/); wszystkie wymagają layers_skip albo jednostki z dirs spoza katalogów warstwy
 - 2026-11-08 juz-ide-mobile-app-1 (STATE-CACHE-HONOR-NO-STORE-001) — slot ui-analysis (flutter-ui-verifier) nie ma when: i wchodzi do panelu przy zadaniach czysto sieciowych bez UI
 - 2026-11-08 juz-ide-api-8 (TS-INFRA-IMAGE-HARDENING-002) — Task infrastrukturalny bez pracy w domenie i aplikacji: sloty ddd-modeling i pattern-fit (bez when:) weszły do panelu bez materiału
