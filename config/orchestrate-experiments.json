@@ -1,3 +1,10 @@
 {
-  "juz-ide-api-8": { "gateDelta": true }
+  "juz-ide-api-1": { "gateDelta": true },
+  "juz-ide-api-2": { "gateDelta": true },
+  "juz-ide-api-3": { "gateDelta": true },
+  "juz-ide-api-4": { "gateDelta": true },
+  "juz-ide-api-5": { "gateDelta": true },
+  "juz-ide-api-6": { "gateDelta": true },
+  "juz-ide-api-7": { "gateDelta": true },
+  "juz-ide-api-8": { "gateDelta": true, "gateR2Model": "sonnet" }
 }
