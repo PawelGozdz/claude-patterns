@@ -218,6 +218,67 @@ async function main() {
     fs.rmSync(dir, { recursive: true, force: true });
   }
 
+  // ── E6: powody werdyktów w rekordach (ORC-167) ───────────────────────────────
+  process.stdout.write('\nE6 powody NO_GO, przyczyna bramki, ratunek po cichej śmierci\n');
+  {
+    const os = require('os');
+    const { isStaleRunSnapshot, runResultFields } = await import('../../../scripts/workflow-metrics-collect.mjs');
+    const { runGateFields, ruleIdsOf, endedAtOf } = await import('../../../scripts/lib/telemetry-gate-fields.mjs');
+    const mk = (id) => ({ type: 'workflow_agent', agentId: id, label: id, agentType: 'x', model: 'claude-sonnet-5-5', attempt: 1, startedAt: 1786745782230, toolCalls: 2, durationMs: 10, tokens: 1 });
+    const collect = (wf, journal) => {
+      const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'eval-wm-e6-'));
+      fs.writeFileSync(path.join(dir, 'journal.jsonl'), journal.map((e) => JSON.stringify(e)).join('\n') + '\n');
+      const out = collectRun({ wf, runDir: dir, prices, project: '-opt-projects-demo', sessionId: 's', runtimeYmlHash: null });
+      fs.rmSync(dir, { recursive: true, force: true });
+      return out;
+    };
+    const wfBase = { runId: 'wf_e6', timestamp: '2026-11-14T10:00:00.000Z', workflowName: 'orchestrate', logs: [] };
+
+    // kroki NO_GO: reguły albo kod braku powodu
+    {
+      const wf = { ...wfBase, status: 'completed', workflowProgress: [mk('g1'), mk('g2'), mk('g3'), mk('g4')] };
+      const j = [
+        { type: 'started', agentId: 'g1' }, { type: 'result', agentId: 'g1', result: { verdict: 'NO_GO', violations: ['a', 'b'], findings: [{ ruleId: 'ch5' }, { ruleId: 'CH5' }, 'Wolny tekst z błędem', { ruleId: 'de3' }] } },
+        { type: 'started', agentId: 'g2' }, { type: 'result', agentId: 'g2', result: { verdict: 'NO_GO', violations: ['a'] } },
+        { type: 'started', agentId: 'g3' }, { type: 'result', agentId: 'g3', result: { verdict: 'NO_GO' } },
+        { type: 'started', agentId: 'g4' }, { type: 'result', agentId: 'g4', result: { verdict: 'GO', violations: [], findings: [] } },
+      ];
+      const by = Object.fromEntries(collect(wf, j).steps.map((s) => [s.agentId, s]));
+      check('g1: ruleIds unikalne, wolny tekst → new', JSON.stringify(by.g1.ruleIds) === JSON.stringify(['ch5', 'new', 'de3']), JSON.stringify(by.g1.ruleIds));
+      check('g1: violationCount = 2, reason pozostaje null (są identyfikatory)', by.g1.violationCount === 2 && by.g1.reason === null);
+      check('g2: NO_GO z violations bez findings → reason violations-without-rule-id', by.g2.reason === 'violations-without-rule-id' && !('ruleIds' in by.g2), by.g2.reason);
+      check('g3: NO_GO bez niczego → reason no-findings', by.g3.reason === 'no-findings');
+      check('g4 (negatyw): GO bez ustaleń nie dostaje ruleIds ani reason', !('ruleIds' in by.g4) && by.g4.reason === null && by.g4.violationCount === 0);
+    }
+
+    // rekord run: przyczyna, reguły, gałąź maszynowa, delta, miejsce zatrzymania
+    {
+      const res = {
+        finalGate: { verdict: 'NO_GO', cause: 'machine', findings: [{ ruleId: 'sep2' }, { ruleId: 'd3' }], violations: ['x'] },
+        finalGateRound1: { verdict: 'NO_GO', cause: 'code', findings: [{ ruleId: 'ch5' }] },
+        finalGateOverrides: ['conformance@1', 'unverified-scope@2', 'zły kod z wolnym tekstem'],
+        finalGateDelta: { files: 3, ruleIds: ['ch5'] },
+      };
+      const f = runGateFields(res);
+      check('run: finalCause=machine, finalRuleIds, round1*', f.finalCause === 'machine' && JSON.stringify(f.finalRuleIds) === JSON.stringify(['sep2', 'd3'])
+        && f.round1Verdict === 'NO_GO' && f.round1Cause === 'code' && JSON.stringify(f.round1RuleIds) === JSON.stringify(['ch5']), JSON.stringify(f));
+      check('run: finalOverrides przepuszcza tylko kody gałąź@runda', JSON.stringify(f.finalOverrides) === JSON.stringify(['conformance@1', 'unverified-scope@2']), JSON.stringify(f.finalOverrides));
+      check('run: gateDelta=true, endedAt=final-gate', f.gateDelta === true && f.endedAt === 'final-gate');
+      const g = runGateFields({ finalGate: { verdict: 'GO' } });
+      check('run (negatyw): GO bez rundy 2 → bez przyczyny, bez delty, bez nadpisań',
+        g.finalCause === null && g.finalOverrides === null && g.gateDelta === false && g.round1Verdict === null && g.haltLayer === null, JSON.stringify(g));
+      const h = runResultFields({ result: { finalGate: null, layers: [{ id: 'domain:a', status: 'GO' }, { id: 'testing:b', status: 'ESCALATE_AND_HALT', cause: 'code' }, { id: 'x', status: 'BLOCKED_BY_PRIOR' }] } });
+      check('run: halt na warstwie → finalVerdict null, endedAt=layer, haltLayer/haltCause', h.finalVerdict === null && h.endedAt === 'layer' && h.haltLayer === 'testing:b' && h.haltCause === 'code', JSON.stringify(h));
+      check('endedAt: brak wyniku skryptu → no-result', endedAtOf(undefined) === 'no-result' && endedAtOf({ layers: [] }) === 'complete');
+      check('ruleIdsOf: brak pola → null, [] → []', ruleIdsOf(undefined) === null && JSON.stringify(ruleIdsOf([])) === '[]');
+    }
+
+    // nieaktualny snapshot (wznowienie pod tym samym runId)
+    check('snapshot: więcej agentów niż w zapisanym rekordzie → nieaktualny', isStaleRunSnapshot({ agentCount: 9 }, { agentCount: 27 }) === true);
+    check('snapshot (negatyw): tyle samo agentów → aktualny', isStaleRunSnapshot({ agentCount: 9 }, { agentCount: 9 }) === false);
+    check('snapshot (negatyw): brak zapisanego rekordu → false', isStaleRunSnapshot(undefined, { agentCount: 3 }) === false);
+  }
+
   process.stdout.write(`\n${failed ? `❌ ${failed} FAILED` : '✅ all passed'}\n`);
   process.exit(failed ? 1 : 0);
 }
