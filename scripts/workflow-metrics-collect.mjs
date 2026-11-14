@@ -12,7 +12,8 @@
 //
 // Outcome (D3, rekonstrukcja regułami):
 //   wpis "result" w journalu  → werdykt z treści (result.verdict, np. GO/NO_GO) albo 'ok'
-//   "started" bez "result"    → 'silent-death' (agent umarł bez StructuredOutput)
+//   "started" bez "result"    → 'silent-death' (agent umarł bez StructuredOutput); w przebiegu killed/failed → 'killed'/'failed'
+//                               (agent przerwany razem z przebiegiem, nie cichy zgon — ORC-167)
 //   cached:true w progress    → 'cached' (resume z cache — bez kosztu)
 //   brak journalu             → 'unknown' + partial:true
 //
@@ -37,6 +38,7 @@ import { appendEventsDedup } from './lib/telemetry-events.mjs';
 import { legacyRunToEvents, projectFromSlug } from './lib/telemetry-legacy.mjs';
 import { blameFromResult } from './lib/final-gate-blame.mjs';
 import { normalizeRuleHits, normalizeRulesChecked, normalizeProbeChecks } from './lib/telemetry-rules.mjs';
+import { runGateFields, stepVerdictFields, rescuesByLayer } from './lib/telemetry-gate-fields.mjs';
 
 const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
 export const DEFAULT_PRICES_PATH = path.join(__dirname, 'workflow-metrics-prices.default.json');
@@ -74,6 +76,14 @@ export function collectRun({ wfPath, wf: wfParsed, runDir, fallbackAgentsDir, pr
 
   const agents = (wf.workflowProgress || []).filter((p) => p.type === 'workflow_agent');
   const steps = [];
+  // ORC-167: powód cichej śmierci z `result.askErrors` (journal go nie niesie) i ślad ratunku (`result.silentRescues`).
+  const resultObj = wf.result && typeof wf.result === 'object' ? wf.result : {};
+  const askErrorByLabel = new Map();
+  for (const e of Array.isArray(resultObj.askErrors) ? resultObj.askErrors : []) {
+    if (e && typeof e.label === 'string' && typeof e.message === 'string' && !askErrorByLabel.has(e.label)) askErrorByLabel.set(e.label, e.message);
+  }
+  const rescueQueue = rescuesByLayer(resultObj);
+  const runAborted = wf.status === 'killed' || wf.status === 'failed' ? wf.status : null;
 
   for (const a of agents) {
     // agentId pochodzi z treści JSON (nie z readdirSync) — walidacja charsetu zanim trafi do ścieżki
@@ -85,16 +95,23 @@ export function collectRun({ wfPath, wf: wfParsed, runDir, fallbackAgentsDir, pr
     const transcriptPath = transcriptCandidates.find((p) => fs.existsSync(p)) || null;
     const usage = a.cached ? null : sumTranscriptUsage(transcriptPath);
 
-    let outcome; let reason = null;
+    let outcome; let reason = null; let rescue = null;
     if (a.cached) {
       outcome = 'cached';
     } else if (resultByAgent.has(a.agentId)) {
       const r = resultByAgent.get(a.agentId);
       outcome = (r && typeof r === 'object' && typeof r.verdict === 'string') ? r.verdict : 'ok';
       if (r && typeof r === 'object' && typeof r.reason === 'string') reason = r.reason;
+    } else if (journal && startedAgents.has(a.agentId) && runAborted) {
+      outcome = runAborted; // przerwany razem z przebiegiem — nie ma czego ratować ani czego liczyć jako cichy zgon
+      reason = `run-${runAborted}`;
     } else if (journal && startedAgents.has(a.agentId)) {
       outcome = 'silent-death';
-      reason = logReason(a.label);
+      reason = logReason(a.label) ?? shortReason(askErrorByLabel.get(a.label));
+      if (typeof a.label === 'string' && a.label.endsWith('-impl')) {
+        const next = (rescueQueue.get(a.label.slice(0, -5)) || []).shift();
+        if (next) rescue = { files: next.files, attempt: next.attempt };
+      }
     } else if (journal) {
       // agent jest w progress, ale journal go nie widział — przerwany przed startem
       outcome = 'not-started';
@@ -111,6 +128,9 @@ export function collectRun({ wfPath, wf: wfParsed, runDir, fallbackAgentsDir, pr
     const rulesChecked = verdictObj ? normalizeRulesChecked(verdictObj.rules_checked) : null;
     // Wynik sondy (CHECKS_SCHEMA): pass|fail|skipped per kontrola; bez tego sonda jest w zdarzeniu nieodróżnialna od zielonej.
     const checks = verdictObj ? normalizeProbeChecks(verdictObj) : null;
+    // ORC-167: NO_GO bez powodu w rekordzie — identyfikatory reguł (`ruleIds`, `violationCount`) zamiast pustego `reason`.
+    const verdictFields = stepVerdictFields(verdictObj);
+    if (outcome === 'NO_GO' && reason === null && !verdictFields.ruleIds) reason = verdictFields.violationCount ? 'violations-without-rule-id' : 'no-findings';
 
     const partial = !a.cached && !usage;
     const costUsd = a.cached ? 0 : estimateCostUsd(usage, a.model, prices);
@@ -137,6 +157,8 @@ export function collectRun({ wfPath, wf: wfParsed, runDir, fallbackAgentsDir, pr
       durationMs: a.durationMs ?? null,
       outcome, reason,
       ...(ruleHits ? { ruleHits } : {}),
+      ...verdictFields,
+      ...(rescue ? { rescue } : {}),
       ...(rulesChecked !== null ? { rulesChecked } : {}),
       ...(checks ? { checks } : {}),
       resumedFrom: wf.resumeFromRunId ?? null,
@@ -170,6 +192,20 @@ export function collectRun({ wfPath, wf: wfParsed, runDir, fallbackAgentsDir, pr
   return { steps, run };
 }
 
+// Powód z komunikatu błędu agenta: jedna linia, ucięta (komunikat bywa długi i może cytować fragmenty kodu).
+function shortReason(msg) {
+  if (typeof msg !== 'string' || !msg.trim()) return null;
+  return msg.replace(/\s+/g, ' ').trim().slice(0, 160);
+}
+
+// Zapisany rekord `run` jest nieaktualny, gdy plik przebiegu ma od tamtej pory więcej agentów (wznowienie w miejscu).
+export function isStaleRunSnapshot(prevRun, wf) {
+  if (!prevRun || !wf) return false;
+  const was = Number(prevRun.agentCount);
+  const now = Number.isFinite(Number(wf.agentCount)) ? Number(wf.agentCount) : (wf.workflowProgress || []).filter((p) => p.type === 'workflow_agent').length;
+  return Number.isFinite(was) && now > was;
+}
+
 // Plan z wyniku skryptu → lista {id, group?, role?}; śmieci odrzucone, żeby `run.start` przeszedł schemat.
 export function sanitizePlan(raw) {
   if (!Array.isArray(raw)) return null;
@@ -198,6 +234,8 @@ export function runResultFields(wf) {
     engine: typeof r.engine === 'string' && /^[0-9a-f]{7,40}$/.test(r.engine) ? r.engine : null,
     // TASK-OBS-012: które warstwy wskazują naruszenia pierwszej bramki końcowej (null = nie da się ustalić).
     gateBlame: blameFromResult(r),
+    // ORC-167: powód werdyktu bramki końcowej (przyczyna, reguły, gałąź maszynowa, delta) i miejsce zatrzymania.
+    ...runGateFields(r),
   };
 }
 
@@ -258,7 +296,9 @@ export function main(argv = process.argv.slice(2)) {
     if (!prev || (!prev.runDir && c.runDir)) byRunId.set(c.runId, c);
   }
 
-  const existingKeys = new Set(readJsonl(STEPS_FILE).map(recordKey));
+  const existingRecords = readJsonl(STEPS_FILE);
+  const existingKeys = new Set(existingRecords.map(recordKey));
+  const existingRuns = new Map(existingRecords.filter((r) => r.type === 'run').map((r) => [r.runId, r]));
   const projectDirCache = new Map();
   const projectNameCache = new Map();
   const lines = [];
@@ -266,7 +306,7 @@ export function main(argv = process.argv.slice(2)) {
   // raporty (workflow-metrics-report, telemetry-freshness) czytają stary format. Historię sprzed
   // wdrożenia przenosi `telemetry-migrate-legacy.mjs`; deterministyczne id chronią przed duplikatami.
   const v1Events = [];
-  let skippedRunning = 0; let skippedExisting = 0;
+  let skippedRunning = 0; let skippedExisting = 0; let refreshed = 0;
 
   for (const c of byRunId.values()) {
     // Każdy przebieg w osobnym try/catch — jeden uszkodzony plik nie może zabić całej kolekcji.
@@ -274,7 +314,12 @@ export function main(argv = process.argv.slice(2)) {
       let wf;
       try { wf = JSON.parse(fs.readFileSync(c.wfPath, 'utf8')); } catch { continue; } // w połowie zapisu / uszkodzony
       if (wf.status === 'running') { skippedRunning++; continue; }
-      if (existingKeys.has(`${wf.runId}::run`)) { skippedExisting++; continue; }
+      if (existingKeys.has(`${wf.runId}::run`)) {
+        // ORC-167: przebieg wznowiony pod tym samym runId rośnie po zebraniu — stary snapshot (np. 9 agentów, bez werdyktu)
+        // zostawałby na zawsze. Nowszy rekord `run` wygrywa przy odczycie (dedupeRecords: ostatnia linia).
+        if (!isStaleRunSnapshot(existingRuns.get(wf.runId), wf)) { skippedExisting++; continue; }
+        refreshed++;
+      }
 
       if (!projectDirCache.has(c.slug)) projectDirCache.set(c.slug, resolveProjectSlug(c.slug));
       const projectDir = projectDirCache.get(c.slug);
@@ -299,7 +344,7 @@ export function main(argv = process.argv.slice(2)) {
     fs.mkdirSync(METRICS_DIR, { recursive: true });
     fs.appendFileSync(STEPS_FILE, lines.map((l) => JSON.stringify(l)).join('\n') + '\n');
   }
-  log(`[workflow-metrics] dopisano ${lines.length} rekordów (pominięto: ${skippedExisting} już zebranych, ${skippedRunning} w toku) → ${STEPS_FILE}`);
+  log(`[workflow-metrics] dopisano ${lines.length} rekordów (pominięto: ${skippedExisting} już zebranych, ${skippedRunning} w toku; odświeżono nieaktualnych: ${refreshed}) → ${STEPS_FILE}`);
   if (v1Events.length) {
     // Best-effort jak cały collector: błąd zapisu v1 nie może zablokować zapisu starego formatu.
     const v1 = appendEventsDedup(v1Events, { dryRun });

@@ -35,13 +35,37 @@ Rekord kroku (`type: "step"`, jedna linia per agent przebiegu):
   `workflowProgress` (inna miara, zostaje dla porównań). Gdy transkryptu brak: `partial: true`
   i `outputTokens` przepisany z `workflowProgress`.
 - **outcome** (D3): `GO`/`NO_GO`/`ok` (wpis w journalu), `silent-death` (started bez result —
-  agent umarł bez StructuredOutput), `not-started`, `cached` (resume z cache, koszt 0), `unknown`.
+  agent umarł bez StructuredOutput), `killed`/`failed` (agent przerwany razem z przebiegiem o takim statusie —
+  nie jest cichym zgonem), `not-started`, `cached` (resume z cache, koszt 0), `unknown`.
+- **Cichy zgon implementera** (ORC-167): `reason` z `result.askErrors` (ucięty do 160 znaków), gdy logi go nie niosą.
+  Szablon sam ratuje pracę: sonda diffu (Haiku) sprawdza, czy pliki warstwy leżą w drzewie, i przebieg idzie do
+  weryfikatora. Ślad: `report.silentRescues` → `step.rescue = {files, attempt}` na kroku `<warstwa>-impl`
+  (`files > 0` = praca ocalona i zweryfikowana, `0` = sonda jej nie znalazła, następuje powtórka).
 - **costUsd** (D4): szacunek lokalny z `prices.json`; kalibracja miesięczna względem Admin API
   (`--calibrate`), nie zastąpienie.
 
 Rekord przebiegu (`type: "run"`, jedna linia per run): `status`, `escalatedAt`, `agentCount`,
 `totalTokens`, `totalToolCalls`, `durationMs`, `resumedFrom` (runId poprzednika przy resume),
 `costUsd` (suma kroków), `costCoverage`, `runtimeYmlHash`.
+
+Powody werdyktów (ORC-167; tylko identyfikatory i krótkie kody, stare rekordy ich nie mają → null):
+
+- `step.ruleIds` (unikalne `ruleId` z ustaleń werdyktu; `new` = ustalenie bez znanego id) i `step.violationCount`.
+  NO_GO bez ustaleń dostaje `reason`: `violations-without-rule-id` albo `no-findings`.
+- `run.finalCause` (`code` | `machine` | null), `run.finalRuleIds` (reguły z ustaleń bramki końcowej),
+  `run.round1Verdict` / `round1Cause` / `round1RuleIds` (bramka przed rundą naprawczą), `run.finalOverrides`
+  (które gałęzie maszynowe zmieniły werdykt bramki LLM: `conformance`, `unverified-scope`, `minor-repair-red`,
+  `no-verdict`, `stale-tree`, w formie `gałąź@runda`), `run.gateDelta` (czy runda 2 szła w trybie delty).
+- `run.endedAt` (`final-gate` | `layer` | `complete` | `no-result`), `run.haltLayer`, `run.haltCause` — wyjaśniają
+  `finalVerdict: null`: przebieg zatrzymał się na warstwie, zanim bramka końcowa mogła się odbyć.
+- Przebieg wznowiony pod tym samym `runId` rośnie po zebraniu; kolektor dopisuje wtedy nowszy rekord `run`
+  (wygrywa przy odczycie), gdy `agentCount` w pliku jest większy niż w zapisanym.
+
+Ranking reguł łamanych przy NO_GO bramki końcowej, jedna linia:
+
+```
+node -e "const fs=require('fs');const c={};for(const l of fs.readFileSync(process.env.HOME+'/.claude/metrics/workflow-steps.jsonl','utf8').split('\n').filter(Boolean)){const r=JSON.parse(l);if(r.type==='run'&&r.finalVerdict==='NO_GO')for(const id of r.finalRuleIds||['(brak)'])c[id]=(c[id]||0)+1}console.log(Object.entries(c).sort((a,b)=>b[1]-a[1]))"
+```
 
 ## Użycie
 

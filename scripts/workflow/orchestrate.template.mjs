@@ -551,6 +551,19 @@ function conformanceFixText(probe) {
 }
 
 // Pojedyncze naruszenia z raportu narzędzia (linie `✗ NEW plik:linia [REGUŁA] metoda — tekst`), do `violations` bramki końcowej.
+// ORC-167: która gałąź MASZYNOWA zmieniła (albo wymusiła) werdykt bramki końcowej — bez tego przebieg z bramką GO i końcowym
+// NO_GO nie mówi, czy zadziałało conformance, unverified_scope, czy brak werdyktu. Krótkie kody `gałąź@runda`, bez treści ustaleń.
+function noteGateOverride(report, branch, round) {
+  report.finalGateOverrides = (report.finalGateOverrides || []).concat(branch + '@' + round)
+}
+// ORC-167: ratunek po cichej śmierci implementera (sonda diffu Haiku → weryfikacja istniejącego stanu). `files` = ile plików
+// warstwy sonda znalazła; 0 = pracy nie było, następuje powtórka. Kolektor łączy wpis z krokiem `<warstwa>-impl` bez wyniku.
+function noteSilentRescue(report, layerId, attempt, files) {
+  report.silentRescues = (report.silentRescues || []).concat({ layer: layerId, attempt: attempt, files: files })
+}
+function isGoVerdict(v) {
+  return !!v && String(v.verdict).toUpperCase() === 'GO'
+}
 function conformanceViolations(probe) {
   const lines = String((probe && probe.conformanceReport) || '').split('\n')
     .map((l) => l.trim().replace(/^[>*\-\s]+/, '')).filter((l) => /^✗/.test(l)).map((l) => l.replace(/^✗\s*(?:NEW\s*)?/, ''))
@@ -2186,9 +2199,11 @@ for (const step of plan) {
         const touched = probeDiff && probeDiff.files ? probeDiff.files.filter((f) => layerTouches(layer, f) && !dirtyBefore.has(f)) : []
         if (touched.length) {
           log(layer.id + ': implementer zamilkł, ale ' + touched.length + ' plików warstwy jest zmienionych — weryfikuję stan, nie powtarzam pracy')
+          noteSilentRescue(report, layer.id, attempt, touched.length) // ORC-167
           mode = 'verify-existing'
           layerFiles = touched
         } else {
+          noteSilentRescue(report, layer.id, attempt, 0) // ORC-167: sonda nie znalazła pracy → powtórka implementacji
           silentDeaths++
           if (silentDeaths >= 2) {
             settled = { id: layer.id, status: 'ESCALATE_AND_HALT', reason: 'dwa kolejne wyjścia bez wyniku — zakres za duży na budżet, podziel warstwę', cause: 'machine' }
@@ -2814,11 +2829,13 @@ if (!finalAgent) {
   report.finalGate = final
     ? Object.assign({}, final, { cause: undefined })
     : { verdict: 'NO_GO', violations: [staleFinalReason || 'bramka końcowa nie zwróciła werdyktu (także po ponowieniu)'], cause: 'machine' }
+  if (!final) noteGateOverride(report, staleFinalReason ? 'stale-tree' : 'no-verdict', round)
   if (final && a.autoFixMinor !== false) report.finalGate = reclassifyMinor(report.finalGate) // ORC-141
   if (gateTreeHash) report.finalGate.treeHash = gateTreeHash
   // ORC-140: deterministyczny fakt wygrywa z werdyktem LLM — czerwone `conformance` z sondy bramki to NO_GO z naruszeniami
   // `plik:linia — reguła`, nawet gdy bramka dała GO; cause=code (nie machine), więc wchodzi runda naprawcza ORC-091.
   if (finalProbe && finalProbe.conformance === 'fail') {
+    if (isGoVerdict(report.finalGate)) noteGateOverride(report, 'conformance', round)
     report.finalGate = Object.assign({}, report.finalGate, {
       verdict: 'NO_GO',
       violations: (report.finalGate.violations || []).concat(conformanceViolations(finalProbe)),
@@ -2861,6 +2878,7 @@ if (!finalAgent) {
       report.stageForReview = stageableFiles(finalFiles, a.dirtyAtStart, allChangedFiles, deletedAll)
       forcedGaps = finalUnverified
     }
+    noteGateOverride(report, 'unverified-scope', round)
     report.finalGate.verdict = 'NO_GO'
     report.finalGate.cause = 'machine'
     report.finalGate.violations = (report.finalGate.violations || []).concat(
@@ -2921,6 +2939,7 @@ if (!finalAgent) {
       report.minorFindings.push({ layer: 'final-gate', items: minorFinal })
     } else if (!repaired && !blockingFinal.length) {
       // naprawa drobiazgów zepsuła sondę — to nasze naruszenie, nie szum
+      if (isGoVerdict(report.finalGate)) noteGateOverride(report, 'minor-repair-red', round)
       report.finalGate.verdict = 'NO_GO'
       report.finalGate.cause = 'code'
       report.finalGate.violations = (report.finalGate.violations || []).concat('naprawa drobnych ustaleń zostawiła czerwoną sondę lub implementer bez wyniku (patrz report.warnings)')
