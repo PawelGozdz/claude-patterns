@@ -1347,6 +1347,45 @@ CASES.push({
   },
 });
 
+// ── ORC-168: gateR2Model (runda 2 bramki na Sonnecie, tylko w trybie delty); domyślnie 'auto' ──────────────────────
+CASES.push({
+  name: 'gate-r2-model-is-auto-by-default-and-switchable-by-overrides',
+  build: expProject,
+  check(r, root) {
+    if (r.code !== 0) return `exit ${r.code} (${r.stderr.trim().slice(0, 160)})`;
+    if (r.json.gateR2Model !== 'auto') return `domyślnie gateR2Model powinno być 'auto', jest ${JSON.stringify(r.json.gateR2Model)}`;
+    const ov = path.join(root, 'ov-gate-r2.json');
+    fs.writeFileSync(ov, JSON.stringify({ gateR2Model: 'sonnet' }));
+    const on = run(root, 'TS-FIX-001', ['--overrides', ov]);
+    if (on.code !== 0 || on.json.gateR2Model !== 'sonnet') return `--overrides {"gateR2Model":"sonnet"} nie zadziałało: exit ${on.code} ${on.stderr.slice(0, 160)}`;
+    if (on.json.gateDelta !== false) return 'gateR2Model włączył gateDelta (opcje mają być niezależne; model działa dopiero z deltą)';
+    return null;
+  },
+});
+CASES.push({
+  name: 'experiments-file-sets-gate-r2-model-for-matching-project',
+  build: expProject,
+  env: (root) => ({ ORC_EXPERIMENTS_FILE: expFile({ [path.basename(root)]: { gateDelta: true, gateR2Model: 'sonnet' } }) }),
+  check(r, root) {
+    if (r.code !== 0) return `exit ${r.code}: ${r.stderr.trim().slice(0, 200)}`;
+    if (r.json.gateR2Model !== 'sonnet' || r.json.gateDelta !== true) return `opcje z pliku nie weszły: ${JSON.stringify([r.json.gateDelta, r.json.gateR2Model])}`;
+    if (!r.json.experiments || r.json.experiments.gateR2Model !== 'sonnet') return 'brak śladu out.experiments';
+    return null;
+  },
+});
+CASES.push({
+  name: 'experiments-file-other-project-and-bad-gate-r2-model-values-have-no-effect',
+  build: expProject,
+  env: (root) => ({ ORC_EXPERIMENTS_FILE: expFile({ 'inny-projekt': { gateR2Model: 'sonnet' }, [path.basename(root)]: { gateR2Model: 'opus' } }) }),
+  check(r) {
+    if (r.code !== 0) return `zła wartość w pliku eksperymentów nie może blokować przebiegu, exit ${r.code}`;
+    if (r.json.gateR2Model !== 'auto') return `wartość spoza auto|sonnet nie może zadziałać, jest ${JSON.stringify(r.json.gateR2Model)}`;
+    if ('experiments' in r.json) return 'odrzucony wpis nie powinien zostawiać out.experiments';
+    const w = r.json.warnings.join('\n');
+    return w.includes('`gateR2Model` musi być jedną z wartości: auto, sonnet') ? null : 'brak ostrzeżenia o złej wartości gateR2Model: ' + w.slice(0, 300);
+  },
+});
+
 // ── bieg ─────────────────────────────────────────────────────────────────────────
 let failed = 0;
 (async () => {
