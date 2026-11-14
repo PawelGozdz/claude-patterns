@@ -37,8 +37,8 @@ sources:
   - analyze
 rule_ref: ANZ-GATE-INPUT-MISSING
 first_seen: 2026-10-17
-last_seen: 2026-11-08
-occurrences: 14
+last_seen: 2026-11-12
+occurrences: 15
 projects:
   - juz-ide-api-2
   - aegis-flow
@@ -48,6 +48,7 @@ projects:
   - grant-flow
   - juz-ide-mobile-app-2
   - juz-ide-mobile-app-1
+  - juz-ide-api-8
 reopened_at: 2026-10-20
 reopened_from_status: promoted
 ---
@@ -56,6 +57,7 @@ reopened_from_status: promoted
 
 ## Occurrences
 
+- 2026-11-12 juz-ide-api-8 (TS-TOOLING-HANDLER-NO-THROW-001) — runtime.yml: warstwa application i final_gate mają check 'conformance' (bramka z tools/conformance), a w projekcie tools/ zawiera tylko lint-ddd; brak tools/conformance i .claude/conformance.json (potwierdzone ls tools). Check conformance nie może się wykonać albo da fałszywy wynik
 - 2026-11-08 juz-ide-mobile-app-2 (STATE-SESSION-RESET-DASHBOARD-001) — knowledge.json wskazuje kolekcję code_juz_ide_mobile_app_2, której nie ma w indeksie knowledge-retriever (dostępne m.in. code_juz_ide_mobile_app); runtime.yml bez knowledge.collection; RAG pominięty
 - 2026-11-08 juz-ide-api-2 (TS-INFRA-MIGRATION-ORDER-GUARD-001) — Pole instruction z verify-answer-sources zwraca 'ok 2,3,4 · 1: odpowiedź' z separatorem '·', którego własny parser --reply nie rozumie (całość trafia do unparsed, wszystkie pytania w hold); działa separator ';'. Dodatkowo runtime.yml analyze.resolve.resolution_sink nie ma klucza tech, więc odpowiedzi domain: tech nie mają ścieżki utrwalenia (ANL-058)
 - 2026-11-08 juz-ide-mobile-app-1 (STATE-CACHE-HONOR-NO-STORE-001) — knowledge.json wskazuje kolekcję code_juz_ide_mobile_app_1, której nie ma w Qdrant (istnieje code_juz_ide_mobile_app); runtime.yml nie ma knowledge.collection. retrieve_code zwraca błąd, RAG pominięty.

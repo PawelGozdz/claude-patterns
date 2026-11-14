@@ -38,8 +38,8 @@ sources:
   - analyze
 rule_ref: ANZ-PATTERN-MISMATCH
 first_seen: 2026-10-10
-last_seen: 2026-11-12
-occurrences: 21
+last_seen: 2026-11-14
+occurrences: 25
 projects:
   - aegis-flow
   - ai-os-bot
@@ -63,6 +63,10 @@ reopened_from_status: promoted
 
 ## Occurrences
 
+- 2026-11-14 juz-ide-api-3 (TS-TOOLING-DOMAIN-MODEL-CLEANUP-001) — Luka karty: brak reguły o identyfikatorze złożonym (kompozyt jak ProviderId{provider,externalId} i ActorId{id,type,externalOrganizationId}) jako value object; reguła lintu id-extends-base-entity-id łapie klasy po przyrostku Id bez kotwicy w karcie entity/value-object. Dodatkowo VO2 (konstruktor private) bez wariantu protected dla klas dziedziczonych, choć lint go dopuszcza.
+- 2026-11-14 juz-ide-api-3 (TS-TOOLING-DOMAIN-MODEL-CLEANUP-001) — entity-pattern_summary.md l.37 i l.55 importuje BaseEntity, EntityId, BaseEntityId z @vytches/ddd i używa wycofanego BaseEntityId.createWithRandomUUID(); biblioteka 0.32.1 nie eksportuje BaseEntityId (w repo to alias importu ContractsEntityId as BaseEntityId, 53 pliki), a BaseEntity jest własną klasą repo (src/shared/domain/base-entity.ts). Szkielet karty jest niezgodny z lintem ddd/no-deprecated-entity-id-factories.
+- 2026-11-14 juz-ide-api-3 (TS-TOOLING-DOMAIN-MODEL-CLEANUP-001) — rules/nestjs-ddd/value-object.md:11 i karta VO7 każą implementować getEqualityComponents(); w @vytches/ddd-value-objects 0.32.1 ta metoda nigdy nie istniała (dist/index.js:41-43: hook to getIdentityComponents, domyślne equals = deepEqual całej wartości). W juz-ide-api: 201 plików nietestowych ma martwą metodę, 13 wywołań z własnych equals().
+- 2026-11-13 juz-ide-api (TS-TOOLING-NO-THROW-DOMAIN-ACL-001) — Karta acl-registry (N4, ACL7) milczy o szwie frameworka: throw w klasach *ExternalAPI/*Translator łapie EnhancedACLAdapter.executeCore (ddd-acl index.js:214-233) i zwraca Result.fail(ACLError, code EXECUTION_ERROR bez D_, bez wpisu w mapperze); brak też miejsca na mapper błędów dla shared kernelu (Money, identyfikatory PL) i reguły dla throw konfiguracyjnego w rejestrze ACL. Wymagana decyzja właściciela kart: nowy punkt w acl-registry-pattern_summary.md.
 - 2026-11-12 juz-ide-api-8 (TS-TOOLING-USERID-GUARD-001) — Karty wzorców sprzeczne w sprawie userId w Command/Query: dual-identity-pattern_summary.md DI2/DI7 (userId jako parametr konstruktora ustawiany przez kontroler) vs command-handler-pattern_summary.md CH4/N1 i dual-identity N6 (zakaz); szkielet QH8 w query-handler-pattern_summary.md (requestingUserId) łamie N6. Strażnik zgodny z CH4 flaguje to, co DI2 nakazuje.
 - 2026-11-11 juz-ide-api-5 (TS-GDPR-ERASURE-RETRY-ALERT-001) — Dobór wzorców dla taska o alercie z procesora kolejki: słowa kolejka/queue kierują do command-handler-queue-port-pattern.md, który wyłącza procesory i serwisy; architecture/bullmq-queue-pattern.md (karta procesorów, BQ1-BQ12) nie ma w triggers runtime.yml; brak karty alertu operacyjnego. Slot threat-model: when: nie zawiera haseł RODO/anonimiz/Art. 17, trafienia były fałszywe (token-economy, blokady).
 - 2026-11-11 juz-ide-api-6 (TS-OBS-LOG-PII-001) — logger-pattern_summary.md N4 twierdzi, że LOGGER_SERVICE redaguje automatycznie przez REDACTION_SERVICE; w juz-ide-api EnhancedLoggerService i LoggerService nie wołają RedactionService (redakcja tylko przez pino redact.paths, jeden poziom). Karta nie ma też reguły o jednym punkcie redakcji; SI5/N5 w security-invariants_summary.md nie wymieniają współrzędnych, JWT, kodu OTP ani query; safe-error-propagation_summary.md nie rozstrzyga logowania error.message po stronie serwera.
