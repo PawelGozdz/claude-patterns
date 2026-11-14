@@ -12,7 +12,8 @@
 //
 // Outcome (D3, rekonstrukcja regułami):
 //   wpis "result" w journalu  → werdykt z treści (result.verdict, np. GO/NO_GO) albo 'ok'
-//   "started" bez "result"    → 'silent-death' (agent umarł bez StructuredOutput)
+//   "started" bez "result"    → 'silent-death' (agent umarł bez StructuredOutput); w przebiegu killed/failed → 'killed'/'failed'
+//                               (agent przerwany razem z przebiegiem, nie cichy zgon — ORC-167)
 //   cached:true w progress    → 'cached' (resume z cache — bez kosztu)
 //   brak journalu             → 'unknown' + partial:true
 //
@@ -37,7 +38,7 @@ import { appendEventsDedup } from './lib/telemetry-events.mjs';
 import { legacyRunToEvents, projectFromSlug } from './lib/telemetry-legacy.mjs';
 import { blameFromResult } from './lib/final-gate-blame.mjs';
 import { normalizeRuleHits, normalizeRulesChecked, normalizeProbeChecks } from './lib/telemetry-rules.mjs';
-import { runGateFields, stepVerdictFields } from './lib/telemetry-gate-fields.mjs';
+import { runGateFields, stepVerdictFields, rescuesByLayer } from './lib/telemetry-gate-fields.mjs';
 
 const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
 export const DEFAULT_PRICES_PATH = path.join(__dirname, 'workflow-metrics-prices.default.json');
@@ -75,6 +76,14 @@ export function collectRun({ wfPath, wf: wfParsed, runDir, fallbackAgentsDir, pr
 
   const agents = (wf.workflowProgress || []).filter((p) => p.type === 'workflow_agent');
   const steps = [];
+  // ORC-167: powód cichej śmierci z `result.askErrors` (journal go nie niesie) i ślad ratunku (`result.silentRescues`).
+  const resultObj = wf.result && typeof wf.result === 'object' ? wf.result : {};
+  const askErrorByLabel = new Map();
+  for (const e of Array.isArray(resultObj.askErrors) ? resultObj.askErrors : []) {
+    if (e && typeof e.label === 'string' && typeof e.message === 'string' && !askErrorByLabel.has(e.label)) askErrorByLabel.set(e.label, e.message);
+  }
+  const rescueQueue = rescuesByLayer(resultObj);
+  const runAborted = wf.status === 'killed' || wf.status === 'failed' ? wf.status : null;
 
   for (const a of agents) {
     // agentId pochodzi z treści JSON (nie z readdirSync) — walidacja charsetu zanim trafi do ścieżki
@@ -86,16 +95,23 @@ export function collectRun({ wfPath, wf: wfParsed, runDir, fallbackAgentsDir, pr
     const transcriptPath = transcriptCandidates.find((p) => fs.existsSync(p)) || null;
     const usage = a.cached ? null : sumTranscriptUsage(transcriptPath);
 
-    let outcome; let reason = null;
+    let outcome; let reason = null; let rescue = null;
     if (a.cached) {
       outcome = 'cached';
     } else if (resultByAgent.has(a.agentId)) {
       const r = resultByAgent.get(a.agentId);
       outcome = (r && typeof r === 'object' && typeof r.verdict === 'string') ? r.verdict : 'ok';
       if (r && typeof r === 'object' && typeof r.reason === 'string') reason = r.reason;
+    } else if (journal && startedAgents.has(a.agentId) && runAborted) {
+      outcome = runAborted; // przerwany razem z przebiegiem — nie ma czego ratować ani czego liczyć jako cichy zgon
+      reason = `run-${runAborted}`;
     } else if (journal && startedAgents.has(a.agentId)) {
       outcome = 'silent-death';
-      reason = logReason(a.label);
+      reason = logReason(a.label) ?? shortReason(askErrorByLabel.get(a.label));
+      if (typeof a.label === 'string' && a.label.endsWith('-impl')) {
+        const next = (rescueQueue.get(a.label.slice(0, -5)) || []).shift();
+        if (next) rescue = { files: next.files, attempt: next.attempt };
+      }
     } else if (journal) {
       // agent jest w progress, ale journal go nie widział — przerwany przed startem
       outcome = 'not-started';
@@ -142,6 +158,7 @@ export function collectRun({ wfPath, wf: wfParsed, runDir, fallbackAgentsDir, pr
       outcome, reason,
       ...(ruleHits ? { ruleHits } : {}),
       ...verdictFields,
+      ...(rescue ? { rescue } : {}),
       ...(rulesChecked !== null ? { rulesChecked } : {}),
       ...(checks ? { checks } : {}),
       resumedFrom: wf.resumeFromRunId ?? null,
@@ -173,6 +190,12 @@ export function collectRun({ wfPath, wf: wfParsed, runDir, fallbackAgentsDir, pr
   };
 
   return { steps, run };
+}
+
+// Powód z komunikatu błędu agenta: jedna linia, ucięta (komunikat bywa długi i może cytować fragmenty kodu).
+function shortReason(msg) {
+  if (typeof msg !== 'string' || !msg.trim()) return null;
+  return msg.replace(/\s+/g, ' ').trim().slice(0, 160);
 }
 
 // Zapisany rekord `run` jest nieaktualny, gdy plik przebiegu ma od tamtej pory więcej agentów (wznowienie w miejscu).

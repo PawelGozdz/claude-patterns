@@ -68,3 +68,15 @@ export function runGateFields(r) {
     haltCause: halted ? causeOf(halted) : null,
   };
 }
+
+/** Ratunek po cichej śmierci implementera: wpisy `report.silentRescues` → mapa warstwa → [{attempt, files}] w kolejności. */
+export function rescuesByLayer(res) {
+  const map = new Map();
+  const list = res && typeof res === 'object' && Array.isArray(res.silentRescues) ? res.silentRescues : [];
+  for (const e of list) {
+    if (!e || typeof e.layer !== 'string' || !Number.isInteger(e.files) || e.files < 0) continue;
+    if (!map.has(e.layer)) map.set(e.layer, []);
+    map.get(e.layer).push({ attempt: Number.isInteger(e.attempt) ? e.attempt : null, files: e.files });
+  }
+  return map;
+}

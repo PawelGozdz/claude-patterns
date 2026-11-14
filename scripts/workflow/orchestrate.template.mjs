@@ -556,6 +556,11 @@ function conformanceFixText(probe) {
 function noteGateOverride(report, branch, round) {
   report.finalGateOverrides = (report.finalGateOverrides || []).concat(branch + '@' + round)
 }
+// ORC-167: ratunek po cichej śmierci implementera (sonda diffu Haiku → weryfikacja istniejącego stanu). `files` = ile plików
+// warstwy sonda znalazła; 0 = pracy nie było, następuje powtórka. Kolektor łączy wpis z krokiem `<warstwa>-impl` bez wyniku.
+function noteSilentRescue(report, layerId, attempt, files) {
+  report.silentRescues = (report.silentRescues || []).concat({ layer: layerId, attempt: attempt, files: files })
+}
 function isGoVerdict(v) {
   return !!v && String(v.verdict).toUpperCase() === 'GO'
 }
@@ -2194,9 +2199,11 @@ for (const step of plan) {
         const touched = probeDiff && probeDiff.files ? probeDiff.files.filter((f) => layerTouches(layer, f) && !dirtyBefore.has(f)) : []
         if (touched.length) {
           log(layer.id + ': implementer zamilkł, ale ' + touched.length + ' plików warstwy jest zmienionych — weryfikuję stan, nie powtarzam pracy')
+          noteSilentRescue(report, layer.id, attempt, touched.length) // ORC-167
           mode = 'verify-existing'
           layerFiles = touched
         } else {
+          noteSilentRescue(report, layer.id, attempt, 0) // ORC-167: sonda nie znalazła pracy → powtórka implementacji
           silentDeaths++
           if (silentDeaths >= 2) {
             settled = { id: layer.id, status: 'ESCALATE_AND_HALT', reason: 'dwa kolejne wyjścia bez wyniku — zakres za duży na budżet, podziel warstwę', cause: 'machine' }

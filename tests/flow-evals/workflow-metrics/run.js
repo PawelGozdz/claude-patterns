@@ -251,6 +251,21 @@ async function main() {
       check('g4 (negatyw): GO bez ustaleń nie dostaje ruleIds ani reason', !('ruleIds' in by.g4) && by.g4.reason === null && by.g4.violationCount === 0);
     }
 
+    // cichy zgon: powód z askErrors, ratunek, przebieg killed
+    {
+      const wf = { ...wfBase, status: 'completed', workflowProgress: [mk('u-impl'), mk('w-impl'), mk('v-impl')],
+        result: { askErrors: [{ label: 'u-impl', message: 'agent({schema}): subagent completed without calling StructuredOutput' }],
+          silentRescues: [{ layer: 'u', attempt: 1, files: 13 }, { layer: 'w', attempt: 1, files: 0 }] } };
+      const j = [{ type: 'started', agentId: 'u-impl' }, { type: 'started', agentId: 'w-impl' }, { type: 'started', agentId: 'v-impl' }];
+      const by = Object.fromEntries(collect(wf, j).steps.map((s) => [s.agentId, s]));
+      check('u-impl: silent-death z powodem z askErrors', by['u-impl'].outcome === 'silent-death' && /StructuredOutput/.test(by['u-impl'].reason), by['u-impl'].reason);
+      check('u-impl: rescue = 13 plików', by['u-impl'].rescue?.files === 13 && by['u-impl'].rescue?.attempt === 1, JSON.stringify(by['u-impl'].rescue));
+      check('w-impl: rescue z 0 plików (sonda nie znalazła pracy) jest widoczny', by['w-impl'].rescue?.files === 0);
+      check('v-impl (negatyw): brak wpisu ratunku → brak pola rescue', !('rescue' in by['v-impl']) && by['v-impl'].reason === null);
+      const killed = collect({ ...wf, status: 'killed' }, j).steps;
+      check('przebieg killed: kroki bez wyniku to killed, nie silent-death', killed.every((s) => s.outcome === 'killed' && s.reason === 'run-killed' && !('rescue' in s)), JSON.stringify(killed.map((s) => s.outcome)));
+    }
+
     // rekord run: przyczyna, reguły, gałąź maszynowa, delta, miejsce zatrzymania
     {
       const res = {

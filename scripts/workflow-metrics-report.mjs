@@ -21,7 +21,7 @@ import path from 'node:path';
 import url from 'node:url';
 import { STEPS_FILE, COSTS_FILE, readJsonl, dedupeRecords } from './workflow-metrics-lib.mjs';
 
-const FAILED_OUTCOMES = new Set(['silent-death', 'not-started', 'unknown']);
+const FAILED_OUTCOMES = new Set(['silent-death', 'not-started', 'unknown', 'killed', 'failed']);
 export const isStepCompleted = (s) => !FAILED_OUTCOMES.has(s.outcome);
 
 export function loadRecords({ since = null, file = STEPS_FILE } = {}) {

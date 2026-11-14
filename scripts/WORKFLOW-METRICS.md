@@ -35,7 +35,12 @@ Rekord kroku (`type: "step"`, jedna linia per agent przebiegu):
   `workflowProgress` (inna miara, zostaje dla porównań). Gdy transkryptu brak: `partial: true`
   i `outputTokens` przepisany z `workflowProgress`.
 - **outcome** (D3): `GO`/`NO_GO`/`ok` (wpis w journalu), `silent-death` (started bez result —
-  agent umarł bez StructuredOutput), `not-started`, `cached` (resume z cache, koszt 0), `unknown`.
+  agent umarł bez StructuredOutput), `killed`/`failed` (agent przerwany razem z przebiegiem o takim statusie —
+  nie jest cichym zgonem), `not-started`, `cached` (resume z cache, koszt 0), `unknown`.
+- **Cichy zgon implementera** (ORC-167): `reason` z `result.askErrors` (ucięty do 160 znaków), gdy logi go nie niosą.
+  Szablon sam ratuje pracę: sonda diffu (Haiku) sprawdza, czy pliki warstwy leżą w drzewie, i przebieg idzie do
+  weryfikatora. Ślad: `report.silentRescues` → `step.rescue = {files, attempt}` na kroku `<warstwa>-impl`
+  (`files > 0` = praca ocalona i zweryfikowana, `0` = sonda jej nie znalazła, następuje powtórka).
 - **costUsd** (D4): szacunek lokalny z `prices.json`; kalibracja miesięczna względem Admin API
   (`--calibrate`), nie zastąpienie.
 
