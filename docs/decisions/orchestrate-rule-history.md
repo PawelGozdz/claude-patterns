@@ -3113,3 +3113,17 @@ Lint WL6 ostrzega przed `git diff` bez `--stat/--name-only/--numstat` (incydent 
 **Czego nie wiem.** Nie otworzyłem prawdziwego okna: wniosek o drugim teście pochodzi z czytania kodu dialogu w binarce (`Og`/`ZU`: `nYe.test(yc(skrypt))`, `Zr` obcina linie > `OGt = 4096`). Potwierdzenie to pierwszy przebieg po tej zmianie.
 
 **Claim.** Skrypt wyemitowany przez `orchestrate-prepare --emit-script` mieści się w limicie długości i w limicie długości linii albo prepare kończy się exit 6 z przyczyną.
+
+### ORC-166 — eksperymenty silnika włączane per projekt z pliku w claude-patterns (2026-11-12)
+
+**Objaw.** Pierwsze 5 prawdziwych dynamicznych przebiegów po ORC-165 (api-1, api-3, api-4, api-8; łącznie $77) pokazało, że bramka końcowa to 45% kosztu (wcześniej 29%), a 4 z 5 przebiegów miały drugą bramkę `final-gate-r2` po naprawach ($3–6 każda, razem ok. 22% kosztu). To miejsce, które adresuje opcja `gateDelta` (ORC-160), ale opcja istniała tylko jako `--overrides` po stronie instancji.
+
+**Przyczyna.** Włączenie eksperymentu na jednej instancji wymagałoby wpisania parametru w jej sesję albo repo, czego reguły współpracy między projektami nie dopuszczają bez zgody, a każdy przebieg tej instancji musi iść w tym samym trybie, żeby pomiar był powtarzalny.
+
+**Zmiana.** `scripts/lib/experiments.mjs` czyta `config/orchestrate-experiments.json` (`{"<katalog projektu>": {"gateDelta": true}}`; dozwolone tylko `gateDelta` i `gateDiff`, tylko boolean). `orchestrate-prepare` stosuje wpis przed `--overrides`, więc jawne nadpisanie wygrywa; ślad w wyjściu (`experiments`) i ostrzeżenie. Literówka w pliku nie blokuje przebiegu (ostrzeżenie, pozycja pominięta). Wpis początkowy: `juz-ide-api-8` → `gateDelta: true`; 2026-11-14 rozszerzony na `juz-ide-api-1..8`. Wyłączenie: usunięcie wpisu.
+
+**Dowód.** 4 przypadki w `tests/flow-evals/orchestrate-prepare` (włączenie dla pasującego projektu, wpis cudzego projektu bez skutku, `--overrides` wygrywa, błędne wpisy ostrzegają i nie blokują); ręcznie: `prepare` dla api-8 daje `gateDelta: true`, dla api-3 `false`.
+
+**Czego nie wiem.** Czy `gateDelta` obniży koszt rundy 2 do celu < $2,5 i czy werdykt jest zgodny z pełną bramką (≥ 95% na próbie ok. 20 rund 2, protokół w TASK-ORC-GATE-COST-001). Tryb jest w raporcie przebiegu (`finalGateDelta`), nie w zdarzeniach telemetrii.
+
+**Claim.** Wpis w `config/orchestrate-experiments.json` dla nazwy katalogu projektu włącza wskazaną opcję w wyjściu `orchestrate-prepare` tego projektu i żadnego innego, a jawne `--overrides` ją nadpisuje.
