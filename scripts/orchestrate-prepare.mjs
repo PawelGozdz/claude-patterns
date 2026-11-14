@@ -1066,6 +1066,9 @@ function main() {
     // ORC-161 (TASK-ORC-GATE-COST-001 E3): true (przez --overrides) = bramka końcowa pobiera diff jednym wywołaniem
     // `git diff` zamiast czytać pliki z listy po kolei. Domyślnie false: eksperyment na jednej instancji.
     gateDiff: false,
+    // ORC-168 (TASK-ORC-GATE-COST-001): 'sonnet' = runda 2 bramki końcowej na Sonnecie, ale TYLKO gdy działa tryb delty
+    // (`gateDelta`) i naprawa coś zmieniła. 'auto' (domyślnie) = bez zmian: runda 2 dziedziczy model rundy 1 (Opus dla tasków z threat_model).
+    gateR2Model: 'auto',
     // ORC-139: false (przez --overrides) wyłącza wiązanie werdyktów z hashem drzewa; `treeHashExclude` dokłada
     // ścieżki (względem korzenia repo) pomijane w haszu obok wbudowanych artefaktów silnika.
     treeBinding: true,

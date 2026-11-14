@@ -2735,7 +2735,10 @@ if (!finalAgent) {
 
   let roundExtra = ''
   for (let round = 1; round <= 2; round++) {
-  const gateOpts = round === 1 ? finalOpts : Object.assign({}, finalOpts, { label: 'final-gate-r2' })
+  // ORC-168: runda 2 w trybie delty na Sonnecie za opcją `gateR2Model: 'sonnet'` (domyślnie 'auto' = bez zmian). `report.finalGateDelta`
+  // ustawia runda 1 tylko wtedy, gdy delta była aktywna i naprawa coś zmieniła, więc runda 2 pełna (bez delty) zostaje na modelu rundy 1.
+  const r2Model = a.gateR2Model === 'sonnet' && report.finalGateDelta ? { model: 'sonnet' } : {}
+  const gateOpts = round === 1 ? finalOpts : Object.assign({}, finalOpts, { label: 'final-gate-r2' }, r2Model)
   // ORC-098: checks bramki końcowej uruchamia SONDA silnika (Haiku, raz na rundę), nie agent bramki —
   // ten ich nie uruchamiał (AIG-064/069: „bramka nie dostała wyników checks") i każdy przebieg kończył
   // się NO_GO z unverified_scope. Wynik jedzie do bramki jako fakt i do decyzji o lukach niżej.

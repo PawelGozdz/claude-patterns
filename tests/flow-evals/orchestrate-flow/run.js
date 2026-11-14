@@ -45,7 +45,7 @@ async function runFlow(extra = {}, { round1 = 'NO_GO', template = TEMPLATE } = {
   let fingerprints = 0;
   const agent = async (prompt, opts = {}) => {
     const label = opts.label || '';
-    calls.push({ label, prompt });
+    calls.push({ label, prompt, model: opts.model });
     const props = (opts.schema && opts.schema.properties) || {};
     if ('changed_files' in props) return { changed_files: ['src/infrastructure/a.ts'], summary: 'ok' };
     if ('verdict' in props) {
@@ -136,6 +136,62 @@ const CASES = [
       if (promptOf(r, 'final-gate-r2')) return 'runda 2 po GO w rundzie 1';
       if ('finalGateDelta' in r.report) return 'ślad delty bez rundy 2';
       return r.report.finalGate.verdict === 'GO' ? null : 'werdykt końcowy nie GO';
+    },
+  },
+  // ── ORC-168: gateR2Model — runda 2 bramki w trybie delty na Sonnecie. `finalGateModel: 'opus'` daje rozróżnialny model rundy 1 ──
+  {
+    name: 'gate-r2-model-sonnet-switches-only-delta-round-2-and-leaves-round-1',
+    async run() {
+      const r = await runFlow({ gateDelta: true, gateR2Model: 'sonnet', finalGateModel: 'opus' });
+      if (r.unknown.length) return `atrapa nie zna schematu kroku: ${r.unknown.join('; ')}`;
+      const g1 = r.calls.find((c) => c.label === 'final-gate');
+      const g2 = r.calls.find((c) => c.label === 'final-gate-r2');
+      if (!g1 || !g2) return 'brak rundy 1 lub 2 bramki';
+      if (g1.model !== 'opus') return `runda 1 zmieniła model: ${g1.model}`;
+      if (g2.model !== 'sonnet') return `runda 2 w delcie powinna iść na sonnet, jest: ${g2.model}`;
+      if (!/TRYB DELTY/.test(g2.prompt)) return 'runda 2 nie jest w trybie delty';
+      return r.report.finalGate.verdict === 'GO' ? null : 'werdykt końcowy nie GO';
+    },
+  },
+  {
+    name: 'gate-r2-model-sonnet-without-delta-changes-nothing',
+    async run() {
+      const r = await runFlow({ gateR2Model: 'sonnet', finalGateModel: 'opus' });
+      const g2 = r.calls.find((c) => c.label === 'final-gate-r2');
+      if (!g2) return 'brak rundy 2';
+      if (/TRYB DELTY/.test(g2.prompt)) return 'delta włączyła się bez gateDelta';
+      return g2.model === 'opus' ? null : `bez delty runda 2 musi zostać na modelu rundy 1, jest: ${g2.model}`;
+    },
+  },
+  {
+    name: 'gate-r2-model-auto-and-unknown-values-keep-round-2-on-round-1-model',
+    async run() {
+      for (const v of [undefined, 'auto', 'opus', 'haiku', 'SONNET', true]) {
+        const r = await runFlow({ gateDelta: true, finalGateModel: 'opus', gateR2Model: v });
+        const g2 = r.calls.find((c) => c.label === 'final-gate-r2');
+        if (!g2) return `brak rundy 2 dla gateR2Model=${JSON.stringify(v)}`;
+        if (g2.model !== 'opus') return `gateR2Model=${JSON.stringify(v)} zmienił model rundy 2 na ${g2.model} (tylko dokładnie 'sonnet' ma to robić)`;
+      }
+      return null;
+    },
+  },
+  {
+    name: 'gate-r2-model-with-inherited-round-1-adds-model-only-to-round-2',
+    async run() {
+      const r = await runFlow({ gateDelta: true, gateR2Model: 'sonnet', finalGateModel: 'inherit' });
+      const g1 = r.calls.find((c) => c.label === 'final-gate');
+      const g2 = r.calls.find((c) => c.label === 'final-gate-r2');
+      if (g1.model !== undefined) return `runda 1 z inherit nie może dostać modelu, ma: ${g1.model}`;
+      return g2.model === 'sonnet' ? null : `runda 2 po inherit powinna dostać sonnet, jest: ${g2.model}`;
+    },
+  },
+  {
+    name: 'gate-r2-model-does-not-change-first-gate-prompt-or-options',
+    async run() {
+      const a = await runFlow({ gateDelta: true, finalGateModel: 'opus' });
+      const b = await runFlow({ gateDelta: true, gateR2Model: 'sonnet', finalGateModel: 'opus' });
+      const first = (r) => { const c = r.calls.find((x) => x.label === 'final-gate'); return JSON.stringify([c.prompt, c.model]); };
+      return first(a) === first(b) ? null : 'gateR2Model zmienił pierwszą bramkę (prompt lub model)';
     },
   },
   {

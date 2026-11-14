@@ -7,7 +7,8 @@
 // i drugie: instancja nic nie zmienia, a wyłączenie to usunięcie wpisu.
 //
 // Plik: `config/orchestrate-experiments.json`, np. {"juz-ide-api-8": {"gateDelta": true}}.
-// Klucz = nazwa katalogu projektu. Dozwolone tylko opcje z ALLOWED i tylko wartości boolowskie.
+// Klucz = nazwa katalogu projektu. Dozwolone tylko opcje z ALLOWED; wartości boolowskie, a dla opcji z ENUM_VALUES
+// (`gateR2Model`: auto | sonnet) jedna z wymienionych.
 // Literówka w tym pliku NIE blokuje przebiegu (to konfiguracja eksperymentu, nie wejście zadania):
 // zwracamy ostrzeżenia, a nieznane/zepsute pozycje pomijamy. Jawne `--overrides` wygrywa z plikiem.
 
@@ -15,7 +16,10 @@ import { readFileSync, existsSync } from 'node:fs';
 import { join, dirname, basename, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-export const ALLOWED = ['gateDelta', 'gateDiff'];
+export const ALLOWED = ['gateDelta', 'gateDiff', 'gateR2Model'];
+// Opcje nie-boolowskie: dozwolony zbiór wartości (ORC-168). `auto` = zachowanie bez zmian, `sonnet` = runda 2 bramki
+// w trybie delty na Sonnecie (działa tylko razem z `gateDelta`; sam `gateR2Model` bez delty nic nie zmienia).
+export const ENUM_VALUES = { gateR2Model: ['auto', 'sonnet'] };
 export const EXPERIMENTS_FILE = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'config', 'orchestrate-experiments.json');
 
 export function loadExperiments(projectDir, file = process.env.ORC_EXPERIMENTS_FILE || EXPERIMENTS_FILE) {
@@ -38,6 +42,10 @@ export function loadExperiments(projectDir, file = process.env.ORC_EXPERIMENTS_F
   }
   for (const [k, v] of Object.entries(mine)) {
     if (!ALLOWED.includes(k)) result.warnings.push(`eksperymenty: nieznana opcja \`${k}\` (dozwolone: ${ALLOWED.join(', ')}) — pomijam`);
+    else if (ENUM_VALUES[k]) {
+      if (!ENUM_VALUES[k].includes(v)) result.warnings.push(`eksperymenty: \`${k}\` musi być jedną z wartości: ${ENUM_VALUES[k].join(', ')} — pomijam`);
+      else result.options[k] = v;
+    }
     else if (typeof v !== 'boolean') result.warnings.push(`eksperymenty: \`${k}\` musi być true/false — pomijam`);
     else result.options[k] = v;
   }

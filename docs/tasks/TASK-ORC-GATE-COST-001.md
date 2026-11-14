@@ -381,3 +381,13 @@ oszczędność jest hipotezą. Gdy NO-GO pierwszej bramki spada, to utrata jako�
 raporcie (`finalGateDiff`). Cztery metryki z bazą: mediana wywołań narzędzi bramki (baza 43), koszt kroku `final:final:gate#1` (baza $5,29), odsetek
 NO-GO pierwszej bramki (baza 47%, n=130), odsetek `unverified_scope`. Żadna nie może się pogorszyć; próba ok. 30 przebiegów na ramię. Tryb nie jest
 widoczny w zdarzeniach telemetrii (etykieta bez zmian), więc przypisanie ramion trzeba zapisywać po `runId`.
+
+### E2, dopełnienie: runda 2 bramki na Sonnecie (2026-11-14, ORC-168), opcja do eksperymentu
+
+**Ustalone.** Bramka ma Sonneta domyślnie (`modelFor`, `auto`); Opus dostają wyłącznie taski z `threat_model` (wtedy bez `model:` obowiązuje frontmatter `security-e2e-verifier`: `opus`, `effort: max`). Żaden z 31 `runtime.yml` nie ustawia `final_gate.model`. Więc połowa kosztu bramki na Opusie to taski wrażliwe na bezpieczeństwo, nie ustawienie projektu.
+
+**Zrobione.** Opcja `gateR2Model` (`auto` domyślnie | `sonnet`; `config/orchestrate-experiments.json` albo `--overrides`): runda 2 dostaje `model: 'sonnet'` tylko przy aktywnej delcie (`gateDelta` + naprawa zmieniła pliki). Runda 1, runda 2 bez delty i ponowienia bez zmian. Zmiana w szablonie to jedna linia przy `gateOpts`. Testy: `orchestrate-flow` 15 (było 10), `orchestrate-prepare` 95 (było 92); 7 mutacji, każda zaczerwienia właściwy przypadek.
+
+**Nie włączono nigdzie.** Wpis w configu to osobna decyzja. Przed włączeniem: wpis tylko dla jednego projektu, a pomiar zgodności werdyktu z pełną bramką (≥ 95%, ok. 20 rund 2) osobno od kosztu, bo `security-e2e-verifier` ma VETO, a GO rundy 2 kończy przebieg bez późniejszej kontroli Opusem. Baza kosztu: `final-gate-r2` w taskach z `threat_model` na Opusie vs po zmianie na Sonnecie; cel < $2,5 z E2.
+
+**Bezpiecznik do rozważenia (nie zrobiony).** Nie obniżać modelu, gdy ustalenia rundy 1 mają `cause: security`; wymaga pola `cause` z telemetrii bramki (ORC-167) w `findings` czytanych przez szablon, więc to osobna zmiana.

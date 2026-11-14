@@ -3113,3 +3113,17 @@ Lint WL6 ostrzega przed `git diff` bez `--stat/--name-only/--numstat` (incydent 
 **Czego nie wiem.** Nie otworzyłem prawdziwego okna: wniosek o drugim teście pochodzi z czytania kodu dialogu w binarce (`Og`/`ZU`: `nYe.test(yc(skrypt))`, `Zr` obcina linie > `OGt = 4096`). Potwierdzenie to pierwszy przebieg po tej zmianie.
 
 **Claim.** Skrypt wyemitowany przez `orchestrate-prepare --emit-script` mieści się w limicie długości i w limicie długości linii albo prepare kończy się exit 6 z przyczyną.
+
+### ORC-168 — runda 2 bramki końcowej w trybie delty może iść na Sonnecie (2026-11-14)
+
+**Objaw.** Pomiar 29 przebiegów (11–14.11, $290,65): bramka końcowa to 19% kosztu w rundzie 1 i 10% w kolejnych, a połowa kosztu bramki ($42,30 z $86,10) idzie na Opus. Runda 2 sprawdza po naprawie tylko wskazane punkty (`gateDelta`, ORC-160), ale dziedziczyła model rundy 1.
+
+**Przyczyna.** Model bramki wybiera `modelFor('final', a)`: `auto` daje Sonneta, a dla tasków z `threat_model` (`securitySensitive`) zwraca `{}`, więc obowiązuje frontmatter `security-e2e-verifier` (`model: opus`, `effort: max`). Żaden z 31 `runtime.yml` nie ustawia `final_gate.model`; Opus w bramce to wyłącznie taski wrażliwe na bezpieczeństwo. Wywołanie rundy 2 było kopią opcji rundy 1 z inną etykietą, bez osobnego wyboru modelu.
+
+**Zmiana.** Opcja `gateR2Model` (`auto` domyślnie | `sonnet`), w `config/orchestrate-experiments.json` (lista `ALLOWED` + `ENUM_VALUES` w `scripts/lib/experiments.mjs`) albo `--overrides`; domyślna wartość w `orchestrate-prepare.mjs`. W szablonie jedna linia przy `gateOpts`: runda 2 dostaje `model: 'sonnet'` tylko gdy `a.gateR2Model === 'sonnet'` i `report.finalGateDelta` (ustawiane w rundzie 1, gdy delta była aktywna i naprawa zmieniła pliki). Pierwsza bramka, runda 2 bez delty i ponowienia (`final-gate-retry`, `final-gate-restale`) zostają na dotychczasowym modelu. Wartość spoza `auto|sonnet` w pliku daje ostrzeżenie i jest pomijana; w `--overrides` szablon i tak reaguje wyłącznie na dokładnie `'sonnet'`.
+
+**Dowód.** `orchestrate-flow` (15, było 10): runda 1 bez zmian (prompt i model), runda 2 w delcie na Sonnecie przy `opus` i przy `inherit`, bez delty bez zmian, `auto`/`opus`/`haiku`/`SONNET`/`true` bez efektu. `orchestrate-prepare` (95, było 92): domyślnie `auto`, `--overrides`, plik eksperymentów (dobra wartość, wpis cudzego projektu, zła wartość). Mutacje (pominięty warunek delty, dowolna niepusta wartość, model w rundzie 1, pominięty `r2Model`, brak walidacji enum, brak `ALLOWED`, brak wartości domyślnej) każdą zaczerwieniają. Pozostałe evale bez zmian: `orchestrate-script` 137, `workflow-lint` 26, `prompt-structure` 120, `tree-hash-binding` 21.
+
+**Czego nie wiem.** Czy werdykt Sonneta w rundzie 2 zgadza się z pełną bramką (próg ≥ 95% na ok. 20 rundach 2, protokół w TASK-ORC-GATE-COST-001). Oszczędność dotyczy wyłącznie tasków z `threat_model`, czyli tam, gdzie `security-e2e-verifier` ma VETO, a GO rundy 2 kończy przebieg bez późniejszej kontroli Opusem. Czy `agent()` bez `model:` bierze model sesji (komentarz w szablonie) czy frontmatter agenta (ANL-021): kod tego nie rozstrzyga, potwierdzi telemetria pierwszego przebiegu. Tryb i model rundy 2 nie są widoczne w zdarzeniach telemetrii (etykieta `final-gate-r2` bez zmian); `report.finalGateDelta` niesie tylko tryb.
+
+**Claim.** Przy `gateR2Model: 'sonnet'` i aktywnej delcie bramka rundy 2 jest wywoływana z `model: 'sonnet'`, a bez tych dwóch warunków żadne wywołanie bramki nie zmienia modelu.
