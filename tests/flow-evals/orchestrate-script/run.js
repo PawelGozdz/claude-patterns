@@ -1566,6 +1566,46 @@ const CASES = (c) => [
     },
   },
   {
+    name: 'companion-recognises-spec-in-tests-subdir-next-to-the-scope-file',
+    // ORC-170: układ juz-ide — `services/x.service.ts` i `services/__tests__/x.service.spec.ts`
+    run() {
+      const src = 'src/ctx/domain/services/oauth-state.service.ts';
+      const yes = [
+        'src/ctx/domain/services/__tests__/oauth-state.service.spec.ts',
+        'src/ctx/domain/services/__tests__/oauth-state.spec.ts',
+        'src/ctx/domain/services/oauth-state.service.spec.ts',
+      ];
+      const no = [
+        'src/ctx/domain/services/__tests__/oauth-state-performance.spec.ts', // inny rdzeń nazwy: nadal do zakresu
+        'src/ctx/domain/services/__tests__/other.service.spec.ts',
+        'src/ctx/domain/services/__tests__/oauth-state.fixture.ts', // nie test
+        'src/ctx/other/services/__tests__/oauth-state.service.spec.ts', // inny katalog
+        'src/ctx/domain/services/nested/__tests__/oauth-state.service.spec.ts', // głębszy podkatalog
+        'src/ctx/domain/services/__mocks__/oauth-state.service.spec.ts', // nie __tests__
+      ];
+      for (const f of yes) if (!c.isCompanion(src, f)) return 'powinien być towarzyszem: ' + f;
+      for (const f of no) if (c.isCompanion(src, f)) return 'nie powinien być towarzyszem: ' + f;
+      return null;
+    },
+  },
+  {
+    name: 'deletion-plan-accepts-spec-in-tests-subdir-of-a-file-scope-unit',
+    // ORC-170: scope podany PLIKIEM źródła; spec starej klasy w __tests__/ może zniknąć razem z nią, reszta nadal poza zakresem
+    run() {
+      const layer = { id: 'application', dirs: ['src/ctx/application/ports/', 'src/ctx/domain/services/oauth-state.service.ts'] };
+      const plan = c.deletionPlan(layer, [
+        'src/ctx/domain/services/oauth-state.service.ts',
+        'src/ctx/domain/services/__tests__/oauth-state.service.spec.ts',
+        'src/ctx/domain/services/__tests__/secure-token.service.spec.ts',
+        'src/ctx/domain/services/__tests__/oauth-state-performance.spec.ts',
+      ], []);
+      const want = ['src/ctx/domain/services/oauth-state.service.ts', 'src/ctx/domain/services/__tests__/oauth-state.service.spec.ts'];
+      if (JSON.stringify(plan.accepted) !== JSON.stringify(want)) return 'accepted: ' + JSON.stringify(plan.accepted);
+      if (plan.rejected.length !== 2 || !plan.rejected.every((r) => /poza zakresem/.test(r.reason))) return 'rejected: ' + JSON.stringify(plan.rejected);
+      return null;
+    },
+  },
+  {
     name: 'probe-pathspec-for-file-scope-includes-python-companions',
     run() {
       const p = c.buildProbePrompt(ARGS, { id: 'engine-match', dirs: ['engine/scope_match.py'], checks: [], tests: true });

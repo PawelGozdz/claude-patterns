@@ -1348,12 +1348,19 @@ function splitPath(p) {
 // Plik towarzyszący = test (*.spec.* / *.test.*) w tym samym katalogu i z tym samym rdzeniem
 // nazwy co plik z zakresu: `role-permissions.map.ts` → `role-permissions.adapter.spec.ts`,
 // `env.schema.ts` → `env.schema.spec.ts`. Zakres podany katalogiem obejmuje je i tak.
+// ORC-170: test może leżeć w podkatalogu `__tests__/` obok pliku (układ projektów juz-ide: `services/x.service.ts` i
+// `services/__tests__/x.service.spec.ts`). Bez tego ORC-135 odrzucał usunięcie specu przenoszonej klasy jako „poza zakresem
+// warstwy" (juz-ide-api-2, 2026-11-15: trzy próby `application:oauth-state-port` zmarnowane). Ten sam rdzeń nazwy co plik z zakresu;
+// spec o innym rdzeniu (`x-performance.spec.ts`) nadal trzeba wpisać do zakresu.
+const TESTS_SUBDIR = '__tests__/'
 function isCompanion(scopeFile, file) {
   if (!/\.[a-z0-9]+$/i.test(scopeFile)) return false
   const s = splitPath(scopeFile)
   const f = splitPath(file)
   if (!s.stem) return false
-  if (s.dir !== '' && f.dir.slice(-s.dir.length) !== s.dir) return false
+  const sameDir = s.dir === '' || f.dir.slice(-s.dir.length) === s.dir
+  const testsSubdir = s.dir !== '' && f.dir.slice(-(s.dir.length + TESTS_SUBDIR.length)) === s.dir + TESTS_SUBDIR
+  if (!sameDir && !testsSubdir) return false
   const name = String(file).slice(f.dir.length)
   return Object.values(TEST_LANGS).some((l) => l.stem(name) === s.stem)
 }

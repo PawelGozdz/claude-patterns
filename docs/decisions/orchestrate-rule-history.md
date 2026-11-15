@@ -3141,3 +3141,17 @@ Lint WL6 ostrzega przed `git diff` bez `--stat/--name-only/--numstat` (incydent 
 **Czego nie wiem.** Czy werdykt Sonneta w rundzie 2 zgadza się z pełną bramką (próg ≥ 95% na ok. 20 rundach 2, protokół w TASK-ORC-GATE-COST-001). Oszczędność dotyczy wyłącznie tasków z `threat_model`, czyli tam, gdzie `security-e2e-verifier` ma VETO, a GO rundy 2 kończy przebieg bez późniejszej kontroli Opusem. Czy `agent()` bez `model:` bierze model sesji (komentarz w szablonie) czy frontmatter agenta (ANL-021): kod tego nie rozstrzyga, potwierdzi telemetria pierwszego przebiegu. Tryb i model rundy 2 nie są widoczne w zdarzeniach telemetrii (etykieta `final-gate-r2` bez zmian); `report.finalGateDelta` niesie tylko tryb.
 
 **Claim.** Przy `gateR2Model: 'sonnet'` i aktywnej delcie bramka rundy 2 jest wywoływana z `model: 'sonnet'`, a bez tych dwóch warunków żadne wywołanie bramki nie zmienia modelu.
+
+### ORC-170 — spec w `__tests__/` obok pliku z zakresu należy do zakresu warstwy (2026-11-15)
+
+**Objaw.** juz-ide-api-2, `TS-TOOLING-AUTH-DOMAIN-PURITY-001` (run `wf_680d811c`, halt `application:oauth-state-port`): trzy kolejne próby warstwy z NO_GO tego samego weryfikatora (3 + 3 + 1 trafień), ok. 1 mln tokenów ($5,63 przebiegu). Notatka agenta `DEV-orc-135-application-oauth-state-port`: stare specy przenoszonych klas importowały usunięte pliki, a silnik odrzucał ich usunięcie jako poza zakresem. Ten sam mechanizm dotknął `application:secure-token-port` i `domain:hash-port`. Obejściem był ręczny `overrides.json` z wypisanymi plikami specu.
+
+**Przyczyna.** Analiza wpisała do `dirs` jednostki PLIK źródła (`src/contexts/auth/domain/services/oauth-state.service.ts`), ale nie specy z sąsiedniego `__tests__/`. Zakres-plik obejmuje tylko „towarzyszy" (`isCompanion`, ORC-082): testy w TYM SAMYM katalogu o tym samym rdzeniu nazwy. W układzie juz-ide specy leżą w `services/__tests__/`, więc `deletionPlan` (ORC-135) odrzucał ich usunięcie jako „poza zakresem warstwy".
+
+**Zmiana.** `isCompanion` uznaje też test (`*.spec.*`, `*.test.*`) o tym samym rdzeniu nazwy w podkatalogu `__tests__/` katalogu pliku z zakresu. Nie obejmuje: innego katalogu, głębszego podkatalogu, `__mocks__/`, pliku niebędącego testem ani specu o innym rdzeniu nazwy.
+
+**Dowód.** `orchestrate-script` 139 (było 137): `isCompanion` na 3 pozytywnych i 6 negatywnych ścieżkach; `deletionPlan` dla jednostki z zakresem-plikiem przyjmuje źródło i jego spec w `__tests__/`, a spec innej klasy i spec o innym rdzeniu odrzuca jako poza zakresem. Mutacje (wyłączony podkatalog, `__tests__` w dowolnym katalogu, podkatalog `__mocks__`) czerwienią testy.
+
+**Czego nie wiem.** Poprawka pokrywa jeden z trzech specy z przypadku api-2: `oauth-state.service.spec.ts` (ten sam rdzeń), ale nie `oauth-state-performance.spec.ts` ani `oauth-state-log-privacy.spec.ts`. Takie specy trzeba nadal wpisać do zakresu (analiza albo `--overrides scope.dirs`), więc ten sam halt może wrócić. Rozszerzenie o prefiks rdzenia (`oauth-state-*`) odrzuciłem: `user.ts` złapałby `user-profile.spec.ts`. Właściwa poprawka dla reszty leży w analizie albo w kroku `prepare`, który po zakresie-pliku dopisze istniejące specy tej klasy; to osobna zmiana. Nie mierzyłem, ile z $17,60 dwóch zatrzymanych przebiegów api-2 poszło na ten mechanizm.
+
+**Claim.** Dla zakresu podanego plikiem źródła spec o tym samym rdzeniu nazwy w `__tests__/` obok tego pliku należy do zakresu warstwy (`layerTouches`), a każdy inny spec spoza zakresu nadal jest odrzucany.
