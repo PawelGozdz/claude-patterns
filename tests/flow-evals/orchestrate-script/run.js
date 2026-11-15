@@ -2114,6 +2114,41 @@ const CASES = (c) => [
     },
   },
   {
+    name: 'behavior-net-skips-findings-that-point-only-at-test-paths',
+    // ORC-169: `throw` w fixturze/teście to nie zmiana zachowania produkcyjnego (api-3: dwa fałszywe halty przy GO weryfikatora)
+    run() {
+      const mk = (items) => c.reclassifyMinor({ verdict: 'GO', violations: [], minor_findings: items });
+      const fixtureOnly = [
+        'src/ctx/domain/__fixtures__/auth.fixture.ts:12 — throw w fixturze — popraw',
+        'src/ctx/domain/auth.mother.ts:9 — builder rzuca wyjątek — popraw',
+        'src/ctx/__tests__/auth.spec.ts:4 — oczekiwany status 409 — popraw',
+        'test/e2e/auth.e2e-spec.ts:7 — rethrow w helperze — popraw',
+        'src/ctx/__mocks__/repo.ts:3 — wyrzuć wyjątek w stubie — popraw',
+      ];
+      const ok = mk(fixtureOnly);
+      if (ok.verdict !== 'GO' || ok.minor_findings.length !== fixtureOnly.length || (ok.violations || []).length) return 'uwaga o ścieżkach testowych zeskalowana do NO_GO: ' + JSON.stringify(ok.violations);
+      return null;
+    },
+  },
+  {
+    name: 'behavior-net-still-escalates-production-mixed-pathless-and-tagged-findings',
+    run() {
+      const mk = (items) => c.reclassifyMinor({ verdict: 'GO', violations: [], minor_findings: items });
+      const bad = [
+        'src/ctx/domain/auth.ts:12 — throw w agregacie — popraw', // produkcja
+        'src/ctx/domain/auth.ts:12 oraz src/ctx/__tests__/auth.spec.ts:4 — throw w obu — popraw', // mieszane: jedna ścieżka produkcyjna
+        'throw w konstruktorze — popraw', // bez ścieżki
+        'src/contests/winner.ts:5 — throw przy remisie — popraw', // `contests/` nie jest katalogiem `tests/`
+        'src/ctx/__fixtures__/auth.fixture.ts:12 — [zachowanie] zmień zwracaną wartość', // jawny znacznik wygrywa
+        'src/ctx/attest.ts:1 — throw — popraw', // `attest.ts` nie jest `*.test.ts`
+      ];
+      for (const b of bad) {
+        if (mk([b]).verdict !== 'NO_GO') return 'zmiana zachowania przeszła jako drobiazg: ' + b;
+      }
+      return null;
+    },
+  },
+  {
     name: 'verify-noop-verdict-also-goes-through-reclassify-minor',
     run() {
       const src = fs.readFileSync(TEMPLATE, 'utf8');

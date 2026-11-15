@@ -1031,9 +1031,20 @@ const CARD_PRECEDENCE =
 // wpis niż zamieniać GO w NO_GO przy każdym nicie. Szeroką wersję odrzucono, bo trafiałaby w „zbędny await" i „zmień kolejność importów".
 const BEHAVIOR_TAG = /\[zachowanie\]/i
 const BEHAVIOR_NET = /(?<![@\w])throws?\b|\brethrow\w*|\braise\s+(?:an?\s+)?(?:error|exception)|\bwyrzu[cć]\w*|\bstatus\s+[1-5]\d\d\b|\bHTTP\s*[1-5]\d\d\b|\bResult\.(?:fail|ok)\b|\brollback\b|\bInjectQueue\b|\bbullmq\b|status\w*\s+HTTP|kod\s+(?:błędu|odpowiedzi)|\brzu[cć]\w*/i
+// ORC-169: siatka po słowach (`throw`, `rzuć`, `status 409`) w fixturze lub teście nie zmienia zachowania produkcyjnego — api-3
+// 2026-11-14 zatrzymało dwie warstwy (GO weryfikatora, puste violations) na `throw` w fixturze. Gdy uwaga wskazuje ścieżki i WSZYSTKIE
+// są testowe (`__tests__`, `__fixtures__`, `*.spec.ts`, `*.mother.ts`), siatka jej nie eskaluje. Wpis bez ścieżki albo z choć jedną
+// ścieżką produkcyjną działa jak dotąd; jawny znacznik `[zachowanie]` od modelu eskaluje zawsze.
+const PATH_TOKEN = /[\w@.\-/\\]+\.(?:[cm]?[jt]sx?|json|ya?ml|sql)\b/g
+const TEST_PATH = /(?:^|[\\/])(?:__tests__|__fixtures__|__mocks__|fixtures?|tests?|e2e)[\\/]|\.(?:spec|test|mother|fixture|stub)\.[cm]?[jt]sx?$/i
+function onlyTestPaths(s) {
+  const paths = s.match(PATH_TOKEN)
+  return !!paths && paths.every((p) => TEST_PATH.test(p))
+}
 function isBehaviorChange(text) {
   const s = String(text || '')
-  return BEHAVIOR_TAG.test(s) || BEHAVIOR_NET.test(s)
+  if (BEHAVIOR_TAG.test(s)) return true
+  return BEHAVIOR_NET.test(s) && !onlyTestPaths(s)
 }
 
 // ORC-071 (docs/decisions/orchestrate-rule-history.md#orc-071): weryfikator czasem PISZE
