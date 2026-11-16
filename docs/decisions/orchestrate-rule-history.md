@@ -3142,6 +3142,20 @@ Lint WL6 ostrzega przed `git diff` bez `--stat/--name-only/--numstat` (incydent 
 
 **Claim.** Przy `gateR2Model: 'sonnet'` i aktywnej delcie bramka rundy 2 jest wywoływana z `model: 'sonnet'`, a bez tych dwóch warunków żadne wywołanie bramki nie zmienia modelu.
 
+### ORC-169 — siatka ORC-141 nie eskaluje uwag o fixturach i testach (2026-11-15)
+
+**Objaw.** juz-ide-api-3, `TS-TOOLING-DOMAIN-MODEL-CLEANUP-001` (14–15.11, 9 przebiegów, $86,78 z $154,98 całej próby): trzy halty warstwy. Dwa z nich (`608120bb` `domain:d-ctor-auth`, `ada41798` `infrastructure:i-ctor`) mają w telemetrii ostatni werdykt weryfikatora GO, 0 trafień reguł i 0 naruszeń, a przebieg i tak stanął. Trzeci (`b9d980fc` `infrastructure:i-id`, 4 naruszenia reguły `new`) jest prawdziwy. Notatka agenta `DEV-orc-141-infrastructure-i-ctor` opisuje mechanizm.
+
+**Przyczyna.** `reclassifyMinor` (ORC-141) przenosi `minor_findings` pasujące do `BEHAVIOR_NET` do `violations` i zamienia GO w NO_GO. Siatka patrzy tylko na tekst uwagi (`throw`, `rzuć`, `status 409`), więc `throw` w fixturze (`__fixtures__`, `*.mother.ts`, `__tests__`) wygląda jak zmiana zachowania produkcyjnego.
+
+**Zmiana.** `isBehaviorChange` w `orchestrate.template.mjs`: gdy uwaga wskazuje co najmniej jedną ścieżkę (plik z rozszerzeniem ts/js/json/yml/sql) i WSZYSTKIE są testowe (katalogi `__tests__`, `__fixtures__`, `__mocks__`, `fixture(s)`, `test(s)`, `e2e` albo `*.spec|test|mother|fixture|stub.ts`), siatka jej nie eskaluje. Uwaga bez ścieżki, z choć jedną ścieżką produkcyjną albo z jawnym `[zachowanie]` od modelu eskaluje jak dotąd. Reszta ORC-141 bez zmian (`autoFixMinor`, prompty, `[zachowanie]`).
+
+**Dowód.** `orchestrate-script` 139 (było 137): pięć uwag o ścieżkach testowych zostaje drobiazgiem; produkcyjna, mieszana, bez ścieżki, `src/contests/` (nie `tests/`), `attest.ts` (nie `*.test.ts`) i znacznik na fixturze nadal dają NO_GO. Mutacje: bez wyjątku dla testów, `every`→`some`, brak kotwicy katalogu, znacznik sprawdzany po ścieżkach i brak kropki przed `spec|test` czerwienią testy; usunięcie `$` na końcu wzorca to mutant równoważny (`PATH_TOKEN` kończy token na rozszerzeniu).
+
+**Czego nie wiem.** Teksty uwag z `608120bb` i `ada41798` nie zostały w artefaktach (raport przebiegu jest nadpisany, transkrypty zawierają tylko kod szablonu), więc nie wiem, czy obie zatrzymały fixtury. Notatka opisuje `i-ctor` jako „prozę weryfikatora" bez ścieżek, a ten kształt ta poprawka nie obejmuje: siatka nadal trafi w słowo `rzuca` w zdaniu typu „nie rzuca wyjątku". Nie mierzyłem też, ile kosztował sam powtórzony zakres po haltach; $23,40 to koszt dwóch całych przebiegów, górna granica. Przy okazji telemetria rozstrzyga pytanie z ORC-168: bramka bez `model:` bierze model z frontmattera agenta (7 z 7 kroków `final-gate*` w zadaniach z `threat_model` szło na Opusie, 6 z 6 bez `threat_model` na Sonnecie).
+
+**Claim.** Uwaga `minor_findings`, której wszystkie wskazane ścieżki są testowe, nie zamienia GO w NO_GO samym dopasowaniem `BEHAVIOR_NET`; każda inna uwaga (bez ścieżki, z produkcyjną, z `[zachowanie]`) zachowuje się jak przed zmianą.
+
 ### ORC-170 — spec w `__tests__/` obok pliku z zakresu należy do zakresu warstwy (2026-11-15)
 
 **Objaw.** juz-ide-api-2, `TS-TOOLING-AUTH-DOMAIN-PURITY-001` (run `wf_680d811c`, halt `application:oauth-state-port`): trzy kolejne próby warstwy z NO_GO tego samego weryfikatora (3 + 3 + 1 trafień), ok. 1 mln tokenów ($5,63 przebiegu). Notatka agenta `DEV-orc-135-application-oauth-state-port`: stare specy przenoszonych klas importowały usunięte pliki, a silnik odrzucał ich usunięcie jako poza zakresem. Ten sam mechanizm dotknął `application:secure-token-port` i `domain:hash-port`. Obejściem był ręczny `overrides.json` z wypisanymi plikami specu.
