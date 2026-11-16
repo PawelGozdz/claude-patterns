@@ -1923,6 +1923,14 @@ function finalFileList(treeFiles, layerFiles) {
 // próbach przebiegu. Pomiar 0 po dodatnim to sprzeczność pomiaru (praca zacommitowana między próbami,
 // błąd sondy), a nie brak testów — próba naprawcza zmieniająca nazwy i asercje ma 0 NOWYCH bloków,
 // choć warstwa dodała 111 (juz-ide-api TS-SEC-SP-LOCATION-001: fałszywy ESCALATE_AND_HALT).
+// ORC-171: pomiar liczy się także z CZERWONEJ próby. Pętla warstwy robiła `continue` na czerwonej sondzie PRZED aktualizacją
+// `blocksSeen`, więc 18 bloków zmierzonych w próbie z czerwonymi testami przepadało, a zielona próba naprawcza (zmiana asercji,
+// 0 NOWYCH bloków) dostawała ESCALATE (juz-ide-api-3 TS-ARCH-RP12-SHARED-JOBS-001, `tests-moderation-notifications`).
+function blocksSeenAfter(seen, probe) {
+  const prev = seen > 0 ? seen : 0
+  return probe && probe.newTestBlocks > 0 ? Math.max(prev, probe.newTestBlocks) : prev
+}
+
 function deltaGateFails(layer, probe, changedFiles, mode, seenBlocks) {
   if (!layer.tests || layer.repair === true || mode === 'verify-existing' || !probe) return null
   if (probe.newTestBlocks == null) return null
@@ -2423,6 +2431,7 @@ for (const step of plan) {
       settled = { id: layer.id, status: 'ESCALATE_AND_HALT', reason: crashed, cause: 'machine' }
       break
     }
+    blocksSeen = blocksSeenAfter(blocksSeen, probe) // ORC-171: przed `continue` na czerwonej sondzie, nie po nim
     if (probeIsRed(probe)) {
       violations = 'deterministyczna bramka na czerwono (typecheck: ' + probe.typecheck +
         ', testy: ' + probe.tests + (probe.lint != null ? ', lint: ' + probe.lint : '') +
@@ -2442,7 +2451,6 @@ for (const step of plan) {
     probeRed = null
     probeRedFacts = null
     const deltaFail = deltaGateFails(layer, probe, layerFiles, mode, blocksSeen)
-    if (probe && probe.newTestBlocks > 0) blocksSeen = Math.max(blocksSeen, probe.newTestBlocks)
     if (deltaFail) {
       violations = deltaFail
       log(layer.id + ': ' + deltaFail)

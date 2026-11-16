@@ -3169,3 +3169,17 @@ Lint WL6 ostrzega przed `git diff` bez `--stat/--name-only/--numstat` (incydent 
 **Czego nie wiem.** Poprawka pokrywa jeden z trzech specy z przypadku api-2: `oauth-state.service.spec.ts` (ten sam rdzeń), ale nie `oauth-state-performance.spec.ts` ani `oauth-state-log-privacy.spec.ts`. Takie specy trzeba nadal wpisać do zakresu (analiza albo `--overrides scope.dirs`), więc ten sam halt może wrócić. Rozszerzenie o prefiks rdzenia (`oauth-state-*`) odrzuciłem: `user.ts` złapałby `user-profile.spec.ts`. Właściwa poprawka dla reszty leży w analizie albo w kroku `prepare`, który po zakresie-pliku dopisze istniejące specy tej klasy; to osobna zmiana. Nie mierzyłem, ile z $17,60 dwóch zatrzymanych przebiegów api-2 poszło na ten mechanizm.
 
 **Claim.** Dla zakresu podanego plikiem źródła spec o tym samym rdzeniu nazwy w `__tests__/` obok tego pliku należy do zakresu warstwy (`layerTouches`), a każdy inny spec spoza zakresu nadal jest odrzucany.
+
+### ORC-171 — pomiar bramki przyrostu z czerwonej próby nie przepada (2026-11-16)
+
+**Objaw.** juz-ide-api-3, `TS-ARCH-RP12-SHARED-JOBS-001`, run `wf_3e71a98f`, warstwa `testing:tests-moderation-notifications`: próba 1 (`checks-1`: typecheck pass, testy fail), próby 2 i 3 (testy pass), ESCALATE_AND_HALT po trzeciej. Notatka agenta `DEV-orc-131-testing-tests-moderation-notifications`: sonda próby 1 zmierzyła 18 nowych bloków, a bramka przyrostu (ORC-035) dała ESCALATE (przyrost 0) w kolejnej próbie, mimo że ORC-131(a) miał to wykluczyć.
+
+**Przyczyna.** `blocksSeen` (ORC-131) aktualizowano linią po `deltaGateFails`, a przed nią pętla warstwy robiła `continue` przy `probeIsRed(probe)`. Pomiar z próby z czerwonymi testami nigdy nie trafiał do licznika, więc zielona próba naprawcza (zmiana asercji, 0 NOWYCH bloków) widziała `blocksSeen = 0` i padała na bramce. ORC-131(a) działał tylko dla ciągu zielone-potem-zero.
+
+**Zmiana.** Funkcja `blocksSeenAfter(seen, probe)` (maksimum z dotychczasowego licznika i dodatniego `newTestBlocks`), wołana w pętli warstwy tuż PRZED `if (probeIsRed(probe))`; stara linia po `deltaGateFails` usunięta. Wynik `deltaGateFails` dla próby, która sama zmierzyła przyrost > 0, jest ten sam co wcześniej.
+
+**Dowód.** `orchestrate-script` 143 po scaleniu ORC-169, ORC-170 i ORC-171 (było 137): funkcja (pierwszy pomiar, zero nie kasuje, maksimum, brak sondy, scenariusz czerwone-potem-zielone z 18 blokami) oraz kolejność w źródle (aktualizacja przed sprawdzeniem czerwieni, jedno wystąpienie, brak starej linii). Mutacje: aktualizacja po czerwieni, `max` zastąpione ostatnim pomiarem, zero kasujące pomiar czerwienią testy.
+
+**Czego nie wiem.** Dlaczego próby 2 i 3 zmierzyły przyrost 0 po próbie, która zmierzyła 18 (nie mam treści sondy tych prób); poprawka chroni tylko wtedy, gdy wcześniejszy pomiar był dodatni. Inne fałszywe alarmy tej bramki zostają: skrypt z asercjami na poziomie pliku bez bloków `it`/`test` (api-3 `tests-lint`, +108 linii asercji, `DEV-orc-035-testing-tests-lint`) i przerabianie istniejących specy bez `repair: true` (api-4 `specs-contexts`, wymagało ręcznego `repair=true`). Ich ewentualne rozwiązanie to liczenie linii asercji obok bloków, osobna decyzja.
+
+**Claim.** Pomiar `newTestBlocks > 0` z dowolnej próby warstwy, także z czerwoną sondą, trafia do `blocksSeen` i zwalnia późniejsze próby tej warstwy z bramki przyrostu.

@@ -2189,6 +2189,36 @@ const CASES = (c) => [
     },
   },
   {
+    name: 'blocks-seen-after-takes-the-max-and-ignores-empty-measurements',
+    // ORC-171: pomiar z czerwonej próby też liczy się do `seenBlocks`
+    run() {
+      if (c.blocksSeenAfter(0, { newTestBlocks: 18 }) !== 18) return 'pierwszy pomiar nie zapisany';
+      if (c.blocksSeenAfter(18, { newTestBlocks: 0 }) !== 18) return 'zero skasowało wcześniejszy pomiar';
+      if (c.blocksSeenAfter(18, { newTestBlocks: 5 }) !== 18) return 'mniejszy pomiar obniżył maksimum';
+      if (c.blocksSeenAfter(5, { newTestBlocks: 18 }) !== 18) return 'większy pomiar nie podniósł maksimum';
+      if (c.blocksSeenAfter(18, null) !== 18 || c.blocksSeenAfter(undefined, { typecheck: 'fail' }) !== 0) return 'brak sondy albo pola dał zły wynik';
+      // zachowanie na czerwono-potem-zielono: pomiar z próby 1 chroni zieloną próbę 2 z zerowym przyrostem
+      const seen = c.blocksSeenAfter(0, { typecheck: 'pass', tests: 'fail', newTestBlocks: 18 });
+      const zero = { typecheck: 'pass', tests: 'pass', newTestBlocks: 0 };
+      if (c.deltaGateFails(L.testing, zero, ['src/__tests__/a.spec.ts'], 'implement', seen)) return 'zielona próba po czerwonej z 18 blokami złapana bramką przyrostu';
+      return null;
+    },
+  },
+  {
+    name: 'layer-loop-records-blocks-seen-before-the-red-probe-continue',
+    // ORC-171: aktualizacja `blocksSeen` PRZED `if (probeIsRed(probe))`; stara linia po sprawdzeniu zniknęła
+    run() {
+      const src = fs.readFileSync(TEMPLATE, 'utf8');
+      const upd = src.indexOf('blocksSeen = blocksSeenAfter(blocksSeen, probe)');
+      const red = src.indexOf('    if (probeIsRed(probe)) {\n      violations = ');
+      if (upd < 0 || red < 0) return 'brak aktualizacji blocksSeen albo sprawdzenia czerwonej sondy w pętli warstwy';
+      if (upd > red) return 'blocksSeen aktualizowany PO sprawdzeniu czerwonej sondy (pomiar z czerwonej próby przepada)';
+      if (/blocksSeen = Math\.max\(blocksSeen/.test(src)) return 'została stara aktualizacja po sprawdzeniu czerwieni';
+      if (src.split('blocksSeenAfter(blocksSeen, probe)').length !== 2) return 'aktualizacja blocksSeen nie występuje dokładnie raz';
+      return null;
+    },
+  },
+  {
     name: 'verify-noop-verdict-also-goes-through-reclassify-minor',
     run() {
       const src = fs.readFileSync(TEMPLATE, 'utf8');
