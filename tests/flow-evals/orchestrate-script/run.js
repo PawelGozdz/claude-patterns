@@ -1566,6 +1566,46 @@ const CASES = (c) => [
     },
   },
   {
+    name: 'companion-recognises-spec-in-tests-subdir-next-to-the-scope-file',
+    // ORC-170: układ juz-ide — `services/x.service.ts` i `services/__tests__/x.service.spec.ts`
+    run() {
+      const src = 'src/ctx/domain/services/oauth-state.service.ts';
+      const yes = [
+        'src/ctx/domain/services/__tests__/oauth-state.service.spec.ts',
+        'src/ctx/domain/services/__tests__/oauth-state.spec.ts',
+        'src/ctx/domain/services/oauth-state.service.spec.ts',
+      ];
+      const no = [
+        'src/ctx/domain/services/__tests__/oauth-state-performance.spec.ts', // inny rdzeń nazwy: nadal do zakresu
+        'src/ctx/domain/services/__tests__/other.service.spec.ts',
+        'src/ctx/domain/services/__tests__/oauth-state.fixture.ts', // nie test
+        'src/ctx/other/services/__tests__/oauth-state.service.spec.ts', // inny katalog
+        'src/ctx/domain/services/nested/__tests__/oauth-state.service.spec.ts', // głębszy podkatalog
+        'src/ctx/domain/services/__mocks__/oauth-state.service.spec.ts', // nie __tests__
+      ];
+      for (const f of yes) if (!c.isCompanion(src, f)) return 'powinien być towarzyszem: ' + f;
+      for (const f of no) if (c.isCompanion(src, f)) return 'nie powinien być towarzyszem: ' + f;
+      return null;
+    },
+  },
+  {
+    name: 'deletion-plan-accepts-spec-in-tests-subdir-of-a-file-scope-unit',
+    // ORC-170: scope podany PLIKIEM źródła; spec starej klasy w __tests__/ może zniknąć razem z nią, reszta nadal poza zakresem
+    run() {
+      const layer = { id: 'application', dirs: ['src/ctx/application/ports/', 'src/ctx/domain/services/oauth-state.service.ts'] };
+      const plan = c.deletionPlan(layer, [
+        'src/ctx/domain/services/oauth-state.service.ts',
+        'src/ctx/domain/services/__tests__/oauth-state.service.spec.ts',
+        'src/ctx/domain/services/__tests__/secure-token.service.spec.ts',
+        'src/ctx/domain/services/__tests__/oauth-state-performance.spec.ts',
+      ], []);
+      const want = ['src/ctx/domain/services/oauth-state.service.ts', 'src/ctx/domain/services/__tests__/oauth-state.service.spec.ts'];
+      if (JSON.stringify(plan.accepted) !== JSON.stringify(want)) return 'accepted: ' + JSON.stringify(plan.accepted);
+      if (plan.rejected.length !== 2 || !plan.rejected.every((r) => /poza zakresem/.test(r.reason))) return 'rejected: ' + JSON.stringify(plan.rejected);
+      return null;
+    },
+  },
+  {
     name: 'probe-pathspec-for-file-scope-includes-python-companions',
     run() {
       const p = c.buildProbePrompt(ARGS, { id: 'engine-match', dirs: ['engine/scope_match.py'], checks: [], tests: true });
@@ -2110,6 +2150,71 @@ const CASES = (c) => [
       const obj = mk([{ text: 'a.ts:9 — [zachowanie] x' }, null, { foo: 'bar' }]);
       if (obj.verdict !== 'NO_GO' || obj.violations.some((v) => /object Object/.test(v))) return 'pozycja obiektowa zgubiona albo „[object Object]": ' + JSON.stringify(obj);
       if (c.collectMinor({ minor_findings: [{ text: 'abc' }, null] }).join('|') !== 'abc') return 'collectMinor psuje pozycje obiektowe i null';
+      return null;
+    },
+  },
+  {
+    name: 'behavior-net-skips-findings-that-point-only-at-test-paths',
+    // ORC-169: `throw` w fixturze/teście to nie zmiana zachowania produkcyjnego (api-3: dwa fałszywe halty przy GO weryfikatora)
+    run() {
+      const mk = (items) => c.reclassifyMinor({ verdict: 'GO', violations: [], minor_findings: items });
+      const fixtureOnly = [
+        'src/ctx/domain/__fixtures__/auth.fixture.ts:12 — throw w fixturze — popraw',
+        'src/ctx/domain/auth.mother.ts:9 — builder rzuca wyjątek — popraw',
+        'src/ctx/__tests__/auth.spec.ts:4 — oczekiwany status 409 — popraw',
+        'test/e2e/auth.e2e-spec.ts:7 — rethrow w helperze — popraw',
+        'src/ctx/__mocks__/repo.ts:3 — wyrzuć wyjątek w stubie — popraw',
+      ];
+      const ok = mk(fixtureOnly);
+      if (ok.verdict !== 'GO' || ok.minor_findings.length !== fixtureOnly.length || (ok.violations || []).length) return 'uwaga o ścieżkach testowych zeskalowana do NO_GO: ' + JSON.stringify(ok.violations);
+      return null;
+    },
+  },
+  {
+    name: 'behavior-net-still-escalates-production-mixed-pathless-and-tagged-findings',
+    run() {
+      const mk = (items) => c.reclassifyMinor({ verdict: 'GO', violations: [], minor_findings: items });
+      const bad = [
+        'src/ctx/domain/auth.ts:12 — throw w agregacie — popraw', // produkcja
+        'src/ctx/domain/auth.ts:12 oraz src/ctx/__tests__/auth.spec.ts:4 — throw w obu — popraw', // mieszane: jedna ścieżka produkcyjna
+        'throw w konstruktorze — popraw', // bez ścieżki
+        'src/contests/winner.ts:5 — throw przy remisie — popraw', // `contests/` nie jest katalogiem `tests/`
+        'src/ctx/__fixtures__/auth.fixture.ts:12 — [zachowanie] zmień zwracaną wartość', // jawny znacznik wygrywa
+        'src/ctx/attest.ts:1 — throw — popraw', // `attest.ts` nie jest `*.test.ts`
+      ];
+      for (const b of bad) {
+        if (mk([b]).verdict !== 'NO_GO') return 'zmiana zachowania przeszła jako drobiazg: ' + b;
+      }
+      return null;
+    },
+  },
+  {
+    name: 'blocks-seen-after-takes-the-max-and-ignores-empty-measurements',
+    // ORC-171: pomiar z czerwonej próby też liczy się do `seenBlocks`
+    run() {
+      if (c.blocksSeenAfter(0, { newTestBlocks: 18 }) !== 18) return 'pierwszy pomiar nie zapisany';
+      if (c.blocksSeenAfter(18, { newTestBlocks: 0 }) !== 18) return 'zero skasowało wcześniejszy pomiar';
+      if (c.blocksSeenAfter(18, { newTestBlocks: 5 }) !== 18) return 'mniejszy pomiar obniżył maksimum';
+      if (c.blocksSeenAfter(5, { newTestBlocks: 18 }) !== 18) return 'większy pomiar nie podniósł maksimum';
+      if (c.blocksSeenAfter(18, null) !== 18 || c.blocksSeenAfter(undefined, { typecheck: 'fail' }) !== 0) return 'brak sondy albo pola dał zły wynik';
+      // zachowanie na czerwono-potem-zielono: pomiar z próby 1 chroni zieloną próbę 2 z zerowym przyrostem
+      const seen = c.blocksSeenAfter(0, { typecheck: 'pass', tests: 'fail', newTestBlocks: 18 });
+      const zero = { typecheck: 'pass', tests: 'pass', newTestBlocks: 0 };
+      if (c.deltaGateFails(L.testing, zero, ['src/__tests__/a.spec.ts'], 'implement', seen)) return 'zielona próba po czerwonej z 18 blokami złapana bramką przyrostu';
+      return null;
+    },
+  },
+  {
+    name: 'layer-loop-records-blocks-seen-before-the-red-probe-continue',
+    // ORC-171: aktualizacja `blocksSeen` PRZED `if (probeIsRed(probe))`; stara linia po sprawdzeniu zniknęła
+    run() {
+      const src = fs.readFileSync(TEMPLATE, 'utf8');
+      const upd = src.indexOf('blocksSeen = blocksSeenAfter(blocksSeen, probe)');
+      const red = src.indexOf('    if (probeIsRed(probe)) {\n      violations = ');
+      if (upd < 0 || red < 0) return 'brak aktualizacji blocksSeen albo sprawdzenia czerwonej sondy w pętli warstwy';
+      if (upd > red) return 'blocksSeen aktualizowany PO sprawdzeniu czerwonej sondy (pomiar z czerwonej próby przepada)';
+      if (/blocksSeen = Math\.max\(blocksSeen/.test(src)) return 'została stara aktualizacja po sprawdzeniu czerwieni';
+      if (src.split('blocksSeenAfter(blocksSeen, probe)').length !== 2) return 'aktualizacja blocksSeen nie występuje dokładnie raz';
       return null;
     },
   },

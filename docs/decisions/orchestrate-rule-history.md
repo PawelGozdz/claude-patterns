@@ -3141,3 +3141,45 @@ Lint WL6 ostrzega przed `git diff` bez `--stat/--name-only/--numstat` (incydent 
 **Czego nie wiem.** Czy werdykt Sonneta w rundzie 2 zgadza się z pełną bramką (próg ≥ 95% na ok. 20 rundach 2, protokół w TASK-ORC-GATE-COST-001). Oszczędność dotyczy wyłącznie tasków z `threat_model`, czyli tam, gdzie `security-e2e-verifier` ma VETO, a GO rundy 2 kończy przebieg bez późniejszej kontroli Opusem. Czy `agent()` bez `model:` bierze model sesji (komentarz w szablonie) czy frontmatter agenta (ANL-021): kod tego nie rozstrzyga, potwierdzi telemetria pierwszego przebiegu. Tryb i model rundy 2 nie są widoczne w zdarzeniach telemetrii (etykieta `final-gate-r2` bez zmian); `report.finalGateDelta` niesie tylko tryb.
 
 **Claim.** Przy `gateR2Model: 'sonnet'` i aktywnej delcie bramka rundy 2 jest wywoływana z `model: 'sonnet'`, a bez tych dwóch warunków żadne wywołanie bramki nie zmienia modelu.
+
+### ORC-169 — siatka ORC-141 nie eskaluje uwag o fixturach i testach (2026-11-15)
+
+**Objaw.** juz-ide-api-3, `TS-TOOLING-DOMAIN-MODEL-CLEANUP-001` (14–15.11, 9 przebiegów, $86,78 z $154,98 całej próby): trzy halty warstwy. Dwa z nich (`608120bb` `domain:d-ctor-auth`, `ada41798` `infrastructure:i-ctor`) mają w telemetrii ostatni werdykt weryfikatora GO, 0 trafień reguł i 0 naruszeń, a przebieg i tak stanął. Trzeci (`b9d980fc` `infrastructure:i-id`, 4 naruszenia reguły `new`) jest prawdziwy. Notatka agenta `DEV-orc-141-infrastructure-i-ctor` opisuje mechanizm.
+
+**Przyczyna.** `reclassifyMinor` (ORC-141) przenosi `minor_findings` pasujące do `BEHAVIOR_NET` do `violations` i zamienia GO w NO_GO. Siatka patrzy tylko na tekst uwagi (`throw`, `rzuć`, `status 409`), więc `throw` w fixturze (`__fixtures__`, `*.mother.ts`, `__tests__`) wygląda jak zmiana zachowania produkcyjnego.
+
+**Zmiana.** `isBehaviorChange` w `orchestrate.template.mjs`: gdy uwaga wskazuje co najmniej jedną ścieżkę (plik z rozszerzeniem ts/js/json/yml/sql) i WSZYSTKIE są testowe (katalogi `__tests__`, `__fixtures__`, `__mocks__`, `fixture(s)`, `test(s)`, `e2e` albo `*.spec|test|mother|fixture|stub.ts`), siatka jej nie eskaluje. Uwaga bez ścieżki, z choć jedną ścieżką produkcyjną albo z jawnym `[zachowanie]` od modelu eskaluje jak dotąd. Reszta ORC-141 bez zmian (`autoFixMinor`, prompty, `[zachowanie]`).
+
+**Dowód.** `orchestrate-script` 139 (było 137): pięć uwag o ścieżkach testowych zostaje drobiazgiem; produkcyjna, mieszana, bez ścieżki, `src/contests/` (nie `tests/`), `attest.ts` (nie `*.test.ts`) i znacznik na fixturze nadal dają NO_GO. Mutacje: bez wyjątku dla testów, `every`→`some`, brak kotwicy katalogu, znacznik sprawdzany po ścieżkach i brak kropki przed `spec|test` czerwienią testy; usunięcie `$` na końcu wzorca to mutant równoważny (`PATH_TOKEN` kończy token na rozszerzeniu).
+
+**Czego nie wiem.** Teksty uwag z `608120bb` i `ada41798` nie zostały w artefaktach (raport przebiegu jest nadpisany, transkrypty zawierają tylko kod szablonu), więc nie wiem, czy obie zatrzymały fixtury. Notatka opisuje `i-ctor` jako „prozę weryfikatora" bez ścieżek, a ten kształt ta poprawka nie obejmuje: siatka nadal trafi w słowo `rzuca` w zdaniu typu „nie rzuca wyjątku". Nie mierzyłem też, ile kosztował sam powtórzony zakres po haltach; $23,40 to koszt dwóch całych przebiegów, górna granica. Przy okazji telemetria rozstrzyga pytanie z ORC-168: bramka bez `model:` bierze model z frontmattera agenta (7 z 7 kroków `final-gate*` w zadaniach z `threat_model` szło na Opusie, 6 z 6 bez `threat_model` na Sonnecie).
+
+**Claim.** Uwaga `minor_findings`, której wszystkie wskazane ścieżki są testowe, nie zamienia GO w NO_GO samym dopasowaniem `BEHAVIOR_NET`; każda inna uwaga (bez ścieżki, z produkcyjną, z `[zachowanie]`) zachowuje się jak przed zmianą.
+
+### ORC-170 — spec w `__tests__/` obok pliku z zakresu należy do zakresu warstwy (2026-11-15)
+
+**Objaw.** juz-ide-api-2, `TS-TOOLING-AUTH-DOMAIN-PURITY-001` (run `wf_680d811c`, halt `application:oauth-state-port`): trzy kolejne próby warstwy z NO_GO tego samego weryfikatora (3 + 3 + 1 trafień), ok. 1 mln tokenów ($5,63 przebiegu). Notatka agenta `DEV-orc-135-application-oauth-state-port`: stare specy przenoszonych klas importowały usunięte pliki, a silnik odrzucał ich usunięcie jako poza zakresem. Ten sam mechanizm dotknął `application:secure-token-port` i `domain:hash-port`. Obejściem był ręczny `overrides.json` z wypisanymi plikami specu.
+
+**Przyczyna.** Analiza wpisała do `dirs` jednostki PLIK źródła (`src/contexts/auth/domain/services/oauth-state.service.ts`), ale nie specy z sąsiedniego `__tests__/`. Zakres-plik obejmuje tylko „towarzyszy" (`isCompanion`, ORC-082): testy w TYM SAMYM katalogu o tym samym rdzeniu nazwy. W układzie juz-ide specy leżą w `services/__tests__/`, więc `deletionPlan` (ORC-135) odrzucał ich usunięcie jako „poza zakresem warstwy".
+
+**Zmiana.** `isCompanion` uznaje też test (`*.spec.*`, `*.test.*`) o tym samym rdzeniu nazwy w podkatalogu `__tests__/` katalogu pliku z zakresu. Nie obejmuje: innego katalogu, głębszego podkatalogu, `__mocks__/`, pliku niebędącego testem ani specu o innym rdzeniu nazwy.
+
+**Dowód.** `orchestrate-script` 139 (było 137): `isCompanion` na 3 pozytywnych i 6 negatywnych ścieżkach; `deletionPlan` dla jednostki z zakresem-plikiem przyjmuje źródło i jego spec w `__tests__/`, a spec innej klasy i spec o innym rdzeniu odrzuca jako poza zakresem. Mutacje (wyłączony podkatalog, `__tests__` w dowolnym katalogu, podkatalog `__mocks__`) czerwienią testy.
+
+**Czego nie wiem.** Poprawka pokrywa jeden z trzech specy z przypadku api-2: `oauth-state.service.spec.ts` (ten sam rdzeń), ale nie `oauth-state-performance.spec.ts` ani `oauth-state-log-privacy.spec.ts`. Takie specy trzeba nadal wpisać do zakresu (analiza albo `--overrides scope.dirs`), więc ten sam halt może wrócić. Rozszerzenie o prefiks rdzenia (`oauth-state-*`) odrzuciłem: `user.ts` złapałby `user-profile.spec.ts`. Właściwa poprawka dla reszty leży w analizie albo w kroku `prepare`, który po zakresie-pliku dopisze istniejące specy tej klasy; to osobna zmiana. Nie mierzyłem, ile z $17,60 dwóch zatrzymanych przebiegów api-2 poszło na ten mechanizm.
+
+**Claim.** Dla zakresu podanego plikiem źródła spec o tym samym rdzeniu nazwy w `__tests__/` obok tego pliku należy do zakresu warstwy (`layerTouches`), a każdy inny spec spoza zakresu nadal jest odrzucany.
+
+### ORC-171 — pomiar bramki przyrostu z czerwonej próby nie przepada (2026-11-16)
+
+**Objaw.** juz-ide-api-3, `TS-ARCH-RP12-SHARED-JOBS-001`, run `wf_3e71a98f`, warstwa `testing:tests-moderation-notifications`: próba 1 (`checks-1`: typecheck pass, testy fail), próby 2 i 3 (testy pass), ESCALATE_AND_HALT po trzeciej. Notatka agenta `DEV-orc-131-testing-tests-moderation-notifications`: sonda próby 1 zmierzyła 18 nowych bloków, a bramka przyrostu (ORC-035) dała ESCALATE (przyrost 0) w kolejnej próbie, mimo że ORC-131(a) miał to wykluczyć.
+
+**Przyczyna.** `blocksSeen` (ORC-131) aktualizowano linią po `deltaGateFails`, a przed nią pętla warstwy robiła `continue` przy `probeIsRed(probe)`. Pomiar z próby z czerwonymi testami nigdy nie trafiał do licznika, więc zielona próba naprawcza (zmiana asercji, 0 NOWYCH bloków) widziała `blocksSeen = 0` i padała na bramce. ORC-131(a) działał tylko dla ciągu zielone-potem-zero.
+
+**Zmiana.** Funkcja `blocksSeenAfter(seen, probe)` (maksimum z dotychczasowego licznika i dodatniego `newTestBlocks`), wołana w pętli warstwy tuż PRZED `if (probeIsRed(probe))`; stara linia po `deltaGateFails` usunięta. Wynik `deltaGateFails` dla próby, która sama zmierzyła przyrost > 0, jest ten sam co wcześniej.
+
+**Dowód.** `orchestrate-script` 143 po scaleniu ORC-169, ORC-170 i ORC-171 (było 137): funkcja (pierwszy pomiar, zero nie kasuje, maksimum, brak sondy, scenariusz czerwone-potem-zielone z 18 blokami) oraz kolejność w źródle (aktualizacja przed sprawdzeniem czerwieni, jedno wystąpienie, brak starej linii). Mutacje: aktualizacja po czerwieni, `max` zastąpione ostatnim pomiarem, zero kasujące pomiar czerwienią testy.
+
+**Czego nie wiem.** Dlaczego próby 2 i 3 zmierzyły przyrost 0 po próbie, która zmierzyła 18 (nie mam treści sondy tych prób); poprawka chroni tylko wtedy, gdy wcześniejszy pomiar był dodatni. Inne fałszywe alarmy tej bramki zostają: skrypt z asercjami na poziomie pliku bez bloków `it`/`test` (api-3 `tests-lint`, +108 linii asercji, `DEV-orc-035-testing-tests-lint`) i przerabianie istniejących specy bez `repair: true` (api-4 `specs-contexts`, wymagało ręcznego `repair=true`). Ich ewentualne rozwiązanie to liczenie linii asercji obok bloków, osobna decyzja.
+
+**Claim.** Pomiar `newTestBlocks > 0` z dowolnej próby warstwy, także z czerwoną sondą, trafia do `blocksSeen` i zwalnia późniejsze próby tej warstwy z bramki przyrostu.

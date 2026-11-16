@@ -1031,9 +1031,20 @@ const CARD_PRECEDENCE =
 // wpis niż zamieniać GO w NO_GO przy każdym nicie. Szeroką wersję odrzucono, bo trafiałaby w „zbędny await" i „zmień kolejność importów".
 const BEHAVIOR_TAG = /\[zachowanie\]/i
 const BEHAVIOR_NET = /(?<![@\w])throws?\b|\brethrow\w*|\braise\s+(?:an?\s+)?(?:error|exception)|\bwyrzu[cć]\w*|\bstatus\s+[1-5]\d\d\b|\bHTTP\s*[1-5]\d\d\b|\bResult\.(?:fail|ok)\b|\brollback\b|\bInjectQueue\b|\bbullmq\b|status\w*\s+HTTP|kod\s+(?:błędu|odpowiedzi)|\brzu[cć]\w*/i
+// ORC-169: siatka po słowach (`throw`, `rzuć`, `status 409`) w fixturze lub teście nie zmienia zachowania produkcyjnego — api-3
+// 2026-11-14 zatrzymało dwie warstwy (GO weryfikatora, puste violations) na `throw` w fixturze. Gdy uwaga wskazuje ścieżki i WSZYSTKIE
+// są testowe (`__tests__`, `__fixtures__`, `*.spec.ts`, `*.mother.ts`), siatka jej nie eskaluje. Wpis bez ścieżki albo z choć jedną
+// ścieżką produkcyjną działa jak dotąd; jawny znacznik `[zachowanie]` od modelu eskaluje zawsze.
+const PATH_TOKEN = /[\w@.\-/\\]+\.(?:[cm]?[jt]sx?|json|ya?ml|sql)\b/g
+const TEST_PATH = /(?:^|[\\/])(?:__tests__|__fixtures__|__mocks__|fixtures?|tests?|e2e)[\\/]|\.(?:spec|test|mother|fixture|stub)\.[cm]?[jt]sx?$/i
+function onlyTestPaths(s) {
+  const paths = s.match(PATH_TOKEN)
+  return !!paths && paths.every((p) => TEST_PATH.test(p))
+}
 function isBehaviorChange(text) {
   const s = String(text || '')
-  return BEHAVIOR_TAG.test(s) || BEHAVIOR_NET.test(s)
+  if (BEHAVIOR_TAG.test(s)) return true
+  return BEHAVIOR_NET.test(s) && !onlyTestPaths(s)
 }
 
 // ORC-071 (docs/decisions/orchestrate-rule-history.md#orc-071): weryfikator czasem PISZE
@@ -1348,12 +1359,19 @@ function splitPath(p) {
 // Plik towarzyszący = test (*.spec.* / *.test.*) w tym samym katalogu i z tym samym rdzeniem
 // nazwy co plik z zakresu: `role-permissions.map.ts` → `role-permissions.adapter.spec.ts`,
 // `env.schema.ts` → `env.schema.spec.ts`. Zakres podany katalogiem obejmuje je i tak.
+// ORC-170: test może leżeć w podkatalogu `__tests__/` obok pliku (układ projektów juz-ide: `services/x.service.ts` i
+// `services/__tests__/x.service.spec.ts`). Bez tego ORC-135 odrzucał usunięcie specu przenoszonej klasy jako „poza zakresem
+// warstwy" (juz-ide-api-2, 2026-11-15: trzy próby `application:oauth-state-port` zmarnowane). Ten sam rdzeń nazwy co plik z zakresu;
+// spec o innym rdzeniu (`x-performance.spec.ts`) nadal trzeba wpisać do zakresu.
+const TESTS_SUBDIR = '__tests__/'
 function isCompanion(scopeFile, file) {
   if (!/\.[a-z0-9]+$/i.test(scopeFile)) return false
   const s = splitPath(scopeFile)
   const f = splitPath(file)
   if (!s.stem) return false
-  if (s.dir !== '' && f.dir.slice(-s.dir.length) !== s.dir) return false
+  const sameDir = s.dir === '' || f.dir.slice(-s.dir.length) === s.dir
+  const testsSubdir = s.dir !== '' && f.dir.slice(-(s.dir.length + TESTS_SUBDIR.length)) === s.dir + TESTS_SUBDIR
+  if (!sameDir && !testsSubdir) return false
   const name = String(file).slice(f.dir.length)
   return Object.values(TEST_LANGS).some((l) => l.stem(name) === s.stem)
 }
@@ -1905,6 +1923,14 @@ function finalFileList(treeFiles, layerFiles) {
 // próbach przebiegu. Pomiar 0 po dodatnim to sprzeczność pomiaru (praca zacommitowana między próbami,
 // błąd sondy), a nie brak testów — próba naprawcza zmieniająca nazwy i asercje ma 0 NOWYCH bloków,
 // choć warstwa dodała 111 (juz-ide-api TS-SEC-SP-LOCATION-001: fałszywy ESCALATE_AND_HALT).
+// ORC-171: pomiar liczy się także z CZERWONEJ próby. Pętla warstwy robiła `continue` na czerwonej sondzie PRZED aktualizacją
+// `blocksSeen`, więc 18 bloków zmierzonych w próbie z czerwonymi testami przepadało, a zielona próba naprawcza (zmiana asercji,
+// 0 NOWYCH bloków) dostawała ESCALATE (juz-ide-api-3 TS-ARCH-RP12-SHARED-JOBS-001, `tests-moderation-notifications`).
+function blocksSeenAfter(seen, probe) {
+  const prev = seen > 0 ? seen : 0
+  return probe && probe.newTestBlocks > 0 ? Math.max(prev, probe.newTestBlocks) : prev
+}
+
 function deltaGateFails(layer, probe, changedFiles, mode, seenBlocks) {
   if (!layer.tests || layer.repair === true || mode === 'verify-existing' || !probe) return null
   if (probe.newTestBlocks == null) return null
@@ -2405,6 +2431,7 @@ for (const step of plan) {
       settled = { id: layer.id, status: 'ESCALATE_AND_HALT', reason: crashed, cause: 'machine' }
       break
     }
+    blocksSeen = blocksSeenAfter(blocksSeen, probe) // ORC-171: przed `continue` na czerwonej sondzie, nie po nim
     if (probeIsRed(probe)) {
       violations = 'deterministyczna bramka na czerwono (typecheck: ' + probe.typecheck +
         ', testy: ' + probe.tests + (probe.lint != null ? ', lint: ' + probe.lint : '') +
@@ -2424,7 +2451,6 @@ for (const step of plan) {
     probeRed = null
     probeRedFacts = null
     const deltaFail = deltaGateFails(layer, probe, layerFiles, mode, blocksSeen)
-    if (probe && probe.newTestBlocks > 0) blocksSeen = Math.max(blocksSeen, probe.newTestBlocks)
     if (deltaFail) {
       violations = deltaFail
       log(layer.id + ': ' + deltaFail)
