@@ -15,6 +15,18 @@
 
 ---
 
+## 2026-11-20 — Delegowanie reguł z weryfikatora warstwy do lintu projektu (TASK-ORC-LINT-DELEGATION-001, ORC-174)
+
+**Zmiana:** wbudowana kontrola `lint-ratchet` w `checks:`, blok `lint-delegation` z listą reguł sprawdzonych kodem, ID reguł z kartą
+(`<karta>#<ID>`) w wyniku weryfikatora i bramki, telemetria trybu delegacji.
+**Dlaczego:** weryfikator warstwy to ok. 74% tokenów obu weryfikatorów w juz-ide-api, a 92% jego kroków kończy się GO. Reguła, którą linter
+łapie z ratchetem, nie powinna kosztować kroku LLM. Mechanizm jest generyczny (claude-patterns), listę reguł i próg `error`/`warn` ustala projekt.
+**Odrzucone:** sekcja `verification:` w `project.yml` (ustawienia w `block_params` jak `file-check`, jedno miejsce konfiguracji projektu);
+delegowanie od razu w bramce końcowej (jedna bramka na przebieg, bez grupy kontrolnej nie da się zmierzyć przecieku; wejdzie po danych);
+zakaz zgłaszania naruszeń reguł z listy (lint ma luki, a weryfikator ma je wyłapać jako `[lint_miss]`); ratchet bez reguł `warn` (wzrost
+trafień na `warn` też jest regresją); ID z kartą jako `karta/ID` albo `karta.ID` (`#` w promptach, `:` w telemetrii, bo `SAFE_KEY` nie dopuszcza `#`).
+**Status:** done (E1, E2a, E3); E2b (bramka końcowa) pending — decyzja po ≥30 bramkach z E2a.
+
 ## 2026-11-11 — Tryb diffu bramki końcowej jako opcja i jawny wyjątek WL6 (TASK-ORC-GATE-COST-001, E3)
 
 **Zmiana:** opcja `gateDiff` (domyślnie wyłączona): bramka pobiera diff jednym wywołaniem `git diff -U25 <baza>` zamiast czytać pliki po

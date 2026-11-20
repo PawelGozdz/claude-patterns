@@ -17,11 +17,67 @@ export const MAX_RULE_HITS = 50;
 // Nazwa pliku wpisu pamięci agenta: feedback_<slug>.md / project_<slug>.md / reference_<slug>.md
 const MEMORY_PREFIX = /^(?:feedback|project|reference)-/;
 
+// TASK-ORC-LINT-DELEGATION-001 (E3): ID reguły z kartą, `<karta>#<ID>` (np. `command-handler-pattern_summary#N1`).
+// Samo `N1` występuje w kilkudziesięciu kartach, więc nie da się go zmapować na regułę lintu ani zmierzyć pokrycia.
+// `#` nie przechodzi SAFE_RULE_ID, dlatego zapis to `<karta>:<id>`, a slug karty to nazwa pliku bez ścieżki, `.md`
+// i końcówki `-pattern_summary` / `_summary` (`command-handler:n1`). Goły `N1` (stary format) nadal przechodzi.
+const CARD_SUFFIX = /(?:[-_]pattern)?[-_]summary$/;
+
+function normalizeCardRuleId(raw) {
+  const at = raw.indexOf('#');
+  const card = raw.slice(0, at).trim().split('/').pop().toLowerCase().replace(/\.md$/, '').replace(CARD_SUFFIX, '').replace(/_/g, '-');
+  const rule = raw.slice(at + 1).trim().toLowerCase().replace(/_/g, '-');
+  if (!card || !rule) return null;
+  const id = card + ':' + rule;
+  return SAFE_RULE_ID.test(id) ? id : null;
+}
+
 /** Normalizuje identyfikator; zwraca null, gdy po normalizacji nie pasuje do formatu. */
 export function normalizeRuleId(raw) {
   if (typeof raw !== 'string') return null;
+  if (raw.includes('#')) return normalizeCardRuleId(raw);
   const id = raw.trim().toLowerCase().replace(/\.md$/, '').replace(/_/g, '-').replace(MEMORY_PREFIX, '');
   return SAFE_RULE_ID.test(id) ? id : null;
+}
+
+/**
+ * Lista reguł delegowanych do lintu (E2a, `<karta>#<ID>`) → unikalne `karta:id` w tym samym formacie co `ruleId` ustaleń,
+ * żeby `lintMisses` dało się policzyć przez zwykłe porównanie. Wpis nie do znormalizowania odpada (to lista z konfiguracji, nie
+ * ustalenia: liczba pozycji nie ma tu znaczenia).
+ */
+export function normalizeDelegatedRules(raw) {
+  if (!Array.isArray(raw)) return [];
+  const out = [];
+  for (const r of raw) {
+    const id = typeof r === 'string' && r.includes('#') ? normalizeRuleId(r) : null;
+    if (id && !out.includes(id)) out.push(id);
+    if (out.length >= MAX_RULE_HITS) break;
+  }
+  return out;
+}
+
+export const DELEGATION_STEP_MODES = ['on', 'holdout', 'fallback'];
+
+/**
+ * Pola delegacji z rekordu kroku (workflow-steps.jsonl) → pola zdarzenia v1: `delegation` (tryb), `delegatedRules`
+ * (`karta:id`, tylko poza `fallback`) i `lintMisses` (liczba całkowita ≥ 0). Zły tryb = brak wszystkich pól.
+ */
+export function normalizeStepDelegation(s) {
+  if (!s || !DELEGATION_STEP_MODES.includes(s.delegation)) return {};
+  const out = { delegation: s.delegation };
+  const rules = Array.isArray(s.delegatedRules)
+    ? [...new Set(s.delegatedRules.filter((r) => typeof r === 'string' && SAFE_RULE_ID.test(r)))].slice(0, MAX_RULE_HITS)
+    : [];
+  if (s.delegation !== 'fallback' && rules.length) {
+    out.delegatedRules = rules;
+    if (Number.isInteger(s.lintMisses) && s.lintMisses >= 0) out.lintMisses = s.lintMisses;
+  }
+  return out;
+}
+
+/** Czy `ruleId` niesie kartę (`karta:id`)? Do pomiaru udziału ustaleń z kartą w rollupie. */
+export function isQualifiedRuleId(id) {
+  return typeof id === 'string' && /^[a-z0-9][a-z0-9_.-]*:[a-z0-9][a-z0-9_.-]*$/.test(id);
 }
 
 export const MAX_FILE_LENGTH = 200;
@@ -86,7 +142,8 @@ export function ruleSignature(ruleHits) {
 // `shadowLint` to kontrola w trybie cienia (`shadow:<skrypt>` w `checks:`) — nie blokuje warstwy i służy porównaniu
 // z werdyktem weryfikatora tej samej warstwy i próby. Zwraca null, gdy wynik nie ma żadnego rozpoznanego pola
 // (weryfikator, implementer), więc pole `checks` nie powstaje poza sondami.
-export const PROBE_CHECK_FIELDS = ['typecheck', 'tests', 'lint', 'conformance', 'shadowLint'];
+// `projectLint` (TASK-ORC-LINT-DELEGATION-001) = kontrola `lint-ratchet`: skrypt ratchet projektu na plikach zmiany; blokuje jak `conformance`.
+export const PROBE_CHECK_FIELDS = ['typecheck', 'tests', 'lint', 'conformance', 'projectLint', 'shadowLint'];
 const PROBE_VALUES = new Set(['pass', 'fail', 'skipped']);
 
 export function normalizeProbeChecks(raw) {

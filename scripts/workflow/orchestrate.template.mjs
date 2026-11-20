@@ -536,10 +536,48 @@ function scopedTestsCommand(a, layer) {
   return parts.join(' ')
 }
 
+// TASK-ORC-LINT-DELEGATION-001 (E1): wbudowana kontrola `lint-ratchet` — skrypt RATCHET PROJEKTU (np. `lint:ddd:ratchet`) na plikach
+// zmiany warstwy. Jak `conformance`, w `checks:` stoi jako GOŁE id; skrypt i regex plików podaje projekt (runtime.yml →
+// prepare → `a.projectLint`), a zakres liczy tools/lint-ratchet/run.mjs (git, --only, --skip), nie sonda. Wynik ma WŁASNE pole
+// `projectLint` (nie `lint`: nazwa skryptu zawiera „lint", a pole `lint` ma historię, TASK-ORCH-LINT-BASELINE-001).
+const LINT_RATCHET_ID = 'lint-ratchet'
+function isLintRatchetCheck(c) { return String(c).trim() === LINT_RATCHET_ID || /tools\/lint-ratchet\/run\.mjs/.test(String(c)) }
+const LINT_SCRIPT_RE = /^[A-Za-z0-9:_-]{1,64}$/
+// regex trafia do powłoki w apostrofach: odrzucamy apostrof i znaki sterujące (reszta jest literalna w '...')
+function lintMatchOk(m) { return typeof m === 'string' && m.length > 0 && m.length <= 200 && !/['\u0000-\u001f]/.test(m) }
+function lintRatchetCommand(a, layer) {
+  const cfg = (a && a.projectLint) || {}
+  const tool = cfg.tool
+  if (typeof tool !== 'string' || !/^\/[\w./@+-]+$/.test(tool) || tool.indexOf('..') !== -1) {
+    return 'sh -c \'echo "lint-ratchet: prepare nie podał ścieżki do tools/lint-ratchet/run.mjs (a.projectLint.tool)" >&2; exit 3\''
+  }
+  if (typeof cfg.script !== 'string' || !LINT_SCRIPT_RE.test(cfg.script)) {
+    return 'sh -c \'echo "lint-ratchet: projekt nie podał skryptu (verification.lint_ratchet.script w runtime.yml)"; exit 3\''
+  }
+  const parts = ['node "' + tool + '" --script ' + cfg.script]
+  if (conformanceBaseShaOk(a)) parts.push('--base ' + a.baseSha)
+  if (lintMatchOk(cfg.filesMatch)) parts.push("--match '" + cfg.filesMatch + "'")
+  const sc = conformanceScope(a, layer)
+  for (const d of sc.only) parts.push("--only '" + d + "'")
+  for (const p of sc.skip) parts.push("--skip '" + p + "'")
+  return parts.join(' ')
+}
+// Treść poprawki dla implementera przy czerwonym `projectLint`: dosłowny raport skryptu projektu + co z nim zrobić.
+function lintRatchetFixText(probe) {
+  return 'LINT PROJEKTU (ratchet względem SHA startu) — popraw KAŻDĄ regresję poniżej: wzrost liczby trafień reguły w pliku względem punktu ' +
+    'odniesienia (dług sprzed zmiany się nie liczy; wzrost reguły na poziomie `warn` też blokuje). Napraw kod, NIE wyłączaj reguł ' +
+    'i nie dopisuj komentarzy eslint-disable ani wpisów do ignore.\n' +
+    String((probe && probe.projectLintReport) || '(sonda nie zwróciła raportu — uruchom skrypt lint-ratchet projektu na zmienionych plikach)')
+}
+function lintRatchetViolations(probe) {
+  const lines = String((probe && probe.projectLintReport) || '').split('\n').map((l) => l.trim()).filter((l) => /\S/.test(l)).slice(0, 40)
+  return lines.length ? ['lint projektu (ratchet): ' + lines.join(' | ')] : ['lint projektu (ratchet) zwrócił fail bez raportu (sprawdź ręcznie skrypt lint-ratchet projektu)']
+}
+
 // Jeden predykat „sonda czerwona" zamiast kopii warunku w każdej funkcji decyzyjnej: dopisanie kolejnego pola sondy nie może
 // zgubić żadnego miejsca (odroczenia ORC-082/099/103 i flaky też muszą widzieć czerwone `conformance`).
 function probeIsRed(probe) {
-  return !!probe && (probe.typecheck === 'fail' || probe.tests === 'fail' || probe.lint === 'fail' || probe.conformance === 'fail')
+  return !!probe && (probe.typecheck === 'fail' || probe.tests === 'fail' || probe.lint === 'fail' || probe.conformance === 'fail' || probe.projectLint === 'fail')
 }
 
 // Treść poprawki dla implementera przy czerwonym `conformance`: dosłowny raport narzędzia + co z nim zrobić.
@@ -575,7 +613,7 @@ function conformanceViolations(probe) {
 // się kilkadziesiąt razy, a każde 16-23 KB wyjścia zostaje w kontekście na resztę przebiegu.
 function buildProbePrompt(a, layer) {
   // ORC-140: wbudowane id `conformance` rozwija się tu do komendy dosłownej (zakres warstwy, SHA startu, pliki cudze)
-  const checks = [...new Set((layer.checks || []).map((c) => (isConformanceCheck(c) && !/\s/.test(String(c).trim()) ? conformanceCommand(a, layer) : isScopedTestsCheck(c) ? scopedTestsCommand(a, layer) : c)))]
+  const checks = [...new Set((layer.checks || []).map((c) => (isConformanceCheck(c) && !/\s/.test(String(c).trim()) ? conformanceCommand(a, layer) : isScopedTestsCheck(c) ? scopedTestsCommand(a, layer) : isLintRatchetCheck(c) && !/\s/.test(String(c).trim()) ? lintRatchetCommand(a, layer) : c)))]
   // ORC-016 (2026-09-27 uzupełnienie kodem — do tej pory czysta proza): goły `npm run <check>`
   // w monorepo z turbo/nx (`dependsOn: ["^build"]`) buduje WSZYSTKIE zależności upstream, nie
   // tylko pakiet tej warstwy. Silnik Workflow nie ma dostępu do fs (patrz nagłówek pliku), więc
@@ -766,12 +804,20 @@ function buildProbePrompt(a, layer) {
     ? ' Przy EXIT innym niż 0 dla komendy conformance zwróć w `conformanceReport` zawartość jej logu DOSŁOWNIE ' +
       '(bez streszczania i parafraz): `head -120 /tmp/check-' + layer.id + '-' + (confIdx + 1) + '.log`.'
     : ''
+  const lintIdx = checks.findIndex(isLintRatchetCheck)
+  const lintRatchetInstruction = lintIdx >= 0
+    // nazwa skryptu projektu zawiera „lint", więc bez wskazania sonda wpisałaby wynik do `lint`; zdanie tylko przy tej kontroli,
+    // żeby prompt projektu bez niej zostawał bez zmian
+    ? '\nKomenda z `tools/lint-ratchet/run.mjs` → pole `projectLint` (EXIT:0 = pass, 1 = fail, 3 = skipped, nic więcej); jej wynik ' +
+      'NIGDY nie trafia do `lint`, `typecheck`, `tests` ani `conformance`. Przy EXIT:1 zwróć w `projectLintReport` zawartość jej logu DOSŁOWNIE ' +
+      '(bez streszczania i parafraz): `head -120 /tmp/check-' + layer.id + '-' + (lintIdx + 1) + '.log`.'
+    : ''
   const shadowInstruction = checks.some(isShadowCheck)
     ? '\nKontrola w trybie cienia: komenda, po której wyjściu stoi `SHADOW EXIT:<kod>`, to wpis `shadow:<skrypt>`. Jej wynik wpisz ' +
       'WYŁĄCZNIE do `shadowLint` (EXIT:0 = pass, niezerowy = fail, brak skryptu = skipped), choćby nazwa skryptu zawierała „lint" ' +
       'albo „test". NIGDY nie trafia do `lint`, `typecheck` ani `tests` i nie jest powodem do `fail` w żadnym z nich: to pomiar, nie bramka.'
     : ''
-  return 'Uruchom dokładnie to i NIC więcej:\n' + run + literalMapping + conformanceInstruction + shadowInstruction +
+  return 'Uruchom dokładnie to i NIC więcej:\n' + run + literalMapping + conformanceInstruction + lintRatchetInstruction + shadowInstruction +
     '\nPrzy EXIT:0 NIE otwieraj pliku logu wcale.' + tailInstruction + verbatimInstruction + crashInstruction + tsErrorsInstruction + testFailInstruction +
     delta +
     '\nNIC nie czytaj, nie analizuj, nie poprawiaj, nie komentuj kodu.' +
@@ -793,10 +839,50 @@ function buildDiffProbePrompt(base) {
   return buildTreeProbePrompt(base)
 }
 
+// TASK-ORC-LINT-DELEGATION-001 (E2a): delegowanie reguł z weryfikatora warstwy do lintu projektu. Lista `a.delegation.rules`
+// (`<karta>#<ID>`, zwalidowana przez prepare względem wczytanych kart) działa w kroku tylko wtedy, gdy kontrola `lint-ratchet`
+// faktycznie się wykonała (`projectLint` = pass|fail). Tryby: `on` (weryfikator dostaje listę „nie powtarzaj"), `holdout`
+// (grupa kontrolna: pełny zakres jak dziś, wybór deterministyczny), `fallback` (kontrola `skipped` albo bez wyniku: pełny zakres),
+// `off` (brak listy dla tej warstwy: prompt i telemetria bez zmian). Wszystko poza `on` daje prompt identyczny jak bez funkcji.
+function delegationHash(text) { // FNV-1a 32-bit → [0, 1)
+  let h = 2166136261
+  for (let i = 0; i < text.length; i++) { h ^= text.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0 }
+  return h / 4294967296
+}
+
+function cardNameOf(p) {
+  return String((p && (p.source || p.path)) || '').split('/').pop().replace(/\.md$/, '')
+}
+
+function delegationFor(a, layer, probe) {
+  const d = a && a.delegation
+  const rules = d && Array.isArray(d.rules) ? d.rules.filter((r) => typeof r === 'string' && r.indexOf('#') > 0) : []
+  if (!rules.length || !(layer.checks || []).some(isLintRatchetCheck)) return { mode: 'off', rules: [] }
+  // Tylko reguły z kart, które ten weryfikator faktycznie dostaje (jego karty to `cardsForVerifier`, bez zawężenia po tagach).
+  const present = new Set(cardsForVerifier(a, baseId(layer)).filter((p) => p.card).map(cardNameOf))
+  const own = rules.filter((r) => present.has(r.slice(0, r.indexOf('#'))))
+  if (!own.length) return { mode: 'off', rules: [] }
+  if (!probe || (probe.projectLint !== 'pass' && probe.projectLint !== 'fail')) return { mode: 'fallback', rules: own }
+  const holdout = typeof d.holdout === 'number' && d.holdout >= 0 ? Math.min(d.holdout, 0.5) : 0.2
+  // Bez runId w skrypcie: zadanie + SHA startu + warstwa. Ten sam wybór przy wznowieniu i przy kolejnych próbach warstwy.
+  const seed = [a.task && a.task.id, a.baseSha, layer.id].join('|')
+  return { mode: delegationHash(seed) < holdout ? 'holdout' : 'on', rules: own }
+}
+
+function delegationBlock(d) {
+  if (!d || d.mode !== 'on' || !d.rules.length) return ''
+  return '\nREGUŁY SPRAWDZONE PRZEZ KOD (lint z ratchetem projektu wykonał się na zmienionych plikach: `checks.projectLint` ' +
+    'wyżej):\n  ' + d.rules.join('\n  ') + '\nNie sprawdzaj ich i nie powtarzaj: kod już to zrobił. Oceniasz pozostałe reguły z kart oraz to, ' +
+    'czego lint nie widzi (zgodność z zadaniem, sens zmiany, luki). Karty zostają w prompcie, bo opisują całą regułę. ' +
+    'WYJĄTEK: jeśli mimo zielonego lintu widzisz JAWNE naruszenie jednej z tych reguł (lint ją przepuścił), zgłoś je normalnie ' +
+    'w `violations` i `findings`, a wpis w `violations` zacznij od `[lint_miss]`. Takie naruszenie blokuje jak każde inne; ' +
+    '`rules_checked` nie wlicza reguł z tej listy.\n'
+}
+
 // Jeden kanoniczny builder promptu weryfikatora — WL10 liczy go RAZ dla wszystkich wywołań.
 // Ręczne składanie promptu per-warstwa jest dokładnie tym, co zawiodło w incydencie
 // TS-REP-PIPELINE-001-F3a-remediation.
-function buildVerifierPrompt(a, layer, probe, changedFiles, mode, noopClaim, priorViolations, deletedFiles) {
+function buildVerifierPrompt(a, layer, probe, changedFiles, mode, noopClaim, priorViolations, deletedFiles, delegation) {
   const calls = scaledBudget(a, 'verify', (changedFiles || []).length)
   if (mode === 'verify-noop') {
     const spec = 'ZADANIE ' + a.task.id + (a.task.title ? ' — ' + a.task.title : '') +
@@ -824,6 +910,7 @@ function buildVerifierPrompt(a, layer, probe, changedFiles, mode, noopClaim, pri
       '  checks.typecheck: ' + probe.typecheck + '\n  checks.tests: ' + probe.tests +
       (probe.lint != null ? '\n  checks.lint: ' + probe.lint : '') +
       (probe.conformance != null ? '\n  checks.conformance: ' + probe.conformance : '') +
+      (probe.projectLint != null ? '\n  checks.projectLint: ' + probe.projectLint : '') +
       (probe.newTestBlocks != null ? '\n  checks.newTestBlocks: ' + probe.newTestBlocks : '') +
       (probe.typecheck === 'deferred'
         ? '\n  (typecheck: czerwień wyłącznie w plikach PÓŹNIEJSZYCH warstw — odroczona do ich sond, ' +
@@ -866,6 +953,7 @@ function buildVerifierPrompt(a, layer, probe, changedFiles, mode, noopClaim, pri
     'zakresem" po drugiej stronie.\n'
   return existing + scopeBlock(layer, a) + '\n\n' + facts + files + removed + dirtyBlock(a, 'verifier') +
     renderCards(cardsForVerifier(a, baseId(layer)), undefined, cardBundle(a, 'verify:' + baseId(layer))) +
+    delegationBlock(delegation) +
     '\nOceń zgodność zmiany z regułami powyżej. Zwróć werdykt GO albo NO_GO i listę naruszeń ' +
     '(plik, linia, reguła, co poprawić).\n' + scopeReminder + (a.autoFixMinor !== false ? MINOR_REMINDER : '') + CARD_PRECEDENCE + FINDINGS_FIELD +
     'CZYTAJ TYLKO zmienione pliki z listy (Read z offset/limit, gdy plik > 300 linii); plik spoza ' +
@@ -970,6 +1058,7 @@ function buildFinalGatePrompt(a, checks, changedFiles, treeSource, knownGaps, pr
         '\n  checks.typecheck: ' + probe.typecheck + '\n  checks.tests: ' + probe.tests +
         (probe.lint != null ? '\n  checks.lint: ' + probe.lint : '') +
         (probe.conformance != null ? '\n  checks.conformance: ' + probe.conformance : '') +
+      (probe.projectLint != null ? '\n  checks.projectLint: ' + probe.projectLint : '') +
         '\nNIE uruchamiaj ich ponownie. Rzeczy niesprawdzalne w tym repo (deploy, kopie u konsumentów, ' +
         'inne repozytoria, przeglądarka, środowisko produkcyjne) wpisz do `unverified_scope`, nie do ' +
         '`violations` — przy zielonych checks i zerze naruszeń nie powodują NO_GO, trafiają do raportu.\n'
@@ -1002,8 +1091,9 @@ function buildFinalGatePrompt(a, checks, changedFiles, treeSource, knownGaps, pr
 // też lokalne kopie weryfikatorów w projektach. Wolny tekst zostaje w `violations` (z niego korzysta decideVerdict).
 const FINDINGS_FIELD =
   'POLE `findings` (obok `violations`, nie zamiast): jeden wpis `{ruleId, line, file}` na każde naruszenie (`file` = ' +
-  'ścieżka względem korzenia repo, bez `..`). `ruleId` to ' +
-  'identyfikator reguły z karty (np. `A1`) albo nazwa znanej pułapki z Twojej pamięci; ustalenie bez znanego ' +
+  'ścieżka względem korzenia repo, bez `..`). `ruleId` reguły z karty to `<nazwa pliku karty bez .md>#<ID>` ' +
+  '(np. `command-handler-pattern_summary#N1`): samo `N1` występuje w wielu kartach i nic nie mówi. ' +
+  'Dla znanej pułapki z Twojej pamięci podaj jej nazwę; ustalenie bez znanego ' +
   'identyfikatora dostaje `ruleId: "new"`. Brak naruszeń = `findings: []`. `rules_checked` = liczba reguł, które ' +
   'faktycznie sprawdziłeś.\n'
 
@@ -1226,10 +1316,10 @@ function finalProbeSkippedFields(finalChecks, probe) {
   if (!probe) return []
   // ORC-120: `build` sonda mapuje na pole `typecheck` (buildProbePrompt) — bez tego `checks.finalGate: [build]`
   // ze `skipped` nie zostawiał śladu (juz-ide-blog BLOG-HOWTO-001, final-gate NO_GO, ręczny build EXIT:0)
-  const kinds = { typecheck: /typecheck|tsc|build/i, tests: /test/i, lint: /lint/i, conformance: /conformance/i }
+  const kinds = { typecheck: /typecheck|tsc|build/i, tests: /test/i, lint: /lint/i, conformance: /conformance/i, projectLint: /lint-ratchet/i }
   const names = (finalChecks || []).map(String)
   // sonda mogła pominąć pole (nie jest wymagane w schemacie): dla conformance brak pola to też brak dowodu
-  const blind = (k) => probe[k] === 'skipped' || (k === 'conformance' && probe[k] == null)
+  const blind = (k) => probe[k] === 'skipped' || ((k === 'conformance' || k === 'projectLint') && probe[k] == null)
   return Object.keys(kinds).filter((k) => blind(k) && names.some((n) => kinds[k].test(n)))
 }
 
@@ -1249,7 +1339,7 @@ function probeHasGreenEvidence(probe) {
 // przy sondzie czerwonej, ślepej (same skipped) i nieobecnej (grant-flow TS-UI-009, marketing-hub TS-MH-026).
 function finalProbeSummary(probe) {
   if (!probe) return 'sonda bez wyniku'
-  const state = ['typecheck', 'tests', 'lint', 'conformance'].map((k) => k + '=' + (probe[k] == null ? 'brak' : probe[k])).join(', ')
+  const state = ['typecheck', 'tests', 'lint', 'conformance', 'projectLint'].map((k) => k + '=' + (probe[k] == null ? 'brak' : probe[k])).join(', ')
   return state + (probeHasGreenEvidence(probe) ? ' (zielona)' : ' (brak zielonego dowodu: czerwień albo same skipped)')
 }
 
@@ -1530,7 +1620,7 @@ function probeCrashed(probe) {
 }
 
 function typecheckRedIsLaterLayers(probe, layer, allLayers) {
-  if (!probe || probe.typecheck !== 'fail' || probe.tests === 'fail' || probe.lint === 'fail' || probe.conformance === 'fail') return false
+  if (!probe || probe.typecheck !== 'fail' || probe.tests === 'fail' || probe.lint === 'fail' || probe.conformance === 'fail' || probe.projectLint === 'fail') return false
   const { total, paths } = typecheckErrorPaths(probe.tsErrors || probe.tail)
   if (!paths.length || paths.length !== total) return false
   const withDirs = (allLayers || []).filter((l) => (l.dirs || []).length || effectiveDirs(l).length)
@@ -1573,7 +1663,7 @@ function testFailExpectedCount(text) {
 // nie są czerwone) — odroczone do sond tamtych warstw, tak jak typecheck w ORC-082. Zgodność liczby
 // wyłapanych plików z podsumowaniem runnera jest warunkiem: niepełna lista = brak odroczenia.
 function testsRedIsLaterLayers(probe, layer, allLayers) {
-  if (!probe || probe.tests !== 'fail' || probe.typecheck === 'fail' || probe.lint === 'fail' || probe.conformance === 'fail') return false
+  if (!probe || probe.tests !== 'fail' || probe.typecheck === 'fail' || probe.lint === 'fail' || probe.conformance === 'fail' || probe.projectLint === 'fail') return false
   const paths = testFailPaths(probe.testFailFiles)
   if (!paths.length || typeof probe.testFilesFailed !== 'number' || testFailExpectedCount(probe.testFailFiles) !== probe.testFilesFailed) return false
   const withDirs = (allLayers || []).filter((l) => (l.dirs || []).length || effectiveDirs(l).length)
@@ -1589,7 +1679,7 @@ function testsRedIsLaterLayers(probe, layer, allLayers) {
 // runnera, a człowiek widzi tylko BLOCKED_BY_PRIOR (juz-ide-api-3 TS-GEO-DISTANCE-BUCKETS-001, e2e-services:
 // zgłoszenie bez liczb, nieodtwarzalne na przykładowym wyjściu vitest). Zwraca opis rozjazdu albo null.
 function testDeferralMismatch(probe) {
-  if (!probe || probe.tests !== 'fail' || probe.typecheck === 'fail' || probe.lint === 'fail' || probe.conformance === 'fail') return null
+  if (!probe || probe.tests !== 'fail' || probe.typecheck === 'fail' || probe.lint === 'fail' || probe.conformance === 'fail' || probe.projectLint === 'fail') return null
   if (typeof probe.testFilesFailed !== 'number') return null
   const listed = testFailExpectedCount(probe.testFailFiles)
   if (listed === probe.testFilesFailed) return null
@@ -1603,7 +1693,7 @@ function testDeferralMismatch(probe) {
 // nie ma ścieżki (juz-ide-api-3 TS-GEO-QUICK-JOB-POINT-001: `tsErrors` puste → BLOCKED_BY_PRIOR bez powodu w raporcie).
 // Warunek jak w `typecheckRedIsLaterLayers`. Zwraca opis albo null.
 function typecheckDeferralMismatch(probe) {
-  if (!probe || probe.typecheck !== 'fail' || probe.tests === 'fail' || probe.lint === 'fail' || probe.conformance === 'fail') return null
+  if (!probe || probe.typecheck !== 'fail' || probe.tests === 'fail' || probe.lint === 'fail' || probe.conformance === 'fail' || probe.projectLint === 'fail') return null
   const { total, paths } = typecheckErrorPaths(probe.tsErrors || probe.tail)
   if (total === 0) return '`tsErrors` puste i `tail` bez linii błędów kompilatora — sonda nie przekazała błędów, więc nie wiadomo, czyje to pliki'
   if (!paths.length) return total + ' błęd(ów) kompilatora bez rozpoznanej ścieżki pliku'
@@ -1615,7 +1705,7 @@ function typecheckDeferralMismatch(probe) {
 // (niestabilne pod obciążeniem). Warunki: typecheck i lint nie są czerwone, sonda wyłapała pliki, a ich
 // liczba zgadza się z podsumowaniem runnera (niepełna lista = nie wiemy, co jeszcze padło).
 function testsFlakyUnderLoad(probe) {
-  if (!probe || probe.tests !== 'fail' || probe.typecheck === 'fail' || probe.lint === 'fail' || probe.conformance === 'fail') return false
+  if (!probe || probe.tests !== 'fail' || probe.typecheck === 'fail' || probe.lint === 'fail' || probe.conformance === 'fail' || probe.projectLint === 'fail') return false
   if (probe.testsRerunPassed !== true) return false
   const paths = testFailPaths(probe.testFailFiles)
   return paths.length > 0 && typeof probe.testFilesFailed === 'number' && testFailExpectedCount(probe.testFailFiles) === probe.testFilesFailed
@@ -1954,6 +2044,9 @@ const CHECKS_SCHEMA = {
     // TASK-OBS-018: kontrola w trybie cienia (`shadow:<skrypt>` w `checks:`) — własne pole, nigdy `lint`/`typecheck`/`tests`,
     // a `probeIsRed` go nie liczy, więc czerwony wynik nie cofa warstwy do implementera.
     shadowLint: { type: 'string', enum: ['pass', 'fail', 'skipped'] },
+    // TASK-ORC-LINT-DELEGATION-001: kontrola `lint-ratchet` (skrypt ratchet projektu) — własne pole; `fail` cofa warstwę do implementera
+    projectLint: { type: 'string', enum: ['pass', 'fail', 'skipped'] },
+    projectLintReport: { type: 'string' },
     newTestBlocks: { type: 'number' },
     tail: { type: 'string' },
     tsErrors: { type: 'string' },
@@ -2371,6 +2464,11 @@ for (const step of plan) {
       probe = null
     }
 
+    // TASK-ORC-LINT-DELEGATION-001: `skipped` z lint-ratchet (brak plików w zakresie, brak skryptu, błąd narzędzia projektu) znaczy,
+    // że lint NIE sprawdził tej warstwy — nie jest zielenią, więc w raporcie, a delegowanie reguł z weryfikatora nie wchodzi w grę.
+    if (probe && (layer.checks || []).some(isLintRatchetCheck) && (probe.projectLint === 'skipped' || probe.projectLint == null)) {
+      report.warnings = (report.warnings || []).concat(layer.id + ': kontrola lint-ratchet ' + (probe.projectLint == null ? 'nie zwróciła pola' : 'zwróciła skipped (brak plików w zakresie, skryptu albo błąd narzędzia projektu)') + ' — lint projektu NIE sprawdził tej warstwy')
+    }
     // ORC-140: `skipped` z kontroli conformance (brak baseline / narzędzia, exit 3) znaczy, że reguły ciała pliku NIE zostały
     // sprawdzone — to nie jest zieleń, więc zawsze w raporcie (inaczej brak SHA wyglądałby jak czysty kod).
     if (probe && (layer.checks || []).some(isConformanceCheck)) {
@@ -2436,7 +2534,8 @@ for (const step of plan) {
       violations = 'deterministyczna bramka na czerwono (typecheck: ' + probe.typecheck +
         ', testy: ' + probe.tests + (probe.lint != null ? ', lint: ' + probe.lint : '') +
         (probe.conformance != null ? ', conformance: ' + probe.conformance : '') + ')\n' + (probe.tail || '') +
-        (probe.conformance === 'fail' ? '\n' + conformanceFixText(probe) : '')
+        (probe.conformance === 'fail' ? '\n' + conformanceFixText(probe) : '') +
+        (probe.projectLint === 'fail' ? '\n' + lintRatchetFixText(probe) : '')
       log(layer.id + ': sonda NO_GO — bez analizy kodu, prosto do poprawki')
       probeRed = violations
       probeRedFacts = probe
@@ -2485,7 +2584,14 @@ for (const step of plan) {
       const staleNote = staleRetries
         ? '\n\nOCENA Z PRÓBY ' + (attempt - 1) + ' BYŁA NIEAKTUALNA: kod zmienił się w trakcie weryfikacji. Oceń obecny stan i NIE edytuj żadnych plików — każda zmiana w trakcie oceny unieważnia werdykt.'
         : ''
-      verdict = await ask(buildVerifierPrompt(a, layer, probe, layerFiles, mode, undefined, undefined, layerDeleted) + staleNote, verifyOpts)
+      // E2a: tryb delegacji reguł do lintu. `off` nie zostawia śladu (prompt i wynik jak bez funkcji); pozostałe tryby idą do
+      // `report.delegation` (kolektor łączy wpisy z krokami weryfikatora po etykiecie, w kolejności wywołań).
+      const dele = delegationFor(a, layer, probe)
+      if (dele.mode !== 'off') {
+        (report.delegation = report.delegation || []).push({ label: layer.id + '-verify', attempt: attempt, mode: dele.mode, rules: dele.rules })
+        log(layer.id + ': delegacja reguł do lintu — ' + dele.mode + ' (' + dele.rules.length + ' reguł)')
+      }
+      verdict = await ask(buildVerifierPrompt(a, layer, probe, layerFiles, mode, undefined, undefined, layerDeleted, dele) + staleNote, verifyOpts)
     } catch (e) {
       verdict = null
     }
@@ -2871,9 +2977,18 @@ if (!finalAgent) {
     })
     if (!staleFinalReason) report.finalGate.cause = undefined // czerwone conformance to błąd kodu: wchodzi runda naprawcza, także bez werdyktu LLM
   }
+  // TASK-ORC-LINT-DELEGATION-001: tak samo czerwony `projectLint` z sondy bramki to NO_GO z naruszeniami, cause=code (runda naprawcza)
+  if (finalProbe && finalProbe.projectLint === 'fail') {
+    if (isGoVerdict(report.finalGate)) noteGateOverride(report, 'projectLint', round)
+    report.finalGate = Object.assign({}, report.finalGate, {
+      verdict: 'NO_GO',
+      violations: (report.finalGate.violations || []).concat(lintRatchetViolations(finalProbe)),
+    })
+    if (!staleFinalReason) report.finalGate.cause = undefined
+  }
   // ORC-087: brak werdyktu przy wszystkich warstwach GO — pliki idą do stagingu z flagą przeglądu.
   // ORC-139: nieaktualne GO to NO_GO bez wiarygodnej oceny tego drzewa — nic nie idzie do `git add`
-  if (!final && !staleFinalReason && !(finalProbe && finalProbe.conformance === 'fail')) report.stageForReview = stageableFiles(finalFiles, a.dirtyAtStart, allChangedFiles, deletedAll)
+  if (!final && !staleFinalReason && !(finalProbe && (finalProbe.conformance === 'fail' || finalProbe.projectLint === 'fail'))) report.stageForReview = stageableFiles(finalFiles, a.dirtyAtStart, allChangedFiles, deletedAll)
   // Bramka końcowa nie ma pętli retry (jeden strzał) — GO z niepustym unverified_scope nie może
   // więc "skonsumować próby" jak w decideVerdict(); jedyna bezpieczna reakcja to potraktować to
   // jak NO_GO, żeby uczciwie przyznana luka trafiła do człowieka zamiast do cichego stage'owania.

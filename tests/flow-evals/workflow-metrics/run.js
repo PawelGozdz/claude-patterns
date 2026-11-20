@@ -218,6 +218,46 @@ async function main() {
     fs.rmSync(dir, { recursive: true, force: true });
   }
 
+  // ── E7: delegowanie reguł do lintu (TASK-ORC-LINT-DELEGATION-001, E2a) ─────────
+  process.stdout.write('\nE7 tryb delegacji reguł per krok weryfikatora warstwy\n');
+  {
+    const os = require('os');
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'eval-wm-deleg-'));
+    const agent = (agentId, label, agentType) => ({ type: 'workflow_agent', agentId, label, agentType, model: 'claude-sonnet-5-5',
+      attempt: 1, startedAt: 1786745782230, toolCalls: 4, durationMs: 1000, tokens: 10 });
+    const wf = { runId: 'wf_deleg-1', timestamp: '2026-11-20T10:00:00.000Z', workflowName: 'orchestrate', taskId: 't1', logs: [],
+      result: { delegation: [
+        { label: 'application-verify', attempt: 1, mode: 'on', rules: ['command-handler-pattern_summary#CH5', 'zły wpis bez kratki'] },
+        { label: 'application-verify', attempt: 2, mode: 'fallback', rules: ['command-handler-pattern_summary#CH5'] },
+        { label: 'domain-verify', attempt: 1, mode: 'holdout', rules: ['command-handler-pattern_summary#CH5'] },
+        { label: 'x-verify', attempt: 1, mode: 'bogus', rules: [] },
+      ] },
+      workflowProgress: [
+        agent('v1', 'application-verify', 'code-quality-verifier'), agent('v2', 'application-verify', 'code-quality-verifier'),
+        agent('v3', 'domain-verify', 'code-quality-verifier'), agent('v4', 'infrastructure-verify', 'code-quality-verifier'),
+        agent('n1', 'application-verify-noop', 'code-quality-verifier'),
+      ] };
+    const journal = [
+      { type: 'started', agentId: 'v1' }, { type: 'result', agentId: 'v1', result: { verdict: 'NO_GO', violations: ['x'], findings: [{ ruleId: 'command-handler-pattern_summary#CH5', line: 3 }, { ruleId: 'x-pattern_summary#N1' }] } },
+      { type: 'started', agentId: 'v2' }, { type: 'result', agentId: 'v2', result: { verdict: 'GO', findings: [{ ruleId: 'command-handler-pattern_summary#CH5' }] } },
+      { type: 'started', agentId: 'v3' }, { type: 'result', agentId: 'v3', result: { verdict: 'GO' } },
+      { type: 'started', agentId: 'v4' }, { type: 'result', agentId: 'v4', result: { verdict: 'GO', findings: [] } },
+      { type: 'started', agentId: 'n1' }, { type: 'result', agentId: 'n1', result: { verdict: 'GO' } },
+    ];
+    fs.writeFileSync(path.join(dir, 'journal.jsonl'), journal.map((e) => JSON.stringify(e)).join('\n') + '\n');
+    const out = collectRun({ wf, runDir: dir, prices, project: '-opt-projects-demo', sessionId: 's1', runtimeYmlHash: null });
+    const by = Object.fromEntries(((out && out.steps) || []).map((s) => [s.agentId, s]));
+    check('v1 (1. wpis etykiety): tryb on, reguła znormalizowana do karta:id, zły wpis odpada',
+      by.v1?.delegation === 'on' && JSON.stringify(by.v1?.delegatedRules) === JSON.stringify(['command-handler:ch5']), JSON.stringify([by.v1?.delegation, by.v1?.delegatedRules]));
+    check('v1: lintMisses = 1 (ustalenie z regułą z listy; druga karta się nie liczy)', by.v1?.lintMisses === 1, String(by.v1?.lintMisses));
+    check('v2 (2. wpis tej samej etykiety): fallback, bez delegatedRules i lintMisses',
+      by.v2?.delegation === 'fallback' && !('delegatedRules' in by.v2) && !('lintMisses' in by.v2), JSON.stringify([by.v2?.delegation, by.v2?.delegatedRules, by.v2?.lintMisses]));
+    check('v3: holdout bez ruleHits → lintMisses nieznane (brak pola), reguły są', by.v3?.delegation === 'holdout' && Array.isArray(by.v3?.delegatedRules) && !('lintMisses' in by.v3));
+    check('v4 (negatyw): warstwa bez wpisu delegacji → brak pól', !('delegation' in (by.v4 || {})) && !('delegatedRules' in (by.v4 || {})));
+    check('n1 (negatyw): krok verify-noop nie bierze wpisu', !('delegation' in (by.n1 || {})));
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+
   // ── E6: powody werdyktów w rekordach (ORC-167) ───────────────────────────────
   process.stdout.write('\nE6 powody NO_GO, przyczyna bramki, ratunek po cichej śmierci\n');
   {

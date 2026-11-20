@@ -351,8 +351,73 @@ CASES.push({
   },
 });
 
+const RUNTIME_LINT_RATCHET = RUNTIME_CONFORMANCE.replace(/conformance/g, 'lint-ratchet') +
+  '\nverification:\n  lint_ratchet: { script: "lint:ddd:ratchet", files_match: "^(src|test)/.*\\\\.ts$" }\n';
+
+CASES.push({
+  name: 'lint-ratchet-stays-a-bare-id-and-prepare-supplies-tool-script-and-file-match',
+  // TASK-ORC-LINT-DELEGATION-001: jak conformance: komendę składa template; prepare podaje narzędzie (z położenia TEGO repo)
+  // i konfigurację projektu z runtime.yml → verification.lint_ratchet
+  build: () => makeProject({ taskId: 'TS-FIX-001', runtime: RUNTIME_LINT_RATCHET, analysis: withFm(''), task: taskFile('Dodaj aggregate.') }),
+  check(r) {
+    if (r.code !== 0) return `oczekiwano exit 0, było ${r.code} (${r.stderr.trim()})`;
+    const dom = r.json.layers.find((l) => l.id === 'domain');
+    if (!dom.checks.includes('lint-ratchet') || dom.checks.some((c) => /run\.mjs/.test(c))) return 'wpis lint-ratchet rozwinięty w prepare: ' + dom.checks.join(' | ');
+    if (!r.json.checks.finalGate.includes('lint-ratchet')) return 'lint-ratchet z final_gate.checks zgubione: ' + r.json.checks.finalGate.join(',');
+    const pl = r.json.projectLint || {};
+    if (!pl.tool || !/\/tools\/lint-ratchet\/run\.mjs$/.test(pl.tool) || !require('fs').existsSync(pl.tool)) return 'brak/zła ścieżka narzędzia w projectLint.tool: ' + pl.tool;
+    if (pl.script !== 'lint:ddd:ratchet') return 'script z runtime.yml nie dotarł do projectLint: ' + JSON.stringify(pl);
+    if (pl.filesMatch !== '^(src|test)/.*\\.ts$') return 'files_match nie dotarł jako filesMatch: ' + JSON.stringify(pl);
+    return null;
+  },
+});
+
+CASES.push({
+  name: 'project-without-verification-section-gets-only-the-tool-path',
+  // bez `verification:` w runtime.yml: żadnego skryptu ani regexu (komenda lint-ratchet skończy się głośnym `skipped`)
+  build: () => makeProject({ taskId: 'TS-FIX-001', runtime: RUNTIME_CONFORMANCE, analysis: withFm(''), task: taskFile('Dodaj aggregate.') }),
+  check(r) {
+    if (r.code !== 0) return `oczekiwano exit 0, było ${r.code} (${r.stderr.trim()})`;
+    const pl = r.json.projectLint || {};
+    if (Object.keys(pl).join(',') !== 'tool') return 'projektowi bez verification doszły pola: ' + JSON.stringify(pl);
+    return null;
+  },
+});
+
+// TASK-ORC-LINT-DELEGATION-001 (E2a): lista reguł delegowanych do lintu jest walidowana względem WCZYTANYCH kart
+const RUNTIME_DELEGATION = RUNTIME_LINT_RATCHET +
+  '  delegated_rules: ["conventions-pattern_summary#CV1", "conventions-pattern_summary#NIEMA", "brak-karty_summary#X1", "zly-format"]\n  holdout: 0.3\n';
+
+CASES.push({
+  name: 'delegated-rules-pass-only-when-the-card-is-loaded-and-contains-the-id',
+  build: () => {
+    const root = makeProject({ taskId: 'TS-FIX-001', runtime: RUNTIME_DELEGATION, analysis: withFm(''), task: taskFile('Dodaj aggregate.') });
+    write(root, '.claude/knowledge/patterns/cross-layer/conventions-pattern_summary.md', '# Karta: konwencje\n\n## Reguły\n- **CV1** — nazwy w camelCase\n');
+    return root;
+  },
+  check(r) {
+    if (r.code !== 0) return `oczekiwano exit 0, było ${r.code} (${r.stderr.trim()})`;
+    const d = r.json.delegation;
+    if (!d || d.rules.join() !== 'conventions-pattern_summary#CV1') return 'lista po walidacji: ' + JSON.stringify(d);
+    if (d.holdout !== 0.3) return 'holdout nie dotarł: ' + d.holdout;
+    const w = r.json.warnings.join('\n');
+    for (const want of ['NIEMA', 'brak-karty_summary', 'zly-format']) if (!w.includes(want)) return `brak ostrzeżenia o regule „${want}”: ${w}`;
+    return null;
+  },
+});
+
+CASES.push({
+  name: 'project-without-delegated-rules-gets-no-delegation-field',
+  build: () => makeProject({ taskId: 'TS-FIX-001', runtime: RUNTIME_LINT_RATCHET, analysis: withFm(''), task: taskFile('Dodaj aggregate.') }),
+  check(r) {
+    if (r.code !== 0) return `oczekiwano exit 0, było ${r.code} (${r.stderr.trim()})`;
+    if ('delegation' in r.json) return 'projekt bez delegated_rules dostał pole delegation: ' + JSON.stringify(r.json.delegation);
+    return null;
+  },
+});
+
 // ORC-142: pakiet zadań
-const unitsYaml = (n, ctxCount) => 'units:\n' + Array.from({ length: n }, (_, i) => `  - { id: u${i}, layer: domain, dirs: [src/contexts/c${i % ctxCount}/domain/${i}/] }`).join('\n');
+const unitsYaml =(n, ctxCount) => 'units:\n' + Array.from({ length: n }, (_, i) => `  - { id: u${i}, layer: domain, dirs: [src/contexts/c${i % ctxCount}/domain/${i}/] }`).join('\n');
 const bundleCase = (name, extra, task, check) => CASES.push({
   name,
   build: () => makeProject({ taskId: 'TS-FIX-001', analysis: withFm(extra), task: taskFile(task) }),

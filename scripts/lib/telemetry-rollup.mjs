@@ -14,6 +14,7 @@
 import { unitOf, percentile } from './telemetry-stats.mjs';
 import { judgeVerdicts } from './telemetry-verdicts.mjs';
 import { buildTaskBlocks } from './telemetry-tasks.mjs';
+import { isQualifiedRuleId } from './telemetry-rules.mjs';
 
 export { unitOf, percentile };
 
@@ -156,6 +157,7 @@ export function buildRollups(events) {
 
   tallyVerdicts(events, get);
   tallyRules(events, get);
+  tallyDelegation(events, get);
   for (const [key, tasks] of buildTaskBlocks(events)) {
     const r = rollups.get(key);
     if (r) r.tasks = tasks;
@@ -188,6 +190,24 @@ function tallyRules(events, get) {
     const agent = ((rb.rules ||= {})[ev.step.agent || 'unknown'] ||= { reports: 0, hits: {} });
     agent.reports++;
     for (const h of ev.step.ruleHits) bump(agent.hits, h.ruleId);
+    // TASK-ORC-LINT-DELEGATION-001 (E3): ile ustaleń niesie kartę (`karta:id`); pole leniwe, dni ze starym formatem bez zmian.
+    const qualified = ev.step.ruleHits.filter((h) => isQualifiedRuleId(h.ruleId)).length;
+    if (qualified) agent.qualified = (agent.qualified || 0) + qualified;
+  }
+}
+
+// Delegowanie reguł do lintu (TASK-ORC-LINT-DELEGATION-001, E2a): per tryb (`on|holdout|fallback`) liczba kroków weryfikatora,
+// NO_GO, przypadki przepuszczone przez lint (`lintMisses`) i koszt. To dane do decyzji o bramce końcowej (E2b): koszt `on` vs
+// `holdout` mówi, ile zyskujemy, a `lintMisses` w `holdout` ile przecieka. Blok leniwy: dni bez delegacji bez zmian.
+function tallyDelegation(events, get) {
+  for (const ev of events) {
+    if (ev.kind !== 'step.end' || !ev.step || !ev.step.delegation) continue;
+    const rb = roleBlock(processBlock(get(ev), ev.process), ev.step.role || 'unknown');
+    const m = ((rb.delegation ||= {})[ev.step.delegation] ||= { n: 0, noGo: 0, lintMisses: 0, costUsd: 0 });
+    m.n++;
+    if (ev.outcome === 'no_go') m.noGo++;
+    if (Number.isInteger(ev.step.lintMisses)) m.lintMisses += ev.step.lintMisses;
+    if (ev.m && Number.isFinite(ev.m.costUsd)) m.costUsd += ev.m.costUsd;
   }
 }
 
@@ -199,6 +219,7 @@ function finalize(r) {
       rb.costUsd = round(rb.costUsd);
       rb.durationMs = stats(rb._dur);
       delete rb._dur;
+      for (const m of Object.values(rb.delegation || {})) m.costUsd = round(m.costUsd);
     }
   }
   for (const e of Object.values(r.engines || {})) for (const b of Object.values(e)) b.costUsd = round(b.costUsd);

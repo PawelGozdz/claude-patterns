@@ -38,7 +38,7 @@ import { appendEventsDedup } from './lib/telemetry-events.mjs';
 import { legacyRunToEvents, projectFromSlug } from './lib/telemetry-legacy.mjs';
 import { blameFromResult } from './lib/final-gate-blame.mjs';
 import { normalizeRuleHits, normalizeRulesChecked, normalizeProbeChecks } from './lib/telemetry-rules.mjs';
-import { runGateFields, stepVerdictFields, rescuesByLayer } from './lib/telemetry-gate-fields.mjs';
+import { runGateFields, stepVerdictFields, rescuesByLayer, delegationByLabel, stepDelegationFields } from './lib/telemetry-gate-fields.mjs';
 
 const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
 export const DEFAULT_PRICES_PATH = path.join(__dirname, 'workflow-metrics-prices.default.json');
@@ -83,6 +83,8 @@ export function collectRun({ wfPath, wf: wfParsed, runDir, fallbackAgentsDir, pr
     if (e && typeof e.label === 'string' && typeof e.message === 'string' && !askErrorByLabel.has(e.label)) askErrorByLabel.set(e.label, e.message);
   }
   const rescueQueue = rescuesByLayer(resultObj);
+  // E2a: tryb delegacji reguł do lintu per krok weryfikatora warstwy (wpisy w kolejności wywołań, łączone po etykiecie).
+  const delegationQueue = delegationByLabel(resultObj);
   const runAborted = wf.status === 'killed' || wf.status === 'failed' ? wf.status : null;
 
   for (const a of agents) {
@@ -132,6 +134,9 @@ export function collectRun({ wfPath, wf: wfParsed, runDir, fallbackAgentsDir, pr
     const verdictFields = stepVerdictFields(verdictObj);
     if (outcome === 'NO_GO' && reason === null && !verdictFields.ruleIds) reason = verdictFields.violationCount ? 'violations-without-rule-id' : 'no-findings';
 
+    const dq = typeof a.label === 'string' && a.label.endsWith('-verify') ? delegationQueue.get(a.label) : null;
+    const delegationFields = dq && dq.length ? stepDelegationFields(dq.shift(), ruleHits) : {};
+
     const partial = !a.cached && !usage;
     const costUsd = a.cached ? 0 : estimateCostUsd(usage, a.model, prices);
 
@@ -161,6 +166,7 @@ export function collectRun({ wfPath, wf: wfParsed, runDir, fallbackAgentsDir, pr
       ...(rescue ? { rescue } : {}),
       ...(rulesChecked !== null ? { rulesChecked } : {}),
       ...(checks ? { checks } : {}),
+      ...delegationFields,
       resumedFrom: wf.resumeFromRunId ?? null,
       costUsd,
       runtimeYmlHash: runtimeYmlHash ?? null,

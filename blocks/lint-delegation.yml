@@ -1,0 +1,74 @@
+# Blok: lint-delegation — kontrola lintu projektu w sondzie /orchestrate i delegowanie reguł z weryfikatorów do kodu
+# (TASK-ORC-LINT-DELEGATION-001).
+#
+# Po co: weryfikator warstwy (LLM) i bramka końcowa sprawdzają każdą regułę z kart, także te, które projekt umie już sprawdzić
+# linterem. Ten blok (1) dopisuje do `checks:` warstw i `final_gate` wbudowaną kontrolę `lint-ratchet`: skrypt ratchet projektu
+# na plikach zmiany (tools/lint-ratchet/run.mjs), twardo, jak `conformance`; (2) niesie do runtime.yml listę reguł, które
+# projekt uznał za sprawdzone kodem (`delegated_rules`), żeby weryfikator warstwy ich nie powtarzał.
+#
+# MECHANIZM JEST GENERYCZNY, TREŚĆ PROJEKTOWA. Blok nie zna nazwy skryptu ani reguł: podaje je projekt w project.yml →
+# block_params.lint-delegation. Projekt bez tego bloku w `stack_blocks` dostaje runtime.yml bez jednego znaku różnicy.
+#
+# Kontrakt skryptu projektu (`script`): `<runner> <script> [--base <sha>] --files <plik>…`; kod 0 = bez regresji, 1 = regresja
+# (wzrost trafień reguły względem punktu odniesienia, także reguł na poziomie `warn`), inny = błąd narzędzia (→ `skipped`).
+#
+# Delegowanie (`delegated_rules`) działa tylko w kroku, w którym kontrola lintu się wykonała (`projectLint` = pass/fail);
+# przy `skipped` albo bez pola weryfikator dostaje pełny zakres. `holdout` = odsetek kroków weryfikatora, które idą z pełnym
+# zakresem mimo delegowania (grupa kontrolna do pomiaru oszczędności i przecieku).
+#
+# Reguła trafia na `delegated_rules` dopiero, gdy projekt ma ją na `error` w lincie z ratchetem i dane pokazują, że linter łapie
+# jej przypadki. To warunki po stronie projektu; claude-patterns ich nie widzi.
+#
+# Przykład (juz-ide-api):
+#   stack_blocks: [..., lint-delegation]
+#   block_params:
+#     lint-delegation:
+#       script: lint:ddd:ratchet
+#       files_match: '^(src|test)/.*\.ts$'
+#       delegated_rules: ["command-handler-pattern_summary#CH5"]
+#       holdout: 0.2
+name: lint-delegation
+axis: process
+requires: []
+
+params:
+  script:
+    type: string
+    required: true
+    pattern: '^[A-Za-z0-9:_-]{1,64}$'
+    doc: "nazwa skryptu package.json z ratchetem lintu projektu (np. lint:ddd:ratchet); wołany jako <runner> <script> [--base <sha>] --files <plik>…"
+  files_match:
+    type: string
+    required: false
+    default: '\.[cm]?[jt]sx?$'
+    pattern: '^[^''\x00-\x1f]{1,200}$'
+    doc: "regex względem ścieżki pliku: które zmienione pliki trafiają do skryptu (bez apostrofu); pusta lista po filtrze = skipped, nigdy pełny lint"
+  delegated_rules:
+    type: "string[]"
+    required: false
+    default: []
+    pattern: '^[A-Za-z0-9][A-Za-z0-9._-]*#[A-Za-z0-9][A-Za-z0-9._-]*$'
+    doc: "reguły sprawdzone kodem, w formacie <nazwa pliku karty bez .md>#<ID> (np. command-handler-pattern_summary#CH5); puste = dzisiejszy zakres weryfikatora"
+  holdout:
+    type: number
+    required: false
+    default: 0.2
+    min: 0
+    max: 0.5
+    doc: "odsetek kroków weryfikatora z pełnym zakresem mimo delegowania (grupa kontrolna); 0 = brak pomiaru różnicowego"
+
+# Kontrola trafia w każdą warstwę kodu i testów; zakres plików zawęża `files_match`, a skrypt projektu sam pomija to, czego nie
+# obsługuje. `final_gate: true` dopisuje ją też do bramki końcowej (cała zmiana przebiegu, ratchet względem SHA startu).
+layer_contributions:
+  - { match: "*:domain", checks: [lint-ratchet], final_gate: true }
+  - { match: "*:app", checks: [lint-ratchet] }
+  - { match: "*:data-access", checks: [lint-ratchet] }
+  - { match: "*:api-surface", checks: [lint-ratchet] }
+  - { match: "*:tests", checks: [lint-ratchet] }
+
+verification:
+  lint_ratchet:
+    script: ${script}
+    files_match: ${files_match}
+  delegated_rules: ${delegated_rules}
+  holdout: ${holdout}

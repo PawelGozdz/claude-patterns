@@ -48,6 +48,11 @@
       "then": { "properties": { "step": { "required": ["role"], "properties": { "role": { "enum": ["verifier", "gate"] } } } } }
     },
     {
+      "description": "step.delegation, step.delegatedRules i step.lintMisses (TASK-ORC-LINT-DELEGATION-001) istnieją wyłącznie w krokach roli verifier.",
+      "if": { "required": ["step"], "properties": { "step": { "anyOf": [{ "required": ["delegation"] }, { "required": ["delegatedRules"] }, { "required": ["lintMisses"] }] } } },
+      "then": { "properties": { "step": { "required": ["role"], "properties": { "role": { "const": "verifier" } } } } }
+    },
+    {
       "description": "step.checks (TASK-OBS-018) istnieje wyłącznie w krokach roli probe.",
       "if": { "required": ["step"], "properties": { "step": { "required": ["checks"] } } },
       "then": { "properties": { "step": { "required": ["role"], "properties": { "role": { "const": "probe" } } } } }
@@ -130,6 +135,21 @@
           "type": "integer",
           "minimum": 0
         },
+        "delegation": {
+          "description": "Tylko rola verifier (TASK-ORC-LINT-DELEGATION-001, E2a): tryb delegowania reguł do lintu projektu w tym kroku. `on` = weryfikator dostał listę reguł sprawdzonych kodem i nie powtarza ich; `holdout` = grupa kontrolna, pełny zakres mimo listy (wybór deterministyczny z zadania, SHA startu i warstwy); `fallback` = kontrola lintu `skipped` albo bez wyniku, pełny zakres. Brak pola = delegowanie wyłączone dla tej warstwy.",
+          "enum": ["on", "holdout", "fallback"]
+        },
+        "delegatedRules": {
+          "description": "Tylko rola verifier, tryby on i holdout: reguły z listy delegowanej dla warstwy jako `<karta>:<id>` (ten sam format co ruleHits[].ruleId). Konfiguracja projektu, nie treść ustaleń.",
+          "type": "array",
+          "maxItems": 50,
+          "items": { "type": "string", "pattern": "^[a-z0-9][a-z0-9_.:-]{0,63}$" }
+        },
+        "lintMisses": {
+          "description": "Tylko rola verifier, tryby on i holdout, gdy werdykt niósł ruleHits: liczba ustaleń weryfikatora, których ruleId jest na liście delegowanej, czyli przypadki, które lint przepuścił. W trybie holdout to miara przecieku.",
+          "type": "integer",
+          "minimum": 0
+        },
         "checks": {
           "description": "Tylko rola probe (TASK-OBS-018): wynik sondy per kontrola (pass|fail|skipped). `shadowLint` to kontrola w trybie cienia — nie blokuje warstwy i służy porównaniu z werdyktem weryfikatora tej samej warstwy i próby (to samo step.group + unit + attempt).",
           "type": "object",
@@ -139,6 +159,7 @@
             "tests": { "enum": ["pass", "fail", "skipped"] },
             "lint": { "enum": ["pass", "fail", "skipped"] },
             "conformance": { "enum": ["pass", "fail", "skipped"] },
+            "projectLint": { "enum": ["pass", "fail", "skipped"] },
             "shadowLint": { "enum": ["pass", "fail", "skipped"] }
           }
         }

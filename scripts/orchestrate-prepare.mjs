@@ -84,6 +84,46 @@ const WORKFLOW_SCRIPT = join(REPO_ROOT, 'scripts', 'workflow', 'orchestrate.temp
 
 const EXIT = { OK: 0, USAGE: 1, GATE: 2, CONFIG: 3, LINT: 4, REPEAT: 5, SIZE: 6 };
 
+// TASK-ORC-LINT-DELEGATION-001: konfiguracja kontroli `lint-ratchet` z runtime.yml (`verification.lint_ratchet`). Wartości
+// wchodzą do komendy powłoki, więc tu tylko kształt; ostateczny filtr znaków robi template (LINT_SCRIPT_RE, lintMatchOk).
+function lintRatchetConfig(runtime) {
+  const cfg = runtime && runtime.verification && runtime.verification.lint_ratchet
+  if (!cfg || typeof cfg !== 'object') return {}
+  const out = {}
+  if (typeof cfg.script === 'string') out.script = cfg.script
+  if (typeof cfg.files_match === 'string') out.filesMatch = cfg.files_match
+  return out
+}
+
+// TASK-ORC-LINT-DELEGATION-001 (E2a): reguły, które projekt uznał za sprawdzone kodem (`verification.delegated_rules`,
+// format `<nazwa pliku karty bez .md>#<ID>`). Reguła przechodzi dalej tylko wtedy, gdy jej karta jest w tym przebiegu wczytana
+// jako KARTA (`card: true`) i ID występuje w jej treści: weryfikator nie dostanie polecenia „pomiń regułę", której nie widzi.
+// Zła reguła → ostrzeżenie i odpada (pełny zakres), nigdy cichy sukces. Bez listy: null i prompty bez jednego znaku różnicy.
+const DELEGATED_RULE_RE = /^([A-Za-z0-9][A-Za-z0-9._-]*)#([A-Za-z0-9][A-Za-z0-9._-]*)$/;
+function delegationConfig(runtime, patterns, warnings) {
+  const v = runtime && runtime.verification;
+  const listed = v && Array.isArray(v.delegated_rules) ? v.delegated_rules.map(String) : [];
+  if (!listed.length) return null;
+  const cardText = new Map();
+  for (const p of patterns) {
+    if (!p.card || typeof p.source !== 'string') continue;
+    cardText.set(p.source.split('/').pop().replace(/\.md$/, ''), typeof p.content === 'string' ? p.content : null);
+  }
+  const rules = [];
+  for (const raw of new Set(listed)) {
+    const m = DELEGATED_RULE_RE.exec(raw);
+    if (!m) { warnings.push(`delegated_rules: "${raw}" nie ma formatu <karta>#<ID> — pominięta, weryfikator sprawdza ją jak dotąd`); continue; }
+    if (!cardText.has(m[1])) { warnings.push(`delegated_rules: karta "${m[1]}" nie jest wczytana w tym przebiegu — reguła ${raw} pominięta, weryfikator sprawdza ją jak dotąd`); continue; }
+    const text = cardText.get(m[1]);
+    const idRe = new RegExp(`(^|[^A-Za-z0-9])${m[2].replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}($|[^A-Za-z0-9])`);
+    if (text !== null && !idRe.test(text)) { warnings.push(`delegated_rules: karta "${m[1]}" nie zawiera ID "${m[2]}" — reguła ${raw} pominięta (literówka albo karta się zmieniła)`); continue; }
+    rules.push(raw);
+  }
+  if (!rules.length) return null;
+  const h = v && typeof v.holdout === 'number' && v.holdout >= 0 && v.holdout <= 0.5 ? v.holdout : 0.2;
+  return { rules, holdout: h };
+}
+
 function die(code, msg) {
   process.stderr.write(`✘ orchestrate-prepare: ${msg}\n`);
   process.exit(code);
@@ -989,6 +1029,7 @@ function main() {
     warnings.push(`karty zawężone do warstw po tagach (ORC-163): ${scopedCount}/${patterns.length} kart ma adresata; znaki kart per warstwa: ${baseIds.map((id) => `${id}=${sizeFor(id)}`).join(', ')} (komplet dla bramki: ${total})`);
   }
   patterns.splice(0, patterns.length, ...scopedPatterns);
+  const delegation = delegationConfig(runtime, patterns, warnings);
 
   for (const p of exclude) {
     if (!excludedHit.has(p)) warnings.push(`patterns_exclude: "${p}" nie był w doborze — literówka albo wzorzec już nie trafia`);
@@ -1080,6 +1121,11 @@ function main() {
     // ORC-140: wbudowane id `conformance` w `checks:` — komendę składa template (zakres warstwy, SHA startu, pliki cudze);
     // prepare podaje tylko ścieżkę do narzędzia, wynikającą z położenia TEGO pliku (projekt nie zna lokalizacji claude-patterns)
     conformance: { tool: join(REPO_ROOT, 'tools', 'conformance', 'check.mjs') },
+    // TASK-ORC-LINT-DELEGATION-001: wbudowane id `lint-ratchet` w `checks:` → tools/lint-ratchet/run.mjs; skrypt i regex plików
+    // podaje projekt (runtime.yml → verification.lint_ratchet), bez wpisu komenda kończy się `skipped` (exit 3)
+    projectLint: { tool: join(REPO_ROOT, 'tools', 'lint-ratchet', 'run.mjs'), ...lintRatchetConfig(runtime) },
+    // E2a: lista reguł sprawdzonych kodem dla weryfikatora warstwy (brak pola = prompt bez zmian); decyzję per krok podejmuje template
+    ...(delegation ? { delegation } : {}),
     // ORC-149: wbudowana kontrola `test*` w `checks:` → tools/scoped-tests/run.mjs (pnpm test:{integration|e2e} <pliki zmiany>, nigdy cała suita)
     scopedTests: { tool: join(REPO_ROOT, 'tools', 'scoped-tests', 'run.mjs') },
     dirtyAtStart: git.dirtyAtStart,

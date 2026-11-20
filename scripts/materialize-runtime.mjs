@@ -62,6 +62,8 @@ const BLOCK_KEYS = new Set([
   'name', 'axis', 'requires', 'requires_ecc', 'params',
   'patterns', 'overlay', 'env', 'analyze', 'orchestrate', 'budgets', 'ralphinho',
   'layer_contributions', 'extends',
+  // TASK-ORC-LINT-DELEGATION-001: konfiguracja kontroli lintu projektu i delegowania reguł; trafia do runtime.yml → verification
+  'verification',
   // Konsumowany przez INNY generator — scripts/generate-pattern-routing.mjs buduje z niego
   // hooks/lib/pattern-routing.generated.js. Do runtime.yml nie trafia i trafić nie ma po co:
   // czytają go hooki (check-delegation, check-patterns-read), nie silniki komend. Stoi tutaj
@@ -362,6 +364,18 @@ for (const b of blocks) {
     // zadziałać jak wartość domyślna — projekt dostałby inny flow, niż zadeklarował.
     if (Array.isArray(def?.enum) && !def.enum.map(String).includes(String(value)))
       fail(`blok "${b.name}": parametr "${param}" = ${JSON.stringify(value)} poza słownikiem ${def.enum.join(' | ')}`);
+    // `pattern` (regex dla stringa albo KAŻDEGO elementu listy), `min`/`max` (liczby): wartość z project.yml wchodzi do komend
+    // powłoki i promptów, więc zły kształt ma paść przy materializacji, a nie w środku przebiegu /orchestrate.
+    if (def?.pattern) {
+      const re = new RegExp(def.pattern);
+      for (const v of (Array.isArray(value) ? value : [value]))
+        if (!re.test(String(v)))
+          fail(`blok "${b.name}": parametr "${param}" = ${JSON.stringify(v)} nie pasuje do ${def.pattern} (${def?.doc ?? type})`);
+    }
+    if (typeof def?.min === 'number' && Number(value) < def.min)
+      fail(`blok "${b.name}": parametr "${param}" = ${value} poniżej minimum ${def.min}`);
+    if (typeof def?.max === 'number' && Number(value) > def.max)
+      fail(`blok "${b.name}": parametr "${param}" = ${value} powyżej maksimum ${def.max}`);
     if (type === 'path' || type === 'path[]') {
       const patterns = (Array.isArray(value) ? value : [value]).map(String);
       // Wzorce (glob / wykluczenie) zapisujemy obok rozwiniętej listy: lista jest migawką z chwili
@@ -398,6 +412,7 @@ let analyzeResolve = null, analyzeResolveSrc = null;
 let orch = null;             // {node, source}
 const contributions = [];    // {match, patterns?, checks?, source} — wkłady do cudzych warstw
 let ralph = null, reqEcc = null;
+let verification = null;     // {node, source} — TASK-ORC-LINT-DELEGATION-001
 const hooks = [], env = new Map(), envSrc = new Map();
 const overlay = { agents: [], patterns: [], rules: [] };
 const budgets = new Map();   // slot → {fields: Map, source}
@@ -462,6 +477,12 @@ for (const b of blocks) {
     for (const key of ['agents', 'patterns', 'rules'])
       for (const v of ov[key] ?? []) if (!overlay[key].includes(v)) overlay[key].push(v);
     for (const h of ov.hooks ?? []) if (!hooks.includes(h)) hooks.push(h);
+  }
+
+  if (b.data.verification) {
+    if (verification)
+      fail(`sekcja "verification" zdefiniowana w dwóch blokach ("${verification.source}" i "${b.name}") — zostaw jedną`);
+    verification = { node: b.doc.get('verification', true), source: b.name };
   }
 
   const en = b.data.env;
@@ -798,6 +819,23 @@ if (orch && contributions.length) {
       }
     }
   }
+  // `final_gate: true` we wkładzie (TASK-ORC-LINT-DELEGATION-001): checks wkładu, który trafił w jakąś warstwę, wchodzą też do
+  // `final_gate.checks` (bramka sprawdza CAŁĄ zmianę, także gdy analiza pominęła warstwę). Bez trafienia w warstwę nic nie
+  // wchodzi: kompozycja bez takiej warstwy nie ma po co dostawać kontroli w bramce.
+  {
+    const fg = orch.node.get('final_gate', true);
+    const extra = [...applied].map((i) => contributions[i]).filter((c) => c.final_gate === true).flatMap((c) => c.checks ?? []);
+    if (extra.length && YAML.isMap(fg)) {
+      const cur = fg.get('checks', true)?.toJSON?.() ?? [];
+      const merged = [...new Set([...cur, ...extra])];
+      const node = flowSeq(merged);
+      const src = [...new Set([...applied].map((i) => contributions[i]).filter((c) => c.final_gate === true).map((c) => c.source))];
+      node.comment = ` +${src.join(' +')}`;
+      fg.set('checks', node);
+    } else if (extra.length) {
+      warn(`blok "${contributions.find((c) => c.final_gate)?.source}": final_gate: true, ale oś "${orch.source}" nie ma final_gate — checks nie weszły do bramki`);
+    }
+  }
   // Ostrzegamy per BLOK, nie per `match`. Blok nie wie, z jaką osią architektury
   // zostanie złożony, więc deklarowanie kilku wariantów (`*:app` i `*:api-surface`)
   // jest poprawne — trafi ten, który pasuje do wybranej osi. Ostrzeżenie przy każdym
@@ -891,6 +929,7 @@ if (paramPatternsOut.size) {
   for (const [block, byParam] of paramPatternsOut) gMap.set(block, doc.createNode(byParam));
   doc.set('params_globs', gMap);
 }
+if (verification) doc.set('verification', verification.node);
 if (reqEcc) doc.set('requires_ecc', reqEcc.node);
 if (ralph) doc.set('ralphinho', ralph.node);
 if (budgets.size) {
@@ -912,6 +951,7 @@ for (const [key, src] of [
   ['knowledge', ' project.yml → knowledge_collection'],
   ['human_voice', ' język tekstu dla człowieka; nadpisz w project.yml → human_voice'],
   ['taxonomy', ' rdzeń blocks/_taxonomy.yml + .claude/taxonomy.yml projektu'],
+  ['verification', verification ? ` source: ${verification.source}` : null],
   ['requires_ecc', reqEcc ? ` source: ${reqEcc.source}` : null],
   ['ralphinho', ralph ? ` source: ${ralph.source}` : null],
   ['budgets', null],

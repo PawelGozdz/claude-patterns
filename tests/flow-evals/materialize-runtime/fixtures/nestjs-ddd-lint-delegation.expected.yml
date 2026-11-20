@@ -1,0 +1,239 @@
+# GENERATED przez materialize-runtime.mjs (ADR 0008) — NIE edytuj ręcznie.
+# Zmiany rób w blokach (claude-patterns/blocks/ lub .claude/blocks/) i odpal setup-project.sh.
+
+schema_version: 1
+stack_blocks: [nestjs, ddd/core, ddd/layers, ddd/cqrs, ddd/events, ddd/acl, kysely, lint-delegation]
+# osie: nestjs=framework, ddd/core=architecture, ddd/layers=architecture, ddd/cqrs=architecture, ddd/events=architecture, ddd/acl=architecture, kysely=persistence, lint-delegation=process
+
+patterns:
+  always:
+    - cross-layer/conventions-pattern.md # source: nestjs
+    - cross-layer/security-invariants-pattern.md # source: nestjs
+    - cross-layer/safe-error-propagation-pattern.md # source: nestjs
+    - cross-layer/logger-pattern.md # source: nestjs
+    - cross-layer/domain-errors-pattern.md # source: ddd/core
+  triggers:
+    # source: nestjs
+    - keywords: [auth, authentication, authorization, permission, login]
+      include:
+        - cross-layer/security-invariants-pattern.md
+    # source: nestjs
+    - keywords: [test, fixture, mock, coverage, e2e]
+      include:
+        - testing/testing-pyramid-pattern.md
+    # source: ddd/core
+    - keywords: [aggregate, entity, value object, domain event, specification, policy]
+      include:
+        - domain/aggregate-pattern.md
+        - domain/value-object-pattern.md
+    # source: ddd/core
+    - keywords: [polityk, policy, guardrail, bramka, gate, business rule, reguła biznesowa, uprawnien, kompozycj]
+      include:
+        - domain/named-policy-pattern.md
+    # source: ddd/cqrs
+    - keywords: [handler, command, query, saga, cqrs]
+      include:
+        - application/command-handler-pattern.md
+        - application/query-handler-pattern.md
+    # source: ddd/cqrs
+    - keywords: [rezerwacj, reservation, reserve, confirm, release, kompensacj, compensate, rollback, tcc]
+      include:
+        - application/try-confirm-cancel-pattern.md
+    # source: ddd/cqrs
+    - keywords: [dto, response, odpowiedź, mapper, mapowanie, result.ok]
+      include:
+        - cross-layer/dto-mapper-pattern.md
+    # source: ddd/cqrs
+    - keywords: [queue, kolejk, bullmq, enqueue, outbox, sms, e-mail wysyłk]
+      include:
+        - application/command-handler-queue-port-pattern.md
+    # source: ddd/events
+    - keywords: [transaction, outbox, domain event, integration event]
+      include:
+        - architecture/transactional-outbox-pattern.md
+    # source: ddd/events
+    - keywords: [integration event, publish, subscribe]
+      include:
+        - architecture/integration-event-pattern.md
+    # source: ddd/acl
+    - keywords: [acl, cross-context, bounded context, another context]
+      include:
+        - architecture/acl-registry-pattern.md
+        - architecture/cross-context-communication.md
+    # source: kysely
+    - keywords: [repository, migration, schema, transaction]
+      include:
+        - infrastructure/repository-pattern.md
+
+analyze:
+  panel:
+    # source: nestjs
+    - {stage: threat-model, agent: "/threat-model", when: "\\b(auth|authn|authz|authentication|authorization|login|sesj|session|token)\\b|\\bpii\\b|cross[-_ ]context|public[-_ ]api|publiczn\\w* endpoint", output: "docs/security/threat-models/TM-{TASK_ID}.md", skip_if_exists: true}
+    # source: nestjs
+    - {stage: tech-analysis, agent: "ecc:architect"}
+    # source: nestjs
+    - {stage: tech-analysis-specialist, agent: "backend-technology-expert", model: sonnet, when: "wydajno|performance|latenc|opóźnien|throughput|n\\+1|\\bcache|cachow|kolejk|\\bqueue|bullmq|redis|asynchron|\\basync|synchroniczn|event[-_ ]loop|backpressure|batch|strumie|\\bstream|\\bworker|współbieżn|concurren|paginac|indeks|rate[-_ ]limit|timeout|wybór technologi|dobór bibliotek|nowa zależno|trade-?off"}
+    # source: ddd/core
+    - {stage: ddd-modeling, agent: "ddd-application-expert", model: sonnet, when: "agregat|aggregate|\\bencj|\\bentity|value[-_ ]object|\\bvo\\b|domen|domain|komend|command|zapyt|\\bquery|zdarze|\\bevent|handler|\\bport\\b|polityk|policy|invarian|inwarian|saga|bounded|kontekst|context|use[-_ ]?case|przypadek użycia|uprawnie|permission|\\brol[aei]\\b|reguł\\w* biznes|business[-_ ]rule|state[-_ ]machine|maszyn\\w* stan|cykl życia|lifecycle"}
+    # source: ddd/core
+    - {stage: impl-analysis, agent: "infrastructure-implementer", advisory: true, when: "infrastruktur|infrastructure|repozytor|repository|adapter|kysely|migrac|migration|\\bsql\\b|schemat|schema|tabel|table|kolejk|\\bqueue|bullmq|redis|\\bhttp|klient|client|integrac|integration|webhook|\\bcron|konfigur|config|\\benv\\b|docker|storage|\\bs3\\b|\\bmail|smtp|cache|outbox|projekcj|read[-_ ]?model|zewnętrzn|external"}
+    # source: ddd/core
+    - {stage: pattern-fit, agent: "code-quality-verifier", advisory: true, when: "nowy|nowa|nowe|\\bnew\\b|dodaj|\\badd\\b|wprowadź|introduce|zaimplementuj|implement|agregat|aggregate|moduł|module|abstrakcj|wzorzec|pattern|refaktor|refactor|wydziel|extract"}
+  exit: PAUSE # source: ddd/core
+
+orchestrate: # source: ddd/layers
+  # 2026-07-02: domain i application ROZDZIELONE — podwójna warstwa (15-25 plików)
+  # strukturalnie nie mieściła się w budżecie tur implementera, a fail handlera oznaczał
+  # re-implementację OBU warstw ×3. Application czyta świeży kod domeny z repo.
+  # 2026-07-09: infrastructure ROZDZIELONE od testów — pisanie kodu produkcyjnego
+  # i pisanie testów do cudzego kodu to dwa różne fachy; load-testy nie miały właściciela.
+  layers:
+    # checks (2026-09-24, TS-MH-005): bez nich lint/typecheck domeny i aplikacji wychodził
+    # dopiero w sondzie infrastructure — cudza czerwień, której warstwa nie może naprawić.
+    # `lint:check`, nie `lint`: w projektach Nest `lint` ma --fix i zmieniałby pliki w sondzie.
+    # Brak skryptu w package.json = "skipped" w raporcie (ORC-017), nie błąd.
+    - {
+        id: domain,
+        dirs: [domain/],
+        agent: "domain-application-implementer",
+        tags: ["api:domain"],
+        checks: [typecheck, lint-ratchet], # +lint-delegation
+        role: "Model domenowy: agregaty, encje, VO, zdarzenia i specyfikacje. Zero I/O, zero frameworka."
+      }
+    # `conformance` (ORC-118) = wbudowana kontrola reguł ciała pliku z tools/conformance (throw i BullMQ
+    # w handlerach komend) jako RATCHET względem HEAD: blokuje tylko to, co przebieg dopisał, nie dług
+    # sprzed niego. Prepare rozwija ten wpis do komendy dosłownej; to nie jest skrypt package.json.
+    - {
+        id: application,
+        dirs: [application/],
+        agent: "domain-application-implementer",
+        tags: ["api:app"],
+        checks: [typecheck, conformance, lint-ratchet], # +lint-delegation
+        role: "Przypadki użycia: handlery komend i zapytań orkiestrujące domenę. Bez reguł biznesowych — te należą do domeny.",
+        patterns: [application/command-handler-pattern.md, application/command-handler-queue-port-pattern.md] # +ddd/cqrs
+      }
+    - {
+        id: infrastructure,
+        dirs: [infrastructure/],
+        agent: "infrastructure-implementer",
+        tags: ["api:data-access", "api:api-surface"],
+        checks: [typecheck, lint-ratchet], # +lint-delegation
+        role: "Styk ze światem: repozytoria, kontrolery, mappery, adaptery. Tłumaczy między domeną a technologią.",
+        patterns: [infrastructure/repository-pattern.md] # +kysely
+      }
+    - {
+        id: testing,
+        dirs: [__tests__/],
+        agent: "test-implementer",
+        tests: true,
+        tags: ["api:tests"],
+        checks: [typecheck, test, lint-ratchet], # +lint-delegation
+        role: "Weryfikacja cudzego kodu: piramida L1/L2/L3. Testy dowodzą reguł, nie powtarzają implementacji."
+      }
+  inner_loop: {verify: "code-quality-verifier", max_attempts: 3, on_max: ESCALATE_AND_HALT}
+  # final_gate.checks wchodzą ZAWSZE, także gdy analiza pominie warstwę testing (ORC-022).
+  # lint:check TYMCZASOWO wyjęty z checks (2026-09-25) — audyt czterech projektów na tym
+  # bloku pokazał realny, pre-istniejący dług: juz-ide-api-1..4 (277 błędów, przebieg ~5 min —
+  # niedopuszczalne dla sondy) i _uls (1167 błędów). Dopóki dług nie jest spłacony per-projekt,
+  # lint dawałby fałszywe NO_GO na każdym przebiegu, niezależnie od zmiany taska. Przywrócić po
+  # osiągnięciu czystego `lint:check` w KAŻDYM projekcie na tym bloku, nie wcześniej.
+  # typecheck zostaje — jest szybki i czysty we wszystkich sprawdzonych projektach.
+  # conformance także tu: gdy analiza pominęła warstwę application albo jest ona w layers_done, bramka i tak
+  # sprawdza CAŁĄ zmianę (ratchet vs HEAD), więc handler ruszony „przy okazji" w innej warstwie nie ucieknie.
+  final_gate:
+    {
+      agent: "security-e2e-verifier",
+      on_fail: ESCALATE_AND_HALT,
+      checks: [typecheck, test, conformance, lint-ratchet] # +lint-delegation
+    }
+  exit: STAGE_NOT_COMMIT
+
+hooks: [check-security-considerations, check-context-isolation, check-delegation, check-patterns-read, check-subagent-pattern-reads, check-test-implementer-scope, inject-implementer-rule-cards, remind-verifier-after-manual-implementer, check-approval-before-impl, check-ddd-patterns, check-domain-purity, check-human-voice]
+
+env:
+  ECC_GATEGUARD: "off" # source: ddd/core
+  ECC_DISABLED_HOOKS: "pre:edit-write:gateguard-fact-force,pre:bash:gateguard-fact-force" # source: ddd/core
+  DELEGATION_MODE: "block" # source: ddd/core
+
+overlay:
+  agents: [stacks/nestjs-ddd/]
+  patterns: [domain/, application/, architecture/, infrastructure/]
+  rules: [nestjs-ddd/]
+
+human_voice: # język tekstu dla człowieka; nadpisz w project.yml → human_voice
+  language: pl
+  register: business
+  max_sentences: 2
+  avoid: [nazwy klas i funkcji, ścieżki plików, numery ADR/BDR, żargon warstw i wzorców]
+
+taxonomy: # rdzeń blocks/_taxonomy.yml + .claude/taxonomy.yml projektu
+  stacks:
+    - any
+    - api
+    - mobile
+    - web
+    - lib
+    - data
+    - infra
+  areas:
+    - auth
+    - authz
+    - domain
+    - app
+    - data-access
+    - events
+    - geo
+    - api-surface
+    - ui
+    - tests
+    - security
+    - observability
+    - build
+    - economy
+    - platform
+    - process
+  variants_seen:
+    app: [async, batching, concurrency, cross-context, errors, external-integration, ingestion, llm, model-lifecycle]
+    api-surface: [barrel, contract, deprecation, errors, semver]
+    data-access: [http, mapper, migration, offline, polyglot, projection, transaction]
+    domain: [aggregate, errors, moderation-buffer]
+    events: [domain, integration, outbox, queue]
+    geo: [radius, teryt, polygon, discovery]
+    observability: [audit, logging]
+    platform: [channel, cli-runner, gpu, nestjs, nextjs, python, react, svelte]
+    process: [review]
+    security: [identity, rate-limit, validation]
+    tests: [contract, e2e, fixtures, integration, load, seeding, unit]
+    ui: [accessibility, design-token, forms, i18n, navigation, state]
+
+params:
+  nestjs:
+    threat_model_when_extra: ""
+  ddd/core:
+    ddd_library: "@vytches/ddd"
+    ddd_library_min_version: null
+  lint-delegation:
+    script: lint:ddd:ratchet
+    files_match: ^(src|test)/.*\.ts$
+    delegated_rules:
+      - command-handler-pattern_summary#CH5
+    holdout: 0.2
+
+verification: # source: lint-delegation
+  lint_ratchet:
+    script: lint:ddd:ratchet
+    files_match: ^(src|test)/.*\.ts$
+  delegated_rules:
+    - command-handler-pattern_summary#CH5
+  holdout: 0.2
+
+requires_ecc: # source: nestjs
+  profile: developer
+  modules: [lang:typescript, capability:orchestration]
+
+ralphinho: # source: ddd/layers
+  units: single
+  worktree: shared
+  fan_out: sequential
+  merge_stage: noop
+  guardrails: {push_only: "claude/*", max_attempts_per_layer: 3}
