@@ -223,6 +223,25 @@ const tests = [
       return null;
     },
   },
+  {
+    name: 'delegation-leaves-only-as-per-mode-counters',
+    run({ ex }) {
+      // TASK-ORC-LINT-DELEGATION-001: tryb delegacji i `qualified` wychodzą jako liczniki; nazwy reguł i obce pola nie.
+      const base = rollup();
+      const role = { ...base.processes.orchestrate.roles.verifier,
+        delegation: { on: { n: 5, noGo: 1, lintMisses: 2, costUsd: 1.5, rule: 'command-handler:ch5' }, holdout: { n: 2, noGo: 0, lintMisses: 0, costUsd: 0.7 }, 'Zły Tryb': { n: 1 } },
+        rules: { cqv: { reports: 3, qualified: 2, hits: { 'command-handler:ch5': 2 } } } };
+      const ctx = { dropped: [] };
+      const rec = ex.projectRollup(rollup({ processes: { orchestrate: { ...base.processes.orchestrate, roles: { verifier: role } } } }), ctx);
+      const v = rec.processes.orchestrate.roles.verifier;
+      const err = eq(v.delegation, { on: { n: 5, noGo: 1, lintMisses: 2, costUsd: 1.5 }, holdout: { n: 2, noGo: 0, lintMisses: 0, costUsd: 0.7 } }, 'delegation');
+      if (err) return err;
+      if (v.rules.cqv.qualified !== 2) return 'qualified nie wyszło: ' + JSON.stringify(v.rules);
+      if (!ctx.dropped.some((d) => d.endsWith('delegation.Zły Tryb'))) return 'zły klucz trybu nie trafił do dropped: ' + JSON.stringify(ctx.dropped);
+      const leaks = ex.findLeaks(rec);
+      return leaks.length ? 'findLeaks: ' + JSON.stringify(leaks) : null;
+    },
+  },
 ];
 
 (async () => {

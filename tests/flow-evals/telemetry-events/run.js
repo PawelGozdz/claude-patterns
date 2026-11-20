@@ -425,11 +425,19 @@ const tests = [
       const cases = {
         A1: 'a1', feedback_Foo_bar: 'foo-bar', 'feedback_baseCommandHandler_silentfail.md': 'basecommandhandler-silentfail',
         'ANL-021': 'anl-021', new: 'new', project_rate_limit_failopen: 'rate-limit-failopen',
+        // E3 (TASK-ORC-LINT-DELEGATION-001): ID z kartą `<karta>#<ID>` → `<karta>:<id>`; stary format nadal przechodzi.
+        'command-handler#N1': 'command-handler:n1', 'command-handler-pattern_summary#CH12': 'command-handler:ch12',
+        'patterns/application/command-handler-pattern_summary.md#N1': 'command-handler:n1',
+        'Command_Handler_Queue_Port_summary#N2': 'command-handler-queue-port:n2',
+        // karta o nazwie z prefiksem pamięci nie traci go (prefiks dotyczy tylko wpisów pamięci bramki)
+        'project-board#A1': 'project-board:a1',
       };
       for (const [raw, want] of Object.entries(cases)) if (id(raw) !== want) return `normalizeRuleId(${raw}) = ${id(raw)}, oczekiwano ${want}`;
-      for (const bad of ['brak obsługi błędu w handlerze', '', '   ', undefined, null, 42, 'a'.repeat(65), '-zly']) {
+      for (const bad of ['brak obsługi błędu w handlerze', '', '   ', undefined, null, 42, 'a'.repeat(65), '-zly', '#N1', 'karta#', 'karta# ', 'a'.repeat(62) + '#n1', 'karta#brak obsługi']) {
         if (id(bad) !== null) return `normalizeRuleId(${JSON.stringify(bad)}) nie dało null`;
       }
+      if (!R.isQualifiedRuleId('command-handler:n1') || R.isQualifiedRuleId('n1') || R.isQualifiedRuleId('new') || R.isQualifiedRuleId(null)) return 'isQualifiedRuleId';
+      if (R.normalizeRuleHits([{ ruleId: 'command-handler#N1', line: 4 }])[0].ruleId !== 'command-handler:n1') return 'normalizeRuleHits nie przepisuje ID z kartą';
       if (R.normalizeRuleHits(undefined) !== null || R.normalizeRuleHits('x') !== null) return 'brak tablicy findings musi dać null (nie raportował)';
       if (JSON.stringify(R.normalizeRuleHits([])) !== '[]') return 'pusta tablica musi zostać [] (raportował, zero ustaleń)';
       // Niepasujący wpis nie znika (liczba ustaleń ma być prawdziwa), tylko staje się `new` — bez wolnego tekstu.
@@ -446,6 +454,34 @@ const tests = [
       if (sig(h('a1', 'new', 'new')) !== sig(h('a1'))) return '`new` nie jest pomijane w odcisku';
       if (sig([]) !== null || sig(h('new', 'new')) !== null || sig(undefined) !== null) return 'brak znanych identyfikatorów musi dać null';
       if (!/^[0-9a-f]{12}$/.test(sig(h('a1')))) return 'odcisk to nie 12 znaków hex';
+      return null;
+    },
+  },
+  {
+    name: 'delegation-fields-only-in-verifier-steps-with-closed-values',
+    run(t) {
+      // TASK-ORC-LINT-DELEGATION-001 (E2a): tryb delegacji, reguły z listy i licznik przecieku — tylko krok weryfikatora.
+      const mk = (step) => t.buildEvent({ kind: 'step.end', process: 'orchestrate', project: 'demo', runId: 'wf_dl', outcome: 'go', step });
+      const good = {
+        'on z regułami i lintMisses': { id: 'a:u:verifier#1', role: 'verifier', delegation: 'on', delegatedRules: ['command-handler:ch5'], lintMisses: 0 },
+        'holdout': { id: 'a:u:verifier#1', role: 'verifier', delegation: 'holdout', delegatedRules: ['command-handler:ch5'], lintMisses: 2 },
+        'fallback bez reguł': { id: 'a:u:verifier#1', role: 'verifier', delegation: 'fallback' },
+      };
+      for (const [name, step] of Object.entries(good)) {
+        const e = t.validateEvent(mk(step));
+        if (e.length) return `„${name}" odrzucone: ${e.join('; ')}`;
+      }
+      const bad = {
+        'delegation w implementerze': { id: 'x', role: 'implementer', delegation: 'on' },
+        'delegatedRules w bramce': { id: 'x', role: 'gate', delegatedRules: ['a:b'] },
+        'lintMisses w sondzie': { id: 'x', role: 'probe', lintMisses: 1 },
+        'delegation bez roli': { id: 'x', delegation: 'on' },
+        'zły tryb': { id: 'x', role: 'verifier', delegation: 'all' },
+        'reguła z wolnym tekstem': { id: 'x', role: 'verifier', delegation: 'on', delegatedRules: ['karta#CH5'] },
+        'lintMisses ujemne': { id: 'x', role: 'verifier', delegation: 'on', lintMisses: -1 },
+        'ponad 50 reguł': { id: 'x', role: 'verifier', delegation: 'on', delegatedRules: Array.from({ length: 51 }, (_, i) => 'k:r' + i) },
+      };
+      for (const [name, step] of Object.entries(bad)) if (!t.validateEvent(mk(step)).length) return `„${name}" przeszło walidację`;
       return null;
     },
   },
@@ -555,7 +591,7 @@ const tests = [
     run(t, L) {
       // TASK-OBS-018: wynik sondy w zdarzeniu (inaczej `ok` jest nieodróżnialne od zielonego) i parowanie z werdyktem.
       const mk = (step) => t.buildEvent({ kind: 'step.end', process: 'orchestrate', project: 'demo', runId: 'wf_pc', outcome: 'ok', step });
-      const checks = { typecheck: 'pass', tests: 'pass', lint: 'fail', conformance: 'skipped', shadowLint: 'fail' };
+      const checks = { typecheck: 'pass', tests: 'pass', lint: 'fail', conformance: 'skipped', projectLint: 'fail', shadowLint: 'fail' };
       const e = t.validateEvent(mk({ id: 'domain:u:probe#1', role: 'probe', checks }));
       if (e.length) return 'poprawny checks w sondzie odrzucony: ' + e.join('; ');
       const bad = {

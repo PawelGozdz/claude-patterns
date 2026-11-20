@@ -441,6 +441,38 @@ const tests = [
     },
   },
   {
+    name: 'delegation-modes-are-counted-per-mode-and-ids-with-a-card-are-counted-as-qualified',
+    run(T) {
+      // TASK-ORC-LINT-DELEGATION-001 (E2a/E3): koszt i NO_GO per tryb delegacji + licznik ustaleń z kartą; bloki leniwe.
+      const D = '2026-03-07';
+      const rid = 'wf_deleg-run';
+      const vs = (ts, id, outcome, cost, extra, hits) => ev({ kind: 'step.end', process: 'orchestrate', ts, outcome, runId: rid, m: { costUsd: cost },
+        step: { id, role: 'verifier', agent: 'cqv', ...extra, ...(hits ? { ruleHits: hits } : {}) } });
+      const evs = [
+        ev({ kind: 'run.start', process: 'orchestrate', ts: `${D}T10:00:00.000Z`, runId: rid }),
+        vs(`${D}T10:01:00.000Z`, 'a:u:verifier#1', 'go', 1, { delegation: 'on', delegatedRules: ['command-handler:ch5'], lintMisses: 0 }, []),
+        vs(`${D}T10:02:00.000Z`, 'b:u:verifier#1', 'no_go', 2, { delegation: 'on', delegatedRules: ['command-handler:ch5'], lintMisses: 1 }, [{ ruleId: 'command-handler:ch5' }, { ruleId: 'n1' }]),
+        vs(`${D}T10:03:00.000Z`, 'c:u:verifier#1', 'go', 3, { delegation: 'holdout', delegatedRules: ['command-handler:ch5'], lintMisses: 0 }, []),
+        vs(`${D}T10:04:00.000Z`, 'd:u:verifier#1', 'go', 3, { delegation: 'fallback' }, []),
+        vs(`${D}T10:05:00.000Z`, 'e:u:verifier#1', 'go', 3, {}, []),
+      ];
+      const r = [...T.buildRollups(evs).values()][0];
+      const del = r.processes.orchestrate.roles.verifier.delegation;
+      if (JSON.stringify(del.on) !== JSON.stringify({ n: 2, noGo: 1, lintMisses: 1, costUsd: 3 })) return 'tryb on: ' + JSON.stringify(del.on);
+      if (JSON.stringify(del.holdout) !== JSON.stringify({ n: 1, noGo: 0, lintMisses: 0, costUsd: 3 })) return 'tryb holdout: ' + JSON.stringify(del.holdout);
+      if (del.fallback.n !== 1 || Object.keys(del).length !== 3) return 'tryby: ' + JSON.stringify(del);
+      const q = r.processes.orchestrate.roles.verifier.rules.cqv.qualified;
+      if (q !== 1) return 'qualified = ' + q + ' (1 ustalenie z kartą, `n1` to stary format)';
+      // Leniwość: bez pól delegacji i bez ustaleń z kartą nie powstaje ani delegation, ani qualified.
+      const plain = [...T.buildRollups([
+        ev({ kind: 'run.start', process: 'orchestrate', ts: `${D}T10:00:00.000Z`, runId: rid }),
+        vs(`${D}T10:01:00.000Z`, 'a:u:verifier#1', 'go', 1, {}, [{ ruleId: 'n1' }]),
+      ]).values()][0];
+      if (JSON.stringify(plain).includes('"delegation"') || JSON.stringify(plain).includes('qualified')) return 'bloki delegacji/qualified powstały bez danych';
+      return null;
+    },
+  },
+  {
     name: 'rule-hit-file-never-reaches-the-rollup',
     run(T) {
       // TASK-OBS-019: `file` żyje tylko w lokalnych surowych zdarzeniach. Rollup (w gicie, wspólny) liczy wyłącznie `ruleId`,

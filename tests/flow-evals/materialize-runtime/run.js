@@ -101,6 +101,7 @@ function main() {
   }
 
   let failed = 0;
+  let total = cases.length;
   for (const name of cases) {
     const projectYml = path.join(FIXTURES, `${name}.project.yml`);
     const goldenPath = path.join(FIXTURES, `${name}.expected.yml`);
@@ -139,11 +140,42 @@ function main() {
     }
   }
 
+  // ── TASK-ORC-LINT-DELEGATION-001: wartości z project.yml wchodzą do komend powłoki i promptów, więc złe mają paść tutaj ──
+  const negatives = [
+    ['lint-delegation: skrypt z metaznakami powłoki', { script: 'lint;touch x' }, /parametr "script" = "lint;touch x" nie pasuje/],
+    ['lint-delegation: brak skryptu', {}, /wymaga parametru "script"/],
+    ['lint-delegation: holdout powyżej 0.5', { script: 'lint:r', holdout: 0.9 }, /holdout" = 0.9 powyżej maksimum 0.5/],
+    ['lint-delegation: holdout ujemny', { script: 'lint:r', holdout: -0.1 }, /poniżej minimum 0/],
+    ['lint-delegation: reguła bez karty (goły ID)', { script: 'lint:r', delegated_rules: ['CH5'] }, /delegated_rules" = "CH5" nie pasuje/],
+    ['lint-delegation: apostrof w regexie plików', { script: 'lint:r', files_match: "a'; touch x; echo '" }, /files_match" = .* nie pasuje/],
+  ];
+  const baseYml = fs.readFileSync(path.join(FIXTURES, 'nestjs-ddd-lint-delegation.project.yml'), 'utf8');
+  for (const [name, params, want] of negatives) {
+    const doc = YAML.parse(baseYml);
+    doc.project.block_params['lint-delegation'] = params;
+    const tmp = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'eval-materialize-neg-')), 'x.project.yml');
+    fs.writeFileSync(tmp, YAML.stringify(doc));
+    const r = materialize(tmp);
+    total++;
+    if (!r.error) { failed++; process.stdout.write(`  ❌ ${name} — materializacja przeszła, a miała paść\n`); continue; }
+    if (!want.test(r.error)) { failed++; process.stdout.write(`  ❌ ${name} — zły powód: ${r.error}\n`); continue; }
+    process.stdout.write(`  ✅ ${name}\n`);
+  }
+  // Projekt BEZ bloku: ani śladu nowej kontroli ani sekcji verification (runtime.yml jak przed zmianą)
+  {
+    const r = materialize(path.join(FIXTURES, 'nestjs-ddd-kysely.project.yml'));
+    total++;
+    if (r.error || /lint-ratchet|verification:|lint-delegation/.test(r.runtimeText)) {
+      failed++;
+      process.stdout.write(`  ❌ bez bloku lint-delegation runtime.yml zawiera jego ślad${r.error ? ' (' + r.error + ')' : ''}\n`);
+    } else process.stdout.write('  ✅ bez bloku lint-delegation runtime.yml nie zawiera lint-ratchet ani verification\n');
+  }
+
   if (UPDATE) {
     process.stdout.write('\ngoldeny zaktualizowane — przejrzyj `git diff` przed commitem\n');
     process.exit(0);
   }
-  process.stdout.write(`\n${cases.length - failed}/${cases.length} passed\n`);
+  process.stdout.write(`\n${total - failed}/${total} passed\n`);
   process.exit(failed ? 1 : 0);
 }
 

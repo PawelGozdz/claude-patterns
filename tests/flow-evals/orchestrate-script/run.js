@@ -19,6 +19,11 @@ const REPO = path.resolve(__dirname, '..', '..', '..');
 const CORE = path.join(REPO, 'scripts', 'workflow', 'orchestrate-core.mjs');
 const TEMPLATE = path.join(REPO, 'scripts', 'workflow', 'orchestrate.template.mjs');
 
+// Karty jak z prepare (`source` = plik karty `*_summary.md`) — do przypadków delegowania reguł do lintu (E2a).
+const DELEGATION_PATTERNS = [
+  { path: 'application/command-handler-pattern.md', card: true, source: 'application/command-handler-pattern_summary.md', content: 'KARTA HANDLER: **CH5** — Result, nigdy throw', origin: 'always', matchedKeywords: [] },
+];
+
 // ── fixture w kształcie args (wyjście orchestrate-prepare.mjs) ───────────────────
 const ARGS = {
   task: {
@@ -2079,13 +2084,192 @@ const CASES = (c) => [
       return null;
     },
   },
+  // ── TASK-ORC-LINT-DELEGATION-001 (E1): kontrola `lint-ratchet` ──────────────────────────────────────────
+  {
+    name: 'lint-ratchet-expands-to-literal-command-with-scope-and-own-report-field',
+    run() {
+      for (const yes of ['lint-ratchet', ' lint-ratchet ', 'node "/x/tools/lint-ratchet/run.mjs" --script a']) if (!c.isLintRatchetCheck(yes)) return `„${yes}" nierozpoznane`;
+      for (const no of ['lint', 'lint:ddd', 'lint:ddd:ratchet', 'shadow:lint-ratchet', 'conformance', '']) if (c.isLintRatchetCheck(no)) return `„${no}" rozpoznane jako lint-ratchet`;
+      const sha = 'a'.repeat(40);
+      const a = { ...ARGS, baseSha: sha, dirtyAtStart: ['x/dirty.ts'], projectLint: { tool: '/opt/cp/tools/lint-ratchet/run.mjs', script: 'lint:ddd:ratchet', filesMatch: '^(src|test)/.*\\.ts$' } };
+      const layer = { id: 'application', dirs: ['src/application/'], checks: ['typecheck', 'lint-ratchet'] };
+      const cmd = c.lintRatchetCommand(a, layer);
+      const want = `node "/opt/cp/tools/lint-ratchet/run.mjs" --script lint:ddd:ratchet --base ${sha} --match '^(src|test)/.*\\.ts$' --only 'src/application/' --skip 'x/dirty.ts'`;
+      if (cmd !== want) return 'komenda: ' + cmd;
+      const p = c.buildProbePrompt(a, layer);
+      if (!p.includes(want + ' > /tmp/check-application-2.log')) return 'sonda nie dostała komendy dosłownej z własnym logiem';
+      if (/npm run lint-ratchet|_chk lint-ratchet/.test(p)) return 'id lint-ratchet poszło jak skrypt package.json';
+      if (!/pole `projectLint`/.test(p) || !/NIGDY nie trafia do `lint`, `typecheck`, `tests` ani `conformance`/.test(p) || !/`projectLintReport`/.test(p)) return 'brak instrukcji mapowania na projectLint';
+      if (!/head -120 \/tmp\/check-application-2\.log/.test(p)) return 'raport dosłowny nie wskazuje właściwego logu';
+      return null;
+    },
+  },
+  {
+    name: 'layer-without-lint-ratchet-gets-an-unchanged-probe-prompt',
+    run() {
+      // projekt bez wpisu działa jak dziś: żadnego śladu nowej kontroli w prompcie sondy
+      const a = { ...ARGS, projectLint: { tool: '/opt/cp/tools/lint-ratchet/run.mjs', script: 'lint:ddd:ratchet' } };
+      for (const checks of [['typecheck'], ['typecheck', 'lint'], ['typecheck', 'conformance'], ['typecheck', 'test'], []]) {
+        const p = c.buildProbePrompt(a, { id: 'application', dirs: ['src/application/'], checks });
+        if (/lint-ratchet|projectLint/.test(p)) return 'prompt bez lint-ratchet zawiera jego ślad: ' + JSON.stringify(checks);
+      }
+      return null;
+    },
+  },
+  // ── TASK-ORC-LINT-DELEGATION-001 (E2a): delegowanie reguł z weryfikatora warstwy do lintu ─────────────────
+  {
+    name: 'delegation-off-without-list-or-without-lint-ratchet-check-leaves-the-verifier-prompt-untouched',
+    run() {
+      const layer = { id: 'application', dirs: ['src/application/'], checks: ['typecheck', 'lint-ratchet'] };
+      const probe = { typecheck: 'pass', tests: 'pass', projectLint: 'pass' };
+      const base = c.buildVerifierPrompt(ARGS, layer, probe, ['src/application/a.ts'], 'verify');
+      const none = c.delegationFor(ARGS, layer, probe);
+      if (none.mode !== 'off' || none.rules.length) return 'bez listy tryb ≠ off: ' + JSON.stringify(none);
+      const withList = { ...ARGS, patterns: DELEGATION_PATTERNS, delegation: { rules: ['command-handler-pattern_summary#CH5'], holdout: 0.2 } };
+      const noCheck = c.delegationFor(withList, { ...layer, checks: ['typecheck'] }, probe);
+      if (noCheck.mode !== 'off') return 'warstwa bez lint-ratchet w checks dostała tryb ' + noCheck.mode;
+      if (c.buildVerifierPrompt(ARGS, layer, probe, ['src/application/a.ts'], 'verify', undefined, undefined, undefined, none) !== base) return 'tryb off zmienia prompt';
+      return null;
+    },
+  },
+  {
+    name: 'delegation-on-gives-the-verifier-the-list-a-do-not-repeat-instruction-and-the-lint-miss-escape-hatch',
+    run() {
+      const layer = { id: 'application', dirs: ['src/application/'], checks: ['typecheck', 'lint-ratchet'] };
+      const probe = { typecheck: 'pass', tests: 'pass', projectLint: 'pass' };
+      const a = { ...ARGS, patterns: DELEGATION_PATTERNS, delegation: { rules: ['command-handler-pattern_summary#CH5'], holdout: 0 } };
+      const d = c.delegationFor(a, layer, probe);
+      if (d.mode !== 'on' || d.rules.join() !== 'command-handler-pattern_summary#CH5') return 'tryb ' + d.mode + ' ' + JSON.stringify(d.rules);
+      const p = c.buildVerifierPrompt(a, layer, probe, ['src/application/a.ts'], 'verify', undefined, undefined, undefined, d);
+      if (!/command-handler-pattern_summary#CH5/.test(p)) return 'prompt bez listy reguł';
+      if (!/nie powtarzaj/i.test(p) || !/\[lint_miss\]/.test(p)) return 'brak instrukcji „nie powtarzaj" albo znacznika lint_miss';
+      if (!/KARTA HANDLER/.test(p)) return 'karty zniknęły z promptu (mają zostać)';
+      if (!/blokuje jak każde inne/.test(p)) return 'lint_miss nie jest opisany jako blokujący';
+      return null;
+    },
+  },
+  {
+    name: 'delegation-falls-back-to-full-scope-when-the-lint-check-was-skipped-or-missing',
+    run() {
+      const layer = { id: 'application', dirs: ['src/application/'], checks: ['typecheck', 'lint-ratchet'] };
+      const a = { ...ARGS, patterns: DELEGATION_PATTERNS, delegation: { rules: ['command-handler-pattern_summary#CH5'], holdout: 0 } };
+      for (const probe of [{ typecheck: 'pass', tests: 'pass', projectLint: 'skipped' }, { typecheck: 'pass', tests: 'pass' }, null]) {
+        const d = c.delegationFor(a, layer, probe);
+        if (d.mode !== 'fallback') return 'probe ' + JSON.stringify(probe) + ' → tryb ' + d.mode;
+        const p = c.buildVerifierPrompt(a, layer, probe, ['src/application/a.ts'], 'verify', undefined, undefined, undefined, d);
+        if (/SPRAWDZONE PRZEZ KOD|lint_miss/.test(p)) return 'fallback zostawił ślad delegacji w prompcie';
+      }
+      return null;
+    },
+  },
+  {
+    name: 'holdout-is-deterministic-capped-at-half-and-close-to-the-configured-share',
+    run() {
+      const probe = { typecheck: 'pass', tests: 'pass', projectLint: 'pass' };
+      const mk = (holdout) => ({ ...ARGS, baseSha: 'abc123', patterns: DELEGATION_PATTERNS, delegation: { rules: ['command-handler-pattern_summary#CH5'], holdout } });
+      const modeOf = (a, id) => c.delegationFor(a, { id, dirs: ['x/'], checks: ['lint-ratchet'] }, probe).mode;
+      const ids = Array.from({ length: 1000 }, (_, i) => 'layer-' + i);
+      const a20 = mk(0.2);
+      const share = ids.filter((id) => modeOf(a20, id) === 'holdout').length / ids.length;
+      if (share < 0.15 || share > 0.25) return 'udział holdout ' + share + ' daleko od 0,2';
+      if (ids.some((id) => modeOf(a20, id) !== modeOf(a20, id))) return 'wybór nie jest deterministyczny';
+      if (ids.some((id) => modeOf(mk(0), id) === 'holdout')) return 'holdout 0 nadal losuje grupę kontrolną';
+      const wild = ids.filter((id) => modeOf(mk(0.9), id) === 'holdout').length / ids.length;
+      if (wild > 0.56) return 'holdout nie jest obcięty do 0,5: ' + wild;
+      return null;
+    },
+  },
+  {
+    name: 'delegation-ignores-rules-of-cards-this-verifier-does-not-receive',
+    run() {
+      const layer = { id: 'application', dirs: ['src/application/'], checks: ['lint-ratchet'] };
+      const probe = { typecheck: 'pass', tests: 'pass', projectLint: 'pass' };
+      const a = { ...ARGS, patterns: DELEGATION_PATTERNS, delegation: { rules: ['nie-ma-takiej-karty_summary#X1', 'command-handler-pattern_summary#CH5'], holdout: 0 } };
+      const d = c.delegationFor(a, layer, probe);
+      if (d.rules.join() !== 'command-handler-pattern_summary#CH5') return 'reguła cudzej karty weszła do listy: ' + JSON.stringify(d.rules);
+      const only = c.delegationFor({ ...a, delegation: { rules: ['nie-ma-takiej-karty_summary#X1'], holdout: 0 } }, layer, probe);
+      return only.mode === 'off' ? null : 'sama reguła nieobecnej karty dała tryb ' + only.mode;
+    },
+  },
+  {
+    name: 'layer-loop-records-the-delegation-mode-before-asking-the-verifier',
+    run() {
+      const src = fs.readFileSync(TEMPLATE, 'utf8');
+      if (!/const dele = delegationFor\(a, layer, probe\)/.test(src)) return 'pętla warstwy nie wylicza trybu delegacji';
+      if (!/report\.delegation = report\.delegation \|\| \[\]\)\.push\(\{ label: layer\.id \+ '-verify'/.test(src)) return 'tryb nie trafia do report.delegation z etykietą kroku weryfikatora';
+      if (!/buildVerifierPrompt\(a, layer, probe, layerFiles, mode, undefined, undefined, layerDeleted, dele\)/.test(src)) return 'weryfikator warstwy nie dostaje trybu delegacji';
+      if (/buildFinalGatePrompt\([^)]*dele\b/.test(src)) return 'bramka końcowa dostała delegację (E2b ma być osobnym, późniejszym krokiem)';
+      return null;
+    },
+  },
+  {
+    name: 'lint-ratchet-without-config-or-with-unsafe-values-is-a-loud-skipped',
+    run() {
+      const layer = { id: 'application', dirs: ['src/application/'], checks: ['lint-ratchet'] };
+      for (const [name, a] of [
+        ['brak a.projectLint', { ...ARGS }],
+        ['brak narzędzia', { ...ARGS, projectLint: { script: 'lint:r' } }],
+        ['narzędzie z ..', { ...ARGS, projectLint: { tool: '/x/../y/run.mjs', script: 'lint:r' } }],
+        ['brak skryptu', { ...ARGS, projectLint: { tool: '/x/run.mjs' } }],
+        ['skrypt ze średnikiem', { ...ARGS, projectLint: { tool: '/x/run.mjs', script: 'lint:r;touch x' } }],
+        ['skrypt ze spacją', { ...ARGS, projectLint: { tool: '/x/run.mjs', script: 'lint r' } }],
+      ]) {
+        const cmd = c.lintRatchetCommand(a, layer);
+        if (!/^sh -c '.*exit 3'$/.test(cmd) || /touch/.test(cmd)) return `${name}: ${cmd}`;
+      }
+      // regex pliku z apostrofem nie trafia do powłoki (komenda wychodzi bez --match, nie z ucieczką)
+      const cmd = c.lintRatchetCommand({ ...ARGS, projectLint: { tool: '/x/run.mjs', script: 'lint:r', filesMatch: "a'; touch x; echo '" } }, layer);
+      if (/--match/.test(cmd) || /touch/.test(cmd)) return 'niebezpieczny regex wszedł do komendy: ' + cmd;
+      return null;
+    },
+  },
+  {
+    name: 'red-project-lint-is-red-everywhere-and-skipped-is-not-green',
+    run() {
+      if (!c.probeIsRed({ typecheck: 'pass', tests: 'pass', projectLint: 'fail' })) return 'czerwony projectLint nie jest czerwienią sondy';
+      if (c.probeIsRed({ typecheck: 'pass', tests: 'pass', projectLint: 'skipped' })) return 'skipped nie może być czerwienią';
+      if (c.probeIsRed({ typecheck: 'pass', tests: 'pass', projectLint: 'pass' })) return 'pass nie może być czerwienią';
+      // odroczenia (ORC-082/099/103) wymagają, żeby poza typecheckiem/testami nic nie było czerwone — projectLint też
+      const flaky = { tests: 'fail', typecheck: 'pass', testsRerunPassed: true, testFailFiles: 'FAIL  src/a/x.spec.ts > suite > case', testFilesFailed: 1 };
+      if (c.testsFlakyUnderLoad({ ...flaky, projectLint: 'fail' }) !== false) return 'testsFlakyUnderLoad ignoruje czerwony projectLint';
+      if (c.testsFlakyUnderLoad(flaky) !== true) return 'fixture testsFlakyUnderLoad nie działa bez projectLint (test nic nie dowodzi)';
+      const tc = { typecheck: 'fail', tsErrors: '' };
+      if (c.typecheckDeferralMismatch({ ...tc, projectLint: 'fail' }) !== null) return 'typecheckDeferralMismatch ignoruje czerwony projectLint';
+      if (typeof c.typecheckDeferralMismatch(tc) !== 'string') return 'fixture typecheckDeferralMismatch nie działa bez projectLint (test nic nie dowodzi)';
+      const ts = c.CHECKS_SCHEMA.properties;
+      if (JSON.stringify(ts.projectLint.enum) !== JSON.stringify(['pass', 'fail', 'skipped']) || ts.projectLintReport.type !== 'string') return 'CHECKS_SCHEMA bez projectLint';
+      if (c.CHECKS_SCHEMA.required.includes('projectLint')) return 'projectLint nie może być wymagane (projekt bez kontroli)';
+      return null;
+    },
+  },
+  {
+    name: 'project-lint-report-reaches-the-implementer-and-the-gate-verbatim',
+    run() {
+      const probe = { projectLint: 'fail', projectLintReport: 'REGRESJE (1)\n  src/a.handler.ts  juz/handler-extends-base  0 → 1  (linie: 42)' };
+      const fix = c.lintRatchetFixText(probe);
+      if (!fix.includes('src/a.handler.ts  juz/handler-extends-base  0 → 1  (linie: 42)') || !/`warn` też blokuje/.test(fix) || !/NIE wyłączaj reguł/.test(fix)) return 'treść poprawki: ' + fix;
+      if (!/sonda nie zwróciła raportu/.test(c.lintRatchetFixText({ projectLint: 'fail' }))) return 'brak raportu nie jest nazwany';
+      const v = c.lintRatchetViolations(probe);
+      if (v.length !== 1 || !v[0].includes('juz/handler-extends-base') || !v[0].startsWith('lint projektu')) return 'violations: ' + JSON.stringify(v);
+      if (!/bez raportu/.test(c.lintRatchetViolations({ projectLint: 'fail' })[0])) return 'fail bez raportu musi być nazwany';
+      // skipped w sondzie bramki końcowej to ślepota (jak conformance), nie zieleń
+      const blind = c.finalProbeSkippedFields(['typecheck', 'lint-ratchet'], { typecheck: 'pass', tests: 'pass', projectLint: 'skipped' });
+      if (!blind.includes('projectLint')) return 'projectLint skipped nie jest ślepotą bramki: ' + JSON.stringify(blind);
+      const missing = c.finalProbeSkippedFields(['typecheck', 'lint-ratchet'], { typecheck: 'pass', tests: 'pass' });
+      if (!missing.includes('projectLint')) return 'brak pola projectLint przy skonfigurowanej kontroli to ślepota';
+      return null;
+    },
+  },
   {
     name: 'final-gate-with-red-conformance-never-stages-for-review',
     // statycznie: pętla nie jest w CORE. Linia stageForReview musi wykluczać czerwone conformance, a nadpisanie werdyktu
     // musi ustawiać cause=code poza nieaktualnym GO (inaczej runda naprawcza ORC-091 się nie uruchomi)
     run() {
       const src = fs.readFileSync(TEMPLATE, 'utf8');
-      if (!/if \(!final && !staleFinalReason && !\(finalProbe && finalProbe\.conformance === 'fail'\)\) report\.stageForReview/.test(src)) return 'stageForReview nie wyklucza czerwonego conformance';
+      if (!/if \(!final && !staleFinalReason && !\(finalProbe && \(finalProbe\.conformance === 'fail' \|\| finalProbe\.projectLint === 'fail'\)\)\) report\.stageForReview/.test(src)) return 'stageForReview nie wyklucza czerwonego conformance ani projectLint';
+      // TASK-ORC-LINT-DELEGATION-001: czerwony projectLint z sondy bramki = NO_GO z naruszeniami i cause=code (runda naprawcza), także przy GO LLM
+      const block = src.slice(src.indexOf("finalProbe.projectLint === 'fail') {"), src.indexOf('// ORC-087: brak werdyktu przy wszystkich warstwach GO'));
+      if (!/noteGateOverride\(report, 'projectLint', round\)/.test(block) || !/verdict: 'NO_GO'/.test(block) || !/lintRatchetViolations\(finalProbe\)/.test(block) || !/cause = undefined/.test(block)) return 'blok nadpisania werdyktu przez projectLint niepełny';
       if (!/if \(!staleFinalReason\) report\.finalGate\.cause = undefined/.test(src)) return 'nadpisanie werdyktu nie ustawia cause=code';
       return null;
     },

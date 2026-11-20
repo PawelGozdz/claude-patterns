@@ -8,7 +8,7 @@
 //   - tryb delty:           `result.finalGateDelta` (ustawiane tylko, gdy runda 2 dostała listę plików delty);
 //   - zatrzymanie warstwy:  `result.layers[]` (status ESCALATE_AND_HALT + cause).
 
-import { normalizeRuleHits } from './telemetry-rules.mjs';
+import { normalizeRuleHits, normalizeDelegatedRules } from './telemetry-rules.mjs';
 
 export const MAX_IDS = 12;
 const OVERRIDE_RE = /^[a-z][a-z0-9-]{0,31}@[0-9]{1,2}$/;
@@ -67,6 +67,40 @@ export function runGateFields(r) {
     haltLayer: haltId,
     haltCause: halted ? causeOf(halted) : null,
   };
+}
+
+export const DELEGATION_MODES = ['on', 'holdout', 'fallback'];
+
+/**
+ * Delegowanie reguł do lintu (TASK-ORC-LINT-DELEGATION-001, E2a): wpisy `report.delegation` → mapa etykieta kroku →
+ * [{mode, rules}] w kolejności wywołań. Skrypt zapisuje wpis tuż przed każdym wywołaniem weryfikatora warstwy (tryb `off` nie
+ * zostawia śladu), więc n-ty krok z tą etykietą dostaje n-ty wpis.
+ */
+export function delegationByLabel(res) {
+  const map = new Map();
+  const list = res && typeof res === 'object' && Array.isArray(res.delegation) ? res.delegation : [];
+  for (const e of list) {
+    if (!e || typeof e.label !== 'string' || !DELEGATION_MODES.includes(e.mode)) continue;
+    if (!map.has(e.label)) map.set(e.label, []);
+    map.get(e.label).push({ mode: e.mode, rules: Array.isArray(e.rules) ? e.rules : [] });
+  }
+  return map;
+}
+
+/**
+ * Pola kroku weryfikatora z wpisu delegacji: `delegation` (tryb), `delegatedRules` (reguły z listy dla warstwy; poza trybem
+ * `fallback`, bo wtedy nic nie zostało oddane kodowi) i `lintMisses` (ustalenia weryfikatora z regułą z tej listy: lint ją
+ * przepuścił; tylko gdy werdykt zwrócił `ruleHits`). Liczone z `ruleId`, nie z deklaracji modelu o znaczniku `[lint_miss]`.
+ */
+export function stepDelegationFields(entry, ruleHits) {
+  if (!entry || !DELEGATION_MODES.includes(entry.mode)) return {};
+  const out = { delegation: entry.mode };
+  const rules = normalizeDelegatedRules(entry.rules);
+  if (entry.mode !== 'fallback' && rules.length) {
+    out.delegatedRules = rules;
+    if (Array.isArray(ruleHits)) out.lintMisses = ruleHits.filter((h) => rules.includes(h.ruleId)).length;
+  }
+  return out;
 }
 
 /** Ratunek po cichej śmierci implementera: wpisy `report.silentRescues` → mapa warstwa → [{attempt, files}] w kolejności. */

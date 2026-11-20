@@ -1,0 +1,15 @@
+# Fixture: nestjs + ddd + kysely + lint-delegation (TASK-ORC-LINT-DELEGATION-001). Złoty plik pilnuje, że blok dopisuje
+# `lint-ratchet` do warstw (domain, application, infrastructure, testing) i do final_gate oraz niesie `verification:`.
+project:
+  name: eval-lint-delegation
+  description: "Fixture ewaluacyjny — kompozycja z blokiem lint-delegation"
+  stack_blocks: [nestjs, ddd, kysely, lint-delegation]
+  stack_profile: nestjs-ddd
+  language: typescript
+  ddd_library: "@vytches/ddd"
+  block_params:
+    lint-delegation:
+      script: lint:ddd:ratchet
+      files_match: '^(src|test)/.*\.ts$'
+      delegated_rules: ["command-handler-pattern_summary#CH5"]
+      holdout: 0.2

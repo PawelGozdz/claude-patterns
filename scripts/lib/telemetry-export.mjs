@@ -63,7 +63,10 @@ const GATE_FIELDS = ['judged', 'noGo', 'noGoAttributed', 'blamedUnits', 'unattri
 
 // Identyfikatory reguł z ustaleń (TASK-OBS-018): `reports` + mapa ruleId → liczba. Klucze (agent, ruleId)
 // przechodzą przez SAFE_KEY; `ruleId` jest znormalizowany do tego formatu już u źródła (telemetry-rules.mjs).
-const ruleBlock = (src, at, ctx) => ({ ...counters(src, ['reports']), hits: countMap(src.hits, `${at}.hits`, ctx) });
+const ruleBlock = (src, at, ctx) => ({ ...counters(src, ['reports', 'qualified']), hits: countMap(src.hits, `${at}.hits`, ctx) });
+
+// Delegowanie reguł do lintu (TASK-ORC-LINT-DELEGATION-001, E2a): liczniki per tryb (on|holdout|fallback), bez nazw reguł.
+const DELEGATION_FIELDS = ['n', 'noGo', 'lintMisses', 'costUsd'];
 
 const roleBlock = (src, at, ctx) => ({
   ...counters(src, ['n', 'costUsd', 'toolCalls', 'findings']),
@@ -73,6 +76,7 @@ const roleBlock = (src, at, ctx) => ({
   ...(src.verdicts ? { verdicts: counters(src.verdicts, VERDICT_FIELDS) } : {}),
   ...(src.agents ? { agents: mapOf(src.agents, `${at}.agents`, ctx, (a) => counters(a, VERDICT_FIELDS)) } : {}),
   ...(src.rules ? { rules: mapOf(src.rules, `${at}.rules`, ctx, ruleBlock) } : {}),
+  ...(src.delegation ? { delegation: mapOf(src.delegation, `${at}.delegation`, ctx, (m) => counters(m, DELEGATION_FIELDS)) } : {}),
 });
 
 const processBlock = (src, at, ctx) => ({

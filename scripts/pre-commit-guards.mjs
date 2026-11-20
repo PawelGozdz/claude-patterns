@@ -75,6 +75,7 @@ runCheck('eval: orchestrate-prepare', 'node', ['tests/flow-evals/orchestrate-pre
 runCheck('eval: orchestrate-script', 'node', ['tests/flow-evals/orchestrate-script/run.js']);
 runCheck('eval: orchestrate-flow', 'node', ['tests/flow-evals/orchestrate-flow/run.js']);
 runCheck('eval: conformance', 'node', ['tests/flow-evals/conformance/run.js']);
+runCheck('eval: lint-ratchet', 'node', ['tests/flow-evals/lint-ratchet/run.js']);
 runCheck('eval: analyze-resolve', 'node', ['tests/flow-evals/analyze-resolve/run.js']);
 runCheck('eval: test-implementer-scope', 'node', ['tests/flow-evals/test-implementer-scope/run.js']);
 runCheck('eval: manual-spawn-rules', 'node', ['tests/flow-evals/manual-spawn-rules/run.js']);

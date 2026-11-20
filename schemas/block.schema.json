@@ -61,9 +61,18 @@
             "description": "Allowed values; materialize-runtime.mjs fails on a value outside the list (a typo in questions_format must not silently mean 'none').",
             "items": { "type": "string" }
           },
+          "pattern": { "type": "string", "description": "Regex every value (each list element) must match; materialize-runtime fails otherwise." },
+          "min": { "type": "number" },
+          "max": { "type": "number" },
           "doc": { "type": "string" }
         }
       }
+    },
+
+    "verification": {
+      "type": "object",
+      "description": "Project lint check and rule delegation for the verifiers (TASK-ORC-LINT-DELEGATION-001). Copied to runtime.yml; orchestrate-prepare reads it. Absent = behaviour unchanged.",
+      "additionalProperties": true
     },
 
     "patterns": {
@@ -226,7 +235,9 @@
         "additionalProperties": false,
         "properties": {
           "match": { "type": "string", "description": "Layer selector, e.g. '*:app'." },
-          "patterns": { "type": "array", "items": { "type": "string" } }
+          "patterns": { "type": "array", "items": { "type": "string" } },
+          "checks": { "type": "array", "items": { "type": "string" }, "description": "Checks appended to the matched layers (materialize-runtime merges them without duplicates)." },
+          "final_gate": { "type": "boolean", "description": "true: when this contribution hits any layer, its checks also join final_gate.checks (TASK-ORC-LINT-DELEGATION-001)." }
         }
       }
     },

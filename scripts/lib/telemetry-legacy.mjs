@@ -16,7 +16,7 @@
 import path from 'node:path';
 import { normalizeOutcome, deterministicId } from './telemetry-events.mjs';
 import { firstFinalGates } from './final-gate-blame.mjs';
-import { normalizeRuleHits, normalizeRulesChecked, normalizeProbeChecks } from './telemetry-rules.mjs';
+import { normalizeRuleHits, normalizeRulesChecked, normalizeProbeChecks, normalizeStepDelegation } from './telemetry-rules.mjs';
 import { resolveProjectSlug } from '../workflow-metrics-lib.mjs';
 
 // Slug '-opt-projects-juz-ide-api-1' → 'juz-ide-api-1'. Najpierw prawdziwy katalog (slug jest
@@ -156,6 +156,8 @@ export function legacyRunToEvents({ steps = [], run = null, project }) {
     const ruleHits = verdictStep ? normalizeRuleHits(s.ruleHits) : null;
     const rulesChecked = verdictStep ? normalizeRulesChecked(s.rulesChecked) : null;
     const checks = p.role === 'probe' ? normalizeProbeChecks(s.checks) : null;
+    // E2a: tryb delegacji reguł do lintu niesie wyłącznie krok weryfikatora warstwy.
+    const delegationFields = p.role === 'verifier' ? normalizeStepDelegation(s) : {};
     events.push({
       id: deterministicId(`${runId}::${s.agentId || `${s.label}#${i}`}`),
       ts, kind: 'step.end', ...base,
@@ -165,6 +167,7 @@ export function legacyRunToEvents({ steps = [], run = null, project }) {
         ...(ruleHits ? { ruleHits } : {}),
         ...(rulesChecked !== null ? { rulesChecked } : {}),
         ...(checks ? { checks } : {}),
+        ...delegationFields,
       },
       outcome,
       ...(cause ? { cause } : {}),

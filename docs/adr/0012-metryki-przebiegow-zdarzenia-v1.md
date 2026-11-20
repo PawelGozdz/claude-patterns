@@ -241,6 +241,21 @@ Wyjątek od §3 („zdarzenie nie zawiera ścieżek plików"), ograniczony do je
   miejsca (potwierdzone przez właściciela juz-ide-api, TS-TOOLING-006). Odcisk ustaleń (`ruleSignature`) nadal liczy samo `ruleId`.
 - Prywatność: ścieżki projektu pozostają na maszynie, na której powstały; nie ma ich w niczym, co trafia do repo ani na serwer.
 
+### Aneks: delegowanie reguł do lintu i ID reguł z kartą (TASK-ORC-LINT-DELEGATION-001, 2026-11-20)
+
+Zmiana addytywna schematu v1 (`v` zostaje 1), tylko w bloku `step`:
+
+- `delegation` (`on|holdout|fallback`), `delegatedRules` (`karta:id`, do 50, tylko tryby `on` i `holdout`) i `lintMisses` (liczba ≥ 0,
+  tylko gdy werdykt niósł `ruleHits`) — wyłącznie rola `verifier`. Brak pola znaczy „delegowanie wyłączone dla tej warstwy". `lintMisses` liczy
+  kod z `ruleId` ustaleń, nie deklaracja modelu. To konfiguracja projektu i liczba, nie treść ustaleń.
+- `checks.projectLint` (`pass|fail|skipped`) w kroku `probe`.
+- `ruleHits[].ruleId` z kartą ma postać `<karta>:<id>` (np. `command-handler:ch5`); `#` z promptu zamienia `normalizeRuleId`, bo `#` nie przechodzi
+  `SAFE_KEY`. Stary, goły format (`n1`) nadal przechodzi i jest liczony osobno.
+- Rollup (bloki leniwe): `roles.verifier.delegation.<tryb>` = `{n, noGo, lintMisses, costUsd}` i `rules.<agent>.qualified` (ile ustaleń niesie kartę).
+  Eksport przez białą listę (`DELEGATION_FIELDS`, `qualified`); nazwy reguł nie wychodzą.
+- Źródło po stronie silnika: `report.delegation` (wpis tuż przed każdym wywołaniem weryfikatora warstwy, tryb `off` nie zostawia śladu); kolektor
+  łączy wpisy z krokami po etykiecie i kolejności wywołań.
+
 ## Kolejność wdrożenia
 
 1. **(2026-10-10)** Schemat v1, `scripts/lib/telemetry-events.mjs`, `scripts/telemetry-emit.mjs`,
