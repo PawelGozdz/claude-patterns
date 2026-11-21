@@ -11,11 +11,157 @@
       "cause": "config",
       "n": 1,
       "trigger": "setup_drift"
+    },
+    "DEV-orc-083-final-gate": {
+      "cause": "pattern_card",
+      "n": 1,
+      "trigger": "agent_note"
     }
   },
-  "events": 12,
+  "engines": {
+    "334d9a4": {
+      "analyze": {
+        "costUsd": 3.87944,
+        "died": 6,
+        "ended": {
+          "ok": 1
+        },
+        "started": 1,
+        "steps": 7,
+        "stepsWithoutCost": 0
+      },
+      "orchestrate": {
+        "costUsd": 19.942337,
+        "died": 0,
+        "ended": {
+          "no_go": 1,
+          "ok": 1
+        },
+        "started": 2,
+        "steps": 75,
+        "stepsWithoutCost": 0
+      }
+    }
+  },
+  "events": 107,
   "host": "5a164d2d0145",
   "processes": {
+    "analyze": {
+      "costUsd": 3.87944,
+      "costUsdRetried": 0.014266,
+      "died": 6,
+      "repairs": {
+        "fixSteps": 0,
+        "fixed": 0,
+        "open": 0
+      },
+      "retried": 1,
+      "roles": {
+        "ddd-modeling": {
+          "causes": {
+            "silent": 1
+          },
+          "costUsd": 0.602727,
+          "durationMs": {
+            "n": 1,
+            "p50": 56273,
+            "p90": 56273
+          },
+          "n": 1,
+          "outcomes": {
+            "died": 1
+          },
+          "toolCalls": 16
+        },
+        "decision-gate": {
+          "causes": {
+            "silent": 1
+          },
+          "costUsd": 0.046776,
+          "durationMs": {
+            "n": 2,
+            "p50": 34057,
+            "p90": 49953
+          },
+          "n": 2,
+          "outcomes": {
+            "died": 1,
+            "ok": 1
+          },
+          "toolCalls": 44
+        },
+        "impl-analysis": {
+          "causes": {
+            "silent": 1
+          },
+          "costUsd": 0.863908,
+          "durationMs": {
+            "n": 1,
+            "p50": 144260,
+            "p90": 144260
+          },
+          "n": 1,
+          "outcomes": {
+            "died": 1
+          },
+          "toolCalls": 12
+        },
+        "pattern-fit": {
+          "causes": {
+            "silent": 1
+          },
+          "costUsd": 0.445667,
+          "durationMs": {
+            "n": 1,
+            "p50": 66049,
+            "p90": 66049
+          },
+          "n": 1,
+          "outcomes": {
+            "died": 1
+          },
+          "toolCalls": 5
+        },
+        "tech-analysis": {
+          "causes": {
+            "silent": 1
+          },
+          "costUsd": 1.082682,
+          "durationMs": {
+            "n": 1,
+            "p50": 97004,
+            "p90": 97004
+          },
+          "n": 1,
+          "outcomes": {
+            "died": 1
+          },
+          "toolCalls": 18
+        },
+        "tech-analysis-specialist": {
+          "causes": {
+            "silent": 1
+          },
+          "costUsd": 0.83768,
+          "durationMs": {
+            "n": 1,
+            "p50": 147875,
+            "p90": 147875
+          },
+          "n": 1,
+          "outcomes": {
+            "died": 1
+          },
+          "toolCalls": 13
+        }
+      },
+      "steps": 7,
+      "stepsWithoutCost": 0,
+      "verification": {
+        "firstPassGo": 0,
+        "units": 0
+      }
+    },
     "audit": {
       "costUsd": 0,
       "costUsdRetried": 0,
@@ -178,10 +324,244 @@
         "firstPassGo": 0,
         "units": 0
       }
+    },
+    "hook": {
+      "costUsd": 0,
+      "costUsdRetried": 0,
+      "died": 0,
+      "repairs": {
+        "fixSteps": 0,
+        "fixed": 0,
+        "open": 0
+      },
+      "retried": 0,
+      "roles": {
+        "block-root-grep:root-grep": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 0,
+            "p50": null,
+            "p90": null
+          },
+          "n": 1,
+          "outcomes": {
+            "halted": 1
+          },
+          "toolCalls": 0
+        },
+        "block-unscoped-tests:direct-runner": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 0,
+            "p50": null,
+            "p90": null
+          },
+          "n": 2,
+          "outcomes": {
+            "halted": 2
+          },
+          "toolCalls": 0
+        },
+        "block-unscoped-tests:script": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 0,
+            "p50": null,
+            "p90": null
+          },
+          "n": 1,
+          "outcomes": {
+            "halted": 1
+          },
+          "toolCalls": 0
+        }
+      },
+      "steps": 4,
+      "stepsWithoutCost": 4,
+      "verification": {
+        "firstPassGo": 0,
+        "units": 0
+      }
+    },
+    "orchestrate": {
+      "costUsd": 19.942337,
+      "costUsdRetried": 2.003034,
+      "died": 0,
+      "finalGate": {
+        "blamedUnits": 1,
+        "judged": 2,
+        "noGoAttributed": 1
+      },
+      "repairs": {
+        "fixSteps": 2,
+        "fixed": 2,
+        "open": 0
+      },
+      "retried": 18,
+      "roles": {
+        "fixer": {
+          "causes": {},
+          "costUsd": 1.807366,
+          "durationMs": {
+            "n": 9,
+            "p50": 5726,
+            "p90": 123701
+          },
+          "n": 9,
+          "outcomes": {
+            "ok": 9
+          },
+          "toolCalls": 45
+        },
+        "gate": {
+          "causes": {},
+          "costUsd": 10.31815,
+          "durationMs": {
+            "n": 4,
+            "p50": 602775,
+            "p90": 654654
+          },
+          "n": 4,
+          "outcomes": {
+            "go": 4
+          },
+          "rules": {
+            "security-e2e-verifier": {
+              "hits": {},
+              "reports": 4
+            }
+          },
+          "toolCalls": 64
+        },
+        "implementer": {
+          "causes": {},
+          "costUsd": 4.803499,
+          "durationMs": {
+            "n": 8,
+            "p50": 43421,
+            "p90": 295420
+          },
+          "n": 8,
+          "outcomes": {
+            "ok": 8
+          },
+          "toolCalls": 96
+        },
+        "none": {
+          "causes": {},
+          "costUsd": 0.125418,
+          "durationMs": {
+            "n": 23,
+            "p50": 6774,
+            "p90": 7764
+          },
+          "n": 23,
+          "outcomes": {
+            "ok": 23
+          },
+          "toolCalls": 46
+        },
+        "probe": {
+          "causes": {},
+          "costUsd": 0.198522,
+          "durationMs": {
+            "n": 24,
+            "p50": 14019,
+            "p90": 78205
+          },
+          "n": 24,
+          "outcomes": {
+            "ok": 24
+          },
+          "toolCalls": 52
+        },
+        "verifier": {
+          "agents": {
+            "code-quality-verifier": {
+              "falseGo": 1,
+              "goJudged": 5
+            }
+          },
+          "causes": {},
+          "costUsd": 2.689382,
+          "durationMs": {
+            "n": 7,
+            "p50": 16044,
+            "p90": 20721
+          },
+          "n": 7,
+          "outcomes": {
+            "go": 7
+          },
+          "rules": {
+            "code-quality-verifier": {
+              "hits": {},
+              "reports": 7
+            }
+          },
+          "toolCalls": 33,
+          "verdicts": {
+            "falseGo": 1,
+            "goJudged": 5
+          }
+        }
+      },
+      "steps": 75,
+      "stepsWithoutCost": 0,
+      "verification": {
+        "firstPassGo": 5,
+        "units": 5
+      }
     }
   },
   "project": "juz-ide-api-6",
-  "runs": {},
-  "stepsTotal": 10,
+  "runs": {
+    "analyze": {
+      "costUsd": 0,
+      "durationMs": {
+        "n": 1,
+        "p50": 948028,
+        "p90": 948028
+      },
+      "ended": {
+        "ok": 1
+      },
+      "started": 1
+    },
+    "orchestrate": {
+      "costUsd": 19.942337,
+      "durationMs": {
+        "n": 2,
+        "p50": 810754,
+        "p90": 3319180
+      },
+      "ended": {
+        "no_go": 1,
+        "ok": 1
+      },
+      "started": 2
+    }
+  },
+  "seeds": {
+    "unknown": {
+      "checked": 1,
+      "skipped:no_topic": 1
+    }
+  },
+  "stepsTotal": 96,
+  "tasks": {
+    "TS-TOOLING-ERROR-CONTRACT-TYPED-BASE-001": {
+      "analyzeRuns": 1,
+      "costToGoUsd": 14.302914,
+      "costUsd": 23.821777,
+      "reachedGo": true,
+      "runs": 2,
+      "spanMs": 5988377,
+      "stepsWithoutCost": 0
+    }
+  },
   "v": 1
 }

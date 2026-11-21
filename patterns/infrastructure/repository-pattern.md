@@ -1048,6 +1048,39 @@ not that nobody looked.
   real Postgres; `// RP12-EXCEPTION:` annotation above the injected `DATABASE_TOKEN`. Move behind the
   query repository when it can express a whitelist.
 
+- `NeighborInviteRetentionKyselyRepository` (RP2, juz-ide `neighbor-relation` context,
+  `infrastructure/growth/repositories/`, TS-ARCH-RP12-SHARED-JOBS-001, BR-INVITE-005, BDR-188) —
+  retention delete of neighbour invites older than 90 days from `created_at` (hard delete,
+  `DELETE ... RETURNING id`): no aggregate is loaded or saved and no domain event is emitted, so
+  `BaseKyselyRepository` dispatch/locking does not apply. Checked before accepting: port
+  `NeighborInviteRetentionPort` in `application/ports/`, the class sits in `repositories/` and
+  injects `DATABASE_TOKEN`, it is called from a BullMQ processor (no command transaction, so
+  autocommit is the intended semantics), no `queue.add`, the log carries counters only, the query
+  is unchanged from the processor it was extracted from.
+
+- `AuditLogAppendKyselyRepository`, `OnBehalfAccessLogKyselyRepository` (RP2, juz-ide
+  `src/shared/infrastructure/audit/repositories/`, TS-ARCH-RP12-SHARED-JOBS-001) — append-only
+  writers of the GDPR audit log (`appendIfAbsent`) and the on-behalf access log (`logAttempt`): audit rows are not aggregates and emit
+  no domain events, so `BaseKyselyRepository` dispatch/locking does not apply. Checked before
+  accepting: each implements its own port (`IAuditLogAppendRepository`,
+  `IOnBehalfAccessLogRepository`), both sit in `repositories/` (moved there from the audit module
+  root without changing the queries). The read-side repositories next to them
+  (`AuditChainReadKyselyRepository`, `OnBehalfAccessLogQueryKyselyRepository`) are query repositories
+  and need no exception.
+
+- `FeedbackKyselyRepository` (RP2, juz-ide `src/shared/infrastructure/feedback/repositories/`,
+  TS-ARCH-RP12-SHARED-JOBS-001) — persistence for user feedback records (create, find, list,
+  `updateStatus`, delete, counters), not a domain aggregate: no domain events, no optimistic-locking
+  row. Checked before accepting: implements the port `IFeedbackRepository` (kept in
+  `feedback.repository.ts`), sits in `repositories/`, query bodies moved unchanged from the former
+  `feedback.repository.ts`.
+
+- `MediaKyselyRepository` (RP2, juz-ide `src/shared/infrastructure/media/repositories/`,
+  ADR-0084, TS-ARCH-RP12-SHARED-JOBS-001) — media is an infrastructure service, not a DDD aggregate;
+  `// RP2-EXCEPTION:` annotation above the class (moved from `media.repository.ts`). Checked before
+  accepting: implements `IMediaRepository`, queries moved 1:1 (GDPR `gdpr_deleted_at IS NULL` filter,
+  `approve`/`reject` through `txHost.tx ?? db`).
+
 ---
 
 ## 📚 References

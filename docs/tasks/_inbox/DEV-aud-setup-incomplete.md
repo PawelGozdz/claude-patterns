@@ -17,8 +17,8 @@ sources:
   - audit
 rule_ref: AUD-SETUP-INCOMPLETE
 first_seen: 2026-10-14
-last_seen: 2026-11-09
-occurrences: 9
+last_seen: 2026-11-20
+occurrences: 15
 projects:
   - juz-ide-mobile-app
   - juz-ide-api-1
@@ -27,6 +27,12 @@ projects:
   - juz-ide-api-4
   - juz-ide-api-6
   - marketing-hub-ds-0.10
+  - juz-ide-api-2
+  - juz-ide-api-8
+  - juz-ide-api-5
+  - juz-ide-api-7
+  - juz-ide-api-develop
+  - juz-ide-api-test
 reopened_at: 2026-11-04
 reopened_from_status: dismissed
 ---
@@ -35,6 +41,12 @@ reopened_from_status: dismissed
 
 ## Occurrences
 
+- 2026-11-20 juz-ide-api-test — verify-project-setup: setup niekompletny (✗ setup niekompletny)
+- 2026-11-20 juz-ide-api-develop — verify-project-setup: setup niekompletny (✗ setup niekompletny)
+- 2026-11-20 juz-ide-api-7 — verify-project-setup: setup niekompletny (✗ setup niekompletny)
+- 2026-11-20 juz-ide-api-5 — verify-project-setup: setup niekompletny (✗ setup niekompletny)
+- 2026-11-19 juz-ide-api-8 — verify-project-setup: setup niekompletny (✗ setup niekompletny)
+- 2026-11-19 juz-ide-api-2 — verify-project-setup: setup niekompletny (✗ setup niekompletny)
 - 2026-11-09 marketing-hub-ds-0.10 — verify-project-setup: setup niekompletny
 - 2026-11-09 juz-ide-api-6 — verify-project-setup: setup niekompletny (✗ setup niekompletny)
 - 2026-11-09 juz-ide-api-4 — verify-project-setup: setup niekompletny (✗ setup niekompletny)

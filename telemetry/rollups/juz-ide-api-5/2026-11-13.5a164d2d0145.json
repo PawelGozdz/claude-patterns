@@ -8,9 +8,67 @@
       "trigger": "setup_drift"
     }
   },
-  "events": 11,
+  "engines": {
+    "334d9a4": {
+      "analyze": {
+        "costUsd": 0,
+        "died": 0,
+        "ended": {
+          "ok": 1
+        },
+        "started": 1,
+        "steps": 7,
+        "stepsWithoutCost": 7
+      },
+      "orchestrate": {
+        "costUsd": 36.65604,
+        "died": 1,
+        "ended": {
+          "no_go": 1,
+          "ok": 1
+        },
+        "started": 2,
+        "steps": 127,
+        "stepsWithoutCost": 0
+      }
+    }
+  },
+  "events": 190,
   "host": "5a164d2d0145",
   "processes": {
+    "analyze": {
+      "costUsd": 0,
+      "costUsdRetried": 0,
+      "died": 0,
+      "repairs": {
+        "fixSteps": 0,
+        "fixed": 0,
+        "open": 0
+      },
+      "retried": 0,
+      "roles": {
+        "none": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 0,
+            "p50": null,
+            "p90": null
+          },
+          "n": 7,
+          "outcomes": {
+            "skipped": 7
+          },
+          "toolCalls": 0
+        }
+      },
+      "steps": 7,
+      "stepsWithoutCost": 7,
+      "verification": {
+        "firstPassGo": 0,
+        "units": 0
+      }
+    },
     "audit": {
       "costUsd": 0,
       "costUsdRetried": 0,
@@ -171,10 +229,320 @@
         "firstPassGo": 0,
         "units": 0
       }
+    },
+    "hook": {
+      "costUsd": 0,
+      "costUsdRetried": 0,
+      "died": 0,
+      "repairs": {
+        "fixSteps": 0,
+        "fixed": 0,
+        "open": 0
+      },
+      "retried": 0,
+      "roles": {
+        "block-root-grep:root-grep": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 0,
+            "p50": null,
+            "p90": null
+          },
+          "n": 8,
+          "outcomes": {
+            "halted": 8
+          },
+          "toolCalls": 0
+        },
+        "block-unscoped-tests:direct-runner": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 0,
+            "p50": null,
+            "p90": null
+          },
+          "n": 1,
+          "outcomes": {
+            "halted": 1
+          },
+          "toolCalls": 0
+        },
+        "block-unscoped-tests:no-files": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 0,
+            "p50": null,
+            "p90": null
+          },
+          "n": 1,
+          "outcomes": {
+            "halted": 1
+          },
+          "toolCalls": 0
+        },
+        "block-unscoped-tests:not-a-file": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 0,
+            "p50": null,
+            "p90": null
+          },
+          "n": 4,
+          "outcomes": {
+            "halted": 4
+          },
+          "toolCalls": 0
+        },
+        "check-delegation:pattern-file": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 0,
+            "p50": null,
+            "p90": null
+          },
+          "n": 2,
+          "outcomes": {
+            "halted": 2
+          },
+          "toolCalls": 0
+        },
+        "check-patterns-read:patterns-read": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 0,
+            "p50": null,
+            "p90": null
+          },
+          "n": 1,
+          "outcomes": {
+            "halted": 1
+          },
+          "toolCalls": 0
+        },
+        "check-subagent-pattern-reads:pattern-grounding": {
+          "causes": {},
+          "costUsd": 0,
+          "durationMs": {
+            "n": 0,
+            "p50": null,
+            "p90": null
+          },
+          "n": 17,
+          "outcomes": {
+            "halted": 17
+          },
+          "toolCalls": 0
+        }
+      },
+      "steps": 34,
+      "stepsWithoutCost": 34,
+      "verification": {
+        "firstPassGo": 0,
+        "units": 0
+      }
+    },
+    "orchestrate": {
+      "costUsd": 37.291743,
+      "costUsdRetried": 12.920021,
+      "died": 2,
+      "finalGate": {
+        "blamedUnits": 1,
+        "judged": 1,
+        "noGo": 1,
+        "noGoAttributed": 1,
+        "unattributed": 3
+      },
+      "repairs": {
+        "fixSteps": 11,
+        "fixed": 10,
+        "open": 1
+      },
+      "retried": 66,
+      "roles": {
+        "fixer": {
+          "causes": {},
+          "costUsd": 1.902417,
+          "durationMs": {
+            "n": 9,
+            "p50": 8080,
+            "p90": 104209
+          },
+          "n": 9,
+          "outcomes": {
+            "ok": 9
+          },
+          "toolCalls": 62
+        },
+        "gate": {
+          "causes": {
+            "verifier": 1
+          },
+          "costUsd": 6.528783,
+          "durationMs": {
+            "n": 1,
+            "p50": 572949,
+            "p90": 572949
+          },
+          "n": 1,
+          "outcomes": {
+            "no_go": 1
+          },
+          "rules": {
+            "security-e2e-verifier": {
+              "hits": {
+                "d2": 1,
+                "d3": 1,
+                "de3": 2,
+                "sep2": 1
+              },
+              "reports": 1
+            }
+          },
+          "toolCalls": 39
+        },
+        "implementer": {
+          "causes": {
+            "silent": 2
+          },
+          "costUsd": 20.112708,
+          "durationMs": {
+            "n": 23,
+            "p50": 76972,
+            "p90": 265507
+          },
+          "n": 24,
+          "outcomes": {
+            "died": 2,
+            "ok": 22
+          },
+          "toolCalls": 577
+        },
+        "none": {
+          "causes": {},
+          "costUsd": 0.15752,
+          "durationMs": {
+            "n": 36,
+            "p50": 8557,
+            "p90": 10591
+          },
+          "n": 36,
+          "outcomes": {
+            "ok": 36
+          },
+          "toolCalls": 73
+        },
+        "probe": {
+          "causes": {},
+          "costUsd": 0.392107,
+          "durationMs": {
+            "n": 40,
+            "p50": 16753,
+            "p90": 58000
+          },
+          "n": 40,
+          "outcomes": {
+            "ok": 40
+          },
+          "toolCalls": 121
+        },
+        "verifier": {
+          "agents": {
+            "code-quality-verifier": {
+              "falseGo": 1,
+              "goJudged": 5,
+              "noGoJudged": 2
+            }
+          },
+          "causes": {
+            "verifier": 2
+          },
+          "costUsd": 8.198208,
+          "durationMs": {
+            "n": 18,
+            "p50": 30745,
+            "p90": 77167
+          },
+          "n": 18,
+          "outcomes": {
+            "go": 16,
+            "no_go": 2
+          },
+          "rules": {
+            "code-quality-verifier": {
+              "hits": {
+                "sep-n3": 3
+              },
+              "reports": 14
+            }
+          },
+          "toolCalls": 140,
+          "verdicts": {
+            "falseGo": 1,
+            "goJudged": 5,
+            "noGoJudged": 2
+          }
+        }
+      },
+      "steps": 128,
+      "stepsWithoutCost": 0,
+      "verification": {
+        "firstPassGo": 7,
+        "units": 8
+      }
     }
   },
   "project": "juz-ide-api-5",
-  "runs": {},
-  "stepsTotal": 10,
+  "runs": {
+    "analyze": {
+      "costUsd": 0,
+      "durationMs": {
+        "n": 1,
+        "p50": 1047053,
+        "p90": 1047053
+      },
+      "ended": {
+        "ok": 1
+      },
+      "started": 1
+    },
+    "orchestrate": {
+      "costUsd": 26.324769,
+      "durationMs": {
+        "n": 3,
+        "p50": 326739,
+        "p90": 3592282
+      },
+      "ended": {
+        "killed": 1,
+        "no_go": 1,
+        "ok": 1
+      },
+      "started": 3
+    }
+  },
+  "seeds": {
+    "unknown": {
+      "checked": 1,
+      "skipped:no_topic": 1
+    }
+  },
+  "stepsTotal": 179,
+  "tasks": {
+    "TS-TOOLING-NO-THROW-DOMAIN-ACL-001": {
+      "analyzeRuns": 1,
+      "costToGoUsd": null,
+      "costUsd": 36.65604,
+      "reachedGo": false,
+      "runs": 2,
+      "spanMs": 7808049,
+      "stepsWithoutCost": 7
+    }
+  },
   "v": 1
 }

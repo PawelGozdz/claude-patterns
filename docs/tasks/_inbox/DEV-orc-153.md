@@ -7,8 +7,8 @@ sources:
   - orchestrate
 rule_ref: ORC-153
 first_seen: 2026-11-08
-last_seen: 2026-11-12
-occurrences: 34
+last_seen: 2026-11-20
+occurrences: 49
 projects:
   - juz-ide-api-2
   - juz-ide-api-6
@@ -21,12 +21,28 @@ projects:
   - juz-ide-mobile-app-3
   - juz-ide-api-4
   - my-intelligence
+  - juz-ide-api
 ---
 
 # DEV-orc-153
 
 ## Occurrences
 
+- 2026-11-20 juz-ide-api-3 (TS-OBS-LOG-ERROR-TEXT-USER-ORG-001) — Workflow niedostępny na polecenie właściciela (orkiestrator-10), tryb ręczny
+- 2026-11-20 juz-ide-api-1 (TS-TOOLING-SEP-MESSAGE-SWEEP-001) — Workflow niedostepny, tryb reczny (zgodnie z polecenia wlasciciela)
+- 2026-11-20 juz-ide-api-2 (TS-ARCH-REQUIRE-USERID-CC-001) — Workflow niedostępny, tryb ręczny (polecenie właściciela sesji)
+- 2026-11-19 juz-ide-api (TS-OBS-LOG-ERROR-TEXT-AUTH-PRICING-001) — Workflow niedostępny (operator: odpowiedź No na dialog), tryb ręczny
+- 2026-11-19 juz-ide-api-3 (TS-TOOLING-LINT-COVERAGE-GAPS-001) — Workflow niedostępny (dialog odrzucony wg instrukcji operatora), tryb ręczny
+- 2026-11-19 juz-ide-api-2 (TS-ARCH-REQUIRE-USERID-001) — Workflow niedostępny (decyzja operatora: dialog Run a dynamic workflow = No), tryb ręczny
+- 2026-11-19 juz-ide-api-1 (TS-INFRA-CI-LINT-DDD-001) — Workflow niedostępny (dialog odrzucony zgodnie z regułą operatora), tryb ręczny
+- 2026-11-19 juz-ide-api-3 (TS-ARCH-RP12-ENFORCE-ERROR-001) — Workflow niedostępny (dialog odrzucony na polecenie operatora), tryb ręczny
+- 2026-11-19 juz-ide-api-4 (TS-OBS-LOG-ERROR-TEXT-NE-001) — Workflow niedostepny (dialog Run a dynamic workflow odrzucony na polecenie operatora), tryb reczny
+- 2026-11-19 juz-ide-api (TS-OBS-LOG-ERROR-TEXT-CC-AUTHZ-001) — Workflow niedostepny (dialog Run a dynamic workflow odrzucony), tryb reczny
+- 2026-11-18 juz-ide-api (TS-AUTH-SYSTEM-KEY-MIGRATION-PORTS-001) — Workflow niedostepny z decyzji sesji (dialog = No), tryb reczny
+- 2026-11-18 juz-ide-api-5 (TS-OBS-LOG-ERROR-OBJECT-001) — Workflow niedostepny, tryb reczny (decyzja wlasciciela: dialog Run a dynamic workflow = No)
+- 2026-11-18 juz-ide-api-3 (TS-ARCH-RP12-CONTEXT-INFRA-001) — Workflow niedostepny (dialog dynamic workflow odrzucony na polecenie operatora), tryb reczny
+- 2026-11-18 juz-ide-api-2 (TS-TOOLING-DOMAIN-INFRA-IMPORT-CLEANUP-001) — Workflow niedostępny na polecenie operatora, tryb ręczny
+- 2026-11-18 juz-ide-api-4 (TS-ARCH-RP12-APP-PORTS-001) — Workflow niedostępny (dialog dynamic workflow odrzucony przez operatora), tryb ręczny
 - 2026-11-12 juz-ide-api-3 (TS-OBS-ERRORS-001) — Workflow odrzucony (dialog), tryb ręczny
 - 2026-11-11 juz-ide-api-2 (TS-INFRA-IDEMPOTENCY-003) — Workflow niedostępny (dialog Run a dynamic workflow z jedyną opcją No), przebieg w trybie ręcznym
 - 2026-11-11 juz-ide-api-8 (TS-TOOLING-DOMAIN-ERROR-CONTRACT-001) — Workflow niedostępny (dialog Run a dynamic workflow bez opcji zgody), tryb ręczny wg orchestrate-manual-mode.md

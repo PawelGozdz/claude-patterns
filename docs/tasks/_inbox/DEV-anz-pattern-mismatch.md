@@ -38,8 +38,8 @@ sources:
   - analyze
 rule_ref: ANZ-PATTERN-MISMATCH
 first_seen: 2026-10-10
-last_seen: 2026-11-14
-occurrences: 25
+last_seen: 2026-11-15
+occurrences: 28
 projects:
   - aegis-flow
   - ai-os-bot
@@ -63,6 +63,9 @@ reopened_from_status: promoted
 
 ## Occurrences
 
+- 2026-11-15 juz-ide-api-3 (TS-ARCH-RP12-SHARED-JOBS-001) — Karta repository.md (N7/RP12) nie mowi, ze przeniesienie adaptera wlasnej tabeli do infrastructure/**/repositories|persistence jest legalnym wyjsciem z N7, ani ze wylaczenie pojedynczych plikow infrastruktury bazy (reguła zakresu w lint) jest dozwolone; to rozstrzyga tylko lint (eslint.ddd.config.mjs ignores). Repozytoria nieagregatowe (feedback, media, audit) tez nie sa opisane jako zwolnione z eventMap i mappera agregatu. Zrodlo: analiza TS-ARCH-RP12-SHARED-JOBS-001, decyzje D1, D5-D8.
+- 2026-11-15 juz-ide-api-3 (TS-ARCH-RP12-SHARED-JOBS-001) — Karta rules/nestjs-ddd/repository.md i wzorzec repository-pattern.md twierdza, ze poza transakcja getDb() spada na zwykle Kysely (autocommit); kod BaseKyselyRepository.getDb() (juz-ide-api src/shared/infrastructure/repositories/base-kysely.repository.ts:162-172) rzuca Error, a runInJobContext nie otwiera transakcji. Analiza TS-ARCH-RP12-SHARED-JOBS-001 musiala odrzucic wariant metody w porcie komend z tego powodu.
+- 2026-11-14 juz-ide-api-2 (TS-TOOLING-AUTH-DOMAIN-PURITY-001) — Karty domain-service i application-handlers milcza o miejscu portu usługi infrastrukturalnej wołanej tylko z application (hashowanie: port w domain/services; nowe porty zapisu prób, OAuth i secure-token: application/ports); w repo wzorzec rozbieżny (BetaSeedCodeHashing w domain, sms-otp-delivery w application/ports)
 - 2026-11-14 juz-ide-api-3 (TS-TOOLING-DOMAIN-MODEL-CLEANUP-001) — Luka karty: brak reguły o identyfikatorze złożonym (kompozyt jak ProviderId{provider,externalId} i ActorId{id,type,externalOrganizationId}) jako value object; reguła lintu id-extends-base-entity-id łapie klasy po przyrostku Id bez kotwicy w karcie entity/value-object. Dodatkowo VO2 (konstruktor private) bez wariantu protected dla klas dziedziczonych, choć lint go dopuszcza.
 - 2026-11-14 juz-ide-api-3 (TS-TOOLING-DOMAIN-MODEL-CLEANUP-001) — entity-pattern_summary.md l.37 i l.55 importuje BaseEntity, EntityId, BaseEntityId z @vytches/ddd i używa wycofanego BaseEntityId.createWithRandomUUID(); biblioteka 0.32.1 nie eksportuje BaseEntityId (w repo to alias importu ContractsEntityId as BaseEntityId, 53 pliki), a BaseEntity jest własną klasą repo (src/shared/domain/base-entity.ts). Szkielet karty jest niezgodny z lintem ddd/no-deprecated-entity-id-factories.
 - 2026-11-14 juz-ide-api-3 (TS-TOOLING-DOMAIN-MODEL-CLEANUP-001) — rules/nestjs-ddd/value-object.md:11 i karta VO7 każą implementować getEqualityComponents(); w @vytches/ddd-value-objects 0.32.1 ta metoda nigdy nie istniała (dist/index.js:41-43: hook to getIdentityComponents, domyślne equals = deepEqual całej wartości). W juz-ide-api: 201 plików nietestowych ma martwą metodę, 13 wywołań z własnych equals().
